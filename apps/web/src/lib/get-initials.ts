@@ -1,8 +1,15 @@
 // Uppercase before selecting characters: some characters expand when
 // uppercased ("ß" -> "SS"), so uppercasing afterwards could yield more
 // than two characters.
+// Punctuation is dropped first, so "[audit] Invitee" gives "AI" rather than "[I" while
+// "Mary-Jane Watson" and "O'Brien Smith" keep one word each ("MW", "OS").
 export function getInitials(value: string | null | undefined, fallback = "??") {
-  const parts = value?.trim().split(/\s+/).filter(Boolean) ?? [];
+  const parts =
+    value
+      ?.replace(/[^\p{L}\p{M}\p{N}\s]/gu, "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean) ?? [];
 
   if (parts.length === 0) {
     return Array.from(fallback).slice(0, 2).join("").toUpperCase();

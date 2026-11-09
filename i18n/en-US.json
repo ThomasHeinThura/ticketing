@@ -418,7 +418,13 @@
 				"alreadyLinked": "This identity provider was already linked.",
 				"linkPermissionsNote": "Linking does not change permissions.",
 				"passwordSession": "Sign in with an identity provider to link another provider. Password sessions cannot start identity linking."
-			}
+			},
+			"authenticatorApp": "Authenticator app",
+			"statusOn": "On",
+			"statusOff": "Off",
+			"setupAction": "Set up",
+			"passwordLabel": "Password",
+			"passwordPrompt": "Enter your password to start setting up an authenticator app."
 		},
 		"invitation": {
 			"pageTitleAccept": "Accept Invitation",
@@ -601,7 +607,6 @@
 			"reminderLeadTimeUnitHours": "Hours",
 			"reminderLeadTimeUnitDays": "Days",
 			"reminderLeadTimeInvalid": "Enter a whole number between 1 and {{max}}.",
-			"saveEventPreferences": "Save notification types",
 			"workspaceCardLabelEmail": "Email",
 			"workspaceCardLabelNtfy": "ntfy",
 			"workspaceCardLabelGotify": "Gotify",
@@ -648,11 +653,11 @@
 			"reportExportTitle": "Report exports",
 			"reportExportDescription": "Large report exports are prepared in the background.",
 			"reportExportEmail": "Email me when my export is ready",
-			"reportExportHint": "The email links to the export, which can be downloaded for 24 hours. Email delivery also requires an enabled instance email provider.",
-			"reportExportSave": "Save export preference",
+			"reportExportHint": "The email links to the export, which can be downloaded for 24 hours.",
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
-			"reminderLeadTimeUnitLabel": "Reminder time unit"
+			"reminderLeadTimeUnitLabel": "Reminder time unit",
+			"saveReminderLeadTime": "Save reminder time"
 		},
 		"preferencesPage": {
 			"title": "Preferences",
@@ -3050,7 +3055,14 @@
 		"members": {
 			"pageTitle": "Members",
 			"inviteMember": "Invite member",
-			"you": "You"
+			"you": "You",
+			"tabMembers": "Members ({{count}})",
+			"tabInvitations": "Pending invitations ({{count}})",
+			"search": "Search members",
+			"roleFilter": "Filter by role",
+			"allRoles": "All roles",
+			"noMatches": "No one matches these filters",
+			"noInvitations": "No pending invitations"
 		},
 		"invitations": {
 			"pendingBadge": "pending",
@@ -3059,7 +3071,10 @@
 			"copyLink": "Copy link",
 			"linkCopied": "Invitation link copied",
 			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
-			"expiredBadge": "expired"
+			"expiredBadge": "expired",
+			"resend": "Resend invitation",
+			"resendSuccess": "Invitation sent again",
+			"resendError": "Couldn't resend the invitation"
 		},
 		"inviteModal": {
 			"title": "Invite Team Member",
@@ -4968,7 +4983,6 @@
 		"summary": "Description",
 		"workItemType": "{{term_work_item_one}} type",
 		"chooseType": "Choose a type",
-		"projectId": "Default {{term_project_one}} ID",
 		"order": "Catalogue order",
 		"visible": "Visible to customers",
 		"autoAccept": "Auto accept",
@@ -5026,7 +5040,27 @@
 		"groupOrderSaved": "Group order saved.",
 		"saveGroupOrder": "Save group order",
 		"savingGroupOrder": "Saving group order…",
-		"catalogueOrder": "Catalogue order within group"
+		"publishedVersion": "Published v{{version}}",
+		"fieldCount_one": "{{count}} field",
+		"fieldCount_other": "{{count}} fields",
+		"updated": "Updated {{date}}",
+		"rowActions": "Actions for {{name}}",
+		"editAction": "Edit",
+		"groupEmpty": "No {{term_request_one}} types in this group.",
+		"defaultProject": "Default {{term_project_one}}",
+		"noDefaultProject": "No default {{term_project_one}}",
+		"unavailableProject": "Unavailable {{term_project_one}}",
+		"visibleHelp": "List this form in the customer portal catalogue.",
+		"autoAcceptHelp": "Turn each {{term_submission_one}} into a {{term_work_item_one}} in the default {{term_project_one}} without triage. Needs a default {{term_project_one}}.",
+		"forcePrivateHelp": "Every {{term_submission_one}} stays private to the requester and is never shared with their organisation.",
+		"closeEditor": "Close editor",
+		"newQuestion": "New question",
+		"removeField": "Remove {{name}}",
+		"priorityMappingLegend": "Priority value mapping",
+		"choosePriority": "Choose priority",
+		"priorityMappingInvalid": "Every priority option must map to low, medium, high, or urgent before publishing.",
+		"fileRequiredBlocked": "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish.",
+		"fileRequiredUnavailable": "Required is unavailable for file uploads until the submission file contract is defined."
 	},
 	"slaPolicies": {
 		"list": {
@@ -6394,7 +6428,6 @@
 			"description": "Email me when someone mentions me in a work item comment.",
 			"enabled": "Email for mentions",
 			"providerRequired": "Email delivery also requires an enabled instance email provider.",
-			"save": "Save mention preference",
 			"saved": "Mention preference saved.",
 			"saveFailed": "The preference could not be saved. Try again.",
 			"unsupported": "This email refers to a preference that this page cannot edit yet. No preference has been changed.",
@@ -6427,7 +6460,6 @@
 				"hourly": "Hourly digest",
 				"daily": "Daily digest"
 			},
-			"save": "Save comment preference",
 			"saved": "Comment email preference saved.",
 			"saveFailed": "The comment preference could not be saved. Try again."
 		},
@@ -6447,7 +6479,6 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
-			"save": "Save team notification preferences",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

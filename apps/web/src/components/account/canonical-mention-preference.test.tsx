@@ -1,4 +1,3 @@
-import { loadLocale, supportedLocales } from "@i18n/resources";
 import {
   cleanup,
   fireEvent,
@@ -20,24 +19,9 @@ const mocks = vi.hoisted(() => ({
   },
   invalidate: vi.fn(),
 }));
-vi.mock("react-i18next", async () => {
-  const { default: english } = await import("@i18n/en-US.json");
-  const { createInstance } = await import("i18next");
-  const i18n = createInstance();
-  await i18n.init({
-    lng: "en-US",
-    fallbackLng: false,
-    resources: {
-      "en-US": { notificationProvider: english.notificationProvider },
-    },
-    defaultNS: "notificationProvider",
-  });
-  return {
-    useTranslation: () => ({
-      t: (key: string) => (key === "teamNotification.save" ? i18n.t(key) : key),
-    }),
-  };
-});
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 vi.mock(
   "@/hooks/queries/notification-preferences/use-get-notification-preferences",
   () => ({
@@ -98,8 +82,10 @@ vi.mock("@tanstack/react-query", () => ({
   }) => ({
     isPending: false,
     isError: false,
-    mutate: (value: boolean, callbacks: { onSuccess: () => void }) =>
-      void mutationFn(value).then(callbacks.onSuccess),
+    mutate: (
+      value: boolean,
+      callbacks: { onSuccess: () => void; onError?: (error: unknown) => void },
+    ) => void mutationFn(value).then(callbacks.onSuccess, callbacks.onError),
   }),
 }));
 
@@ -120,25 +106,39 @@ describe("email preference landing", () => {
     expect(
       screen.getByRole("switch", { name: "mention.enabled" }),
     ).toBeChecked();
-    expect(screen.getByRole("button", { name: "mention.save" })).toBeDisabled();
+    // S6/S7: no per-card save button; a preference saves when it changes.
+    expect(screen.queryByRole("button", { name: "mention.save" })).toBeNull();
     expect(mocks.save).not.toHaveBeenCalled();
     expect(document.activeElement).toHaveClass("ring-ring");
   });
-  it("requires an explicit change and save", async () => {
+  it("saves a mention preference as soon as it is switched", async () => {
     render(<CanonicalMentionPreference />);
     fireEvent.click(screen.getByRole("switch", { name: "mention.enabled" }));
-    expect(mocks.save).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "mention.save" }));
     await waitFor(() =>
       expect(mocks.save).toHaveBeenCalledWith({
         enabled: false,
         digest: "off",
       }),
     );
+    expect(await screen.findByText("mention.saved")).toBeInTheDocument();
+  });
+  it("switches back and says so when the save fails", async () => {
+    mocks.save.mockReset().mockRejectedValue(new Error("offline"));
+    render(<CanonicalMentionPreference />);
+    const toggle = screen.getByRole("switch", { name: "mention.enabled" });
+    fireEvent.click(toggle);
+    expect(await screen.findByText("mention.saveFailed")).toBeInTheDocument();
+    expect(toggle).toBeChecked();
   });
   it("saves hourly or daily cadence only for low-priority comments", async () => {
     render(<CanonicalMentionPreference />);
     fireEvent.click(screen.getByRole("switch", { name: "comment.enabled" }));
+    await waitFor(() =>
+      expect(mocks.saveComment).toHaveBeenCalledWith({
+        enabled: true,
+        digest: "off",
+      }),
+    );
     fireEvent.click(screen.getByRole("combobox", { name: "comment.digest" }));
     const daily = await screen.findByRole("option", {
       name: "comment.digestCadence.daily",
@@ -148,9 +148,8 @@ describe("email preference landing", () => {
     fireEvent.pointerUp(daily);
     fireEvent.mouseUp(daily);
     fireEvent.click(daily);
-    fireEvent.click(screen.getByRole("button", { name: "comment.save" }));
     await waitFor(() =>
-      expect(mocks.saveComment).toHaveBeenCalledWith({
+      expect(mocks.saveComment).toHaveBeenLastCalledWith({
         enabled: true,
         digest: "daily",
       }),
@@ -172,17 +171,16 @@ describe("email preference landing", () => {
     fireEvent.pointerUp(hourly);
     fireEvent.mouseUp(hourly);
     fireEvent.click(hourly);
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Save team notification preferences",
-      }),
-    );
     await waitFor(() =>
-      expect(mocks.saveTeamNotification).toHaveBeenCalledWith({
+      expect(mocks.saveTeamNotification).toHaveBeenLastCalledWith({
         enabled: true,
         digest: "hourly",
       }),
     );
+  });
+  it("states the email provider requirement once for all email preferences", () => {
+    render(<CanonicalMentionPreference />);
+    expect(screen.getAllByText("mention.providerRequired")).toHaveLength(1);
   });
   it("never translates an unsupported scoped link into a scoped mutation", () => {
     mocks.selector.scope = "project";
@@ -191,17 +189,5 @@ describe("email preference landing", () => {
     expect(screen.getByText("mention.unsupported")).toBeInTheDocument();
     expect(mocks.save).not.toHaveBeenCalled();
     expect(document.activeElement).not.toHaveClass("ring-ring");
-  });
-});
-
-describe("team notification save label", () => {
-  it.each(supportedLocales)("exists in the %s resource", async (locale) => {
-    const resource = (await loadLocale(locale)) as {
-      notificationProvider?: { teamNotification?: { save?: unknown } };
-    };
-    const label = resource.notificationProvider?.teamNotification?.save;
-    expect(typeof label).toBe("string");
-    expect(label).not.toBe("");
-    expect(label).not.toBe("teamNotification.save");
   });
 });

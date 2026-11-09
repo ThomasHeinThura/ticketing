@@ -136,6 +136,18 @@ describe("quiet hours preference", () => {
     expect(mocks.save).not.toHaveBeenCalled();
   });
 
+  it("shows no save button until the saved quiet hours change (S7)", async () => {
+    mocks.quietHours = { start: "22:00", end: "07:00", timezone: "UTC" };
+    render(<QuietHoursPreference />);
+    expect(
+      screen.queryByRole("button", { name: "Save quiet hours" }),
+    ).toBeNull();
+    await chooseTime("From", "21:30");
+    expect(
+      screen.getByRole("button", { name: "Save quiet hours" }),
+    ).toBeEnabled();
+  });
+
   it("turns quiet hours off with null", async () => {
     mocks.quietHours = { start: "22:00", end: "07:00", timezone: "UTC" };
     render(<QuietHoursPreference />);

@@ -421,35 +421,44 @@ export default function ProjectStatesEditor({
                   name: state.name,
                 })}
               >
-                <span className="text-sm flex-1 truncate">{state.name}</span>
-                {canEdit ? (
-                  <StateWipLimitField
-                    projectId={projectId}
-                    workspaceId={workspaceId}
-                    stateId={state.id}
-                    stateName={state.name}
-                  />
-                ) : null}
-                <Badge variant="outline">
-                  {t(`settings:projectStates.groups.${state.group}`)}
-                </Badge>
-                {state.isDefault ? (
-                  <Badge variant="secondary">
-                    {t("settings:projectStates.default")}
-                  </Badge>
-                ) : (
-                  canEdit && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7"
-                      onClick={() => void handleDefault(state.id)}
-                    >
-                      {t("settings:projectStates.makeDefault")}
-                    </Button>
-                  )
-                )}
+                {/* P1: name and badges stay together on line one; below sm the limit field
+                    and Make default wrap to a full second line, so the name is never clipped. */}
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="min-w-[5rem] flex-1 truncate text-sm">
+                      {state.name}
+                    </span>
+                    <Badge variant="outline">
+                      {t(`settings:projectStates.groups.${state.group}`)}
+                    </Badge>
+                    {state.isDefault ? (
+                      <Badge variant="secondary">
+                        {t("settings:projectStates.default")}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {canEdit ? (
+                    <div className="flex items-center justify-between gap-2 max-sm:w-full">
+                      <StateWipLimitField
+                        projectId={projectId}
+                        workspaceId={workspaceId}
+                        stateId={state.id}
+                        stateName={state.name}
+                      />
+                      {state.isDefault ? null : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7"
+                          onClick={() => void handleDefault(state.id)}
+                        >
+                          {t("settings:projectStates.makeDefault")}
+                        </Button>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </SortableStateRow>
             ))}
           </ul>

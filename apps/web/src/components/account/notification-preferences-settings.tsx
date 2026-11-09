@@ -510,6 +510,7 @@ function ReportExportEmailPreference() {
       target.current?.scrollIntoView?.({ block: "center" });
     }
   }, [linked, stored]);
+  // S6: saves as soon as it is switched; a failed save falls back to the stored value.
   const mutation = useMutation({
     mutationFn: saveReportExportEmailPreference,
     onSuccess: async () => {
@@ -519,6 +520,7 @@ function ReportExportEmailPreference() {
       setEnabled(null);
       setSaved(true);
     },
+    onError: () => setEnabled(null),
   });
   if (!stored) return null;
   return (
@@ -544,6 +546,7 @@ function ReportExportEmailPreference() {
         onCheckedChange={(checked) => {
           setEnabled(checked);
           setSaved(false);
+          mutation.mutate({ enabled: checked });
         }}
       />
       {mutation.isError ? (
@@ -556,15 +559,6 @@ function ReportExportEmailPreference() {
           {t("settings:notificationsPage.reportExportSaved")}
         </p>
       ) : null}
-      <div>
-        <Button
-          disabled={mutation.isPending || current === stored.enabled}
-          onClick={() => mutation.mutate({ enabled: current })}
-          type="button"
-        >
-          {t("settings:notificationsPage.reportExportSave")}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -650,6 +644,40 @@ export function NotificationPreferencesSettings() {
     eventPrefs.dueDateReminderLeadAmount >= 1 &&
     eventPrefs.dueDateReminderLeadAmount <= leadTimeMax;
 
+  const leadTimeMinutes =
+    eventPrefs.dueDateReminderLeadAmount *
+    (eventPrefs.dueDateReminderLeadUnit === "days" ? 1440 : 60);
+  const leadTimeDirty =
+    !leadTimeValid ||
+    leadTimeMinutes !== preferences?.dueDateReminderLeadTimeMinutes;
+
+  // S6: an event switch saves on its own as soon as it changes and is put back if the save
+  // fails (the mutation already toasts the outcome).
+  const saveEventSwitch = async (
+    key:
+      | "taskAssignmentEnabled"
+      | "taskCommentEnabled"
+      | "taskStatusChangeEnabled"
+      | "dueDateReminderEnabled",
+    checked: boolean,
+  ) => {
+    setEventPrefs((current) => ({ ...current, [key]: checked }));
+    try {
+      await updatePreferences({ [key]: checked });
+    } catch {
+      setEventPrefs((current) => ({ ...current, [key]: !checked }));
+    }
+  };
+
+  const saveEmailChannel = async (checked: boolean) => {
+    setGlobalPrefs((prev) => ({ ...prev, emailEnabled: checked }));
+    try {
+      await updatePreferences({ emailEnabled: checked });
+    } catch {
+      setGlobalPrefs((prev) => ({ ...prev, emailEnabled: !checked }));
+    }
+  };
+
   const workspaceRuleMap = React.useMemo(
     () =>
       new Map(
@@ -688,10 +716,7 @@ export function NotificationPreferencesSettings() {
             checked={eventPrefs.taskAssignmentEnabled}
             label={t("settings:notificationsPage.eventTaskAssignments")}
             onCheckedChange={(checked) =>
-              setEventPrefs((current) => ({
-                ...current,
-                taskAssignmentEnabled: checked,
-              }))
+              void saveEventSwitch("taskAssignmentEnabled", checked)
             }
           />
           <ChannelToggle
@@ -699,30 +724,21 @@ export function NotificationPreferencesSettings() {
             hint={t("settings:notificationsPage.eventCommentsHint")}
             label={t("settings:notificationsPage.eventComments")}
             onCheckedChange={(checked) =>
-              setEventPrefs((current) => ({
-                ...current,
-                taskCommentEnabled: checked,
-              }))
+              void saveEventSwitch("taskCommentEnabled", checked)
             }
           />
           <ChannelToggle
             checked={eventPrefs.taskStatusChangeEnabled}
             label={t("settings:notificationsPage.eventStatusChanges")}
             onCheckedChange={(checked) =>
-              setEventPrefs((current) => ({
-                ...current,
-                taskStatusChangeEnabled: checked,
-              }))
+              void saveEventSwitch("taskStatusChangeEnabled", checked)
             }
           />
           <ChannelToggle
             checked={eventPrefs.dueDateReminderEnabled}
             label={t("settings:notificationsPage.eventDueDateReminders")}
             onCheckedChange={(checked) =>
-              setEventPrefs((current) => ({
-                ...current,
-                dueDateReminderEnabled: checked,
-              }))
+              void saveEventSwitch("dueDateReminderEnabled", checked)
             }
           />
         </div>
@@ -802,54 +818,28 @@ export function NotificationPreferencesSettings() {
           )}
         </div>
 
-        <div>
-          <Button
-            disabled={
-              isSavingPreferences ||
-              (eventPrefs.dueDateReminderEnabled && !leadTimeValid)
-            }
-            onClick={async () => {
-              await updatePreferences({
-                taskAssignmentEnabled: eventPrefs.taskAssignmentEnabled,
-                taskCommentEnabled: eventPrefs.taskCommentEnabled,
-                taskStatusChangeEnabled: eventPrefs.taskStatusChangeEnabled,
-                dueDateReminderEnabled: eventPrefs.dueDateReminderEnabled,
-                ...(eventPrefs.dueDateReminderEnabled
-                  ? {
-                      dueDateReminderLeadTimeMinutes:
-                        eventPrefs.dueDateReminderLeadAmount *
-                        (eventPrefs.dueDateReminderLeadUnit === "days"
-                          ? 1440
-                          : 60),
-                    }
-                  : {}),
-              });
-            }}
-            type="button"
-          >
-            {t("settings:notificationsPage.saveEventPreferences")}
-          </Button>
-        </div>
+        {eventPrefs.dueDateReminderEnabled && leadTimeDirty ? (
+          <div>
+            <Button
+              disabled={isSavingPreferences || !leadTimeValid}
+              onClick={async () => {
+                await updatePreferences({
+                  dueDateReminderLeadTimeMinutes: leadTimeMinutes,
+                });
+              }}
+              size="sm"
+              type="button"
+            >
+              {t("settings:notificationsPage.saveReminderLeadTime")}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <ReportExportEmailPreference />
 
       <ChannelCard
-        actions={
-          <div className="flex gap-2">
-            <Button
-              disabled={isSavingPreferences || !preferences?.emailAddress}
-              onClick={async () => {
-                await updatePreferences({
-                  emailEnabled: globalPrefs.emailEnabled,
-                });
-              }}
-              type="button"
-            >
-              {t("settings:notificationsPage.saveChanges")}
-            </Button>
-          </div>
-        }
+        actions={null}
         channel="email"
         description={t("settings:notificationsPage.emailDescription")}
         headerRight={
@@ -864,9 +854,7 @@ export function NotificationPreferencesSettings() {
               aria-label={t("settings:notificationsPage.emailTitle")}
               checked={globalPrefs.emailEnabled}
               disabled={isSavingPreferences || !preferences?.emailAddress}
-              onCheckedChange={(checked) =>
-                setGlobalPrefs((prev) => ({ ...prev, emailEnabled: checked }))
-              }
+              onCheckedChange={(checked) => void saveEmailChannel(checked)}
             />
           </div>
         }

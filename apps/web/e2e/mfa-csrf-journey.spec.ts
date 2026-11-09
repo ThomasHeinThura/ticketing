@@ -78,6 +78,8 @@ test.describe("P0 MFA and CSRF browser journey", () => {
         origin,
       ).toString();
       await page.goto(securityPage);
+      // S8: the password is asked in a dialog opened from the status row's "Set up" button.
+      await page.getByRole("button", { name: "Set up", exact: true }).click();
       await page.locator("#factor-password").fill(password);
       const enableResponsePromise = page.waitForResponse(
         (response) =>

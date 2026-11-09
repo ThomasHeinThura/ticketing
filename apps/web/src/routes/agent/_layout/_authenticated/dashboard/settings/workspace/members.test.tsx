@@ -12,16 +12,26 @@ const mocks = vi.hoisted(() => ({
   canInvite: true,
   membersTable: vi.fn(),
   inviteModal: vi.fn(),
+  search: {} as { q?: string },
+  navigate: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => options,
+  createFileRoute: () => (options: Record<string, unknown>) => ({
+    ...options,
+    fullPath: "/dashboard/settings/workspace/members",
+    useSearch: () => mocks.search,
+  }),
+  useNavigate: () => mocks.navigate,
   Navigate: (props: { to: string }) => (
     <div data-testid="navigate" data-to={props.to} />
   ),
 }));
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
@@ -34,14 +44,43 @@ vi.mock("@/hooks/queries/workspace/use-get-full-workspace", () => ({
   default: ({ workspaceId }: { workspaceId: string }) => ({
     data: {
       id: workspaceId,
-      members: [{ id: "u-1" }],
-      pendingInvitations: [{ id: "inv-1" }],
+      members: [
+        {
+          id: "u-1",
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          role: "admin",
+        },
+        {
+          id: "u-2",
+          name: "Bob Stone",
+          email: "bob@example.com",
+          role: "member",
+        },
+      ],
+      pendingInvitations: [
+        {
+          id: "inv-1",
+          email: "carol@example.com",
+          role: "member",
+          status: "pending",
+        },
+        {
+          id: "inv-2",
+          email: "old@example.com",
+          role: "member",
+          status: "canceled",
+        },
+      ],
     },
     isLoading: false,
   }),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canInviteUsers: () => mocks.canInvite }),
+}));
+vi.mock("@/hooks/queries/workspace/use-workspace-roles", () => ({
+  default: () => ({ data: [] }),
 }));
 vi.mock("@/components/team/members-table", () => ({
   default: (props: Record<string, unknown>) => {
@@ -63,6 +102,7 @@ const Page = (Route as unknown as { component: ComponentType }).component;
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.search = {};
   mocks.activeWorkspace = { id: "ws-1" };
   mocks.activeLoading = false;
   mocks.canInvite = true;
@@ -76,11 +116,16 @@ describe("workspace settings members (L-03)", () => {
       screen.getByRole("heading", { level: 1, name: "team:members.pageTitle" }),
     ).toBeTruthy();
     expect(screen.getByTestId("members-table")).toBeTruthy();
-    expect(mocks.membersTable).toHaveBeenCalledWith({
-      workspaceId: "ws-1",
-      users: [{ id: "u-1" }],
-      invitations: [{ id: "inv-1" }],
-    });
+    expect(mocks.membersTable).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        workspaceId: "ws-1",
+        users: [
+          expect.objectContaining({ id: "u-1" }),
+          expect.objectContaining({ id: "u-2" }),
+        ],
+        invitations: [],
+      }),
+    );
   });
 
   it("offers the invite action to people who can invite and opens the invite dialog", () => {
@@ -115,5 +160,54 @@ describe("workspace settings members (L-03)", () => {
       Route as unknown as { validateSearch: (raw: unknown) => unknown }
     ).validateSearch;
     expect(validateSearch({ q: "ada" })).toEqual({ q: "ada" });
+  });
+
+  it("shows member and pending invitation counts as tabs and lists invitations on their tab", () => {
+    render(<Page />);
+    expect(
+      screen.getByRole("tab", { name: "team:members.tabMembers:2" }),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("tab", { name: "team:members.tabInvitations:1" }),
+    );
+    expect(mocks.membersTable).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        users: [],
+        invitations: [expect.objectContaining({ id: "inv-1" })],
+      }),
+    );
+  });
+
+  it("filters members by the `q` search and writes typing back to the URL", () => {
+    mocks.search = { q: "ada" };
+    render(<Page />);
+    expect(mocks.membersTable).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        users: [expect.objectContaining({ id: "u-1" })],
+      }),
+    );
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "team:members.search" }),
+      { target: { value: "bob" } },
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      search: { q: "bob" },
+      replace: true,
+    });
+  });
+
+  it("filters members by role", async () => {
+    render(<Page />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "team:members.roleFilter" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "team:roles.member" }),
+    );
+    expect(mocks.membersTable).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        users: [expect.objectContaining({ id: "u-2" })],
+      }),
+    );
   });
 });

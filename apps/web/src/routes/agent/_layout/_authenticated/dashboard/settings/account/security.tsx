@@ -2,10 +2,19 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogTitle,
   Input,
+  Label,
 } from "@taskdesk/ui";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -45,6 +54,7 @@ function AccountSecurity() {
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const response = await fetch(getApiUrl("me/security/factors"), {
@@ -72,6 +82,7 @@ function AccountSecurity() {
       setTotpUri(result.data.totpURI);
       setPendingBackupCodes(result.data.backupCodes);
       setPassword("");
+      setPasswordDialogOpen(false);
     } catch {
       setError(t("auth:accountSecurity.enrollmentStartError"));
     } finally {
@@ -150,18 +161,55 @@ function AccountSecurity() {
             </AlertDescription>
           </Alert>
         ) : null}
-        {status?.enabled ? (
+        {status ? (
+          // S8: one status row, like the General settings rows; setup starts from its button.
           <Card>
-            <CardContent className="space-y-3">
-              <h2 className="text-lg font-medium">
-                {t("auth:accountSecurity.enabled")}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {t("auth:accountSecurity.enabledDescription")}
-              </p>
+            <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-medium">
+                    {t("auth:accountSecurity.authenticatorApp")}
+                  </h2>
+                  {status.enabled ? (
+                    <Badge variant="success">
+                      {t("auth:accountSecurity.statusOn")}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">
+                      {t("auth:accountSecurity.statusOff")}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {status.enabled
+                    ? t("auth:accountSecurity.enabledDescription")
+                    : status.policyMode === "off"
+                      ? t("auth:accountSecurity.enrollmentDisabled")
+                      : t("auth:accountSecurity.setupDescription")}
+                </p>
+              </div>
+              {!status.enabled && status.policyMode !== "off" && !totpUri ? (
+                <Button
+                  className="shrink-0"
+                  disabled={pending}
+                  onClick={() => {
+                    setError(null);
+                    if (status.passwordRequiredForEnrollment)
+                      setPasswordDialogOpen(true);
+                    else void beginEnrollment();
+                  }}
+                >
+                  {pending && !passwordDialogOpen
+                    ? t("auth:accountSecurity.starting")
+                    : t("auth:accountSecurity.setupAction")}
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
-        ) : totpUri ? (
+        ) : (
+          <p role="status">{t("auth:accountSecurity.loading")}</p>
+        )}
+        {!status?.enabled && totpUri ? (
           <Card>
             <CardContent className="space-y-4">
               <h2 className="text-lg font-medium">
@@ -196,53 +244,59 @@ function AccountSecurity() {
               </form>
             </CardContent>
           </Card>
-        ) : status?.policyMode === "off" ? (
-          <p className="text-sm text-muted-foreground">
-            {t("auth:accountSecurity.enrollmentDisabled")}
-          </p>
-        ) : status ? (
-          <Card>
-            <CardContent className="space-y-3">
-              <h2 className="text-lg font-medium">
-                {t("auth:accountSecurity.setupTitle")}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {t("auth:accountSecurity.setupDescription")}
-              </p>
-              {status.passwordRequiredForEnrollment ? (
-                <>
-                  <label
-                    className="block space-y-2 text-sm font-medium"
-                    htmlFor="factor-password"
-                  >
-                    Password
-                  </label>
-                  <Input
-                    id="factor-password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-                </>
-              ) : null}
-              <Button
-                disabled={
-                  pending ||
-                  (status.passwordRequiredForEnrollment &&
-                    password.length === 0)
-                }
-                onClick={() => void beginEnrollment()}
-              >
-                {pending
-                  ? t("auth:accountSecurity.starting")
-                  : t("auth:accountSecurity.setupButton")}
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <p role="status">{t("auth:accountSecurity.loading")}</p>
-        )}
+        ) : null}
+        <Dialog
+          open={passwordDialogOpen}
+          onOpenChange={(open) => {
+            setPasswordDialogOpen(open);
+            if (!open) setPassword("");
+          }}
+        >
+          <DialogContent closeLabel={t("common:actions.close")}>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (password.length > 0 && !pending) void beginEnrollment();
+              }}
+            >
+              <DialogHeader>
+                <DialogTitle>
+                  {t("auth:accountSecurity.setupTitle")}
+                </DialogTitle>
+                <DialogDescription>
+                  {t("auth:accountSecurity.passwordPrompt")}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogPanel className="space-y-2">
+                {error ? (
+                  <Alert variant="error">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                ) : null}
+                <Label htmlFor="factor-password">
+                  {t("auth:accountSecurity.passwordLabel")}
+                </Label>
+                <Input
+                  id="factor-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </DialogPanel>
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  disabled={pending || password.length === 0}
+                >
+                  {pending
+                    ? t("auth:accountSecurity.starting")
+                    : t("auth:accountSecurity.setupButton")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );

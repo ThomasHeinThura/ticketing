@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
   Separator,
+  Textarea,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -386,7 +387,7 @@ function RouteComponent() {
                         </div>
                         <FormControl>
                           <Input
-                            className="w-full sm:w-64"
+                            className="w-full sm:w-64 md:w-80"
                             placeholder={t(
                               "settings:workspaceGeneral.namePlaceholder",
                             )}
@@ -407,7 +408,9 @@ function RouteComponent() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                      {/* S10: a description runs long, so it gets a full-width multi-line
+                          field under its label instead of a clipped one-line input. */}
+                      <div className="flex flex-col gap-2">
                         <div className="space-y-0.5">
                           <FormLabel className="text-sm font-medium">
                             {t("settings:workspaceGeneral.descriptionLabel")}
@@ -417,8 +420,8 @@ function RouteComponent() {
                           </p>
                         </div>
                         <FormControl>
-                          <Input
-                            className="w-full sm:w-64"
+                          <Textarea
+                            className="w-full"
                             placeholder={t(
                               "settings:workspaceGeneral.descriptionPlaceholder",
                             )}

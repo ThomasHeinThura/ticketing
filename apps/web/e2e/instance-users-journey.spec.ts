@@ -63,6 +63,8 @@ async function enrollFactor(page: Page, origin: string, password: string) {
   await page.goto(
     new URL("/dashboard/settings/account/security", origin).toString(),
   );
+  // S8: the password is asked in a dialog opened from the status row's "Set up" button.
+  await page.getByRole("button", { name: "Set up", exact: true }).click();
   await page.locator("#factor-password").fill(password);
   await page.getByRole("button", { name: "Set up authenticator" }).click();
   const provisioningUri =

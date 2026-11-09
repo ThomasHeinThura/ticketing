@@ -1669,6 +1669,24 @@
 								"linkPermissionsNote",
 								"passwordSession"
 							]
+						},
+						"authenticatorApp": {
+							"type": "string"
+						},
+						"statusOn": {
+							"type": "string"
+						},
+						"statusOff": {
+							"type": "string"
+						},
+						"setupAction": {
+							"type": "string"
+						},
+						"passwordLabel": {
+							"type": "string"
+						},
+						"passwordPrompt": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -1693,7 +1711,13 @@
 						"enrollmentStartError",
 						"codeError",
 						"loading",
-						"identityLinks"
+						"identityLinks",
+						"authenticatorApp",
+						"statusOn",
+						"statusOff",
+						"setupAction",
+						"passwordLabel",
+						"passwordPrompt"
 					]
 				},
 				"invitation": {
@@ -2363,9 +2387,6 @@
 						"reminderLeadTimeInvalid": {
 							"type": "string"
 						},
-						"saveEventPreferences": {
-							"type": "string"
-						},
 						"workspaceCardLabelEmail": {
 							"type": "string"
 						},
@@ -2507,9 +2528,6 @@
 						"reportExportHint": {
 							"type": "string"
 						},
-						"reportExportSave": {
-							"type": "string"
-						},
 						"reportExportSaved": {
 							"type": "string"
 						},
@@ -2517,6 +2535,9 @@
 							"type": "string"
 						},
 						"reminderLeadTimeUnitLabel": {
+							"type": "string"
+						},
+						"saveReminderLeadTime": {
 							"type": "string"
 						}
 					},
@@ -2577,7 +2598,6 @@
 						"reminderLeadTimeUnitHours",
 						"reminderLeadTimeUnitDays",
 						"reminderLeadTimeInvalid",
-						"saveEventPreferences",
 						"workspaceCardLabelEmail",
 						"workspaceCardLabelNtfy",
 						"workspaceCardLabelGotify",
@@ -2625,10 +2645,10 @@
 						"reportExportDescription",
 						"reportExportEmail",
 						"reportExportHint",
-						"reportExportSave",
 						"reportExportSaved",
 						"reportExportSaveFailed",
-						"reminderLeadTimeUnitLabel"
+						"reminderLeadTimeUnitLabel",
+						"saveReminderLeadTime"
 					]
 				},
 				"preferencesPage": {
@@ -12591,9 +12611,75 @@
 						},
 						"you": {
 							"type": "string"
+						},
+						"tabMembers": {
+							"type": "string"
+						},
+						"tabMembers_zero": {
+							"type": "string"
+						},
+						"tabMembers_one": {
+							"type": "string"
+						},
+						"tabMembers_two": {
+							"type": "string"
+						},
+						"tabMembers_few": {
+							"type": "string"
+						},
+						"tabMembers_many": {
+							"type": "string"
+						},
+						"tabMembers_other": {
+							"type": "string"
+						},
+						"tabInvitations": {
+							"type": "string"
+						},
+						"tabInvitations_zero": {
+							"type": "string"
+						},
+						"tabInvitations_one": {
+							"type": "string"
+						},
+						"tabInvitations_two": {
+							"type": "string"
+						},
+						"tabInvitations_few": {
+							"type": "string"
+						},
+						"tabInvitations_many": {
+							"type": "string"
+						},
+						"tabInvitations_other": {
+							"type": "string"
+						},
+						"search": {
+							"type": "string"
+						},
+						"roleFilter": {
+							"type": "string"
+						},
+						"allRoles": {
+							"type": "string"
+						},
+						"noMatches": {
+							"type": "string"
+						},
+						"noInvitations": {
+							"type": "string"
 						}
 					},
-					"required": ["pageTitle", "inviteMember", "you"]
+					"required": [
+						"pageTitle",
+						"inviteMember",
+						"you",
+						"search",
+						"roleFilter",
+						"allRoles",
+						"noMatches",
+						"noInvitations"
+					]
 				},
 				"invitations": {
 					"type": "object",
@@ -12619,6 +12705,15 @@
 						},
 						"expiredBadge": {
 							"type": "string"
+						},
+						"resend": {
+							"type": "string"
+						},
+						"resendSuccess": {
+							"type": "string"
+						},
+						"resendError": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12628,7 +12723,10 @@
 						"copyLink",
 						"linkCopied",
 						"copyFailed",
-						"expiredBadge"
+						"expiredBadge",
+						"resend",
+						"resendSuccess",
+						"resendError"
 					]
 				},
 				"inviteModal": {
@@ -20617,9 +20715,6 @@
 				"chooseType": {
 					"type": "string"
 				},
-				"projectId": {
-					"type": "string"
-				},
 				"order": {
 					"type": "string"
 				},
@@ -20791,7 +20886,79 @@
 				"savingGroupOrder": {
 					"type": "string"
 				},
-				"catalogueOrder": {
+				"publishedVersion": {
+					"type": "string"
+				},
+				"fieldCount_one": {
+					"type": "string"
+				},
+				"fieldCount_zero": {
+					"type": "string"
+				},
+				"fieldCount_two": {
+					"type": "string"
+				},
+				"fieldCount_few": {
+					"type": "string"
+				},
+				"fieldCount_many": {
+					"type": "string"
+				},
+				"fieldCount_other": {
+					"type": "string"
+				},
+				"updated": {
+					"type": "string"
+				},
+				"rowActions": {
+					"type": "string"
+				},
+				"editAction": {
+					"type": "string"
+				},
+				"groupEmpty": {
+					"type": "string"
+				},
+				"defaultProject": {
+					"type": "string"
+				},
+				"noDefaultProject": {
+					"type": "string"
+				},
+				"unavailableProject": {
+					"type": "string"
+				},
+				"visibleHelp": {
+					"type": "string"
+				},
+				"autoAcceptHelp": {
+					"type": "string"
+				},
+				"forcePrivateHelp": {
+					"type": "string"
+				},
+				"closeEditor": {
+					"type": "string"
+				},
+				"newQuestion": {
+					"type": "string"
+				},
+				"removeField": {
+					"type": "string"
+				},
+				"priorityMappingLegend": {
+					"type": "string"
+				},
+				"choosePriority": {
+					"type": "string"
+				},
+				"priorityMappingInvalid": {
+					"type": "string"
+				},
+				"fileRequiredBlocked": {
+					"type": "string"
+				},
+				"fileRequiredUnavailable": {
 					"type": "string"
 				}
 			},
@@ -20807,7 +20974,6 @@
 				"summary",
 				"workItemType",
 				"chooseType",
-				"projectId",
 				"order",
 				"visible",
 				"autoAccept",
@@ -20865,7 +21031,25 @@
 				"groupOrderSaved",
 				"saveGroupOrder",
 				"savingGroupOrder",
-				"catalogueOrder"
+				"publishedVersion",
+				"updated",
+				"rowActions",
+				"editAction",
+				"groupEmpty",
+				"defaultProject",
+				"noDefaultProject",
+				"unavailableProject",
+				"visibleHelp",
+				"autoAcceptHelp",
+				"forcePrivateHelp",
+				"closeEditor",
+				"newQuestion",
+				"removeField",
+				"priorityMappingLegend",
+				"choosePriority",
+				"priorityMappingInvalid",
+				"fileRequiredBlocked",
+				"fileRequiredUnavailable"
 			]
 		},
 		"slaPolicies": {
@@ -26423,9 +26607,6 @@
 						"providerRequired": {
 							"type": "string"
 						},
-						"save": {
-							"type": "string"
-						},
 						"saved": {
 							"type": "string"
 						},
@@ -26450,7 +26631,6 @@
 						"description",
 						"enabled",
 						"providerRequired",
-						"save",
 						"saved",
 						"saveFailed",
 						"unsupported",
@@ -26551,9 +26731,6 @@
 							},
 							"required": ["off", "hourly", "daily"]
 						},
-						"save": {
-							"type": "string"
-						},
 						"saved": {
 							"type": "string"
 						},
@@ -26567,7 +26744,6 @@
 						"enabled",
 						"digest",
 						"digestCadence",
-						"save",
 						"saved",
 						"saveFailed"
 					]
@@ -26628,9 +26804,6 @@
 							},
 							"required": ["off", "hourly", "daily"]
 						},
-						"save": {
-							"type": "string"
-						},
 						"saved": {
 							"type": "string"
 						},
@@ -26644,7 +26817,6 @@
 						"enabled",
 						"digest",
 						"digestCadence",
-						"save",
 						"saved",
 						"saveFailed"
 					]

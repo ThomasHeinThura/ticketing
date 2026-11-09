@@ -45,6 +45,10 @@ vi.mock("@/hooks/queries/workspace/use-get-full-workspace", () => ({
     isLoading: false,
   }),
 }));
+// The members screen names custom roles in its role filter.
+vi.mock("@/hooks/queries/workspace/use-workspace-roles", () => ({
+  default: () => ({ data: [] }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canInviteUsers: () => false }),
 }));

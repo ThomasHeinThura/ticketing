@@ -135,11 +135,9 @@ export function ConnectedAccountsPanel({
             </AlertDescription>
           </Alert>
         ) : links.data === null ? (
-          <Alert variant="info">
-            <AlertDescription>
-              {t("auth:accountSecurity.identityLinks.passwordSession")}
-            </AlertDescription>
-          </Alert>
+          <p className="text-sm text-muted-foreground">
+            {t("auth:accountSecurity.identityLinks.passwordSession")}
+          </p>
         ) : (
           <div className="space-y-4">
             <div>

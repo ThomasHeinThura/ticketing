@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -97,10 +98,14 @@ describe("account security factor enrollment", () => {
     expect(
       await screen.findByText("auth:accountSecurity.required"),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("auth:accountSecurity.statusOff"),
+    ).toBeInTheDocument();
+    // No password is needed, so "Set up" starts enrollment without a dialog.
     fireEvent.click(
-      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+      screen.getByRole("button", { name: "auth:accountSecurity.setupAction" }),
     );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await waitFor(() =>
       expect(fixture.enable).toHaveBeenCalledWith({ issuer: "TaskDesk" }),
@@ -117,8 +122,20 @@ describe("account security factor enrollment", () => {
     );
     render(<SecurityPage />);
 
-    const password = await screen.findByLabelText("Password");
-    const start = screen.getByRole("button", {
+    // S8: the page opens on a status row, not on a bare password field.
+    expect(
+      screen.queryByLabelText("auth:accountSecurity.passwordLabel"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "auth:accountSecurity.setupAction",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    const password = within(dialog).getByLabelText(
+      "auth:accountSecurity.passwordLabel",
+    );
+    const start = within(dialog).getByRole("button", {
       name: "auth:accountSecurity.setupButton",
     });
     expect(start).toBeDisabled();
@@ -132,6 +149,36 @@ describe("account security factor enrollment", () => {
         issuer: "TaskDesk",
       }),
     );
+    expect(
+      await screen.findByText("auth:accountSecurity.scanTitle"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the authenticator as on once a factor is enrolled", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              enabled: true,
+              required: false,
+              passwordRequiredForEnrollment: true,
+              policyMode: "optional",
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    render(<SecurityPage />);
+    expect(
+      await screen.findByText("auth:accountSecurity.statusOn"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "auth:accountSecurity.setupAction",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("clears the callback intent while preserving the TOTP enrollment query", async () => {

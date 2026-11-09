@@ -15,8 +15,9 @@ import {
   Skeleton,
   Switch,
 } from "@taskdesk/ui";
-import { Lock } from "lucide-react";
+import { Lock, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import {
   type FeatureChange,
   FeatureConflictError,
@@ -117,7 +118,8 @@ export function FeatureFlagsPanel({ target }: { target: FeatureLevel }) {
         </Alert>
       ) : null}
       <Card>
-        <CardHeader>
+        {/* S11: header and rows share the card's density padding so their edges line up. */}
+        <CardHeader className="td-density-card">
           <CardTitle>{t(`${target.level}.title`)}</CardTitle>
           <CardDescription>{t(`${target.level}.description`)}</CardDescription>
         </CardHeader>
@@ -166,8 +168,8 @@ function FeatureRowItem({
     : null;
 
   return (
-    <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0 space-y-1">
+    <li className="flex items-start justify-between gap-4 py-4">
+      <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <Label id={nameId} htmlFor={toggleId} className="font-medium text-sm">
             {t(`flags.${row.key}.name`)}
@@ -178,18 +180,32 @@ function FeatureRowItem({
               {t("lockedByInstance")}
             </Badge>
           ) : null}
-          {level !== "instance" && !lockedBelow ? (
-            overridden ? (
-              <Badge variant="info" size="sm">
+          {/* S11: inheriting is the default, so only an override is badged; its reset sits
+              beside the badge as a quiet icon button instead of next to the switch. */}
+          {overridden && !lockedBelow ? (
+            <>
+              <Badge variant="outline" size="sm">
                 {t("overridden")}
               </Badge>
-            ) : (
-              <Badge variant="secondary" size="sm">
-                {t("inheritedFrom", {
-                  source: t(`sources.${row.inherited?.source ?? "default"}`),
-                })}
-              </Badge>
-            )
+              <ActionTooltip label={t("useInherited")}>
+                <Button
+                  aria-label={t("useInherited")}
+                  variant="ghost"
+                  size="icon-xs"
+                  className="text-muted-foreground"
+                  disabled={busy}
+                  onClick={() =>
+                    onChange({
+                      key: row.key,
+                      enabled: null,
+                      expectedVersion: row.version,
+                    })
+                  }
+                >
+                  <RotateCcw aria-hidden="true" />
+                </Button>
+              </ActionTooltip>
+            </>
           ) : null}
         </div>
         <p className="text-muted-foreground text-xs">
@@ -199,7 +215,7 @@ function FeatureRowItem({
           <p className="text-muted-foreground text-xs">{lastChanged}</p>
         ) : null}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-4">
+      <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-4">
         {level === "instance" ? (
           <div className="flex items-center gap-2">
             <Switch
@@ -223,22 +239,6 @@ function FeatureRowItem({
               {t("lock")}
             </Label>
           </div>
-        ) : null}
-        {overridden ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busy || lockedBelow}
-            onClick={() =>
-              onChange({
-                key: row.key,
-                enabled: null,
-                expectedVersion: row.version,
-              })
-            }
-          >
-            {t("useInherited")}
-          </Button>
         ) : null}
         <div className="flex items-center gap-2">
           <Switch

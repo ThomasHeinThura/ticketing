@@ -68,11 +68,12 @@ describe("ConnectedAccountsPanel", () => {
     mocks.list.mockResolvedValue(null);
     renderPanel();
 
-    expect(
-      await screen.findByText(
-        translate("auth:accountSecurity.identityLinks.passwordSession"),
-      ),
-    ).toBeInTheDocument();
+    const note = await screen.findByText(
+      translate("auth:accountSecurity.identityLinks.passwordSession"),
+    );
+    expect(note).toBeInTheDocument();
+    // S8: a plain note in the card, not a blue info alert that reads like a focused field.
+    expect(note.closest('[role="alert"], [data-slot="alert"]')).toBeNull();
     expect(
       screen.queryByRole("button", {
         name: translate("auth:accountSecurity.identityLinks.linkAction"),

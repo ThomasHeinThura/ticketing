@@ -469,7 +469,13 @@
 				"alreadyLinked": "This identity provider was already linked.",
 				"linkPermissionsNote": "Linking does not change permissions.",
 				"passwordSession": "Sign in with an identity provider to link another provider. Password sessions cannot start identity linking."
-			}
+			},
+			"authenticatorApp": "Authenticator app",
+			"statusOn": "On",
+			"statusOff": "Off",
+			"setupAction": "Set up",
+			"passwordLabel": "Password",
+			"passwordPrompt": "Enter your password to start setting up an authenticator app."
 		},
 		"twoFactor": {
 			"authenticatorCode": "Authenticator code",
@@ -846,7 +852,14 @@
 		"members": {
 			"pageTitle": "Członkowie",
 			"inviteMember": "Zaproś członka",
-			"you": "Ty"
+			"you": "Ty",
+			"tabMembers": "Members ({{count}})",
+			"tabInvitations": "Pending invitations ({{count}})",
+			"search": "Search members",
+			"roleFilter": "Filter by role",
+			"allRoles": "All roles",
+			"noMatches": "No one matches these filters",
+			"noInvitations": "No pending invitations"
 		},
 		"invitations": {
 			"pendingBadge": "oczekujące",
@@ -855,7 +868,10 @@
 			"copyLink": "Skopiuj link",
 			"linkCopied": "Link zaproszenia skopiowany",
 			"copyFailed": "Nie udało się skopiować automatycznie. Zaznacz link i naciśnij Ctrl+C.",
-			"expiredBadge": "expired"
+			"expiredBadge": "expired",
+			"resend": "Resend invitation",
+			"resendSuccess": "Invitation sent again",
+			"resendError": "Couldn't resend the invitation"
 		},
 		"inviteModal": {
 			"title": "Zaproś członka zespołu",
@@ -1592,7 +1608,6 @@
 			"reminderLeadTimeUnitHours": "Godziny",
 			"removeRule": "Usuń regułę",
 			"saveChanges": "Zapisz zmiany",
-			"saveEventPreferences": "Zapisz typy powiadomień",
 			"selectedProjects": "Wybrane {{term_project_other}}",
 			"selectedProjectsDescription": "Dostarczaj powiadomienia tylko z wybranych projektów.",
 			"serverUrl": "Adres URL serwera",
@@ -1643,12 +1658,12 @@
 			"workspaceRulesTitle": "Reguły dostarczania dla obszaru roboczego",
 			"reportExportDescription": "Large report exports are prepared in the background.",
 			"reportExportEmail": "Email me when my export is ready",
-			"reportExportHint": "The email links to the export, which can be downloaded for 24 hours. Email delivery also requires an enabled instance email provider.",
-			"reportExportSave": "Save export preference",
+			"reportExportHint": "The email links to the export, which can be downloaded for 24 hours.",
 			"reportExportSaved": "Export preference saved.",
 			"reportExportSaveFailed": "The preference could not be saved. Try again.",
 			"reportExportTitle": "Report exports",
-			"reminderLeadTimeUnitLabel": "Jednostka czasu przypomnienia"
+			"reminderLeadTimeUnitLabel": "Jednostka czasu przypomnienia",
+			"saveReminderLeadTime": "Save reminder time"
 		},
 		"preferences": "Preferencje",
 		"security": "Bezpieczeństwo",
@@ -5038,7 +5053,6 @@
 		"preview": "Customer preview",
 		"previewDescription": "{{term_request_one}} form description",
 		"priorityMapping": "{{term_work_item_one}} priority",
-		"projectId": "Default {{term_project_one}} ID",
 		"publish": "Publish version",
 		"published": "Published",
 		"publishNew": "Publish new version",
@@ -5060,7 +5074,6 @@
 		"versions": "Published versions",
 		"visible": "Visible to customers",
 		"workItemType": "{{term_work_item_one}} type",
-		"catalogueOrder": "Catalogue order within group",
 		"groupOrderDescription": "Move groups independently from {{term_request_one}} type order.",
 		"groupOrderEmpty": "Create a {{term_request_one}} type to add its catalogue group.",
 		"groupOrderReload": "Reload groups",
@@ -5070,7 +5083,30 @@
 		"moveGroupDown": "Move {{group}} down",
 		"moveGroupUp": "Move {{group}} up",
 		"saveGroupOrder": "Save group order",
-		"savingGroupOrder": "Saving group order…"
+		"savingGroupOrder": "Saving group order…",
+		"publishedVersion": "Published v{{version}}",
+		"fieldCount_one": "{{count}} field",
+		"fieldCount_other": "{{count}} fields",
+		"updated": "Updated {{date}}",
+		"rowActions": "Actions for {{name}}",
+		"editAction": "Edit",
+		"groupEmpty": "No {{term_request_one}} types in this group.",
+		"defaultProject": "Default {{term_project_one}}",
+		"noDefaultProject": "No default {{term_project_one}}",
+		"unavailableProject": "Unavailable {{term_project_one}}",
+		"visibleHelp": "List this form in the customer portal catalogue.",
+		"autoAcceptHelp": "Turn each {{term_submission_one}} into a {{term_work_item_one}} in the default {{term_project_one}} without triage. Needs a default {{term_project_one}}.",
+		"forcePrivateHelp": "Every {{term_submission_one}} stays private to the requester and is never shared with their organisation.",
+		"closeEditor": "Close editor",
+		"newQuestion": "New question",
+		"removeField": "Remove {{name}}",
+		"priorityMappingLegend": "Priority value mapping",
+		"choosePriority": "Choose priority",
+		"priorityMappingInvalid": "Every priority option must map to low, medium, high, or urgent before publishing.",
+		"fileRequiredBlocked": "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish.",
+		"fileRequiredUnavailable": "Required is unavailable for file uploads until the submission file contract is defined.",
+		"fieldCount_many": "{{count}} fields",
+		"fieldCount_few": "{{count}} fields"
 	},
 	"slaPolicies": {
 		"editor": {
@@ -5833,7 +5869,6 @@
 			"enabled": "Email for mentions",
 			"linkUnavailable": "The email preference link could not be verified. Sign in as its recipient and try again.",
 			"providerRequired": "Email delivery also requires an enabled instance email provider.",
-			"save": "Save mention preference",
 			"saved": "Mention preference saved.",
 			"saveFailed": "The preference could not be saved. Try again.",
 			"title": "Work item mention emails",
@@ -5865,7 +5900,6 @@
 				"off": "Immediately"
 			},
 			"enabled": "Email for work item comments",
-			"save": "Save comment preference",
 			"saved": "Comment email preference saved.",
 			"saveFailed": "The comment preference could not be saved. Try again.",
 			"title": "Work item comment emails"
@@ -5886,7 +5920,6 @@
 				"hourly": "Hourly",
 				"daily": "Daily"
 			},
-			"save": "Zapisz preferencje powiadomień zespołu",
 			"saved": "Team notification preferences saved",
 			"saveFailed": "Could not save team notification preferences"
 		},

@@ -176,9 +176,15 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" disabled={mutation.isPending || !valid || !dirty}>
-          {t("quietHours.save")}
-        </Button>
+        {/* S7: no disabled save block while nothing changed; an invalid time keeps it in view. */}
+        {dirty || !valid || mutation.isPending ? (
+          <Button
+            type="submit"
+            disabled={mutation.isPending || !valid || !dirty}
+          >
+            {t("quietHours.save")}
+          </Button>
+        ) : null}
         {saved && (
           <Button
             type="button"

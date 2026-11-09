@@ -49,6 +49,14 @@ vi.mock("@/hooks/use-open-pending-action", () => ({
   useOpenPendingAction: () => openPendingAction,
 }));
 
+const { inviteWorkspaceUser } = vi.hoisted(() => ({
+  inviteWorkspaceUser: vi.fn(),
+}));
+
+vi.mock("@/hooks/mutations/workspace-user/use-invite-workspace-user", () => ({
+  default: () => ({ mutateAsync: inviteWorkspaceUser, isPending: false }),
+}));
+
 const { deleteWorkspaceUser } = vi.hoisted(() => ({
   deleteWorkspaceUser: vi.fn(),
 }));
@@ -159,6 +167,58 @@ describe("MembersTable remove member", () => {
 });
 
 describe("MembersTable pending invitation row menu", () => {
+  it("resends the invitation with its own email and role", async () => {
+    inviteWorkspaceUser.mockResolvedValue({});
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[pendingInvitation]}
+        users={[] as WorkspaceUser[]}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "team:membersTable.ariaInvitationActions",
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", {
+        name: "team:invitations.resend",
+      }),
+    );
+    await waitFor(() =>
+      expect(inviteWorkspaceUser).toHaveBeenCalledWith({
+        workspaceId: "workspace-1",
+        email: "invitee@example.com",
+        role: "member",
+        resend: true,
+      }),
+    );
+    expect(success).toHaveBeenCalledWith("team:invitations.resendSuccess");
+  });
+
+  it("shows the server's message when a resend fails", async () => {
+    inviteWorkspaceUser.mockRejectedValue(new Error("limit reached"));
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[pendingInvitation]}
+        users={[] as WorkspaceUser[]}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "team:membersTable.ariaInvitationActions",
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", {
+        name: "team:invitations.resend",
+      }),
+    );
+    await waitFor(() => expect(error).toHaveBeenCalledWith("limit reached"));
+  });
+
   it("copies the invitation link for that invitation when 'Copy link' is clicked", async () => {
     copyToClipboard.mockResolvedValue(true);
 

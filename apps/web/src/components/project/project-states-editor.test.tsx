@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -202,5 +203,26 @@ describe("project states editor reorder (PR-17)", () => {
         expectedWorkspaceVersion: 4,
       }),
     );
+  });
+});
+
+describe("project states editor on phones (P1)", () => {
+  it("keeps the state name on its own line with its badges and moves the controls to a second line below sm", () => {
+    render(<ProjectStatesEditor projectId="p1" workspaceId="w1" />);
+    const row = document.querySelector('[data-state-id="b"]') as HTMLElement;
+    const name = within(row).getByText("Doing");
+    // The name never shrinks to nothing: it keeps a minimum width beside its badges.
+    expect(name.className).toMatch(/min-w-\[/);
+    const badge = within(row).getByText(
+      "settings:projectStates.groups.started",
+    );
+    expect(name.parentElement).toBe(badge.parentElement);
+    // The limit field and Make default share a group that takes a full line on phones.
+    const makeDefault = within(row).getByRole("button", {
+      name: "settings:projectStates.makeDefault",
+    });
+    const controls = makeDefault.parentElement as HTMLElement;
+    expect(controls.className).toContain("max-sm:w-full");
+    expect(controls.contains(name)).toBe(false);
   });
 });

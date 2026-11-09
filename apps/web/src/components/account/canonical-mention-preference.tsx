@@ -86,6 +86,10 @@ export function CanonicalMentionPreference() {
     );
   return (
     <div className="space-y-4">
+      {/* S6: one note for every email preference below, not one per card. */}
+      <p className="text-sm text-muted-foreground">
+        {t("mention.providerRequired")}
+      </p>
       <div
         ref={mentionTarget}
         tabIndex={-1}
@@ -207,6 +211,10 @@ export function CanonicalMentionPreference() {
     </div>
   );
 }
+/**
+ * One email preference that saves as soon as it changes (S6): the switch and the digest cadence
+ * each save the pair; a failed save puts the previous values back and says so.
+ */
 function MentionEmailForm({
   preference,
   kind,
@@ -219,6 +227,7 @@ function MentionEmailForm({
   const [enabled, setEnabled] = useState(preference.enabled);
   const [digest, setDigest] = useState(preference.digest);
   const [notice, setNotice] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -233,33 +242,35 @@ function MentionEmailForm({
         ? saveTeamNotificationEmailPreference
         : saveMentionEmailPreference;
   const mutation = useMutation({ mutationFn: savePreference });
+  const save = (next: { enabled: boolean; digest: Preference["digest"] }) => {
+    const previous = { enabled, digest };
+    setEnabled(next.enabled);
+    setDigest(next.digest);
+    setNotice(null);
+    setFailed(false);
+    mutation.mutate(next, {
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: ["notification-preferences"],
+        });
+        if (mounted.current) setNotice(t(`${kind}.saved`));
+      },
+      onError: () => {
+        if (!mounted.current) return;
+        setEnabled(previous.enabled);
+        setDigest(previous.digest);
+        setFailed(true);
+      },
+    });
+  };
   return (
-    <form
-      className="space-y-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        mutation.mutate(
-          { enabled, digest },
-          {
-            onSuccess: async () => {
-              await queryClient.invalidateQueries({
-                queryKey: ["notification-preferences"],
-              });
-              if (mounted.current) setNotice(t(`${kind}.saved`));
-            },
-          },
-        );
-      }}
-    >
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Switch
           id={`${kind}-email-enabled`}
           checked={enabled}
           disabled={mutation.isPending}
-          onCheckedChange={(value) => {
-            setEnabled(value);
-            setNotice(null);
-          }}
+          onCheckedChange={(value) => save({ enabled: value, digest })}
         />
         <Label htmlFor={`${kind}-email-enabled`}>{t(`${kind}.enabled`)}</Label>
       </div>
@@ -269,14 +280,16 @@ function MentionEmailForm({
           <Select
             value={digest}
             onValueChange={(value) => {
-              if (value === "off" || value === "hourly" || value === "daily") {
-                setDigest(value);
-                setNotice(null);
+              if (
+                (value === "off" || value === "hourly" || value === "daily") &&
+                value !== digest
+              ) {
+                save({ enabled, digest: value });
               }
             }}
             disabled={mutation.isPending || !enabled}
           >
-            <SelectTrigger id={`${kind}-email-digest`}>
+            <SelectTrigger className="sm:w-56" id={`${kind}-email-digest`}>
               <SelectValue>{t(`${kind}.digestCadence.${digest}`)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -297,10 +310,7 @@ function MentionEmailForm({
           {t("mention.urgentBypass")}
         </p>
       )}
-      <p className="text-sm text-muted-foreground">
-        {t("mention.providerRequired")}
-      </p>
-      {mutation.isError && (
+      {failed && (
         <p role="alert" className="text-sm text-destructive">
           {t(`${kind}.saveFailed`)}
         </p>
@@ -310,15 +320,6 @@ function MentionEmailForm({
           {notice}
         </p>
       )}
-      <Button
-        type="submit"
-        disabled={
-          mutation.isPending ||
-          (enabled === preference.enabled && digest === preference.digest)
-        }
-      >
-        {t(`${kind}.save`)}
-      </Button>
-    </form>
+    </div>
   );
 }

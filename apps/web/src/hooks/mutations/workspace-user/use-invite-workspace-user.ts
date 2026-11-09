@@ -5,7 +5,8 @@ import queryClient from "@/query-client";
 type InviteWorkspaceUserRequest = {
   workspaceId: string;
   email: string;
-  role: "admin" | "member" | "owner";
+  // Any of this workspace's role names; the server validates it against its role rows.
+  role: string;
   resend?: boolean;
 };
 

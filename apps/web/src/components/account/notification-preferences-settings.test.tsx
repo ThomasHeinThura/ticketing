@@ -139,30 +139,49 @@ describe("NotificationPreferencesSettings", () => {
     expect(updatePreferences).not.toHaveBeenCalled();
   });
 
-  it("saves event preferences and a configurable reminder lead time", async () => {
+  it("saves an event switch as soon as it changes, with no save button", async () => {
     renderSettings();
-
+    expect(
+      screen.queryByRole("button", {
+        name: "settings:notificationsPage.saveReminderLeadTime",
+      }),
+    ).toBeNull();
     fireEvent.click(
       screen.getByRole("switch", {
         name: "settings:notificationsPage.eventTaskAssignments",
       }),
     );
+    await waitFor(() =>
+      expect(updatePreferences).toHaveBeenCalledWith({
+        taskAssignmentEnabled: false,
+      }),
+    );
+  });
+
+  it("puts an event switch back when its save fails", async () => {
+    updatePreferences.mockRejectedValue(new Error("offline"));
+    renderSettings();
+    const toggle = screen.getByRole("switch", {
+      name: "settings:notificationsPage.eventComments",
+    });
+    fireEvent.click(toggle);
+    await waitFor(() => expect(updatePreferences).toHaveBeenCalled());
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
+  });
+
+  it("offers a save for the reminder lead time only once it changed", async () => {
+    renderSettings();
     fireEvent.change(
       screen.getByLabelText("settings:notificationsPage.reminderLeadTimeLabel"),
       { target: { value: "2" } },
     );
     fireEvent.click(
       screen.getByRole("button", {
-        name: "settings:notificationsPage.saveEventPreferences",
+        name: "settings:notificationsPage.saveReminderLeadTime",
       }),
     );
-
     await waitFor(() =>
       expect(updatePreferences).toHaveBeenCalledWith({
-        taskAssignmentEnabled: false,
-        taskCommentEnabled: true,
-        taskStatusChangeEnabled: true,
-        dueDateReminderEnabled: true,
         dueDateReminderLeadTimeMinutes: 2880,
       }),
     );
@@ -181,12 +200,12 @@ describe("NotificationPreferencesSettings", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("button", {
-        name: "settings:notificationsPage.saveEventPreferences",
+        name: "settings:notificationsPage.saveReminderLeadTime",
       }),
     ).toHaveProperty("disabled", true);
   });
 
-  it("saves disabled reminders without validating their retained lead time", async () => {
+  it("turns reminders off without validating their retained lead time", async () => {
     renderSettings();
 
     fireEvent.change(
@@ -198,36 +217,41 @@ describe("NotificationPreferencesSettings", () => {
         name: "settings:notificationsPage.eventDueDateReminders",
       }),
     );
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "settings:notificationsPage.saveEventPreferences",
-      }),
-    );
 
     await waitFor(() =>
       expect(updatePreferences).toHaveBeenCalledWith({
-        taskAssignmentEnabled: true,
-        taskCommentEnabled: true,
-        taskStatusChangeEnabled: true,
         dueDateReminderEnabled: false,
       }),
     );
   });
 
-  it("offers the report.export_ready email preference and saves it on its own (P5-R3-02)", async () => {
+  it("saves the email channel switch as soon as it changes", async () => {
+    renderSettings();
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "settings:notificationsPage.emailTitle",
+      }),
+    );
+    await waitFor(() =>
+      expect(updatePreferences).toHaveBeenCalledWith({ emailEnabled: true }),
+    );
+    const emailCard = document.querySelector('[data-channel="email"]');
+    expect(emailCard?.querySelector("button")).toBeNull();
+  });
+
+  it("saves the report.export_ready email preference on its own as soon as it changes (P5-R3-02)", async () => {
     renderSettings();
     const block = screen.getByTestId("report-export-email-preference");
-    const save = screen.getByRole("button", {
-      name: "settings:notificationsPage.reportExportSave",
-    });
-    // Default on, nothing to save until it changes.
-    expect(save.hasAttribute("disabled")).toBe(true);
+    expect(
+      screen.queryByRole("button", {
+        name: "settings:notificationsPage.reportExportSave",
+      }),
+    ).toBeNull();
     fireEvent.click(
       screen.getByRole("switch", {
         name: "settings:notificationsPage.reportExportEmail",
       }),
     );
-    fireEvent.click(save);
     await waitFor(() =>
       expect(canonical.saveReportExport).toHaveBeenCalledTimes(1),
     );

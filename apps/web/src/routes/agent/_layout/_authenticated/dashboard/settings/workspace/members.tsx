@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Skeleton } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
@@ -19,11 +19,22 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { t } = useTranslation();
   const { data: workspace, isLoading } = useActiveWorkspace();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   return (
     <>
       <PageTitle title={t("team:members.pageTitle")} />
       {workspace ? (
-        <WorkspaceMembersSettings workspaceId={workspace.id} />
+        <WorkspaceMembersSettings
+          workspaceId={workspace.id}
+          query={search.q ?? ""}
+          onQueryChange={(next) =>
+            void navigate({
+              search: { q: next.trim() || undefined },
+              replace: true,
+            })
+          }
+        />
       ) : isLoading ? (
         <div
           role="status"

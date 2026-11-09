@@ -6820,11 +6820,11 @@ test("account security enrollment-ready screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/dashboard/settings/account/security");
   await expect(
-    page.getByText("Set up an authenticator factor", { exact: true }),
+    page.getByRole("heading", { name: "Authenticator app" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Set up authenticator" }),
-  ).toBeEnabled();
+    page.getByRole("button", { name: "Set up", exact: true }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("account-security-setup.png", {
     animations: "disabled",
     caret: "hide",
@@ -6904,16 +6904,12 @@ test("request type catalogue editor @visual", async ({ page }) => {
   await page.goto(
     "/dashboard/settings/workspace/request-types?requestTypeId=visual-request-type",
   );
-  // The settings shell has its own "Settings" h1; target the page's.
+  // SR-06: a request type opens in the editor Sheet over the list; the modal Sheet hides the
+  // page behind it from the accessibility tree, so the checks name the editor's own content.
   await expect(
-    page.getByRole("heading", { level: 1, name: "Request types" }),
+    page.getByRole("heading", { name: "Edit Access request" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Edit Access request", level: 2 }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "New request type" }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Default project")).toBeVisible();
   await expect(page).toHaveScreenshot("request-types.png", {
     animations: "disabled",
     caret: "hide",

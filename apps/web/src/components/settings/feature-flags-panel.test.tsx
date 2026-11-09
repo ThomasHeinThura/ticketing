@@ -156,7 +156,7 @@ describe("FeatureFlagsPanel", () => {
     ]);
   });
 
-  it("shows where an inherited value comes from and offers no reset when inherited", () => {
+  it("shows no badge or reset for an inherited value, the default (S11)", () => {
     mocks.rows = [
       row({
         key: "feature.sla",
@@ -169,8 +169,8 @@ describe("FeatureFlagsPanel", () => {
     render(
       <FeatureFlagsPanel target={{ level: "workspace", workspaceId: "w1" }} />,
     );
-    expect(screen.getByText("inheritedFrom:sources.instance")).toBeTruthy();
-    expect(screen.queryByText("useInherited")).toBeNull();
+    expect(screen.queryByText("inheritedFrom:sources.instance")).toBeNull();
+    expect(screen.queryByRole("button", { name: "useInherited" })).toBeNull();
   });
 
   it("an override can be reset to the inherited value with null", async () => {
@@ -188,7 +188,8 @@ describe("FeatureFlagsPanel", () => {
       <FeatureFlagsPanel target={{ level: "project", projectId: "p1" }} />,
     );
     expect(screen.getByText("overridden")).toBeTruthy();
-    fireEvent.click(screen.getByText("useInherited"));
+    // S11: a quiet icon button beside the Overridden badge, not a text button by the switch.
+    fireEvent.click(screen.getByRole("button", { name: "useInherited" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalled());
     expect(mocks.save.mock.calls[0]).toEqual([
       { level: "project", projectId: "p1" },
@@ -307,5 +308,16 @@ describe("FeatureFlagsPanel", () => {
     render(<FeatureFlagsPanel target={{ level: "instance" }} />);
     expect(screen.getByText("flags.feature.scim.name")).toBeTruthy();
     expect(screen.getByText("flags.feature.mcp.name")).toBeTruthy();
+  });
+
+  it("aligns the card header and the rows on one horizontal padding (S11)", () => {
+    mocks.rows = [row({ key: "feature.sla" })];
+    const { container } = render(
+      <FeatureFlagsPanel target={{ level: "workspace", workspaceId: "w1" }} />,
+    );
+    const header = container.querySelector('[data-slot="card-header"]');
+    const panel = container.querySelector('[data-slot="card-panel"]');
+    expect(header?.classList.contains("td-density-card")).toBe(true);
+    expect(panel?.classList.contains("td-density-card")).toBe(true);
   });
 });

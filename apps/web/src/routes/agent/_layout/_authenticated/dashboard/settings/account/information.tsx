@@ -360,7 +360,7 @@ function RouteComponent() {
                         </div>
                         <FormControl>
                           <Input
-                            className="w-full sm:w-48"
+                            className="w-full sm:w-64 md:w-80"
                             placeholder={t(
                               "settings:informationPage.fullNamePlaceholder",
                             )}
@@ -388,7 +388,7 @@ function RouteComponent() {
                         </div>
                         <FormControl>
                           <Input
-                            className="w-full sm:w-48"
+                            className="w-full sm:w-64 md:w-80"
                             placeholder={t(
                               "settings:informationPage.emailPlaceholder",
                             )}

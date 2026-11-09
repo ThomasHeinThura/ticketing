@@ -29,4 +29,18 @@ describe("getInitials", () => {
     expect(getInitials("ßeta")).toBe("SS");
     expect(getInitials("ßeta test")).toBe("ST");
   });
+
+  it("ignores punctuation such as a bracketed prefix", () => {
+    expect(getInitials("[audit] Invitee")).toBe("AI");
+    expect(getInitials("(Ops) Ada Lovelace")).toBe("OA");
+  });
+
+  it("keeps hyphenated and apostrophe names as one word", () => {
+    expect(getInitials("Mary-Jane Watson")).toBe("MW");
+    expect(getInitials("O'Brien Smith")).toBe("OS");
+  });
+
+  it("falls back when a name has no letters or digits", () => {
+    expect(getInitials("[] --", "NA")).toBe("NA");
+  });
 });

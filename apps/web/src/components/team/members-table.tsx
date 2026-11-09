@@ -24,6 +24,7 @@ import {
   CopyIcon,
   EllipsisIcon,
   MailIcon,
+  RotateCwIcon,
   ShieldIcon,
   TrashIcon,
 } from "lucide-react";
@@ -32,6 +33,7 @@ import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
 import useCancelInvitation from "@/hooks/mutations/workspace-user/use-cancel-invitation";
 import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-workspace-user";
+import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-workspace-user";
 import useUpdateWorkspaceUserRole from "@/hooks/mutations/workspace-user/use-update-workspace-user-role";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useCopyInvitationLink } from "@/hooks/use-copy-invitation-link";
@@ -47,11 +49,14 @@ import type {
 } from "@/types/workspace-user";
 import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import { useAuth } from "../providers/auth-provider/hooks/use-auth";
+import { isPendingInvitation } from "./invitation-status";
 
 type Props = {
   workspaceId: string;
   invitations: WorkspaceUserInvitation[];
   users: WorkspaceUser[];
+  /** Replaces the "no team members yet" empty state, e.g. for a search with no matches. */
+  emptyTitle?: string;
 };
 
 // Stable per-user pastel for the avatar fallback. Picks one of a curated set
@@ -86,7 +91,7 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function MembersTable({ workspaceId, invitations, users }: Props) {
+function MembersTable({ workspaceId, invitations, users, emptyTitle }: Props) {
   const { t } = useTranslation();
   const [memberToDelete, setMemberToDelete] = useState<WorkspaceUser | null>(
     null,
@@ -97,6 +102,8 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     useDeleteWorkspaceUser();
   const { mutateAsync: cancelInvitation, isPending: isCancelling } =
     useCancelInvitation();
+  const { mutateAsync: inviteWorkspaceUser, isPending: isResending } =
+    useInviteWorkspaceUser();
   const openPendingAction = useOpenPendingAction();
   const { mutateAsync: updateMemberRole } = useUpdateWorkspaceUserRole();
   const { copy: copyInvitationLink } = useCopyInvitationLink();
@@ -120,9 +127,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     return 0;
   });
 
-  const pendingInvitations = invitations.filter(
-    (inv) => inv.status !== "accepted" && inv.status !== "canceled",
-  );
+  const pendingInvitations = invitations.filter(isPendingInvitation);
 
   // S5 (issue #6, retrofit plan §3) shipped the userId-keyed native route --
   // PATCH /api/workspace/{workspaceId}/members/{userId}/role
@@ -174,6 +179,28 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
       );
     } finally {
       setMemberToDelete(null);
+    }
+  };
+
+  // Resend reuses the invite route with `resend: true`: a live invitation gets a fresh expiry and
+  // email; an expired one is replaced by a new invitation for the same email and role.
+  const handleResendInvitation = async (
+    invitation: WorkspaceUserInvitation,
+  ) => {
+    try {
+      await inviteWorkspaceUser({
+        workspaceId,
+        email: invitation.email,
+        role: invitation.role ?? "member",
+        resend: true,
+      });
+      toast.success(t("team:invitations.resendSuccess"));
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("team:invitations.resendError"),
+      );
     }
   };
 
@@ -471,6 +498,15 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         </MenuItem>
                         <MenuItem
                           onClick={() =>
+                            void handleResendInvitation(invitation)
+                          }
+                          disabled={isResending}
+                        >
+                          <RotateCwIcon className="size-4" />
+                          {t("team:invitations.resend")}
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() =>
                             void handleCancelInvitation(invitation)
                           }
                           disabled={isCancelling}
@@ -491,11 +527,13 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
               <TableCell colSpan={4} className="py-16 text-center">
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <p className="text-sm font-medium text-foreground">
-                    {t("team:membersTable.emptyTitle")}
+                    {emptyTitle ?? t("team:membersTable.emptyTitle")}
                   </p>
-                  <p className="text-xs">
-                    {t("team:membersTable.emptyDescription")}
-                  </p>
+                  {emptyTitle ? null : (
+                    <p className="text-xs">
+                      {t("team:membersTable.emptyDescription")}
+                    </p>
+                  )}
                 </div>
               </TableCell>
             </TableRow>
