@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 
@@ -62,6 +63,9 @@ vi.mock("@/components/work-item/work-items-panel", () => ({
     return <div data-testid="panel" />;
   },
 }));
+vi.mock("@/components/work-item/work-item-side-pane", () => ({
+  default: () => null,
+}));
 vi.mock("@/components/work-item/work-item-board-view", () => ({
   default: () => <div data-testid="board" />,
 }));
@@ -105,11 +109,11 @@ async function renderRoute() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const view = render(
-    <QueryClientProvider client={queryClient}>
-      <Component />
-    </QueryClientProvider>,
-  );
+  const view = render(<Component />, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
   await screen.findByTestId(
     state.search.layout === "board" ? "board" : "panel",
   );
@@ -182,6 +186,60 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
       columns: ["key", "state"],
     });
   });
+
+  it.each([
+    { sorts: undefined, columns: undefined },
+    {
+      sorts: [
+        { field: "title", order: "asc" },
+        { field: "priority", order: "desc" },
+      ],
+      columns: ["key", "priority"],
+    },
+  ])(
+    "keeps parsed panel query inputs stable when only item changes: %s",
+    async ({ sorts, columns }) => {
+      const validate = Route.options.validateSearch;
+      if (typeof validate !== "function")
+        throw new Error("missing search validator");
+      const raw = { layout: "list", sort: "title", dir: "asc", sorts, columns };
+      state.search = validate(raw as never) as Record<string, unknown>;
+      const firstParsed = state.search;
+      const view = await renderRoute();
+      const previousSorts = state.panelProps?.sorts;
+      const previousColumns = state.panelProps?.columns;
+      const previousLoadMore = state.panelProps?.onLoadMore;
+      state.search = validate({
+        ...raw,
+        sorts: sorts?.map((sort) => ({ ...sort })),
+        columns: columns && [...columns],
+        item: "WLP-1",
+      } as never) as Record<string, unknown>;
+      if (sorts) {
+        expect(state.search.sorts).not.toBe(firstParsed.sorts);
+        expect(state.search.columns).not.toBe(firstParsed.columns);
+      }
+      const Component = Route.options.component as () => React.JSX.Element;
+      view.rerender(<Component />);
+      await waitFor(() => expect(state.search.item).toBe("WLP-1"));
+      expect(state.panelProps?.sorts).toBe(previousSorts);
+      expect(state.panelProps?.columns).toBe(previousColumns);
+      expect(state.panelProps?.onLoadMore).toBe(previousLoadMore);
+      expect(state.hookArgs?.sorts).toBe(previousSorts);
+      expect(state.hookArgs?.columns).toBe(previousColumns);
+      if (sorts) {
+        expect(previousSorts).toEqual(sorts);
+        expect(previousColumns).toEqual(columns);
+        state.search = validate({
+          ...raw,
+          columns: ["key", "state"],
+        } as never) as Record<string, unknown>;
+        view.rerender(<Component />);
+        expect(state.panelProps?.columns).toEqual(["key", "state"]);
+        expect(state.panelProps?.columns).not.toBe(previousColumns);
+      }
+    },
+  );
 
   it("reads through the list route when no filter is set, and keeps the editor unloaded", async () => {
     await renderRoute();

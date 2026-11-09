@@ -1,4 +1,9 @@
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
@@ -13,6 +18,45 @@ import {
   usesWorkItemSearch,
   workItemsListQueryKey,
 } from "./work-items-list-query";
+
+function selectListWorkItems(
+  data: InfiniteData<WorkItemsResult>,
+): WorkItemsResult {
+  const seen = new Set<string>();
+  const last = data.pages.at(-1);
+  return {
+    items: data.pages
+      .flatMap((page) => page.items)
+      .filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      }),
+    hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
+    hasMore: last?.hasMore ?? false,
+  };
+}
+
+function selectSearchWorkItems(
+  data: InfiniteData<WorkItemsResult>,
+): WorkItemsResult {
+  const last = data.pages.at(-1);
+  const customFieldColumns = data.pages.find(
+    (page) => page.customFieldColumns,
+  )?.customFieldColumns;
+  const people = new Map(
+    data.pages
+      .flatMap((page) => page.customFieldPeople ?? [])
+      .map((person) => [`${person.projectId}\0${person.personId}`, person]),
+  );
+  return {
+    items: data.pages.flatMap((page) => page.items),
+    hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
+    hasMore: last?.hasMore ?? false,
+    ...(customFieldColumns ? { customFieldColumns } : {}),
+    ...(people.size > 0 ? { customFieldPeople: [...people.values()] } : {}),
+  };
+}
 
 /** The structured-search fetcher, loaded only when a list needs it. */
 async function loadSearchWorkItems() {
@@ -54,22 +98,40 @@ function useGetWorkItems({
 }) {
   const queryClient = useQueryClient();
   const structuredFilter = filter?.trim() ? filter : undefined;
-  const effectiveSorts = sorts?.length ? sorts : [{ field: sort, order: dir }];
+  const effectiveSorts = useMemo(
+    () => (sorts?.length ? sorts : [{ field: sort, order: dir }]),
+    [sorts, sort, dir],
+  );
   const useSearch = usesWorkItemSearch({ filter, columns, sort, dir, sorts });
   const readEnabled = !!projectId && enabled;
   const refetchInterval = realtimeStatus === "available" ? false : 30_000;
-  const listQueryKey = workItemsListQueryKey(projectId, sort, dir);
-  const searchQueryKey = [
-    "work-items",
-    projectId,
-    sort,
-    dir,
-    effectiveSorts,
-    "search",
-    structuredFilter ?? "",
-    workspaceId ?? "",
-    columns ?? null,
-  ] as const;
+  const listQueryKey = useMemo(
+    () => workItemsListQueryKey(projectId, sort, dir),
+    [projectId, sort, dir],
+  );
+  const searchQueryKey = useMemo(
+    () =>
+      [
+        "work-items",
+        projectId,
+        sort,
+        dir,
+        effectiveSorts,
+        "search",
+        structuredFilter ?? "",
+        workspaceId ?? "",
+        columns ?? null,
+      ] as const,
+    [
+      projectId,
+      sort,
+      dir,
+      effectiveSorts,
+      structuredFilter,
+      workspaceId,
+      columns,
+    ],
+  );
   const listQuery = useInfiniteQuery({
     queryKey: listQueryKey,
     initialPageParam: undefined as string | undefined,
@@ -79,21 +141,7 @@ function useGetWorkItems({
       last.hasMore && last.nextCursor && !pageParams.includes(last.nextCursor)
         ? last.nextCursor
         : undefined,
-    select: (data): WorkItemsResult => {
-      const seen = new Set<string>();
-      const last = data.pages.at(-1);
-      return {
-        items: data.pages
-          .flatMap((page) => page.items)
-          .filter((item) => {
-            if (seen.has(item.id)) return false;
-            seen.add(item.id);
-            return true;
-          }),
-        hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
-        hasMore: last?.hasMore ?? false,
-      };
-    },
+    select: selectListWorkItems,
     enabled: readEnabled && !useSearch,
     refetchInterval,
     refetchIntervalInBackground: false,
@@ -121,24 +169,7 @@ function useGetWorkItems({
     },
     getNextPageParam: (last) =>
       last.hasMore ? (last.nextCursor ?? undefined) : undefined,
-    select: (data): WorkItemsResult => {
-      const last = data.pages.at(-1);
-      const customFieldColumns = data.pages.find(
-        (page) => page.customFieldColumns,
-      )?.customFieldColumns;
-      const people = new Map(
-        data.pages
-          .flatMap((page) => page.customFieldPeople ?? [])
-          .map((person) => [`${person.projectId}\0${person.personId}`, person]),
-      );
-      return {
-        items: data.pages.flatMap((page) => page.items),
-        hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
-        hasMore: last?.hasMore ?? false,
-        ...(customFieldColumns ? { customFieldColumns } : {}),
-        ...(people.size > 0 ? { customFieldPeople: [...people.values()] } : {}),
-      };
-    },
+    select: selectSearchWorkItems,
     enabled: readEnabled && useSearch && !!workspaceId && !!projectSlug,
     refetchInterval,
     refetchIntervalInBackground: false,
@@ -154,6 +185,14 @@ function useGetWorkItems({
     active.error instanceof HttpError &&
     active.error.status === 409 &&
     active.error.message === "cursor_changed";
+  const restartFromFirstPage = useCallback(
+    () =>
+      queryClient.resetQueries({
+        queryKey: useSearch ? searchQueryKey : listQueryKey,
+        exact: true,
+      }),
+    [queryClient, useSearch, searchQueryKey, listQueryKey],
+  );
   return {
     ...active,
     // React Query deliberately retains cached pages after a failed refresh. A fresh
@@ -167,11 +206,7 @@ function useGetWorkItems({
           Boolean(active.data?.hasMore) &&
           !active.hasNextPage)),
     isCursorChanged,
-    restartFromFirstPage: () =>
-      queryClient.resetQueries({
-        queryKey: useSearch ? searchQueryKey : listQueryKey,
-        exact: true,
-      }),
+    restartFromFirstPage,
     hasNextPage:
       !accessDenied && !active.isPlaceholderData && active.hasNextPage,
     isFetchingNextPage: active.isFetchingNextPage,

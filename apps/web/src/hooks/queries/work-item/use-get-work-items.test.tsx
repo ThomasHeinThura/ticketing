@@ -68,6 +68,53 @@ function makeResult(ids: string[]): WorkItemsResult {
   };
 }
 
+describe("useGetWorkItems: stable selections", () => {
+  it.each([false, true])(
+    "does not recompute cached pages on an unrelated render (search: %s)",
+    async (search) => {
+      mocks.getWorkItems.mockReset().mockResolvedValue(makeResult(["a1"]));
+      mocks.searchWorkItems.mockReset().mockResolvedValue(makeResult(["a1"]));
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const { result, rerender } = renderHook(
+        ({ item }: { item?: string }) => {
+          void item;
+          return useGetWorkItems({
+            projectId: "proj-a",
+            projectSlug: "OPS",
+            workspaceId: "ws-1",
+            sort: "key",
+            dir: "asc",
+            filter: search ? "state = open" : undefined,
+          });
+        },
+        {
+          wrapper: createWrapperWithClient(queryClient),
+          initialProps: { item: undefined as string | undefined },
+        },
+      );
+      await waitFor(() => expect(result.current.data?.items).toHaveLength(1));
+      const selected = result.current.data;
+      const restart = result.current.restartFromFirstPage;
+      const query = queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["work-items", "proj-a"] })
+        .find((entry) => entry.state.data !== undefined);
+      if (!query) throw new Error("Expected a populated work-items query");
+      const pages = (query.state.data as { pages: WorkItemsResult[] }).pages;
+      const flatten = vi.spyOn(pages, "flatMap");
+
+      rerender({ item: "OPS-1" });
+
+      expect(flatten).not.toHaveBeenCalled();
+      expect(result.current.data).toBe(selected);
+      expect(result.current.restartFromFirstPage).toBe(restart);
+      flatten.mockRestore();
+    },
+  );
+});
+
 describe("useGetWorkItems: placeholderData scoping (#310 delta review finding)", () => {
   beforeEach(() => {
     mocks.getWorkItems.mockReset();

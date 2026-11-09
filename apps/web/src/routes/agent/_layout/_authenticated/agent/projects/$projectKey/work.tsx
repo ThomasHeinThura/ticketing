@@ -12,6 +12,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -172,6 +173,7 @@ import {
   type WorkItemFilterMode,
   type WorkItemListSearch,
   type WorkItemSearchColumn,
+  type WorkItemSort,
   type WorkItemSortDirection,
   type WorkItemSortField,
   type WorkItemWorkSearch,
@@ -235,7 +237,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     layout,
     sort,
     dir,
-    sorts,
+    sorts: urlSorts,
     filter,
     filterMode,
     columns: urlColumns,
@@ -243,6 +245,24 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     group: urlGroup,
     combined,
   } = Route.useSearch();
+  // Search parsing may recreate arrays when only the selected item changes.
+  // Use their validated contents to keep panel and query inputs stable.
+  const serializedSorts = JSON.stringify(urlSorts);
+  const serializedColumns = JSON.stringify(urlColumns);
+  const sorts = useMemo(
+    () =>
+      serializedSorts === undefined
+        ? undefined
+        : (JSON.parse(serializedSorts) as WorkItemSort[]),
+    [serializedSorts],
+  );
+  const stableUrlColumns = useMemo(
+    () =>
+      serializedColumns === undefined
+        ? undefined
+        : (JSON.parse(serializedColumns) as WorkItemSearchColumn[]),
+    [serializedColumns],
+  );
   const group: WorkItemGroup = urlGroup ?? "state";
   const combinedActive = combined === "descendants" && group === "state";
   const combinedGroupMismatch = combined === "descendants" && group !== "state";
@@ -437,7 +457,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     name: "columns",
     parse: parseTableColumns,
   });
-  const columns = urlColumns ?? columnsPreference.value;
+  const columns = stableUrlColumns ?? columnsPreference.value;
   const setColumnsPreference = columnsPreference.set;
   const projectNotFound =
     !isWorkspaceLoading && !isProjectsLoading && !!projects && !project;
@@ -564,6 +584,12 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
         ? realtimeStatus.status
         : "connecting",
   });
+  const handleLoadMore = useCallback(() => {
+    void fetchMoreWorkItems();
+  }, [fetchMoreWorkItems]);
+  const handleRestartFromFirstPage = useCallback(() => {
+    void restartFromFirstPage();
+  }, [restartFromFirstPage]);
   const isLoading =
     isWorkspaceLoading ||
     isProjectsLoading ||
@@ -1178,11 +1204,11 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               columns={columns}
               isFiltered={isFiltered}
               hasMore={hasMoreWorkItems}
-              onLoadMore={() => void fetchMoreWorkItems()}
+              onLoadMore={handleLoadMore}
               isLoadingMore={isLoadingMoreWorkItems}
               isLoadMoreError={isLoadMoreError}
               isCursorChanged={isCursorChanged}
-              onRestartFromFirstPage={() => void restartFromFirstPage()}
+              onRestartFromFirstPage={handleRestartFromFirstPage}
               isPlaceholderData={isPlaceholderData}
               selectedKeys={selectedKeys}
               canBulkAssign={canBulkAssign}
