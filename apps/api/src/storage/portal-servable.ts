@@ -1,29 +1,7 @@
 import * as filesystemDriver from "./filesystem";
-import {
-  createAttachmentDownloadUrl,
-  createAttachmentUploadUrl,
-  getStorageDriver,
-} from "./index";
+import { createAttachmentUploadUrl, getStorageDriver } from "./index";
 
-/**
- * CP-19: what the portal host serves from the filesystem storage driver (the default; local SIT
- * and Technexus use it). On S3 every signed URL points at the bucket, never at the portal host.
- *
- * 1. **Downloads** of submission objects (`workspace/<id>/submission/<id>/attachment/...`) and
- *    work-item objects (`workspace/<id>/work-item/<id>/attachment/...`), pending or final: only
- *    through the portal-bound route `GET /api/storage/portal-download` (Thomas, 3 November 2026).
- *    Only the portal `own_request` / `own_submission` routes mint those links, after their
- *    ownership and reach check. The token has its own key derivation (an agent-minted URL is
- *    never accepted) and binds the key, the customer person and a five-minute expiry. The route
- *    also requires the portal session on the request to be that same person.
- * 2. **Uploads**: pending submission and work-item keys only through the portal-bound
- *    `PUT /api/storage/portal-attachment-upload`, which also binds the customer person.
- *
- * Every other agent route stays denied on the portal host, including the generic
- * `GET /api/storage/filesystem-download` for every key, so an unbound download link is refused
- * there. Staff work-item uploads and downloads keep their generic agent-host routes; old generic
- * submission-upload links are refused on both hosts.
- */
+/** Portal storage host guard and person-bound download URL creation. */
 const SEGMENT = "[A-Za-z0-9_-]+";
 const FILE = "[A-Za-z0-9_.-]+";
 const FINAL_FILE = `final\\/[a-z0-9]+-${FILE}`;
@@ -100,13 +78,11 @@ export function isPortalStorageRequest(
   path: string,
   key: string | undefined,
 ): boolean {
+  if ((method === "GET" || method === "HEAD") && path === PORTAL_DOWNLOAD_PATH)
+    return true;
   if (key === undefined || hasUnsafeKeySegments(key)) return false;
   if (method === "PUT" && path === PORTAL_UPLOAD_PATH)
     return isPortalUploadKey(key);
-  // Downloads only through the person-bound route; the generic, unbound
-  // `GET /api/storage/filesystem-download` is never admitted here.
-  if ((method === "GET" || method === "HEAD") && path === PORTAL_DOWNLOAD_PATH)
-    return isPortalDownloadKey(key);
   return false;
 }
 
@@ -119,33 +95,15 @@ export function portalCanDownloadObject(objectKey: string): boolean {
   return getStorageDriver() !== "filesystem" || isPortalDownloadKey(objectKey);
 }
 
-/**
- * The download URL a portal route hands the customer, after its own reach check. On the
- * filesystem driver a submission or work-item key gets a portal-bound link for `personId`, which
- * must be the person behind the portal session (Thomas, 3 November 2026). On S3 it is the
- * bucket's five-minute presigned GET, bound to the key and expiry only.
- */
+/** Mint a person-bound portal URL after checking current reach. */
 export async function createPortalAttachmentDownloadUrl(input: {
-  objectKey: string;
-  filename: string;
+  scope: "request" | "submission";
+  ref: string;
+  id: string;
   personId: string;
   apiBaseUrl: string;
 }): Promise<string> {
-  if (
-    getStorageDriver() === "filesystem" &&
-    isPortalDownloadKey(input.objectKey)
-  )
-    return filesystemDriver.createPortalAttachmentDownloadUrl(
-      input.objectKey,
-      input.filename,
-      input.personId,
-      input.apiBaseUrl,
-    );
-  return createAttachmentDownloadUrl(
-    input.objectKey,
-    input.filename,
-    input.apiBaseUrl,
-  );
+  return filesystemDriver.createPortalDownloadV2(input);
 }
 
 /**

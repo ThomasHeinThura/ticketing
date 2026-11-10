@@ -5,16 +5,18 @@ import { resolve } from "node:path";
 import type { APIRequestContext, Page, Route } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import {
+  fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
   withMfaCsrfApp,
 } from "./helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "./helpers/project-key";
+import { safePortalOperation } from "./helpers/safe-portal-operation";
 
 /** Source-runtime evidence only: fresh PostgreSQL, private filesystem and real portal sessions. */
 const repoRoot = resolve(import.meta.dirname, "../..");
 const requireWeb = createRequire(resolve(repoRoot, "apps/web/package.json"));
-const { expect, test } = requireWeb(
+const { chromium, expect, test } = requireWeb(
   "@playwright/test",
 ) as typeof import("@playwright/test");
 const bytes = Buffer.from("Disposable submission attachment browser test.\n");
@@ -219,7 +221,7 @@ test("open submission file upload binds the real customer session", async ({
     async (fixture) => {
       const portal = new URL(fixture.origin);
       portal.hostname = `portal.${portal.hostname}`;
-      const browser = await requireWeb("@playwright/test").chromium.launch({
+      const browser = await chromium.launch({
         headless: true,
       });
       const staff = await browser.newContext();
@@ -349,14 +351,84 @@ test("open submission file upload binds the real customer session", async ({
         expect(row?.state).toBe("ready");
         expect(row?.downloadable).toBe(true);
         if (!row) throw new Error("Completed attachment was not listed");
-        const download = await customer.request.get(
-          new URL(
-            `/api/portal/submissions/${ref}/attachments/${row.id}`,
-            portal,
-          ).toString(),
+        const download = await safePortalOperation(() =>
+          customer.request.get(
+            new URL(
+              `/api/portal/submissions/${ref}/attachments/${row.id}`,
+              portal,
+            ).toString(),
+          ),
         );
         expect(download.status()).toBe(200);
-        expect(Buffer.from(await download.body()).equals(bytes)).toBe(true);
+        expect(
+          Buffer.from(await safePortalOperation(() => download.body())).equals(
+            bytes,
+          ),
+        ).toBe(true);
+        const issuance = await safePortalOperation(() =>
+          customer.request.get(
+            new URL(
+              `/api/portal/submissions/${ref}/attachments/${row.id}`,
+              portal,
+            ).toString(),
+            { maxRedirects: 0 },
+          ),
+        );
+        expect(issuance.status()).toBe(302);
+        const location = issuance.headers().location;
+        expect(location).toBeTruthy();
+        if (!location) throw new Error("Portal download redirect is missing.");
+        const issuedUrl = new URL(location, portal);
+        expect(issuedUrl.origin).toBe(portal.origin);
+        expect(issuedUrl.pathname).toBe("/api/storage/portal-download");
+        const expiry = Number(issuedUrl.searchParams.get("expires"));
+        expect(expiry).toBeGreaterThan(Math.floor(Date.now() / 1000));
+        expect(expiry).toBeLessThanOrEqual(Math.ceil(Date.now() / 1000) + 300);
+        const head = await safePortalOperation(() =>
+          customer.request.head(issuedUrl.toString()),
+        );
+        expect(head.status()).toBe(200);
+        expect(head.headers()["content-length"]).toBe(String(bytes.length));
+        expect((await safePortalOperation(() => head.body())).length).toBe(0);
+        const range = await safePortalOperation(() =>
+          customer.request.get(issuedUrl.toString(), {
+            headers: { Range: "bytes=1-4" },
+          }),
+        );
+        expect(range.status()).toBe(206);
+        expect(range.headers()["content-range"]).toBe(
+          `bytes 1-4/${bytes.length}`,
+        );
+        expect(
+          Buffer.from(await safePortalOperation(() => range.body())).equals(
+            bytes.subarray(1, 5),
+          ),
+        ).toBe(true);
+        const invalidRange = await safePortalOperation(() =>
+          customer.request.get(issuedUrl.toString(), {
+            headers: { Range: `bytes=${bytes.length}-` },
+          }),
+        );
+        expect(invalidRange.status()).toBe(416);
+        expect(invalidRange.headers()["content-range"]).toBe(
+          `bytes */${bytes.length}`,
+        );
+        expect(
+          (
+            await safePortalOperation(() =>
+              outsider.request.get(issuedUrl.toString()),
+            )
+          ).status(),
+        ).toBe(400);
+        const wrongHost = new URL(issuedUrl);
+        wrongHost.host = new URL(fixture.origin).host;
+        expect(
+          (
+            await safePortalOperation(() =>
+              customer.request.get(wrongHost.toString()),
+            )
+          ).status(),
+        ).toBe(404);
         for (const width of [390, 820, 1280]) {
           for (const colorScheme of ["light", "dark"] as const) {
             await customerPage.setViewportSize({ width, height: 900 });
@@ -402,6 +474,7 @@ test("open submission file upload binds the real customer session", async ({
     },
     {
       discardChildOutput: true,
+      ...fixtureOwnershipJournal(info.outputPath("fixture-ownership.jsonl")),
       beforeStart: async (fixture) => {
         await runPrivate(
           fixture,

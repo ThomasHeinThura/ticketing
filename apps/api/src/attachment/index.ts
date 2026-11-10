@@ -17,6 +17,7 @@ import {
   requirePendingActionRequesterIdentity,
 } from "../pending-action/service";
 import { createAttachmentDownloadUrl } from "../storage";
+import { resolvePortalDownload } from "../storage/portal-download-reach";
 import {
   createPortalAttachmentDownloadUrl,
   portalCanDownloadObject,
@@ -719,29 +720,23 @@ const attachment = apiRouter<
     );
   })
   .openapi(portalSubmissionDownloadRoute, async (c) => {
-    const [row] = await findSubmissionAttachmentContent(
-      db,
-      await resolveCallerIdentity(c, c.get("userId")),
-      {
-        id: c.req.valid("param").id,
-        workspaceId: c.get("workspaceId"),
-        submissionId: c.get("submissionId"),
-        linkedWorkItemId: c.get("submissionWorkItemId"),
-        portal: true,
-      },
-    );
-    if (!row) throw new Error("Authorized submission attachment disappeared");
+    const row = await resolvePortalDownload({
+      scope: "submission",
+      ref: c.req.valid("param").ref,
+      id: c.req.valid("param").id,
+      personId: c.get("requesterId"),
+      userId: c.get("userId"),
+    });
+    if (!row) throw new HTTPException(404, { message: "Attachment not found" });
     // Never redirect to, or audit, a download the portal host would refuse; the list marks such
     // a file `downloadable: false`.
     if (!portalCanDownloadObject(row.objectKey))
       throw new HTTPException(404, { message: "Attachment not found" });
-    // CP-19: on the filesystem driver every file (the submission's own form files, a staff file
-    // shared on a public comment, the requester's reply file) gets a portal-bound link for this
-    // requester. In portal modes `requesterId` is the caller's own person: the reach middleware
-    // finds the submission by the session person's id.
+    // Both storage drivers use the same person-bound portal link and live reach check.
     const downloadUrl = await createPortalAttachmentDownloadUrl({
-      objectKey: row.objectKey,
-      filename: row.filename,
+      scope: "submission",
+      ref: c.req.valid("param").ref,
+      id: row.id,
       personId: c.get("requesterId"),
       apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
     });

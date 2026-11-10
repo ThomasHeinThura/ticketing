@@ -379,12 +379,14 @@ export async function createAttachmentDownloadUrl(
 export async function getObjectSizeAndHeader(
   key: string,
   headerBytes: number,
+  signal?: AbortSignal,
 ): Promise<{ contentLength: number | undefined; header: Buffer }> {
   const config = getStorageConfig();
   const client = getClient(config);
 
   const head = await client.send(
     new HeadObjectCommand({ Bucket: config.bucket, Key: key }),
+    { abortSignal: signal },
   );
 
   if (headerBytes <= 0 || !head.ContentLength) {
@@ -398,6 +400,7 @@ export async function getObjectSizeAndHeader(
       Key: key,
       Range: `bytes=0-${rangeEnd}`,
     }),
+    { abortSignal: signal },
   );
   if (!response.Body) {
     throw new Error("Storage object body is missing.");
@@ -577,4 +580,72 @@ export async function readStorageProbeObject(
   }
   if (signal.aborted) throw signal.reason;
   return Buffer.concat(chunks, length);
+}
+
+/** Request and validate only the selected bytes, cancelling on disconnect or overrun. */
+export async function getPortalObjectRange(
+  key: string,
+  start: number,
+  end: number,
+  signal: AbortSignal,
+  totalSize: number,
+): Promise<ReadableStream<Uint8Array>> {
+  const config = getStorageConfig();
+  const response = await getClient(config).send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Range: `bytes=${start}-${end}`,
+    }),
+    { abortSignal: signal },
+  );
+  if (!response.Body) throw new Error("Storage object body is missing.");
+  const body = (
+    "transformToWebStream" in response.Body
+      ? response.Body.transformToWebStream()
+      : Readable.toWeb(response.Body as Readable)
+  ) as ReadableStream<Uint8Array>;
+  if (
+    response.ContentLength !== end - start + 1 ||
+    response.ContentRange !== `bytes ${start}-${end}/${totalSize}`
+  ) {
+    await body.cancel().catch(() => {});
+    throw new Error("Storage object range changed.");
+  }
+  const reader = body.getReader();
+  let received = 0;
+  const expected = end - start + 1;
+  const abort = () => {
+    void reader.cancel().catch(() => {});
+  };
+  signal.addEventListener("abort", abort, { once: true });
+  if (signal.aborted) abort();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        if (signal.aborted) throw new Error("Download aborted.");
+        const result = await reader.read();
+        if (result.done) {
+          signal.removeEventListener("abort", abort);
+          if (received !== expected)
+            throw new Error("Storage object range truncated.");
+          controller.close();
+          return;
+        }
+        received += result.value.byteLength;
+        if (received > expected) {
+          await reader.cancel().catch(() => {});
+          throw new Error("Storage object range exceeded.");
+        }
+        controller.enqueue(result.value);
+      } catch (error) {
+        signal.removeEventListener("abort", abort);
+        controller.error(error);
+      }
+    },
+    async cancel(reason) {
+      signal.removeEventListener("abort", abort);
+      await reader.cancel(reason);
+    },
+  });
 }

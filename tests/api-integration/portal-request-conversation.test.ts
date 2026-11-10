@@ -11,19 +11,13 @@
  *   direct request and on an accepted submission alike.
  * - The requester uploads on an accepted submission (A-08), end to end through the portal host.
  *
- * CP-19 (Thomas, 3 November 2026): on the filesystem storage driver the portal host serves a
- * work-item file only through a portal-bound signed link the portal routes mint after their own
- * check. The link binds the object key, the customer person and a five-minute expiry, and the
- * portal session must be that person. These tests prove byte-identical upload and download on
- * the filesystem driver and refuse another customer, another organisation, an expired link, a
- * tampered key, an internal-comment file and every agent-signed link on the portal host.
- *
- * On the S3 driver the signed URLs point at the bucket. Presigning and signing a download run
- * locally (no network); only `complete` reads the object, so the S3 case writes the bytes with
- * the filesystem driver and completes on it.
+ * Portal downloads use person-bound links on the portal origin for both storage drivers.
+ * Byte requests recheck current reach, and uploads in these journeys use the filesystem driver.
  */
 import { randomUUID } from "node:crypto";
+import { once } from "node:events";
 import { mkdtemp, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
@@ -36,7 +30,10 @@ import {
   listPortalSubmissionAttachments,
 } from "../../apps/api/src/attachment/repository";
 import db, { schema } from "../../apps/api/src/database";
-import { invalidateFeatureFlagCache } from "../../apps/api/src/feature-flag/enforce";
+import {
+  featureStateSomewhere,
+  invalidateFeatureFlagCache,
+} from "../../apps/api/src/feature-flag/enforce";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import {
   createAttachmentDownloadUrl,
@@ -91,6 +88,7 @@ const STORAGE_ENV = [
   "S3_ACCESS_KEY_ID",
   "S3_SECRET_ACCESS_KEY",
   "S3_KEY_PREFIX",
+  "S3_FORCE_PATH_STYLE",
 ] as const;
 
 /**
@@ -969,8 +967,49 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     const signed = new URL(download.location);
     expect(signed.host).toBe(PORTAL_HOST);
     expect(signed.pathname).toBe("/api/storage/portal-download");
+    expect(signed.searchParams.has("key")).toBe(false);
     expect(download.body.equals(PDF_BYTES)).toBe(true);
     // AT-6: one audit row, attributed to the customer person.
+    expect(await downloadAudits(guide)).toEqual([
+      { actorId: s.alice.person.id },
+    ]);
+    // Every byte request checks the current reach, including a resume after revocation.
+    mockAuthenticatedSession(s.alice.user, { portal: "customer" });
+    const fetchBytes = (method: string, range?: string) =>
+      portalHostStorage(s.contoso, download.location, {
+        method,
+        headers: range ? { Range: range } : undefined,
+      });
+    const head = await fetchBytes("HEAD");
+    expect(head.status).toBe(200);
+    expect((await head.arrayBuffer()).byteLength).toBe(0);
+    expect(head.headers.get("content-length")).toBe(String(PDF_BYTES.length));
+    for (const [range, start, end] of [
+      ["bytes=1-4", 1, 4],
+      ["bytes=3-", 3, PDF_BYTES.length - 1],
+      ["bytes=-4", PDF_BYTES.length - 4, PDF_BYTES.length - 1],
+      ["bytes=1-999999999999999999999999", 1, PDF_BYTES.length - 1],
+      ["bytes=-999999999999999999999999", 0, PDF_BYTES.length - 1],
+    ] as const) {
+      const response = await fetchBytes("GET", range);
+      expect(response.status, range).toBe(206);
+      expect(response.headers.get("content-range")).toBe(
+        `bytes ${start}-${end}/${PDF_BYTES.length}`,
+      );
+      expect(Buffer.from(await response.arrayBuffer())).toEqual(
+        PDF_BYTES.subarray(start, end + 1),
+      );
+    }
+    const unsatisfiable = await fetchBytes("GET", `bytes=${PDF_BYTES.length}-`);
+    expect(unsatisfiable.status).toBe(416);
+    expect(unsatisfiable.headers.get("content-range")).toBe(
+      `bytes */${PDF_BYTES.length}`,
+    );
+    for (const range of ["bytes=0-1,3-4", "bytes=bad", "items=0-1"]) {
+      const response = await fetchBytes("GET", range);
+      expect(response.status, range).toBe(200);
+      expect(Buffer.from(await response.arrayBuffer())).toEqual(PDF_BYTES);
+    }
     expect(await downloadAudits(guide)).toEqual([
       { actorId: s.alice.person.id },
     ]);
@@ -979,6 +1018,11 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
       .update(schema.commentTable)
       .set({ deletedAt: new Date() })
       .where(eq(schema.commentTable.id, publicComment.id));
+    expect((await fetchBytes("GET", "bytes=2-")).status).toBe(404);
+    expect((await fetchBytes("HEAD")).status).toBe(404);
+    expect(await downloadAudits(guide)).toEqual([
+      { actorId: s.alice.person.id },
+    ]);
     const afterDelete = (await (
       await portalRequest(
         s.contoso,
@@ -1035,18 +1079,19 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     // The token is bound to the guide's key: another file Alice may see, and an internal file.
     for (const other of [shared, internalFile])
       expect(
-        (await replay(withParam(location, "key", await objectKeyOf(other))))
-          .status,
+        (await replay(withParam(location, "id", other))).status,
         other,
       ).toBe(400);
-    // A forged token; a key outside the work-item attachment shape is refused by host.
+    expect((await replay(withParam(location, "ref", "OTHER-123"))).status).toBe(
+      400,
+    );
+    // A forged token and a changed scope are refused.
     expect(
       (await replay(withParam(location, "token", "x".repeat(43)))).status,
     ).toBe(400);
     expect(
-      (await replay(withParam(location, "key", "workspace/x/other/secret.pdf")))
-        .status,
-    ).toBe(404);
+      (await replay(withParam(location, "scope", "submission"))).status,
+    ).toBe(400);
 
     // The internal-comment file is never offered, redirected or audited by the portal route.
     const refused = await portalRequest(
@@ -1075,10 +1120,23 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     );
     expect(agentHost.status).toBe(404);
 
-    // Alice's own link still works for Alice.
+    // Alice's own link works until she ceases to be the requester.
     const again = await replay(location);
     expect(again.status).toBe(200);
     expect(Buffer.from(await again.arrayBuffer()).equals(PDF_BYTES)).toBe(true);
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: s.bob.person.id })
+      .where(eq(schema.workItemTable.id, s.privateItem.id));
+    expect((await replay(location)).status).toBe(404);
+    const audits = await downloadAudits(guide);
+    expect(audits.filter((row) => row.actorId === s.alice.person.id)).toEqual([
+      { actorId: s.alice.person.id },
+    ]);
+    // The independent staff download above records its own audit event.
+    expect(
+      audits.filter((row) => row.actorId === s.contoso.requester.user.id),
+    ).toEqual([{ actorId: s.contoso.requester.user.id }]);
   });
 
   it("on S3, downloads a shared file with an audit row and refuses every other file and reader (A-07, AT-5, AT-6)", async () => {
@@ -1117,7 +1175,7 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
       publicComment.id,
     );
 
-    const bucketHost = useS3Driver();
+    useS3Driver();
     const download = await portalRequest(
       s.contoso,
       s.alice,
@@ -1125,7 +1183,7 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     );
     expect(download.status, await download.clone().text()).toBe(302);
     expect(new URL(download.headers.get("location") ?? "").host).toBe(
-      bucketHost,
+      PORTAL_HOST,
     );
     // AT-6: one audit row, attributed to the customer person.
     expect(await downloadAudits(guide)).toEqual([
@@ -1162,6 +1220,129 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     );
     expect(frank.status).toBe(404);
     expect(await downloadAudits(guide)).toHaveLength(1);
+  });
+
+  it("streams prefixed S3 request and accepted submission files through the portal API", async () => {
+    const s = await seed();
+    const requestFile = await staffUpload(
+      s.contoso,
+      s.privateItem.key,
+      "request.pdf",
+      { customerVisible: true },
+    );
+    const { accepted, ref } = await acceptedSubmission(s);
+    const submissionFile = await staffUpload(
+      s.contoso,
+      accepted.key,
+      "submission.pdf",
+      { customerVisible: true },
+    );
+    const keys = new Set<string>();
+    for (const id of [requestFile, submissionFile]) {
+      const key = `tenant-prefix/${await objectKeyOf(id)}`;
+      keys.add(key);
+      await db
+        .update(schema.attachmentTable)
+        .set({ objectKey: key })
+        .where(eq(schema.attachmentTable.id, id));
+    }
+    const requests: Array<{ method: string; key: string; range?: string }> = [];
+    const server = createServer((req, res) => {
+      const path = decodeURIComponent(
+        new URL(req.url ?? "/", "http://localhost").pathname,
+      );
+      const key = path.replace(/^\/unit-bucket\//, "");
+      requests.push({
+        method: req.method ?? "",
+        key,
+        range: req.headers.range,
+      });
+      if (!keys.has(key)) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      if (req.method === "HEAD") {
+        res.writeHead(200, { "content-length": PDF_BYTES.length });
+        res.end();
+        return;
+      }
+      const match = /^bytes=(\d+)-(\d+)$/.exec(req.headers.range ?? "");
+      if (!match) {
+        res.writeHead(400);
+        res.end();
+        return;
+      }
+      const start = Number(match[1]);
+      const end = Number(match[2]);
+      const body = PDF_BYTES.subarray(start, end + 1);
+      res.writeHead(206, {
+        "content-length": body.length,
+        "content-range": `bytes ${start}-${end}/${PDF_BYTES.length}`,
+      });
+      res.end(body);
+    });
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string")
+        throw new Error("No local S3 test port");
+      useS3Driver();
+      process.env.S3_ENDPOINT = `http://127.0.0.1:${address.port}`;
+      process.env.S3_BUCKET = "unit-bucket";
+      process.env.S3_KEY_PREFIX = "tenant-prefix";
+      process.env.S3_FORCE_PATH_STYLE = "true";
+      for (const path of [
+        `/api/portal/requests/${s.privateItem.key}/attachments/${requestFile}`,
+        `/api/portal/submissions/${ref}/attachments/${submissionFile}`,
+      ]) {
+        const mint = await portalRequest(s.contoso, s.alice, path);
+        expect(mint.status).toBe(302);
+        const location = mint.headers.get("location") ?? "";
+        expect(new URL(location).host).toBe(PORTAL_HOST);
+        expect(new URL(location).pathname).toBe("/api/storage/portal-download");
+        expect(new URL(location).searchParams.has("key")).toBe(false);
+        mockAuthenticatedSession(s.alice.user, { portal: "customer" });
+        const head = await portalHostStorage(s.contoso, location, {
+          method: "HEAD",
+        });
+        expect(head.status).toBe(200);
+        expect(head.headers.get("content-length")).toBe(
+          String(PDF_BYTES.length),
+        );
+        expect((await head.arrayBuffer()).byteLength).toBe(0);
+        const full = await portalHostStorage(s.contoso, location, {
+          method: "GET",
+        });
+        expect(full.status).toBe(200);
+        expect(full.headers.get("location")).toBeNull();
+        expect(Buffer.from(await full.arrayBuffer())).toEqual(PDF_BYTES);
+        const partial = await portalHostStorage(s.contoso, location, {
+          method: "GET",
+          headers: { Range: "bytes=2-5" },
+        });
+        expect(partial.status).toBe(206);
+        expect(partial.headers.get("content-range")).toBe(
+          `bytes 2-5/${PDF_BYTES.length}`,
+        );
+        expect(Buffer.from(await partial.arrayBuffer())).toEqual(
+          PDF_BYTES.subarray(2, 6),
+        );
+      }
+      expect(
+        requests.filter((request) => request.method === "HEAD"),
+      ).toHaveLength(6);
+      expect(
+        requests.filter((request) => request.method === "GET"),
+      ).toHaveLength(4);
+      expect(new Set(requests.map((request) => request.key))).toEqual(keys);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   });
 
   it("on S3, takes the requester's reply file and only hers (A-08, CP-16)", async () => {
@@ -1597,20 +1778,18 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     expect(
       (await portalHostStorage(s.contoso, location, { method: "GET" })).status,
     ).toBe(401);
-    // Expired, the key swapped to Alice's file on her other submission, a forged token, and a
-    // key outside the attachment shapes (refused by host).
+    // Expiry and every token-bound field are checked before storage access.
     expect((await afterExpiry(() => replay(location))).status).toBe(400);
-    expect(
-      (await replay(withParam(location, "key", await objectKeyOf(other))))
-        .status,
-    ).toBe(400);
+    expect((await replay(withParam(location, "id", other))).status).toBe(400);
     expect(
       (await replay(withParam(location, "token", "x".repeat(43)))).status,
     ).toBe(400);
-    expect(
-      (await replay(withParam(location, "key", "workspace/x/other/secret.pdf")))
-        .status,
-    ).toBe(404);
+    expect((await replay(withParam(location, "ref", "OTHER-123"))).status).toBe(
+      400,
+    );
+    expect((await replay(withParam(location, "scope", "request"))).status).toBe(
+      400,
+    );
 
     // An unbound generic link for the submission key, the form the portal used to hand out, is
     // refused on the portal host. Staff keep the generic route on the agent host.
@@ -1651,15 +1830,110 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     expect(again.status).toBe(200);
     expect(Buffer.from(await again.arrayBuffer()).equals(PDF_BYTES)).toBe(true);
 
-    // On S3 the portal gets the bucket's presigned GET (key and expiry only), as before.
-    const s3Host = useS3Driver();
+    // S3 links also stay on the portal origin.
+    useS3Driver();
     const onS3 = await portalRequest(
       s.contoso,
       s.alice,
       `${base}/attachments/${logs}`,
     );
     expect(onS3.status, await onS3.clone().text()).toBe(302);
-    expect(new URL(onS3.headers.get("location") ?? "").host).toBe(s3Host);
+    expect(new URL(onS3.headers.get("location") ?? "").host).toBe(PORTAL_HOST);
+    // Another workspace remains portal-enabled, so host availability cannot mask scope revocation.
+    await db
+      .insert(schema.workspaceFeatureFlagTable)
+      .values([
+        {
+          workspaceId: s.fabrikam.workspaceId,
+          featureKey: "feature.customer_portal",
+          enabled: true,
+        },
+        {
+          workspaceId: s.contoso.workspaceId,
+          featureKey: "feature.customer_portal",
+          enabled: false,
+        },
+      ])
+      .onConflictDoUpdate({
+        target: [
+          schema.workspaceFeatureFlagTable.workspaceId,
+          schema.workspaceFeatureFlagTable.featureKey,
+        ],
+        set: { enabled: true },
+      });
+    await db
+      .update(schema.workspaceFeatureFlagTable)
+      .set({ enabled: false })
+      .where(
+        and(
+          eq(
+            schema.workspaceFeatureFlagTable.workspaceId,
+            s.contoso.workspaceId,
+          ),
+          eq(
+            schema.workspaceFeatureFlagTable.featureKey,
+            "feature.customer_portal",
+          ),
+        ),
+      );
+    invalidateFeatureFlagCache();
+    expect(await featureStateSomewhere("feature.customer_portal")).toBe("on");
+    const s3Location = onS3.headers.get("location") ?? "";
+    for (const [driver, url] of [
+      ["filesystem", location],
+      ["s3", s3Location],
+    ] as const) {
+      if (driver === "filesystem") useFilesystemDriver();
+      else useS3Driver();
+      for (const [method, range] of [
+        ["GET", undefined],
+        ["HEAD", undefined],
+        ["GET", "bytes=1-"],
+      ] as const) {
+        mockAuthenticatedSession(s.alice.user, { portal: "customer" });
+        expect(
+          (
+            await portalHostStorage(s.contoso, url, {
+              method,
+              headers: range ? { Range: range } : undefined,
+            })
+          ).status,
+          `${driver} ${method} ${range ?? ""}`,
+        ).toBe(404);
+      }
+    }
+    await db
+      .update(schema.workspaceFeatureFlagTable)
+      .set({ enabled: true })
+      .where(
+        and(
+          eq(
+            schema.workspaceFeatureFlagTable.workspaceId,
+            s.contoso.workspaceId,
+          ),
+          eq(
+            schema.workspaceFeatureFlagTable.featureKey,
+            "feature.customer_portal",
+          ),
+        ),
+      );
+    invalidateFeatureFlagCache();
+    await db
+      .update(schema.workspaceFeatureFlagTable)
+      .set({ enabled: false })
+      .where(
+        and(
+          eq(
+            schema.workspaceFeatureFlagTable.workspaceId,
+            s.contoso.workspaceId,
+          ),
+          eq(schema.workspaceFeatureFlagTable.featureKey, "feature.intake"),
+        ),
+      );
+    invalidateFeatureFlagCache();
+    const auditsBeforeRevocation = await downloadAudits(logs);
+    expect((await replay(location)).status).toBe(404);
+    expect(await downloadAudits(logs)).toEqual(auditsBeforeRevocation);
   });
 
   it("takes the requester's reply file on a direct request byte for byte and refuses replayed upload links (A-08, CP-19)", async () => {
@@ -1875,6 +2149,66 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
       "/api/storage/portal-download",
     );
     expect(guideDownload.body.equals(PDF_BYTES)).toBe(true);
+    useS3Driver();
+    const s3Mint = await portalRequest(
+      s.contoso,
+      s.alice,
+      `/api/portal/submissions/${ref}/attachments/${guide}`,
+    );
+    expect(s3Mint.status).toBe(302);
+    const s3Location = s3Mint.headers.get("location") ?? "";
+    await db
+      .insert(schema.projectFeatureFlagTable)
+      .values({
+        projectId: s.contoso.project.id,
+        featureKey: "feature.customer_portal",
+        enabled: false,
+      })
+      .onConflictDoUpdate({
+        target: [
+          schema.projectFeatureFlagTable.projectId,
+          schema.projectFeatureFlagTable.featureKey,
+        ],
+        set: { enabled: false },
+      });
+    invalidateFeatureFlagCache();
+    expect(await featureStateSomewhere("feature.customer_portal")).toBe("on");
+    for (const [driver, url] of [
+      ["filesystem", guideDownload.location],
+      ["s3", s3Location],
+    ] as const) {
+      if (driver === "filesystem") useFilesystemDriver();
+      else useS3Driver();
+      for (const [method, range] of [
+        ["GET", undefined],
+        ["HEAD", undefined],
+        ["GET", "bytes=1-"],
+      ] as const) {
+        mockAuthenticatedSession(s.alice.user, { portal: "customer" });
+        expect(
+          (
+            await portalHostStorage(s.contoso, url, {
+              method,
+              headers: range ? { Range: range } : undefined,
+            })
+          ).status,
+          `${driver} ${method} ${range ?? ""}`,
+        ).toBe(404);
+      }
+    }
+    await db
+      .delete(schema.projectFeatureFlagTable)
+      .where(
+        and(
+          eq(schema.projectFeatureFlagTable.projectId, s.contoso.project.id),
+          eq(
+            schema.projectFeatureFlagTable.featureKey,
+            "feature.customer_portal",
+          ),
+        ),
+      );
+    invalidateFeatureFlagCache();
+    useFilesystemDriver();
     // Bound to Alice: Bob's session cannot use it.
     mockAuthenticatedSession(s.bob.user, { portal: "customer" });
     expect(

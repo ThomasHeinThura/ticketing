@@ -242,10 +242,20 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   (Thomas, 4 November 2026). The generic filesystem attachment PUT is refused on the portal
   host; old generic submission-upload links are also refused on the agent host. Every portal download, of a
   submission or a work-item attachment object, pending or final, goes only through
-  `GET /api/storage/portal-download` (work-item files and submission files, both 3 November 2026).
-  Only the portal `own_request` / `own_submission` routes mint those links, after their own check.
-  Their token has its own key derivation and binds the key, the customer person, the size ceiling
-  (upload) and a five-minute expiry, and the portal session must be that person. The generic
+  `GET` or `HEAD /api/storage/portal-download` on both filesystem and S3 (Thomas,
+  10 November 2026). The portal `own_request` / `own_submission` routes issue a 302
+  to that same-origin link only after their reach check. Its separately derived token
+  binds the parent scope and reference, attachment id, customer person and five-minute
+  expiry, without exposing the storage key. The byte route rechecks the same live reach
+  on every GET, HEAD and Range request before reading storage; the portal session must
+  be that person. A successful full GET is 200; a valid single byte range is 206 with
+  the exact `Content-Range` and ranged `Content-Length`; a satisfiable suffix or open
+  range is also supported. A syntactically valid unsatisfiable range is 416 with
+  `Content-Range: bytes */<size>`. Malformed or multiple ranges are ignored as a full
+  200 response. HEAD returns the GET status and headers without opening a body stream.
+  Responses are private, no-store and no-transform. An in-progress stream may finish
+  after access is revoked; any subsequent request is refused. Upload tokens separately
+  bind the key, customer person, size ceiling and expiry. The generic
   `GET /api/storage/filesystem-download` is refused on the portal host for every key, so an
   unbound download link never works there, and the agent host does not serve the portal routes.
   Staff keep the generic signed routes for work-item uploads and for work-item and submission
@@ -347,7 +357,7 @@ POST /api/portal/requests/{ref}/comments                   own_request
 POST /api/portal/requests/{ref}/attachments/presign        own_request   (requester only; a reply's files carry its commentId; CP-19 portal-bound PUT)
 GET  /api/portal/requests/{ref}/attachments                 own_request   (requester only; customer-visible files)
 POST /api/portal/requests/{ref}/attachments/{id}/complete   own_request   (requester only; size, quota and content checked)
-GET  /api/portal/requests/{ref}/attachments/{id}            own_request   (requester only; 302 to a signed URL, CP-19 portal-bound on the filesystem driver, audited)
+GET  /api/portal/requests/{ref}/attachments/{id}            own_request   (requester only; 302 to a same-origin portal-bound link on both storage drivers, audited)
 POST /api/portal/requests/{ref}/escalate                   own_request
 POST /api/portal/requests/{ref}/reopen                     own_request   (WF-21, system-actor transition)
 POST /api/portal/requests/{ref}/rate                       own_request

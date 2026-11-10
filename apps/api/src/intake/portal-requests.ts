@@ -458,6 +458,28 @@ export async function listPortalRequestAttachments(input: {
   }));
 }
 
+/** Resolve the requester and attachment from current portal reach. */
+export async function resolvePortalRequestDownload(
+  personId: string,
+  ref: string,
+  id: string,
+) {
+  const viewer = await loadPortalViewer(personId);
+  const found = await readableDirectRequest(viewer, ref, false);
+  if (!found.item.isRequester) notFound();
+  const [item] = await db
+    .select({ workspaceId: schema.workItemTable.workspaceId })
+    .from(schema.workItemTable)
+    .where(eq(schema.workItemTable.id, found.workItemId))
+    .limit(1);
+  if (!item) notFound();
+  return findPortalRequestDownload({
+    id,
+    workItemId: found.workItemId,
+    workspaceId: item.workspaceId,
+  });
+}
+
 /** A ready, customer-visible file of this request, for download (`AT-5`). */
 export async function findPortalRequestDownload(input: {
   id: string;
@@ -469,6 +491,8 @@ export async function findPortalRequestDownload(input: {
       id: schema.attachmentTable.id,
       objectKey: schema.attachmentTable.objectKey,
       filename: schema.attachmentTable.filename,
+      mimeType: schema.attachmentTable.mimeType,
+      size: schema.attachmentTable.size,
     })
     .from(schema.attachmentTable)
     .where(

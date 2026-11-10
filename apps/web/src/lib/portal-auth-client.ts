@@ -12,7 +12,7 @@ export function getPortalAuthBaseURL() {
   }
 }
 
-type AuthError = { status: number; message?: string };
+type AuthError = { status: number; message?: string; code?: string };
 type AuthResult<T> = { data: T | null; error: AuthError | null };
 type PortalSession = {
   session: { id: string } & Record<string, unknown>;
@@ -41,7 +41,14 @@ async function authFetch<T>(
       payload && typeof payload === "object" && "message" in payload
         ? String((payload as { message: unknown }).message)
         : undefined;
-    return { data: null, error: { status: response.status, message } };
+    const code =
+      payload &&
+      typeof payload === "object" &&
+      "code" in payload &&
+      typeof payload.code === "string"
+        ? payload.code
+        : undefined;
+    return { data: null, error: { status: response.status, message, code } };
   }
   return { data: payload as T, error: null };
 }
