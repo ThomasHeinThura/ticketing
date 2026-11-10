@@ -38,7 +38,9 @@ import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import { ColumnShell } from "@/components/kanban-board/column/column-shell";
-import TaskCard from "@/components/kanban-board/task-card";
+import TaskCard, {
+  type TaskCardFixedLabels,
+} from "@/components/kanban-board/task-card";
 import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
 import { getColumnIcon } from "@/lib/column";
 import { BOARD_TRANSLATION_OPTIONS } from "@/lib/i18n/work-route-namespaces";
@@ -180,6 +182,14 @@ export default function WorkItemBoard({
 }) {
   const { t } = useTranslation();
   const { t: cardT } = useTranslation(undefined, BOARD_TRANSLATION_OPTIONS);
+  const fixedLabels = useMemo<TaskCardFixedLabels>(
+    () => ({
+      openHint: cardT("common:a11y.taskOpenHint"),
+      openAndDragHint: cardT("common:a11y.taskOpenAndDragHint"),
+      unassigned: cardT("tasks:assignee.unassigned"),
+    }),
+    [cardT],
+  );
   const preferences = useBoardCardPreferences();
   const combined = Boolean(combinedColumns);
   const {
@@ -305,6 +315,12 @@ export default function WorkItemBoard({
             <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
               {states.map((state) => {
                 const stateItems = itemsByState.get(state.id) ?? [];
+                const currentStateLabel = cardT(
+                  "workItems:board.currentState",
+                  {
+                    state: state.name,
+                  },
+                );
                 const selectable = stateItems.filter((item) => {
                   const itemCanBulkAct = combined
                     ? (combinedCapabilities?.get(item.projectId)?.canBulkAct ??
@@ -397,6 +413,8 @@ export default function WorkItemBoard({
                             <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                               {stateItems.map((item) => (
                                 <BoardCard
+                                  fixedLabels={fixedLabels}
+                                  currentStateLabel={currentStateLabel}
                                   preferences={preferences}
                                   t={cardT}
                                   key={item.id}
@@ -453,6 +471,8 @@ export default function WorkItemBoard({
                             onRetainFocus={onRetainFocus}
                             renderItem={(item, virtualItem) => (
                               <BoardCard
+                                fixedLabels={fixedLabels}
+                                currentStateLabel={currentStateLabel}
                                 preferences={preferences}
                                 t={cardT}
                                 key={item.id}
@@ -499,6 +519,8 @@ export default function WorkItemBoard({
                         <ul className="flex min-h-24 flex-1 list-none flex-col gap-2 py-1">
                           {stateItems.map((item) => (
                             <BoardCard
+                              fixedLabels={fixedLabels}
+                              currentStateLabel={currentStateLabel}
                               preferences={preferences}
                               t={cardT}
                               key={item.id}
@@ -566,6 +588,7 @@ export default function WorkItemBoard({
           <div className="transform rotate-1 scale-[1.03] shadow-lg">
             <div className="ring-2 ring-ring/35 rounded-lg">
               <BoardCard
+                fixedLabels={fixedLabels}
                 preferences={preferences}
                 t={cardT}
                 item={dragged}
@@ -638,6 +661,8 @@ function noContextMenu() {}
 export const BoardCard = memo(function BoardCard({
   preferences,
   t,
+  fixedLabels,
+  currentStateLabel,
   item,
   sortableId,
   stateName,
@@ -654,6 +679,8 @@ export const BoardCard = memo(function BoardCard({
 }: {
   preferences: ReturnType<typeof useBoardCardPreferences>;
   t: TFunction;
+  fixedLabels?: TaskCardFixedLabels;
+  currentStateLabel?: string;
   item: WorkItemRow;
   /** DnD-only identifier for a card rendered in more than one group. */
   sortableId?: string;
@@ -775,12 +802,14 @@ export const BoardCard = memo(function BoardCard({
         openTaskOnLinkClick={Boolean(onOpenItem)}
         onOpenTask={onOpenTask}
         t={t}
+        fixedLabels={fixedLabels}
       />
       {!actionable || item.unavailableFields.includes("priority") ? (
         <span className="sr-only">{t("workItems:list.unavailable")}</span>
       ) : null}
       <span className="sr-only">
-        {t("workItems:board.currentState", { state: stateName })}
+        {currentStateLabel ??
+          t("workItems:board.currentState", { state: stateName })}
       </span>
     </li>
   );

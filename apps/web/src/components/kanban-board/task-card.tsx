@@ -49,6 +49,7 @@ export type TaskCardProps = {
   isFocused: boolean;
   onOpenTask: (taskId: string) => void;
   t: TFunction;
+  fixedLabels?: TaskCardFixedLabels;
   taskHref?: string;
   /** Route-owned sheet opening while modifier clicks retain the real href. */
   openTaskOnLinkClick?: boolean;
@@ -56,6 +57,12 @@ export type TaskCardProps = {
   onToggleSelection?: () => void;
   /** Extra metadata-row badges (`SLA-18`'s compact SLA badge). */
   badges?: ReactNode;
+};
+
+export type TaskCardFixedLabels = {
+  openHint: string;
+  openAndDragHint: string;
+  unassigned: string;
 };
 
 export type TaskCardDisplayPreferences = {
@@ -153,6 +160,7 @@ function TaskCard({
   onToggleSelection,
   badges,
   t,
+  fixedLabels,
 }: TaskCardProps) {
   const {
     attributes,
@@ -290,11 +298,10 @@ function TaskCard({
         })}
       </FieldsetLegend>
       <span id={keyboardHintId} className="sr-only">
-        {t(
-          disableDragDrop
-            ? "common:a11y.taskOpenHint"
-            : "common:a11y.taskOpenAndDragHint",
-        )}
+        {disableDragDrop
+          ? (fixedLabels?.openHint ?? t("common:a11y.taskOpenHint"))
+          : (fixedLabels?.openAndDragHint ??
+            t("common:a11y.taskOpenAndDragHint"))}
       </span>
       <TaskCardBody
         task={task}
@@ -307,6 +314,7 @@ function TaskCard({
         openTaskOnLinkClick={openTaskOnLinkClick}
         badges={badges}
         t={t}
+        fixedLabels={fixedLabels}
       />
     </Fieldset>
   );
@@ -324,6 +332,7 @@ type TaskCardBodyProps = Pick<
   | "openTaskOnLinkClick"
   | "badges"
   | "t"
+  | "fixedLabels"
 >;
 
 /**
@@ -341,6 +350,7 @@ const TaskCardBody = memo(function TaskCardBody({
   openTaskOnLinkClick = false,
   badges,
   t,
+  fixedLabels,
 }: TaskCardBodyProps) {
   const {
     showAssignees,
@@ -421,7 +431,7 @@ const TaskCardBody = memo(function TaskCardBody({
           ) : (
             <div
               className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted"
-              title={t("tasks:assignee.unassigned")}
+              title={fixedLabels?.unassigned ?? t("tasks:assignee.unassigned")}
             >
               <span className="text-[10px] font-medium text-muted-foreground">
                 ?

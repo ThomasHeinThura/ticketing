@@ -23,6 +23,7 @@ const probe = vi.hoisted(() => ({
   sortableItems: [] as unknown[][],
   // Production react-i18next returns a stable `t`; a fresh one per call would defeat memo.
   t: undefined as unknown as (key: string, options?: object) => string,
+  translations: {} as Record<string, number>,
 }));
 vi.mock("@/components/kanban-board/task-labels", () => ({
   TaskLabels: () => {
@@ -63,8 +64,10 @@ vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
   default: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("react-i18next", () => {
-  probe.t = (key: string, options?: object) =>
-    translate(key, options as Record<string, unknown>);
+  probe.t = (key: string, options?: object) => {
+    probe.translations[key] = (probe.translations[key] ?? 0) + 1;
+    return translate(key, options as Record<string, unknown>);
+  };
   return { useTranslation: () => ({ t: probe.t }) };
 });
 
@@ -143,6 +146,7 @@ beforeEach(() => {
   useUserPreferencesStore.setState({ showLabels: true });
   rank.mockReset();
   probe.sortableItems = [];
+  probe.translations = {};
 });
 afterEach(cleanup);
 
@@ -152,6 +156,10 @@ describe("WorkItemBoard render cost (G11)", () => {
     board();
     expect(screen.getAllByTestId("work-item-board-card")).toHaveLength(200);
     expect(probe.bodyRenders).toBe(200);
+    expect(probe.translations["common:a11y.taskOpenHint"]).toBe(1);
+    expect(probe.translations["common:a11y.taskOpenAndDragHint"]).toBe(1);
+    expect(probe.translations["tasks:assignee.unassigned"]).toBe(1);
+    expect(probe.translations["workItems:board.currentState"]).toBe(4);
   });
 
   it("re-renders no card body for an unrelated board prop change", () => {

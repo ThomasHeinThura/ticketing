@@ -1413,7 +1413,14 @@ it("updates card labels when translations and language change", async () => {
     defaultNS: "common",
     resources: {
       en: {
-        common: {},
+        common: {
+          a11y: {
+            taskOpenAndDragHint: "Open $t(term:item)",
+            taskContainerLabel: "{{key}} {{title}}",
+          },
+        },
+        tasks: { assignee: { unassigned: "Unassigned" } },
+        term: { item: "task" },
         workItems: {
           list: { unavailable: "Hidden" },
           bulk: { selectItem: "Select {{key}}" },
@@ -1421,7 +1428,14 @@ it("updates card labels when translations and language change", async () => {
         },
       },
       fr: {
-        common: {},
+        common: {
+          a11y: {
+            taskOpenAndDragHint: "Ouvrir $t(term:item)",
+            taskContainerLabel: "{{key}} {{title}}",
+          },
+        },
+        tasks: { assignee: { unassigned: "Non attribué" } },
+        term: { item: "ticket" },
         workItems: {
           list: { unavailable: "Masqué" },
           bulk: { selectItem: "Choisir {{key}}" },
@@ -1432,9 +1446,12 @@ it("updates card labels when translations and language change", async () => {
   });
   bindBoardTranslationEvents(instance);
   translationMode.real = true;
+  const onOpenItem = vi.fn();
   board(
     {
       canSelect: true,
+      canTransition: true,
+      onOpenItem,
       workItems: [
         item("WLP-1", "s-open", "1", { unavailableFields: ["title"] }),
       ],
@@ -1445,6 +1462,22 @@ it("updates card labels when translations and language change", async () => {
   );
   expect(screen.getByRole("checkbox", { name: "Select WLP-1" })).toBeVisible();
   expect(screen.getAllByText("Hidden").length).toBeGreaterThan(0);
+  expect(screen.getByText("Open task")).toBeInTheDocument();
+  expect(screen.getByTitle("Unassigned")).toBeInTheDocument();
+  expect(screen.getByText("State Open")).toBeInTheDocument();
+  const focusedCard = document.querySelector<HTMLElement>(
+    '[data-task-id="id-WLP-1"]',
+  );
+  expect(focusedCard).not.toBeNull();
+  focusedCard?.focus();
+  act(() =>
+    instance.addResourceBundle("en", "term", { item: "case" }, true, true),
+  );
+  expect(screen.getByText("Open case")).toBeInTheDocument();
+  expect(focusedCard).toHaveFocus();
+  if (!focusedCard) throw new Error("Card missing");
+  fireEvent.keyDown(focusedCard, { key: "Enter", code: "Enter" });
+  expect(onOpenItem).toHaveBeenCalledWith("WLP-1");
   act(() =>
     instance.addResourceBundle(
       "en",
@@ -1460,4 +1493,7 @@ it("updates card labels when translations and language change", async () => {
   });
   expect(screen.getByRole("checkbox", { name: "Choisir WLP-1" })).toBeVisible();
   expect(screen.getAllByText("Masqué").length).toBeGreaterThan(0);
+  expect(screen.getByText("Ouvrir ticket")).toBeInTheDocument();
+  expect(screen.getByTitle("Non attribué")).toBeInTheDocument();
+  expect(screen.getByText("État Open")).toBeInTheDocument();
 });
