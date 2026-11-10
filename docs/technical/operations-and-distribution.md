@@ -70,7 +70,7 @@ else.
 **Postgres** — `pg_dump -Fc`, compressed, checksummed, encrypted at rest.
 
 ```bash
-scripts/backup.sh              # local dump, verification, attachment archive and checksums
+scripts/backup.sh              # legacy base Compose dump, attachment archive and checksums
 ```
 
 For an isolated restore drill, use `--project-name <name>` on both backup and restore.
@@ -84,10 +84,39 @@ notification and webhook settings therefore cannot contact external destinations
 `scripts/restore.sh --backup <dir> --confirm --mode isolated --project-name <name>`.
 Do not use the local or production proxy overlays for a scratch drill.
 
+The recovery scripts require Node.js (standard library only) as well as Docker. Backup
+writes into a private sibling directory, checks the complete database payload with
+`pg_restore --file=/dev/null`, validates the attachment tar and reserves a new destination
+with an exclusive mkdir.
+It links the two archives without replacement, then links `SHA256SUMS` last as the atomic
+completion record. An existing destination or destination lock is refused. Failed staging
+is removed; an interrupted publication can leave a private incomplete destination, which
+restore refuses and the operator must inspect before retrying. Restore copies the three
+required files into a private temporary
+directory and validates that copy before stopping the app or deleting anything. It requires
+exactly one checksum for each archive, a nonempty database listing and complete database
+decode, and a tar with valid headers, complete payloads and end markers. Only regular files
+and directories in POSIX/GNU tar are supported, including a single GNU `L` long-name record
+(up to the extractor's 4095-byte payload limit) immediately before its member. Links,
+devices, other extended/PAX headers, malformed or chained long names, regular-file trailing
+slashes, traversal, duplicate paths and trailing archives are refused. Existing two-archive
+backups
+remain supported when they meet these checks. The same verified copy is restored, so later
+changes to the input directory do not replace the bytes. Allow free local space for that
+copy. Attachment helpers have no network and are removed by their captured container ID.
+
+**Current limitation:** these commands retain their legacy Compose selection: backup uses
+base `compose.yml`; restore defaults to the retired local overlays and resolves `/app/data`.
+They are not a canonical local SIT or Technexus cutover workflow. Archive verification does
+not establish source quiescence, a consistent database/files snapshot, source/target volume
+separation, or successful isolated restoration. Those checks, explicit current target/layout
+selection and a real restore drill remain required before any clean-seed cutover. Do not
+run these legacy examples against canonical SIT by changing only the project name.
+
 A local archive/checksum alone does not establish encryption, offsite upload, retention or a `backup_run` record. Each remains a required independent result. Keep encryption keys separately as described below.
 
-The script verifies the dump is restorable — `pg_restore --list` at minimum — before
-uploading. A dump that cannot be listed will not restore, and finding that out during an
+The script checks the dump listing and decodes its contents before publication; an actual
+restore drill is still required before calling it restorable. Upload is a separate operation. A dump that cannot be listed will not restore, and finding that out during an
 incident is the worst possible time.
 
 **The attachment volume** (`storage.filesystem`, the shipped default) — `restic backup` of

@@ -4,7 +4,7 @@
 #
 #   scripts/restore.sh --backup <id-or-dir> --confirm [--mode local|production]
 #
-# Specification: docs/05-operations/backup-and-restore.md § Restore
+# Specification: docs/technical/operations-and-distribution.md § Restore
 #   1. Verify backup checksums and `pg_restore --list` before stopping anything
 #   2. Stop the application (`taskdesk`), leaving PostgreSQL running
 #   3. Restore PostgreSQL (`pg_restore --clean --if-exists --no-owner`)
@@ -127,18 +127,32 @@ esac
 
 dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
 
-printf '==> Verifying backup checksums in %s\n' "$TARGET_DIR"
-(
-  cd "$TARGET_DIR"
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum -c "$CHECKSUMS_FILE"
-  else
-    shasum -a 256 -c "$CHECKSUMS_FILE"
+command -v node >/dev/null 2>&1 || { printf 'xx Node.js is required for archive validation\n' >&2; exit 1; }
+umask 077
+# Validate a private copy and consume that same copy. Later changes to the input
+# directory cannot replace bytes between verification and destructive restore.
+SNAPSHOT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/taskdesk-restore.XXXXXXXX")"
+HELPER_ID=""
+cleanup() {
+  local result=$?
+  trap - EXIT
+  if [[ -n "$HELPER_ID" ]]; then
+    docker rm -f "$HELPER_ID" >/dev/null 2>&1 || result=1
   fi
-)
-
-printf '==> Verifying pg_restore --list on %s\n' "$DUMP_FILE"
-dc exec -T postgres pg_restore --list < "$DUMP_FILE" >/dev/null
+  rm -rf -- "$SNAPSHOT_DIR"
+  exit "$result"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+printf '==> Verifying backup checksums and complete attachment archive\n'
+node scripts/lib/recovery-archive.mjs snapshot "$TARGET_DIR" "$SNAPSHOT_DIR"
+DUMP_FILE="$SNAPSHOT_DIR/postgres.dump"
+ATTACHMENTS_TAR="$SNAPSHOT_DIR/attachments.tar"
+printf '==> Verifying database archive contents before stopping anything\n'
+dc exec -T postgres pg_restore --list < "$DUMP_FILE" > "$SNAPSHOT_DIR/archive.list"
+grep -q '^[^;[:space:]]' "$SNAPSHOT_DIR/archive.list" || { printf 'xx database archive has no entries\n' >&2; exit 1; }
+dc exec -T postgres pg_restore --file=/dev/null < "$DUMP_FILE" >/dev/null
 
 # Resolve before the first mutation. A missing/ambiguous/bind-mounted target fails closed.
 # shellcheck source=scripts/lib/compose-data-volume.sh
@@ -156,10 +170,15 @@ dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
 dc exec -T postgres pg_restore --single-transaction --no-owner --role="$POSTGRES_USER" -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$DUMP_FILE"
 
 printf '==> Step 3: Restoring attachment volume (%s)\n' "$DATA_VOLUME"
-docker run --rm -i \
+HELPER_ID="$(docker create --network none -i \
   -v "$DATA_VOLUME:/data" \
   alpine:3.22 \
-  sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && tar -C /data -xf - && chown -R 10001:10001 /data' < "$ATTACHMENTS_TAR"
+  sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && tar -C /data -xf - && chown -R 10001:10001 /data')"
+[[ "$HELPER_ID" =~ ^[a-f0-9]{64}$ ]] || { HELPER_ID=""; printf 'xx invalid restore helper ID\n' >&2; exit 1; }
+docker start -a -i "$HELPER_ID" < "$ATTACHMENTS_TAR"
+[[ "$(docker inspect --format '{{.State.ExitCode}}' "$HELPER_ID")" = 0 ]] || exit 1
+docker rm "$HELPER_ID" >/dev/null
+HELPER_ID=""
 
 printf '==> Step 4: Running migrations and role grants\n'
 dc run --rm migrate
@@ -171,7 +190,7 @@ printf '==> Step 6: Probing /api/public/health/ready\n'
 for _ in $(seq 1 30); do
   # The image ships no wget or curl; Node is the one HTTP client it has.
   if dc exec -T taskdesk node -e "fetch('http://127.0.0.1:${PORT}/api/public/health/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))" >/dev/null 2>&1; then
-    printf ' ok Restore verified and /api/public/health/ready is green\n'
+    printf ' ok Restore commands completed and /api/public/health/ready is green; operator verification is still required\n'
     exit 0
   fi
   sleep 2

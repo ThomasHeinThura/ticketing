@@ -4,7 +4,7 @@
 #
 #   scripts/backup.sh [--backup <id>] [--output-dir <dir>]
 #
-# Specification: docs/05-operations/backup-and-restore.md § Method
+# Specification: docs/technical/operations-and-distribution.md § Method
 #   1. Dump PostgreSQL with `pg_dump -Fc` (custom compressed format)
 #   2. Verify the dump is restorable with `pg_restore --list`
 #   3. Archive the attachment volume (`taskdesk-data` mounted at `/app/data`)
@@ -63,6 +63,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+command -v node >/dev/null 2>&1 || { printf 'xx Node.js is required for archive validation\n' >&2; exit 1; }
+[[ "$BACKUP_ID" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] || { printf 'xx invalid backup identifier\n' >&2; exit 1; }
+
 if [ -f "$ENV_FILE" ]; then
   # shellcheck disable=SC1090
   set -a; . "$ENV_FILE"; set +a
@@ -80,7 +83,29 @@ dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
 DATA_VOLUME="$(resolve_compose_data_volume)" || exit 1
 
 umask 077
-mkdir -p "$TARGET_DIR"
+# A backup is published only after every check passes. Existing backups are never reused.
+[[ ! -e "$TARGET_DIR" && ! -L "$TARGET_DIR" ]] || { printf 'xx backup destination already exists\n' >&2; exit 1; }
+mkdir -p "$(dirname "$TARGET_DIR")"
+LOCK_DIR="${TARGET_DIR}.lock"
+mkdir "$LOCK_DIR" || { printf 'xx backup destination is locked\n' >&2; exit 1; }
+STAGING_DIR=""
+HELPER_ID=""
+cleanup() {
+  local result=$?
+  trap - EXIT
+  if [[ -n "$HELPER_ID" ]]; then
+    docker rm -f "$HELPER_ID" >/dev/null 2>&1 || result=1
+  fi
+  [[ -z "$STAGING_DIR" ]] || rm -rf -- "$STAGING_DIR"
+  rmdir "$LOCK_DIR" || result=1
+  exit "$result"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+STAGING_DIR="$(mktemp -d "${TARGET_DIR}.partial.XXXXXXXX")"
+PUBLISHED_DIR="$TARGET_DIR"
+TARGET_DIR="$STAGING_DIR"
 
 DUMP_FILE="$TARGET_DIR/postgres.dump"
 ATTACHMENTS_TAR="$TARGET_DIR/attachments.tar"
@@ -90,29 +115,35 @@ printf '==> Dumping PostgreSQL database (%s) to %s\n' "$POSTGRES_DB" "$DUMP_FILE
 dc exec -T postgres \
   pg_dump -Fc -U "$POSTGRES_USER" "$POSTGRES_DB" > "$DUMP_FILE"
 
-printf '==> Verifying dump restorability with pg_restore --list\n'
-LIST_COUNT="$(dc exec -T postgres pg_restore --list < "$DUMP_FILE" | grep -c '^[^;]' || true)"
+printf '==> Verifying database archive listing and payload\n'
+dc exec -T postgres pg_restore --list < "$DUMP_FILE" > "$TARGET_DIR/archive.list"
+LIST_COUNT="$(grep -c '^[^;[:space:]]' "$TARGET_DIR/archive.list" || true)"
+rm -- "$TARGET_DIR/archive.list"
+# Listing only validates the table of contents; decode all data before publication.
+dc exec -T postgres pg_restore --file=/dev/null < "$DUMP_FILE" >/dev/null
 if [ "${LIST_COUNT:-0}" -le 0 ]; then
   printf 'xx pg_restore --list returned no archive entries for %s\n' "$DUMP_FILE" >&2
   exit 1
 fi
 
 printf '==> Archiving attachment volume (%s) to %s\n' "$DATA_VOLUME" "$ATTACHMENTS_TAR"
-docker run --rm \
+HELPER_ID="$(docker create --network none \
   -v "$DATA_VOLUME:/data:ro" \
-  alpine:3.22 \
-  tar -C /data -cf - . > "$ATTACHMENTS_TAR"
+  alpine:3.22 tar -C /data -cf - .)"
+[[ "$HELPER_ID" =~ ^[a-f0-9]{64}$ ]] || { HELPER_ID=""; printf 'xx invalid backup helper ID\n' >&2; exit 1; }
+docker start -a "$HELPER_ID" > "$ATTACHMENTS_TAR"
+# docker start -a does not reliably propagate the container exit status.
+[[ "$(docker inspect --format '{{.State.ExitCode}}' "$HELPER_ID")" = 0 ]] || exit 1
+docker rm "$HELPER_ID" >/dev/null
+HELPER_ID=""
 
-printf '==> Recording SHA-256 checksums\n'
-(
-  cd "$TARGET_DIR"
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum postgres.dump attachments.tar > "$CHECKSUMS_FILE"
-  else
-    shasum -a 256 postgres.dump attachments.tar > "$CHECKSUMS_FILE"
-  fi
-)
+printf '==> Validating attachment archive and recording SHA-256 checksums\n'
+node scripts/lib/recovery-archive.mjs tar "$ATTACHMENTS_TAR"
+node scripts/lib/recovery-archive.mjs checksums "$TARGET_DIR"
 chmod 0600 "$DUMP_FILE" "$ATTACHMENTS_TAR" "$CHECKSUMS_FILE"
-
-printf ' ok Backup complete: %s (pg_restore entries: %s)\n' "$TARGET_DIR" "$LIST_COUNT"
+node scripts/lib/recovery-archive.mjs publish "$TARGET_DIR" "$PUBLISHED_DIR"
+rm -rf -- "$STAGING_DIR"
+STAGING_DIR=""
+printf ' ok Backup archive complete: %s (pg_restore entries: %s)\n' "$PUBLISHED_DIR" "$LIST_COUNT"
+printf ' !! Archive checks do not establish a consistent snapshot or a successful restore drill.\n'
 printf ' !! Store TASKDESK_ENCRYPTION_KEY, TASKDESK_AUTH_SECRET, and TASKDESK_ENCRYPTION_KEY_PREVIOUS in your password manager separately from backups.\n'

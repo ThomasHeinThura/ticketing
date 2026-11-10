@@ -50,3 +50,12 @@ Use the pinned pnpm and Node 24+. Local SIT: one deployment using only `deploy/c
 Never report a test name, screenshot count or CI status as proof of a journey that did not run. Distinguish mocked from persisted evidence. Record unavailable tooling and external credentials as blockers. Keep performance thresholds; diagnose failures.
 
 Report maintenance: run `node --test scripts/report/build-data.test.mjs`, then `node scripts/report/build-data.mjs` and `node scripts/report/generate.mjs` from the repository root. The rebuild derives counts only from the per-ID requirement index, retains every maintained phase and its acceptance/review/evidence metadata, and preserves the report timestamp; update that timestamp explicitly when recording new evidence. Invalid input or contradictory locked counts fail before replacement. The optional historical audit-directory argument is accepted with a warning and ignored; it cannot promote verification. Review the data/HTML diff and open the report at desktop, tablet and mobile widths in both themes before committing.
+
+Recovery archive guard tests: `node --test scripts/ci/compose-recovery.test.mjs` uses only
+synthetic archives and a fake Docker executable. It checks checksum membership, complete
+archive validation before deletion, private restore copies, failed backup publication,
+existing destinations/locks and exact-ID attachment-helper cleanup. The cases include
+BusyBox GNU long names for application attachment keys, type/path/link/device ambiguities,
+and interrupted or raced publication with the checksum completion record written last. These tests do not
+establish canonical SIT/UAT target identity, quiescence, consistent snapshots, drill isolation
+or real restore acceptance; no cutover or reseed is accepted by this offline evidence.
