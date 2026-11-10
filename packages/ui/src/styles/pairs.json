@@ -3454,7 +3454,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/fieldset[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3469,7 +3469,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/fieldset[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3484,7 +3484,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/fieldset[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[2]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3499,7 +3499,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/fieldset[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[3]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3514,7 +3514,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3529,7 +3529,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3544,7 +3544,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[2]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3559,7 +3559,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[3]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3574,7 +3574,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[4]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3589,7 +3589,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3604,7 +3604,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3619,7 +3619,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[2]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3634,7 +3634,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[7]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3649,7 +3649,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/div[0]/label[3]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3664,7 +3664,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/section[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6297,7 +6297,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/fieldset[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6312,7 +6312,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/fieldset[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6327,7 +6327,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/fieldset[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[2]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6342,7 +6342,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/fieldset[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[3]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6357,7 +6357,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6372,7 +6372,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6387,7 +6387,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[2]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6402,7 +6402,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[3]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6417,7 +6417,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[4]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6432,7 +6432,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6447,7 +6447,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6462,7 +6462,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[2]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6477,7 +6477,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[7]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6492,7 +6492,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/div[0]/label[3]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6507,7 +6507,7 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/section[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -10904,10 +10904,10 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Button[1]::hover:text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/pending-actions.tsx::PendingActionsList::div[0]/p[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/pending-actions.tsx::PendingActionsList::div[0]/p[0]::text-destructive#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
 			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
@@ -11518,7 +11518,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -11534,7 +11534,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -11550,7 +11550,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -11566,7 +11566,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -11646,10 +11646,10 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Button[1]::hover:text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/pending-actions.tsx::PendingActionsList::div[0]/p[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/pending-actions.tsx::PendingActionsList::div[0]/p[0]::text-destructive#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
 			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
@@ -12260,7 +12260,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/article[0]/p[0]::text-destructive#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -12276,7 +12276,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -12292,7 +12292,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -12308,7 +12308,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -21198,7 +21198,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -24088,7 +24088,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -34517,14 +34517,14 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology.tsx::WorkspaceTerminology::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/work-item-templates.tsx::WorkItemTemplatesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -43392,7 +43392,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -43408,7 +43408,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -43424,7 +43424,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -43440,7 +43440,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -43456,7 +43456,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -43472,7 +43472,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -43488,7 +43488,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -43504,7 +43504,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -45247,7 +45247,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -46488,14 +46488,14 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology.tsx::WorkspaceTerminology::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/work-item-templates.tsx::WorkItemTemplatesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -55364,7 +55364,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -55380,7 +55380,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -55396,7 +55396,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -55412,7 +55412,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/article[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -55428,7 +55428,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -55444,7 +55444,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -55460,7 +55460,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -55476,7 +55476,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
 			},
@@ -57298,7 +57298,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -64110,7 +64110,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -69918,7 +69918,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -72898,6 +72898,42 @@
 				"chain": [
 					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:/_layout/_authenticated/dashboard/settings/workspace/request-types",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology.tsx:/_layout/_authenticated/dashboard/settings/workspace/terminology",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/time-activities.tsx:/_layout/_authenticated/dashboard/settings/workspace/time-activities",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -73776,7 +73812,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:/_layout/_authenticated/dashboard/settings/workspace/request-types",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -77899,6 +77935,42 @@
 				"chain": [
 					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:/_layout/_authenticated/dashboard/settings/workspace/request-types",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology.tsx:/_layout/_authenticated/dashboard/settings/workspace/terminology",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/settings-access.tsx:SettingsAccessError",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/time-activities.tsx:/_layout/_authenticated/dashboard/settings/workspace/time-activities",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -78777,7 +78849,7 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:/_layout/_authenticated/dashboard/settings/workspace/request-types",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -106418,7 +106490,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
@@ -107289,7 +107361,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesPage",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
