@@ -311,7 +311,6 @@ jobs:
       ARM64_SBOM_DIGEST: ${{ needs.scan.outputs.arm64_sbom_digest }}
       BUILD_ARTIFACT_ID: ${{ needs.build.outputs.artifact_id }}
       BUILD_ARTIFACT_DIGEST: ${{ needs.build.outputs.artifact_digest }}
-      PREDICATE_PATH: ${{ runner.temp }}/pr-candidate-predicate.json
     steps:
       # No candidate checkout, OCI layers, SBOM downloads, or source-provided tools.
       - name: Check out trusted signing policy only
@@ -330,6 +329,7 @@ jobs:
       - name: Validate and write exact candidate predicate
         env:
           GH_TOKEN: ${{ github.token }}
+          PREDICATE_PATH: ${{ runner.temp }}/pr-candidate-predicate.json
         run: node scripts/ci/pr-candidate-policy.mjs predicate
       - name: Log in only for candidate signing
         env:
@@ -338,6 +338,7 @@ jobs:
       - name: Sign and attest only the scanned candidate digest
         env:
           GH_TOKEN: ${{ github.token }}
+          PREDICATE_PATH: ${{ runner.temp }}/pr-candidate-predicate.json
         run: |
           set -Eeuo pipefail
           node scripts/ci/pr-candidate-policy.mjs revalidate-sign

@@ -644,4 +644,19 @@ describe("workflow trust boundaries (static, not a dispatched build)", () => {
     for (const use of workflow.matchAll(/uses: ([^\s#]+)/g))
       assert.match(use[1], /@[0-9a-f]{40}$/);
   });
+  it("keeps runner-only context out of job-level environment values", () => {
+    let jobEnvironmentCount = 0;
+    for (const section of workflow.split(/\n {2}[a-z][a-z-]*:\n/).slice(1)) {
+      const jobEnvironment = section.match(/^ {4}env:\n((?:^ {6}.*\n)*)/m);
+      if (!jobEnvironment) continue;
+      jobEnvironmentCount++;
+      assert.doesNotMatch(jobEnvironment[1], /\$\{\{\s*runner\./);
+    }
+    assert.ok(jobEnvironmentCount > 0);
+    assert.equal(
+      (signer.match(/^ {10}PREDICATE_PATH: \$\{\{ runner\.temp \}\}/gm) || [])
+        .length,
+      2,
+    );
+  });
 });
