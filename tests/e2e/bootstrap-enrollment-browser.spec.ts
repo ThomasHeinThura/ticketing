@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { fillSensitive, privateRequest } from "./helpers/fill-sensitive";
 import { totpForUri, withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -41,8 +42,11 @@ test("first administrator completes authenticator enrollment in the browser", as
             const page = await context.newPage();
             await page.goto(`${origin}/auth/sign-up`);
             await page.locator('input[name="name"]').fill("Bootstrap browser");
-            await page.locator('input[name="email"]').fill(email);
-            await page.locator('input[name="password"]').fill(password);
+            await fillSensitive(page.locator('input[name="email"]'), email);
+            await fillSensitive(
+              page.locator('input[name="password"]'),
+              password,
+            );
             const signup = page.waitForResponse(
               (r) =>
                 new URL(r.url()).pathname === "/api/auth/sign-up/email" &&
@@ -56,15 +60,17 @@ test("first administrator completes authenticator enrollment in the browser", as
             );
             expect(await state()).toEqual({ users: 1, completed: 0 });
             const protectedRequest = () =>
-              context.request.get(`${origin}/api/instance/users`, {
-                headers: { Origin: origin },
-              });
+              privateRequest(() =>
+                context.request.get(`${origin}/api/instance/users`, {
+                  headers: { Origin: origin },
+                }),
+              );
             const denied = await protectedRequest();
             expect(denied.status()).toBe(403);
             expect((await denied.text()).trim()).toBe(
               "mfa_enrollment_required",
             );
-            await page.locator("#factor-password").fill(password);
+            await fillSensitive(page.locator("#factor-password"), password);
             const enabled = page.waitForResponse(
               (r) =>
                 new URL(r.url()).pathname === "/api/auth/two-factor/enable" &&
@@ -147,7 +153,7 @@ test("first administrator completes authenticator enrollment in the browser", as
                 );
               }
             }
-            await code.fill(totpForUri(totpURI));
+            await fillSensitive(code, totpForUri(totpURI));
             const verified = page.waitForResponse(
               (r) =>
                 new URL(r.url()).pathname ===

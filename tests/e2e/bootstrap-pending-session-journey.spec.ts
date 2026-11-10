@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { fillSensitive, privateRequest } from "./helpers/fill-sensitive";
 import { totpForUri, withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -29,10 +30,12 @@ test("pending bootstrap stays restricted across navigation, reload and re-entry"
         try {
           const page = await context.newPage();
           const post = (path: string, data: object) =>
-            context.request.post(`${origin}${path}`, {
-              headers: { Origin: origin },
-              data,
-            });
+            privateRequest(() =>
+              context.request.post(`${origin}${path}`, {
+                headers: { Origin: origin },
+                data,
+              }),
+            );
           const signup = await post("/api/auth/sign-up/email", {
             name: "Bootstrap browser",
             email,
@@ -40,9 +43,10 @@ test("pending bootstrap stays restricted across navigation, reload and re-entry"
           });
           expect(signup.status()).toBe(200);
           const assertRestricted = async () => {
-            const response = await context.request.get(
-              `${origin}/api/instance/users`,
-              { headers: { Origin: origin } },
+            const response = await privateRequest(() =>
+              context.request.get(`${origin}/api/instance/users`, {
+                headers: { Origin: origin },
+              }),
             );
             expect(response.status()).toBe(403);
             expect((await response.text()).trim()).toBe(
@@ -94,7 +98,7 @@ test("pending bootstrap stays restricted across navigation, reload and re-entry"
           await assertRestricted();
           await page.goto(`${origin}${security}`);
           await assertMandatory();
-          await page.locator("#factor-password").fill(password);
+          await fillSensitive(page.locator("#factor-password"), password);
           const enable = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname ===
