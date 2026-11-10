@@ -1,0 +1,370 @@
+# Local SIT candidates have a separate package, identity and predicate. This
+# workflow does not release, promote a channel tag, deploy, or alter release.yml.
+name: Signed PR candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: Same-repository feature branch name (without refs/heads/)
+        required: true
+        type: string
+      source_sha:
+        description: Exact full lowercase SHA at that feature branch head
+        required: true
+        type: string
+      target_main_sha:
+        description: Exact full lowercase main SHA supplying this trusted workflow
+        required: true
+        type: string
+      pull_request:
+        description: Optional open same-repository PR number targeting main
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: taskdesk-pr-candidate-${{ inputs.source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: resolve and bind immutable candidate inputs
+    if: github.repository == 'ThomasHeinThura/ticketing' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      source_ref: ${{ steps.policy.outputs.source_ref }}
+      source_sha: ${{ steps.policy.outputs.source_sha }}
+      target_main_sha: ${{ steps.policy.outputs.target_main_sha }}
+      policy_sha: ${{ steps.policy.outputs.policy_sha }}
+      pull_request: ${{ steps.policy.outputs.pull_request }}
+      image: ${{ steps.policy.outputs.image }}
+      tag: ${{ steps.policy.outputs.tag }}
+      source_date: ${{ steps.policy.outputs.source_date }}
+      run_id: ${{ steps.policy.outputs.run_id }}
+      run_attempt: ${{ steps.policy.outputs.run_attempt }}
+    steps:
+      - name: Check out trusted dispatch policy only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up policy Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '24'
+      - name: Resolve refs once and validate exact source and base
+        id: policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_SOURCE_BRANCH: ${{ inputs.source_branch }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+          INPUT_TARGET_MAIN_SHA: ${{ inputs.target_main_sha }}
+          INPUT_PULL_REQUEST: ${{ inputs.pull_request }}
+        run: node scripts/ci/pr-candidate-policy.mjs resolve
+
+  build:
+    name: build unprivileged multiarch OCI candidate
+    needs: resolve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    # No registry login, secrets, packages write or OIDC in the source-build job.
+    permissions:
+      contents: read
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      artifact_id: ${{ steps.artifact.outputs.artifact-id }}
+      artifact_digest: ${{ steps.artifact.outputs.artifact-digest }}
+      run_id: ${{ steps.attempt.outputs.run_id }}
+      run_attempt: ${{ steps.attempt.outputs.run_attempt }}
+    steps:
+      - name: Refuse partial reruns before checking out candidate source
+        id: attempt
+        env:
+          RESOLVED_RUN_ID: ${{ needs.resolve.outputs.run_id }}
+          RESOLVED_RUN_ATTEMPT: ${{ needs.resolve.outputs.run_attempt }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$RESOLVED_RUN_ID" == "$GITHUB_RUN_ID" && "$RESOLVED_RUN_ATTEMPT" == "$GITHUB_RUN_ATTEMPT" ]] || {
+            echo "::error::Candidate run attempt changed; rerun all jobs."
+            exit 1
+          }
+          echo "run_id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "run_attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+      - name: Check out exact resolved source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.resolve.outputs.source_sha }}
+          persist-credentials: false
+      - name: Set up QEMU with release-pinned binfmt
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        with:
+          image: tonistiigi/binfmt:qemu-v10.0.4@sha256:8f58e6214f4cc9dc83ce8f5acad1ece508eb6b20e696a8c1e9f274481982c541
+          cache-image: false
+      - name: Set up isolated release-pinned BuildKit
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          driver-opts: image=moby/buildkit:v0.25.2@sha256:0f63d66f8d2de0bd16438284831a3e9ee6ca7cd57b6eb3ed6e38a7a456590fa7
+      - name: Build shipping Dockerfile to an OCI artifact without publication
+        id: build
+        timeout-minutes: 35
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: 'false'
+        with:
+          context: .
+          github-token: ''
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          outputs: type=oci,dest=${{ runner.temp }}/candidate-layout,tar=false
+          build-args: |
+            VERSION=0.0.0-pr-candidate
+            GIT_SHA=${{ needs.resolve.outputs.source_sha }}
+            BUILD_TIME=${{ needs.resolve.outputs.source_date }}
+            VITE_API_URL=
+            NODE_IMAGE=node:24.20.0-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e
+          provenance: mode=max
+          sbom: true
+      - name: Upload OCI directory for trusted non-executing publication
+        id: artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pr-candidate-oci-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/candidate-layout/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  scan:
+    name: validate OCI, scan both platforms and generate SBOMs before publication
+    needs: [resolve, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      digest: ${{ steps.prepare.outputs.digest }}
+      amd64_digest: ${{ steps.prepare.outputs.amd64_digest }}
+      arm64_digest: ${{ steps.prepare.outputs.arm64_digest }}
+      amd64_sbom_digest: ${{ steps.sboms.outputs.amd64_sbom_digest }}
+      arm64_sbom_digest: ${{ steps.sboms.outputs.arm64_sbom_digest }}
+      run_id: ${{ steps.prepare.outputs.run_id }}
+      run_attempt: ${{ steps.prepare.outputs.run_attempt }}
+    steps:
+      - name: Check out trusted policy without candidate source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up policy Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '24'
+      - name: Download the exact build artifact from this run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: ${{ runner.temp }}/candidate-layout
+          merge-multiple: true
+      - name: Validate all OCI hashes and prepare exact per-platform scan views
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESOLVED_RUN_ID: ${{ needs.resolve.outputs.run_id }}
+          RESOLVED_RUN_ATTEMPT: ${{ needs.resolve.outputs.run_attempt }}
+          BUILD_RUN_ID: ${{ needs.build.outputs.run_id }}
+          BUILD_RUN_ATTEMPT: ${{ needs.build.outputs.run_attempt }}
+          SOURCE_REF: ${{ needs.resolve.outputs.source_ref }}
+          SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+          TARGET_MAIN_SHA: ${{ needs.resolve.outputs.target_main_sha }}
+          POLICY_SHA: ${{ needs.resolve.outputs.policy_sha }}
+          PULL_REQUEST: ${{ needs.resolve.outputs.pull_request }}
+          CANDIDATE_IMAGE: ${{ needs.resolve.outputs.image }}
+          CANDIDATE_DIGEST: ${{ needs.build.outputs.digest }}
+          LAYOUT_DIR: ${{ runner.temp }}/candidate-layout
+          SCAN_DIR: ${{ runner.temp }}/candidate-scan
+        run: node scripts/ci/pr-candidate-scan.mjs
+      - name: Install release-pinned Trivy with checksum verification
+        env:
+          TRIVY_VERSION: 0.73.0
+          TRIVY_SHA256: 2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b
+        run: |
+          set -Eeuo pipefail
+          archive="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${archive}"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+      - name: Scan each immutable platform and generate CycloneDX SBOMs
+        id: sboms
+        env:
+          SCAN_DIR: ${{ runner.temp }}/candidate-scan
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/candidate-sboms"
+          for architecture in amd64 arm64; do
+            trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --ignorefile /dev/null --scanners vuln --input "$SCAN_DIR/$architecture"
+            sbom="$RUNNER_TEMP/candidate-sboms/linux-${architecture}.cdx.json"
+            trivy image --format cyclonedx --output "$sbom" --input "$SCAN_DIR/$architecture"
+            test -s "$sbom"
+            echo "${architecture}_sbom_digest=sha256:$(sha256sum "$sbom" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+          done
+      - name: Upload candidate SBOM evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pr-candidate-sboms-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/candidate-sboms/*.cdx.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: publish scanned graph to its unique candidate package
+    needs: [resolve, build, scan]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      packages: write
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
+      run_id: ${{ steps.publish.outputs.run_id }}
+      run_attempt: ${{ steps.publish.outputs.run_attempt }}
+    steps:
+      - name: Check out trusted publisher policy only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up policy Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '24'
+      - name: Download the same exact scanned artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: ${{ runner.temp }}/candidate-layout
+          merge-multiple: true
+      - name: Revalidate and publish only after both scans and SBOMs passed
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESOLVED_RUN_ID: ${{ needs.resolve.outputs.run_id }}
+          RESOLVED_RUN_ATTEMPT: ${{ needs.resolve.outputs.run_attempt }}
+          BUILD_RUN_ID: ${{ needs.build.outputs.run_id }}
+          BUILD_RUN_ATTEMPT: ${{ needs.build.outputs.run_attempt }}
+          SOURCE_REF: ${{ needs.resolve.outputs.source_ref }}
+          SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+          TARGET_MAIN_SHA: ${{ needs.resolve.outputs.target_main_sha }}
+          POLICY_SHA: ${{ needs.resolve.outputs.policy_sha }}
+          PULL_REQUEST: ${{ needs.resolve.outputs.pull_request }}
+          CANDIDATE_IMAGE: ${{ needs.resolve.outputs.image }}
+          GHCR_TOKEN: ${{ github.token }}
+          SCAN_RUN_ID: ${{ needs.scan.outputs.run_id }}
+          SCAN_RUN_ATTEMPT: ${{ needs.scan.outputs.run_attempt }}
+          CANDIDATE_DIGEST: ${{ needs.scan.outputs.digest }}
+          LAYOUT_DIR: ${{ runner.temp }}/candidate-layout
+        run: node scripts/ci/pr-candidate-publish.mjs
+
+  sign:
+    name: sign local-only candidate with isolated candidate identity
+    needs: [resolve, build, scan, publish]
+    if: github.repository == 'ThomasHeinThura/ticketing' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      pull-requests: read
+    env:
+      RESOLVED_RUN_ID: ${{ needs.resolve.outputs.run_id }}
+      RESOLVED_RUN_ATTEMPT: ${{ needs.resolve.outputs.run_attempt }}
+      BUILD_RUN_ID: ${{ needs.build.outputs.run_id }}
+      BUILD_RUN_ATTEMPT: ${{ needs.build.outputs.run_attempt }}
+      SCAN_RUN_ID: ${{ needs.scan.outputs.run_id }}
+      SCAN_RUN_ATTEMPT: ${{ needs.scan.outputs.run_attempt }}
+      PUBLISH_RUN_ID: ${{ needs.publish.outputs.run_id }}
+      PUBLISH_RUN_ATTEMPT: ${{ needs.publish.outputs.run_attempt }}
+      SOURCE_REF: ${{ needs.resolve.outputs.source_ref }}
+      SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+      TARGET_MAIN_SHA: ${{ needs.resolve.outputs.target_main_sha }}
+      POLICY_SHA: ${{ needs.resolve.outputs.policy_sha }}
+      PULL_REQUEST: ${{ needs.resolve.outputs.pull_request }}
+      CANDIDATE_IMAGE: ${{ needs.resolve.outputs.image }}
+      CANDIDATE_DIGEST: ${{ needs.publish.outputs.digest }}
+      AMD64_DIGEST: ${{ needs.scan.outputs.amd64_digest }}
+      ARM64_DIGEST: ${{ needs.scan.outputs.arm64_digest }}
+      AMD64_SBOM_DIGEST: ${{ needs.scan.outputs.amd64_sbom_digest }}
+      ARM64_SBOM_DIGEST: ${{ needs.scan.outputs.arm64_sbom_digest }}
+      BUILD_ARTIFACT_ID: ${{ needs.build.outputs.artifact_id }}
+      BUILD_ARTIFACT_DIGEST: ${{ needs.build.outputs.artifact_digest }}
+      PREDICATE_PATH: ${{ runner.temp }}/pr-candidate-predicate.json
+    steps:
+      # No candidate checkout, OCI layers, SBOM downloads, or source-provided tools.
+      - name: Check out trusted signing policy only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up policy Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '24'
+      - name: Install release-pinned cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+        with:
+          cosign-release: v3.0.5
+      - name: Validate and write exact candidate predicate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/pr-candidate-policy.mjs predicate
+      - name: Log in only for candidate signing
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Sign and attest only the scanned candidate digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          node scripts/ci/pr-candidate-policy.mjs revalidate-sign
+          tag="candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-sha-${SOURCE_SHA}"
+          run_url="https://github.com/ThomasHeinThura/ticketing/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}"
+          cosign sign --yes \
+            --annotations "purpose=local-sit-pr-candidate" \
+            --annotations "source_sha=${SOURCE_SHA}" \
+            --annotations "tag=${tag}" \
+            --annotations "workflow_run=${run_url}" \
+            "${CANDIDATE_IMAGE}@${CANDIDATE_DIGEST}"
+          node scripts/ci/pr-candidate-policy.mjs revalidate-sign
+          cosign attest --yes \
+            --type https://github.com/ThomasHeinThura/ticketing/attestations/pr-candidate/v1 \
+            --predicate "$PREDICATE_PATH" "${CANDIDATE_IMAGE}@${CANDIDATE_DIGEST}"
+      - name: Verify with the local candidate verifier before reporting issuance
+        run: |
+          node --input-type=module <<'NODE'
+          import { verifyPrCandidate } from './deploy/pr-candidate-attestation.mjs';
+          import { expectedFromEnv } from './scripts/ci/pr-candidate-policy.mjs';
+          verifyPrCandidate(expectedFromEnv(process.env));
+          NODE
+      - name: Record local-only immutable candidate coordinates
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          import { candidatePredicate } from './scripts/ci/pr-candidate-policy.mjs';
+          const p = candidatePredicate(process.env);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Local SIT PR candidate only; productionEligible=false.\n\nImage: \`${p.image.name}@${p.image.digest}\`\n\nSource: \`${p.sourceRef}\` at \`${p.sourceCommit}\`\n\nMain/policy: \`${p.targetMainCommit}\`\n\nRun: ${p.run.url}\n\nPR: ${p.pullRequest ?? 'not supplied'}\n\nNo deployment or merge was performed.\n`);
+          NODE
