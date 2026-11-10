@@ -793,6 +793,28 @@ type DiagnosticCapture = {
     afterMarkPerformanceNowMs: number;
   }>;
   boundary: DiagnosticBoundary;
+  reactCommits: ReactCommitObservation | null;
+};
+
+type ReactCommitObservation = {
+  interpretation: string;
+  rendererCount: number;
+  droppedCommits: number;
+  commits: Array<{
+    atPerformanceNowMs: number;
+    observerDurationMs: number;
+    priority: number | null;
+    visitedFibers: number;
+    boardCards: number;
+    groupedLists: number;
+    truncated: boolean;
+    flaggedFibers: Array<{
+      name: string;
+      flags: number;
+      propsIdentityChanged: boolean;
+      stateIdentityChanged: boolean;
+    }>;
+  }>;
 };
 
 type DiagnosticBoundary = {
@@ -828,6 +850,7 @@ function createRawCaptureArtifact(
       network: capture.network,
       browserPerformance: capture.browserPerformance,
       clockMarks: capture.clockMarks,
+      reactCommits: capture.reactCommits,
       boundary: capture.boundary,
       traceCpuProfiles: capture.traceCpuProfiles.map((profile) => ({
         nodes: sanitizeCpuProfileNodes([...profile.nodes.values()], ORIGIN),
@@ -869,6 +892,7 @@ async function withDiagnosticProfile(
   const traceProfileState = createTraceProfileState();
   const profileIngestionCounts = new Map<string, number>();
   let clockMarks: DiagnosticCapture["clockMarks"] = [];
+  let reactCommits: ReactCommitObservation | null = null;
   cdp.on("Tracing.dataCollected", ({ value }) => {
     for (const event of value ?? []) {
       if (event.name === "Profile" || event.name === "ProfileChunk") {
@@ -950,118 +974,220 @@ async function withDiagnosticProfile(
     workflowCapabilities: name.startsWith("task-") || name.startsWith("board "),
     boardProject: name.startsWith("board "),
   });
-  await page.addInitScript(() => {
-    const allowedMarks = new Set([
-      "document-start",
-      "initial-lcp",
-      "state-start",
-      "state-paint",
-      "assignment-start",
-      "assignment-paint",
-      "palette-start",
-      "palette-paint",
-      "board-paint",
-      "route-start",
-      "route-paint",
-    ]);
-    const marks: Array<{
-      name: string;
-      documentId: string;
-      boundaryPerformanceNowMs: number;
-      beforeMarkPerformanceNowMs: number;
-      afterMarkPerformanceNowMs: number;
-    }> = [];
-    const documentId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-      .map((value) => value.toString(16).padStart(2, "0"))
-      .join("");
-    const mark = (name: string, boundaryPerformanceNowMs: number) => {
-      if (!allowedMarks.has(name) || !Number.isFinite(boundaryPerformanceNowMs))
-        return;
-      const beforeMarkPerformanceNowMs = performance.now();
-      console.timeStamp(`g11-diagnostic:${documentId}:${name}`);
-      const afterMarkPerformanceNowMs = performance.now();
-      marks.push({
-        name,
-        documentId,
-        boundaryPerformanceNowMs,
-        beforeMarkPerformanceNowMs,
-        afterMarkPerformanceNowMs,
-      });
-    };
-    (
-      window as Window & { __g11DiagnosticClockMarks?: typeof marks }
-    ).__g11DiagnosticClockMarks = marks;
-    const metrics = (
-      window as Window & {
-        __g11Metrics?: Record<string, number>;
-      }
-    ).__g11Metrics;
-    if (metrics) {
-      mark("document-start", metrics.documentStart);
-      for (const [key, startKey, suffix] of [
-        ["stateStart", "", "state-start"],
-        ["statePaint", "stateStart", "state-paint"],
-        ["assignmentStart", "", "assignment-start"],
-        ["assignmentPaint", "assignmentStart", "assignment-paint"],
-        ["paletteStart", "", "palette-start"],
-        ["palettePaint", "paletteStart", "palette-paint"],
-        ["boardPaint", "documentStart", "board-paint"],
-        ["routeStart", "", "route-start"],
-        ["routePaint", "routeStart", "route-paint"],
-      ] as const) {
-        const descriptor = Object.getOwnPropertyDescriptor(metrics, key);
-        if (!descriptor || !("value" in descriptor))
-          throw new Error(
-            `The canonical ${key} recorder field is unavailable.`,
-          );
-        let current = descriptor.value;
-        Object.defineProperty(metrics, key, {
-          configurable: descriptor.configurable,
-          enumerable: descriptor.enumerable,
-          get: () => current,
-          set: (next: number) => {
-            current = next;
-            if (typeof next !== "number" || next <= 0) return;
-            const boundaryValue = startKey ? metrics[startKey] + next : next;
-            mark(suffix, boundaryValue);
+  // DevTools is installed before React loads and only in supplementary navigation
+  // captures. This observer changes timing, so it must never supply a G11 verdict.
+  await page.addInitScript(
+    (observeCommits) => {
+      if (observeCommits) {
+        type Fiber = {
+          child?: Fiber | null;
+          sibling?: Fiber | null;
+          alternate?: Fiber | null;
+          type?: { name?: string; displayName?: string } | string | null;
+          flags?: number;
+          memoizedProps?: unknown;
+          memoizedState?: unknown;
+        };
+        const observations: ReactCommitObservation = {
+          interpretation:
+            "Flagged fibers are context, not evidence of a render or its cause; flags can persist on bailed-out fibers. Identity comparisons do not establish why a commit happened. Names may be minified. Each traversal and row list is bounded; truncation and dropped commits are reported. Observation ends 500 ms after the paint or populated-list wait and adds observer overhead.",
+          rendererCount: 0,
+          droppedCommits: 0,
+          commits: [],
+        };
+        (
+          window as Window & { __g11ReactCommits?: ReactCommitObservation }
+        ).__g11ReactCommits = observations;
+        const renderers = new Map<number, unknown>();
+        (
+          window as Window & { __REACT_DEVTOOLS_GLOBAL_HOOK__?: unknown }
+        ).__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+          supportsFiber: true,
+          renderers,
+          inject(renderer: unknown) {
+            const id = ++observations.rendererCount;
+            renderers.set(id, renderer);
+            return id;
           },
+          onCommitFiberRoot(
+            _id: number,
+            root: { current?: Fiber },
+            priority: number,
+          ) {
+            if (observations.commits.length >= 100) {
+              observations.droppedCommits++;
+              return;
+            }
+            const started = performance.now();
+            const stack: Fiber[] = root.current ? [root.current] : [];
+            const flaggedFibers: ReactCommitObservation["commits"][number]["flaggedFibers"] =
+              [];
+            let visitedFibers = 0;
+            let boardCards = 0;
+            let groupedLists = 0;
+            while (stack.length && visitedFibers < 20000) {
+              const fiber = stack.pop();
+              if (!fiber) break;
+              visitedFibers++;
+              if (fiber.sibling) stack.push(fiber.sibling);
+              if (fiber.child) stack.push(fiber.child);
+              const props = fiber.memoizedProps as {
+                "data-testid"?: unknown;
+              } | null;
+              if (props?.["data-testid"] === "work-item-board-card")
+                boardCards++;
+              if (props?.["data-testid"] === "work-item-list-populated")
+                groupedLists++;
+              const type = fiber.type;
+              const name =
+                typeof type === "function" || (type && typeof type === "object")
+                  ? type.displayName || type.name
+                  : undefined;
+              const flags = fiber.flags ?? 0;
+              if (name && flags && flaggedFibers.length < 1000) {
+                flaggedFibers.push({
+                  name: /^[\w$.-]{1,80}$/.test(name) ? name : "(other)",
+                  flags,
+                  propsIdentityChanged:
+                    !!fiber.alternate &&
+                    fiber.memoizedProps !== fiber.alternate.memoizedProps,
+                  stateIdentityChanged:
+                    !!fiber.alternate &&
+                    fiber.memoizedState !== fiber.alternate.memoizedState,
+                });
+              }
+            }
+            observations.commits.push({
+              atPerformanceNowMs: started,
+              observerDurationMs: performance.now() - started,
+              priority: Number.isFinite(priority) ? priority : null,
+              visitedFibers,
+              boardCards,
+              groupedLists,
+              truncated: stack.length > 0 || flaggedFibers.length === 1000,
+              flaggedFibers,
+            });
+          },
+          onCommitFiberUnmount() {},
+        };
+      }
+      const allowedMarks = new Set([
+        "document-start",
+        "initial-lcp",
+        "state-start",
+        "state-paint",
+        "assignment-start",
+        "assignment-paint",
+        "palette-start",
+        "palette-paint",
+        "board-paint",
+        "route-start",
+        "route-paint",
+      ]);
+      const marks: Array<{
+        name: string;
+        documentId: string;
+        boundaryPerformanceNowMs: number;
+        beforeMarkPerformanceNowMs: number;
+        afterMarkPerformanceNowMs: number;
+      }> = [];
+      const documentId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+        .map((value) => value.toString(16).padStart(2, "0"))
+        .join("");
+      const mark = (name: string, boundaryPerformanceNowMs: number) => {
+        if (
+          !allowedMarks.has(name) ||
+          !Number.isFinite(boundaryPerformanceNowMs)
+        )
+          return;
+        const beforeMarkPerformanceNowMs = performance.now();
+        console.timeStamp(`g11-diagnostic:${documentId}:${name}`);
+        const afterMarkPerformanceNowMs = performance.now();
+        marks.push({
+          name,
+          documentId,
+          boundaryPerformanceNowMs,
+          beforeMarkPerformanceNowMs,
+          afterMarkPerformanceNowMs,
         });
-      }
-    }
-    const state = {
-      lcp: null as {
-        startTime: number;
-        element: string;
-        textLength: number;
-      } | null,
-      longTasks: [] as Array<{ start: number; duration: number }>,
-    };
-    window.__g11InitialDiagnostic = state;
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        const candidate = entry as PerformanceEntry & {
-          element?: Element | null;
-        };
-        state.lcp = {
-          startTime: candidate.startTime,
-          element: candidate.element?.tagName.toLowerCase() ?? "no-element",
-          textLength: candidate.element?.textContent?.trim().length ?? 0,
-        };
-        mark("initial-lcp", candidate.startTime);
-      }
-    }).observe({ type: "largest-contentful-paint", buffered: true });
-    try {
-      new PerformanceObserver((list) => {
-        for (const entry of list.getEntries())
-          state.longTasks.push({
-            start: entry.startTime,
-            duration: entry.duration,
+      };
+      (
+        window as Window & { __g11DiagnosticClockMarks?: typeof marks }
+      ).__g11DiagnosticClockMarks = marks;
+      const metrics = (
+        window as Window & {
+          __g11Metrics?: Record<string, number>;
+        }
+      ).__g11Metrics;
+      if (metrics) {
+        mark("document-start", metrics.documentStart);
+        for (const [key, startKey, suffix] of [
+          ["stateStart", "", "state-start"],
+          ["statePaint", "stateStart", "state-paint"],
+          ["assignmentStart", "", "assignment-start"],
+          ["assignmentPaint", "assignmentStart", "assignment-paint"],
+          ["paletteStart", "", "palette-start"],
+          ["palettePaint", "paletteStart", "palette-paint"],
+          ["boardPaint", "", "board-paint"],
+          ["routeStart", "", "route-start"],
+          ["routePaint", "routeStart", "route-paint"],
+        ] as const) {
+          const descriptor = Object.getOwnPropertyDescriptor(metrics, key);
+          if (!descriptor || !("value" in descriptor))
+            throw new Error(
+              `The canonical ${key} recorder field is unavailable.`,
+            );
+          let current = descriptor.value;
+          Object.defineProperty(metrics, key, {
+            configurable: descriptor.configurable,
+            enumerable: descriptor.enumerable,
+            get: () => current,
+            set: (next: number) => {
+              current = next;
+              if (typeof next !== "number" || next <= 0) return;
+              const boundaryValue = startKey ? metrics[startKey] + next : next;
+              mark(suffix, boundaryValue);
+            },
           });
-      }).observe({ type: "longtask", buffered: true });
-    } catch {
-      // Long-task observation is browser-dependent; CPUProfile and LCP remain required.
-    }
-  });
+        }
+      }
+      const state = {
+        lcp: null as {
+          startTime: number;
+          element: string;
+          textLength: number;
+        } | null,
+        longTasks: [] as Array<{ start: number; duration: number }>,
+      };
+      window.__g11InitialDiagnostic = state;
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          const candidate = entry as PerformanceEntry & {
+            element?: Element | null;
+          };
+          state.lcp = {
+            startTime: candidate.startTime,
+            element: candidate.element?.tagName.toLowerCase() ?? "no-element",
+            textLength: candidate.element?.textContent?.trim().length ?? 0,
+          };
+          mark("initial-lcp", candidate.startTime);
+        }
+      }).observe({ type: "largest-contentful-paint", buffered: true });
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries())
+            state.longTasks.push({
+              start: entry.startTime,
+              duration: entry.duration,
+            });
+        }).observe({ type: "longtask", buffered: true });
+      } catch {
+        // Long-task observation is browser-dependent; CPUProfile and LCP remain required.
+      }
+    },
+    name === "initial work-list navigation to LCP" ||
+      name === "board navigation to all 200 cards rendered",
+  );
 
   try {
     if (throttled) {
@@ -1089,6 +1215,28 @@ async function withDiagnosticProfile(
     });
     console.info(`G11 diagnostic phase started: ${name}`);
     boundary = await visit(page);
+    if (
+      name === "initial work-list navigation to LCP" ||
+      name === "board navigation to all 200 cards rendered"
+    ) {
+      // The initial LCP can precede the grouped list; retain that boundary while
+      // observing the subsequent populated-list commits in the same document.
+      if (name === "initial work-list navigation to LCP") {
+        await expect(
+          page.getByTestId("work-item-list-populated").getByRole("button", {
+            name: "Backlog 500",
+            exact: true,
+          }),
+        ).toBeVisible({ timeout: 30_000 });
+      }
+      // Observe post-paint commits too; the canonical paint boundary itself is unchanged.
+      await page.waitForTimeout(500);
+      reactCommits = await page.evaluate(
+        () =>
+          (window as Window & { __g11ReactCommits?: ReactCommitObservation })
+            .__g11ReactCommits ?? null,
+      );
+    }
     clockMarks = await page.evaluate(
       () =>
         (
@@ -1142,6 +1290,7 @@ async function withDiagnosticProfile(
     ),
     clockMarks,
     boundary,
+    reactCommits,
   };
 }
 
@@ -1658,6 +1807,10 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     route: WORK_LIST_PATH,
     profileWindows,
     initialDocument: initial.metrics,
+    reactCommitsByWindow: captures.map(({ name, reactCommits }) => ({
+      name,
+      reactCommits,
+    })),
     networkByWindow: captures.map(({ name, network }) => ({ name, network })),
   };
   await mkdir(RESULT_DIR, { recursive: true });
