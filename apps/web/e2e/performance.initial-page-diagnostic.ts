@@ -299,6 +299,95 @@ function inclusiveTraceFrames(
   );
 }
 
+function alignmentEvidence(capture: DiagnosticCapture) {
+  const boundary = capture.boundary;
+  if (!boundary) return null;
+  const marks = capture.clockMarks.filter(
+    (mark) =>
+      mark.name === boundary.startMark || mark.name === boundary.endMark,
+  );
+  const traceMarks = capture.browserPerformance.timelineEvents
+    .filter(
+      (event) =>
+        (event.mark === boundary.startMark ||
+          event.mark === boundary.endMark) &&
+        marks.some(
+          (mark) =>
+            mark.name === event.mark &&
+            mark.documentId === event.markDocumentId,
+        ),
+    )
+    .map(({ mark, markDocumentId, startMicroseconds }) => ({
+      mark,
+      markDocumentId,
+      startMicroseconds,
+    }));
+  const candidates = marks
+    .filter((mark) => mark.name === boundary.startMark)
+    .flatMap((start) =>
+      marks
+        .filter(
+          (end) =>
+            end.name === boundary.endMark &&
+            end.documentId === start.documentId,
+        )
+        .flatMap((end) =>
+          traceMarks
+            .filter(
+              (event) =>
+                event.mark === start.name &&
+                event.markDocumentId === start.documentId,
+            )
+            .flatMap((startEvent) =>
+              traceMarks
+                .filter(
+                  (event) =>
+                    event.mark === end.name &&
+                    event.markDocumentId === end.documentId,
+                )
+                .map((endEvent) => {
+                  const startMidpoint =
+                    (start.beforeMarkPerformanceNowMs +
+                      start.afterMarkPerformanceNowMs) /
+                    2;
+                  const endMidpoint =
+                    (end.beforeMarkPerformanceNowMs +
+                      end.afterMarkPerformanceNowMs) /
+                    2;
+                  const elapsedPerformanceMs = endMidpoint - startMidpoint;
+                  const elapsedTraceMicroseconds =
+                    endEvent.startMicroseconds - startEvent.startMicroseconds;
+                  const startBracketWidthMs =
+                    start.afterMarkPerformanceNowMs -
+                    start.beforeMarkPerformanceNowMs;
+                  const endBracketWidthMs =
+                    end.afterMarkPerformanceNowMs -
+                    end.beforeMarkPerformanceNowMs;
+                  return {
+                    documentId: start.documentId,
+                    startTraceMicroseconds: startEvent.startMicroseconds,
+                    endTraceMicroseconds: endEvent.startMicroseconds,
+                    elapsedPerformanceMs,
+                    elapsedTraceMicroseconds,
+                    startBracketWidthMs,
+                    endBracketWidthMs,
+                    bracketWidthToElapsedRatio:
+                      elapsedPerformanceMs !== 0
+                        ? (startBracketWidthMs + endBracketWidthMs) /
+                          elapsedPerformanceMs
+                        : null,
+                    microsecondsPerMillisecond:
+                      elapsedPerformanceMs !== 0
+                        ? elapsedTraceMicroseconds / elapsedPerformanceMs
+                        : null,
+                  };
+                }),
+            ),
+        ),
+    );
+  return { marks, traceMarks, candidates };
+}
+
 function alignBoundaryToTrace(capture: DiagnosticCapture) {
   const boundary = capture.boundary;
   if (!boundary) return null;
@@ -1406,11 +1495,13 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ]),
   );
   const build = await getBuildIdentity(profileAssetNames);
+  let activeCapture: DiagnosticCapture | undefined;
   const profileWindows = await aggregateDiagnosticCapturesWithFailureReceipt(
     RAW_CAPTURE_DIR,
     captures,
     build,
     (capture) => {
+      activeCapture = capture;
       const { name, browserPerformance } = capture;
       const alignment = alignBoundaryToTrace(capture);
       if (!alignment)
@@ -1494,7 +1585,50 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         },
       };
     },
-  );
+  ).catch(async (error: unknown) => {
+    if (activeCapture) {
+      try {
+        const captureIndex = captures.indexOf(activeCapture) + 1;
+        const failure = {
+          schemaVersion: 1,
+          diagnosticOnly: true,
+          phase: "aggregate-diagnostic-captures",
+          lastProcessingCaptureName: activeCapture.name,
+          capturedWindowNames: captures.map(({ name }) => name),
+          errorMessage:
+            "Diagnostic aggregation failed; see test output for the error.",
+          alignmentEvidence: alignmentEvidence(activeCapture),
+          rawCapture: createRawCaptureArtifact(
+            activeCapture,
+            captureIndex,
+            build,
+          ),
+        };
+        const serialized = `${JSON.stringify({ diagnosticOnly: true, sourceAndBuild: build, aggregationFailure: failure }, null, 2)}\n`;
+        await mkdir(RESULT_DIR, { recursive: true });
+        await mkdir(test.info().project.outputDir, { recursive: true });
+        await writeFile(
+          path.join(RESULT_DIR, "initial-page-profile.json"),
+          serialized,
+          { mode: 0o600 },
+        );
+        await writeFile(
+          path.join(
+            test.info().project.outputDir,
+            "initial-page-for-route.json",
+          ),
+          serialized,
+          { mode: 0o600 },
+        );
+      } catch (persistError) {
+        console.error(
+          "Could not mirror diagnostic aggregation failure:",
+          persistError,
+        );
+      }
+    }
+    throw error;
+  });
   const initial = captures[0];
   const result = {
     schemaVersion: 4,
