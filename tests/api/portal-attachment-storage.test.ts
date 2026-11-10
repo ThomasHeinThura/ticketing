@@ -13,8 +13,8 @@ import { createApp } from "../../apps/api/src/index";
 import {
   createAttachmentDownloadUrl,
   createAttachmentUploadUrl,
-  createPortalAttachmentDownloadUrl,
   createPortalAttachmentUploadUrl,
+  createPortalDownloadV2,
 } from "../../apps/api/src/storage/filesystem";
 
 // Unit tests run without a database; the portal host is on unless a flag row turns it off.
@@ -32,6 +32,25 @@ const sessionPerson = vi.hoisted(() => ({ id: "person-a" as string | null }));
 vi.mock("../../apps/api/src/storage/portal-session-person", () => ({
   portalSessionPersonId: async () => sessionPerson.id,
 }));
+
+const downloadReach = vi.hoisted(() => ({ key: "", size: 0 }));
+vi.mock("../../apps/api/src/storage/portal-download-reach", () => ({
+  resolvePortalDownload: async () => ({
+    objectKey: downloadReach.key,
+    size: downloadReach.size,
+    filename: "report.pdf",
+    mimeType: "application/pdf",
+  }),
+}));
+vi.mock(
+  "../../apps/api/src/utils/authenticate-api-request",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("../../apps/api/src/utils/authenticate-api-request")
+    >()),
+    resolveOptionalCookieSession: async () => ({ user: { id: "user-a" } }),
+  }),
+);
 
 const PORTAL = "http://portal.localhost:5174";
 const PORTAL_HOST = "portal.localhost:5174";
@@ -96,14 +115,17 @@ describe("portal host storage for submission attachments: person-bound upload an
     expect(stored.status).toBe(204);
     expect(readFileSync(join(root, SUBMISSION_KEY), "utf8")).toBe("hello");
 
+    downloadReach.key = SUBMISSION_KEY;
+    downloadReach.size = 5;
     const bound = await app.request(
       pathOf(
-        createPortalAttachmentDownloadUrl(
-          SUBMISSION_KEY,
-          "report.pdf",
-          "person-a",
-          `${PORTAL}/api`,
-        ),
+        createPortalDownloadV2({
+          scope: "submission",
+          ref: "SUB-1",
+          id: "att1",
+          personId: "person-a",
+          apiBaseUrl: `${PORTAL}/api`,
+        }),
       ),
       { headers: { host: PORTAL_HOST } },
     );
@@ -202,18 +224,22 @@ describe("portal host storage for submission attachments: person-bound upload an
     key: string,
     host = PORTAL_HOST,
     method = "GET",
-  ) =>
-    app.request(
+  ) => {
+    downloadReach.key = key;
+    downloadReach.size = 15;
+    return app.request(
       pathOf(
-        createPortalAttachmentDownloadUrl(
-          key,
-          "report.pdf",
-          "person-a",
-          `${PORTAL}/api`,
-        ),
+        createPortalDownloadV2({
+          scope: "submission",
+          ref: "SUB-1",
+          id: "att1",
+          personId: "person-a",
+          apiBaseUrl: `${PORTAL}/api`,
+        }),
       ),
       { method, headers: { host } },
     );
+  };
 
   it("downloads a finalized portal submission attachment (final/<token>-<file>) on the portal host only for its person", async () => {
     const { app } = createApp();
@@ -222,9 +248,28 @@ describe("portal host storage for submission attachments: person-bound upload an
     const response = await download(app, FINAL_KEY);
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("finalized bytes");
-    expect((await download(app, FINAL_KEY, PORTAL_HOST, "HEAD")).status).toBe(
-      200,
-    );
+    const head = await download(app, FINAL_KEY, PORTAL_HOST, "HEAD");
+    expect(head.status).toBe(200);
+    expect((await head.arrayBuffer()).byteLength).toBe(0);
+    expect(head.headers.get("content-length")).toBe("15");
+    for (const [range, expected, contentRange] of [
+      ["bytes=1-999999999999999999999999", "inalized bytes", "bytes 1-14/15"],
+      ["bytes=-999999999999999999999999", "finalized bytes", "bytes 0-14/15"],
+    ] as const) {
+      const url = createPortalDownloadV2({
+        scope: "submission",
+        ref: "SUB-1",
+        id: "att1",
+        personId: "person-a",
+        apiBaseUrl: `${PORTAL}/api`,
+      });
+      const response = await app.request(pathOf(url), {
+        headers: { host: PORTAL_HOST, range },
+      });
+      expect(response.status, range).toBe(206);
+      expect(response.headers.get("content-range")).toBe(contentRange);
+      expect(await response.text()).toBe(expected);
+    }
     // Another signed-in customer, and no portal session at all.
     try {
       sessionPerson.id = "person-b";

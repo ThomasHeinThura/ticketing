@@ -288,9 +288,10 @@ export async function createAttachmentDownloadUrl(
 export async function getObjectSizeAndHeader(
   key: string,
   headerBytes: number,
+  signal?: AbortSignal,
 ): Promise<{ contentLength: number | undefined; header: Buffer }> {
   if (getStorageDriver() === "s3") {
-    return s3Driver.getObjectSizeAndHeader(key, headerBytes);
+    return s3Driver.getObjectSizeAndHeader(key, headerBytes, signal);
   }
   return filesystemDriver.getObjectSizeAndHeader(key, headerBytes);
 }
@@ -319,4 +320,16 @@ export function getStorageBrowserOrigins(): string[] {
   } catch {
     return [];
   }
+}
+
+export async function getPortalObjectRange(
+  key: string,
+  start: number,
+  end: number,
+  signal: AbortSignal,
+  totalSize: number,
+): Promise<ReadableStream<Uint8Array>> {
+  return getStorageDriver() === "s3"
+    ? s3Driver.getPortalObjectRange(key, start, end, signal, totalSize)
+    : filesystemDriver.getPortalObjectRange(key, start, end);
 }

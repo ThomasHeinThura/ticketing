@@ -462,5 +462,45 @@
 		"pr": 1006,
 		"reason": "The holiday import body's `ics` string is now capped at 262144 characters (256 KiB), the parser's existing HOLIDAY_IMPORT_LIMITS.bytes; a longer file was already refused with 400 by the parser, so no previously accepted request is refused. The schema cap rejects it earlier, before parsing.",
 		"decision": "Thomas-approved 31 Oct 2026 — issue #704 part 1 (lone-surrogate 500 and holiday import bound), fixed in PR #1006"
+	},
+	{
+		"operation": "GET /storage/portal-download",
+		"rule": "new-required-request-parameter",
+		"fingerprint": "6748abc0a499",
+		"pr": 1103,
+		"reason": "The v2 person-bound portal download token requires attachment id to resolve the current authorized row. Old key-bearing links have a five-minute lifetime but are rejected immediately after this route change.",
+		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+	},
+	{
+		"operation": "GET /storage/portal-download",
+		"rule": "new-required-request-parameter",
+		"fingerprint": "120671cca674",
+		"pr": 1103,
+		"reason": "The v2 person-bound portal download token requires the public parent reference so current request or submission reach is rechecked before every byte request.",
+		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+	},
+	{
+		"operation": "GET /storage/portal-download",
+		"rule": "new-required-request-parameter",
+		"fingerprint": "4a5c3f30e276",
+		"pr": 1103,
+		"reason": "The v2 person-bound portal download token requires request or submission scope to select the current reach predicate before reading storage.",
+		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+	},
+	{
+		"operation": "GET /storage/portal-download",
+		"rule": "request-parameter-removed",
+		"fingerprint": "a87cbc8872de",
+		"pr": 1103,
+		"reason": "The filename now comes from the authorized attachment row, preventing a signed link from supplying untrusted download metadata.",
+		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+	},
+	{
+		"operation": "GET /storage/portal-download",
+		"rule": "request-parameter-removed",
+		"fingerprint": "e6ca740590b4",
+		"pr": 1103,
+		"reason": "The object key now comes from the attachment row after live reach; no storage key is exposed in a portal link, including prefixed S3 keys.",
+		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
 	}
 ]

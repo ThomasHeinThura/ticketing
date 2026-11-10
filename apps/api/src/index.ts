@@ -213,6 +213,8 @@ import serviceManagement from "./service-management";
 import { portalReleaseRouter } from "./service-management/release-portal";
 import slaPolicy from "./sla-policy";
 import {
+  getObjectSizeAndHeader,
+  getPortalObjectRange,
   getPrivateObject,
   getStorageBrowserOrigins,
   getStorageDriver,
@@ -220,17 +222,19 @@ import {
 import { buildContentDisposition } from "./storage/content-disposition";
 import {
   readAttachmentDownloadObject,
-  readPortalAttachmentDownloadObject,
+  StorageNotFoundError,
   StoragePathError,
+  verifyPortalDownloadV2,
   writeAttachmentUploadedObject,
   writePortalAttachmentUploadedObject,
   writeUploadedObject,
 } from "./storage/filesystem";
+import { resolvePortalDownload } from "./storage/portal-download-reach";
 import {
-  isPortalDownloadKey,
   isPortalStorageRequest,
   isPortalUploadKey,
   isSubmissionAttachmentKey,
+  portalCanDownloadObject,
 } from "./storage/portal-servable";
 import { portalSessionPersonId } from "./storage/portal-session-person";
 import task, { taskV2 } from "./task";
@@ -1686,15 +1690,15 @@ export function createApp(
       tags: ["Assets"],
       summary: "Download a customer-visible attachment on the portal host",
       description:
-        "The portal-bound equivalent of a presigned GET on the filesystem storage driver, " +
-        "minted by the portal request and submission download routes after their own " +
-        "check. Portal host only; the token binds the key, the customer person and a " +
-        "five-minute expiry, and the portal session must be that person.",
+        "A five-minute person-bound link, rechecking current access before serving bytes.",
       security: [],
       request: {
         query: z.object({
-          ...portalStorageQuery,
-          filename: z.string().min(1),
+          scope: z.enum(["request", "submission"]),
+          ref: z.string().min(1).max(100),
+          id: z.string().min(1),
+          expires: z.string().regex(/^\d+$/),
+          token: z.string().min(1),
         }),
       },
       responses: {
@@ -1702,51 +1706,115 @@ export function createApp(
           description: "The attachment binary stream",
           content: { "*/*": { schema: { type: "string", format: "binary" } } },
         },
-        400: errorResponse(
-          "Invalid key, expired or invalid token, or a token for another person",
-        ),
+        206: {
+          description: "The requested byte range",
+          content: { "*/*": { schema: { type: "string", format: "binary" } } },
+        },
+        400: errorResponse("Invalid or expired token"),
         401: errorResponse("No portal session"),
-        404: errorResponse(
-          "Not the portal host, the filesystem storage driver is not active, or the object is gone",
-        ),
+        404: errorResponse("Attachment not found"),
+        416: errorResponse("Range not satisfiable"),
+        503: errorResponse("Storage unavailable"),
       },
     }),
     async (c) => {
-      assertPortalStorageRequest(c);
-      const { key, expires, token, filename } = c.req.valid("query");
-      if (!isPortalDownloadKey(key))
-        throw new HTTPException(400, { message: "Invalid download key." });
+      if (portalForHost(c.req.header("host")) !== "customer")
+        throw new HTTPException(404, { message: "Not found" });
       const personId = await portalSessionPersonId(c.req.raw.headers);
-      if (!personId) throw new HTTPException(401, { message: "Unauthorized" });
+      const session = await resolveOptionalCookieSession(c.req.raw.headers);
+      const userId = session?.user?.id;
+      if (!personId || !userId)
+        throw new HTTPException(401, { message: "Unauthorized" });
+      const query = c.req.valid("query");
+      if (!verifyPortalDownloadV2({ ...query, personId }))
+        throw new HTTPException(400, { message: "Invalid or expired token" });
+      const row = await resolvePortalDownload({ ...query, personId, userId });
+      if (!row || !portalCanDownloadObject(row.objectKey))
+        throw new HTTPException(404, { message: "Attachment not found" });
       try {
-        const contentDisposition = buildContentDisposition(filename, false);
-        const object = await readPortalAttachmentDownloadObject({
-          key,
-          expires,
-          token,
-          personId,
-        });
-        const body = object.body as ReadableStream<Uint8Array> | null;
-        try {
-          return new Response(body, {
-            headers: {
-              "Cache-Control": "private, max-age=0, no-store",
-              "Content-Type": object.contentType || "application/octet-stream",
-              "Content-Disposition": contentDisposition,
-            },
-          });
-        } catch (responseError) {
-          await body?.cancel().catch(() => {});
-          throw responseError;
+        const { contentLength: size } = await getObjectSizeAndHeader(
+          row.objectKey,
+          0,
+          c.req.raw.signal,
+        );
+        if (
+          size === undefined ||
+          !Number.isSafeInteger(size) ||
+          size < 0 ||
+          size !== row.size
+        )
+          throw new Error("Invalid storage size");
+        let start = 0;
+        let end = size - 1;
+        let partial = false;
+        const range = c.req.header("range");
+        const match = range?.match(/^bytes=(\d*)-(\d*)$/);
+        if (match && (match[1] || match[2])) {
+          const first = match[1] ? BigInt(match[1]) : null;
+          const last = match[2] ? BigInt(match[2]) : null;
+          const total = BigInt(size);
+          if (
+            size === 0 ||
+            (first === null && last === 0n) ||
+            (first !== null &&
+              (first >= total || (last !== null && last < first)))
+          ) {
+            return new Response(null, {
+              status: 416,
+              headers: {
+                "Content-Range": `bytes */${size}`,
+                "Cache-Control": "private, max-age=0, no-store, no-transform",
+                "Accept-Ranges": "bytes",
+                "X-Content-Type-Options": "nosniff",
+                "Cross-Origin-Resource-Policy": "same-origin",
+              },
+            });
+          }
+          start =
+            first === null
+              ? Number(total - (last !== null && last < total ? last : total))
+              : Number(first);
+          end =
+            first === null || last === null || last >= total
+              ? size - 1
+              : Number(last);
+          partial = true;
         }
-      } catch (error) {
-        if (!(error instanceof StoragePathError)) logHttpRequestFailure();
-        throw new HTTPException(error instanceof StoragePathError ? 400 : 404, {
-          message:
-            error instanceof StoragePathError
-              ? error.message
-              : "Attachment not found.",
+        const headers = new Headers({
+          "Cache-Control": "private, max-age=0, no-store, no-transform",
+          "Accept-Ranges": "bytes",
+          "X-Content-Type-Options": "nosniff",
+          "Cross-Origin-Resource-Policy": "same-origin",
+          "Content-Type": row.mimeType || "application/octet-stream",
+          "Content-Disposition": buildContentDisposition(row.filename, false),
+          "Content-Length": String(size === 0 ? 0 : end - start + 1),
         });
+        if (partial)
+          headers.set("Content-Range", `bytes ${start}-${end}/${size}`);
+        const body =
+          c.req.raw.method === "HEAD" || size === 0
+            ? null
+            : await getPortalObjectRange(
+                row.objectKey,
+                start,
+                end,
+                c.req.raw.signal,
+                size,
+              );
+        return new Response(body, { status: partial ? 206 : 200, headers });
+      } catch (error) {
+        const name = (error as { name?: string }).name;
+        if (
+          error instanceof StorageNotFoundError ||
+          name === "NoSuchKey" ||
+          name === "NotFound" ||
+          (error as { $metadata?: { httpStatusCode?: number } }).$metadata
+            ?.httpStatusCode === 404 ||
+          (error as NodeJS.ErrnoException).code === "ENOENT"
+        )
+          throw new HTTPException(404, { message: "Attachment not found" });
+        logHttpRequestFailure();
+        throw new HTTPException(503, { message: "Storage unavailable" });
       }
     },
   );

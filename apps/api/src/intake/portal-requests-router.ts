@@ -21,7 +21,6 @@ import { intakeAuditContext } from "./audit";
 import {
   assertOwnPublicReply,
   auditPortalRequestDownload,
-  findPortalRequestDownload,
   getPortalRequest,
   listPortalRequestAttachments,
   portalDirectRequest,
@@ -31,6 +30,7 @@ import {
   portalRequestReplySchema,
   portalRequestSchema,
   replyToPortalRequest,
+  resolvePortalRequestDownload,
 } from "./portal-requests";
 
 /**
@@ -163,7 +163,7 @@ const downloadRoute = createRoute({
   tags: ["Attachments"],
   summary: "Download a customer-visible file of the request",
   description:
-    "302 to a short-lived signed URL. On the filesystem storage driver it is a portal-bound link for this requester (CP-19): it works only on the portal host, for this person, for five minutes.",
+    "302 to a five-minute person-bound portal URL; current reach is checked again when bytes are requested.",
   middleware: [portalDirectRequest("requester")] as const,
   request: { params: attachmentParams },
   responses: {
@@ -255,17 +255,18 @@ const portalRequestsRouter = apiRouter<Variables>()
     );
   })
   .openapi(downloadRoute, async (c) => {
-    const row = await findPortalRequestDownload({
-      id: c.req.valid("param").id,
-      workItemId: c.get("portalWorkItemId"),
-      workspaceId: c.get("portalWorkspaceId"),
-    });
+    const row = await resolvePortalRequestDownload(
+      c.get("portalPersonId"),
+      c.req.valid("param").ref,
+      c.req.valid("param").id,
+    );
     // Never redirect to, or audit, a download the portal host would refuse.
     if (!row || !portalCanDownloadObject(row.objectKey))
       throw new HTTPException(404, { message: "Attachment not found" });
     const downloadUrl = await createPortalAttachmentDownloadUrl({
-      objectKey: row.objectKey,
-      filename: row.filename,
+      scope: "request",
+      ref: c.req.valid("param").ref,
+      id: row.id,
       personId: c.get("portalPersonId"),
       apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
     });
