@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, open, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -40,19 +40,50 @@ type DockerContainerInspection = {
 };
 
 type DockerInspectClient = {
+  listContainers(options: {
+    all: boolean;
+    filters: string;
+  }): Promise<Array<{ Id: string; Labels: Record<string, string> }>>;
   getContainer(id: string): {
     inspect(): Promise<DockerContainerInspection>;
+    remove(options: { force: boolean; v: boolean }): Promise<void>;
   };
 };
 
 type DockerInspectConstructor = new () => DockerInspectClient;
 
+export function fixtureOwnershipJournal(path: string) {
+  const record = async (entry: object) => {
+    const file = await open(path, "a", 0o600);
+    try {
+      await file.writeFile(`${JSON.stringify(entry)}\n`);
+      await file.sync();
+    } finally {
+      await file.close();
+    }
+  };
+  return {
+    onContainerIntent: (label: string) => record({ label }),
+    onContainerCreated: (id: string) => record({ id }),
+  };
+}
+
 class LoopbackPostgreSqlContainer extends PostgreSqlContainer {
   private readonly discardOutput: boolean;
+  private readonly onCreated: (id: string) => void | Promise<void>;
 
-  constructor(image: string, discardOutput: boolean) {
+  constructor(
+    image: string,
+    discardOutput: boolean,
+    onCreated: (id: string) => void | Promise<void>,
+  ) {
     super(image);
     this.discardOutput = discardOutput;
+    this.onCreated = onCreated;
+  }
+
+  protected override async containerCreated(id: string) {
+    await this.onCreated(id);
   }
 
   protected override async beforeContainerCreated() {
@@ -561,6 +592,8 @@ export async function withMfaCsrfApp<T>(
   options: {
     beforeStart?: (fixture: MfaCsrfAppFixtureSetup) => Promise<void>;
     discardChildOutput?: boolean;
+    onContainerIntent?: (label: string) => void | Promise<void>;
+    onContainerCreated?: (id: string) => void | Promise<void>;
   } = {},
 ): Promise<T> {
   if (
@@ -625,11 +658,14 @@ async function runMfaCsrfApp<T>(
   options: {
     beforeStart?: (fixture: MfaCsrfAppFixtureSetup) => Promise<void>;
     discardChildOutput?: boolean;
+    onContainerIntent?: (label: string) => void | Promise<void>;
+    onContainerCreated?: (id: string) => void | Promise<void>;
   },
   supervisor: SupervisedProcessManager,
   cleanup: { directory?: string; teardownComplete: boolean },
 ): Promise<T> {
   let container: PostgreSqlContainerInstance | undefined;
+  const fixtureLabel = randomUUID();
   let apiProcess: SupervisedChild | undefined;
   let evidenceDir: string | undefined;
   const [outcome] = await Promise.allSettled([
@@ -646,10 +682,15 @@ async function runMfaCsrfApp<T>(
       const postgres = new LoopbackPostgreSqlContainer(
         "postgres:18-alpine",
         options.discardChildOutput === true,
+        async (id) => {
+          await options.onContainerCreated?.(id);
+        },
       )
+        .withLabels({ "taskdesk.disposable-fixture": fixtureLabel })
         .withDatabase(databaseName)
         .withUsername("postgres")
         .withPassword(randomPassword());
+      await options.onContainerIntent?.(fixtureLabel);
       container = await postgres.start();
       await assertPostgreSqlLoopbackBinding(container);
 
@@ -757,7 +798,31 @@ async function runMfaCsrfApp<T>(
     teardownFailed = true;
   }
   try {
-    if (container) await container.stop();
+    if (container) {
+      await container.stop();
+    } else {
+      // A start can fail even before containerCreated runs. The random per-run label
+      // identifies only containers created for this fixture; remove each by exact id.
+      const testcontainersRequire = createRequire(
+        apiPackageRequire.resolve("testcontainers"),
+      );
+      const Docker = testcontainersRequire(
+        "dockerode",
+      ) as DockerInspectConstructor;
+      const docker = new Docker();
+      const matches = await docker.listContainers({
+        all: true,
+        filters: JSON.stringify({
+          label: [`taskdesk.disposable-fixture=${fixtureLabel}`],
+        }),
+      });
+      for (const match of matches) {
+        if (match.Labels["taskdesk.disposable-fixture"] !== fixtureLabel)
+          throw new Error("Unexpected fixture label");
+        await options.onContainerCreated?.(match.Id);
+        await docker.getContainer(match.Id).remove({ force: true, v: true });
+      }
+    }
   } catch {
     teardownFailed = true;
   }

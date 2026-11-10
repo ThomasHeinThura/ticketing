@@ -1499,8 +1499,8 @@ This document covers behaviour and interface.
 ### Behaviour
 
 - `AT-1` Files attach to a work item, to a specific comment, or to a submission.
-- `AT-2` Upload is direct to object storage via a presigned POST. The API never proxies
-  bytes.
+- `AT-2` Upload is direct to object storage via a presigned POST. The portal download
+  exception to the API byte-proxy rule is defined in `AT-5` and `CP-19`.
 - `AT-3` Every attachment carries `customer_visible`. Staff uploads default to **not**
   visible; customer uploads default to visible.
 - `AT-4` An attachment on an internal comment is always internal, whatever its own flag
@@ -1508,16 +1508,19 @@ This document covers behaviour and interface.
   Staff share a file with the customer by attaching it to a public comment with "Share these
   files with the customer" on (A-07); the portal lists customer-visible files on the request
   itself and on its live public comments, never on an internal or deleted comment.
-- `AT-5` Download URLs are presigned with a five-minute lifetime and are issued only after
+- `AT-5` Download links have a five-minute lifetime and are issued only after
   a policy check. The bucket is never public, and there is **no anonymous read path**:
   kaneo's `is_public` branch in `authorize-asset-access.ts` is deleted at fork
   ([decision log](#pending-07-planningdecision-log)).
-  On the filesystem driver, every portal download (a submission file or a work-item file) and
-  every portal upload of a work-item file uses a portal-bound link bound to the customer person
-  as well as the key and expiry, and the portal session must be that person (`CP-19`,
-  3 November 2026). On S3 the portal gets the bucket's five-minute presigned GET, which binds
-  only the key and expiry: whoever holds it can use it until it expires.
-- `AT-6` Every download writes an audit row (`attachment.downloaded` — [audit-trail.md](feature-contracts-p2.md#audit-trail)).
+  Every portal download (submission or work-item file) uses the portal-bound API route on
+  both filesystem and S3 (`CP-19`; Thomas, 10 November 2026). Its token binds the
+  attachment, parent scope and reference, customer person and expiry; it contains no
+  storage key. Every byte request rechecks the current portal reach and requires that
+  person's portal session. A revoked link cannot start another GET, HEAD or Range request.
+  Portal work-item uploads remain person-bound as specified in `CP-19`.
+- `AT-6` Each authorized portal download-link issuance writes an `attachment.downloaded`
+  audit row; HEAD and byte or Range requests do not write another row. Other download
+  audit behavior is unchanged ([audit-trail.md](feature-contracts-p2.md#audit-trail)).
 - `AT-7` Deleting is soft; the object is removed the following night by `attachment-gc`,
   so an accidental deletion is recoverable for a day. Like every deletion it is a pending
   action approved by the requester — a click-level confirmation showing the file and its

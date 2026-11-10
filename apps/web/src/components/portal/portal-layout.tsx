@@ -45,7 +45,7 @@ export default function PortalLayout({
           <PortalSidebar />
         </Suspense>
         <SidebarInset className="m-2 flex flex-1 flex-col overflow-auto rounded-xl border border-border/80 bg-background shadow-sm/5">
-          <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-2">
+          <header className="sticky top-0 z-10 flex min-h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-2 py-1 sm:h-12 sm:py-0">
             <SidebarTrigger toggleLabel={t("common:a11y.toggleSidebar")} />
             <Suspense fallback={<div className="h-9 flex-1" />}>
               <PortalTopbar user={user} />
