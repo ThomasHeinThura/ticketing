@@ -88,13 +88,12 @@ The recovery scripts require Node.js (standard library only) as well as Docker. 
 writes into a private sibling directory, checks the complete database payload with
 `pg_restore --file=/dev/null`, validates the attachment tar and reserves a new destination
 with an exclusive mkdir.
-It links the two archives without replacement, then links `SHA256SUMS` last as the atomic
+It links the archives and any source identity without replacement, then links `SHA256SUMS` last as the atomic
 completion record. An existing destination or destination lock is refused. Failed staging
 is removed; an interrupted publication can leave a private incomplete destination, which
-restore refuses and the operator must inspect before retrying. Restore copies the three
-required files into a private temporary
+restore refuses and the operator must inspect before retrying. Restore copies the archives, checksums and any source identity into a private temporary
 directory and validates that copy before stopping the app or deleting anything. It requires
-exactly one checksum for each archive, a nonempty database listing and complete database
+exactly one checksum for each archive and any source identity, a nonempty database listing and complete database
 decode, and a tar with valid headers, complete payloads and end markers. Only regular files
 and directories in POSIX/GNU tar are supported, including a single GNU `L` long-name record
 (up to the extractor's 4095-byte payload limit) immediately before its member. Links,
@@ -105,13 +104,61 @@ remain supported when they meet these checks. The same verified copy is restored
 changes to the input directory do not replace the bytes. Allow free local space for that
 copy. Attachment helpers have no network and are removed by their captured container ID.
 
-**Current limitation:** these commands retain their legacy Compose selection: backup uses
-base `compose.yml`; restore defaults to the retired local overlays and resolves `/app/data`.
-They are not a canonical local SIT or Technexus cutover workflow. Archive verification does
-not establish source quiescence, a consistent database/files snapshot, source/target volume
-separation, or successful isolated restoration. Those checks, explicit current target/layout
-selection and a real restore drill remain required before any clean-seed cutover. Do not
-run these legacy examples against canonical SIT by changing only the project name.
+**Canonical local SIT:** backup supports explicit selection:
+
+```bash
+scripts/backup.sh --target local-sit --env-file /absolute/private/compose.env
+```
+
+This selects **only** `deploy/compose.testing.yml`, project `taskdesk-codex-testing`.
+The private file and its parent directory, `SIT_PRIVATE_DIR`, and its four service env
+files must be owned by the operator, owner-only and unsymlinked. The Compose env file
+accepts literal `KEY=value` (optionally quoted), blank lines and full-line comments:
+`SIT_PRIVATE_DIR`, `SIT_IMAGE`, optional `SIT_DATABASE_PORT`, `SIT_HTTP_PORT`,
+`SIT_HTTPS_PORT`, `TASKDESK_IMAGE_TAG`. Shell commands, interpolation and other keys
+are refused. These files are never sourced as shell code; ambient Compose/SIT/database
+variables cannot override selection. Private service-file contents and Docker diagnostics
+are withheld from output.
+
+Before dumping, the script checks the local Docker endpoint, daemon identity, exact
+Compose project/service/config-file labels, image IDs, named-volume labels and actual
+mounts: `attachments` at `/app/data/attachments`, `postgres-data` at `/var/lib/postgresql`.
+The initialized PostgreSQL user/database/data directory and cluster system identifier are
+queried read-only; application and rendered database settings must agree. PostgreSQL
+`PG*` environment overrides other than `PGDATA` are refused. Identity SQL and dump use
+the captured PostgreSQL container ID, a cleared environment and explicit local Unix
+socket/port, so libpq defaults cannot select another server. `SIT_IMAGE` must resolve
+locally to the running app image ID. Unsupported
+mounts, alternate database hosts, filesystem roots and the protected native database name
+are refused. The checksum-bound `source-identity.json` records source identity and the
+attachment-root layout, with `consistency: unfenced`; it contains no credentials. The
+manifest is copied/verified and published before the checksum completion record.
+Canonical commands pin the captured Unix Docker endpoint and check the daemon ID.
+The attachment helper inherits the captured application container's mounts read-only
+(`--volumes-from`), rather than creating a named-volume mount that could recreate missing
+storage. Its actual mount, source, read-only state and network isolation are inspected
+before it starts. Full source identity is checked again after the archive reads and helper
+cleanup, immediately before publication; a missing/replaced source refuses publication.
+
+**Restore remains blocked for canonical SIT.** `--target local-sit --env-file ...` checks
+the manifest against the selected runtime, then refuses even a match: writer fencing and
+an isolated restore drill are not implemented. It never stops services, restores data,
+migrates or reopens traffic. A legacy archive without identity is refused; legacy restore
+also refuses an identity-bearing archive rather than extracting an attachment-root tar
+into `/app/data`. No layout conversion is supported. Legacy two-archive modes retain
+existing behaviour, but an explicit canonical project name requires `--target local-sit`.
+Both `technexus-sit` and `technexus-uat` targets are refused: the repository does not prove
+current remote project/overlay identity, and the private UAT overlay is unavailable.
+
+**Remaining recovery gates:** acquire an exclusive operator lock and block new writers
+(including external database clients), stop and verify all app/job/migration writers,
+verify the database/files snapshot under that fence, then retain the fence on failure.
+A drill must prove separate daemon/project/database/volumes, no published ports or proxy
+routes, no egress, disabled side effects and no automatic reopening of traffic; compare
+row counts and file hashes and exercise restored browser/API journeys before acceptance.
+These are design requirements, not implemented gates. Archive checks do not establish a
+consistent snapshot, a successful restore, active S3/object-store coverage or cutover
+readiness. No clean-seed cutover is authorized by this helper.
 
 A local archive/checksum alone does not establish encryption, offsite upload, retention or a `backup_run` record. Each remains a required independent result. Keep encryption keys separately as described below.
 

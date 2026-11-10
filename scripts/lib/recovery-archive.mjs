@@ -6,6 +6,7 @@ import {
   closeSync,
   constants,
   copyFileSync,
+  existsSync,
   fstatSync,
   linkSync,
   lstatSync,
@@ -17,7 +18,21 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-const members = ["postgres.dump", "attachments.tar"];
+const archiveMembers = ["postgres.dump", "attachments.tar"];
+function members(directory) {
+  const identity = join(directory, "source-identity.json");
+  return existsSync(identity) ||
+    (() => {
+      try {
+        lstatSync(identity);
+        return true;
+      } catch {
+        return false;
+      }
+    })()
+    ? [...archiveMembers, "source-identity.json"]
+    : archiveMembers;
+}
 const fail = (message) => {
   throw new Error(message);
 };
@@ -225,17 +240,19 @@ function validateTar(file) {
 }
 
 function verify(directory) {
-  for (const member of [...members, "SHA256SUMS"])
+  for (const member of [...members(directory), "SHA256SUMS"])
     regular(join(directory, member));
   const checksums = readFileSync(join(directory, "SHA256SUMS"), "utf8");
   const lines = checksums.trimEnd().split("\n");
-  if (lines.length !== members.length)
-    fail("Checksum file must cover exactly both backup members.");
+  if (lines.length !== members(directory).length)
+    fail("Checksum file must cover exactly the backup members.");
   const seen = new Set();
   for (const line of lines) {
     const match =
-      /^([a-fA-F0-9]{64}) [ *](postgres\.dump|attachments\.tar)$/.exec(line);
-    if (!match || seen.has(match[2]))
+      /^([a-fA-F0-9]{64}) [ *](postgres\.dump|attachments\.tar|source-identity\.json)$/.exec(
+        line,
+      );
+    if (!match || !members(directory).includes(match[2]) || seen.has(match[2]))
       fail("Invalid or duplicate checksum member.");
     seen.add(match[2]);
     if (digest(join(directory, match[2])) !== match[1].toLowerCase())
@@ -254,13 +271,13 @@ try {
   else if (command === "checksums" && !target) {
     writeFileSync(
       join(source, "SHA256SUMS"),
-      members
+      members(source)
         .map((name) => `${digest(join(source, name))}  ${name}\n`)
         .join(""),
       { mode: 0o600, flag: "wx" },
     );
   } else if (command === "snapshot" && target) {
-    for (const name of [...members, "SHA256SUMS"]) {
+    for (const name of [...members(source), "SHA256SUMS"]) {
       regular(join(source, name));
       copyFileSync(
         join(source, name),
@@ -277,7 +294,7 @@ try {
     // record. An interrupted publication is retained without that record and
     // is refused by restore. The caller removes its private staging links.
     mkdirSync(target, { mode: 0o700 });
-    for (const name of [...members, "SHA256SUMS"])
+    for (const name of [...members(source), "SHA256SUMS"])
       linkSync(join(source, name), join(target, name));
   } else fail("Invalid archive command.");
 } catch {

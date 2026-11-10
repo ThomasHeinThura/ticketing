@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -92,7 +94,7 @@ function checksums(directory) {
 }
 
 function fixture() {
-  const dir = mkdtempSync(join(tmpdir(), "taskdesk-recovery-"));
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "taskdesk-recovery-")));
   cpSync(resolve("scripts/backup.sh"), join(dir, "scripts/backup.sh"), {
     recursive: true,
   });
@@ -861,6 +863,706 @@ fs.linkSync = (source, destination) => {
       assert.notEqual(restore.status, 0);
       assert.equal(restore.calls, "");
       assert.equal(statSync(f.output).mode & 0o777, 0o700);
+    } finally {
+      f.close();
+    }
+  });
+}
+
+function canonicalFixture() {
+  const f = fixture();
+  const project = "taskdesk-codex-testing";
+  const composeFile = join(f.dir, "deploy/compose.testing.yml");
+  mkdirSync(join(f.dir, "deploy"));
+  cpSync(resolve("deploy/compose.testing.yml"), composeFile);
+  const privateDir = join(f.dir, "private");
+  mkdirSync(privateDir, { mode: 0o700 });
+  for (const name of ["postgres", "app", "migrate", "valkey"])
+    writeFileSync(
+      join(privateDir, `${name}.env`),
+      "# synthetic private fixture\n",
+      { mode: 0o600 },
+    );
+  const envFile = join(privateDir, "compose.env");
+  writeFileSync(
+    envFile,
+    `SIT_PRIVATE_DIR=${privateDir}\nSIT_IMAGE=synthetic:release\n`,
+    { mode: 0o600 },
+  );
+  const database = "canonical_fixture";
+  const user = "fixture_owner";
+  const databaseUrl = `postgres://fixture_app:private-marker@postgres:5432/${database}`;
+  const model = {
+    config: {
+      name: project,
+      services: {
+        taskdesk: {
+          image: "synthetic:release",
+          environment: { TASKDESK_DATABASE_URL: databaseUrl },
+          volumes: [
+            {
+              type: "volume",
+              source: "attachments",
+              target: "/app/data/attachments",
+            },
+          ],
+        },
+        postgres: {
+          environment: { POSTGRES_DB: database, POSTGRES_USER: user },
+          volumes: [
+            {
+              type: "volume",
+              source: "postgres-data",
+              target: "/var/lib/postgresql",
+            },
+          ],
+        },
+      },
+      volumes: {
+        attachments: { name: `${project}_attachments` },
+        "postgres-data": { name: `${project}_postgres-data` },
+      },
+    },
+    containers: {},
+    volumes: {},
+    daemonId: "synthetic-daemon",
+    configuredImageId: `sha256:${"d".repeat(64)}`,
+    runningDatabase: {
+      database,
+      user,
+      dataDirectory: "/var/lib/postgresql/18/docker",
+      systemIdentifier: "987654321",
+    },
+  };
+  for (const [service, id, key, destination, env] of [
+    [
+      "taskdesk",
+      "a".repeat(64),
+      "attachments",
+      "/app/data/attachments",
+      [`TASKDESK_DATABASE_URL=${databaseUrl}`],
+    ],
+    [
+      "postgres",
+      "b".repeat(64),
+      "postgres-data",
+      "/var/lib/postgresql",
+      [
+        `POSTGRES_DB=${database}`,
+        `POSTGRES_USER=${user}`,
+        "PGDATA=/var/lib/postgresql/18/docker",
+      ],
+    ],
+  ]) {
+    model.containers[service] = {
+      Id: id,
+      Image: `sha256:${"d".repeat(64)}`,
+      State: { Running: true },
+      Config: {
+        Env: env,
+        Labels: {
+          "com.docker.compose.project": project,
+          "com.docker.compose.service": service,
+          "com.docker.compose.project.config_files": composeFile,
+          "com.docker.compose.oneoff": "False",
+        },
+      },
+      Mounts: [
+        {
+          Type: "volume",
+          Name: `${project}_${key}`,
+          Destination: destination,
+          RW: true,
+          Source: `/synthetic/volumes/${project}_${key}/_data`,
+        },
+      ],
+    };
+    model.volumes[`${project}_${key}`] = {
+      Name: `${project}_${key}`,
+      Driver: "local",
+      Mountpoint: `/synthetic/volumes/${project}_${key}/_data`,
+      CreatedAt: "2026-11-10T00:00:00Z",
+      Options: {},
+      Labels: {
+        "com.docker.compose.project": project,
+        "com.docker.compose.volume": key,
+      },
+    };
+  }
+  const modelPath = join(f.dir, "model.json");
+  const save = () => writeFileSync(modelPath, JSON.stringify(model));
+  save();
+  writeFileSync(
+    join(f.dir, "bin/docker"),
+    `#!${process.execPath}
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+const model = JSON.parse(fs.readFileSync(${JSON.stringify(modelPath)}));
+fs.appendFileSync(${JSON.stringify(join(f.dir, "docker.log"))}, args.join(' ') + '\\n');
+const out = value => process.stdout.write(typeof value === 'string' ? value + '\\n' : JSON.stringify(value));
+if (args[0] === 'context') out(args[1] === 'show' ? 'desktop' : [{Endpoints:{docker:{Host:'unix:///synthetic/docker.sock'}}}]);
+else if (args[0] === 'info') out(model.daemonId);
+else if (args[0] === 'volume') out([model.volumes[args[2]]]);
+else if (args[0] === 'image') out([{ Id: model.configuredImageId }]);
+else if (args[0] === 'exec') {
+  if (args[2] !== model.containers.postgres.Id || args[3] !== 'env' || args[4] !== '-i') process.exit(92);
+  if (args.includes('psql') || args.includes('pg_dump')) {
+    if (args[args.indexOf('-h')+1] !== '/var/run/postgresql' || args[args.indexOf('-p')+1] !== '5432') process.exit(93);
+  }
+  if (args.includes('psql')) out(model.runningDatabase);
+  else if (args.includes('pg_dump')) process.stdout.write('database archive');
+  else if (args.includes('--list')) out('1; archive entry');
+  else if (!args.includes('--file=/dev/null')) process.exit(94);
+}
+else if (args[0] === 'inspect') {
+  if (args.includes('--format')) out('0');
+  else if (args[1] === 'c'.repeat(64)) out([{Id: args[1], HostConfig:{NetworkMode:'none', VolumesFrom:['a'.repeat(64)+':ro']}, Mounts: [{...model.containers.taskdesk.Mounts[0], RW: model.race === 'writable-helper', Name: model.race === 'wrong-helper-mount' ? 'other' : model.containers.taskdesk.Mounts[0].Name}]}]);
+  else out(Object.values(model.containers).filter(item => item.Id === args[1]));
+} else if (args[0] === 'compose') {
+  if (args.filter(x => x === '-f').length !== 1 || args[args.indexOf('-f')+1] !== ${JSON.stringify(composeFile)} || args[args.indexOf('--env-file')+1] !== ${JSON.stringify(envFile)} || args[args.indexOf('-p')+1] !== ${JSON.stringify(project)}) process.exit(87);
+  if (args.includes('config')) out(model.config);
+  else if (args.includes('ps')) out(model.containers[args.at(-1)]?.Id || '');
+  else if (args.includes('psql')) out(model.runningDatabase);
+  else if (args.includes('pg_dump')) process.stdout.write('database archive');
+  else if (args.includes('--list')) out('1; archive entry');
+  else if (args.includes('--file=/dev/null')) {}
+  else process.exit(88);
+} else if (args[0] === 'create') {
+  if (args.includes('--volumes-from') && (process.env.DOCKER_HOST !== 'unix:///synthetic/docker.sock' || process.env.DOCKER_CONTEXT)) process.exit(95);
+  if (model.race === 'remove-source-at-create') {
+    delete model.volumes['taskdesk-codex-testing_attachments'];
+    delete model.containers.taskdesk;
+    fs.writeFileSync(${JSON.stringify(modelPath)}, JSON.stringify(model));
+    if (args.includes('--volumes-from')) process.exit(91);
+  }
+  out('c'.repeat(64));
+} else if (args[0] === 'start') {
+  if (model.race === 'replace-after-read') {
+    model.volumes['taskdesk-codex-testing_attachments'].Labels['com.docker.compose.project'] = 'replacement';
+    fs.writeFileSync(${JSON.stringify(modelPath)}, JSON.stringify(model));
+  }
+  process.stdout.write(fs.readFileSync(${JSON.stringify(join(f.backup, "attachments.tar"))}));
+}
+else if (args[0] !== 'rm') process.exit(89);
+`,
+    { mode: 0o700 },
+  );
+  return {
+    ...f,
+    model,
+    save,
+    envFile,
+    privateDir,
+    args: ["--target", "local-sit", "--env-file", envFile],
+  };
+}
+
+const mutations =
+  /compose .* stop |pg_terminate_backend|DROP DATABASE|^create |pg_dump|pg_restore --single-transaction/m;
+for (const [label, change] of [
+  [
+    "wrong running database",
+    (f) => {
+      f.model.runningDatabase.database = "other";
+    },
+  ],
+  [
+    "wrong running data directory",
+    (f) => {
+      f.model.runningDatabase.dataDirectory = "/other";
+    },
+  ],
+  [
+    "wrong project",
+    (f) => {
+      f.model.config.name = "another-project";
+    },
+  ],
+  [
+    "wrong container project",
+    (f) => {
+      f.model.containers.taskdesk.Config.Labels["com.docker.compose.project"] =
+        "another-project";
+    },
+  ],
+  [
+    "wrong database service",
+    (f) => {
+      f.model.containers.postgres.Config.Labels["com.docker.compose.service"] =
+        "taskdesk";
+    },
+  ],
+  [
+    "extra Compose overlay",
+    (f) => {
+      f.model.containers.taskdesk.Config.Labels[
+        "com.docker.compose.project.config_files"
+      ] += ",private-overlay.yml";
+    },
+  ],
+  [
+    "missing postgres container",
+    (f) => {
+      f.model.containers.postgres.Id = "";
+    },
+  ],
+  [
+    "wrong attachment volume",
+    (f) => {
+      f.model.containers.taskdesk.Mounts[0].Name = "production_attachments";
+    },
+  ],
+  [
+    "legacy attachment layout",
+    (f) => {
+      f.model.containers.taskdesk.Mounts[0].Destination = "/app/data";
+    },
+  ],
+  [
+    "nested attachment mount",
+    (f) => {
+      f.model.containers.taskdesk.Mounts.push({
+        Type: "bind",
+        Destination: "/app/data/attachments/nested",
+      });
+    },
+  ],
+  [
+    "wrong postgres mount",
+    (f) => {
+      f.model.containers.postgres.Mounts[0].Destination =
+        "/var/lib/postgresql/data";
+    },
+  ],
+  [
+    "bind mount",
+    (f) => {
+      f.model.containers.postgres.Mounts[0].Type = "bind";
+    },
+  ],
+  [
+    "foreign volume label",
+    (f) => {
+      f.model.volumes["taskdesk-codex-testing_attachments"].Labels[
+        "com.docker.compose.project"
+      ] = "foreign";
+    },
+  ],
+  [
+    "external volume",
+    (f) => {
+      f.model.config.volumes.attachments.external = true;
+    },
+  ],
+  [
+    "volume driver options",
+    (f) => {
+      f.model.volumes["taskdesk-codex-testing_attachments"].Options = {
+        device: "/live",
+      };
+    },
+  ],
+  [
+    "wrong initialized database",
+    (f) => {
+      f.model.containers.postgres.Config.Env[0] = "POSTGRES_DB=other";
+    },
+  ],
+  [
+    "unsafe database identifier",
+    (f) => {
+      f.model.config.services.postgres.environment.POSTGRES_DB = "bad'name";
+      f.model.containers.postgres.Config.Env[0] = "POSTGRES_DB=bad'name";
+    },
+  ],
+  [
+    "wrong postgres data directory",
+    (f) => {
+      f.model.containers.postgres.Config.Env[2] = "PGDATA=/other";
+    },
+  ],
+  [
+    "different app database",
+    (f) => {
+      const value = "postgres://app:private-marker@postgres:5432/other";
+      f.model.config.services.taskdesk.environment.TASKDESK_DATABASE_URL =
+        value;
+      f.model.containers.taskdesk.Config.Env[0] = `TASKDESK_DATABASE_URL=${value}`;
+    },
+  ],
+  [
+    "external database host",
+    (f) => {
+      const value =
+        "postgres://app:private-marker@external:5432/canonical_fixture";
+      f.model.config.services.taskdesk.environment.TASKDESK_DATABASE_URL =
+        value;
+      f.model.containers.taskdesk.Config.Env[0] = `TASKDESK_DATABASE_URL=${value}`;
+    },
+  ],
+  [
+    "different storage root",
+    (f) => {
+      f.model.containers.taskdesk.Config.Env.push(
+        "TASKDESK_STORAGE_FILESYSTEM_ROOT=/other",
+      );
+    },
+  ],
+]) {
+  test(`canonical backup refuses ${label} before dump or helper mutation`, () => {
+    const f = canonicalFixture();
+    try {
+      change(f);
+      f.save();
+      const result = f.run("backup.sh", [...f.args, "--output-dir", f.output]);
+      assert.notEqual(result.status, 0, result.stdout);
+      assert.doesNotMatch(result.calls, mutations);
+      assert.doesNotMatch(result.stderr + result.stdout, /private-marker/);
+      assert.equal(existsSync(f.output), false);
+    } finally {
+      f.close();
+    }
+  });
+}
+
+test("canonical backup binds identity and attachment-root layout; both restore modes refuse mutation", () => {
+  const f = canonicalFixture();
+  try {
+    writeFileSync(join(f.dir, ".env"), `touch '${join(f.dir, "executed")}'\n`);
+    const result = f.run("backup.sh", [...f.args, "--output-dir", f.output], {
+      SIT_PRIVATE_DIR: "/wrong",
+      COMPOSE_FILE: "/wrong",
+      POSTGRES_DB: "wrong",
+      POSTGRES_USER: "wrong",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(existsSync(join(f.dir, "executed")), false);
+    assert.match(
+      result.calls,
+      /pg_dump -h \/var\/run\/postgresql -p 5432 -Fc -U fixture_owner canonical_fixture/,
+    );
+    assert.match(
+      result.calls,
+      new RegExp(`--volumes-from ${"a".repeat(64)}:ro`),
+    );
+    assert.doesNotMatch(result.calls, /-v taskdesk-codex-testing_attachments:/);
+    const identity = JSON.parse(
+      readFileSync(join(f.output, "source-identity.json")),
+    );
+    assert.equal(identity.layout, "attachments-root-v1");
+    assert.equal(identity.consistency, "unfenced");
+    assert.equal(
+      statSync(join(f.output, "source-identity.json")).mode & 0o777,
+      0o600,
+    );
+    assert.match(
+      readFileSync(join(f.output, "SHA256SUMS"), "utf8"),
+      /source-identity.json/,
+    );
+    assert.doesNotMatch(
+      readFileSync(join(f.output, "source-identity.json"), "utf8"),
+      /private-marker/,
+    );
+    const restore = f.run("restore.sh", [
+      ...f.args,
+      "--backup",
+      f.output,
+      "--confirm",
+    ]);
+    assert.notEqual(restore.status, 0);
+    assert.match(restore.stderr, /writer fencing/);
+    assert.doesNotMatch(restore.calls, mutations);
+    // A canonical archive cannot fall through to the legacy destructive path.
+    const legacy = f.run("restore.sh", ["--backup", f.output, "--confirm"]);
+    assert.notEqual(legacy.status, 0);
+    assert.equal(legacy.calls, "");
+    assert.match(legacy.stderr, /identity-bearing backups/);
+  } finally {
+    f.close();
+  }
+});
+
+for (const field of [
+  "daemonId",
+  "project",
+  "layout",
+  "database",
+  "attachments",
+  "services",
+]) {
+  test(`canonical restore refuses source manifest ${field} mismatch`, () => {
+    const f = canonicalFixture();
+    try {
+      assert.equal(
+        f.run("backup.sh", [...f.args, "--output-dir", f.output]).status,
+        0,
+      );
+      const manifestPath = join(f.output, "source-identity.json");
+      const manifest = JSON.parse(readFileSync(manifestPath));
+      manifest[field] = "mismatched";
+      writeFileSync(manifestPath, JSON.stringify(manifest));
+      const sums = ["postgres.dump", "attachments.tar", "source-identity.json"]
+        .map(
+          (name) =>
+            `${createHash("sha256")
+              .update(readFileSync(join(f.output, name)))
+              .digest("hex")}  ${name}\n`,
+        )
+        .join("");
+      writeFileSync(join(f.output, "SHA256SUMS"), sums);
+      const result = f.run("restore.sh", [
+        ...f.args,
+        "--backup",
+        f.output,
+        "--confirm",
+      ]);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /source identity does not match/);
+      assert.doesNotMatch(result.calls, mutations);
+    } finally {
+      f.close();
+    }
+  });
+}
+
+for (const target of ["technexus-sit", "technexus-uat", "unknown"]) {
+  test(`both scripts refuse unsupported ${target} before Docker`, () => {
+    const f = fixture();
+    try {
+      for (const script of ["backup.sh", "restore.sh"]) {
+        const args =
+          script === "backup.sh"
+            ? ["--output-dir", f.output]
+            : ["--backup", f.backup, "--confirm"];
+        const result = f.run(script, [...args, "--target", target]);
+        assert.notEqual(result.status, 0);
+        assert.equal(result.calls, "");
+      }
+    } finally {
+      f.close();
+    }
+  });
+}
+
+test("canonical restore refuses legacy archives before Docker", () => {
+  const f = canonicalFixture();
+  try {
+    const result = f.run("restore.sh", [
+      ...f.args,
+      "--backup",
+      f.backup,
+      "--confirm",
+    ]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /checksum-bound source identity/);
+    assert.equal(result.calls, "");
+  } finally {
+    f.close();
+  }
+});
+
+for (const [label, content] of [
+  [
+    "shell expansion",
+    "SIT_PRIVATE_DIR=$(touch /tmp/forbidden)\nSIT_IMAGE=test\n",
+  ],
+  ["shell command", "touch /tmp/forbidden\n"],
+  ["executable path override", "PATH=/wrong\n"],
+]) {
+  test(`canonical backup refuses ${label} in private configuration`, () => {
+    const f = canonicalFixture();
+    try {
+      writeFileSync(f.envFile, content);
+      const result = f.run("backup.sh", [...f.args, "--output-dir", f.output]);
+      assert.notEqual(result.status, 0);
+      assert.equal(result.calls, "");
+    } finally {
+      f.close();
+    }
+  });
+}
+
+for (const [label, change] of [
+  ["world-readable env file", (f) => chmodSync(f.envFile, 0o644)],
+  [
+    "world-readable service file",
+    (f) => chmodSync(join(f.privateDir, "app.env"), 0o644),
+  ],
+  ["public private directory", (f) => chmodSync(f.privateDir, 0o755)],
+  [
+    "symlinked env file",
+    (f) => {
+      const content = readFileSync(f.envFile);
+      rmSync(f.envFile);
+      writeFileSync(join(f.privateDir, "real.env"), content, { mode: 0o600 });
+      symlinkSync(join(f.privateDir, "real.env"), f.envFile);
+    },
+  ],
+]) {
+  test(`canonical backup refuses ${label} before Docker`, () => {
+    const f = canonicalFixture();
+    try {
+      change(f);
+      const result = f.run("backup.sh", [...f.args, "--output-dir", f.output]);
+      assert.notEqual(result.status, 0);
+      assert.equal(result.calls, "");
+    } finally {
+      f.close();
+    }
+  });
+}
+
+test("manifest checksum mismatch is refused before target inspection", () => {
+  const f = canonicalFixture();
+  try {
+    assert.equal(
+      f.run("backup.sh", [...f.args, "--output-dir", f.output]).status,
+      0,
+    );
+    writeFileSync(join(f.output, "source-identity.json"), "{}");
+    const result = f.run("restore.sh", [
+      ...f.args,
+      "--backup",
+      f.output,
+      "--confirm",
+    ]);
+    assert.notEqual(result.status, 0);
+    assert.equal(result.calls, "");
+  } finally {
+    f.close();
+  }
+});
+
+for (const script of ["backup.sh", "restore.sh"]) {
+  test(`${script} refuses legacy selection of canonical project before Docker`, () => {
+    const f = fixture();
+    try {
+      const args =
+        script === "backup.sh"
+          ? ["--output-dir", f.output]
+          : ["--backup", f.backup, "--confirm"];
+      const result = f.run(script, [
+        ...args,
+        "--project-name",
+        "taskdesk-codex-testing",
+      ]);
+      assert.notEqual(result.status, 0);
+      assert.equal(result.calls, "");
+    } finally {
+      f.close();
+    }
+  });
+}
+
+for (const failedMember of ["source-identity.json", "SHA256SUMS"]) {
+  test(`identity-bearing publication interrupted at ${failedMember} remains unrestorable`, () => {
+    const f = fixture();
+    try {
+      const identity = JSON.stringify({
+        target: "local-sit",
+        layout: "attachments-root-v1",
+      });
+      writeFileSync(join(f.backup, "source-identity.json"), identity);
+      writeFileSync(
+        join(f.backup, "SHA256SUMS"),
+        readFileSync(join(f.backup, "SHA256SUMS"), "utf8") +
+          `${createHash("sha256").update(identity).digest("hex")}  source-identity.json\n`,
+      );
+      const result = publishWithInjection(
+        f,
+        `const original = fs.linkSync;
+fs.linkSync = (source, destination) => {
+  if (destination === target + '/' + ${JSON.stringify(failedMember)}) throw new Error('simulated interruption');
+  return original(source, destination);
+};`,
+      );
+      assert.notEqual(result.status, 0);
+      assert.equal(existsSync(join(f.output, "SHA256SUMS")), false);
+      const restore = f.run("restore.sh", ["--backup", f.output, "--confirm"]);
+      assert.notEqual(restore.status, 0);
+      assert.equal(restore.calls, "");
+    } finally {
+      f.close();
+    }
+  });
+}
+
+for (const [key, value] of [
+  ["PGHOST", "external"],
+  ["PGHOSTADDR", "192.0.2.1"],
+  ["PGPORT", "6543"],
+  ["PGSERVICE", "external"],
+]) {
+  test(`review regression: refuses inherited ${key} before SQL or dump`, () => {
+    const f = canonicalFixture();
+    try {
+      f.model.containers.postgres.Config.Env.push(`${key}=${value}`);
+      f.save();
+      const result = f.run("backup.sh", [...f.args, "--output-dir", f.output]);
+      assert.notEqual(result.status, 0);
+      assert.doesNotMatch(result.calls, /psql|pg_dump|^create /m);
+      assert.equal(existsSync(f.output), false);
+    } finally {
+      f.close();
+    }
+  });
+}
+for (const race of ["remove-source-at-create", "replace-after-read"]) {
+  test(`review regression: refuses ${race} without publication`, () => {
+    const f = canonicalFixture();
+    try {
+      f.model.race = race;
+      f.save();
+      const result = f.run("backup.sh", [...f.args, "--output-dir", f.output]);
+      assert.notEqual(result.status, 0);
+      assert.equal(existsSync(f.output), false);
+    } finally {
+      f.close();
+    }
+  });
+}
+test("review regression: refuses configured image different from running image", () => {
+  const f = canonicalFixture();
+  try {
+    f.model.configuredImageId = `sha256:${"e".repeat(64)}`;
+    f.save();
+    const result = f.run("backup.sh", [...f.args, "--output-dir", f.output]);
+    assert.notEqual(result.status, 0);
+    assert.doesNotMatch(result.calls, /pg_dump|^create /m);
+  } finally {
+    f.close();
+  }
+});
+
+for (const race of ["wrong-helper-mount", "writable-helper"]) {
+  test(`review regression: refuses ${race} and removes the captured helper before starting it`, () => {
+    const f = canonicalFixture();
+    try {
+      f.model.race = race;
+      f.save();
+      const result = f.run("backup.sh", [...f.args, "--output-dir", f.output]);
+      assert.notEqual(result.status, 0);
+      assert.match(
+        result.calls,
+        new RegExp(`--volumes-from ${"a".repeat(64)}:ro`),
+      );
+      assert.match(result.calls, new RegExp(`rm -f ${"c".repeat(64)}`));
+      assert.doesNotMatch(result.calls, /^start /m);
+      assert.equal(existsSync(f.output), false);
+    } finally {
+      f.close();
+    }
+  });
+}
+for (const key of ["PGSERVICEFILE", "PGOPTIONS", "PGDATABASE"]) {
+  test(`review regression: refuses configured ${key} before SQL or dump`, () => {
+    const f = canonicalFixture();
+    try {
+      f.model.config.services.postgres.environment[key] = "unexpected";
+      f.save();
+      const result = f.run("backup.sh", [...f.args, "--output-dir", f.output]);
+      assert.notEqual(result.status, 0);
+      assert.doesNotMatch(result.calls, /psql|pg_dump|^create /m);
     } finally {
       f.close();
     }

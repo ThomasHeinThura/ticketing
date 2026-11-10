@@ -56,6 +56,10 @@ synthetic archives and a fake Docker executable. It checks checksum membership, 
 archive validation before deletion, private restore copies, failed backup publication,
 existing destinations/locks and exact-ID attachment-helper cleanup. The cases include
 BusyBox GNU long names for application attachment keys, type/path/link/device ambiguities,
-and interrupted or raced publication with the checksum completion record written last. These tests do not
-establish canonical SIT/UAT target identity, quiescence, consistent snapshots, drill isolation
+and interrupted or raced publication with the checksum completion record written last. Canonical
+SIT cases cover private env handling, project/service/volume/mount/database identity mismatches,
+checksum-bound manifests, legacy layout refusal and the canonical restore refusal gate.
+Regression cases cover libpq redirection, image mismatch, source removal/replacement and
+incorrect helper mounts; all use synthetic Docker responses. These
+tests establish offline guard behaviour, not live SIT/UAT identity, quiescence, consistent snapshots, drill isolation
 or real restore acceptance; no cutover or reseed is accepted by this offline evidence.

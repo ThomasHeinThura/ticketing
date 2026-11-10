@@ -21,7 +21,10 @@ BACKUP_ROOT="${TASKDESK_BACKUP_ROOT:-$REPO_ROOT/backups}"
 BACKUP_ARG=""
 CONFIRMED=0
 MODE="local"
+MODE_EXPLICIT=0
 PROJECT_NAME=""
+RECOVERY_TARGET="legacy"
+PRIVATE_ENV_FILE=""
 
 usage() {
   cat <<'EOF'
@@ -29,6 +32,8 @@ Usage:
   scripts/restore.sh --backup <id-or-dir> --confirm [--mode local|production]
 
 Options:
+  --target <target>    legacy (default) or local-sit; remote targets are refused
+  --env-file <path>    Owner-only literal Compose env file (required for local-sit)
   --project-name <name>  Select an isolated Compose project (default: Compose configuration)
   --backup <id-or-dir>  Backup identifier under backups/ or path to backup directory
   --confirm             Required confirmation flag before overwriting database and attachments
@@ -39,6 +44,16 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --target)
+      [ $# -ge 2 ] || usage 1
+      RECOVERY_TARGET="$2"
+      shift 2
+      ;;
+    --env-file)
+      [ $# -ge 2 ] || usage 1
+      PRIVATE_ENV_FILE="$2"
+      shift 2
+      ;;
     --project-name)
       [ $# -ge 2 ] || usage 1
       PROJECT_NAME="$2"
@@ -57,6 +72,7 @@ while [ $# -gt 0 ]; do
     --mode)
       [ $# -ge 2 ] || usage 1
       MODE="$2"
+      MODE_EXPLICIT=1
       shift 2
       ;;
     -h|--help|help)
@@ -96,7 +112,17 @@ CHECKSUMS_FILE="$TARGET_DIR/SHA256SUMS"
 [ -f "$ATTACHMENTS_TAR" ] || { printf 'xx missing %s\n' "$ATTACHMENTS_TAR" >&2; exit 1; }
 [ -f "$CHECKSUMS_FILE" ] || { printf 'xx missing %s\n' "$CHECKSUMS_FILE" >&2; exit 1; }
 
-if [ -f "$ENV_FILE" ]; then
+case "$RECOVERY_TARGET" in
+  legacy)
+    [[ -z "$PRIVATE_ENV_FILE" && "$PROJECT_NAME" != taskdesk-codex-testing ]] || { printf 'xx canonical SIT requires --target local-sit and --env-file; legacy environment overrides are refused\n' >&2; exit 1; }
+    ;;
+  local-sit)
+    [[ "$MODE_EXPLICIT" = 0 && -n "$PRIVATE_ENV_FILE" && ( -z "$PROJECT_NAME" || "$PROJECT_NAME" = taskdesk-codex-testing ) ]] || { printf 'xx local-sit requires --env-file and the canonical project\n' >&2; exit 1; }
+    ;;
+  *) printf 'xx unsupported recovery target; Technexus SIT/UAT identity is not established by this helper\n' >&2; exit 1 ;;
+esac
+
+if [[ "$RECOVERY_TARGET" = legacy && -f "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090
   set -a; . "$ENV_FILE"; set +a
 fi
@@ -126,6 +152,9 @@ esac
 [ -z "$PROJECT_NAME" ] || COMPOSE_FILES+=(-p "$PROJECT_NAME")
 
 dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
+if [[ "$RECOVERY_TARGET" = local-sit ]]; then
+  dc() { node scripts/lib/compose-recovery-target.mjs compose "$PRIVATE_ENV_FILE" "$@"; }
+fi
 
 command -v node >/dev/null 2>&1 || { printf 'xx Node.js is required for archive validation\n' >&2; exit 1; }
 umask 077
@@ -147,6 +176,16 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 printf '==> Verifying backup checksums and complete attachment archive\n'
 node scripts/lib/recovery-archive.mjs snapshot "$TARGET_DIR" "$SNAPSHOT_DIR"
+if [[ "$RECOVERY_TARGET" = local-sit ]]; then
+  [[ -f "$SNAPSHOT_DIR/source-identity.json" ]] || { printf 'xx canonical SIT restore requires a checksum-bound source identity manifest\n' >&2; exit 1; }
+  node scripts/lib/compose-recovery-target.mjs identity "$PRIVATE_ENV_FILE" > "$SNAPSHOT_DIR/target-identity.json"
+  node scripts/lib/compose-recovery-target.mjs compare "$SNAPSHOT_DIR/source-identity.json" "$SNAPSHOT_DIR/target-identity.json"
+  printf 'xx canonical SIT identity matched, but restore is blocked: writer fencing and an isolated restore drill are not implemented\n' >&2
+  exit 1
+elif [[ -e "$SNAPSHOT_DIR/source-identity.json" ]]; then
+  printf 'xx identity-bearing backups require their explicit target; legacy restore cannot convert attachment layouts\n' >&2
+  exit 1
+fi
 DUMP_FILE="$SNAPSHOT_DIR/postgres.dump"
 ATTACHMENTS_TAR="$SNAPSHOT_DIR/attachments.tar"
 printf '==> Verifying database archive contents before stopping anything\n'

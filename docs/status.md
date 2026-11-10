@@ -1,5 +1,10 @@
 # Current status
 
+**Recovery target guards (local, unreleased):** canonical local-SIT backup selection and
+checksum-bound source identity are implemented with offline fake-Docker checks. Canonical
+restore and Technexus target selection fail closed. Writer fencing, consistent snapshots,
+isolated drill, browser acceptance and CI/review remain open; no runtime or data was touched.
+
 **7 Nov release:** `1f9d94910da396591ee3cfe431c0a5fdefa8d8af` runs on local SIT and
 Technexus (signed index `sha256:1859abb5d66d98caaac53ce8e57563ca53ff929dc87678720fad260084840ae4`;
 attestation and cosign verified). Local smoke 68/68; Technexus backup
