@@ -120,6 +120,7 @@ export function TerminologyProvider({
     key: string;
     instance: I18nInstance;
     shippedTerms: unknown;
+    installedTerms: string;
   } | null>(null);
   const effectiveTerms =
     query.isSuccess && query.isFetchedAfterMount
@@ -135,7 +136,6 @@ export function TerminologyProvider({
         const shippedTerms = structuredClone(
           instance.getResourceBundle(locale, "term"),
         );
-        installAudienceTerms(instance, locale, shippedTerms, audience, {});
         if (audience === "agent") {
           const { installAgentTerminology } = await import(
             "./agent-translation"
@@ -143,8 +143,12 @@ export function TerminologyProvider({
           if (!current) return;
           installAgentTerminology(instance);
         }
-        void instance.changeLanguage(locale);
-        setScopedStore({ key: cloneKey, instance, shippedTerms });
+        setScopedStore({
+          key: cloneKey,
+          instance,
+          shippedTerms,
+          installedTerms: "[]",
+        });
       })
       .catch(() => {
         if (current) setScopedStore(null);
@@ -168,14 +172,27 @@ export function TerminologyProvider({
 
   useEffect(() => {
     if (!activeScopedStore || !isolatedI18n) return;
+    const terms = effectiveTerms ?? {};
+    const signature = JSON.stringify(
+      Object.entries(terms)
+        .flatMap(([key, forms]) =>
+          Object.entries(forms ?? {}).map(([category, value]) => [
+            key,
+            category,
+            value,
+          ]),
+        )
+        .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+    );
+    if (activeScopedStore.installedTerms === signature) return;
     installAudienceTerms(
       isolatedI18n,
       locale,
       activeScopedStore.shippedTerms,
       audience,
-      effectiveTerms ?? {},
+      terms,
     );
-    void isolatedI18n.changeLanguage(locale);
+    activeScopedStore.installedTerms = signature;
   }, [activeScopedStore, audience, effectiveTerms, isolatedI18n, locale]);
 
   return (

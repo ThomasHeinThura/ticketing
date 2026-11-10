@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PendingActionApprovalDialog from "@/components/pending-action/pending-action-approval-dialog";
 import usePendingActionDialogStore from "@/store/pending-action-dialog";
+import { i18n } from "./index";
 import { AppI18nProvider } from "./provider";
 
 const mocks = vi.hoisted(() => ({
@@ -13,10 +14,11 @@ const mocks = vi.hoisted(() => ({
   cancel: vi.fn(),
   proof: vi.fn(),
   navigate: vi.fn(),
+  locale: "en-US",
 }));
 
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
-  default: () => ({ user: { locale: "en-US" } }),
+  default: () => ({ user: { locale: mocks.locale } }),
 }));
 
 vi.mock("@/fetchers/terminology", () => ({
@@ -89,6 +91,7 @@ const organisationPurge = {
 
 describe("application i18n provider and global approval dialog", () => {
   beforeEach(() => {
+    mocks.locale = "en-US";
     mocks.action.mockReset().mockResolvedValue(organisationPurge);
     mocks.publicTerminology.mockReset().mockResolvedValue({
       locale: "en-US",
@@ -141,5 +144,78 @@ describe("application i18n provider and global approval dialog", () => {
     expect(dialog).not.toHaveTextContent(/\{\{term_[^}]+\}\}/u);
     expect(mocks.publicTerminology).toHaveBeenCalledWith("en-US");
     expect(mocks.action).toHaveBeenCalledWith("pa-org-purge");
+  });
+
+  it("does not signal the current language again, but switches when the user locale changes", async () => {
+    await i18n.changeLanguage("en-US");
+    const change = vi.spyOn(i18n, "changeLanguage");
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = () => (
+      <QueryClientProvider client={queryClient}>
+        <AppI18nProvider>
+          <span>Content</span>
+        </AppI18nProvider>
+      </QueryClientProvider>
+    );
+    const view = render(tree());
+    expect(change).not.toHaveBeenCalled();
+    mocks.locale = "fr-FR";
+    view.rerender(tree());
+    await waitFor(() => expect(i18n.language).toBe("fr-FR"));
+    expect(change).toHaveBeenCalledWith("fr-FR");
+    expect(document.documentElement.lang).toBe("fr-FR");
+    view.unmount();
+    change.mockRestore();
+    await i18n.changeLanguage("en-US");
+  });
+
+  it("keeps English when the user switches back while French is loading", async () => {
+    await i18n.changeLanguage("en-US");
+    // Hold i18next's completion callback, retaining its real language-change race handling.
+    const loader = i18n as unknown as {
+      loadResources: (
+        locale: string,
+        callback: (error?: unknown) => void,
+      ) => void;
+    };
+    const originalLoad = loader.loadResources.bind(i18n);
+    let finishFrench: (() => void) | undefined;
+    const load = vi
+      .spyOn(loader, "loadResources")
+      .mockImplementation((locale, callback) => {
+        originalLoad(locale, (error) => {
+          if (locale === "fr-FR") finishFrench = () => callback(error);
+          else callback(error);
+        });
+      });
+    const change = vi.spyOn(i18n, "changeLanguage");
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = () => (
+      <QueryClientProvider client={queryClient}>
+        <AppI18nProvider>
+          <span>Content</span>
+        </AppI18nProvider>
+      </QueryClientProvider>
+    );
+    const view = render(tree());
+    mocks.locale = "fr-FR";
+    view.rerender(tree());
+    await waitFor(() => expect(finishFrench).toBeDefined());
+    expect(i18n.language).toBe("en-US");
+    mocks.locale = "en-US";
+    view.rerender(tree());
+    await waitFor(() => expect(change).toHaveBeenCalledWith("en-US"));
+    await act(async () => {
+      finishFrench?.();
+    });
+    expect(i18n.language).toBe("en-US");
+    expect(document.documentElement.lang).toBe("en-US");
+    view.unmount();
+    load.mockRestore();
+    change.mockRestore();
   });
 });

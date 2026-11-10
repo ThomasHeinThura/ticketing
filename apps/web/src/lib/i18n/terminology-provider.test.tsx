@@ -96,6 +96,65 @@ function NestedAgentProviderProbe({ workspaceId }: { workspaceId: string }) {
 }
 
 describe("terminology resource overlays", () => {
+  it("avoids redundant signals, refreshes changed terms, and isolates locale stores", async () => {
+    terminologyMocks.public.mockReset().mockResolvedValue({ terms: {} });
+    const original = i18nModule.createScopedI18n;
+    const stores: Awaited<ReturnType<typeof original>>[] = [];
+    const adds: ReturnType<typeof vi.spyOn>[] = [];
+    const changes: ReturnType<typeof vi.spyOn>[] = [];
+    vi.spyOn(i18nModule, "createScopedI18n").mockImplementation(
+      async (...args) => {
+        const store = await original(...args);
+        stores.push(store);
+        adds.push(vi.spyOn(store, "addResourceBundle"));
+        changes.push(vi.spyOn(store, "changeLanguage"));
+        return store;
+      },
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = (locale: string) => (
+      <QueryClientProvider client={client}>
+        <TerminologyProvider audience="customer" locale={locale}>
+          <ProviderProbe />
+        </TerminologyProvider>
+      </QueryClientProvider>
+    );
+    const view = render(tree("en-US"));
+    await waitFor(() => expect(stores).toHaveLength(1));
+    await waitFor(() =>
+      expect(terminologyMocks.public).toHaveBeenCalledTimes(1),
+    );
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["terminology-runtime"] });
+    });
+    expect(adds[0]).not.toHaveBeenCalled();
+    expect(changes[0]).not.toHaveBeenCalled();
+    terminologyMocks.public.mockResolvedValue({
+      terms: { request: { one: "Case", other: "Cases" } },
+    });
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["terminology-runtime"] });
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("noun")).toHaveTextContent("Case"),
+    );
+    expect(adds[0]).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["terminology-runtime"] });
+    });
+    expect(adds[0]).toHaveBeenCalledTimes(1);
+    view.rerender(tree("fr-FR"));
+    await waitFor(() => expect(stores).toHaveLength(2));
+    await waitFor(() => expect(stores[1]?.language).toBe("fr-FR"));
+    expect(stores[0]?.language).toBe("en-US");
+    expect(stores[0]?.t("customer.request", { ns: "term", count: 1 })).toBe(
+      "Case",
+    );
+    expect(changes[1]).not.toHaveBeenCalled();
+    view.unmount();
+  });
   it("updates only the selected audience and leaves shipped resources unchanged", () => {
     const shipped = {
       agent: { request_one: "Request" },

@@ -1,4 +1,4 @@
-import { type PropsWithChildren, useEffect, useMemo } from "react";
+import { type PropsWithChildren, useEffect, useMemo, useRef } from "react";
 import { I18nextProvider } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
@@ -11,6 +11,7 @@ import { TerminologyProvider } from "./terminology-provider";
 
 export function AppI18nProvider({ children }: PropsWithChildren) {
   const { user } = useAuth();
+  const pendingLocale = useRef<string | null>(null);
 
   const resolvedLocale = useMemo(
     () => resolveLocale(user?.locale, getBrowserLocale()),
@@ -18,9 +19,16 @@ export function AppI18nProvider({ children }: PropsWithChildren) {
   );
 
   useEffect(() => {
-    void i18n
-      .changeLanguage(resolvedLocale)
-      .then(() => preloadNamespaces(resolvedLocale));
+    if (i18n.language !== resolvedLocale || pendingLocale.current !== null) {
+      pendingLocale.current = resolvedLocale;
+      void i18n.changeLanguage(resolvedLocale).then(() => {
+        if (pendingLocale.current === resolvedLocale)
+          pendingLocale.current = null;
+        return preloadNamespaces(resolvedLocale);
+      });
+    } else {
+      void preloadNamespaces(resolvedLocale);
+    }
     document.documentElement.lang = resolvedLocale;
   }, [resolvedLocale]);
 
