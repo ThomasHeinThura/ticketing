@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmod,
+  copyFile,
   link,
   mkdir,
   mkdtemp,
@@ -61,6 +62,7 @@ async function fixture(
     "deploy/compose.testing.yml",
     "deploy/compose.local.yml",
     "deploy/compose.prod.yml",
+    "deploy/compose.sit.yml",
     "deploy/compose.traefik.yml",
     "deploy/traefik/dynamic/middlewares.yml",
   ]) {
@@ -187,6 +189,8 @@ if [[ "\${FAKE_DOCKER_FULL:-0}" == 1 ]]; then
 }"
         exit 0
         ;;
+      run) [[ "\${FAKE_MIGRATE_FAIL:-0}" != 1 ]] || exit 1; exit 0 ;;
+      exec) [[ "\${FAKE_PROBE_FAIL:-0}" != 1 ]] || exit 1; exit 0 ;;
       up)
         if [[ "\${args[*]}" == "up -d --wait" || "\${args[*]}" == "up -d --wait taskdesk" ]]; then : > "$FAKE_DOCKER_LOG.started"; fi
         exit 0
@@ -207,6 +211,7 @@ exit 0
 `,
   );
   await writeFile(path.join(bin, "ss"), "#!/usr/bin/env bash\nexit 0\n");
+  await writeFile(path.join(bin, "sleep"), "#!/usr/bin/env bash\nexit 0\n");
   await writeFile(
     path.join(bin, "uname"),
     `#!/usr/bin/env bash
@@ -218,7 +223,7 @@ esac
 `,
   );
   await Promise.all(
-    ["curl", "cosign", "docker", "getent", "ss", "uname"].map((name) =>
+    ["curl", "cosign", "docker", "getent", "ss", "uname", "sleep"].map((name) =>
       chmod(path.join(bin, name), 0o755),
     ),
   );
@@ -1098,4 +1103,177 @@ test("installer securely hands its live lock to its direct release child", async
   });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(await stat(`${f.sitEnv}.lock`).catch(() => null), null);
+});
+
+for (const target of ["production", "sit"]) {
+  for (const mode of ["upgrade", "rollback"]) {
+    for (const failure of [
+      "none",
+      "signature",
+      "migration",
+      "port",
+      "readiness",
+    ]) {
+      test(`${mode} ${target} ${failure} uses selected overlay and fails closed`, async (t) => {
+        const { f } = await productionRun(t);
+        await copyFile(
+          path.join(
+            f.temp,
+            "source",
+            "taskdesk-v1.2.3",
+            "deploy",
+            "compose.sit.yml",
+          ),
+          path.join(f.path, "deploy", "compose.sit.yml"),
+        );
+        await rm(path.join(f.temp, "docker.log"), { force: true });
+        await rm(path.join(f.temp, "docker.log.started"), { force: true });
+        const args =
+          mode === "rollback"
+            ? [mode, `sha256:${"d".repeat(64)}`, "v1.2.2"]
+            : [mode];
+        const result = spawnSync(
+          "bash",
+          [path.join(f.path, "scripts/deploy.sh"), ...args, "--target", target],
+          {
+            cwd: f.path,
+            encoding: "utf8",
+            env: {
+              ...process.env,
+              PATH: `${f.bin}:${process.env.PATH}`,
+              HOME: f.temp,
+              COSIGN_LOG: path.join(f.temp, "cosign.log"),
+              FAKE_DOCKER_FULL: "1",
+              FAKE_RAW: RAW_MANIFEST,
+              FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+              FAKE_COSIGN_FAIL: failure === "signature" ? "1" : "0",
+              FAKE_MIGRATE_FAIL: failure === "migration" ? "1" : "0",
+              FAKE_PROBE_FAIL: failure === "readiness" ? "1" : "0",
+              FAKE_PUBLISHED_UNTIL_START: failure === "port" ? "1" : "0",
+            },
+          },
+        );
+        const output = `${result.stdout}${result.stderr}`;
+        assert.equal(result.status === 0, failure === "none", output);
+        const log = await readFile(
+          path.join(f.temp, "docker.log"),
+          "utf8",
+        ).catch((error) => {
+          if (error.code === "ENOENT") return "";
+          throw error;
+        });
+        const compose = log
+          .split("\n")
+          .filter((line) => line.includes("args=compose -f"));
+        if (!(mode === "rollback" && failure === "signature"))
+          assert.ok(compose.length);
+        for (const line of compose)
+          assert.match(
+            line,
+            new RegExp(
+              `deploy/compose\\.${target === "sit" ? "sit" : "prod"}\\.yml`,
+            ),
+          );
+        if (failure === "signature") assert.doesNotMatch(log, / pull /);
+        if (failure === "migration" || failure === "port")
+          assert.doesNotMatch(log, / up -d --wait taskdesk/);
+      });
+    }
+  }
+}
+
+for (const mode of ["upgrade", "rollback"]) {
+  for (const flag of ["--no-verify", "--no-probe"]) {
+    test(`${mode} SIT rejects ${flag} before persistent effects`, async (t) => {
+      const f = await fixture(t, { realDeployment: true });
+      f.path = path.join(f.temp, "source", "taskdesk-v1.2.3");
+      const args =
+        mode === "rollback"
+          ? [mode, `sha256:${"d".repeat(64)}`, "v1.2.2"]
+          : [mode];
+      const result = spawnSync(
+        "bash",
+        [path.join(f.path, "scripts/deploy.sh"), ...args, "--target=sit", flag],
+        {
+          cwd: f.path,
+          encoding: "utf8",
+          env: { ...process.env, PATH: `${f.bin}:${process.env.PATH}` },
+        },
+      );
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /not allowed for signed SIT releases/);
+      assert.equal(
+        await stat(path.join(f.path, ".env")).catch(() => null),
+        null,
+      );
+    });
+  }
+}
+
+test("release target parsing rejects invalid values and non-release modes", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  f.path = path.join(f.temp, "source", "taskdesk-v1.2.3");
+  for (const args of [
+    ["upgrade", "--target"],
+    ["upgrade", "--target=bad"],
+    ["sit", "--target", "sit"],
+    ["production", "--target=production"],
+  ]) {
+    const result = spawnSync(
+      "bash",
+      [path.join(f.path, "scripts/deploy.sh"), ...args],
+      { cwd: f.path, encoding: "utf8" },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /--target/);
+    assert.equal(await stat(path.join(f.path, ".env")).catch(() => null), null);
+  }
+});
+
+test("real Compose merges the SIT overlay into the release configuration", async (t) => {
+  const { f, result } = await productionRun(t);
+  assert.equal(result.status, 0, result.stderr);
+  const docker = execFileSync("which", ["docker"], { encoding: "utf8" }).trim();
+  const config = spawnSync(
+    docker,
+    [
+      "compose",
+      "--env-file",
+      path.join(f.path, ".env"),
+      "-f",
+      "compose.yml",
+      "-f",
+      "deploy/compose.sit.yml",
+      "config",
+      "--format",
+      "json",
+    ],
+    { cwd: path.join(f.temp, "source", "taskdesk-v1.2.3"), encoding: "utf8" },
+  );
+  assert.equal(config.status, 0, config.stderr);
+  const merged = JSON.parse(config.stdout);
+  assert.equal(merged.services.taskdesk.environment.TASKDESK_TRUST_PROXY, "2");
+  assert.ok(Object.hasOwn(merged.services.taskdesk.networks, "web"));
+  assert.equal(merged.networks.web.external, true);
+  assert.match(
+    merged.services.taskdesk.labels[
+      "traefik.http.routers.taskdesk-sit-agent.rule"
+    ],
+    /tickting\.technexus\.info/,
+  );
+  assert.ok(!merged.services.taskdesk.ports?.length);
+});
+
+test("SIT release requires its overlay before persistent effects", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  f.path = path.join(f.temp, "source", "taskdesk-v1.2.3");
+  await rm(path.join(f.path, "deploy", "compose.sit.yml"));
+  const result = spawnSync(
+    "bash",
+    [path.join(f.path, "scripts/deploy.sh"), "upgrade", "--target", "sit"],
+    { cwd: f.path, encoding: "utf8" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /SIT overlay .* is required/);
+  assert.equal(await stat(path.join(f.path, ".env")).catch(() => null), null);
 });

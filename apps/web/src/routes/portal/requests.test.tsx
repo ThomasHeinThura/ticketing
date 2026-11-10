@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const navigate = vi.hoisted(() => vi.fn());
 const view = vi.hoisted(() => ({ value: undefined as "backlog" | undefined }));
 const rankBacklog = vi.hoisted(() => vi.fn());
+const project = vi.hoisted(() => ({ value: undefined as string | undefined }));
+const backlogOptions = vi.hoisted(() => vi.fn());
 const fakeSubmissionsQuery = vi.hoisted(() => ({
   data: {
     page: { hasMore: true, nextCursor: "older-50" },
@@ -98,17 +100,20 @@ vi.mock("@tanstack/react-query", async () => {
   return {
     keepPreviousData: (value: unknown) => value,
     useQuery: () => fakeSubmissionsQuery,
-    useInfiniteQuery: () => ({
-      data: { pages: [fakeBacklogQuery] },
-      isLoading: false,
-      isError: false,
-      isFetching: false,
-      isFetchingNextPage: false,
-      dataUpdatedAt: 1,
-      hasNextPage: true,
-      fetchNextPage: vi.fn(),
-      refetch: vi.fn(),
-    }),
+    useInfiniteQuery: (options: unknown) => {
+      backlogOptions(options);
+      return {
+        data: { pages: [fakeBacklogQuery] },
+        isLoading: false,
+        isError: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+        dataUpdatedAt: 1,
+        hasNextPage: true,
+        fetchNextPage: vi.fn(),
+        refetch: vi.fn(),
+      };
+    },
     useMutation: (options: {
       mutationFn: (input: unknown) => Promise<unknown>;
       onSuccess?: () => void;
@@ -138,7 +143,10 @@ vi.mock("@tanstack/react-router", async () => {
     createFileRoute: () => (config: { component: React.ComponentType }) =>
       Object.assign(config.component, {
         useRouteContext: () => ({ portalUserId: "customer-a" }),
-        useSearch: () => ({ ...(view.value ? { view: view.value } : {}) }),
+        useSearch: () => ({
+          ...(view.value ? { view: view.value } : {}),
+          ...(project.value ? { project: project.value } : {}),
+        }),
         fullPath: "/requests",
       }),
     useNavigate: () => navigate,
@@ -167,8 +175,27 @@ describe("PortalRequestsPage", () => {
   afterEach(() => {
     cleanup();
     view.value = undefined;
+    project.value = undefined;
+    backlogOptions.mockClear();
     rankBacklog.mockReset();
     fakeBacklogQuery.items = [...initialBacklogItems];
+  });
+
+  it("starts a separate backlog query when the project changes", () => {
+    view.value = "backlog";
+    project.value = "FIRST";
+    const Component = Route as unknown as React.ComponentType;
+    const rendered = render(<Component />);
+    expect(backlogOptions.mock.lastCall?.[0]).toMatchObject({
+      queryKey: ["portal", "customer-a", "backlog", "FIRST"],
+      initialPageParam: undefined,
+    });
+    project.value = "SECOND";
+    rendered.rerender(<Component />);
+    expect(backlogOptions.mock.lastCall?.[0]).toMatchObject({
+      queryKey: ["portal", "customer-a", "backlog", "SECOND"],
+      initialPageParam: undefined,
+    });
   });
 
   it("renders the customer's cases with severity, status and 'Your team'", () => {

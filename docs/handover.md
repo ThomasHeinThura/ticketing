@@ -58,7 +58,7 @@ All are recorded in [design-and-decisions](technical/design-and-decisions.md).
 
 - **Re-audit lows.** Each fix PR (#1033–#1043) lists its remaining low findings under "How it was checked". Known ones:
   - Submission form-field uploads still use the generic signed PUT: bound to key and size, not to a person.
-  - On S3, portal downloads stay bucket-presigned (documented in AT-5).
+  - Portal downloads on S3 still use bucket-presigned links in the deployed release; A8-6/#1103 implements API-mediated live reach checks for both drivers, pending review and merge.
   - Between `md` and `lg`, the collapsed calendar search does not tell screen readers that a search is active; the current fix is under CI review.
 - **Product follow-ups.**
   - Portal read-only Page view.
