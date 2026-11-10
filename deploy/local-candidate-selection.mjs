@@ -1246,7 +1246,7 @@ function daemonEvents(client, since, until) {
       reject("Incomplete daemon lifecycle event evidence.");
   return values;
 }
-function beginEventFence(client) {
+export function beginEventFence(client) {
   const since = client.command(["info", "--format", "{{.SystemTime}}"]).trim();
   daemonTimeNanos(since);
   client.command(["update", "--restart=no", client.id]);
@@ -1262,7 +1262,7 @@ function beginEventFence(client) {
     reject("Daemon event opening anchor is missing or ambiguous.");
   return anchors[0].timeNano;
 }
-function advanceEventFence(client, opening) {
+export function advanceEventFence(client, opening) {
   client.command(["update", "--restart=no", client.id]);
   const until = client.command(["info", "--format", "{{.SystemTime}}"]).trim();
   const untilNanos = daemonTimeNanos(until);
