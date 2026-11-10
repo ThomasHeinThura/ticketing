@@ -180,6 +180,38 @@ test("first administrator completes authenticator enrollment in the browser", as
             ).toBeVisible();
             expect(await state()).toEqual({ users: 1, completed: 1 });
             expect((await protectedRequest()).status()).toBe(200);
+            // The pending settings shell has no theme control. Exercise the actual
+            // preferences control after enrollment, then reload the security page.
+            for (const width of [390, 834, 1440]) {
+              await page.setViewportSize({ width, height: 900 });
+              for (const theme of ["light", "dark"] as const) {
+                await page.goto(
+                  `${origin}/dashboard/settings/account/preferences`,
+                );
+                await page.locator("#preference-theme").click();
+                await page
+                  .getByRole("option", {
+                    name: theme === "light" ? "Light" : "Dark",
+                    exact: true,
+                  })
+                  .click();
+                await expect(page.locator("html")).toHaveClass(
+                  new RegExp(`\\b${theme}\\b`),
+                );
+                await page.goto(
+                  `${origin}/dashboard/settings/account/security`,
+                );
+                await page.reload();
+                await expect(page.locator("html")).toHaveClass(
+                  new RegExp(`\\b${theme}\\b`),
+                );
+                await expect(
+                  page.getByRole("heading", {
+                    name: "Authenticator factor enabled",
+                  }),
+                ).toBeVisible();
+              }
+            }
           } finally {
             await context.close();
           }
