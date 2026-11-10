@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { seriousOrCriticalViolations } from "../../apps/web/e2e/helpers/axe";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { fillSensitive, privateRequest } from "./helpers/fill-sensitive";
 import { totpForUri, withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
@@ -70,6 +71,14 @@ test("first administrator completes authenticator enrollment in the browser", as
             expect((await denied.text()).trim()).toBe(
               "mfa_enrollment_required",
             );
+            await expect(
+              page.getByRole("button", { name: "Set up authenticator" }),
+            ).toBeVisible();
+            const violations = await seriousOrCriticalViolations(page);
+            expect(
+              violations.length,
+              "Pending enrollment fails G4 axe checks",
+            ).toBe(0);
             await fillSensitive(page.locator("#factor-password"), password);
             const enabled = page.waitForResponse(
               (r) =>
