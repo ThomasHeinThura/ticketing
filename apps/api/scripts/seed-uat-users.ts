@@ -13,8 +13,13 @@ import {
 } from "@taskdesk/permissions";
 import bcrypt from "bcryptjs";
 import { config } from "dotenv-mono";
-import { and, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
+import {
+  type AuthPluginConfigRow,
+  resolveStoredLocalAuthProviders,
+} from "../src/auth";
+import { getStoredAuthPluginConfigRows } from "../src/auth/repository";
 import db, { getDatabasePool, schema } from "../src/database";
 import { resolveDatabaseConfig } from "../src/database/resolve-database-url";
 import { kbArticleTable, kbCategoryTable } from "../src/database/schema-p5-kb";
@@ -225,6 +230,14 @@ const CUSTOMER_ORGS = {
 } as const;
 
 type ProjectKey = "SUP" | "OPS" | "WEB";
+
+/** Fresh seeds leave the viewer outside WEB, providing an unassigned-project fixture. */
+export function uatProjectRosterIncludes(
+  accountKey: string,
+  project: ProjectKey,
+) {
+  return !(accountKey === "viewer" && project === "WEB");
+}
 
 const PROJECTS: Record<
   ProjectKey,
@@ -2078,7 +2091,8 @@ async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       await seedProjectStates(project.id, UAT_WORKSPACE_ID, tx);
     }
     for (const account of UAT_ACCOUNTS) {
-      if (!account.projectRole) continue;
+      if (!account.projectRole || !uatProjectRosterIncludes(account.key, key))
+        continue;
       if (
         !(await membershipExists(tx, account.personId, "project", project.id))
       )
@@ -2532,6 +2546,14 @@ async function seedPages(seeded: Seeded) {
   }
 }
 
+/** Use the same portal and instance-scope resolution as the sign-in runtime. */
+export function uatPasswordReadiness(rows: readonly AuthPluginConfigRow[]) {
+  return {
+    agent: resolveStoredLocalAuthProviders("agent", rows).password,
+    customer: resolveStoredLocalAuthProviders("customer", rows).password,
+  };
+}
+
 /** Instance facts that decide how UAT accounts sign in; read only, never changed here. */
 async function signInReport() {
   const [setting] = await db
@@ -2543,18 +2565,10 @@ async function signInReport() {
     setting?.policy && "requiredRoleId" in setting.policy
       ? String(setting.policy.requiredRoleId ?? "")
       : undefined;
-  const [passwordPlugin] = await db
-    .select({ enabled: schema.instancePluginConfigTable.enabled })
-    .from(schema.instancePluginConfigTable)
-    .where(
-      and(
-        eq(schema.instancePluginConfigTable.pluginId, "auth.password"),
-        eq(schema.instancePluginConfigTable.enabled, true),
-        ne(schema.instancePluginConfigTable.portalScope, "none"),
-      ),
-    )
-    .limit(1);
-  return { mode, requiredRoleId, passwordSignIn: Boolean(passwordPlugin) };
+  const passwordSignIn = uatPasswordReadiness(
+    await getStoredAuthPluginConfigRows(),
+  );
+  return { mode, requiredRoleId, passwordSignIn };
 }
 
 export async function runUatSeed(argv: readonly string[] = process.argv) {
@@ -2608,9 +2622,13 @@ export async function runUatSeed(argv: readonly string[] = process.argv) {
               : `Only holders of the required role (${report.requiredRoleId ?? "not set"}) must enrol an authenticator at first sign-in.`
       }`,
     );
-    if (!report.passwordSignIn)
+    if (!report.passwordSignIn.agent)
       console.warn(
-        "Warning: no enabled email and password sign-in plugin was found; UAT accounts cannot sign in with a password until an administrator enables it.",
+        "Warning: agent password sign-in is disabled; staff password sign-in requires an administrator to enable it.",
+      );
+    if (!report.passwordSignIn.customer)
+      console.warn(
+        "Warning: customer password sign-in is disabled; customer password sign-in requires an administrator to enable it.",
       );
   } finally {
     await getDatabasePool().end();
