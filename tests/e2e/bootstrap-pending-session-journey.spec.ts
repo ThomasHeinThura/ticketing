@@ -12,9 +12,9 @@ const { chromium, expect, test } = requireWeb(
 const security = "/dashboard/settings/account/security";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
-test.afterEach(({ browserName: _browserName }, info) =>
-  redactSecretErrorContext(info),
-);
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test("pending bootstrap stays restricted across navigation, reload and re-entry", async () => {
   test.setTimeout(360_000);

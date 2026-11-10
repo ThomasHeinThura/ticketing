@@ -40,6 +40,7 @@
     "intake-primary-journey.spec.ts",
     "session-cache-security-journey.spec.ts",
     "bootstrap-pending-session-journey.spec.ts",
+    "bootstrap-enrollment-browser.spec.ts",
     "portal-projects-journey.spec.ts",
     "portal-request-conversation-journey.spec.ts",
     "storage-probe-retention-journey.spec.ts",
