@@ -16,9 +16,9 @@ describe("portal backlog fetchers", () => {
     mocks.apiFetch.mockResolvedValue(
       new Response(JSON.stringify(payload), { status: 200 }),
     );
-    await expect(getPortalBacklog("cursor+1")).resolves.toEqual(payload);
+    await expect(getPortalBacklog("cursor+1", "CCY")).resolves.toEqual(payload);
     expect(mocks.apiFetch).toHaveBeenCalledWith(
-      "/api/portal/requests/backlog?cursor=cursor%2B1",
+      "/api/portal/requests/backlog?cursor=cursor%2B1&project=CCY",
       {
         method: "GET",
         credentials: "include",
