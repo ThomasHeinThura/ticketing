@@ -4,7 +4,7 @@ Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [
 
 ## Who works on version 2
 
-Codex coordinates version 2. Independent Orca child worktrees hold draft work; the main checkout remains on the G11 branch. Claude workers reached their weekly limit, so current implementation and review use the middle and high tiers in AGENTS.md. Keep file ownership separate and use the Orca task results as evidence, not acceptance.
+Codex coordinates version 2. Independent Orca child worktrees hold draft work; the main checkout remains on the G11 branch. Use the middle and high tiers in AGENTS.md according to risk. Keep file ownership separate and use worker results as evidence, not acceptance.
 
 ## Goal
 
@@ -12,10 +12,10 @@ Complete the full audit, repair the remaining defects and qualify a clean seeded
 
 ## State now
 
-- **9 Nov release:** Thomas approved and merged #1092 as `9affab43db3cbc0b75dddc4207d1cbda4699361f`. The release workflow passed, and index `sha256:b41de7fad755e713bf1290de1c8b8e66bdbe911ba4f35fdae790fb15db61ff8e` passed attestation and cosign verification. The release adds `upgrade --target sit` and matching rollback targeting. All 17 branch-required checks passed; G11 was report-only and stopped before app metrics on unstable calibration.
-- **Local SIT:** a quiesced backup passed hashes and a full isolated restore (183 tables, 1,313 rows). The new signed image is healthy and six-role smoke passed 65/65; no account seeder ran. A bounded portal browser sweep matched 42 cells, with 12 unestablished. This is an upgrade of the existing data, not the requested clean reinstall.
-- **Technexus UAT:** still runs the previous signed `1f9d94910` image and existing data. No UAT app/data reset or deploy has occurred. A 10 Nov private preflight backup passed file checks and an isolated database restore with matching core counts. Take and verify a fresh quiesced backup immediately before replacement; the preflight copy is not the cutover snapshot.
-- **Clean cutover blocker:** main completes first-user setup before verified TOTP, contrary to the retained bootstrap contract. Draft #1098 addresses this; independent Sol review, focused browser checks and all non-G11 CI checks passed, but it remains unmerged. Draft #1089 supplies the clean demo seed and also remains unmerged. Do not reset either environment until the needed fixes are merged with Thomas's approval and a signed release is available. Reconcile the existing private credentials file with #1089's 11 seeded role accounts and separate first admin before cutover; the clean path does not use #1089's existing-data rewrite.
+- **10 Nov release:** #1103 merged as `b44125e97500fdd87eb07832411a84b10f1e60f7`. Release run 42770335074 passed build, scan, SBOM, sign and publish; signed index `sha256:223bd9969611370939a0b8bf4b5fcbfd575a39390a40ff98cf76508e22e6e5bc` is now the canonical local SIT application image. #1092's signed SIT-target upgrade and rollback helper shipped on 9 Nov.
+- **Local SIT:** the existing data remains in place; a quiesced backup and isolated restore were verified before the signed upgrades. The current image is healthy, both HTTPS origins passed certificate-verified readiness, and six-account smoke passed 65/65. D11 passed its signed-SIT phone browser matrix. D14 passed 52 bounded checks, but a populated two-project customer fixture is absent. D15's live-reach download code passed isolated filesystem/S3 tests and disposable browser checks; signed-SIT download and live S3 acceptance remain open. This is an upgrade, not the requested clean reinstall.
+- **Technexus UAT:** the last recorded image is signed `1f9d94910`; its current live digest was not rechecked in this checkpoint. No UAT app/data reset or deploy has occurred in this work. A 10 Nov private preflight backup passed file checks and an isolated database restore with matching core counts. Take and verify a fresh quiesced backup immediately before replacement; the preflight copy is not the cutover snapshot.
+- **Clean cutover blocker:** main completes first-user setup before verified TOTP, contrary to the retained bootstrap contract. Draft #1098 addresses this; independent Sol review, focused browser checks and all non-G11 CI checks passed, but it remains unmerged. Draft #1089 supplies the clean demo seed and also remains unmerged. The private identity mapping is still incomplete. Do not reset either environment until the needed fixes are merged with Thomas's approval and a signed release is available; the clean path does not use #1089's existing-data rewrite.
 - **Drafts:** #1091's earlier `ee9314ce8` head passed 25 other CI checks and assignment, board and drag budgets, but work-list LCP missed at 2549.1 ms against 2500. Its later preload experiment missed at 2747.3 ms; current head `afd730a19` restores the earlier preload gate and awaits CI. #1093's non-G11 checks pass, but real Reports-builder browser evidence remains open. The full 154-row audit is open. The offline browser policy blocks every request; after three failing attestation review rounds, a storage-alias high and migration-image medium remain, so the browser canary is paused for Thomas's direction.
 - **Portal decision pending:** staff-raised cases show an ambiguous "Created by" value under the retained requester contract. Thomas has been asked to choose the presentation correction. The mobile Projects scroll cue is also open.
 
@@ -66,14 +66,14 @@ All are recorded in [design-and-decisions](technical/design-and-decisions.md).
 
 - **Re-audit lows.** Each fix PR (#1033–#1043) lists its remaining low findings under "How it was checked". Known ones:
   - Submission form-field uploads still use the generic signed PUT: bound to key and size, not to a person.
-  - Portal downloads on S3 still use bucket-presigned links in the deployed release; A8-6/#1103 implements API-mediated live reach checks for both drivers, pending review and merge.
+  - #1103 replaced newly issued S3 bucket download links with API-mediated live reach checks for both drivers. Previously issued bucket URLs retain their original five-minute expiry; signed-SIT download and live S3 acceptance remain open.
   - Between `md` and `lg`, the collapsed calendar search does not tell screen readers that a search is active; the current fix is under CI review.
 - **Product follow-ups.**
   - Portal read-only Page view.
   - Upload files as Documents entries.
   - Email provider (none for UAT; testers use seeded passwords).
   - Technexus self-registration is open during UAT (A-15, accepted by Thomas).
-- **7 Nov follow-ups.** `Range` on a registered portal route still answers 206 with the raw file length; Members `q` filter from person search; agent inbox duplicate request not reproduced; #1059–#1061.
+- **7 Nov follow-ups.** The portal download `Range` length was corrected by #1103; Members `q` filter from person search, agent inbox duplicate request not reproduced, and #1059–#1061 remain.
 - **Earlier backlog.** God Mode completeness (A-29–A-34), the rest of L-04, L-05, L-02, L-06, L-07 and L-11. The October drafts #918–#920 were closed on 6 Nov (branches kept).
 - **Known flaky tests.**
   - Watch `project-managed-service-persisted` (URL timing) and the API reach-guard hook timeouts under heavy load; rerun before treating either as a regression.
