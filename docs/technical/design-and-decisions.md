@@ -3535,23 +3535,20 @@ A page can be shared with the customer only by adding it to Documents as a custo
 
 **UI.** Kaneo stays the visual base. Screens added for UAT (Overview, portal) are adjusted to Kaneo's spacing, typography and tab behaviour. Where the project tab strip overflows, it scrolls and keeps the active tab visible.
 
-**Portal files on the filesystem driver (CP-19; A-07, A-08).** The portal host serves work-item attachment files only through short-lived signed links. The portal `own_request` and `own_submission` routes mint them, after their own ownership and reach check:
-- **Download** (`GET /api/storage/portal-download`): a customer-visible file on the request or on a live public comment, never an internal or deleted comment's file.
+**Portal files (CP-19; A-07, A-08; Thomas, 10 November 2026).** The portal host serves work-item and submission attachment files only through short-lived API links on both filesystem and S3. The portal `own_request` and `own_submission` routes mint them after their own ownership and reach check:
+- **Download** (`GET`/`HEAD /api/storage/portal-download`): a customer-visible file on the request or on a live public comment, never an internal or deleted comment's file. The API rechecks that reach on every byte request before reading storage; S3 never returns a bucket URL to the portal caller.
 - **Upload** (`PUT /api/storage/portal-attachment-upload`): a fresh key under the work item, for the requester's reply on a direct request or on an accepted submission's request. Size and type limits are the agent upload's own. Staff see the file on the work item.
 
-Each link is signed with a key derived from `TASKDESK_AUTH_SECRET` (nothing new to configure). The signature binds:
-- the object key;
-- the customer person;
-- for an upload, the size ceiling;
-- an expiry, five minutes after minting (the existing filesystem link lifetime).
+Each link is signed with a key derived from `TASKDESK_AUTH_SECRET` (nothing new to configure). A download token binds the request or submission scope and reference, attachment id, customer person and five-minute expiry without putting the storage key in the URL. An upload token binds the object key, customer person, size ceiling and expiry.
 
-The route answers only on the portal host, and the portal session must belong to that same person. A link cannot be replayed for another key, by another person or after expiry. An agent-signed link for a work-item key is refused on the portal host. Staff work-item uploads and downloads retain their agent-host routes. On S3 the links point at the bucket.
+The route answers only on the portal host, and the portal session must belong to that same person. A link cannot be replayed for another attachment or parent, by another person or after expiry. An agent-signed link for a work-item key is refused on the portal host. Staff work-item uploads and downloads retain their agent-host routes. Full downloads and single byte ranges return exact lengths; HEAD opens no body stream. Malformed or multiple ranges return a full 200 response, while a valid unsatisfiable range returns 416. A stream already started may finish after reach changes; any new request rechecks reach.
 
 **Submission files are bound too (CP-19, AT-5; Thomas approved 3 November 2026).** A portal download of a submission's own file (a form-field file the customer attached before acceptance) uses the same person-bound `GET /api/storage/portal-download` link, minted only by the portal `own_submission` download route after its own check. No portal download is a bearer link any more:
 - The generic `GET /api/storage/filesystem-download` is refused on the portal host for every key, so an older unbound link for a submission file stops working there.
 - Staff keep downloading submission files through the agent host's generic signed route, unchanged.
 - **Superseded 4 November 2026:** submission form-field uploads now use the person-bound portal PUT. Old generic submission-upload links are refused on both hosts; staff work-item uploads remain on the generic agent route.
-- On S3 the portal still gets the bucket's five-minute presigned GET, bound to the key and expiry only.
+- **Superseded 10 November 2026:** the portal no longer gets an S3 bucket URL. Both storage drivers use the person-bound API link and live reach check above.
+  Filesystem links issued by the previous version stop working at upgrade and the customer can request a new link. S3 bucket links issued before upgrade remain valid until their original five-minute expiry; the API cannot revoke an already-issued bucket URL.
 
 **Requester field (A-03).** Staff can set a work item's requester to a customer, in the work-item detail and in the create dialog. The rules:
 - The caller needs `work_item:update` on the item.

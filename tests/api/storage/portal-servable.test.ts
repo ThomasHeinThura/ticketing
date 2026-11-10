@@ -346,34 +346,17 @@ describe("portal-bound filesystem links (CP-19)", () => {
         "workspace/ws1/other/file.pdf",
       ),
     ).toBe(false);
-    // The portal-bound download: work-item and submission keys, pending or final.
-    for (const key of [
-      WORK_ITEM_KEY,
-      FINAL_KEY,
-      SUBMISSION_KEY,
-      SUBMISSION_FINAL_KEY,
-    ])
-      for (const method of ["GET", "HEAD"])
-        expect(
-          isPortalStorageRequest(method, "/api/storage/portal-download", key),
-          `${method} ${key}`,
-        ).toBe(true);
+    // Downloads are admitted by path and method; their signed identifiers are validated later.
+    for (const method of ["GET", "HEAD"])
+      expect(
+        isPortalStorageRequest(
+          method,
+          "/api/storage/portal-download",
+          undefined,
+        ),
+      ).toBe(true);
     expect(
-      isPortalStorageRequest(
-        "GET",
-        "/api/storage/portal-download",
-        "workspace/ws1/submission/../../secret/attachment/a/b.pdf",
-      ),
-    ).toBe(false);
-    expect(
-      isPortalStorageRequest(
-        "GET",
-        "/api/storage/portal-download",
-        "workspace/ws1/work-item/../../secret/attachment/a/b.pdf",
-      ),
-    ).toBe(false);
-    expect(
-      isPortalStorageRequest("POST", "/api/storage/portal-download", FINAL_KEY),
+      isPortalStorageRequest("POST", "/api/storage/portal-download", undefined),
     ).toBe(false);
     expect(portalCanDownloadObject(FINAL_KEY)).toBe(true);
     expect(portalCanDownloadObject(SUBMISSION_FINAL_KEY)).toBe(true);
