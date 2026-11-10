@@ -918,6 +918,56 @@ export async function writePortalAttachmentUploadedObject(params: {
   await writeStreamToFile(params.body, candidate, maxBytesNum);
 }
 
+const PORTAL_DOWNLOAD_V2_INFO =
+  "taskdesk:storage:portal-attachment-download-token:v2";
+export function createPortalDownloadV2(input: {
+  scope: "request" | "submission";
+  ref: string;
+  id: string;
+  personId: string;
+  apiBaseUrl: string;
+}): string {
+  const expires = String(
+    Math.floor(Date.now() / 1000) + DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
+  );
+  const token = signPortalToken(PORTAL_DOWNLOAD_V2_INFO, [
+    input.scope,
+    input.ref,
+    input.id,
+    input.personId,
+    expires,
+  ]);
+  const query = new URLSearchParams({
+    scope: input.scope,
+    ref: input.ref,
+    id: input.id,
+    expires,
+    token,
+  });
+  return `${normalizeApiServerUrl(input.apiBaseUrl)}/storage/portal-download?${query.toString()}`;
+}
+export function verifyPortalDownloadV2(input: {
+  scope: "request" | "submission";
+  ref: string;
+  id: string;
+  personId: string;
+  expires: string;
+  token: string;
+}): boolean {
+  if (!/^\d+$/.test(input.expires)) return false;
+  const expires = Number(input.expires);
+  if (
+    !Number.isSafeInteger(expires) ||
+    Math.floor(Date.now() / 1000) >= expires
+  )
+    return false;
+  return verifyPortalToken(
+    PORTAL_DOWNLOAD_V2_INFO,
+    [input.scope, input.ref, input.id, input.personId, input.expires],
+    input.token,
+  );
+}
+
 /** A portal-bound download URL on the portal origin: key, person and expiry signed. */
 export function createPortalAttachmentDownloadUrl(
   key: string,
@@ -1119,4 +1169,18 @@ export async function deleteObject(key: string): Promise<void> {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
     throw error;
   });
+}
+
+/** Open only the requested byte interval after checking the filesystem path. */
+export async function getPortalObjectRange(
+  key: string,
+  start: number,
+  end: number,
+): Promise<ReadableStream<Uint8Array>> {
+  const config = await getCanonicalFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, key);
+  await assertFileWithinRoot(candidate, config.root);
+  return Readable.toWeb(
+    fs.createReadStream(candidate, { start, end }),
+  ) as ReadableStream<Uint8Array>;
 }

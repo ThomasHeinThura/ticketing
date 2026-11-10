@@ -287,8 +287,7 @@ export const platformPolicies = {
   "GET /api/storage/portal-download": {
     public: true,
     reason:
-      "a presigned-style download authorized by a short-lived signed token binding key and " +
-      "customer person, checked against the portal session's person in the handler",
+      "a person-bound signed download that rechecks current portal reach before serving bytes",
   },
 
   // --- Issue #8 classification pass: inline routes in index.ts (below). GET /api/asset/{id}
