@@ -37,6 +37,7 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // Strict per-area settings capabilities (workspace:manage_roles, webhook:manage,
   // custom_field:manage), exactly what each settings API enforces. Optional so an older server
   // fails closed; never inferred from `manageWorkspaceSettings`.
+  manageRequestTypes?: boolean;
   manageRoles?: boolean;
   manageWebhooks?: boolean;
   manageCustomFields?: boolean;
@@ -86,6 +87,7 @@ const EMPTY_CAPABILITIES = {
 export function useWorkspacePermission(
   targetWorkspaceId?: string,
   targetProjectId?: string,
+  options?: { refreshOnMount?: boolean },
 ) {
   const { data: activeWorkspace } = useActiveWorkspace();
   const { data: activeMember, isLoading: isActiveMemberLoading } =
@@ -121,6 +123,8 @@ export function useWorkspacePermission(
     data: capabilities,
     isLoading,
     isFetching,
+    isPaused,
+    isError,
   } = useQuery({
     queryKey: sharesActiveRead
       ? ["workspace-capabilities", workspaceId, activeRole]
@@ -135,7 +139,8 @@ export function useWorkspacePermission(
     enabled: Boolean(
       workspaceId && (isTargetScoped ? !awaitsActiveRead : role),
     ),
-    staleTime: 5 * 60 * 1000,
+    staleTime: options?.refreshOnMount ? 0 : 5 * 60 * 1000,
+    ...(options?.refreshOnMount ? { refetchOnMount: "always" as const } : {}),
     queryFn: async (): Promise<CapabilityMap> => {
       const response = await client.capabilities.$get({
         query: {
@@ -187,6 +192,7 @@ export function useWorkspacePermission(
       canSetPriorityTasks: () => can.setPriorityTasks === true,
       canManageProjectSettings: () => can.manageProjectSettings === true,
       canArchiveProjects: () => can.archiveProjects === true,
+      canManageRequestTypes: () => can.manageRequestTypes === true,
       canManageRoles: () => can.manageRoles === true,
       canManageWebhooks: () => can.manageWebhooks === true,
       canManageCustomFields: () => can.manageCustomFields === true,
@@ -210,7 +216,9 @@ export function useWorkspacePermission(
     // off when the server check resolves.
     isCheckingPermissions:
       Boolean(workspaceId && (isTargetScoped || role)) &&
-      (isLoading || !capabilities),
+      (awaitsActiveRead || isLoading || !capabilities),
     isRefetchingPermissions: isFetching,
+    isPermissionCheckPaused: isPaused,
+    isPermissionError: isError,
   };
 }

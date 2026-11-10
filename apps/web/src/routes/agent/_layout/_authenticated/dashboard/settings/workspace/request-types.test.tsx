@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./request-types";
 
 const mocks = vi.hoisted(() => ({
+  allowed: true,
+  checking: false,
   search: { requestTypeId: "rt-1" } as { requestTypeId?: string },
   navigate: vi.fn(),
   getRequestTypes: vi.fn(),
@@ -43,6 +45,12 @@ vi.mock("@/hooks/queries/work-item/use-get-work-item-types", () => ({
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" }, isLoading: false }),
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canManageRequestTypes: () => mocks.allowed,
+    isCheckingPermissions: mocks.checking,
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("react-i18next", () => ({
@@ -84,10 +92,20 @@ const type = {
   position: 0,
 };
 
-function renderPage() {
+function renderPage(failed = false) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  if (failed) {
+    const query = queryClient.getQueryCache().build(queryClient, {
+      queryKey: ["workspace-capabilities", "workspace-1", "member"],
+    });
+    query.setState({
+      status: "error",
+      fetchStatus: "idle",
+      error: new Error("failed"),
+    });
+  }
   return render(
     <QueryClientProvider client={queryClient}>
       <RequestTypesPage />
@@ -97,6 +115,8 @@ function renderPage() {
 
 describe("request type editor", () => {
   beforeEach(() => {
+    mocks.allowed = true;
+    mocks.checking = false;
     mocks.search = { requestTypeId: "rt-1" };
     mocks.getRequestTypes.mockReset().mockResolvedValue({
       requestTypes: [type],
@@ -116,6 +136,34 @@ describe("request type editor", () => {
       );
   });
   afterEach(() => cleanup());
+
+  it.each(["denied", "checking"])(
+    "does not fetch editor data while %s",
+    (state) => {
+      mocks.allowed = false;
+      mocks.checking = state === "checking";
+      renderPage();
+      expect(
+        state === "denied"
+          ? screen.getByTestId("settings-access-denied")
+          : screen.getByRole("status", {
+              name: "settings:accessDenied.checking",
+            }),
+      ).toBeTruthy();
+      expect(mocks.getRequestTypes).not.toHaveBeenCalled();
+      expect(mocks.getRequestType).not.toHaveBeenCalled();
+      expect(mocks.getRequestTypeGroupOrder).not.toHaveBeenCalled();
+    },
+  );
+
+  it("fails closed when capabilities fail", () => {
+    mocks.checking = true;
+    renderPage(true);
+    expect(screen.getByTestId("settings-access-error")).toBeTruthy();
+    expect(mocks.getRequestTypes).not.toHaveBeenCalled();
+    expect(mocks.getRequestType).not.toHaveBeenCalled();
+    expect(mocks.getRequestTypeGroupOrder).not.toHaveBeenCalled();
+  });
 
   it("keeps the same field row mounted while its key is edited", async () => {
     renderPage();

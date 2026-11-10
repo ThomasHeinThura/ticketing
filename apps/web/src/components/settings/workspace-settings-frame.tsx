@@ -45,6 +45,7 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
     role,
     canManageWorkspaceSettings,
     canManageServiceCalendars,
+    canManageRequestTypes,
     canManageRoles,
     canManageWebhooks,
     canManageCustomFields,
@@ -55,6 +56,7 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const location = useLocation();
   const canSettings = canManageWorkspaceSettings();
   const canCalendars = canManageServiceCalendars();
+  const canRequestTypes = canManageRequestTypes();
   const canRoles = canManageRoles();
   const canWebhooks = canManageWebhooks();
   const canFields = canManageCustomFields();
@@ -129,7 +131,7 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("requestTypes:title"),
       url: "/dashboard/settings/workspace/request-types",
       icon: Inbox,
-      visible: canSettings,
+      visible: canRequestTypes,
     },
     {
       title: t("settings:workflows.title"),

@@ -41,14 +41,26 @@ type Permission = ReturnType<typeof useWorkspacePermission>;
 export function useSettingsAccess(
   allows: (permission: Permission) => boolean,
   projectId?: string,
+  options?: { refreshOnMount?: boolean },
 ): SettingsAccess {
   const { data: workspace } = useActiveWorkspace();
-  const permission = useWorkspacePermission(workspace?.id, projectId);
+  const permission = useWorkspacePermission(
+    workspace?.id,
+    projectId,
+    ...(options ? ([options] as const) : ([] as const)),
+  );
   const checkFailed = useCapabilityCheckFailed(
     permission.isCheckingPermissions ? workspace?.id : undefined,
     projectId,
   );
   if (!workspace?.id) return "checking";
+  // Sensitive settings can require a fresh check even when the shared cache has data.
+  if (
+    options?.refreshOnMount &&
+    (permission.isRefetchingPermissions || permission.isPermissionCheckPaused)
+  )
+    return "checking";
+  if (options?.refreshOnMount && permission.isPermissionError) return "error";
   if (permission.isCheckingPermissions)
     return checkFailed ? "error" : "checking";
   return allows(permission) ? "allowed" : "denied";

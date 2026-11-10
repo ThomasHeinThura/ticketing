@@ -23,6 +23,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
+import {
   getRequestType,
   getRequestTypes,
   publishRequestType,
@@ -130,6 +134,23 @@ const blank = (): Omit<
 });
 
 function RequestTypesPage() {
+  const { t } = useTranslation("requestTypes");
+  const access = useSettingsAccess(
+    (permission) => permission.canManageRequestTypes(),
+    undefined,
+    { refreshOnMount: true },
+  );
+  return (
+    <>
+      <PageTitle title={t("title")} />
+      <SettingsAccessGate access={access}>
+        <RequestTypesEditor />
+      </SettingsAccessGate>
+    </>
+  );
+}
+
+function RequestTypesEditor() {
   const { t } = useTranslation("requestTypes");
   const workspace = useActiveWorkspace();
   const queryClient = useQueryClient();
@@ -332,7 +353,6 @@ function RequestTypesPage() {
   );
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <PageTitle title={t("title")} />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{t("title")}</h1>

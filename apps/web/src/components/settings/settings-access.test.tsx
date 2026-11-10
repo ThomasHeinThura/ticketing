@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -18,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   capabilitiesGet: vi.fn(),
   getStateTemplates: vi.fn(),
+  membershipLoading: false,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -32,7 +37,7 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 vi.mock("@/hooks/queries/workspace-users/use-active-workspace-user", () => ({
   useGetActiveWorkspaceUser: () => ({
     data: { role: "admin" },
-    isLoading: false,
+    isLoading: mocks.membershipLoading,
   }),
 }));
 vi.mock("@/fetchers/project-settings-inheritance", () => ({
@@ -78,8 +83,12 @@ function SettingsScreen({ projectId }: { projectId?: string }) {
 beforeEach(() => {
   mocks.capabilitiesGet.mockReset();
   mocks.getStateTemplates.mockReset();
+  mocks.membershipLoading = false;
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  onlineManager.setOnline(true);
+});
 
 describe("settings access when the capability read fails", () => {
   it("offers Retry on a 500 instead of checking forever, then recovers", async () => {
@@ -173,4 +182,233 @@ describe("WorkspaceStateTemplatesPanel when the capability read fails", () => {
       ).toBeEnabled(),
     );
   });
+});
+
+describe("settings access requiring a fresh capability on revisit", () => {
+  it.each([
+    ["request types", "manageRequestTypes"],
+    ["terminology", "manageWorkspaceSettings"],
+  ] as const)(
+    "holds %s while membership loads and until the fresh capability settles",
+    async (_name, flag) => {
+      mocks.membershipLoading = true;
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      client.setQueryData(
+        ["workspace-capabilities", "ws-1", "work-item-target"],
+        { [flag]: true },
+      );
+      client.setQueryData(["workspace-capabilities", "ws-1", "admin"], {
+        [flag]: true,
+      });
+      let resolve!: (value: ReturnType<typeof respond>) => void;
+      mocks.capabilitiesGet.mockReturnValue(
+        new Promise((done) => {
+          resolve = done;
+        }),
+      );
+      const editorRequest = vi.fn();
+      function Editor() {
+        editorRequest();
+        return <p>editor mounted</p>;
+      }
+      function Screen() {
+        const access = useSettingsAccess(
+          (permission) =>
+            flag === "manageRequestTypes"
+              ? permission.canManageRequestTypes()
+              : permission.canManageWorkspaceSettings(),
+          undefined,
+          { refreshOnMount: true },
+        );
+        return (
+          <SettingsAccessGate access={access}>
+            <Editor />
+          </SettingsAccessGate>
+        );
+      }
+      const { rerender } = render(
+        <QueryClientProvider client={client}>
+          <Screen />
+        </QueryClientProvider>,
+      );
+      expect(
+        screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+      ).toBeInTheDocument();
+      expect(editorRequest).not.toHaveBeenCalled();
+      expect(mocks.capabilitiesGet).not.toHaveBeenCalled();
+      mocks.membershipLoading = false;
+      rerender(
+        <QueryClientProvider client={client}>
+          <Screen />
+        </QueryClientProvider>,
+      );
+      await waitFor(() =>
+        expect(mocks.capabilitiesGet).toHaveBeenCalledTimes(1),
+      );
+      expect(
+        screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+      ).toBeInTheDocument();
+      expect(editorRequest).not.toHaveBeenCalled();
+      resolve(respond(200, { [flag]: false }));
+      expect(
+        await screen.findByTestId("settings-access-denied"),
+      ).toBeInTheDocument();
+      expect(editorRequest).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["request types", "manageRequestTypes"],
+    ["terminology", "manageWorkspaceSettings"],
+  ] as const)(
+    "keeps %s closed while offline and rechecks after reconnecting",
+    async (_name, flag) => {
+      onlineManager.setOnline(false);
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      client.setQueryData(["workspace-capabilities", "ws-1", "admin"], {
+        [flag]: true,
+      });
+      mocks.capabilitiesGet.mockResolvedValue(respond(200, { [flag]: false }));
+      const mounted = vi.fn();
+      function Content() {
+        mounted();
+        return <p>protected content</p>;
+      }
+      function Screen() {
+        const access = useSettingsAccess(
+          (permission) =>
+            flag === "manageRequestTypes"
+              ? permission.canManageRequestTypes()
+              : permission.canManageWorkspaceSettings(),
+          undefined,
+          { refreshOnMount: true },
+        );
+        return (
+          <SettingsAccessGate access={access}>
+            <Content />
+          </SettingsAccessGate>
+        );
+      }
+      render(
+        <QueryClientProvider client={client}>
+          <Screen />
+        </QueryClientProvider>,
+      );
+      expect(
+        screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+      ).toBeInTheDocument();
+      expect(mounted).not.toHaveBeenCalled();
+      expect(mocks.capabilitiesGet).not.toHaveBeenCalled();
+      onlineManager.setOnline(true);
+      expect(
+        await screen.findByTestId("settings-access-denied"),
+      ).toBeInTheDocument();
+      expect(mocks.capabilitiesGet).toHaveBeenCalledTimes(1);
+      expect(mounted).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["request types", "manageRequestTypes"],
+    ["terminology", "manageWorkspaceSettings"],
+  ] as const)(
+    "does not mount %s from a cached grant while it is revoked",
+    async (_name, flag) => {
+      let resolve!: (value: ReturnType<typeof respond>) => void;
+      mocks.capabilitiesGet.mockReturnValue(
+        new Promise((done) => {
+          resolve = done;
+        }),
+      );
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      client.setQueryData(["workspace-capabilities", "ws-1", "admin"], {
+        [flag]: true,
+      });
+      const mounted = vi.fn();
+      function Content() {
+        mounted();
+        return <p>protected content</p>;
+      }
+      function Screen() {
+        const access = useSettingsAccess(
+          (permission) =>
+            flag === "manageRequestTypes"
+              ? permission.canManageRequestTypes()
+              : permission.canManageWorkspaceSettings(),
+          undefined,
+          { refreshOnMount: true },
+        );
+        return (
+          <SettingsAccessGate access={access}>
+            <Content />
+          </SettingsAccessGate>
+        );
+      }
+      render(
+        <QueryClientProvider client={client}>
+          <Screen />
+        </QueryClientProvider>,
+      );
+      expect(
+        screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+      ).toBeInTheDocument();
+      expect(mounted).not.toHaveBeenCalled();
+      resolve(respond(200, { [flag]: false }));
+      expect(
+        await screen.findByTestId("settings-access-denied"),
+      ).toBeInTheDocument();
+      expect(mounted).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["request types", "manageRequestTypes"],
+    ["terminology", "manageWorkspaceSettings"],
+  ] as const)(
+    "fails closed for %s when a cached grant cannot be refreshed",
+    async (_name, flag) => {
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      client.setQueryData(["workspace-capabilities", "ws-1", "admin"], {
+        [flag]: true,
+      });
+      mocks.capabilitiesGet.mockResolvedValue(respond(503));
+      const mounted = vi.fn();
+      function Content() {
+        mounted();
+        return <p>protected content</p>;
+      }
+      function Screen() {
+        const access = useSettingsAccess(
+          (permission) =>
+            flag === "manageRequestTypes"
+              ? permission.canManageRequestTypes()
+              : permission.canManageWorkspaceSettings(),
+          undefined,
+          { refreshOnMount: true },
+        );
+        return (
+          <SettingsAccessGate access={access}>
+            <Content />
+          </SettingsAccessGate>
+        );
+      }
+      render(
+        <QueryClientProvider client={client}>
+          <Screen />
+        </QueryClientProvider>,
+      );
+      expect(
+        await screen.findByTestId("settings-access-error"),
+      ).toBeInTheDocument();
+      expect(mounted).not.toHaveBeenCalled();
+    },
+  );
 });

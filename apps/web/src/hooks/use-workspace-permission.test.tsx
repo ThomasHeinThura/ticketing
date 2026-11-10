@@ -464,6 +464,36 @@ describe("useWorkspacePermission", () => {
     );
     expect(result.current.canTriageIntake()).toBe(true);
   });
+  it("uses request_type:manage independently and fails closed when absent", async () => {
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          manageRequestTypes: true,
+          manageWorkspaceSettings: false,
+        }),
+    });
+    const allowed = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(allowed.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(allowed.result.current.canManageRequestTypes()).toBe(true);
+    expect(allowed.result.current.canManageWorkspaceSettings()).toBe(false);
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () => fullCapabilityMap({ manageWorkspaceSettings: true }),
+    });
+    const absent = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(absent.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(absent.result.current.canManageRequestTypes()).toBe(false);
+  });
+
   it("exposes the saved-view audience capabilities from their exact canonical keys", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,
