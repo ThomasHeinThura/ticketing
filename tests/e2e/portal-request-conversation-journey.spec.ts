@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
 import {
   fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
@@ -269,6 +270,7 @@ async function runJourney(
   try {
     const staffPage = await staffContext.newPage();
     await signUpStaff(staffPage, fixture);
+    await completePendingFirstAdminInBrowser(staffPage, fixture);
     const support = await createStaffWorkspace(staffPage, fixture.origin);
     const tenant = (await seedScript(
       fixture,

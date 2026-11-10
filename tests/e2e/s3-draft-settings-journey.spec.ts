@@ -4,6 +4,8 @@ import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
+import { fillSensitive } from "./helpers/fill-sensitive";
 import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -136,6 +138,10 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         );
         await page.getByRole("button", { name: "Create account" }).click();
         expect((await signup).status()).toBe(200);
+        const nextBackupCode = await completePendingFirstAdminInBrowser(
+          page,
+          fixture,
+        );
         await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
         await page
           .getByLabel("Workspace name")
@@ -173,7 +179,12 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         await page.locator("#s3-secret-mode").click();
         await page.getByRole("option", { name: "Replace" }).click();
         await page.locator("#s3-secret-value").fill(synthetic.secretAccessKey);
-        await page.locator("#s3-draft-step-up-secret").fill(fixture.password);
+        await page.locator("#s3-draft-step-up-method").click();
+        await page.getByRole("option", { name: "Backup code" }).click();
+        await fillSensitive(
+          page.locator("#s3-draft-step-up-secret"),
+          nextBackupCode(),
+        );
         const saved = page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname ===
@@ -224,7 +235,12 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
           version: 1,
           credentialConfigured: true,
         });
-        await page.locator("#s3-draft-step-up-secret").fill(fixture.password);
+        await page.locator("#s3-draft-step-up-method").click();
+        await page.getByRole("option", { name: "Backup code" }).click();
+        await fillSensitive(
+          page.locator("#s3-draft-step-up-secret"),
+          nextBackupCode(),
+        );
         const tested = page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname ===

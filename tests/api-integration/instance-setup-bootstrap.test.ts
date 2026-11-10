@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { count, eq, sql } from "drizzle-orm";
 import { Client } from "pg";
@@ -40,6 +40,36 @@ const { base32 } = apiRequire("@better-auth/utils/base32") as {
 const { createOTP } = apiRequire("@better-auth/utils/otp") as {
   createOTP(secret: string): { totp(): Promise<string> };
 };
+
+function invalidTotpForUri(uri: string) {
+  const secret = new URL(uri).searchParams.get("secret");
+  if (!secret) throw new Error("TOTP enrollment has no secret");
+  const selectedAt = Date.now();
+  const counter = Math.floor(selectedAt / 30_000);
+  const forbidden = new Set(
+    [-2, -1, 0, 1, 2].map((offset) => {
+      const bytes = Buffer.alloc(8);
+      bytes.writeBigUInt64BE(BigInt(counter + offset));
+      const digest = createHmac("sha1", base32.decode(secret))
+        .update(bytes)
+        .digest();
+      const index = (digest.at(-1) ?? 0) & 0x0f;
+      return String(
+        (digest.readUInt32BE(index) & 0x7fffffff) % 1_000_000,
+      ).padStart(6, "0");
+    }),
+  );
+  const code = [
+    "000000",
+    "111111",
+    "222222",
+    "333333",
+    "444444",
+    "555555",
+  ].find((candidate) => !forbidden.has(candidate));
+  if (!code) throw new Error("Could not choose an invalid test code");
+  return { code, selectedAt };
+}
 
 function agentCookie(response: Response): string {
   const cookie = response.headers
@@ -520,6 +550,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const code = await createOTP(
       Buffer.from(base32.decode(secret)).toString("utf8"),
     ).totp();
+    const invalidCode = invalidTotpForUri(enrollment.totpURI);
     const invalid = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
@@ -527,8 +558,9 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
       },
-      body: JSON.stringify({ code: code === "000000" ? "111111" : "000000" }),
+      body: JSON.stringify({ code: invalidCode.code }),
     });
+    expect(Date.now() - invalidCode.selectedAt).toBeLessThan(30_000);
     expect(invalid.status).toBeGreaterThanOrEqual(400);
     expect(await isSetupCompleted()).toBe(false);
 
@@ -617,6 +649,8 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
       body: JSON.stringify({ password: bootstrapPassword, issuer: "TaskDesk" }),
     });
     expect(enabled.status).toBe(200);
+    const enrollment = (await enabled.json()) as { totpURI: string };
+    const invalidCode = invalidTotpForUri(enrollment.totpURI);
     const invalid = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
@@ -624,8 +658,9 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
       },
-      body: JSON.stringify({ code: "000000" }),
+      body: JSON.stringify({ code: invalidCode.code }),
     });
+    expect(Date.now() - invalidCode.selectedAt).toBeLessThan(30_000);
     expect(invalid.status).toBeGreaterThanOrEqual(400);
     expect(await isSetupCompleted()).toBe(false);
   });
