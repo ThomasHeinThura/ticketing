@@ -9552,16 +9552,38 @@
           "Assets"
         ],
         "summary": "Download a customer-visible attachment on the portal host",
-        "description": "The portal-bound equivalent of a presigned GET on the filesystem storage driver, minted by the portal request and submission download routes after their own check. Portal host only; the token binds the key, the customer person and a five-minute expiry, and the portal session must be that person.",
+        "description": "A five-minute person-bound link, rechecking current access before serving bytes.",
         "security": [],
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "request",
+                "submission"
+              ]
+            },
+            "required": true,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": true,
+            "name": "ref",
+            "in": "query"
+          },
           {
             "schema": {
               "type": "string",
               "minLength": 1
             },
             "required": true,
-            "name": "key",
+            "name": "id",
             "in": "query"
           },
           {
@@ -9581,15 +9603,6 @@
             "required": true,
             "name": "token",
             "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1
-            },
-            "required": true,
-            "name": "filename",
-            "in": "query"
           }
         ],
         "responses": {
@@ -9604,8 +9617,19 @@
               }
             }
           },
+          "206": {
+            "description": "The requested byte range",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
           "400": {
-            "description": "Invalid key, expired or invalid token, or a token for another person",
+            "description": "Invalid or expired token",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9625,7 +9649,27 @@
             }
           },
           "404": {
-            "description": "Not the portal host, the filesystem storage driver is not active, or the object is gone",
+            "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Range not satisfiable",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
             "content": {
               "text/plain": {
                 "schema": {
@@ -59365,7 +59409,7 @@
           "Attachments"
         ],
         "summary": "Download a customer-visible file of the request",
-        "description": "302 to a short-lived signed URL. On the filesystem storage driver it is a portal-bound link for this requester (CP-19): it works only on the portal host, for this person, for five minutes.",
+        "description": "302 to a five-minute person-bound portal URL; current reach is checked again when bytes are requested.",
         "parameters": [
           {
             "schema": {
