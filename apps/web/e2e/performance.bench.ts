@@ -20,6 +20,7 @@ import {
   PERFORMANCE_REFERENCE,
   resolveJobCalibration,
 } from "../../../scripts/ci/lib/performance-calibration.mjs";
+import { observeCalibrationBatch } from "./helpers/calibration-diagnostics";
 import {
   BOARD_ITEM_COUNT,
   BOARD_PROJECT_KEY,
@@ -141,7 +142,9 @@ test.beforeAll(async ({ browser }) => {
     const batches: number[][] = [];
     for (let index = 0; index < CALIBRATION_BATCHES; index += 1)
       batches.push(
-        await measureCalibrationRuns(browser, state === "throttled"),
+        await observeCalibrationBatch(state, index, () =>
+          measureCalibrationRuns(browser, state === "throttled"),
+        ),
       );
     const calibration = resolveJobCalibration({ batches, state });
     jobCalibrations[state] = calibration;
