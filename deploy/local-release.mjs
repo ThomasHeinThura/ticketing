@@ -13,6 +13,15 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  acquireDockerDaemonLease,
+  borrowDockerDaemonLease,
+} from "./local-candidate-daemon-lease.mjs";
+import {
+  acquireProjectSelectionLease,
+  assertProjectSelectionHandoff,
+  coordinatorDirectory,
+} from "./local-candidate-selection.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const project = "taskdesk-codex-testing";
@@ -35,12 +44,15 @@ export function acquireLocalReleaseLock(env) {
       readFileSync(ownerFile, "utf8") !== `${pid} ${supplied}\n`
     )
       fail("Local release lock handoff is invalid.");
+    assertProjectSelectionHandoff(pid, supplied);
     return () => {};
   }
   const token = randomBytes(32).toString("hex");
+  const projectLease = acquireProjectSelectionLease({ token });
   try {
     mkdirSync(directory, { mode: 0o700 });
   } catch {
+    projectLease.release();
     fail(
       "Local release lock exists or cannot be acquired; inspect it before retrying.",
     );
@@ -54,6 +66,7 @@ export function acquireLocalReleaseLock(env) {
     try {
       rmdirSync(directory);
     } catch {}
+    projectLease.release();
     fail("Local release lock could not be initialized.");
   }
   const release = () => {
@@ -61,6 +74,7 @@ export function acquireLocalReleaseLock(env) {
       if (readFileSync(ownerFile, "utf8") === `${process.pid} ${token}\n`) {
         unlinkSync(ownerFile);
         rmdirSync(directory);
+        projectLease.release();
       }
     } catch {
       /* A changed or inaccessible lock is left for operator inspection. */
@@ -97,10 +111,65 @@ export function deployLocal(options = {}) {
   )
     return deployLocalLocked(options);
   const release = (options.acquireLock ?? acquireLocalReleaseLock)(env);
+  let dockerLease;
+  let stateFile;
+  let succeeded = false;
   try {
-    return deployLocalLocked(options);
+    if (!options.acquireLock) {
+      stateFile = resolve(coordinatorDirectory, "active/daemon.json");
+      const owner = readFileSync(
+        resolve(coordinatorDirectory, "active/owner"),
+        "utf8",
+      )
+        .trim()
+        .split(" ");
+      if (
+        !env.TASKDESK_LOCAL_LOCK_TOKEN &&
+        (owner[0] !== String(process.pid) ||
+          !/^[a-f0-9]{64}$/.test(owner[1] || ""))
+      )
+        fail("Local project lock ownership is invalid.");
+      dockerLease = env.TASKDESK_LOCAL_LOCK_TOKEN
+        ? borrowDockerDaemonLease({
+            stateFile,
+            token: env.TASKDESK_LOCAL_LOCK_TOKEN,
+            ownerPid: Number(env.TASKDESK_LOCAL_LOCK_PID),
+            env,
+            run: options.run,
+          })
+        : acquireDockerDaemonLease({
+            stateFile,
+            env,
+            run: options.run,
+            token: owner[1],
+            hostDirectory: options.hostDirectory,
+            allowAppDown: true,
+          });
+    }
+    const pinnedEnv = { ...env };
+    if (dockerLease) {
+      pinnedEnv.DOCKER_HOST = dockerLease.identity.dockerEndpoint;
+      delete pinnedEnv.DOCKER_CONTEXT;
+    }
+    const result = deployLocalLocked({
+      ...options,
+      env: pinnedEnv,
+      dockerLease,
+    });
+    succeeded = true;
+    return result;
+  } catch (error) {
+    if (dockerLease?.hasMutation())
+      fail(
+        `${error.message} Release state may have changed; host, daemon and project locks are retained for inspection. No automatic retry is permitted.`,
+      );
+    throw error;
   } finally {
-    release();
+    // Uncertain daemon ownership keeps the filesystem lock for inspection.
+    if (dockerLease && (succeeded || !dockerLease.hasMutation()))
+      dockerLease.release();
+    if (!stateFile || !existsSync(stateFile) || env.TASKDESK_LOCAL_LOCK_TOKEN)
+      release();
   }
 }
 
@@ -111,6 +180,7 @@ function deployLocalLocked({
   exists = existsSync,
   realpath = realpathSync,
   report = console.log,
+  dockerLease,
 } = {}) {
   if (args.length === 1 && ["--help", "-h"].includes(args[0])) {
     return "Usage: scripts/deploy.sh local\nSet SIT_COMPOSE_ENV and SIT_PRIVATE_DIR to absolute private paths after independently verifying the pre-existing copied project and backup. No seeding or initial import is performed.";
@@ -155,6 +225,24 @@ function deployLocalLocked({
     resolve(root, "deploy/compose.testing.yml"),
   ];
   function command(bin, argv, description, timeout) {
+    dockerLease?.assertIdentity();
+    const operation = argv[0] === "compose" ? argv[prefix.length] : argv[0];
+    if (
+      bin === "docker" &&
+      [
+        "pull",
+        "run",
+        "up",
+        "create",
+        "start",
+        "stop",
+        "rm",
+        "restart",
+        "down",
+        "kill",
+      ].includes(operation)
+    )
+      dockerLease?.markMutation(description);
     const result = run(bin, argv, {
       cwd: root,
       env: composeEnv,

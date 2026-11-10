@@ -56,6 +56,7 @@ These names configure deployment tooling or an external client. Registering them
 | `DOMAIN` | Compose, at file-parse time | Base domain for proxy host rules. |
 | `TASKDESK_AGENT_HOST` · `TASKDESK_PORTAL_HOST` · `TASKDESK_FILES_HOST` | Compose, at file-parse time | Explicit proxy hostnames; empty values derive agent/portal/files hosts from the domain. Files applies when the storage profile needs it. |
 | `TASKDESK_IMAGE_TAG` · `TASKDESK_IMAGE_DIGEST` | Compose | Shipping image selection and digest-pinned rollback. |
+| `SIT_POSTGRES_VOLUME` · `SIT_ATTACHMENTS_VOLUME` | `deploy/compose.testing.yml`, at file-parse time | Local SIT volume selection. Defaults to the preserved canonical volumes; the offline PR-candidate selector accepts only a matched pair of fresh `taskdesk-codex-testing_candidate-<32 lowercase hex>_postgres-data` and `_attachments` names after isolation checks. These names do not authorize a candidate deployment or data copy. |
 | `TASKDESK_HSTS_PRELOAD` | Compose, into the Traefik headers middleware | Explicit opt-in to HSTS subdomains/preload commitments. |
 | `TASKDESK_LOCAL_HTTP_PORT` · `TASKDESK_LOCAL_HTTPS_PORT` | Compose, `deploy/compose.traefik.yml` (`local` mode only) | Local proxy listener ports, default 80/443; verify availability before starting. |
 | `TASKDESK_API_URL` · `TASKDESK_API_KEY` | `@taskdesk/mcp`, on the user's own machine | External MCP client's instance URL and scoped API credential; the API server reads neither name. |
@@ -83,4 +84,4 @@ Configuration is backed-up data: `instance_setting`, `instance_branding`, `insta
 
 ## Source installer integrity
 
-The maintained source SHA-256 for `install.sh` is `088bd56959c79068ac9d97cc3e4f627a961fe20c78f37facfbb1aa982cc39215`. Refresh it with an intentional installer change. The installer regression checks the actual source bytes; release archives and deployed images still require their own verified checksums and source identity.
+The maintained source SHA-256 for `install.sh` is `31b1654d4411ec4d7ad01119f27f4d2a9641ef30f8e5da628fca38f330fe2702`. Refresh it with an intentional installer change. The installer regression checks the actual source bytes; release archives and deployed images still require their own verified checksums and source identity.

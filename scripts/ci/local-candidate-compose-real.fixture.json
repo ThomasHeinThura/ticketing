@@ -1,0 +1,260 @@
+{
+	"composeVersion": "5.6.1",
+	"capture": "Docker Compose config only; DOCKER_HOST set to a nonexistent socket; private path replaced with /private; all env values are synthetic.",
+	"config": {
+		"name": "taskdesk-codex-testing",
+		"networks": {
+			"default": {
+				"name": "taskdesk-codex-testing_default",
+				"ipam": {}
+			}
+		},
+		"services": {
+			"mailpit": {
+				"restart": "unless-stopped",
+				"command": null,
+				"entrypoint": null,
+				"environment": {
+					"MP_DATABASE": "/data/mailpit.db"
+				},
+				"image": "axllent/mailpit:v1.28",
+				"networks": {
+					"default": null
+				},
+				"volumes": [
+					{
+						"type": "volume",
+						"source": "mailpit-data",
+						"target": "/data",
+						"volume": {}
+					}
+				],
+				"ports": [
+					{
+						"mode": "ingress",
+						"host_ip": "127.0.0.1",
+						"target": 8025,
+						"published": "18025",
+						"protocol": "tcp"
+					},
+					{
+						"mode": "ingress",
+						"host_ip": "127.0.0.1",
+						"target": 1025,
+						"published": "11025",
+						"protocol": "tcp"
+					}
+				]
+			},
+			"migrate": {
+				"restart": "no",
+				"cap_drop": ["ALL"],
+				"command": null,
+				"entrypoint": null,
+				"environment": {
+					"TASKDESK_DATABASE_URL": "postgres://taskdesk_app@postgres/taskdesk_test",
+					"TASKDESK_MIGRATION_DATABASE_URL": "postgres://owner@postgres/taskdesk_test",
+					"TASKDESK_ROLE": "migrate"
+				},
+				"image": "ghcr.io/thomasheinthura/taskdesk@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"networks": {
+					"default": null
+				},
+				"read_only": true,
+				"security_opt": ["no-new-privileges:true"],
+				"tmpfs": [
+					"/tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770"
+				],
+				"depends_on": {
+					"postgres": {
+						"condition": "service_healthy",
+						"required": true
+					}
+				}
+			},
+			"postgres": {
+				"restart": "unless-stopped",
+				"command": null,
+				"entrypoint": null,
+				"environment": {
+					"POSTGRES_DB": "taskdesk_test",
+					"POSTGRES_USER": "owner"
+				},
+				"image": "postgres:18-alpine",
+				"networks": {
+					"default": null
+				},
+				"volumes": [
+					{
+						"type": "volume",
+						"source": "postgres-data",
+						"target": "/var/lib/postgresql",
+						"volume": {}
+					}
+				],
+				"healthcheck": {
+					"test": [
+						"CMD-SHELL",
+						"pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""
+					],
+					"timeout": "3s",
+					"interval": "5s",
+					"retries": 20
+				},
+				"ports": [
+					{
+						"mode": "ingress",
+						"host_ip": "127.0.0.1",
+						"target": 5432,
+						"published": "62873",
+						"protocol": "tcp"
+					}
+				]
+			},
+			"taskdesk": {
+				"restart": "unless-stopped",
+				"cap_drop": ["ALL"],
+				"command": null,
+				"entrypoint": null,
+				"environment": {
+					"TASKDESK_DATABASE_URL": "postgres://taskdesk_app@postgres/taskdesk_test",
+					"TASKDESK_STORAGE_DRIVER": "filesystem",
+					"TASKDESK_STORAGE_FILESYSTEM_ROOT": "/app/data/attachments"
+				},
+				"image": "ghcr.io/thomasheinthura/taskdesk@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				"networks": {
+					"default": null
+				},
+				"read_only": true,
+				"security_opt": ["no-new-privileges:true"],
+				"tmpfs": [
+					"/tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770"
+				],
+				"volumes": [
+					{
+						"type": "volume",
+						"source": "attachments",
+						"target": "/app/data/attachments",
+						"volume": {}
+					}
+				],
+				"depends_on": {
+					"migrate": {
+						"condition": "service_completed_successfully",
+						"required": true
+					},
+					"valkey": {
+						"condition": "service_healthy",
+						"required": true
+					}
+				},
+				"healthcheck": {
+					"test": ["CMD", "node", "/app/healthcheck.mjs"],
+					"timeout": "3s",
+					"interval": "10s",
+					"retries": 12,
+					"start_period": "30s"
+				}
+			},
+			"traefik": {
+				"restart": "unless-stopped",
+				"cap_drop": ["ALL"],
+				"command": [
+					"--providers.file.filename=/config/dynamic.yml",
+					"--entrypoints.web.address=:80",
+					"--entrypoints.web.http.redirections.entrypoint.to=websecure",
+					"--entrypoints.web.http.redirections.entrypoint.scheme=https",
+					"--entrypoints.websecure.address=:443",
+					"--entrypoints.websecure.transport.respondingtimeouts.idletimeout=180s",
+					"--accesslog=false",
+					"--log.level=ERROR"
+				],
+				"entrypoint": null,
+				"image": "traefik:v3.6.7",
+				"networks": {
+					"default": null
+				},
+				"read_only": true,
+				"security_opt": ["no-new-privileges:true"],
+				"volumes": [
+					{
+						"type": "bind",
+						"source": "/private/proxy",
+						"target": "/config",
+						"read_only": true,
+						"bind": {}
+					}
+				],
+				"depends_on": {
+					"taskdesk": {
+						"condition": "service_healthy",
+						"required": true
+					}
+				},
+				"ports": [
+					{
+						"mode": "ingress",
+						"host_ip": "127.0.0.1",
+						"target": 80,
+						"published": "80",
+						"protocol": "tcp"
+					},
+					{
+						"mode": "ingress",
+						"host_ip": "::1",
+						"target": 80,
+						"published": "80",
+						"protocol": "tcp"
+					},
+					{
+						"mode": "ingress",
+						"host_ip": "127.0.0.1",
+						"target": 443,
+						"published": "443",
+						"protocol": "tcp"
+					},
+					{
+						"mode": "ingress",
+						"host_ip": "::1",
+						"target": 443,
+						"published": "443",
+						"protocol": "tcp"
+					}
+				]
+			},
+			"valkey": {
+				"restart": "unless-stopped",
+				"command": [
+					"sh",
+					"-c",
+					"exec valkey-server --save \"\" --appendonly no --protected-mode yes --maxmemory 64mb --requirepass \"$$REDISCLI_AUTH\""
+				],
+				"entrypoint": null,
+				"environment": {
+					"REDISCLI_AUTH": "offline-fixture-value"
+				},
+				"image": "valkey/valkey:9-alpine",
+				"networks": {
+					"default": null
+				},
+				"healthcheck": {
+					"test": ["CMD", "valkey-cli", "ping"],
+					"timeout": "3s",
+					"interval": "5s",
+					"retries": 12
+				}
+			}
+		},
+		"volumes": {
+			"attachments": {
+				"name": "taskdesk-codex-testing_attachments"
+			},
+			"mailpit-data": {
+				"name": "taskdesk-codex-testing_mailpit-data"
+			},
+			"postgres-data": {
+				"name": "taskdesk-codex-testing_postgres-data"
+			}
+		}
+	}
+}

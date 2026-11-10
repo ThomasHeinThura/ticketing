@@ -104,5 +104,7 @@ services:
 
 volumes:
   postgres-data:
+    name: ${SIT_POSTGRES_VOLUME:-taskdesk-codex-testing_postgres-data}
   attachments:
+    name: ${SIT_ATTACHMENTS_VOLUME:-taskdesk-codex-testing_attachments}
   mailpit-data:

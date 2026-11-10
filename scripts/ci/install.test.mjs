@@ -9,7 +9,9 @@ import {
   mkdtemp,
   readdir,
   readFile,
+  realpath,
   rm,
+  rmdir,
   stat,
   symlink,
   writeFile,
@@ -18,6 +20,19 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import {
+  acquireDockerDaemonLease,
+  borrowHostBootstrapFence,
+  hostFenceDirectory,
+} from "../../deploy/local-candidate-daemon-lease.mjs";
+import {
+  acquireProjectSelectionLease,
+  coordinatorDirectory,
+} from "../../deploy/local-candidate-selection.mjs";
+import {
+  fakeDaemon,
+  removeFakeUserLease,
+} from "./local-candidate-fake-daemon.mjs";
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -42,11 +57,50 @@ async function fixture(
   } = {},
 ) {
   const temp = await mkdtemp(path.join(os.tmpdir(), "taskdesk-install-test-"));
-  t.after(async () => rm(temp, { recursive: true, force: true }));
+  t.after(async () => {
+    const state = path.join(temp, "fake-daemon.json");
+    if (await stat(state).catch(() => null))
+      removeFakeUserLease(
+        path.join(coordinatorDirectory, "active"),
+        path.join(temp, "private/compose.env"),
+        fakeDaemon(JSON.parse(await readFile(state, "utf8"))),
+      );
+    const proof = path.join(temp, "bootstrap-owner");
+    if (
+      (await stat(proof).catch(() => null)) &&
+      (await stat(hostFenceDirectory).catch(() => null))
+    ) {
+      const [uid, ownerPid, token] = (await readFile(proof, "utf8"))
+        .trim()
+        .split(" ");
+      assert.equal(Number(uid), process.getuid());
+      borrowHostBootstrapFence({ ownerPid: Number(ownerPid), token }).release();
+      const owner = `${ownerPid} ${token}\n`;
+      for (const directory of [
+        path.join(coordinatorDirectory, "active"),
+        path.join(temp, "private/compose.env.lock"),
+      ]) {
+        const ownerFile = path.join(directory, "owner");
+        if (await stat(ownerFile).catch(() => null)) {
+          assert.equal(await readFile(ownerFile, "utf8"), owner);
+          await rm(ownerFile);
+          await rmdir(directory);
+        }
+      }
+    }
+    await rm(temp, { recursive: true, force: true });
+  });
   const bin = path.join(temp, "bin");
   const content = path.join(temp, "source", "taskdesk-v1.2.3");
   const assets = path.join(temp, "assets");
   await mkdir(bin, { recursive: true });
+  for (const name of ["brew", "sudo", "apt-get", "systemctl"]) {
+    await writeFile(
+      path.join(bin, name),
+      "#!/usr/bin/env bash\nprintf 'unexpected package-manager call in offline test\\n' >&2\nexit 93\n",
+    );
+    await chmod(path.join(bin, name), 0o755);
+  }
   await mkdir(path.join(content, "scripts", "lib"), { recursive: true });
   await mkdir(path.join(content, "deploy", "traefik", "dynamic"), {
     recursive: true,
@@ -59,6 +113,8 @@ async function fixture(
     "scripts/lib/deploy-checks.sh",
     "deploy/.env.example",
     "deploy/local-release.mjs",
+    "deploy/local-candidate-selection.mjs",
+    "deploy/local-candidate-daemon-lease.mjs",
     "deploy/compose.testing.yml",
     "deploy/compose.local.yml",
     "deploy/compose.prod.yml",
@@ -70,12 +126,15 @@ async function fixture(
     await mkdir(path.dirname(target), { recursive: true });
     const contents =
       realDeployment ||
-      ["scripts/lib/deploy-checks.sh", "deploy/local-release.mjs"].includes(
-        file,
-      )
+      [
+        "scripts/lib/deploy-checks.sh",
+        "deploy/local-release.mjs",
+        "deploy/local-candidate-selection.mjs",
+        "deploy/local-candidate-daemon-lease.mjs",
+      ].includes(file)
         ? await readFile(path.join(root, file))
         : file === "scripts/deploy.sh"
-          ? `#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$DEPLOY_LOG"\nif [[ "\${FAKE_VALIDATE_LOCK:-0}" == 1 ]]; then exec node --input-type=module -e 'import {acquireLocalReleaseLock} from "./deploy/local-release.mjs"; acquireLocalReleaseLock(process.env)();'; fi\nif [[ "\${FAKE_DEPLOY_FAIL:-0}" == 1 ]]; then printf 'migration complete\\napp started\\nproxy failed\\n' >> "$DEPLOY_LOG"; exit 1; fi\n`
+          ? `#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$DEPLOY_LOG"\nif [[ "\${FAKE_VALIDATE_LOCK:-0}" == 1 ]]; then exec node --input-type=module -e 'import {acquireLocalReleaseLock} from "./deploy/local-release.mjs"; import {coordinatorDirectory} from "./deploy/local-candidate-selection.mjs"; import {borrowDockerDaemonLease} from "./deploy/local-candidate-daemon-lease.mjs"; acquireLocalReleaseLock(process.env)(); borrowDockerDaemonLease({stateFile:coordinatorDirectory+"/active/daemon.json",token:process.env.TASKDESK_LOCAL_LOCK_TOKEN,ownerPid:Number(process.env.TASKDESK_LOCAL_LOCK_PID)}).assertIdentity();'; fi\nif [[ "\${FAKE_DEPLOY_FAIL:-0}" == 1 ]]; then printf 'migration complete\\napp started\\nproxy failed\\n' >> "$DEPLOY_LOG"; exit 1; fi\n`
           : `fixture ${file}\n`;
     await writeFile(target, contents);
   }
@@ -134,7 +193,10 @@ printf '%s\\n' "$*" >> "$COSIGN_LOG"
   await writeFile(
     path.join(bin, "docker"),
     `#!/usr/bin/env bash
-[[ "\${FAKE_DOCKER_MISSING:-0}" != 1 ]] || exit 1
+[[ "\${FAKE_DOCKER_MISSING:-0}" != 1 || -f "${path.join(temp, "docker-installed")}" ]] || exit 1
+if [[ "$1" == context || ( "$1" == info && "$#" != 1 ) || ( "$1" == ps && "$*" == *'com.docker.compose.service=taskdesk'* ) || ( "$1" == ps && "$*" == *'selection-lock'* ) || ( "$1" == create && "$*" == *'selection-lock'* ) || ( "$1" == inspect && ( "$2" == bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb || "$2" == dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd ) ) || ( "$1" == image && "$2" == inspect && "$3" == sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc ) || ( "$1" == rm && "$2" == dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd ) ]]; then
+  exec node "${path.join(root, "scripts/ci/local-candidate-fake-daemon.mjs")}" "${path.join(temp, "fake-daemon.json")}" "$@"
+fi
 [[ "$1" == compose && "$2" == version ]] && { printf 'Docker Compose version test\n'; exit 0; }
 [[ "$1" == info ]] && exit 0
 if [[ "$1" == buildx && "$2" == version ]]; then
@@ -260,7 +322,7 @@ exec '${realTar}' "$@"
 }
 
 function run(f, args, extraEnv = {}, input = "") {
-  return spawnSync("bash", [installer, ...args], {
+  return spawnSync("bash", [f.installer || installer, ...args], {
     cwd: root,
     encoding: "utf8",
     input,
@@ -268,6 +330,7 @@ function run(f, args, extraEnv = {}, input = "") {
       ...process.env,
       PATH: `${f.bin}:${process.env.PATH}`,
       HOME: f.temp,
+      TMPDIR: f.temp,
       FAKE_ASSETS: f.assets,
       SIT_PRIVATE_DIR: f.privateDir,
       SIT_COMPOSE_ENV: f.sitEnv,
@@ -278,6 +341,127 @@ function run(f, args, extraEnv = {}, input = "") {
     },
   });
 }
+
+async function prepareDockerBootstrap(f, platform) {
+  const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
+  const state = path.join(f.temp, "fake-daemon.json");
+  await writeFile(
+    state,
+    JSON.stringify({
+      daemonId: "offline-daemon-one",
+      daemonAvailable: false,
+      appExists: false,
+      lease: null,
+    }),
+  );
+  const log = path.join(f.temp, "bootstrap.log");
+  const script = `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s %s\\n' "$(basename "$0")" "$*" >> ${quote(log)}
+read -r owner_uid owner_pid owner_token < ${quote(path.join(hostFenceDirectory, "owner"))}
+[[ "$owner_uid" == "$(id -u)" && "$owner_pid" == "$PPID" && "$owner_token" =~ ^[a-f0-9]{64}$ ]] || exit 71
+cp ${quote(path.join(hostFenceDirectory, "owner"))} ${quote(path.join(f.temp, "bootstrap-owner"))}
+${quote(process.execPath)} --input-type=module - ${quote(state)} ${quote(path.join(f.temp, "docker-installed"))} <<'JS'
+import {readFileSync, writeFileSync} from "node:fs";
+const [stateFile, installed] = process.argv.slice(2);
+const state = JSON.parse(readFileSync(stateFile, "utf8"));
+state.daemonAvailable = true;
+writeFileSync(stateFile, JSON.stringify(state));
+writeFileSync(installed, "fake Docker installation completed\\n");
+JS
+`;
+  for (const name of ["brew", "sudo"]) {
+    await writeFile(path.join(f.bin, name), script);
+    await chmod(path.join(f.bin, name), 0o755);
+  }
+  await writeFile(
+    path.join(f.bin, "uname"),
+    `#!/usr/bin/env bash\ncase "$1" in -s) printf '${platform === "darwin" ? "Darwin" : "Linux"}\\n';; -m) printf 'x86_64\\n';; *) /usr/bin/uname "$@";; esac\n`,
+  );
+  await chmod(path.join(f.bin, "uname"), 0o755);
+  if (platform === "ubuntu") {
+    const osRelease = path.join(f.temp, "os-release");
+    await writeFile(osRelease, "ID=ubuntu\n");
+    const source = await readFile(installer, "utf8");
+    const probe = "[[ ! -r /etc/os-release ]] || . /etc/os-release";
+    assert.ok(source.includes(probe));
+    f.installer = path.join(f.temp, "installer-os-fixture.sh");
+    await writeFile(
+      f.installer,
+      source.replace(
+        probe,
+        `[[ ! -r ${quote(osRelease)} ]] || . ${quote(osRelease)}`,
+      ),
+    );
+  }
+  return { log, state };
+}
+
+for (const [platform, mode] of [
+  ["darwin", "local"],
+  ["ubuntu", "local"],
+  ["ubuntu", "production"],
+]) {
+  test(`${platform} ${mode} installs Docker from a no-daemon state only while holding the shared host fence`, async (t) => {
+    const f = await fixture(t);
+    const bootstrap = await prepareDockerBootstrap(f, platform);
+    const args = [
+      "--version",
+      "1.2.3",
+      "--dir",
+      f.path,
+      "--yes",
+      ...(mode === "production"
+        ? ["--env", "production", "--domain", "example.test"]
+        : []),
+    ];
+    const result = run(f, args, {
+      FAKE_DOCKER_MISSING: "1",
+      FAKE_VALIDATE_LOCK: mode === "local" ? "1" : "0",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const trace = await readFile(bootstrap.log, "utf8");
+    if (platform === "darwin")
+      assert.match(trace, /brew install --cask docker/);
+    else {
+      assert.match(trace, /sudo apt-get update/);
+      assert.match(trace, /sudo apt-get install/);
+      assert.match(trace, /sudo systemctl enable --now docker/);
+    }
+    assert.equal(await stat(hostFenceDirectory).catch(() => null), null);
+    const state = JSON.parse(await readFile(bootstrap.state, "utf8"));
+    assert.equal(state.lease, null);
+    assert.equal(state.daemonAvailable, true);
+  });
+}
+
+test("missing Docker CLI cannot reach brew/apt/systemctl while another selector holds the host fence", async (t) => {
+  const f = await fixture(t);
+  const bootstrap = await prepareDockerBootstrap(f, "darwin");
+  const daemon = fakeDaemon();
+  const first = acquireDockerDaemonLease({
+    run: daemon.run,
+    env: { PATH: process.env.PATH },
+  });
+  await writeFile(bootstrap.state, JSON.stringify(daemon.state));
+  const before = await readFile(f.sitEnv, "utf8");
+  try {
+    const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"], {
+      FAKE_DOCKER_MISSING: "1",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /host bootstrap fence exists/);
+    assert.equal(await stat(bootstrap.log).catch(() => null), null);
+    assert.equal(await stat(f.path).catch(() => null), null);
+    assert.equal(await readFile(f.sitEnv, "utf8"), before);
+    assert.equal(
+      daemon.state.lease.Config.Labels["info.taskdesk.selection.lease"],
+      first.token,
+    );
+  } finally {
+    first.release();
+  }
+});
 
 async function writeExistingEnv(
   directory,
@@ -367,6 +551,8 @@ test("archive contains the real local helper and extracted local help works with
   assert.match(result.stdout, /SIT_COMPOSE_ENV/);
   const listed = execFileSync("tar", ["-tzf", f.archive], { encoding: "utf8" });
   assert.match(listed, /deploy\/local-release\.mjs/);
+  assert.match(listed, /deploy\/local-candidate-selection\.mjs/);
+  assert.match(listed, /deploy\/local-candidate-daemon-lease\.mjs/);
   assert.match(listed, /deploy\/compose\.testing\.yml/);
 });
 
@@ -1055,7 +1241,10 @@ test("late local deployment failure keeps selected image and recoverable previou
   const priorLog = await readFile(path.join(f.temp, "deploy.log"), "utf8");
   const retry = run(f, args);
   assert.notEqual(retry.status, 0);
-  assert.match(retry.stderr, /unresolved private selection backup/i);
+  assert.match(
+    retry.stderr,
+    /project release lock exists|unresolved private selection backup/i,
+  );
   assert.equal(await readFile(backup, "utf8"), before);
   assert.equal(
     await readFile(path.join(f.temp, "deploy.log"), "utf8"),
@@ -1103,6 +1292,78 @@ test("installer securely hands its live lock to its direct release child", async
   });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(await stat(`${f.sitEnv}.lock`).catch(() => null), null);
+  assert.equal(
+    await stat(path.join(coordinatorDirectory, "active")).catch(() => null),
+    null,
+  );
+});
+
+test("installer cannot write selection or deployment files while another OS-user lock holds the daemon lease", async (t) => {
+  const f = await fixture(t);
+  const otherUser = acquireProjectSelectionLease({
+    directory: path.join(await realpath(f.temp), "other-user-lock"),
+  });
+  const daemon = fakeDaemon();
+  const first = acquireDockerDaemonLease({
+    run: daemon.run,
+    env: { PATH: process.env.PATH },
+  });
+  await writeFile(
+    path.join(f.temp, "fake-daemon.json"),
+    JSON.stringify(daemon.state),
+  );
+  const before = await readFile(f.sitEnv, "utf8");
+  try {
+    const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /host bootstrap fence exists|daemon release lock cannot be acquired/,
+    );
+    assert.equal(await readFile(f.sitEnv, "utf8"), before);
+    assert.equal(await stat(f.path).catch(() => null), null);
+    const observed = JSON.parse(
+      await readFile(path.join(f.temp, "fake-daemon.json"), "utf8"),
+    );
+    assert.equal(
+      observed.lease.Config.Labels["info.taskdesk.selection.lease"],
+      first.token,
+    );
+  } finally {
+    removeFakeUserLease(path.join(coordinatorDirectory, "active"), f.sitEnv);
+    first.release();
+    otherUser.release();
+  }
+});
+
+test("installer refuses the project lock held through a different env path before any selection or install write", async (t) => {
+  const f = await fixture(t);
+  const differentEnv = path.join(f.privateDir, "different.env");
+  const before = await readFile(f.sitEnv, "utf8");
+  await writeFile(differentEnv, before);
+  const lease = acquireProjectSelectionLease();
+  try {
+    const ownerBefore = await readFile(path.join(lease.lock, "owner"), "utf8");
+    const result = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"], {
+      SIT_COMPOSE_ENV: differentEnv,
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /project release lock exists/);
+    assert.equal(await readFile(differentEnv, "utf8"), before);
+    assert.equal(await readFile(f.sitEnv, "utf8"), before);
+    assert.equal(
+      await readFile(path.join(lease.lock, "owner"), "utf8"),
+      ownerBefore,
+    );
+    assert.equal(await stat(f.path).catch(() => null), null);
+    assert.equal(await stat(`${differentEnv}.lock`).catch(() => null), null);
+    assert.equal(
+      await stat(path.join(f.temp, "deploy.log")).catch(() => null),
+      null,
+    );
+  } finally {
+    lease.release();
+  }
 });
 
 for (const target of ["production", "sit"]) {

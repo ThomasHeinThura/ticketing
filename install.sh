@@ -52,15 +52,45 @@ if [[ "$MODE" == local ]]; then
   [[ -d "$SIT_PRIVATE_DIR/proxy" && ! -L "$SIT_PRIVATE_DIR/proxy" ]] || die 'local SIT private proxy configuration is missing'
 fi
 
-TMP_ROOT='' LOCAL_LOCK_DIR='' LOCAL_LOCK_TOKEN=''
+TMP_ROOT='' LOCAL_LOCK_DIR='' LOCAL_LOCK_TOKEN='' LOCAL_PROJECT_LOCK_DIR='' LOCAL_DAEMON_HELPER=''
+LOCAL_HOST_LOCK_DIR='' LOCAL_HOST_LOCK_TOKEN='' LOCAL_HOST_LOCK_UID='' LOCAL_HOST_ACQUIRED=0
+LOCAL_RELEASE_SUCCEEDED=0 LOCAL_SELECTION_ACTIVE=0 LOCAL_BOOTSTRAP_MUTATING=0
+host_parent_is_safe() {
+  local parent="$1" ownership
+  [[ "$(cd /var/tmp && pwd -P)" == "$parent" ]] || return 1
+  if ownership="$(stat -c '%u:%a' "$parent" 2>/dev/null)"; then [[ "$ownership" == '0:1777' ]];
+  else ownership="$(stat -f '%u:%p' "$parent")"; [[ "$ownership" == '0:41777' ]]; fi
+}
 cleanup() {
-  [[ -z "$TMP_ROOT" ]] || rm -rf "$TMP_ROOT"
+  if [[ "$LOCAL_RELEASE_SUCCEEDED" != 1 ]] && { [[ "$LOCAL_SELECTION_ACTIVE" == 1 || "$LOCAL_BOOTSTRAP_MUTATING" == 1 ]] || [[ -n "$LOCAL_PROJECT_LOCK_DIR" && -e "$LOCAL_PROJECT_LOCK_DIR/daemon.json.mutation" ]]; }; then
+    return 0
+  fi
+  if [[ -n "$LOCAL_PROJECT_LOCK_DIR" && -f "$LOCAL_PROJECT_LOCK_DIR/daemon.json" ]]; then
+    # An uncertain CREATE has no confirmed ownership file: retain it for inspection.
+    [[ -n "$LOCAL_DAEMON_HELPER" && -f "$LOCAL_PROJECT_LOCK_DIR/daemon.json.owned" ]] || return 0
+    node "$LOCAL_DAEMON_HELPER" release "$LOCAL_PROJECT_LOCK_DIR/daemon.json" "$$" "$LOCAL_LOCK_TOKEN" || return 0
+  fi
   if [[ -n "$LOCAL_LOCK_DIR" && -f "$LOCAL_LOCK_DIR/owner" && ! -L "$LOCAL_LOCK_DIR/owner" ]]; then
     read -r lock_pid lock_token < "$LOCAL_LOCK_DIR/owner" || return 0
     if [[ "$lock_pid" == "$$" && "$lock_token" == "$LOCAL_LOCK_TOKEN" ]]; then
       rm -f "$LOCAL_LOCK_DIR/owner"
       rmdir "$LOCAL_LOCK_DIR" 2>/dev/null || true
     fi
+  fi
+  [[ -z "$TMP_ROOT" ]] || rm -rf "$TMP_ROOT"
+  if [[ -n "$LOCAL_PROJECT_LOCK_DIR" && -f "$LOCAL_PROJECT_LOCK_DIR/owner" && ! -L "$LOCAL_PROJECT_LOCK_DIR/owner" ]]; then
+    read -r lock_pid lock_token < "$LOCAL_PROJECT_LOCK_DIR/owner" || return 0
+    if [[ "$lock_pid" == "$$" && "$lock_token" == "$LOCAL_LOCK_TOKEN" ]]; then
+      rm -f "$LOCAL_PROJECT_LOCK_DIR/owner"
+      rmdir "$LOCAL_PROJECT_LOCK_DIR" 2>/dev/null || true
+    fi
+  fi
+  if [[ "$LOCAL_HOST_ACQUIRED" == 1 ]]; then
+    host_parent_is_safe "$(dirname "$LOCAL_HOST_LOCK_DIR")" || return 0
+    [[ -f "$LOCAL_HOST_LOCK_DIR/owner" && ! -L "$LOCAL_HOST_LOCK_DIR/owner" ]] || return 0
+    cmp -s "$LOCAL_HOST_LOCK_DIR/owner" <(printf '%s %s %s\n' "$LOCAL_HOST_LOCK_UID" "$$" "$LOCAL_HOST_LOCK_TOKEN") || return 0
+    rm -f "$LOCAL_HOST_LOCK_DIR/owner"
+    rmdir "$LOCAL_HOST_LOCK_DIR" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT
@@ -70,9 +100,40 @@ trap 'exit 129' HUP
 if [[ "$MODE" == local && "$DRY_RUN" == 0 ]]; then
   SIT_COMPOSE_ENV="$(cd "$(dirname "$SIT_COMPOSE_ENV")" && pwd -P)/$(basename "$SIT_COMPOSE_ENV")"
   export SIT_COMPOSE_ENV
+  LOCAL_LOCK_TOKEN="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')" || die 'could not initialize local release lock'
+  # This bootstrap runs before the signed archive is available. Match the helper's
+  # fixed OS-user lock, rather than trusting HOME or an env-file-specific path.
+  LOCAL_PROJECT_LOCK_DIR="$(node -e 'const {join}=require("node:path"); process.stdout.write(join(require("node:os").userInfo().homedir,".taskdesk","local-selection","taskdesk-codex-testing","active"))')" || die 'could not determine the local project lock'
+  node - "$LOCAL_PROJECT_LOCK_DIR" "$$" "$LOCAL_LOCK_TOKEN" <<'LOCK' || die 'local project release lock exists or cannot be acquired; inspect it before retrying'
+const fs = require("node:fs");
+const path = require("node:path");
+const [lock, pid, token] = process.argv.slice(2);
+const directory = path.dirname(lock);
+function sync(directory) {
+  const fd = fs.openSync(directory, "r");
+  try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+}
+try {
+  for (let current = directory; ; current = path.dirname(current)) {
+    if (fs.existsSync(current)) {
+      const stat = fs.lstatSync(current);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) throw Error();
+    }
+    if (current === path.dirname(current)) break;
+  }
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const stat = fs.lstatSync(directory);
+  if (stat.uid !== process.getuid() || (stat.mode & 0o077)) throw Error();
+  fs.mkdirSync(lock, { mode: 0o700 });
+  sync(directory);
+  const fd = fs.openSync(path.join(lock, "owner"), "wx", 0o600);
+  try { fs.writeFileSync(fd, `${pid} ${token}\n`); fs.fsyncSync(fd); }
+  finally { fs.closeSync(fd); }
+  sync(lock);
+} catch { process.exitCode = 1; }
+LOCK
   LOCAL_LOCK_DIR="${SIT_COMPOSE_ENV}.lock"
   (umask 077; mkdir "$LOCAL_LOCK_DIR") 2>/dev/null || die 'local release lock exists or cannot be acquired; inspect it before retrying'
-  LOCAL_LOCK_TOKEN="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')" || { rmdir "$LOCAL_LOCK_DIR"; LOCAL_LOCK_DIR=''; die 'could not initialize local release lock'; }
   (umask 077; printf '%s %s\n' "$$" "$LOCAL_LOCK_TOKEN" > "$LOCAL_LOCK_DIR/owner") || die 'could not record local release lock owner'
   for previous_backup in "$(dirname "$SIT_COMPOSE_ENV")"/.sit-selection-backup.*; do
     [[ ! -e "$previous_backup" && ! -L "$previous_backup" ]] || die 'unresolved private selection backup exists; inspect runtime and database before retrying'
@@ -225,7 +286,7 @@ for required in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh s
   [[ -f "${RELEASE_ROOT}/${required}" && ! -L "${RELEASE_ROOT}/${required}" ]] || die "release archive is missing a required regular file: ${required}"
 done
 if [[ "$MODE" == local ]]; then
-  for required in deploy/local-release.mjs deploy/compose.testing.yml; do
+  for required in deploy/local-release.mjs deploy/local-candidate-selection.mjs deploy/local-candidate-daemon-lease.mjs deploy/compose.testing.yml; do
     [[ -f "${RELEASE_ROOT}/${required}" && ! -L "${RELEASE_ROOT}/${required}" ]] || die "release archive is missing a required regular file: ${required}"
   done
 fi
@@ -240,7 +301,30 @@ if ((YES == 0)); then
   [[ "$answer" == [yY] || "$answer" == [yY][eE][sS] ]] || die 'installation declined; no files were written'
 fi
 
-if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1 || ! docker buildx version >/dev/null 2>&1; then
+DOCKER_SETUP_REQUIRED=0
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1 || ! docker buildx version >/dev/null 2>&1; then DOCKER_SETUP_REQUIRED=1; fi
+if [[ "$MODE" == local || "$DOCKER_SETUP_REQUIRED" == 1 ]]; then
+  # Shared with every selector before Docker is available. CLI absence is not
+  # evidence that another OS user has no active or retained selection lease.
+  LOCAL_HOST_PARENT="$(cd /var/tmp && pwd -P)"
+  host_parent_is_safe "$LOCAL_HOST_PARENT" || die 'host bootstrap fence parent is unsafe'
+  LOCAL_HOST_LOCK_DIR="$LOCAL_HOST_PARENT/taskdesk-codex-testing-bootstrap.lock"
+  LOCAL_HOST_LOCK_UID="$(id -u)"
+  LOCAL_HOST_LOCK_TOKEN="${LOCAL_LOCK_TOKEN:-$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')}"
+  [[ "$LOCAL_HOST_LOCK_UID" =~ ^[0-9]+$ && "$LOCAL_HOST_LOCK_TOKEN" =~ ^[a-f0-9]{64}$ ]] || die 'host bootstrap fence identity is invalid'
+  (umask 077; mkdir "$LOCAL_HOST_LOCK_DIR") 2>/dev/null || die 'host bootstrap fence exists or cannot be acquired; inspect it before retrying'
+  LOCAL_HOST_ACQUIRED=1
+  (umask 077; printf '%s %s %s\n' "$LOCAL_HOST_LOCK_UID" "$$" "$LOCAL_HOST_LOCK_TOKEN" > "$LOCAL_HOST_LOCK_DIR/owner") || die 'host bootstrap fence owner could not be recorded'
+  LOCAL_DAEMON_HELPER="$RELEASE_ROOT/deploy/local-candidate-daemon-lease.mjs"
+  if command -v node >/dev/null 2>&1 && [[ -f "$LOCAL_DAEMON_HELPER" ]]; then
+    node "$LOCAL_DAEMON_HELPER" host-check "$LOCAL_HOST_LOCK_DIR" "$$" "$LOCAL_HOST_LOCK_TOKEN" || die 'host bootstrap fence ownership is invalid'
+  elif [[ "$MODE" == local ]]; then
+    die 'node is required for the canonical local release helper'
+  else
+    sync -d "$LOCAL_HOST_LOCK_DIR/owner" || die 'host bootstrap fence could not be synchronized'
+  fi
+fi
+if ((DOCKER_SETUP_REQUIRED)); then
   warn 'Docker Engine, the Compose plugin and docker buildx are required.'
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 && ! docker buildx version >/dev/null 2>&1; then
     die 'Docker and the Compose plugin are installed but docker buildx is not, and scripts/deploy.sh needs it. Install docker-buildx-plugin from Docker'"'"'s official repository (docker-ce hosts), or docker-buildx from Ubuntu'"'"'s archive (docker.io hosts), then rerun install.sh'
@@ -252,18 +336,24 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
   ID=''
   [[ ! -r /etc/os-release ]] || . /etc/os-release
   case "$(uname -s):${ID:-}" in
-    Darwin:*) command -v brew >/dev/null 2>&1 || die 'install Docker Desktop from docker.com or install Homebrew, then rerun'; brew install --cask docker ;;
-    Linux:ubuntu) command -v sudo >/dev/null 2>&1 || die 'sudo is required to install Docker'; sudo apt-get update; sudo apt-get install -y docker.io docker-compose-v2 docker-buildx; sudo systemctl enable --now docker ;;
+    Darwin:*) command -v brew >/dev/null 2>&1 || die 'install Docker Desktop from docker.com or install Homebrew, then rerun'; LOCAL_BOOTSTRAP_MUTATING=1; brew install --cask docker ;;
+    Linux:ubuntu) command -v sudo >/dev/null 2>&1 || die 'sudo is required to install Docker'; LOCAL_BOOTSTRAP_MUTATING=1; sudo apt-get update; sudo apt-get install -y docker.io docker-compose-v2 docker-buildx; sudo systemctl enable --now docker ;;
     Linux:debian|Linux:fedora|Linux:rhel|Linux:centos) die "automatic Docker installation is only supported on Ubuntu; this distribution's own packages do not reliably provide the Compose plugin and buildx that deploy.sh needs. Install Docker Engine, the Compose plugin and buildx from Docker's official repository (https://docs.docker.com/engine/install/), then rerun install.sh" ;;
     Linux:arch) die 'automatic Docker installation is disabled on Arch Linux to avoid partial system upgrades; install Docker during a synchronized full-system update, then rerun install.sh' ;;
     *) die 'automatic Docker installation is unsupported for this distribution; install Docker Engine, the Compose plugin and buildx, then rerun';;
   esac
   command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1 && docker buildx version >/dev/null 2>&1 || die 'Docker, the Compose plugin or docker buildx is still unavailable after installation'
 fi
-docker info >/dev/null 2>&1 || die 'Docker daemon is not reachable; start Docker and ensure the invoking user can access it before rerunning'
+if [[ "$MODE" == local ]]; then
+  LOCAL_DAEMON_HELPER="$RELEASE_ROOT/deploy/local-candidate-daemon-lease.mjs"
+  node "$LOCAL_DAEMON_HELPER" acquire "$LOCAL_PROJECT_LOCK_DIR/daemon.json" "$$" "$LOCAL_LOCK_TOKEN" || die 'local daemon release lock cannot be acquired; no installation or selection was changed'
+else
+  docker info >/dev/null 2>&1 || die 'Docker daemon is not reachable; start Docker and ensure the invoking user can access it before rerunning'
+fi
+LOCAL_BOOTSTRAP_MUTATING=0
 mkdir -p "$INSTALL_DIR"
 [[ -d "$INSTALL_DIR" && ! -L "$INSTALL_DIR" ]] || die '--dir must be a real directory'
-for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/compose.testing.yml deploy/local-release.mjs deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
+for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/compose.testing.yml deploy/local-release.mjs deploy/local-candidate-selection.mjs deploy/local-candidate-daemon-lease.mjs deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
   [[ -f "${RELEASE_ROOT}/${member}" ]] || continue
   parent="$INSTALL_DIR"
   IFS=/ read -r -a parts <<< "$(dirname "$member")"
@@ -278,6 +368,17 @@ for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scr
   mv -f "$tmp_file" "${INSTALL_DIR}/${member}"
 done
 if [[ "$MODE" == local ]]; then
+  # Prove both lock owners using the authenticated helper before selecting an image.
+  node --input-type=module - "$RELEASE_ROOT/deploy/local-candidate-selection.mjs" "$$" "$LOCAL_LOCK_TOKEN" "$LOCAL_LOCK_DIR/owner" "$LOCAL_DAEMON_HELPER" "$LOCAL_PROJECT_LOCK_DIR/daemon.json" <<'LOCK'
+import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+const [modulePath, ownerPid, token, ownerFile, daemonPath, stateFile] = process.argv.slice(2);
+const { assertProjectSelectionHandoff } = await import(pathToFileURL(modulePath).href);
+assertProjectSelectionHandoff(Number(ownerPid), token);
+if (readFileSync(ownerFile, "utf8") !== `${ownerPid} ${token}\n`) throw Error("Local release lock handoff is invalid.");
+const { borrowDockerDaemonLease } = await import(pathToFileURL(daemonPath).href);
+borrowDockerDaemonLease({ stateFile, ownerPid: Number(ownerPid), token }).assertIdentity();
+LOCK
   # Resolve the requested tag from registry bytes, never a retained root .env digest.
   . "${RELEASE_ROOT}/scripts/lib/deploy-checks.sh"
   selected_digest="$(resolve_image_digest "ghcr.io/thomasheinthura/taskdesk:${VERSION}" 2>/dev/null)" || die 'could not resolve requested release to an immutable digest'
@@ -294,15 +395,18 @@ if [[ "$MODE" == local ]]; then
     END { if (!image_found) print "SIT_IMAGE=" image; if (!tag_found) print "TASKDESK_IMAGE_TAG=" tag }
   ' "$SIT_COMPOSE_ENV" > "$private_candidate"
   chmod 0600 "$private_candidate"
+  LOCAL_SELECTION_ACTIVE=1
   if ! mv -f "$private_candidate" "$SIT_COMPOSE_ENV"; then
-    rm -f "$private_candidate" "$private_backup"
+    if cmp -s "$private_backup" "$SIT_COMPOSE_ENV"; then LOCAL_SELECTION_ACTIVE=0; rm -f "$private_candidate" "$private_backup"; fi
     die 'could not atomically select the local release'
   fi
+  node "$LOCAL_DAEMON_HELPER" mark "$LOCAL_PROJECT_LOCK_DIR/daemon.json" "$$" "$LOCAL_LOCK_TOKEN" || die 'local selection changed; retained locks require inspection'
   say "starting TaskDesk ${VERSION} in local mode"
   cd "$INSTALL_DIR"
   if TASKDESK_LOCAL_LOCK_PID="$$" TASKDESK_LOCAL_LOCK_TOKEN="$LOCAL_LOCK_TOKEN" ./scripts/deploy.sh local; then
     rm -f "$private_backup"
     say 'local proxy started; HTTPS readiness and browser smoke remain pending'
+    LOCAL_RELEASE_SUCCEEDED=1
     exit 0
   fi
   die 'local deployment failed; runtime and database state are uncertain. Inspect both before manually reconciling the selected image. The previous selection remains in a private .sit-selection-backup file beside SIT_COMPOSE_ENV.'
@@ -374,3 +478,4 @@ say "starting TaskDesk ${VERSION} in ${MODE} mode"
   if ((PROFILE_S3)); then ./scripts/deploy.sh "$MODE" --profile s3; else ./scripts/deploy.sh "$MODE"; fi
 )
 say 'deployment command completed; scripts/deploy.sh performs the final API health probe and prints the first-run setup URL'
+LOCAL_RELEASE_SUCCEEDED=1
