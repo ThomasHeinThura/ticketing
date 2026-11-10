@@ -598,10 +598,12 @@ validates in P7.
 scripts/deploy.sh upgrade            # verify the cosign signature → pull → up -d --wait
 ```
 
-For a signed SIT release, use `scripts/deploy.sh upgrade --target sit` and, if needed,
-`scripts/deploy.sh rollback <previous-digest> <release-tag> --target sit`. The default
-release target remains production. SIT release commands require signature verification
-and the post-deploy readiness probe; `--no-verify` and `--no-probe` are rejected. They
+For a signed Technexus SIT/UAT deployment using the SIT overlay, use
+`scripts/deploy.sh upgrade --target sit` and, if needed,
+`scripts/deploy.sh rollback <previous-digest> <release-tag> --target sit`.
+Canonical local SIT uses `scripts/deploy.sh local` with `deploy/compose.testing.yml`.
+The default release target remains production. SIT release commands require signature
+verification and the post-deploy readiness probe; `--no-verify` and `--no-probe` are rejected. They
 also require `deploy/compose.sit.yml` in the deployment directory. Installer-created
 production directories omit this overlay, so supply the matching release's overlay before
 using the SIT target. Technexus deployment still requires Thomas's approval and the
