@@ -30,6 +30,10 @@
 			"!**/.claude",
 			"!**/.pi",
 			"!**/.pi-subagents",
+			"!**/.vscode",
+			"!**/test-results",
+			"!**/backups",
+			"!**/playwright-report",
 			"!**/openapi.json"
 		],
 		"maxSize": 8388608

@@ -2,7 +2,7 @@
 
 **Checked:** 8 Nov 2026 by Claude (Opus agents), against `main` 733c99d (release 1f9d949 + docs), the source, anonymous GETs to UAT, and the repo's mocked browser fixtures. Every confirmed defect was re-checked by a second agent trying to refute it; all held. Local SIT was down during the check (Docker Desktop not running), so screen claims that need a signed-in local session were checked on fixtures only. No tracked file, UAT data or seed was changed.
 
-Reports checked: `openai-uat-audit-2026-11-08.md` and `openai-uat-browser-audit-2026-11-08.md` (Codex), `gemini-uat-full-audit-2026-11-08.md` (Gemini). `report.md` is a byte-identical copy of the Gemini report.
+Reports checked: `openai-uat-audit-2026-11-08.md` and `openai-uat-browser-audit-2026-11-08.md` (Codex), `gemini-uat-full-audit-2026-11-08.md` (Gemini). `report.md` was an untracked byte-identical copy of the Gemini report and was removed on 11 Nov after verified private backup.
 
 ## 1. How accurate the reports are
 
@@ -73,7 +73,7 @@ Order: security and permissions first, then data correctness, then UI and access
 | A8-7 | D18 — reproduce on local SIT (10 cold loads at 390 px, console and network), then fix the failing request in place | Needs local SIT running |
 | A8-8 | G1–G4 seed: second Contoso engagement with only agent2, one of each missing entity, per-portal readiness, a real sign-in test; fix the KB article text in the seed | **Thomas:** approve adding seed data on UAT (additive, no reseed of existing data) and editing the live KB article |
 | A8-9 | D7 CSP — read collected reports, switch local SIT to enforce, browser smoke, then UAT | **Thomas:** security change on UAT |
-| A8-10 | Docs: Biome ignores for local-only folders (G7); checklist and screens.md notes (G5, G6); remove host names from the untracked reports and delete the duplicate `report.md` before anything is shared or committed | **Thomas:** these reports are his files |
+| A8-10 | Docs: Biome ignores for local-only folders (G7); checklist and screens.md notes (G5, G6); sanitize historical report copies and remove duplicate untracked `report.md` after a verified private backup | **Done in #1111 (11 Nov):** 17 required checks passed and signed release verified; historical reports remain bounded evidence, not a new browser audit |
 | A8-11 | G8 dependencies: record deepmerge as accepted risk; glob/minimatch via upstream or overrides | **Thomas:** dependency changes need approval |
 | A8-12 | Password reset for customers (D16 flow) | **Thomas:** product decision (email OTP / magic link vs reset flow) |
 
