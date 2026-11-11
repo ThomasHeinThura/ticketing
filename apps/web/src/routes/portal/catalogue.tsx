@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { type FormSchema, getConditionDrivingKeys } from "@taskdesk/domain";
+import {
+  type FormSchema,
+  getConditionDrivingKeys,
+} from "@taskdesk/domain/intake";
 import {
   Alert,
   AlertDescription,
