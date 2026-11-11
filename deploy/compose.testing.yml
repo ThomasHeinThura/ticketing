@@ -108,3 +108,4 @@ volumes:
   attachments:
     name: ${SIT_ATTACHMENTS_VOLUME:-taskdesk-codex-testing_attachments}
   mailpit-data:
+    name: taskdesk-codex-testing_mailpit-data

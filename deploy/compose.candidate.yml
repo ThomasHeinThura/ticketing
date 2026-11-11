@@ -1,0 +1,68 @@
+# Candidate-only isolation overlay for deploy/compose.testing.yml.
+# Never use with canonical local SIT release deployment.
+services:
+  postgres:
+    ports: !reset []
+    networks:
+      - backend
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+
+  migrate:
+    networks:
+      - backend
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+
+  taskdesk:
+    networks:
+      - backend
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+
+  traefik:
+    networks:
+      - backend
+      - ingress
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+
+  mailpit:
+    ports: !reset []
+    networks:
+      - backend
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+
+  valkey:
+    networks:
+      - backend
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+
+volumes:
+  postgres-data:
+    name: ${SIT_POSTGRES_VOLUME:?Set SIT_POSTGRES_VOLUME to the candidate postgres volume}
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+  attachments:
+    name: ${SIT_ATTACHMENTS_VOLUME:?Set SIT_ATTACHMENTS_VOLUME to the candidate attachments volume}
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+  mailpit-data:
+    name: ${SIT_CANDIDATE_MAILPIT_VOLUME:?Set SIT_CANDIDATE_MAILPIT_VOLUME to the candidate mailpit volume}
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+
+networks:
+  backend:
+    name: ${SIT_CANDIDATE_BACKEND_NETWORK:?Set SIT_CANDIDATE_BACKEND_NETWORK to the candidate backend network}
+    driver: bridge
+    internal: true
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}
+  ingress:
+    name: ${SIT_CANDIDATE_INGRESS_NETWORK:?Set SIT_CANDIDATE_INGRESS_NETWORK to the candidate ingress network}
+    driver: bridge
+    labels:
+      info.taskdesk.selection.slot: ${SIT_CANDIDATE_SLOT:?Set SIT_CANDIDATE_SLOT to the candidate slot}

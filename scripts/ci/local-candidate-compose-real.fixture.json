@@ -1,6 +1,6 @@
 {
 	"composeVersion": "5.6.1",
-	"capture": "Docker Compose config only; DOCKER_HOST set to a nonexistent socket; private path replaced with /private; all env values are synthetic.",
+	"capture": "Docker Compose config only; DOCKER_HOST set to a nonexistent socket; private path replaced with /private and /private-candidate; all env values are synthetic.",
 	"config": {
 		"name": "taskdesk-codex-testing",
 		"networks": {
@@ -52,8 +52,8 @@
 				"command": null,
 				"entrypoint": null,
 				"environment": {
-					"TASKDESK_DATABASE_URL": "postgres://taskdesk_app@postgres/taskdesk_test",
-					"TASKDESK_MIGRATION_DATABASE_URL": "postgres://owner@postgres/taskdesk_test",
+					"TASKDESK_DATABASE_URL": "postgres://taskdesk_app:baseline-app-secret@postgres/taskdesk_test",
+					"TASKDESK_MIGRATION_DATABASE_URL": "postgres://owner:baseline-pg-secret@postgres/taskdesk_test",
 					"TASKDESK_ROLE": "migrate"
 				},
 				"image": "ghcr.io/thomasheinthura/taskdesk@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -78,6 +78,7 @@
 				"entrypoint": null,
 				"environment": {
 					"POSTGRES_DB": "taskdesk_test",
+					"POSTGRES_PASSWORD": "baseline-pg-secret",
 					"POSTGRES_USER": "owner"
 				},
 				"image": "postgres:18-alpine",
@@ -117,7 +118,9 @@
 				"command": null,
 				"entrypoint": null,
 				"environment": {
-					"TASKDESK_DATABASE_URL": "postgres://taskdesk_app@postgres/taskdesk_test",
+					"TASKDESK_AUTH_SECRET": "1111111111111111111111111111111111111111111111111111111111111111",
+					"TASKDESK_DATABASE_URL": "postgres://taskdesk_app:baseline-app-secret@postgres/taskdesk_test",
+					"TASKDESK_ENCRYPTION_KEY": "2222222222222222222222222222222222222222222222222222222222222222",
 					"TASKDESK_STORAGE_DRIVER": "filesystem",
 					"TASKDESK_STORAGE_FILESYSTEM_ROOT": "/app/data/attachments"
 				},
@@ -254,6 +257,283 @@
 			},
 			"postgres-data": {
 				"name": "taskdesk-codex-testing_postgres-data"
+			}
+		}
+	},
+	"candidateConfig": {
+		"name": "taskdesk-codex-testing",
+		"networks": {
+			"backend": {
+				"name": "taskdesk-codex-testing_candidate-dddddddddddddddddddddddddddddddd_backend",
+				"driver": "bridge",
+				"internal": true,
+				"ipam": {},
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				}
+			},
+			"ingress": {
+				"name": "taskdesk-codex-testing_candidate-dddddddddddddddddddddddddddddddd_ingress",
+				"driver": "bridge",
+				"ipam": {},
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				}
+			}
+		},
+		"services": {
+			"mailpit": {
+				"restart": "unless-stopped",
+				"command": null,
+				"entrypoint": null,
+				"environment": {
+					"MP_DATABASE": "/data/mailpit.db"
+				},
+				"image": "axllent/mailpit:v1.28",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				},
+				"networks": {
+					"backend": null
+				},
+				"volumes": [
+					{
+						"type": "volume",
+						"source": "mailpit-data",
+						"target": "/data",
+						"volume": {}
+					}
+				],
+				"ports": []
+			},
+			"migrate": {
+				"restart": "no",
+				"cap_drop": ["ALL"],
+				"command": null,
+				"entrypoint": null,
+				"environment": {
+					"TASKDESK_DATABASE_URL": "postgres://taskdesk_app:candidate-app-secret@postgres/taskdesk_test",
+					"TASKDESK_MIGRATION_DATABASE_URL": "postgres://owner:candidate-pg-secret@postgres/taskdesk_test",
+					"TASKDESK_ROLE": "migrate"
+				},
+				"image": "ghcr.io/thomasheinthura/taskdesk-pr-candidate-123-1@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				},
+				"networks": {
+					"backend": null
+				},
+				"read_only": true,
+				"security_opt": ["no-new-privileges:true"],
+				"tmpfs": [
+					"/tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770"
+				],
+				"depends_on": {
+					"postgres": {
+						"condition": "service_healthy",
+						"required": true
+					}
+				}
+			},
+			"postgres": {
+				"restart": "unless-stopped",
+				"command": null,
+				"entrypoint": null,
+				"environment": {
+					"POSTGRES_DB": "taskdesk_test",
+					"POSTGRES_PASSWORD": "candidate-pg-secret",
+					"POSTGRES_USER": "owner"
+				},
+				"image": "postgres:18-alpine",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				},
+				"networks": {
+					"backend": null
+				},
+				"volumes": [
+					{
+						"type": "volume",
+						"source": "postgres-data",
+						"target": "/var/lib/postgresql",
+						"volume": {}
+					}
+				],
+				"healthcheck": {
+					"test": [
+						"CMD-SHELL",
+						"pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""
+					],
+					"timeout": "3s",
+					"interval": "5s",
+					"retries": 20
+				},
+				"ports": []
+			},
+			"taskdesk": {
+				"restart": "unless-stopped",
+				"cap_drop": ["ALL"],
+				"command": null,
+				"entrypoint": null,
+				"environment": {
+					"TASKDESK_AUTH_SECRET": "3333333333333333333333333333333333333333333333333333333333333333",
+					"TASKDESK_DATABASE_URL": "postgres://taskdesk_app:candidate-app-secret@postgres/taskdesk_test",
+					"TASKDESK_ENCRYPTION_KEY": "4444444444444444444444444444444444444444444444444444444444444444",
+					"TASKDESK_STORAGE_DRIVER": "filesystem",
+					"TASKDESK_STORAGE_FILESYSTEM_ROOT": "/app/data/attachments"
+				},
+				"image": "ghcr.io/thomasheinthura/taskdesk-pr-candidate-123-1@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				},
+				"networks": {
+					"backend": null
+				},
+				"read_only": true,
+				"security_opt": ["no-new-privileges:true"],
+				"tmpfs": [
+					"/tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770"
+				],
+				"volumes": [
+					{
+						"type": "volume",
+						"source": "attachments",
+						"target": "/app/data/attachments",
+						"volume": {}
+					}
+				],
+				"depends_on": {
+					"migrate": {
+						"condition": "service_completed_successfully",
+						"required": true
+					},
+					"valkey": {
+						"condition": "service_healthy",
+						"required": true
+					}
+				},
+				"healthcheck": {
+					"test": ["CMD", "node", "/app/healthcheck.mjs"],
+					"timeout": "3s",
+					"interval": "10s",
+					"retries": 12,
+					"start_period": "30s"
+				}
+			},
+			"traefik": {
+				"restart": "unless-stopped",
+				"cap_drop": ["ALL"],
+				"command": [
+					"--providers.file.filename=/config/dynamic.yml",
+					"--entrypoints.web.address=:80",
+					"--entrypoints.web.http.redirections.entrypoint.to=websecure",
+					"--entrypoints.web.http.redirections.entrypoint.scheme=https",
+					"--entrypoints.websecure.address=:443",
+					"--entrypoints.websecure.transport.respondingtimeouts.idletimeout=180s",
+					"--accesslog=false",
+					"--log.level=ERROR"
+				],
+				"entrypoint": null,
+				"image": "traefik:v3.6.7",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				},
+				"networks": {
+					"backend": null,
+					"ingress": null
+				},
+				"read_only": true,
+				"security_opt": ["no-new-privileges:true"],
+				"volumes": [
+					{
+						"type": "bind",
+						"source": "/private-candidate/proxy",
+						"target": "/config",
+						"read_only": true,
+						"bind": {}
+					}
+				],
+				"depends_on": {
+					"taskdesk": {
+						"condition": "service_healthy",
+						"required": true
+					}
+				},
+				"ports": [
+					{
+						"mode": "ingress",
+						"host_ip": "127.0.0.1",
+						"target": 80,
+						"published": "80",
+						"protocol": "tcp"
+					},
+					{
+						"mode": "ingress",
+						"host_ip": "::1",
+						"target": 80,
+						"published": "80",
+						"protocol": "tcp"
+					},
+					{
+						"mode": "ingress",
+						"host_ip": "127.0.0.1",
+						"target": 443,
+						"published": "443",
+						"protocol": "tcp"
+					},
+					{
+						"mode": "ingress",
+						"host_ip": "::1",
+						"target": 443,
+						"published": "443",
+						"protocol": "tcp"
+					}
+				]
+			},
+			"valkey": {
+				"restart": "unless-stopped",
+				"command": [
+					"sh",
+					"-c",
+					"exec valkey-server --save \"\" --appendonly no --protected-mode yes --maxmemory 64mb --requirepass \"$$REDISCLI_AUTH\""
+				],
+				"entrypoint": null,
+				"environment": {
+					"REDISCLI_AUTH": "candidate-valkey-secret"
+				},
+				"image": "valkey/valkey:9-alpine",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				},
+				"networks": {
+					"backend": null
+				},
+				"healthcheck": {
+					"test": ["CMD", "valkey-cli", "ping"],
+					"timeout": "3s",
+					"interval": "5s",
+					"retries": 12
+				}
+			}
+		},
+		"volumes": {
+			"attachments": {
+				"name": "taskdesk-codex-testing_candidate-dddddddddddddddddddddddddddddddd_attachments",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				}
+			},
+			"mailpit-data": {
+				"name": "taskdesk-codex-testing_candidate-dddddddddddddddddddddddddddddddd_mailpit-data",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				}
+			},
+			"postgres-data": {
+				"name": "taskdesk-codex-testing_candidate-dddddddddddddddddddddddddddddddd_postgres-data",
+				"labels": {
+					"info.taskdesk.selection.slot": "dddddddddddddddddddddddddddddddd"
+				}
 			}
 		}
 	}

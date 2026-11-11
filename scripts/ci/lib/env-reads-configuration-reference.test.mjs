@@ -42,7 +42,7 @@ test("maintained environment contract preserves bootstrap and external-reader bo
     [...reference.postgresImage],
     ["POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"],
   );
-  assert.equal(reference.notReadByApplication.size, 13);
+  assert.equal(reference.notReadByApplication.size, 17);
   for (const name of [
     "DOMAIN",
     "TASKDESK_IMAGE_DIGEST",
@@ -50,6 +50,10 @@ test("maintained environment contract preserves bootstrap and external-reader bo
     "TASKDESK_API_KEY",
     "SIT_POSTGRES_VOLUME",
     "SIT_ATTACHMENTS_VOLUME",
+    "SIT_CANDIDATE_SLOT",
+    "SIT_CANDIDATE_MAILPIT_VOLUME",
+    "SIT_CANDIDATE_BACKEND_NETWORK",
+    "SIT_CANDIDATE_INGRESS_NETWORK",
   ]) {
     assert.ok(reference.notReadByApplication.has(name));
     assert.equal(
@@ -61,6 +65,16 @@ test("maintained environment contract preserves bootstrap and external-reader bo
     assert.equal(
       reference.notReadByApplication.get(name),
       "`deploy/compose.testing.yml`, at file-parse time",
+    );
+  for (const name of [
+    "SIT_CANDIDATE_SLOT",
+    "SIT_CANDIDATE_MAILPIT_VOLUME",
+    "SIT_CANDIDATE_BACKEND_NETWORK",
+    "SIT_CANDIDATE_INGRESS_NETWORK",
+  ])
+    assert.equal(
+      reference.notReadByApplication.get(name),
+      "`deploy/compose.candidate.yml`, at file-parse time",
     );
 });
 

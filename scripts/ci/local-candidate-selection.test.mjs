@@ -23,7 +23,11 @@ import {
 import {
   acquireProjectSelectionLease,
   assertSelectionSnapshot,
+  baselineGenerationProfile,
+  baselineNetworks,
   baselineVolumes,
+  candidateGenerationProfile,
+  candidateNetworks,
   candidateVolumes,
   canonicalSelectionConfig,
   coordinateCandidateSelection,
@@ -43,6 +47,8 @@ const digest = (value) => createHash("sha256").update(value).digest("hex");
 const baselineImage = `ghcr.io/thomasheinthura/taskdesk@sha256:${"a".repeat(64)}`;
 const image = `ghcr.io/thomasheinthura/taskdesk-pr-candidate-123-1@sha256:${"b".repeat(64)}`;
 const slot = "d".repeat(32);
+const baselinePrivateDir = "/private";
+const candidatePrivateDir = "/private-candidate";
 const data = {
   databaseFingerprint: digest("db"),
   filesFingerprint: digest("files"),
@@ -50,25 +56,79 @@ const data = {
   tableCount: 184,
   fileCount: 8,
 };
-function snapshot(selected = baselineImage, volumes = baselineVolumes) {
+const baselineEnvSecrets = {
+  postgres: {
+    POSTGRES_DB: "taskdesk_test",
+    POSTGRES_USER: "owner",
+    POSTGRES_PASSWORD: "baseline-pg-secret",
+  },
+  taskdesk: {
+    TASKDESK_DATABASE_URL:
+      "postgres://taskdesk_app:baseline-app-secret@postgres/taskdesk_test",
+    TASKDESK_AUTH_SECRET: "1".repeat(64),
+    TASKDESK_ENCRYPTION_KEY: "2".repeat(64),
+  },
+  migrate: {
+    TASKDESK_ROLE: "migrate",
+    TASKDESK_MIGRATION_DATABASE_URL:
+      "postgres://owner:baseline-pg-secret@postgres/taskdesk_test",
+  },
+  valkey: {
+    REDISCLI_AUTH: "baseline-valkey-secret",
+  },
+};
+const candidateEnvSecrets = {
+  postgres: {
+    POSTGRES_DB: "taskdesk_test",
+    POSTGRES_USER: "owner",
+    POSTGRES_PASSWORD: "candidate-pg-secret",
+  },
+  taskdesk: {
+    TASKDESK_DATABASE_URL:
+      "postgres://taskdesk_app:candidate-app-secret@postgres/taskdesk_test",
+    TASKDESK_AUTH_SECRET: "3".repeat(64),
+    TASKDESK_ENCRYPTION_KEY: "4".repeat(64),
+  },
+  migrate: {
+    TASKDESK_ROLE: "migrate",
+    TASKDESK_MIGRATION_DATABASE_URL:
+      "postgres://owner:candidate-pg-secret@postgres/taskdesk_test",
+  },
+  valkey: {
+    REDISCLI_AUTH: "candidate-valkey-secret",
+  },
+};
+
+function snapshot(
+  selected = baselineImage,
+  volumes = baselineVolumes,
+  options = {},
+) {
+  const isCandidate =
+    options.slot !== undefined
+      ? options.slot !== null
+      : volumes !== baselineVolumes && selected !== baselineImage;
+  const activeSlot = isCandidate ? (options.slot ?? slot) : null;
+  const privateDir =
+    options.privateDir ??
+    (isCandidate ? candidatePrivateDir : baselinePrivateDir);
+  const networks =
+    options.networks ??
+    (isCandidate ? candidateNetworks(activeSlot) : baselineNetworks);
+  const environment =
+    options.environment ??
+    structuredClone(isCandidate ? candidateEnvSecrets : baselineEnvSecrets);
   const config = canonicalSelectionConfig({
     image: selected,
-    privateDir: "/private",
+    privateDir,
+    slot: activeSlot,
     volumes,
-    environment: {
-      postgres: { POSTGRES_USER: "owner" },
-      taskdesk: {
-        TASKDESK_DATABASE_URL: "postgres://taskdesk_app@postgres/test",
-      },
-      migrate: {
-        TASKDESK_ROLE: "migrate",
-        TASKDESK_MIGRATION_DATABASE_URL: "postgres://owner@postgres/test",
-      },
-    },
+    networks,
+    environment,
   });
   const services = config.services;
   const appImage = {
-    Id: `sha256:${"c".repeat(64)}`,
+    Id: `sha256:${(isCandidate ? "e" : "c").repeat(64)}`,
     RepoDigests: [selected],
     Config: {
       Env: ["NODE_ENV=production"],
@@ -96,13 +156,21 @@ function snapshot(selected = baselineImage, volumes = baselineVolumes) {
   const volumeNames = {
     "postgres-data": volumes.database,
     attachments: volumes.files,
-    "mailpit-data": `${localProject}_mailpit-data`,
+    "mailpit-data": volumes.mail,
   };
-  for (const service of Object.values(services))
-    service.networks = { default: null };
   supportingImages.postgres.Config.Env = [
     "PGDATA=/var/lib/postgresql/18/docker",
   ];
+  const candidateContainerIds = {
+    postgres: "a".repeat(64),
+    taskdesk: "b".repeat(64),
+    traefik: "c".repeat(64),
+    mailpit: "8".repeat(64),
+    valkey: "9".repeat(64),
+  };
+  const baselineNetworkId = "7".repeat(64);
+  const candidateBackendNetId = "5".repeat(64);
+  const candidateIngressNetId = "6".repeat(64);
   const containers = Object.entries(services)
     .filter(([name]) => name !== "migrate")
     .map(([name, service], index) => {
@@ -114,13 +182,22 @@ function snapshot(selected = baselineImage, volumes = baselineVolumes) {
       }
       const inspectedImage =
         name === "taskdesk" ? appImage : supportingImages[name];
+      const attachedNetworks = isCandidate
+        ? name === "traefik"
+          ? {
+              [networks.backend]: { NetworkID: candidateBackendNetId },
+              [networks.ingress]: { NetworkID: candidateIngressNetId },
+            }
+          : {
+              [networks.backend]: { NetworkID: candidateBackendNetId },
+            }
+        : {
+            [baselineNetworks.default]: { NetworkID: baselineNetworkId },
+          };
       return {
-        Id:
-          selected !== baselineImage && name === "postgres"
-            ? "a".repeat(64)
-            : selected !== baselineImage && name === "taskdesk"
-              ? "b".repeat(64)
-              : String(index + 1).repeat(64),
+        Id: isCandidate
+          ? candidateContainerIds[name]
+          : String(index + 1).repeat(64),
         Name: `/${localProject}-${name}-1`,
         Config: {
           Image: service.image,
@@ -155,12 +232,15 @@ function snapshot(selected = baselineImage, volumes = baselineVolumes) {
           Labels: {
             "com.docker.compose.project": localProject,
             "com.docker.compose.service": name,
+            ...(service.labels || {}),
           },
         },
         Image: inspectedImage.Id,
         State: { Running: true, Health: { Status: "healthy" } },
         HostConfig: {
-          NetworkMode: `${localProject}_default`,
+          NetworkMode: isCandidate
+            ? networks.backend
+            : baselineNetworks.default,
           Privileged: false,
           PublishAllPorts: false,
           PortBindings: ports,
@@ -185,9 +265,7 @@ function snapshot(selected = baselineImage, volumes = baselineVolumes) {
         },
         NetworkSettings: {
           Ports: structuredClone(ports),
-          Networks: {
-            [`${localProject}_default`]: { NetworkID: "7".repeat(64) },
-          },
+          Networks: attachedNetworks,
         },
         Mounts: (service.volumes || []).map((m) => ({
           Type: m.type,
@@ -202,27 +280,70 @@ function snapshot(selected = baselineImage, volumes = baselineVolumes) {
         })),
       };
     });
+  const traefikContainer = containers.find(
+    (c) => c.Config.Labels["com.docker.compose.service"] === "traefik",
+  );
+  const networkInspection = isCandidate
+    ? {
+        backend: {
+          Id: candidateBackendNetId,
+          Name: networks.backend,
+          Driver: "bridge",
+          Scope: "local",
+          Internal: true,
+          Attachable: false,
+          Options: {},
+          Labels: {
+            "com.docker.compose.project": localProject,
+            "com.docker.compose.network": "backend",
+            ...(config.networks.backend?.labels || {}),
+          },
+          Containers: Object.fromEntries(
+            containers.map((c) => [c.Id, { Name: c.Name.slice(1) }]),
+          ),
+        },
+        ingress: {
+          Id: candidateIngressNetId,
+          Name: networks.ingress,
+          Driver: "bridge",
+          Scope: "local",
+          Internal: false,
+          Attachable: false,
+          Options: {},
+          Labels: {
+            "com.docker.compose.project": localProject,
+            "com.docker.compose.network": "ingress",
+            ...(config.networks.ingress?.labels || {}),
+          },
+          Containers: {
+            [traefikContainer.Id]: { Name: traefikContainer.Name.slice(1) },
+          },
+        },
+      }
+    : {
+        Id: baselineNetworkId,
+        Name: baselineNetworks.default,
+        Driver: "bridge",
+        Scope: "local",
+        Internal: false,
+        Attachable: false,
+        Options: {},
+        Labels: {
+          "com.docker.compose.project": localProject,
+          "com.docker.compose.network": "default",
+          ...(config.networks.default?.labels || {}),
+        },
+        Containers: Object.fromEntries(
+          containers.map((c) => [c.Id, { Name: c.Name.slice(1) }]),
+        ),
+      };
   return {
     containers,
     postgresPaths: {
       dataDirectory: "/var/lib/postgresql/18/docker",
       walDirectory: "/var/lib/postgresql/18/docker/pg_wal",
     },
-    networkInspection: {
-      Id: "7".repeat(64),
-      Name: `${localProject}_default`,
-      Driver: "bridge",
-      Scope: "local",
-      Internal: false,
-      Options: {},
-      Labels: {
-        "com.docker.compose.project": localProject,
-        "com.docker.compose.network": "default",
-      },
-      Containers: Object.fromEntries(
-        containers.map((c) => [c.Id, { Name: c.Name.slice(1) }]),
-      ),
-    },
+    networkInspection,
     volumeInspection: Object.entries(volumeNames).map(([key, name]) => ({
       Name: name,
       Driver: "local",
@@ -232,6 +353,7 @@ function snapshot(selected = baselineImage, volumes = baselineVolumes) {
       Labels: {
         "com.docker.compose.project": localProject,
         "com.docker.compose.volume": key,
+        ...(config.volumes[key]?.labels || {}),
       },
     })),
     imageInspection: appImage,
@@ -241,14 +363,33 @@ function snapshot(selected = baselineImage, volumes = baselineVolumes) {
     daemonId: "offline-daemon-one",
     config,
     existingVolumeNames: Object.values(baselineVolumes),
+    existingNetworkNames: Object.values(baselineNetworks),
     runtime: {
       project: localProject,
       image: selected,
       volumes,
+      ...(isCandidate ? { networks } : {}),
       healthy: true,
       agentOrigin: "https://ticketing.localhost",
       portalOrigin: "https://portal.localhost",
       data: structuredClone(data),
+    },
+  };
+}
+const baselineProfileDir = "/var/tmp/taskdesk-baseline-browser";
+function defaultBrowserResult(activeSlot = slot) {
+  return {
+    passed: true,
+    evidenceHash: digest("offline mocked browser evidence"),
+    sessionIsolation: {
+      slot: activeSlot,
+      profileDir: `/var/tmp/taskdesk-candidate-browser-${activeSlot}`,
+      baselineProfileDir,
+      ephemeralCookieJar: true,
+      sharedBaselineSession: false,
+      copiedSessionsInvalidatedByAuthSecretRotation: false,
+      cookieJarFingerprint: digest(`candidate-cookies-${activeSlot}`),
+      baselineCookieJarFingerprint: digest("baseline-cookies"),
     },
   };
 }
@@ -271,7 +412,12 @@ function fixture(t) {
   );
   const privateFiles = Object.fromEntries(
     ["app.env", "migrate.env", "postgres.env", "proxy", "valkey.env"].map(
-      (name) => [name, digest(name)],
+      (name) => [name, digest(`baseline:${name}`)],
+    ),
+  );
+  const candidatePrivateFiles = Object.fromEntries(
+    ["app.env", "migrate.env", "postgres.env", "proxy", "valkey.env"].map(
+      (name) => [name, digest(`candidate:${name}`)],
     ),
   );
   const backup = {
@@ -291,13 +437,21 @@ function fixture(t) {
     data: structuredClone(data),
   };
   const calls = [];
+  const volumeKeyMap = {
+    database: "postgres-data",
+    files: "attachments",
+    mail: "mailpit-data",
+  };
+  const boundary = {
+    dockerEndpoint: "unix:///offline-docker.sock",
+    contextEndpoint: "unix:///offline-docker.sock",
+    daemonId: "offline-daemon-one",
+    privateFiles,
+    candidatePrivateFiles,
+    baselineProfileDir,
+  };
   const adapter = {
-    inspectBoundary: () => ({
-      dockerEndpoint: "unix:///offline-docker.sock",
-      contextEndpoint: "unix:///offline-docker.sock",
-      daemonId: "offline-daemon-one",
-      privateFiles,
-    }),
+    inspectBoundary: () => structuredClone(boundary),
     startBaseline: () => {
       const app = daemon.state.inventory.find(
         (container) =>
@@ -324,7 +478,7 @@ function fixture(t) {
       filesFingerprint: data.filesFingerprint,
       fileCount: data.fileCount,
     }),
-    createAndRestoreSlot: ({ volumes, slot }) => {
+    createAndRestoreSlot: ({ volumes, slot: activeSlot }) => {
       const created = Object.fromEntries(
         Object.entries(volumes).map(([key, name]) => [
           key,
@@ -335,10 +489,9 @@ function fixture(t) {
             CreatedAt: "2026-11-10T00:00:01Z",
             Options: {},
             Labels: {
-              "info.taskdesk.selection.slot": slot,
+              "info.taskdesk.selection.slot": activeSlot,
               "com.docker.compose.project": localProject,
-              "com.docker.compose.volume":
-                key === "database" ? "postgres-data" : "attachments",
+              "com.docker.compose.volume": volumeKeyMap[key],
             },
           },
         ]),
@@ -351,15 +504,9 @@ function fixture(t) {
     },
     inspectCopiedData: () => structuredClone(data),
     selectCandidate: () => {
-      const originalIds = new Set(
-        snapshot()
-          .containers.filter((container) =>
-            ["postgres", "taskdesk"].includes(
-              container.Config.Labels["com.docker.compose.service"],
-            ),
-          )
-          .map((container) => container.Id),
-      );
+      const baseSnap = snapshot();
+      const candSnap = snapshot(image, candidateVolumes(slot));
+      const originalIds = new Set(baseSnap.containers.map((c) => c.Id));
       const originalUsers = daemon.state.inventory.filter((container) =>
         originalIds.has(container.Id),
       );
@@ -368,77 +515,124 @@ function fixture(t) {
           container.Config.Labels["com.docker.compose.project"] !==
           localProject,
       );
+      const defaultNet = daemon.state.networks[baselineNetworks.default];
       for (const original of originalUsers) {
         if (original.State.Running)
           emitDaemonEvent(daemon.state, "container", "stop", original.Id);
         original.State.Running = false;
         original.Name += `-retained-${slot}`;
         original.NetworkSettings.Networks = {};
+        delete defaultNet.Containers[original.Id];
+        emitDaemonEvent(daemon.state, "network", "disconnect", defaultNet.Id, {
+          container: original.Id,
+        });
         emitDaemonEvent(daemon.state, "container", "rename", original.Id);
       }
-      const candidate = snapshot(image, candidateVolumes(slot)).containers;
-      daemon.state.inventory = [...originalUsers, ...candidate, ...extra];
-      for (const current of candidate.filter((container) =>
-        ["postgres", "taskdesk"].includes(
-          container.Config.Labels["com.docker.compose.service"],
-        ),
-      )) {
+      for (const net of [
+        candSnap.networkInspection.backend,
+        candSnap.networkInspection.ingress,
+      ]) {
+        daemon.state.networks[net.Name] = structuredClone(net);
+        emitDaemonEvent(daemon.state, "network", "create", net.Id);
+      }
+      daemon.state.inventory = [
+        ...originalUsers,
+        ...structuredClone(candSnap.containers),
+        ...extra,
+      ];
+      for (const current of candSnap.containers) {
         emitDaemonEvent(daemon.state, "container", "create", current.Id);
+        emitDaemonEvent(
+          daemon.state,
+          "network",
+          "connect",
+          candSnap.networkInspection.backend.Id,
+          { container: current.Id },
+        );
+        if (current.Config.Labels["com.docker.compose.service"] === "traefik") {
+          emitDaemonEvent(
+            daemon.state,
+            "network",
+            "connect",
+            candSnap.networkInspection.ingress.Id,
+            { container: current.Id },
+          );
+        }
         emitDaemonEvent(daemon.state, "container", "start", current.Id);
       }
     },
-    inspectCandidate: () => snapshot(image, candidateVolumes(slot)),
-    browserWindow: () => ({
-      passed: true,
-      evidenceHash: digest("offline mocked browser evidence"),
+    inspectCandidate: () => ({
+      ...snapshot(image, candidateVolumes(slot)),
+      privateFiles: structuredClone(candidatePrivateFiles),
     }),
+    browserWindow: () => defaultBrowserResult(slot),
     returnToBaseline: () => {
-      const candidateUsers = snapshot(
-        image,
-        candidateVolumes(slot),
-      ).containers.filter((container) =>
-        ["postgres", "taskdesk"].includes(
-          container.Config.Labels["com.docker.compose.service"],
-        ),
-      );
-      for (const candidate of candidateUsers) {
+      const candSnap = snapshot(image, candidateVolumes(slot));
+      for (const candidate of candSnap.containers) {
         emitDaemonEvent(daemon.state, "container", "stop", candidate.Id);
+        emitDaemonEvent(
+          daemon.state,
+          "network",
+          "disconnect",
+          candSnap.networkInspection.backend.Id,
+          { container: candidate.Id },
+        );
+        if (
+          candidate.Config.Labels["com.docker.compose.service"] === "traefik"
+        ) {
+          emitDaemonEvent(
+            daemon.state,
+            "network",
+            "disconnect",
+            candSnap.networkInspection.ingress.Id,
+            { container: candidate.Id },
+          );
+        }
         emitDaemonEvent(daemon.state, "container", "destroy", candidate.Id);
       }
+      for (const net of [
+        candSnap.networkInspection.backend,
+        candSnap.networkInspection.ingress,
+      ]) {
+        delete daemon.state.networks[net.Name];
+        emitDaemonEvent(daemon.state, "network", "destroy", net.Id);
+      }
+      const restored = snapshot();
       daemon.state.inventory = [
-        ...snapshot().containers,
+        ...restored.containers,
         ...daemon.state.inventory.filter(
           (container) =>
             container.Config.Labels["com.docker.compose.project"] !==
             localProject,
         ),
       ];
+      const defaultNet = daemon.state.networks[baselineNetworks.default];
+      defaultNet.Containers = structuredClone(
+        restored.networkInspection.Containers,
+      );
       const app = daemon.state.inventory.find(
         (container) =>
           container.Config.Labels["com.docker.compose.service"] === "taskdesk",
       );
       app.State.Running = false;
-      for (const current of daemon.state.inventory.filter((container) =>
-        ["postgres", "taskdesk"].includes(
-          container.Config.Labels["com.docker.compose.service"],
-        ),
-      ))
+      for (const current of daemon.state.inventory.filter(
+        (container) =>
+          container.Config.Labels["com.docker.compose.project"] ===
+          localProject,
+      )) {
         emitDaemonEvent(daemon.state, "container", "rename", current.Id);
-      emitDaemonEvent(
-        daemon.state,
-        "container",
-        "start",
-        daemon.state.inventory.find(
-          (container) =>
-            container.Config.Labels["com.docker.compose.service"] ===
-            "postgres",
-        ).Id,
-      );
+        emitDaemonEvent(daemon.state, "network", "connect", defaultNet.Id, {
+          container: current.Id,
+        });
+        if (current.Config.Labels["com.docker.compose.service"] !== "taskdesk")
+          emitDaemonEvent(daemon.state, "container", "start", current.Id);
+      }
       return {
         image: baselineImage,
         volumes: baselineVolumes,
+        networks: baselineNetworks,
         data: structuredClone(data),
-        writerState: candidateUsers
+        writerState: candSnap.containers
           .filter(
             (container) =>
               container.Config.Labels["com.docker.compose.service"] ===
@@ -469,6 +663,9 @@ function fixture(t) {
         structuredClone(volume),
       ]),
     ),
+    networks: {
+      [base.networkInspection.Name]: structuredClone(base.networkInspection),
+    },
     images: {
       [baselineImage]: base.imageInspection,
       [image]: candidate.imageInspection,
@@ -481,12 +678,18 @@ function fixture(t) {
     daemonEnv: { PATH: process.env.PATH },
     directory: join(root, "coordinator"),
     backup,
+    boundary,
+    candidatePrivateFiles,
     calls,
     plan: {
       slot,
       baselineImage,
-      privateDir: "/private",
-      candidate: { image, sourceSha: "e".repeat(40) },
+      privateDir: baselinePrivateDir,
+      candidate: {
+        image,
+        privateDir: candidatePrivateDir,
+        sourceSha: "e".repeat(40),
+      },
     },
     adapter,
     verifyCandidate: async () => {
@@ -562,7 +765,7 @@ for (const service of ["postgres", "taskdesk", "mailpit"]) {
       () =>
         assertSelectionSnapshot(s, {
           image: baselineImage,
-          privateDir: "/private",
+          privateDir: baselinePrivateDir,
         }),
       /mount/,
     );
@@ -606,7 +809,7 @@ test("a direct signature denial before mutation releases its host and project le
         env: {
           ...f.daemonEnv,
           SIT_COMPOSE_ENV: envFile,
-          SIT_PRIVATE_DIR: "/private",
+          SIT_PRIVATE_DIR: baselinePrivateDir,
         },
         exists: () => true,
         realpath: (value) => value,
@@ -634,7 +837,7 @@ for (const appState of ["stopped", "absent"]) {
       env: {
         ...f.daemonEnv,
         SIT_COMPOSE_ENV: envFile,
-        SIT_PRIVATE_DIR: "/private",
+        SIT_PRIVATE_DIR: baselinePrivateDir,
       },
       exists: () => true,
       realpath: (value) => value,
@@ -698,7 +901,7 @@ for (const failAt of [
       env: {
         ...f.daemonEnv,
         SIT_COMPOSE_ENV: envFile,
-        SIT_PRIVATE_DIR: "/private",
+        SIT_PRIVATE_DIR: baselinePrivateDir,
       },
       exists: () => true,
       realpath: (value) => value,
@@ -747,7 +950,7 @@ test("engine-only healthcheck command override is denied in the initial snapshot
     () =>
       assertSelectionSnapshot(s, {
         image: baselineImage,
-        privateDir: "/private",
+        privateDir: baselinePrivateDir,
       }),
     /healthcheck/,
   );
@@ -760,7 +963,7 @@ test("engine-only healthcheck timing override is denied", () => {
     () =>
       assertSelectionSnapshot(s, {
         image: baselineImage,
-        privateDir: "/private",
+        privateDir: baselinePrivateDir,
       }),
     /healthcheck/,
   );
@@ -781,12 +984,12 @@ test("supporting image healthcheck is inherited when Compose leaves it unset", (
   assert.doesNotThrow(() =>
     assertSelectionSnapshot(s, {
       image: baselineImage,
-      privateDir: "/private",
+      privateDir: baselinePrivateDir,
     }),
   );
 });
 
-test("independently captured Compose 5.6.1 JSON passes without accepting override fields", () => {
+test("independently captured Compose 5.6.1 JSON passes for baseline and candidate without accepting override fields", () => {
   const captured = JSON.parse(
     readFileSync(
       new URL("./local-candidate-compose-real.fixture.json", import.meta.url),
@@ -812,14 +1015,49 @@ test("independently captured Compose 5.6.1 JSON passes without accepting overrid
   assert.doesNotThrow(() =>
     assertSelectionSnapshot(s, {
       image: baselineImage,
-      privateDir: "/private",
+      privateDir: baselinePrivateDir,
     }),
   );
   s.config.services.taskdesk.entrypoint = [];
   assert.throws(() =>
     assertSelectionSnapshot(s, {
       image: baselineImage,
-      privateDir: "/private",
+      privateDir: baselinePrivateDir,
+    }),
+  );
+
+  const cand = snapshot(image, candidateVolumes(slot));
+  cand.config = captured.candidateConfig;
+  for (const container of cand.containers) {
+    const name = container.Config.Labels["com.docker.compose.service"];
+    const inspected =
+      name === "taskdesk" ? cand.imageInspection : cand.supportingImages[name];
+    container.Config.Env = [
+      ...inspected.Config.Env,
+      ...Object.entries(cand.config.services[name].environment || {}).map(
+        ([key, value]) => `${key}=${value}`,
+      ),
+    ];
+  }
+  assert.doesNotThrow(() =>
+    assertSelectionSnapshot(cand, {
+      slot,
+      volumes: candidateVolumes(slot),
+      networks: candidateNetworks(slot),
+      image,
+      privateDir: candidatePrivateDir,
+      baselinePrivateDir,
+    }),
+  );
+  cand.config.networks.backend.internal = false;
+  assert.throws(() =>
+    assertSelectionSnapshot(cand, {
+      slot,
+      volumes: candidateVolumes(slot),
+      networks: candidateNetworks(slot),
+      image,
+      privateDir: candidatePrivateDir,
+      baselinePrivateDir,
     }),
   );
 });
@@ -854,7 +1092,7 @@ for (const key of ["PGDATA", "POSTGRES_INITDB_WALDIR"]) {
         assert.throws(() =>
           assertSelectionSnapshot(s, {
             image: baselineImage,
-            privateDir: "/private",
+            privateDir: baselinePrivateDir,
           }),
         );
       });
@@ -872,7 +1110,7 @@ test("data and WAL directories inside the selected PostgreSQL volume are allowed
   assert.doesNotThrow(() =>
     assertSelectionSnapshot(s, {
       image: baselineImage,
-      privateDir: "/private",
+      privateDir: baselinePrivateDir,
     }),
   );
 });
@@ -884,7 +1122,7 @@ test("resolved PostgreSQL data and WAL paths reject symlink or server-config esc
     assert.throws(() =>
       assertSelectionSnapshot(s, {
         image: baselineImage,
-        privateDir: "/private",
+        privateDir: baselinePrivateDir,
       }),
     );
   }
@@ -1098,14 +1336,21 @@ test("daemon identity change during an action blocks the next action", async (t)
   assert.ok(f.daemon.state.lease);
 });
 
-test("private configuration content changes stop before the next action", async (t) => {
-  const f = fixture(t);
-  f.adapter.selectCandidate = async () => {
-    f.backup.privateFiles["app.env"] = digest("changed private file");
-  };
-  await assert.rejects(coordinateCandidateSelection(f), /retained/);
-  assert.equal(f.calls.includes("inspectCandidate"), false);
-});
+for (const target of ["baseline", "candidate"]) {
+  test(`${target} private configuration content changes stop before the next action`, async (t) => {
+    const f = fixture(t);
+    f.adapter.selectCandidate = async () => {
+      if (target === "baseline")
+        f.backup.privateFiles["app.env"] = digest("changed private file");
+      else
+        f.candidatePrivateFiles["app.env"] = digest(
+          "changed candidate private file",
+        );
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("inspectCandidate"), false);
+  });
+}
 
 test("quiesced backup is the definitive baseline despite earlier live writes", async (t) => {
   const f = fixture(t);
@@ -1134,6 +1379,7 @@ test("baseline is proven before start and post-start writes do not invalidate th
       f.calls.indexOf("inspectReturnedBaseline"),
   );
 });
+
 for (const [name, mutate] of [
   [
     "compose extra_hosts cannot reroute postgres",
@@ -1316,7 +1562,7 @@ for (const [name, mutate] of [
     assert.throws(() =>
       assertSelectionSnapshot(s, {
         image: baselineImage,
-        privateDir: "/private",
+        privateDir: baselinePrivateDir,
       }),
     );
   });
@@ -1331,9 +1577,12 @@ test("candidate private environment drift is denied even when Compose and engine
     // This is individually canonical and must still fail the frozen baseline delta.
     assert.doesNotThrow(() =>
       assertSelectionSnapshot(s, {
-        image,
+        slot,
         volumes: candidateVolumes(slot),
-        privateDir: "/private",
+        networks: candidateNetworks(slot),
+        image,
+        privateDir: candidatePrivateDir,
+        baselinePrivateDir,
       }),
     );
     return s;
@@ -1355,12 +1604,18 @@ test("unknown engine configuration drift is denied by the frozen baseline compar
 });
 const retained = (f) => existsSync(join(f.directory, "active", "owner"));
 
-test("slots cannot overlap canonical storage and reject arbitrary names", () => {
+test("slots cannot overlap canonical storage or networks and reject arbitrary names", () => {
   const volumes = candidateVolumes(slot);
+  const networks = candidateNetworks(slot);
   assert.equal(
     new Set([...Object.values(volumes), ...Object.values(baselineVolumes)])
       .size,
-    4,
+    6,
+  );
+  assert.equal(
+    new Set([...Object.values(networks), ...Object.values(baselineNetworks)])
+      .size,
+    3,
   );
   for (const invalid of [
     "baseline",
@@ -1368,8 +1623,42 @@ test("slots cannot overlap canonical storage and reject arbitrary names", () => 
     "",
     "f".repeat(31),
     "F".repeat(32),
-  ])
+  ]) {
     assert.throws(() => candidateVolumes(invalid));
+    assert.throws(() => candidateNetworks(invalid));
+  }
+});
+
+test("generation profiles reject overlapping private directories and invalid images", () => {
+  assert.doesNotThrow(() =>
+    baselineGenerationProfile({
+      image: baselineImage,
+      privateDir: baselinePrivateDir,
+    }),
+  );
+  assert.doesNotThrow(() =>
+    candidateGenerationProfile({
+      slot,
+      image,
+      privateDir: candidatePrivateDir,
+      baselinePrivateDir,
+    }),
+  );
+  for (const badPrivate of [
+    baselinePrivateDir,
+    `${baselinePrivateDir}/nested`,
+    "/",
+    "relative/path",
+  ]) {
+    assert.throws(() =>
+      candidateGenerationProfile({
+        slot,
+        image,
+        privateDir: badPrivate,
+        baselinePrivateDir,
+      }),
+    );
+  }
 });
 
 test("fixed project lease excludes different env files and worktrees", (t) => {
@@ -1398,7 +1687,7 @@ test("canonical offline snapshot validates only exact project, endpoint, ports a
   assert.doesNotThrow(() =>
     assertSelectionSnapshot(snapshot(), {
       image: baselineImage,
-      privateDir: "/private",
+      privateDir: baselinePrivateDir,
     }),
   );
   for (const change of [
@@ -1434,7 +1723,7 @@ test("canonical offline snapshot validates only exact project, endpoint, ports a
     },
     (s) => {
       s.config.services.taskdesk.environment.TASKDESK_DATABASE_URL =
-        "postgres://taskdesk_app@localhost:62870/live";
+        "postgres://taskdesk_app:baseline-app-secret@localhost:62870/live";
     },
     (s) => {
       s.config.services.taskdesk.environment.TASKDESK_DATABASE_URL +=
@@ -1469,11 +1758,13 @@ test("canonical offline snapshot validates only exact project, endpoint, ports a
           (c) => c.Config.Labels["com.docker.compose.service"] === "taskdesk",
         )
         .Config.Env.push(
-          "TASKDESK_DATABASE_URL=postgres://taskdesk_app@outside/live",
+          "TASKDESK_DATABASE_URL=postgres://taskdesk_app:secret@outside/live",
         );
     },
     (s) => {
-      s.containers[0].HostConfig.PortBindings["5432/tcp"][0].HostPort = "62870";
+      s.containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === "postgres",
+      ).HostConfig.PortBindings["5432/tcp"][0].HostPort = "62870";
     },
     (s) => {
       delete s.containers;
@@ -1484,8 +1775,188 @@ test("canonical offline snapshot validates only exact project, endpoint, ports a
     assert.throws(() =>
       assertSelectionSnapshot(s, {
         image: baselineImage,
-        privateDir: "/private",
+        privateDir: baselinePrivateDir,
       }),
+    );
+  }
+});
+
+test("candidate snapshot enforces internal backend, Traefik-only ingress, no backend host ports, and candidate Mailpit volume", () => {
+  const baseValid = () => snapshot(image, candidateVolumes(slot));
+  assert.doesNotThrow(() =>
+    assertSelectionSnapshot(baseValid(), {
+      slot,
+      volumes: candidateVolumes(slot),
+      networks: candidateNetworks(slot),
+      image,
+      privateDir: candidatePrivateDir,
+      baselinePrivateDir,
+    }),
+  );
+  for (const [label, mutate] of [
+    [
+      "compose backend internal false",
+      (s) => {
+        s.config.networks.backend.internal = false;
+      },
+    ],
+    [
+      "engine backend internal false",
+      (s) => {
+        s.networkInspection.backend.Internal = false;
+      },
+    ],
+    [
+      "compose ingress internal true",
+      (s) => {
+        s.config.networks.ingress.internal = true;
+      },
+    ],
+    [
+      "engine ingress internal true",
+      (s) => {
+        s.networkInspection.ingress.Internal = true;
+      },
+    ],
+    [
+      "taskdesk joins candidate ingress in compose",
+      (s) => {
+        s.config.services.taskdesk.networks.ingress = null;
+      },
+    ],
+    [
+      "taskdesk joins candidate ingress in engine",
+      (s) => {
+        const app = appContainer(s);
+        app.NetworkSettings.Networks[candidateNetworks(slot).ingress] = {
+          NetworkID: s.networkInspection.ingress.Id,
+        };
+        s.networkInspection.ingress.Containers[app.Id] = {
+          Name: app.Name.slice(1),
+        };
+      },
+    ],
+    [
+      "postgres joins candidate ingress in engine",
+      (s) => {
+        const pg = s.containers.find(
+          (c) => c.Config.Labels["com.docker.compose.service"] === "postgres",
+        );
+        pg.NetworkSettings.Networks[candidateNetworks(slot).ingress] = {
+          NetworkID: s.networkInspection.ingress.Id,
+        };
+        s.networkInspection.ingress.Containers[pg.Id] = {
+          Name: pg.Name.slice(1),
+        };
+      },
+    ],
+    [
+      "valkey joins candidate ingress in engine",
+      (s) => {
+        const vk = s.containers.find(
+          (c) => c.Config.Labels["com.docker.compose.service"] === "valkey",
+        );
+        vk.NetworkSettings.Networks[candidateNetworks(slot).ingress] = {
+          NetworkID: s.networkInspection.ingress.Id,
+        };
+        s.networkInspection.ingress.Containers[vk.Id] = {
+          Name: vk.Name.slice(1),
+        };
+      },
+    ],
+    [
+      "mailpit joins candidate ingress in engine",
+      (s) => {
+        const mp = s.containers.find(
+          (c) => c.Config.Labels["com.docker.compose.service"] === "mailpit",
+        );
+        mp.NetworkSettings.Networks[candidateNetworks(slot).ingress] = {
+          NetworkID: s.networkInspection.ingress.Id,
+        };
+        s.networkInspection.ingress.Containers[mp.Id] = {
+          Name: mp.Name.slice(1),
+        };
+      },
+    ],
+    [
+      "candidate postgres host port binding in compose",
+      (s) => {
+        s.config.services.postgres.ports = [
+          {
+            host_ip: "127.0.0.1",
+            published: "62873",
+            target: 5432,
+            protocol: "tcp",
+          },
+        ];
+      },
+    ],
+    [
+      "candidate postgres host port binding in engine",
+      (s) => {
+        const pg = s.containers.find(
+          (c) => c.Config.Labels["com.docker.compose.service"] === "postgres",
+        );
+        pg.HostConfig.PortBindings = {
+          "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "62873" }],
+        };
+      },
+    ],
+    [
+      "candidate mailpit host port binding in engine",
+      (s) => {
+        const mp = s.containers.find(
+          (c) => c.Config.Labels["com.docker.compose.service"] === "mailpit",
+        );
+        mp.HostConfig.PortBindings = {
+          "8025/tcp": [{ HostIp: "127.0.0.1", HostPort: "18025" }],
+        };
+      },
+    ],
+    [
+      "candidate traefik wildcard host binding",
+      (s) => {
+        s.config.services.traefik.ports[0].host_ip = "0.0.0.0";
+      },
+    ],
+    [
+      "candidate mailpit-data reuses baseline mailpit volume",
+      (s) => {
+        s.config.volumes["mailpit-data"].name = baselineVolumes.mail;
+      },
+    ],
+    [
+      "candidate backend network reuses baseline default network name",
+      (s) => {
+        s.config.networks.backend.name = baselineNetworks.default;
+      },
+    ],
+    [
+      "candidate traefikingress alias spoofing postgres",
+      (s) => {
+        const tr = s.containers.find(
+          (c) => c.Config.Labels["com.docker.compose.service"] === "traefik",
+        );
+        tr.NetworkSettings.Networks[candidateNetworks(slot).ingress].Aliases = [
+          "postgres",
+        ];
+      },
+    ],
+  ]) {
+    const s = baseValid();
+    mutate(s);
+    assert.throws(
+      () =>
+        assertSelectionSnapshot(s, {
+          slot,
+          volumes: candidateVolumes(slot),
+          networks: candidateNetworks(slot),
+          image,
+          privateDir: candidatePrivateDir,
+          baselinePrivateDir,
+        }),
+      undefined,
+      label,
     );
   }
 });
@@ -1507,6 +1978,8 @@ test("complete mocked cycle retains durable journal and proves return before unl
   const f = fixture(t);
   const result = await coordinateCandidateSelection(f);
   assert.equal(result.returnedToBaseline, true);
+  assert.deepEqual(result.volumes, candidateVolumes(slot));
+  assert.deepEqual(result.networks, candidateNetworks(slot));
   assert.equal(retained(f), false);
   assert.equal(f.calls[0], "verifyCandidate");
   assert.ok(f.daemon.calls.some(({ args }) => args[0] === "create"));
@@ -1548,6 +2021,7 @@ test("verification failure occurs before backup and never enters release verifie
 
 for (const mode of [
   "existing-slot",
+  "existing-network",
   "corrupt-backup",
   "bad-archive",
   "wrong-ownership",
@@ -1564,6 +2038,11 @@ for (const mode of [
       f.adapter.inspectBaseline = async () => ({
         ...snapshot(),
         existingVolumeNames: Object.values(candidateVolumes(slot)),
+      });
+    if (mode === "existing-network")
+      f.adapter.inspectBaseline = async () => ({
+        ...snapshot(),
+        existingNetworkNames: Object.values(candidateNetworks(slot)),
       });
     if (mode === "corrupt-backup")
       writeFileSync(join(f.backup.directory, "attachments.tar"), "changed");
@@ -1587,6 +2066,7 @@ for (const mode of [
       f.adapter.returnToBaseline = async () => ({
         image: baselineImage,
         volumes: baselineVolumes,
+        networks: baselineNetworks,
         data: { ...data, migrationFingerprint: digest("changed") },
         writerState: f.backup.writerState,
       });
@@ -1621,6 +2101,178 @@ for (const mode of [
   });
 }
 
+for (const secretCase of [
+  "POSTGRES_PASSWORD",
+  "TASKDESK_DATABASE_URL",
+  "TASKDESK_AUTH_SECRET",
+  "TASKDESK_ENCRYPTION_KEY",
+  "REDISCLI_AUTH",
+  "TASKDESK_ENCRYPTION_KEY_PREVIOUS",
+]) {
+  test(`candidate secret reuse or fallback for ${secretCase} is denied before browser`, async (t) => {
+    const f = fixture(t);
+    f.adapter.inspectCandidate = async () => {
+      const env = structuredClone(candidateEnvSecrets);
+      if (secretCase === "POSTGRES_PASSWORD") {
+        env.postgres.POSTGRES_PASSWORD =
+          baselineEnvSecrets.postgres.POSTGRES_PASSWORD;
+        env.migrate.TASKDESK_MIGRATION_DATABASE_URL =
+          baselineEnvSecrets.migrate.TASKDESK_MIGRATION_DATABASE_URL;
+      } else if (secretCase === "TASKDESK_DATABASE_URL") {
+        env.taskdesk.TASKDESK_DATABASE_URL =
+          baselineEnvSecrets.taskdesk.TASKDESK_DATABASE_URL;
+      } else if (secretCase === "TASKDESK_AUTH_SECRET") {
+        env.taskdesk.TASKDESK_AUTH_SECRET =
+          baselineEnvSecrets.taskdesk.TASKDESK_AUTH_SECRET;
+      } else if (secretCase === "TASKDESK_ENCRYPTION_KEY") {
+        env.taskdesk.TASKDESK_ENCRYPTION_KEY =
+          baselineEnvSecrets.taskdesk.TASKDESK_ENCRYPTION_KEY;
+      } else if (secretCase === "REDISCLI_AUTH") {
+        env.valkey.REDISCLI_AUTH = baselineEnvSecrets.valkey.REDISCLI_AUTH;
+      } else if (secretCase === "TASKDESK_ENCRYPTION_KEY_PREVIOUS") {
+        env.taskdesk.TASKDESK_ENCRYPTION_KEY_PREVIOUS =
+          baselineEnvSecrets.taskdesk.TASKDESK_ENCRYPTION_KEY;
+      }
+      return snapshot(image, candidateVolumes(slot), { environment: env });
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("browserWindow"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
+for (const fileKey of [
+  "app.env",
+  "migrate.env",
+  "postgres.env",
+  "proxy",
+  "valkey.env",
+]) {
+  test(`candidate private file fingerprint sharing ${fileKey} with baseline is denied`, async (t) => {
+    const f = fixture(t);
+    f.candidatePrivateFiles[fileKey] = f.backup.privateFiles[fileKey];
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("quiesceAndBackup"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
+for (const role of ["postgres", "taskdesk", "traefik", "mailpit", "valkey"]) {
+  test(`candidate sharing ${role} container identity with baseline is denied`, async (t) => {
+    const f = fixture(t);
+    f.adapter.inspectCandidate = async () => {
+      const s = snapshot(image, candidateVolumes(slot));
+      const baseRole = snapshot().containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === role,
+      );
+      const candRole = s.containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === role,
+      );
+      delete s.networkInspection.backend.Containers[candRole.Id];
+      s.networkInspection.backend.Containers[baseRole.Id] = {
+        Name: candRole.Name.slice(1),
+      };
+      if (role === "traefik") {
+        delete s.networkInspection.ingress.Containers[candRole.Id];
+        s.networkInspection.ingress.Containers[baseRole.Id] = {
+          Name: candRole.Name.slice(1),
+        };
+      }
+      candRole.Id = baseRole.Id;
+      return s;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("browserWindow"), false);
+  });
+
+  test(`simultaneous running baseline and candidate ${role} containers are denied`, async (t) => {
+    const f = fixture(t);
+    const select = f.adapter.selectCandidate;
+    f.adapter.selectCandidate = async (context) => {
+      await select(context);
+      const retainedBase = f.daemon.state.inventory.find(
+        (c) =>
+          c.Config.Labels["com.docker.compose.service"] === role &&
+          !c.Config.Labels["info.taskdesk.selection.slot"],
+      );
+      retainedBase.State.Running = true;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("inspectCandidate"), false);
+    assert.equal(f.calls.includes("browserWindow"), false);
+  });
+}
+
+for (const browserMutation of [
+  [
+    "missing sessionIsolation",
+    (b) => {
+      delete b.sessionIsolation;
+    },
+  ],
+  [
+    "mismatched slot",
+    (b) => {
+      b.sessionIsolation.slot = "f".repeat(32);
+    },
+  ],
+  [
+    "profileDir overlaps baselinePrivateDir",
+    (b) => {
+      b.sessionIsolation.profileDir = `${baselinePrivateDir}/browser`;
+    },
+  ],
+  [
+    "profileDir overlaps candidatePrivateDir",
+    (b) => {
+      b.sessionIsolation.profileDir = `${candidatePrivateDir}/browser`;
+    },
+  ],
+  [
+    "profileDir overlaps baselineProfileDir",
+    (b) => {
+      b.sessionIsolation.profileDir = `${b.sessionIsolation.baselineProfileDir}/nested`;
+    },
+  ],
+  [
+    "non-ephemeral cookie jar",
+    (b) => {
+      b.sessionIsolation.ephemeralCookieJar = false;
+    },
+  ],
+  [
+    "shared baseline session",
+    (b) => {
+      b.sessionIsolation.sharedBaselineSession = true;
+    },
+  ],
+  [
+    "identical cookie jar fingerprint",
+    (b) => {
+      b.sessionIsolation.cookieJarFingerprint =
+        b.sessionIsolation.baselineCookieJarFingerprint;
+    },
+  ],
+  [
+    "treating Better Auth copied sessions as invalidated by TASKDESK_AUTH_SECRET rotation",
+    (b) => {
+      b.sessionIsolation.copiedSessionsInvalidatedByAuthSecretRotation = true;
+    },
+  ],
+]) {
+  test(`browser window rejects ${browserMutation[0]} before return to baseline`, async (t) => {
+    const f = fixture(t);
+    f.adapter.browserWindow = async () => {
+      const b = defaultBrowserResult(slot);
+      browserMutation[1](b);
+      return b;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("returnToBaseline"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
 test("interrupted journal cannot be stolen even when owner is no longer alive", async (t) => {
   const f = fixture(t);
   const lease = acquireProjectSelectionLease({ directory: f.directory });
@@ -1649,7 +2301,7 @@ test("browser window holds the project lease until baseline proof completes", as
       () => acquireProjectSelectionLease({ directory: f.directory }),
       /lock exists/,
     );
-    return { passed: true, evidenceHash: digest("browser fixture") };
+    return defaultBrowserResult(slot);
   };
   await coordinateCandidateSelection(f);
   assert.equal(retained(f), false);
@@ -1690,7 +2342,7 @@ function addForeign(f, container, transient = false) {
     f.daemon.state,
     "volume",
     "mount",
-    container.Mounts[0].Name || "unrelated-bind",
+    container.Mounts[0]?.Name || "unrelated-bind",
   );
   if (transient) {
     emitDaemonEvent(f.daemon.state, "container", "die", container.Id);
@@ -1720,8 +2372,11 @@ for (const name of Object.values(baselineVolumes)) {
 
 for (const source of [
   `/var/lib/docker/volumes/${baselineVolumes.files}/_data`,
+  `/var/lib/docker/volumes/${baselineVolumes.mail}/_data`,
   "/var/lib/docker/volumes",
   `/var/lib/docker/volumes/${baselineVolumes.files}/_data/nested`,
+  `${baselinePrivateDir}/proxy`,
+  `${candidatePrivateDir}/proxy`,
 ]) {
   test(`daemon inventory denies stopped read-only bind overlap ${source}`, async (t) => {
     const f = fixture(t);
@@ -1784,6 +2439,18 @@ test("stable unrelated other-network containers with separate local volumes rema
     Options: {},
     Labels: {},
   };
+  f.daemon.state.networks["unrelated-network"] = {
+    Id: "0".repeat(64),
+    Name: "unrelated-network",
+    Driver: "bridge",
+    Scope: "local",
+    Internal: false,
+    Options: {},
+    Labels: {},
+    Containers: {
+      ["f".repeat(64)]: { Name: "unrelated-volume-user" },
+    },
+  };
   f.daemon.state.inventory.push(foreignVolumeUser(name));
   await coordinateCandidateSelection(f);
   assert.equal(retained(f), false);
@@ -1837,11 +2504,140 @@ for (const transient of [false, true]) {
   }
 }
 
+for (const transient of [false, true]) {
+  for (const [phase, netKey] of [
+    ["quiesceAndBackup", "default"],
+    ["browserWindow", "backend"],
+    ["browserWindow", "ingress"],
+    ["returnToBaseline", "default"],
+  ]) {
+    test(`daemon network inventory and event fence deny ${transient ? "vanished" : "persistent"} foreign endpoint on ${netKey} during ${phase}`, async (t) => {
+      const f = fixture(t);
+      const action = f.adapter[phase];
+      f.adapter[phase] = async (context) => {
+        const result = await action(context);
+        const netName =
+          netKey === "default"
+            ? baselineNetworks.default
+            : candidateNetworks(slot)[netKey];
+        const net = f.daemon.state.networks[netName];
+        const foreignId = "f".repeat(64);
+        emitDaemonEvent(f.daemon.state, "network", "connect", net.Id, {
+          container: foreignId,
+        });
+        if (transient) {
+          emitDaemonEvent(f.daemon.state, "network", "disconnect", net.Id, {
+            container: foreignId,
+          });
+        } else {
+          net.Containers[foreignId] = { Name: "foreign-endpoint" };
+        }
+        return result;
+      };
+      await assert.rejects(coordinateCandidateSelection(f), /retained/);
+      const next = {
+        quiesceAndBackup: "verifyBackupArchive",
+        browserWindow: "returnToBaseline",
+        returnToBaseline: "startBaseline",
+      }[phase];
+      assert.equal(f.calls.includes(next), false);
+      assert.equal(retained(f), true);
+    });
+  }
+}
+
+test("daemon network event fence denies transient candidate service connection to ingress network", async (t) => {
+  const f = fixture(t);
+  f.adapter.browserWindow = async () => {
+    const ingressNet = f.daemon.state.networks[candidateNetworks(slot).ingress];
+    const candAppId = "b".repeat(64);
+    emitDaemonEvent(f.daemon.state, "network", "connect", ingressNet.Id, {
+      container: candAppId,
+    });
+    emitDaemonEvent(f.daemon.state, "network", "disconnect", ingressNet.Id, {
+      container: candAppId,
+    });
+    return defaultBrowserResult(slot);
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("returnToBaseline"), false);
+});
+
+for (const secondGenKind of ["volume", "network", "container"]) {
+  test(`daemon inventory rejects simultaneous second candidate generation ${secondGenKind}`, async (t) => {
+    const f = fixture(t);
+    const secondSlot = "e".repeat(32);
+    if (secondGenKind === "volume") {
+      const secondVol = candidateVolumes(secondSlot).database;
+      f.daemon.state.volumes[secondVol] = {
+        Name: secondVol,
+        Driver: "local",
+        Mountpoint: `/var/lib/docker/volumes/${secondVol}/_data`,
+        CreatedAt: "2026-11-10T00:00:02Z",
+        Options: {},
+        Labels: {
+          "com.docker.compose.project": localProject,
+          "com.docker.compose.volume": "postgres-data",
+          "info.taskdesk.selection.slot": secondSlot,
+        },
+      };
+    } else if (secondGenKind === "network") {
+      const secondNet = candidateNetworks(secondSlot).backend;
+      f.daemon.state.networks[secondNet] = {
+        Id: "0".repeat(64),
+        Name: secondNet,
+        Driver: "bridge",
+        Scope: "local",
+        Internal: true,
+        Options: {},
+        Labels: {
+          "com.docker.compose.project": localProject,
+          "com.docker.compose.network": "backend",
+          "info.taskdesk.selection.slot": secondSlot,
+        },
+        Containers: {},
+      };
+    } else {
+      const secondContainer = structuredClone(
+        snapshot(image, candidateVolumes(secondSlot), { slot: secondSlot })
+          .containers[0],
+      );
+      secondContainer.Id = "0".repeat(64);
+      secondContainer.Name = `/${localProject}-postgres-second`;
+      secondContainer.Mounts = [];
+      secondContainer.NetworkSettings.Networks = {};
+      f.daemon.state.inventory.push(secondContainer);
+    }
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("quiesceAndBackup"), false);
+  });
+}
+
+test("candidate networks remaining after returnToBaseline fail closed before baseline restart", async (t) => {
+  const f = fixture(t);
+  const ret = f.adapter.returnToBaseline;
+  f.adapter.returnToBaseline = async (context) => {
+    const result = await ret(context);
+    const candSnap = snapshot(image, candidateVolumes(slot));
+    f.daemon.state.networks[candSnap.networkInspection.backend.Name] =
+      structuredClone(candSnap.networkInspection.backend);
+    f.daemon.state.networks[
+      candSnap.networkInspection.backend.Name
+    ].Containers = {};
+    return result;
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("startBaseline"), false);
+});
+
 for (const fault of [
   "missing-mounts",
   "omitted-record",
   "duplicate-record",
   "list-race",
+  "missing-networks",
+  "omitted-network",
+  "duplicate-network",
 ]) {
   test(`daemon inventory fails closed on ${fault}`, async (t) => {
     const f = fixture(t);
@@ -1854,12 +2650,24 @@ for (const fault of [
             foreignVolumeUser(baselineVolumes.files),
           );
       }
+      if (
+        fault === "missing-networks" &&
+        args[0] === "network" &&
+        args[1] === "ls"
+      )
+        return { status: 1, stdout: "" };
       const result = f.daemon.run(bin, args, options);
       if (args[0] === "inspect" && args.length > 2) {
         const values = JSON.parse(result.stdout);
         if (fault === "missing-mounts") delete values[0].Mounts;
         if (fault === "omitted-record") values.pop();
         if (fault === "duplicate-record") values.push(values[0]);
+        return { status: 0, stdout: JSON.stringify(values) };
+      }
+      if (args[0] === "network" && args[1] === "inspect") {
+        const values = JSON.parse(result.stdout);
+        if (fault === "omitted-network") values.pop();
+        if (fault === "duplicate-network") values.push(values[0]);
         return { status: 0, stdout: JSON.stringify(values) };
       }
       return result;
@@ -1898,7 +2706,7 @@ for (const fault of [
       f.adapter.browserWindow = async () => {
         for (let i = 0; i < 300; i++)
           emitDaemonEvent(f.daemon.state, "image", "pull", `offline-${i}`);
-        return { passed: true, evidenceHash: digest("overflow fixture") };
+        return defaultBrowserResult(slot);
       };
     await assert.rejects(coordinateCandidateSelection(f), /retained/);
     assert.equal(f.calls.includes("returnToBaseline"), false);
@@ -1911,7 +2719,7 @@ test("each awaited Docker call checks daemon-wide mounts before dispatch", async
   f.adapter.browserWindow = async (context) => {
     addForeign(f, foreignVolumeUser(baselineVolumes.files));
     await context.docker(["exec", "never-dispatched", "true"]);
-    return { passed: true, evidenceHash: digest("unreachable") };
+    return defaultBrowserResult(slot);
   };
   await assert.rejects(coordinateCandidateSelection(f), /retained/);
   assert.equal(
@@ -1940,7 +2748,7 @@ test("awaited guarded Docker inspection keeps continuous event and inventory pro
   f.adapter.browserWindow = async (context) => {
     const result = await context.docker(["inspect", "b".repeat(64)]);
     assert.equal(JSON.parse(result)[0].Id, "b".repeat(64));
-    return { passed: true, evidenceHash: digest("guarded read") };
+    return defaultBrowserResult(slot);
   };
   await coordinateCandidateSelection(f);
   assert.equal(retained(f), false);
@@ -1958,3 +2766,1031 @@ test("boundary inspection receives no Docker mutation authority", async (t) => {
   );
   assert.equal(f.calls.includes("quiesceAndBackup"), false);
 });
+
+for (const [label, injectViolation] of [
+  [
+    "baseline postgres stop-start-stop during select-candidate",
+    (f, baseSnap, defaultNet) => {
+      const pg = baseSnap.containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === "postgres",
+      );
+      emitDaemonEvent(f.daemon.state, "container", "stop", pg.Id);
+      emitDaemonEvent(f.daemon.state, "container", "start", pg.Id);
+      emitDaemonEvent(f.daemon.state, "container", "stop", pg.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: pg.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "rename", pg.Id, {
+        name: `${pg.Name.slice(1)}-retained-${slot}`,
+      });
+    },
+  ],
+  [
+    "baseline postgres disconnect-connect-disconnect during select-candidate",
+    (f, baseSnap, defaultNet) => {
+      const pg = baseSnap.containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === "postgres",
+      );
+      emitDaemonEvent(f.daemon.state, "container", "stop", pg.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: pg.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "network", "connect", defaultNet.Id, {
+        container: pg.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: pg.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "rename", pg.Id, {
+        name: `${pg.Name.slice(1)}-retained-${slot}`,
+      });
+    },
+  ],
+  [
+    "baseline postgres disconnect while still running before stop during select-candidate",
+    (f, baseSnap, defaultNet) => {
+      const pg = baseSnap.containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === "postgres",
+      );
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: pg.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "stop", pg.Id);
+      emitDaemonEvent(f.daemon.state, "container", "rename", pg.Id, {
+        name: `${pg.Name.slice(1)}-retained-${slot}`,
+      });
+    },
+  ],
+  [
+    "baseline taskdesk start-stop during select-candidate",
+    (f, baseSnap, defaultNet) => {
+      const app = baseSnap.containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === "taskdesk",
+      );
+      emitDaemonEvent(f.daemon.state, "container", "start", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "rename", app.Id, {
+        name: `${app.Name.slice(1)}-retained-${slot}`,
+      });
+    },
+  ],
+  [
+    "baseline taskdesk stop during select-candidate after already quiesced in backup",
+    (f, baseSnap, defaultNet) => {
+      const app = baseSnap.containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === "taskdesk",
+      );
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "rename", app.Id, {
+        name: `${app.Name.slice(1)}-retained-${slot}`,
+      });
+    },
+  ],
+  [
+    "baseline taskdesk disconnect-connect-disconnect during select-candidate",
+    (f, baseSnap, defaultNet) => {
+      const app = baseSnap.containers.find(
+        (c) => c.Config.Labels["com.docker.compose.service"] === "taskdesk",
+      );
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "network", "connect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "rename", app.Id, {
+        name: `${app.Name.slice(1)}-retained-${slot}`,
+      });
+    },
+  ],
+]) {
+  test(`lifecycle event replay rejects ${label} even when final snapshot looks stopped and detached`, async (t) => {
+    const f = fixture(t);
+    f.adapter.selectCandidate = async () => {
+      const baseSnap = snapshot();
+      const candSnap = snapshot(image, candidateVolumes(slot));
+      const originalIds = new Set(baseSnap.containers.map((c) => c.Id));
+      const originalUsers = f.daemon.state.inventory.filter((container) =>
+        originalIds.has(container.Id),
+      );
+      const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+      const targetRole = label.includes("postgres") ? "postgres" : "taskdesk";
+      for (const original of originalUsers) {
+        const role = original.Config.Labels["com.docker.compose.service"];
+        if (role === targetRole) {
+          original.State.Running = false;
+          original.Name += `-retained-${slot}`;
+          original.NetworkSettings.Networks = {};
+          delete defaultNet.Containers[original.Id];
+          injectViolation(f, baseSnap, defaultNet);
+          continue;
+        }
+        if (original.State.Running)
+          emitDaemonEvent(f.daemon.state, "container", "stop", original.Id);
+        original.State.Running = false;
+        original.Name += `-retained-${slot}`;
+        original.NetworkSettings.Networks = {};
+        delete defaultNet.Containers[original.Id];
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "disconnect",
+          defaultNet.Id,
+          {
+            container: original.Id,
+          },
+        );
+        emitDaemonEvent(f.daemon.state, "container", "rename", original.Id);
+      }
+      for (const net of [
+        candSnap.networkInspection.backend,
+        candSnap.networkInspection.ingress,
+      ]) {
+        f.daemon.state.networks[net.Name] = structuredClone(net);
+        emitDaemonEvent(f.daemon.state, "network", "create", net.Id);
+      }
+      f.daemon.state.inventory = [
+        ...originalUsers,
+        ...structuredClone(candSnap.containers),
+      ];
+      for (const current of candSnap.containers) {
+        emitDaemonEvent(f.daemon.state, "container", "create", current.Id);
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "connect",
+          candSnap.networkInspection.backend.Id,
+          { container: current.Id },
+        );
+        if (current.Config.Labels["com.docker.compose.service"] === "traefik") {
+          emitDaemonEvent(
+            f.daemon.state,
+            "network",
+            "connect",
+            candSnap.networkInspection.ingress.Id,
+            { container: current.Id },
+          );
+        }
+        emitDaemonEvent(f.daemon.state, "container", "start", current.Id);
+      }
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("inspectCandidate"), false);
+    assert.equal(f.calls.includes("browserWindow"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
+test("lifecycle event replay rejects baseline taskdesk transient start-stop during return-baseline", async (t) => {
+  const f = fixture(t);
+  const ret = f.adapter.returnToBaseline;
+  f.adapter.returnToBaseline = async (context) => {
+    const result = await ret(context);
+    const app = snapshot().containers.find(
+      (c) => c.Config.Labels["com.docker.compose.service"] === "taskdesk",
+    );
+    emitDaemonEvent(f.daemon.state, "container", "start", app.Id);
+    emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    return result;
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("startBaseline"), false);
+  assert.equal(retained(f), true);
+});
+
+test("real compose.candidate.yml and captured Compose 5.6.1 config derive runtime slot labels and fail closed if slot label is omitted", async (t) => {
+  const overlayText = readFileSync(
+    new URL("../../deploy/compose.candidate.yml", import.meta.url),
+    "utf8",
+  );
+  const slotMatches = overlayText.match(
+    /info\.taskdesk\.selection\.slot:\s*\$\{SIT_CANDIDATE_SLOT:\?Set SIT_CANDIDATE_SLOT to the candidate slot\}/g,
+  );
+  assert.equal(slotMatches?.length, 11);
+  const captured = JSON.parse(
+    readFileSync(
+      new URL("./local-candidate-compose-real.fixture.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const deriveRuntimeSnapshotFromConfig = (candidateConfig) => {
+    const base = snapshot(image, candidateVolumes(slot));
+    base.config = structuredClone(candidateConfig);
+    for (const container of base.containers) {
+      const name = container.Config.Labels["com.docker.compose.service"];
+      const service = base.config.services[name];
+      const inspected =
+        name === "taskdesk"
+          ? base.imageInspection
+          : base.supportingImages[name];
+      container.Config.Env = [
+        ...inspected.Config.Env,
+        ...Object.entries(service.environment || {}).map(
+          ([key, value]) => `${key}=${value}`,
+        ),
+      ];
+      container.Config.Labels = {
+        "com.docker.compose.project": localProject,
+        "com.docker.compose.service": name,
+        ...(service.labels || {}),
+      };
+    }
+    for (const netKey of ["backend", "ingress"]) {
+      base.networkInspection[netKey].Labels = {
+        "com.docker.compose.project": localProject,
+        "com.docker.compose.network": netKey,
+        ...(base.config.networks[netKey]?.labels || {}),
+      };
+    }
+    base.volumeInspection = base.volumeInspection.map((vol) => {
+      const key = vol.Labels["com.docker.compose.volume"];
+      return {
+        ...vol,
+        Labels: {
+          "com.docker.compose.project": localProject,
+          "com.docker.compose.volume": key,
+          ...(base.config.volumes[key]?.labels || {}),
+        },
+      };
+    });
+    return base;
+  };
+  const validDerived = deriveRuntimeSnapshotFromConfig(
+    captured.candidateConfig,
+  );
+  assert.doesNotThrow(() =>
+    assertSelectionSnapshot(validDerived, {
+      slot,
+      volumes: candidateVolumes(slot),
+      networks: candidateNetworks(slot),
+      image,
+      privateDir: candidatePrivateDir,
+      baselinePrivateDir,
+    }),
+  );
+
+  for (const mutate of [
+    (cfg) => {
+      delete cfg.services.taskdesk.labels;
+    },
+    (cfg) => {
+      delete cfg.services.postgres.labels["info.taskdesk.selection.slot"];
+    },
+    (cfg) => {
+      delete cfg.volumes["postgres-data"].labels;
+    },
+    (cfg) => {
+      delete cfg.networks.backend.labels;
+    },
+    (cfg) => {
+      cfg.networks.ingress.labels["info.taskdesk.selection.slot"] = "f".repeat(
+        32,
+      );
+    },
+  ]) {
+    const brokenConfig = structuredClone(captured.candidateConfig);
+    mutate(brokenConfig);
+    const derived = deriveRuntimeSnapshotFromConfig(brokenConfig);
+    assert.throws(() =>
+      assertSelectionSnapshot(derived, {
+        slot,
+        volumes: candidateVolumes(slot),
+        networks: candidateNetworks(slot),
+        image,
+        privateDir: candidatePrivateDir,
+        baselinePrivateDir,
+      }),
+    );
+  }
+
+  const f = fixture(t);
+  f.adapter.selectCandidate = async () => {
+    const baseSnap = snapshot();
+    const brokenConfig = structuredClone(captured.candidateConfig);
+    delete brokenConfig.services.taskdesk.labels;
+    const candSnap = deriveRuntimeSnapshotFromConfig(brokenConfig);
+    const originalIds = new Set(baseSnap.containers.map((c) => c.Id));
+    const originalUsers = f.daemon.state.inventory.filter((container) =>
+      originalIds.has(container.Id),
+    );
+    const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+    for (const original of originalUsers) {
+      if (original.State.Running)
+        emitDaemonEvent(f.daemon.state, "container", "stop", original.Id);
+      original.State.Running = false;
+      original.Name += `-retained-${slot}`;
+      original.NetworkSettings.Networks = {};
+      delete defaultNet.Containers[original.Id];
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: original.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "rename", original.Id);
+    }
+    for (const net of [
+      candSnap.networkInspection.backend,
+      candSnap.networkInspection.ingress,
+    ]) {
+      f.daemon.state.networks[net.Name] = structuredClone(net);
+      emitDaemonEvent(f.daemon.state, "network", "create", net.Id);
+    }
+    f.daemon.state.inventory = [
+      ...originalUsers,
+      ...structuredClone(candSnap.containers),
+    ];
+    for (const current of candSnap.containers) {
+      emitDaemonEvent(f.daemon.state, "container", "create", current.Id);
+      emitDaemonEvent(
+        f.daemon.state,
+        "network",
+        "connect",
+        candSnap.networkInspection.backend.Id,
+        { container: current.Id },
+      );
+      if (current.Config.Labels["com.docker.compose.service"] === "traefik") {
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "connect",
+          candSnap.networkInspection.ingress.Id,
+          { container: current.Id },
+        );
+      }
+      emitDaemonEvent(f.daemon.state, "container", "start", current.Id);
+    }
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("inspectCandidate"), false);
+});
+
+for (const [label, mutate] of [
+  [
+    "missing baselineProfileDir and candidate profileDir equal to baselineProfileDir",
+    (b) => {
+      delete b.sessionIsolation.baselineProfileDir;
+      b.sessionIsolation.profileDir = baselineProfileDir;
+    },
+  ],
+  [
+    "missing baselineProfileDir with distinct candidate profileDir",
+    (b) => {
+      delete b.sessionIsolation.baselineProfileDir;
+    },
+  ],
+  [
+    "spoofed baselineProfileDir while candidate profileDir reuses frozen baselineProfileDir",
+    (b) => {
+      b.sessionIsolation.baselineProfileDir =
+        "/var/tmp/spoofed-baseline-browser";
+      b.sessionIsolation.profileDir = baselineProfileDir;
+    },
+  ],
+  [
+    "candidate profileDir equals frozen baselineProfileDir",
+    (b) => {
+      b.sessionIsolation.profileDir = baselineProfileDir;
+    },
+  ],
+]) {
+  test(`browser isolation rejects ${label}`, async (t) => {
+    const f = fixture(t);
+    f.adapter.browserWindow = async () => {
+      const b = defaultBrowserResult(slot);
+      mutate(b);
+      return b;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("returnToBaseline"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
+for (const badBoundaryProfile of [
+  undefined,
+  "",
+  "relative/browser-profile",
+  `${baselinePrivateDir}/browser`,
+  `${candidatePrivateDir}/browser`,
+]) {
+  test(`boundary inspection rejects invalid baselineProfileDir ${String(badBoundaryProfile)} before backup`, async (t) => {
+    const f = fixture(t);
+    f.boundary.baselineProfileDir = badBoundaryProfile;
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("quiesceAndBackup"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
+test("boundary baselineProfileDir drift during selection stops before the next action", async (t) => {
+  const f = fixture(t);
+  f.adapter.selectCandidate = async () => {
+    f.boundary.baselineProfileDir = "/var/tmp/changed-baseline-browser";
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("inspectCandidate"), false);
+  assert.equal(retained(f), true);
+});
+
+for (const [label, delayMode] of [
+  [
+    "candidate taskdesk starts while baseline mailpit is still running before delayed baseline mailpit stop/disconnect/rename",
+    "running",
+  ],
+  [
+    "candidate taskdesk starts while stopped baseline mailpit is still connected and unrenamed before delayed disconnect/rename",
+    "connected-unrenamed",
+  ],
+]) {
+  test(`lifecycle event replay rejects cross-generation overlap between events when ${label}`, async (t) => {
+    const f = fixture(t);
+    f.adapter.selectCandidate = async () => {
+      const baseSnap = snapshot();
+      const candSnap = snapshot(image, candidateVolumes(slot));
+      const originalIds = new Set(baseSnap.containers.map((c) => c.Id));
+      const originalUsers = f.daemon.state.inventory.filter((container) =>
+        originalIds.has(container.Id),
+      );
+      const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+      let delayedMailpit = null;
+      for (const original of originalUsers) {
+        const role = original.Config.Labels["com.docker.compose.service"];
+        if (role === "mailpit") {
+          delayedMailpit = original;
+          if (delayMode === "connected-unrenamed") {
+            emitDaemonEvent(f.daemon.state, "container", "stop", original.Id);
+          }
+          continue;
+        }
+        if (original.State.Running)
+          emitDaemonEvent(f.daemon.state, "container", "stop", original.Id);
+        original.State.Running = false;
+        original.Name += `-retained-${slot}`;
+        original.NetworkSettings.Networks = {};
+        delete defaultNet.Containers[original.Id];
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "disconnect",
+          defaultNet.Id,
+          {
+            container: original.Id,
+          },
+        );
+        emitDaemonEvent(f.daemon.state, "container", "rename", original.Id);
+      }
+      for (const net of [
+        candSnap.networkInspection.backend,
+        candSnap.networkInspection.ingress,
+      ]) {
+        f.daemon.state.networks[net.Name] = structuredClone(net);
+        emitDaemonEvent(f.daemon.state, "network", "create", net.Id);
+      }
+      f.daemon.state.inventory = [
+        ...originalUsers,
+        ...structuredClone(candSnap.containers),
+      ];
+      for (const current of candSnap.containers) {
+        emitDaemonEvent(f.daemon.state, "container", "create", current.Id);
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "connect",
+          candSnap.networkInspection.backend.Id,
+          { container: current.Id },
+        );
+        if (current.Config.Labels["com.docker.compose.service"] === "traefik") {
+          emitDaemonEvent(
+            f.daemon.state,
+            "network",
+            "connect",
+            candSnap.networkInspection.ingress.Id,
+            { container: current.Id },
+          );
+        }
+        emitDaemonEvent(f.daemon.state, "container", "start", current.Id);
+      }
+      if (delayMode === "running") {
+        emitDaemonEvent(f.daemon.state, "container", "stop", delayedMailpit.Id);
+      }
+      delayedMailpit.State.Running = false;
+      delayedMailpit.Name += `-retained-${slot}`;
+      delayedMailpit.NetworkSettings.Networks = {};
+      delete defaultNet.Containers[delayedMailpit.Id];
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: delayedMailpit.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "rename", delayedMailpit.Id);
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("inspectCandidate"), false);
+    assert.equal(f.calls.includes("browserWindow"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
+test("lifecycle event replay rejects cross-generation overlap during return-baseline when baseline starts before candidate is destroyed", async (t) => {
+  const f = fixture(t);
+  f.adapter.returnToBaseline = async () => {
+    const candSnap = snapshot(image, candidateVolumes(slot));
+    const restored = snapshot();
+    const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+    const delayedCandidate = candSnap.containers.find(
+      (c) => c.Config.Labels["com.docker.compose.service"] === "mailpit",
+    );
+    for (const candidate of candSnap.containers) {
+      if (candidate.Id === delayedCandidate.Id) continue;
+      emitDaemonEvent(f.daemon.state, "container", "stop", candidate.Id);
+      emitDaemonEvent(
+        f.daemon.state,
+        "network",
+        "disconnect",
+        candSnap.networkInspection.backend.Id,
+        { container: candidate.Id },
+      );
+      if (candidate.Config.Labels["com.docker.compose.service"] === "traefik") {
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "disconnect",
+          candSnap.networkInspection.ingress.Id,
+          { container: candidate.Id },
+        );
+      }
+      emitDaemonEvent(f.daemon.state, "container", "destroy", candidate.Id);
+    }
+    f.daemon.state.inventory = [...restored.containers];
+    defaultNet.Containers = structuredClone(
+      restored.networkInspection.Containers,
+    );
+    const app = f.daemon.state.inventory.find(
+      (container) =>
+        container.Config.Labels["com.docker.compose.service"] === "taskdesk",
+    );
+    app.State.Running = false;
+    for (const current of f.daemon.state.inventory) {
+      emitDaemonEvent(f.daemon.state, "container", "rename", current.Id);
+      emitDaemonEvent(f.daemon.state, "network", "connect", defaultNet.Id, {
+        container: current.Id,
+      });
+      if (current.Config.Labels["com.docker.compose.service"] !== "taskdesk")
+        emitDaemonEvent(f.daemon.state, "container", "start", current.Id);
+    }
+    emitDaemonEvent(f.daemon.state, "container", "stop", delayedCandidate.Id);
+    emitDaemonEvent(
+      f.daemon.state,
+      "network",
+      "disconnect",
+      candSnap.networkInspection.backend.Id,
+      { container: delayedCandidate.Id },
+    );
+    emitDaemonEvent(
+      f.daemon.state,
+      "container",
+      "destroy",
+      delayedCandidate.Id,
+    );
+    for (const net of [
+      candSnap.networkInspection.backend,
+      candSnap.networkInspection.ingress,
+    ]) {
+      delete f.daemon.state.networks[net.Name];
+      emitDaemonEvent(f.daemon.state, "network", "destroy", net.Id);
+    }
+    return {
+      image: baselineImage,
+      volumes: baselineVolumes,
+      networks: baselineNetworks,
+      data: structuredClone(data),
+      writerState: candSnap.containers
+        .filter(
+          (container) =>
+            container.Config.Labels["com.docker.compose.service"] ===
+            "taskdesk",
+        )
+        .map((container) => ({
+          Id: container.Id,
+          State: { Running: false },
+        })),
+    };
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("startBaseline"), false);
+  assert.equal(retained(f), true);
+});
+
+for (const stopSeq of [
+  ["kill", "die", "stop"],
+  ["die", "stop"],
+  ["kill", "die"],
+]) {
+  test(`lifecycle event replay accepts normal Docker ${stopSeq.join(" -> ")} sequence across backup, select-candidate, and return-baseline`, async (t) => {
+    const f = fixture(t);
+    f.adapter.quiesceAndBackup = async () => {
+      const app = f.daemon.state.inventory.find(
+        (container) =>
+          container.Config.Labels["com.docker.compose.service"] === "taskdesk",
+      );
+      app.State.Running = false;
+      for (const action of stopSeq)
+        emitDaemonEvent(f.daemon.state, "container", action, app.Id);
+      return f.backup;
+    };
+    f.adapter.selectCandidate = async () => {
+      const baseSnap = snapshot();
+      const candSnap = snapshot(image, candidateVolumes(slot));
+      const originalIds = new Set(baseSnap.containers.map((c) => c.Id));
+      const originalUsers = f.daemon.state.inventory.filter((container) =>
+        originalIds.has(container.Id),
+      );
+      const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+      for (const original of originalUsers) {
+        if (original.State.Running) {
+          for (const action of stopSeq)
+            emitDaemonEvent(f.daemon.state, "container", action, original.Id);
+        }
+        original.State.Running = false;
+        original.Name += `-retained-${slot}`;
+        original.NetworkSettings.Networks = {};
+        delete defaultNet.Containers[original.Id];
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "disconnect",
+          defaultNet.Id,
+          {
+            container: original.Id,
+          },
+        );
+        emitDaemonEvent(f.daemon.state, "container", "rename", original.Id);
+      }
+      for (const net of [
+        candSnap.networkInspection.backend,
+        candSnap.networkInspection.ingress,
+      ]) {
+        f.daemon.state.networks[net.Name] = structuredClone(net);
+        emitDaemonEvent(f.daemon.state, "network", "create", net.Id);
+      }
+      f.daemon.state.inventory = [
+        ...originalUsers,
+        ...structuredClone(candSnap.containers),
+      ];
+      for (const current of candSnap.containers) {
+        emitDaemonEvent(f.daemon.state, "container", "create", current.Id);
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "connect",
+          candSnap.networkInspection.backend.Id,
+          { container: current.Id },
+        );
+        if (current.Config.Labels["com.docker.compose.service"] === "traefik") {
+          emitDaemonEvent(
+            f.daemon.state,
+            "network",
+            "connect",
+            candSnap.networkInspection.ingress.Id,
+            { container: current.Id },
+          );
+        }
+        emitDaemonEvent(f.daemon.state, "container", "start", current.Id);
+      }
+    };
+    f.adapter.returnToBaseline = async () => {
+      const candSnap = snapshot(image, candidateVolumes(slot));
+      for (const candidate of candSnap.containers) {
+        for (const action of stopSeq)
+          emitDaemonEvent(f.daemon.state, "container", action, candidate.Id);
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "disconnect",
+          candSnap.networkInspection.backend.Id,
+          { container: candidate.Id },
+        );
+        if (
+          candidate.Config.Labels["com.docker.compose.service"] === "traefik"
+        ) {
+          emitDaemonEvent(
+            f.daemon.state,
+            "network",
+            "disconnect",
+            candSnap.networkInspection.ingress.Id,
+            { container: candidate.Id },
+          );
+        }
+        emitDaemonEvent(f.daemon.state, "container", "destroy", candidate.Id);
+      }
+      for (const net of [
+        candSnap.networkInspection.backend,
+        candSnap.networkInspection.ingress,
+      ]) {
+        delete f.daemon.state.networks[net.Name];
+        emitDaemonEvent(f.daemon.state, "network", "destroy", net.Id);
+      }
+      const restored = snapshot();
+      f.daemon.state.inventory = [...restored.containers];
+      const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+      defaultNet.Containers = structuredClone(
+        restored.networkInspection.Containers,
+      );
+      const app = f.daemon.state.inventory.find(
+        (container) =>
+          container.Config.Labels["com.docker.compose.service"] === "taskdesk",
+      );
+      app.State.Running = false;
+      for (const current of f.daemon.state.inventory) {
+        emitDaemonEvent(f.daemon.state, "container", "rename", current.Id);
+        emitDaemonEvent(f.daemon.state, "network", "connect", defaultNet.Id, {
+          container: current.Id,
+        });
+        if (current.Config.Labels["com.docker.compose.service"] !== "taskdesk")
+          emitDaemonEvent(f.daemon.state, "container", "start", current.Id);
+      }
+      return {
+        image: baselineImage,
+        volumes: baselineVolumes,
+        networks: baselineNetworks,
+        data: structuredClone(data),
+        writerState: candSnap.containers
+          .filter(
+            (container) =>
+              container.Config.Labels["com.docker.compose.service"] ===
+              "taskdesk",
+          )
+          .map((container) => ({
+            Id: container.Id,
+            State: { Running: false },
+          })),
+      };
+    };
+    const result = await coordinateCandidateSelection(f);
+    assert.equal(result.returnedToBaseline, true);
+    assert.equal(retained(f), false);
+  });
+}
+
+for (const badStopSeq of [
+  ["stop", "kill"],
+  ["stop", "die"],
+  ["die", "kill"],
+  ["stop", "stop"],
+  ["die", "die"],
+  ["kill", "kill"],
+]) {
+  test(`lifecycle event replay rejects reversed or duplicate ${badStopSeq.join(" -> ")} stop sequence`, async (t) => {
+    const f = fixture(t);
+    f.adapter.quiesceAndBackup = async () => {
+      const app = f.daemon.state.inventory.find(
+        (container) =>
+          container.Config.Labels["com.docker.compose.service"] === "taskdesk",
+      );
+      app.State.Running = false;
+      for (const action of badStopSeq)
+        emitDaemonEvent(f.daemon.state, "container", action, app.Id);
+      return f.backup;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("verifyBackupArchive"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
+test("lifecycle event replay accepts canonical app kill -> die -> network disconnect -> stop during backup quiescence", async (t) => {
+  const f = fixture(t);
+  f.adapter.quiesceAndBackup = async () => {
+    const app = f.daemon.state.inventory.find(
+      (container) =>
+        container.Config.Labels["com.docker.compose.service"] === "taskdesk",
+    );
+    const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+    app.State.Running = false;
+    emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+    emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+    emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+      container: app.Id,
+    });
+    emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    return f.backup;
+  };
+  f.adapter.selectCandidate = async () => {
+    const baseSnap = snapshot();
+    const candSnap = snapshot(image, candidateVolumes(slot));
+    const originalIds = new Set(baseSnap.containers.map((c) => c.Id));
+    const originalUsers = f.daemon.state.inventory.filter((container) =>
+      originalIds.has(container.Id),
+    );
+    const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+    for (const original of originalUsers) {
+      if (original.State.Running) {
+        for (const action of ["kill", "die"])
+          emitDaemonEvent(f.daemon.state, "container", action, original.Id);
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "disconnect",
+          defaultNet.Id,
+          {
+            container: original.Id,
+          },
+        );
+        emitDaemonEvent(f.daemon.state, "container", "stop", original.Id);
+      } else {
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "disconnect",
+          defaultNet.Id,
+          {
+            container: original.Id,
+          },
+        );
+      }
+      original.State.Running = false;
+      original.Name += `-retained-${slot}`;
+      original.NetworkSettings.Networks = {};
+      delete defaultNet.Containers[original.Id];
+      emitDaemonEvent(f.daemon.state, "container", "rename", original.Id);
+    }
+    for (const net of [
+      candSnap.networkInspection.backend,
+      candSnap.networkInspection.ingress,
+    ]) {
+      f.daemon.state.networks[net.Name] = structuredClone(net);
+      emitDaemonEvent(f.daemon.state, "network", "create", net.Id);
+    }
+    f.daemon.state.inventory = [
+      ...originalUsers,
+      ...structuredClone(candSnap.containers),
+    ];
+    for (const current of candSnap.containers) {
+      emitDaemonEvent(f.daemon.state, "container", "create", current.Id);
+      emitDaemonEvent(
+        f.daemon.state,
+        "network",
+        "connect",
+        candSnap.networkInspection.backend.Id,
+        { container: current.Id },
+      );
+      if (current.Config.Labels["com.docker.compose.service"] === "traefik") {
+        emitDaemonEvent(
+          f.daemon.state,
+          "network",
+          "connect",
+          candSnap.networkInspection.ingress.Id,
+          { container: current.Id },
+        );
+      }
+      emitDaemonEvent(f.daemon.state, "container", "start", current.Id);
+    }
+  };
+  const result = await coordinateCandidateSelection(f);
+  assert.equal(result.returnedToBaseline, true);
+  assert.equal(retained(f), false);
+});
+
+for (const [label, injectTamperedBackupStream] of [
+  [
+    "network disconnect before kill while still running",
+    (f, app, defaultNet) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    },
+  ],
+  [
+    "network disconnect after kill before die",
+    (f, app, defaultNet) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    },
+  ],
+  [
+    "network disconnect after stop",
+    (f, app, defaultNet) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+    },
+  ],
+  [
+    "duplicate network disconnect during kill -> die -> stop",
+    (f, app, defaultNet) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    },
+  ],
+  [
+    "network disconnect followed by connect during backup",
+    (f, app, defaultNet) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "network", "connect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    },
+  ],
+  [
+    "non-taskdesk baseline postgres network disconnect during backup",
+    (f, app, defaultNet, pg) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: pg.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    },
+  ],
+  [
+    "foreign endpoint network disconnect during backup",
+    (f, app, defaultNet) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: "f".repeat(64),
+      });
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    },
+  ],
+  [
+    "candidate endpoint network disconnect during backup",
+    (f, app, defaultNet) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: "b".repeat(64),
+      });
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    },
+  ],
+  [
+    "app restart after kill -> die -> network disconnect -> stop during backup",
+    (f, app, defaultNet) => {
+      app.State.Running = false;
+      emitDaemonEvent(f.daemon.state, "container", "kill", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "die", app.Id);
+      emitDaemonEvent(f.daemon.state, "network", "disconnect", defaultNet.Id, {
+        container: app.Id,
+      });
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "start", app.Id);
+      emitDaemonEvent(f.daemon.state, "container", "stop", app.Id);
+    },
+  ],
+]) {
+  test(`lifecycle event replay rejects tampered backup quiescence stream: ${label}`, async (t) => {
+    const f = fixture(t);
+    f.adapter.quiesceAndBackup = async () => {
+      const app = f.daemon.state.inventory.find(
+        (container) =>
+          container.Config.Labels["com.docker.compose.service"] === "taskdesk",
+      );
+      const pg = f.daemon.state.inventory.find(
+        (container) =>
+          container.Config.Labels["com.docker.compose.service"] === "postgres",
+      );
+      const defaultNet = f.daemon.state.networks[baselineNetworks.default];
+      injectTamperedBackupStream(f, app, defaultNet, pg);
+      return f.backup;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("verifyBackupArchive"), false);
+    assert.equal(retained(f), true);
+  });
+}

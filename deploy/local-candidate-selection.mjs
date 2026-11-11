@@ -28,15 +28,33 @@ export const coordinatorDirectory = join(
 export const baselineVolumes = Object.freeze({
   database: `${localProject}_postgres-data`,
   files: `${localProject}_attachments`,
+  mail: `${localProject}_mailpit-data`,
 });
+export const baselineNetworks = Object.freeze({
+  default: `${localProject}_default`,
+});
+const serviceRoles = Object.freeze([
+  "mailpit",
+  "migrate",
+  "postgres",
+  "taskdesk",
+  "traefik",
+  "valkey",
+]);
+const runningServiceRoles = Object.freeze(
+  serviceRoles.filter((name) => name !== "migrate"),
+);
 const reject = (message) => {
   throw new Error(message);
 };
 const same = isDeepStrictEqual;
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const hex = /^[a-f0-9]{64}$/;
+const slotPattern = /^[a-f0-9]{32}$/;
 const releaseImage =
   /^ghcr\.io\/thomasheinthura\/taskdesk@sha256:[a-f0-9]{64}$/;
+const candidateImagePattern =
+  /^ghcr\.io\/thomasheinthura\/taskdesk-pr-candidate-[1-9][0-9]*-[1-9][0-9]*@sha256:[a-f0-9]{64}$/;
 function syncDirectory(directory) {
   const fd = openSync(directory, "r");
   try {
@@ -117,12 +135,21 @@ export function assertProjectSelectionHandoff(
 }
 
 export function candidateVolumes(slot) {
-  if (!/^[a-f0-9]{32}$/.test(slot || ""))
+  if (!slotPattern.test(slot || ""))
     reject("Candidate slot must be a new 32-character hexadecimal identifier.");
-  return {
+  return Object.freeze({
     database: `${localProject}_candidate-${slot}_postgres-data`,
     files: `${localProject}_candidate-${slot}_attachments`,
-  };
+    mail: `${localProject}_candidate-${slot}_mailpit-data`,
+  });
+}
+export function candidateNetworks(slot) {
+  if (!slotPattern.test(slot || ""))
+    reject("Candidate slot must be a new 32-character hexadecimal identifier.");
+  return Object.freeze({
+    backend: `${localProject}_candidate-${slot}_backend`,
+    ingress: `${localProject}_candidate-${slot}_ingress`,
+  });
 }
 function localSocket(value) {
   try {
@@ -137,6 +164,15 @@ function localSocket(value) {
   } catch {
     return false;
   }
+}
+function pathOverlaps(left, right) {
+  const a = posix.normalize(left);
+  const b = posix.normalize(right);
+  return (
+    a === b ||
+    a.startsWith(`${b.replace(/\/$/, "")}/`) ||
+    b.startsWith(`${a.replace(/\/$/, "")}/`)
+  );
 }
 const portList = (ports = []) =>
   ports
@@ -153,7 +189,7 @@ const enginePorts = (ports = {}) =>
       ),
     )
     .sort();
-const expectedPorts = {
+const baselineExpectedPorts = {
   postgres: ["127.0.0.1|62873|5432|tcp"],
   traefik: [
     "127.0.0.1|80|80|tcp",
@@ -163,18 +199,115 @@ const expectedPorts = {
   ].sort(),
   mailpit: ["127.0.0.1|18025|8025|tcp", "127.0.0.1|11025|1025|tcp"].sort(),
 };
+const candidateExpectedPorts = {
+  traefik: baselineExpectedPorts.traefik,
+};
+function expectedPortsFor(generation, serviceName) {
+  const table =
+    generation === "candidate" ? candidateExpectedPorts : baselineExpectedPorts;
+  return table[serviceName] || [];
+}
 
-// A closed representation of compose.testing.yml. Private environment values
-// are validated separately and frozen across the entire selection; service
-// structure is never copied from the observed runtime into this contract.
+export function baselineGenerationProfile({ image, privateDir }) {
+  if (!releaseImage.test(image || ""))
+    reject("Baseline must be a signed release digest.");
+  if (!privateDir || resolve(privateDir) !== privateDir)
+    reject("Private configuration path must be absolute.");
+  return Object.freeze({
+    generation: "baseline",
+    slot: null,
+    image,
+    privateDir,
+    volumes: baselineVolumes,
+    networks: baselineNetworks,
+  });
+}
+export function candidateGenerationProfile({
+  slot,
+  image,
+  privateDir,
+  baselinePrivateDir = null,
+}) {
+  const volumes = candidateVolumes(slot);
+  const networks = candidateNetworks(slot);
+  if (!candidateImagePattern.test(image || ""))
+    reject("Candidate must use its dedicated run package and digest.");
+  if (!privateDir || resolve(privateDir) !== privateDir)
+    reject("Candidate private configuration path must be absolute.");
+  if (
+    baselinePrivateDir !== null &&
+    (!baselinePrivateDir ||
+      resolve(baselinePrivateDir) !== baselinePrivateDir ||
+      pathOverlaps(privateDir, baselinePrivateDir))
+  )
+    reject(
+      "Candidate private configuration path must be disjoint from baseline.",
+    );
+  return Object.freeze({
+    generation: "candidate",
+    slot,
+    image,
+    privateDir,
+    volumes,
+    networks,
+  });
+}
+function inferSlotFromVolumes(volumes) {
+  const match =
+    typeof volumes?.database === "string"
+      ? /^taskdesk-codex-testing_candidate-([a-f0-9]{32})_postgres-data$/.exec(
+          volumes.database,
+        )
+      : null;
+  return match ? match[1] : null;
+}
+
+// A closed representation of compose.testing.yml (baseline) or
+// compose.testing.yml + compose.candidate.yml (candidate). Private environment
+// values are validated separately and frozen across the entire selection;
+// service structure is never copied from the observed runtime into this contract.
 export function canonicalSelectionConfig({
   image,
   privateDir,
-  volumes = baselineVolumes,
+  slot = null,
+  volumes,
+  networks,
   environment = {},
 }) {
-  const networks = { default: null };
-  const common = { restart: "unless-stopped", networks };
+  const resolvedSlot = slot ?? inferSlotFromVolumes(volumes);
+  const isCandidate = resolvedSlot !== null;
+  const resolvedVolumes =
+    volumes ?? (isCandidate ? candidateVolumes(resolvedSlot) : baselineVolumes);
+  const resolvedNetworks =
+    networks ??
+    (isCandidate ? candidateNetworks(resolvedSlot) : baselineNetworks);
+  if (isCandidate) {
+    if (
+      !same(resolvedVolumes, candidateVolumes(resolvedSlot)) ||
+      !same(resolvedNetworks, candidateNetworks(resolvedSlot))
+    )
+      reject(
+        "Candidate Compose configuration requires exact generation volume and network identities.",
+      );
+  } else if (
+    !same(resolvedVolumes, baselineVolumes) ||
+    !same(resolvedNetworks, baselineNetworks)
+  ) {
+    reject(
+      "Baseline Compose configuration requires canonical volume and network identities.",
+    );
+  }
+  const generation = isCandidate ? "candidate" : "baseline";
+  const backendServiceNetworks = isCandidate
+    ? { backend: null }
+    : { default: null };
+  const traefikNetworks = isCandidate
+    ? { backend: null, ingress: null }
+    : { default: null };
+  const common = {
+    restart: "unless-stopped",
+    networks: backendServiceNetworks,
+  };
   const hardened = {
     read_only: true,
     cap_drop: ["ALL"],
@@ -184,7 +317,7 @@ export function canonicalSelectionConfig({
     "/tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770",
   ];
   const ports = (name) =>
-    (expectedPorts[name] || []).map((entry) => {
+    expectedPortsFor(generation, name).map((entry) => {
       const [host_ip, published, target, protocol] = entry.split("|");
       return { host_ip, published, target: Number(target), protocol };
     });
@@ -199,7 +332,7 @@ export function canonicalSelectionConfig({
           target: "/var/lib/postgresql",
         },
       ],
-      ports: ports("postgres"),
+      ...(ports("postgres").length ? { ports: ports("postgres") } : {}),
       healthcheck: {
         test: ["CMD-SHELL", 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'],
         interval: "5s",
@@ -208,7 +341,7 @@ export function canonicalSelectionConfig({
       },
     },
     migrate: {
-      networks,
+      networks: backendServiceNetworks,
       image,
       restart: "no",
       ...hardened,
@@ -240,7 +373,8 @@ export function canonicalSelectionConfig({
       },
     },
     traefik: {
-      ...common,
+      restart: "unless-stopped",
+      networks: traefikNetworks,
       image: "traefik:v3.6.7",
       ...hardened,
       command: [
@@ -268,7 +402,7 @@ export function canonicalSelectionConfig({
       ...common,
       image: "axllent/mailpit:v1.28",
       volumes: [{ type: "volume", source: "mailpit-data", target: "/data" }],
-      ports: ports("mailpit"),
+      ...(ports("mailpit").length ? { ports: ports("mailpit") } : {}),
     },
     valkey: {
       ...common,
@@ -286,25 +420,55 @@ export function canonicalSelectionConfig({
       },
     },
   };
-  for (const [name, service] of Object.entries(services))
+  const slotLabels = isCandidate
+    ? { "info.taskdesk.selection.slot": resolvedSlot }
+    : null;
+  for (const [name, service] of Object.entries(services)) {
     service.environment = structuredClone(environment[name] || {});
+    if (slotLabels) service.labels = structuredClone(slotLabels);
+  }
   services.mailpit.environment = { MP_DATABASE: "/data/mailpit.db" };
   return {
     name: localProject,
     services,
-    networks: { default: { name: `${localProject}_default` } },
+    networks: isCandidate
+      ? {
+          backend: {
+            name: resolvedNetworks.backend,
+            driver: "bridge",
+            internal: true,
+            labels: structuredClone(slotLabels),
+          },
+          ingress: {
+            name: resolvedNetworks.ingress,
+            driver: "bridge",
+            labels: structuredClone(slotLabels),
+          },
+        }
+      : { default: { name: resolvedNetworks.default } },
     volumes: {
-      "postgres-data": { name: volumes.database },
-      attachments: { name: volumes.files },
-      "mailpit-data": { name: `${localProject}_mailpit-data` },
+      "postgres-data": {
+        name: resolvedVolumes.database,
+        ...(slotLabels ? { labels: structuredClone(slotLabels) } : {}),
+      },
+      attachments: {
+        name: resolvedVolumes.files,
+        ...(slotLabels ? { labels: structuredClone(slotLabels) } : {}),
+      },
+      "mailpit-data": {
+        name: resolvedVolumes.mail,
+        ...(slotLabels ? { labels: structuredClone(slotLabels) } : {}),
+      },
     },
   };
 }
 
 function normalizedSelectionConfig(config, privateDir) {
   const result = structuredClone(config);
-  if (same(result.networks?.default?.ipam, {}))
-    delete result.networks.default.ipam;
+  for (const net of Object.values(result.networks || {})) {
+    if (same(net?.ipam, {})) delete net.ipam;
+    if (net?.internal === false) delete net.internal;
+  }
   for (const [name, service] of Object.entries(result.services || {})) {
     if (service.command === null) delete service.command;
     if (service.entrypoint === null) delete service.entrypoint;
@@ -312,6 +476,8 @@ function normalizedSelectionConfig(config, privateDir) {
     // These are presentation defaults emitted by Compose, not override fields.
     for (const binding of service.ports || [])
       if (binding.mode === "ingress") delete binding.mode;
+    if (Array.isArray(service.ports) && service.ports.length === 0)
+      delete service.ports;
     if (service.ports)
       service.ports.sort((a, b) =>
         portList([a])[0].localeCompare(portList([b])[0]),
@@ -325,7 +491,8 @@ function normalizedSelectionConfig(config, privateDir) {
     }
     for (const dependency of Object.values(service.depends_on || {}))
       if (dependency.required === true) delete dependency.required;
-    if (same(service.networks?.default, {})) service.networks.default = null;
+    for (const netKey of Object.keys(service.networks || {}))
+      if (same(service.networks[netKey], {})) service.networks[netKey] = null;
     if (
       name === "postgres" &&
       typeof service.healthcheck?.test?.[1] === "string"
@@ -439,7 +606,13 @@ function assertEffectiveHealthcheck(container, service, image) {
     );
 }
 
-function assertEffectiveContainer(container, service, image, postgresPaths) {
+function assertEffectiveContainer(
+  container,
+  service,
+  image,
+  postgresPaths,
+  expectedNetworkNames,
+) {
   assertEffectiveHealthcheck(container, service, image);
   const expected = effectiveEnvironment(image, service);
   if (container.Config.Labels["com.docker.compose.service"] === "postgres") {
@@ -570,73 +743,457 @@ function assertEffectiveContainer(container, service, image, postgresPaths) {
   ).sort();
   if ((host.Binds || []).length && !same([...host.Binds].sort(), allowedBinds))
     reject("Engine bind declarations differ from inspected mounts.");
-  const network = container.NetworkSettings.Networks[`${localProject}_default`];
   const serviceName = container.Config.Labels["com.docker.compose.service"];
   if (container.Name !== `/${localProject}-${serviceName}-1`)
     reject("Engine service name differs from canonical Compose.");
-  const aliases = network.Aliases || [];
-  if (
-    aliases.some(
-      (alias) =>
-        alias !== serviceName && alias !== container.Name?.replace(/^\//, ""),
-    ) ||
-    (network.Links || []).length ||
-    (network.DriverOpts && Object.keys(network.DriverOpts).length)
-  )
-    reject("Engine network aliases or routing were overridden.");
+  for (const networkName of expectedNetworkNames) {
+    const network = container.NetworkSettings?.Networks?.[networkName];
+    if (!network)
+      reject("Engine service is missing an expected network attachment.");
+    const aliases = network.Aliases || [];
+    if (
+      aliases.some(
+        (alias) =>
+          alias !== serviceName && alias !== container.Name?.replace(/^\//, ""),
+      ) ||
+      (network.Links || []).length ||
+      (network.DriverOpts && Object.keys(network.DriverOpts).length)
+    )
+      reject("Engine network aliases or routing were overridden.");
+  }
 }
 
-function assertSelectionDelta(snapshot, original, volumes, image) {
+function parseDatabaseUrl(rawUrl, expectedUser) {
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    reject("Invalid local database configuration.");
+  }
+  if (
+    !["postgres:", "postgresql:"].includes(url.protocol) ||
+    url.hostname !== "postgres" ||
+    (url.port || "5432") !== "5432" ||
+    url.search ||
+    url.hash ||
+    url.pathname === "/"
+  )
+    reject("Database must target the isolated Compose service.");
+  let user;
+  let password;
+  try {
+    user = decodeURIComponent(url.username);
+    password = decodeURIComponent(url.password);
+  } catch {
+    reject("Invalid local database credentials.");
+  }
+  if (user !== expectedUser || !password)
+    reject("Unexpected local database owner or missing password.");
+  return {
+    url,
+    user,
+    password,
+    pathname: url.pathname,
+    withPassword(nextPassword) {
+      const copy = new URL(url.toString());
+      copy.password = nextPassword;
+      return copy.toString();
+    },
+  };
+}
+
+function parseValkeyUrl(rawUrl, expectedPassword) {
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    reject("Invalid local Valkey configuration.");
+  }
+  let password;
+  try {
+    password = decodeURIComponent(url.password);
+  } catch {
+    reject("Invalid local Valkey credentials.");
+  }
+  if (
+    !["redis:", "valkey:"].includes(url.protocol) ||
+    url.hostname !== "valkey" ||
+    (url.port || "6379") !== "6379" ||
+    url.search ||
+    url.hash ||
+    !password ||
+    password !== expectedPassword
+  )
+    reject("Valkey configuration must target Compose valkey with its secret.");
+  return {
+    password,
+    withPassword(nextPassword) {
+      const copy = new URL(url.toString());
+      copy.password = nextPassword;
+      return copy.toString();
+    },
+  };
+}
+
+function extractGenerationSecrets(config) {
+  const services = config?.services || {};
+  const pgEnv = services.postgres?.environment || {};
+  const appEnv = services.taskdesk?.environment || {};
+  const migrateEnv = services.migrate?.environment || {};
+  const valkeyEnv = services.valkey?.environment || {};
+  const pgUser = pgEnv.POSTGRES_USER;
+  const pgPassword = pgEnv.POSTGRES_PASSWORD;
+  if (
+    typeof pgUser !== "string" ||
+    !pgUser ||
+    pgUser === "taskdesk_app" ||
+    typeof pgEnv.POSTGRES_DB !== "string" ||
+    !pgEnv.POSTGRES_DB ||
+    typeof pgPassword !== "string" ||
+    !pgPassword
+  )
+    reject("Incomplete PostgreSQL bootstrap environment.");
+  const appDb = parseDatabaseUrl(appEnv.TASKDESK_DATABASE_URL, "taskdesk_app");
+  if (appDb.password === pgPassword)
+    reject("Application and migration database passwords must be distinct.");
+  const migrateDb = parseDatabaseUrl(
+    migrateEnv.TASKDESK_MIGRATION_DATABASE_URL,
+    pgUser,
+  );
+  if (migrateDb.password !== pgPassword)
+    reject(
+      "Migration database password must match the PostgreSQL owner secret.",
+    );
+  const migrateAppDb = migrateEnv.TASKDESK_DATABASE_URL
+    ? parseDatabaseUrl(migrateEnv.TASKDESK_DATABASE_URL, "taskdesk_app")
+    : null;
+  if (
+    migrateAppDb &&
+    migrateEnv.TASKDESK_DATABASE_URL !== appEnv.TASKDESK_DATABASE_URL
+  )
+    reject(
+      "Migration fallback database URL must match the application database URL.",
+    );
+  const authSecret = appEnv.TASKDESK_AUTH_SECRET;
+  const encryptionKey = appEnv.TASKDESK_ENCRYPTION_KEY;
+  if (
+    !hex.test(authSecret || "") ||
+    !hex.test(encryptionKey || "") ||
+    authSecret === encryptionKey ||
+    Object.hasOwn(appEnv, "TASKDESK_ENCRYPTION_KEY_PREVIOUS")
+  )
+    reject(
+      "Application auth secret and encryption key must be distinct 64-hex secrets without previous-key fallback.",
+    );
+  const valkeyPassword = valkeyEnv.REDISCLI_AUTH;
+  if (typeof valkeyPassword !== "string" || !valkeyPassword)
+    reject("Valkey authentication secret is required.");
+  const appValkey =
+    appEnv.TASKDESK_VALKEY_URL !== undefined
+      ? parseValkeyUrl(appEnv.TASKDESK_VALKEY_URL, valkeyPassword)
+      : null;
+  return {
+    pgPassword,
+    appDb,
+    migrateDb,
+    migrateAppDb,
+    authSecret,
+    encryptionKey,
+    valkeyPassword,
+    appValkey,
+    allValues: new Set([
+      pgPassword,
+      appDb.password,
+      authSecret,
+      encryptionKey,
+      valkeyPassword,
+    ]),
+  };
+}
+
+function mapEnvironmentSecrets(environment, role, fromSecrets, toSecrets) {
+  const next = structuredClone(environment || {});
+  if (role === "postgres" && Object.hasOwn(next, "POSTGRES_PASSWORD"))
+    next.POSTGRES_PASSWORD = toSecrets.pgPassword;
+  if (role === "valkey" && Object.hasOwn(next, "REDISCLI_AUTH"))
+    next.REDISCLI_AUTH = toSecrets.valkeyPassword;
+  if (role === "taskdesk") {
+    if (Object.hasOwn(next, "TASKDESK_DATABASE_URL"))
+      next.TASKDESK_DATABASE_URL = fromSecrets.appDb.withPassword(
+        toSecrets.appDb.password,
+      );
+    if (Object.hasOwn(next, "TASKDESK_AUTH_SECRET"))
+      next.TASKDESK_AUTH_SECRET = toSecrets.authSecret;
+    if (Object.hasOwn(next, "TASKDESK_ENCRYPTION_KEY"))
+      next.TASKDESK_ENCRYPTION_KEY = toSecrets.encryptionKey;
+    if (Object.hasOwn(next, "TASKDESK_VALKEY_URL") && fromSecrets.appValkey)
+      next.TASKDESK_VALKEY_URL = fromSecrets.appValkey.withPassword(
+        toSecrets.valkeyPassword,
+      );
+  }
+  if (role === "migrate") {
+    if (Object.hasOwn(next, "TASKDESK_MIGRATION_DATABASE_URL"))
+      next.TASKDESK_MIGRATION_DATABASE_URL = fromSecrets.migrateDb.withPassword(
+        toSecrets.migrateDb.password,
+      );
+    if (
+      Object.hasOwn(next, "TASKDESK_DATABASE_URL") &&
+      fromSecrets.migrateAppDb
+    )
+      next.TASKDESK_DATABASE_URL = fromSecrets.migrateAppDb.withPassword(
+        toSecrets.appDb.password,
+      );
+  }
+  return next;
+}
+
+function mapContainerEnvList(envList, role, fromSecrets, toSecrets) {
+  const entries = {};
+  for (const item of envList || []) {
+    const split = item.indexOf("=");
+    entries[item.slice(0, split)] = item.slice(split + 1);
+  }
+  const mapped = mapEnvironmentSecrets(entries, role, fromSecrets, toSecrets);
+  return Object.entries(mapped)
+    .map(([key, value]) => `${key}=${value}`)
+    .sort();
+}
+
+function mapGenerationValue(
+  value,
+  {
+    fromVolumes,
+    toVolumes = baselineVolumes,
+    fromPrivateDir,
+    toPrivateDir,
+    fromNetworkMode,
+    toNetworkMode = baselineNetworks.default,
+  },
+) {
+  if (typeof value === "string") {
+    let result = value
+      .replaceAll(fromVolumes.database, toVolumes.database)
+      .replaceAll(fromVolumes.files, toVolumes.files)
+      .replaceAll(fromVolumes.mail, toVolumes.mail);
+    if (fromPrivateDir && toPrivateDir)
+      result = result.replaceAll(
+        join(fromPrivateDir, "proxy"),
+        join(toPrivateDir, "proxy"),
+      );
+    if (fromNetworkMode && toNetworkMode && result === fromNetworkMode)
+      result = toNetworkMode;
+    return result;
+  }
+  if (Array.isArray(value))
+    return value.map((entry) =>
+      mapGenerationValue(entry, {
+        fromVolumes,
+        toVolumes,
+        fromPrivateDir,
+        toPrivateDir,
+        fromNetworkMode,
+        toNetworkMode,
+      }),
+    );
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        mapGenerationValue(entry, {
+          fromVolumes,
+          toVolumes,
+          fromPrivateDir,
+          toPrivateDir,
+          fromNetworkMode,
+          toNetworkMode,
+        }),
+      ]),
+    );
+  return value;
+}
+
+function assertSelectionDelta(snapshot, original, profile) {
+  const baselineSecrets = extractGenerationSecrets(original.config);
+  const currentSecrets = extractGenerationSecrets(snapshot.config);
+  const isCandidate = profile.generation === "candidate";
+  if (isCandidate) {
+    if (
+      currentSecrets.pgPassword === baselineSecrets.pgPassword ||
+      currentSecrets.appDb.password === baselineSecrets.appDb.password ||
+      currentSecrets.migrateDb.password ===
+        baselineSecrets.migrateDb.password ||
+      currentSecrets.authSecret === baselineSecrets.authSecret ||
+      currentSecrets.encryptionKey === baselineSecrets.encryptionKey ||
+      currentSecrets.valkeyPassword === baselineSecrets.valkeyPassword ||
+      [...currentSecrets.allValues].some((secret) =>
+        baselineSecrets.allValues.has(secret),
+      )
+    )
+      reject(
+        "Candidate generation must rotate all private database, auth, encryption and Valkey secrets.",
+      );
+    const baselineIds = new Set(original.containers.map((c) => c.Id));
+    if (snapshot.containers.some((c) => baselineIds.has(c.Id)))
+      reject(
+        "Candidate generation cannot share any container identity with baseline.",
+      );
+    if (
+      [
+        snapshot.networkInspection?.backend?.Id,
+        snapshot.networkInspection?.ingress?.Id,
+      ].includes(original.networkInspection?.Id)
+    )
+      reject(
+        "Candidate generation cannot share network identity with baseline.",
+      );
+  } else if (
+    !same(
+      snapshot.containers.map((c) => c.Id).sort(),
+      original.containers.map((c) => c.Id).sort(),
+    ) ||
+    snapshot.networkInspection?.Id !== original.networkInspection?.Id
+  ) {
+    reject(
+      "Returned baseline must restore the original container and network identities.",
+    );
+  }
   const expectedConfig = structuredClone(original.config);
-  expectedConfig.services.taskdesk.image = image;
-  expectedConfig.services.migrate.image = image;
-  expectedConfig.volumes["postgres-data"].name = volumes.database;
-  expectedConfig.volumes.attachments.name = volumes.files;
+  expectedConfig.services.taskdesk.image = profile.image;
+  expectedConfig.services.migrate.image = profile.image;
+  const slotLabels = isCandidate
+    ? { "info.taskdesk.selection.slot": profile.slot }
+    : null;
+  for (const role of serviceRoles) {
+    expectedConfig.services[role].environment = mapEnvironmentSecrets(
+      expectedConfig.services[role].environment,
+      role,
+      baselineSecrets,
+      currentSecrets,
+    );
+    expectedConfig.services[role].networks = isCandidate
+      ? role === "traefik"
+        ? { backend: null, ingress: null }
+        : { backend: null }
+      : { default: null };
+    if (slotLabels)
+      expectedConfig.services[role].labels = structuredClone(slotLabels);
+  }
+  if (isCandidate) {
+    delete expectedConfig.services.postgres.ports;
+    delete expectedConfig.services.mailpit.ports;
+    expectedConfig.services.traefik.volumes[0].source = join(
+      profile.privateDir,
+      "proxy",
+    );
+    expectedConfig.networks = {
+      backend: {
+        name: profile.networks.backend,
+        driver: "bridge",
+        internal: true,
+        labels: structuredClone(slotLabels),
+      },
+      ingress: {
+        name: profile.networks.ingress,
+        driver: "bridge",
+        labels: structuredClone(slotLabels),
+      },
+    };
+    expectedConfig.volumes["postgres-data"].labels =
+      structuredClone(slotLabels);
+    expectedConfig.volumes.attachments.labels = structuredClone(slotLabels);
+    expectedConfig.volumes["mailpit-data"].labels = structuredClone(slotLabels);
+  }
+  expectedConfig.volumes["postgres-data"].name = profile.volumes.database;
+  expectedConfig.volumes.attachments.name = profile.volumes.files;
+  expectedConfig.volumes["mailpit-data"].name = profile.volumes.mail;
   if (
     !same(
-      normalizedSelectionConfig(snapshot.config, original.privateDir),
-      normalizedSelectionConfig(expectedConfig, original.privateDir),
+      normalizedSelectionConfig(snapshot.config, profile.privateDir),
+      normalizedSelectionConfig(expectedConfig, profile.privateDir),
     )
   )
     reject(
-      "Selection changed configuration outside the planned image and storage names.",
+      "Selection changed configuration outside the planned generation profile.",
     );
-  const projection = (value, volumeNames) => {
-    const normalizeNames = (item) => {
-      if (typeof item === "string")
-        return item
-          .replaceAll(volumeNames.database, baselineVolumes.database)
-          .replaceAll(volumeNames.files, baselineVolumes.files);
-      if (Array.isArray(item)) return item.map(normalizeNames);
-      if (item && typeof item === "object")
-        return Object.fromEntries(
-          Object.entries(item).map(([key, entry]) => [
-            key,
-            normalizeNames(entry),
-          ]),
-        );
-      return item;
+  for (const container of snapshot.containers) {
+    const role = container.Config?.Labels?.["com.docker.compose.service"];
+    const expectedLabels = {
+      "com.docker.compose.project": localProject,
+      "com.docker.compose.service": role,
+      ...(slotLabels || {}),
     };
-    return value.containers
+    if (!same(container.Config?.Labels, expectedLabels))
+      reject("Container labels differ from the planned generation profile.");
+  }
+  const containerProjection = (
+    value,
+    { volumes, privateDir, networkMode, secrets },
+  ) =>
+    value.containers
       .map((container) => {
-        const config = structuredClone(container.Config);
-        for (const key of ["Hostname", "Image", "Labels"]) delete config[key];
+        const role = container.Config.Labels["com.docker.compose.service"];
+        const config = withoutRuntimeIdentity(container.Config);
+        config.Env = mapContainerEnvList(
+          config.Env,
+          role,
+          secrets,
+          baselineSecrets,
+        );
+        const host = mapGenerationValue(container.HostConfig, {
+          fromVolumes: volumes,
+          toVolumes: baselineVolumes,
+          fromPrivateDir: privateDir,
+          toPrivateDir: original.privateDir,
+          fromNetworkMode: networkMode,
+          toNetworkMode: baselineNetworks.default,
+        });
+        if (
+          isCandidate &&
+          volumes !== baselineVolumes &&
+          ["postgres", "mailpit"].includes(role)
+        ) {
+          if (!same(host.PortBindings || {}, {}))
+            reject("Candidate backend services must not bind host ports.");
+          const baselineContainer = original.containers.find(
+            (c) => c.Config.Labels["com.docker.compose.service"] === role,
+          );
+          host.PortBindings = structuredClone(
+            baselineContainer.HostConfig.PortBindings,
+          );
+        }
         return {
-          name: container.Config.Labels["com.docker.compose.service"],
+          name: role,
           config,
-          host: normalizeNames(container.HostConfig),
-          mounts: normalizeNames(container.Mounts).sort((a, b) =>
-            a.Destination.localeCompare(b.Destination),
-          ),
+          host,
+          mounts: mapGenerationValue(container.Mounts, {
+            fromVolumes: volumes,
+            toVolumes: baselineVolumes,
+            fromPrivateDir: privateDir,
+            toPrivateDir: original.privateDir,
+          }).sort((a, b) => a.Destination.localeCompare(b.Destination)),
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  };
   if (
-    !same(projection(snapshot, volumes), projection(original, baselineVolumes))
+    !same(
+      containerProjection(snapshot, {
+        volumes: profile.volumes,
+        privateDir: profile.privateDir,
+        networkMode: isCandidate
+          ? profile.networks.backend
+          : baselineNetworks.default,
+        secrets: currentSecrets,
+      }),
+      containerProjection(original, {
+        volumes: baselineVolumes,
+        privateDir: original.privateDir,
+        networkMode: baselineNetworks.default,
+        secrets: baselineSecrets,
+      }),
+    )
   )
     reject(
-      "Engine configuration changed outside the planned image and storage names.",
+      "Engine configuration changed outside the planned generation profile.",
     );
   if (!same(snapshot.supportingImages, original.supportingImages))
     reject("Supporting images changed during candidate selection.");
@@ -645,7 +1202,14 @@ function assertSelectionDelta(snapshot, original, volumes, image) {
 // Inputs are raw engine/config inspection evidence, not a boolean attestation.
 export function assertSelectionSnapshot(
   snapshot,
-  { volumes = baselineVolumes, image, privateDir },
+  {
+    slot = null,
+    volumes,
+    networks,
+    image,
+    privateDir,
+    baselinePrivateDir = null,
+  },
 ) {
   if (
     !snapshot ||
@@ -653,28 +1217,42 @@ export function assertSelectionSnapshot(
     !localSocket(snapshot.contextEndpoint)
   )
     reject("Selection requires a local Docker Unix socket.");
+  const resolvedSlot = slot ?? inferSlotFromVolumes(volumes);
+  const isCandidate = resolvedSlot !== null;
+  const profile = isCandidate
+    ? candidateGenerationProfile({
+        slot: resolvedSlot,
+        image,
+        privateDir,
+        baselinePrivateDir,
+      })
+    : baselineGenerationProfile({ image, privateDir });
+  const resolvedVolumes = volumes ?? profile.volumes;
+  const resolvedNetworks = networks ?? profile.networks;
+  if (
+    !same(resolvedVolumes, profile.volumes) ||
+    !same(resolvedNetworks, profile.networks)
+  )
+    reject(
+      "Selected volumes or networks do not match the generation profile contract.",
+    );
   const config = snapshot.config;
-  const names = [
-    "postgres",
-    "migrate",
-    "taskdesk",
-    "traefik",
-    "mailpit",
-    "valkey",
-  ].sort();
   if (
     config?.name !== localProject ||
-    !same(Object.keys(config.services || {}).sort(), names)
+    !same(Object.keys(config.services || {}).sort(), [...serviceRoles])
   )
     reject("Unexpected local project or service set.");
-  if (!privateDir || resolve(privateDir) !== privateDir)
-    reject("Private configuration path must be absolute.");
+  const expectedComposeSlotLabels = isCandidate
+    ? { "info.taskdesk.selection.slot": resolvedSlot }
+    : undefined;
   const normalized = normalizedSelectionConfig(config, privateDir);
   const canonical = normalizedSelectionConfig(
     canonicalSelectionConfig({
       image,
       privateDir,
-      volumes,
+      slot: resolvedSlot,
+      volumes: resolvedVolumes,
+      networks: resolvedNetworks,
       environment: Object.fromEntries(
         Object.entries(config.services).map(([name, service]) => [
           name,
@@ -688,13 +1266,43 @@ export function assertSelectionSnapshot(
     reject(
       "Compose configuration differs from the canonical local selection contract.",
     );
-  if (
+  if (isCandidate) {
+    const backend = config.networks?.backend;
+    const ingress = config.networks?.ingress;
+    if (
+      !same(Object.keys(config.networks || {}).sort(), [
+        "backend",
+        "ingress",
+      ]) ||
+      backend?.name !== resolvedNetworks.backend ||
+      backend.driver !== "bridge" ||
+      backend.internal !== true ||
+      !same(backend.labels, expectedComposeSlotLabels) ||
+      backend.external ||
+      backend.driver_opts ||
+      backend.attachable ||
+      ingress?.name !== resolvedNetworks.ingress ||
+      ingress.driver !== "bridge" ||
+      !same(ingress.labels, expectedComposeSlotLabels) ||
+      ingress.internal ||
+      ingress.external ||
+      ingress.driver_opts ||
+      ingress.attachable
+    )
+      reject(
+        "Candidate Compose networks must define an internal bridge backend and bridge ingress.",
+      );
+  } else if (
     !same(Object.keys(config.networks || {}), ["default"]) ||
-    config.networks.default.name !== `${localProject}_default` ||
+    config.networks.default.name !== baselineNetworks.default ||
+    config.networks.default.labels ||
     config.networks.default.external ||
-    config.networks.default.driver_opts
-  )
+    config.networks.default.driver_opts ||
+    config.networks.default.internal ||
+    config.networks.default.attachable
+  ) {
     reject("Unexpected Compose network.");
+  }
   for (const [name, service] of Object.entries(config.services)) {
     if (
       service.network_mode ||
@@ -702,12 +1310,28 @@ export function assertSelectionSnapshot(
       service.volumes_from?.length ||
       service.devices?.length ||
       service.build ||
-      service.provider
+      service.provider ||
+      !same(service.labels, expectedComposeSlotLabels)
     )
       reject("Service isolation is not confirmed.");
-    if (!same(Object.keys(service.networks || {}), ["default"]))
-      reject("Service must use only the local project network.");
-    if (!same(portList(service.ports), expectedPorts[name] || []))
+    const expectedServiceNetworks = isCandidate
+      ? name === "traefik"
+        ? ["backend", "ingress"]
+        : ["backend"]
+      : ["default"];
+    if (
+      !same(Object.keys(service.networks || {}).sort(), expectedServiceNetworks)
+    )
+      reject("Service network membership violates the generation contract.");
+    if (
+      !same(
+        portList(service.ports),
+        expectedPortsFor(profile.generation, name),
+      ) ||
+      (service.ports || []).some(
+        (binding) => !["127.0.0.1", "::1"].includes(binding.host_ip),
+      )
+    )
       reject("Unexpected local host or port binding.");
     const mounts = service.volumes || [];
     const expected =
@@ -749,25 +1373,33 @@ export function assertSelectionSnapshot(
       reject("Unexpected service mount.");
   }
   for (const [key, name] of [
-    ["postgres-data", volumes.database],
-    ["attachments", volumes.files],
-    ["mailpit-data", `${localProject}_mailpit-data`],
+    ["postgres-data", resolvedVolumes.database],
+    ["attachments", resolvedVolumes.files],
+    ["mailpit-data", resolvedVolumes.mail],
   ]) {
     const volume = config.volumes?.[key];
     if (
       volume?.name !== name ||
+      !same(volume.labels, expectedComposeSlotLabels) ||
       volume.external ||
       volume.driver_opts ||
       (volume.driver && volume.driver !== "local")
     )
       reject("Unexpected local storage binding.");
     const observed = snapshot.volumeInspection?.filter((v) => v.Name === name);
+    const expectedVolumeLabels = {
+      "com.docker.compose.project": localProject,
+      "com.docker.compose.volume": key,
+      ...(volume.labels || {}),
+    };
     if (
       observed?.length !== 1 ||
       observed[0].Driver !== "local" ||
       Object.keys(observed[0].Options || {}).length ||
-      observed[0].Labels?.["com.docker.compose.project"] !== localProject ||
-      observed[0].Labels?.["com.docker.compose.volume"] !== key
+      !same(observed[0].Labels, expectedVolumeLabels) ||
+      (isCandidate
+        ? observed[0].Labels?.["info.taskdesk.selection.slot"] !== resolvedSlot
+        : Boolean(observed[0].Labels?.["info.taskdesk.selection.slot"]))
     )
       reject("Engine volume ownership or local driver is not confirmed.");
   }
@@ -776,6 +1408,7 @@ export function assertSelectionSnapshot(
     config.services.migrate.image !== image
   )
     reject("Selected image does not match the plan.");
+  extractGenerationSecrets(config);
   const databaseNames = [];
   for (const serviceName of ["taskdesk", "migrate"]) {
     const vars = config.services[serviceName].environment || {};
@@ -808,30 +1441,13 @@ export function assertSelectionSnapshot(
     for (const [name, value] of Object.entries(vars).filter(([k]) =>
       /DATABASE_URL$/.test(k),
     )) {
-      let url;
-      try {
-        url = new URL(value);
-      } catch {
-        reject("Invalid local database configuration.");
-      }
-      if (
-        !["postgres:", "postgresql:"].includes(url.protocol) ||
-        url.hostname !== "postgres" ||
-        (url.port || "5432") !== "5432" ||
-        url.search ||
-        url.hash ||
-        url.pathname === "/"
-      )
-        reject("Database must target the isolated Compose service.");
-      const user = decodeURIComponent(url.username);
-      if (
-        (name === "TASKDESK_DATABASE_URL" && user !== "taskdesk_app") ||
-        (name === "TASKDESK_MIGRATION_DATABASE_URL" &&
-          (user !== config.services.postgres.environment?.POSTGRES_USER ||
-            user === "taskdesk_app"))
-      )
-        reject("Unexpected local database owner.");
-      databaseNames.push(url.pathname);
+      const parsed = parseDatabaseUrl(
+        value,
+        name === "TASKDESK_DATABASE_URL"
+          ? "taskdesk_app"
+          : config.services.postgres.environment?.POSTGRES_USER,
+      );
+      databaseNames.push(parsed.pathname);
     }
     if (!vars[key]) reject("Missing local database configuration.");
   }
@@ -842,30 +1458,87 @@ export function assertSelectionSnapshot(
     !pinnedImage.RepoDigests?.includes(image)
   )
     reject("Pinned engine image inspection is required.");
-  const runningNames = names.filter((name) => name !== "migrate");
   if (
     !Array.isArray(snapshot.containers) ||
-    snapshot.containers.length !== runningNames.length
+    snapshot.containers.length !== runningServiceRoles.length ||
+    new Set(snapshot.containers.map((c) => c.Id)).size !==
+      runningServiceRoles.length
   )
     reject("Complete engine container inspection is required.");
-  const networkInspection = snapshot.networkInspection;
-  if (
-    !networkInspection ||
-    networkInspection.Name !== `${localProject}_default` ||
-    !hex.test(networkInspection.Id || "") ||
-    networkInspection.Driver !== "bridge" ||
-    networkInspection.Scope !== "local" ||
-    networkInspection.Internal !== false ||
-    Object.keys(networkInspection.Options || {}).length ||
-    networkInspection.Labels?.["com.docker.compose.project"] !== localProject ||
-    networkInspection.Labels?.["com.docker.compose.network"] !== "default" ||
-    !same(
-      Object.keys(networkInspection.Containers || {}).sort(),
-      snapshot.containers.map((container) => container.Id).sort(),
+  const checkNetworkRecord = (
+    record,
+    { expectedName, key, internal, expectedContainerIds },
+  ) => {
+    const expectedNetworkLabels = {
+      "com.docker.compose.project": localProject,
+      "com.docker.compose.network": key,
+      ...(config.networks?.[key]?.labels || {}),
+    };
+    if (
+      !record ||
+      record.Name !== expectedName ||
+      !hex.test(record.Id || "") ||
+      record.Driver !== "bridge" ||
+      record.Scope !== "local" ||
+      record.Internal !== internal ||
+      record.Attachable ||
+      Object.keys(record.Options || {}).length ||
+      !same(record.Labels, expectedNetworkLabels) ||
+      (isCandidate
+        ? record.Labels?.["info.taskdesk.selection.slot"] !== resolvedSlot
+        : Boolean(record.Labels?.["info.taskdesk.selection.slot"])) ||
+      !same(
+        Object.keys(record.Containers || {}).sort(),
+        [...expectedContainerIds].sort(),
+      )
     )
-  )
-    reject("Engine network ownership or complete membership is not confirmed.");
-  for (const name of runningNames) {
+      reject(
+        "Engine network ownership or complete membership is not confirmed.",
+      );
+    for (const id of expectedContainerIds) {
+      const container = snapshot.containers.find((c) => c.Id === id);
+      if (
+        !container ||
+        record.Containers[id]?.Name !== container.Name.replace(/^\//, "")
+      )
+        reject("Engine network endpoint name does not match container.");
+    }
+  };
+  const allRunningIds = snapshot.containers.map((container) => container.Id);
+  const traefikContainer = snapshot.containers.find(
+    (c) => c.Config?.Labels?.["com.docker.compose.service"] === "traefik",
+  );
+  if (isCandidate) {
+    const netInspect = snapshot.networkInspection;
+    if (
+      !netInspect ||
+      !same(Object.keys(netInspect).sort(), ["backend", "ingress"]) ||
+      netInspect.backend?.Id === netInspect.ingress?.Id
+    )
+      reject(
+        "Candidate engine network inspection must include distinct backend and ingress networks.",
+      );
+    checkNetworkRecord(netInspect.backend, {
+      expectedName: resolvedNetworks.backend,
+      key: "backend",
+      internal: true,
+      expectedContainerIds: allRunningIds,
+    });
+    checkNetworkRecord(netInspect.ingress, {
+      expectedName: resolvedNetworks.ingress,
+      key: "ingress",
+      internal: false,
+      expectedContainerIds: traefikContainer ? [traefikContainer.Id] : [],
+    });
+  } else {
+    checkNetworkRecord(snapshot.networkInspection, {
+      expectedName: baselineNetworks.default,
+      key: "default",
+      internal: false,
+      expectedContainerIds: allRunningIds,
+    });
+  }
+  for (const name of runningServiceRoles) {
     const matches = snapshot.containers.filter(
       (c) => c.Config?.Labels?.["com.docker.compose.service"] === name,
     );
@@ -890,35 +1563,65 @@ export function assertSelectionSnapshot(
         serviceImage.Config.WorkingDir !== "/app")
     )
       reject("Signed application runtime contract changed.");
+    const expectedNetworkMode = isCandidate
+      ? resolvedNetworks.backend
+      : baselineNetworks.default;
+    const expectedAttachedNetworks = isCandidate
+      ? name === "traefik"
+        ? [resolvedNetworks.backend, resolvedNetworks.ingress].sort()
+        : [resolvedNetworks.backend]
+      : [baselineNetworks.default];
+    const expectedServicePorts = expectedPortsFor(profile.generation, name);
+    const expectedContainerLabels = {
+      "com.docker.compose.project": localProject,
+      "com.docker.compose.service": name,
+      ...(config.services[name].labels || {}),
+    };
     if (
       matches.length !== 1 ||
       !/^[a-f0-9]{64}$/.test(container?.Id || "") ||
-      container.Config?.Labels?.["com.docker.compose.project"] !==
-        localProject ||
+      !same(container.Config?.Labels, expectedContainerLabels) ||
+      (isCandidate
+        ? container.Config?.Labels?.["info.taskdesk.selection.slot"] !==
+          resolvedSlot
+        : Boolean(
+            container.Config?.Labels?.["info.taskdesk.selection.slot"],
+          )) ||
       container.State?.Running !== true ||
-      container.HostConfig?.NetworkMode !== `${localProject}_default` ||
+      container.HostConfig?.NetworkMode !== expectedNetworkMode ||
       container.HostConfig?.Privileged !== false ||
       container.HostConfig?.PublishAllPorts !== false ||
       !same(
         enginePorts(container.HostConfig.PortBindings),
-        expectedPorts[name] || [],
+        expectedServicePorts,
       ) ||
       !same(
         enginePorts(container.NetworkSettings?.Ports),
-        expectedPorts[name] || [],
+        expectedServicePorts,
       ) ||
-      !same(Object.keys(container.NetworkSettings?.Networks || {}), [
-        `${localProject}_default`,
-      ])
+      !same(
+        Object.keys(container.NetworkSettings?.Networks || {}).sort(),
+        expectedAttachedNetworks,
+      )
     )
       reject(
         "Engine project, container ownership or port isolation is not confirmed.",
       );
-    if (
-      container.NetworkSettings.Networks[`${localProject}_default`]
-        .NetworkID !== networkInspection.Id
-    )
+    if (isCandidate) {
+      if (
+        container.NetworkSettings.Networks[resolvedNetworks.backend]
+          ?.NetworkID !== snapshot.networkInspection.backend.Id ||
+        (name === "traefik" &&
+          container.NetworkSettings.Networks[resolvedNetworks.ingress]
+            ?.NetworkID !== snapshot.networkInspection.ingress.Id)
+      )
+        reject("Engine service is attached to an unexpected network ID.");
+    } else if (
+      container.NetworkSettings.Networks[baselineNetworks.default]
+        ?.NetworkID !== snapshot.networkInspection.Id
+    ) {
       reject("Engine service is attached to a different network.");
+    }
     if (
       ["postgres", "taskdesk", "valkey"].includes(name) &&
       container.State.Health?.Status !== "healthy"
@@ -971,6 +1674,7 @@ export function assertSelectionSnapshot(
       normalized.services[name],
       serviceImage,
       snapshot.postgresPaths,
+      expectedAttachedNetworks,
     );
   }
   return normalized;
@@ -1016,16 +1720,20 @@ function assertDataProof(proof) {
   )
     reject("Database and attachment proof is incomplete.");
 }
-function assertRuntimeProof(proof, image, volumes) {
+function assertRuntimeProof(proof, profile) {
   if (
     proof?.project !== localProject ||
-    proof.image !== image ||
-    !same(proof.volumes, volumes) ||
+    proof.image !== profile.image ||
+    !same(proof.volumes, profile.volumes) ||
+    (profile.generation === "candidate" &&
+      !same(proof.networks, profile.networks)) ||
     proof.healthy !== true ||
     proof.agentOrigin !== "https://ticketing.localhost" ||
     proof.portalOrigin !== "https://portal.localhost"
   )
-    reject("Runtime image, mounts, health or origins are not confirmed.");
+    reject(
+      "Runtime image, mounts, networks, health or origins are not confirmed.",
+    );
   assertDataProof(proof.data);
 }
 
@@ -1037,19 +1745,73 @@ function assertSnapshotIdentity(snapshot, identity) {
   )
     reject("Selection Docker endpoint or daemon identity changed.");
 }
+const requiredPrivateFiles = Object.freeze([
+  "app.env",
+  "migrate.env",
+  "postgres.env",
+  "proxy",
+  "valkey.env",
+]);
 function assertPrivateFiles(files) {
   if (
     !files ||
-    !same(Object.keys(files).sort(), [
-      "app.env",
-      "migrate.env",
-      "postgres.env",
-      "proxy",
-      "valkey.env",
-    ]) ||
+    !same(Object.keys(files).sort(), [...requiredPrivateFiles]) ||
     Object.values(files).some((value) => !hex.test(value))
   )
     reject("Private configuration content fingerprints are incomplete.");
+}
+function assertDisjointPrivateFiles(baselineFiles, candidateFiles) {
+  assertPrivateFiles(baselineFiles);
+  assertPrivateFiles(candidateFiles);
+  const baselineValues = new Set(Object.values(baselineFiles));
+  for (const key of requiredPrivateFiles) {
+    if (
+      candidateFiles[key] === baselineFiles[key] ||
+      baselineValues.has(candidateFiles[key])
+    )
+      reject(
+        "Candidate private configuration fingerprints must be distinct from baseline.",
+      );
+  }
+}
+function assertBrowserEvidence(
+  browser,
+  { slot, baselinePrivateDir, candidatePrivateDir, baselineProfileDir },
+) {
+  if (browser?.passed !== true || !hex.test(browser.evidenceHash || ""))
+    reject("Browser window did not produce passing evidence.");
+  const isolation = browser.sessionIsolation;
+  if (
+    !isolation ||
+    isolation.slot !== slot ||
+    typeof baselineProfileDir !== "string" ||
+    !baselineProfileDir ||
+    resolve(baselineProfileDir) !== baselineProfileDir ||
+    pathOverlaps(baselineProfileDir, baselinePrivateDir) ||
+    pathOverlaps(baselineProfileDir, candidatePrivateDir) ||
+    typeof isolation.profileDir !== "string" ||
+    !isolation.profileDir ||
+    resolve(isolation.profileDir) !== isolation.profileDir ||
+    pathOverlaps(isolation.profileDir, baselinePrivateDir) ||
+    pathOverlaps(isolation.profileDir, candidatePrivateDir) ||
+    typeof isolation.baselineProfileDir !== "string" ||
+    !isolation.baselineProfileDir ||
+    resolve(isolation.baselineProfileDir) !== isolation.baselineProfileDir ||
+    isolation.baselineProfileDir !== baselineProfileDir ||
+    pathOverlaps(isolation.profileDir, baselineProfileDir) ||
+    isolation.ephemeralCookieJar !== true ||
+    isolation.sharedBaselineSession !== false ||
+    !hex.test(isolation.cookieJarFingerprint || "") ||
+    !hex.test(isolation.baselineCookieJarFingerprint || "") ||
+    isolation.cookieJarFingerprint === isolation.baselineCookieJarFingerprint
+  )
+    reject(
+      "Candidate browser profile and cookie state isolation is not proven.",
+    );
+  if (isolation.copiedSessionsInvalidatedByAuthSecretRotation !== false)
+    reject(
+      "Better Auth copied sessions must not be treated as invalidated by TASKDESK_AUTH_SECRET rotation alone.",
+    );
 }
 function assertStoppedWriters(observed, expected) {
   if (
@@ -1065,6 +1827,7 @@ function assertStoppedWriters(observed, expected) {
 
 const inventoryListCommand = ["ps", "-a", "-q", "--no-trunc"];
 const inventoryVolumeCommand = ["volume", "ls", "-q"];
+const inventoryNetworkCommand = ["network", "ls", "-q", "--no-trunc"];
 const eventHistoryLimit = 256;
 function daemonJson(value) {
   try {
@@ -1126,6 +1889,23 @@ function inventoryProjection(inventory) {
         CreatedAt: volume.CreatedAt || "",
       }))
       .sort((a, b) => a.Name.localeCompare(b.Name)),
+    networks: inventory.networks
+      .map((network) => ({
+        Id: network.Id,
+        Name: network.Name,
+        Driver: network.Driver,
+        Scope: network.Scope,
+        Internal: network.Internal,
+        Attachable: Boolean(network.Attachable),
+        Options: network.Options || {},
+        Labels: network.Labels || {},
+        Containers: Object.fromEntries(
+          Object.entries(network.Containers || {}).sort(([a], [b]) =>
+            a.localeCompare(b),
+          ),
+        ),
+      }))
+      .sort((a, b) => a.Id.localeCompare(b.Id)),
   };
 }
 // The caller cannot supply a filtered list: all records come from the pinned,
@@ -1138,20 +1918,27 @@ export function captureDaemonInventory(client) {
       client.command(inventoryVolumeCommand),
       /^[A-Za-z0-9][A-Za-z0-9_.-]*$/,
     ),
+    networkIds: inventoryIds(
+      client.command(inventoryNetworkCommand),
+      /^[a-f0-9]{64}$/,
+    ),
   });
-  const inspect = ({ ids, names }) => {
+  const inspect = ({ ids, names, networkIds }) => {
     const containers = inspectBatch(client, ["inspect"], ids);
     const volumes = inspectBatch(client, ["volume", "inspect"], names);
+    const networks = inspectBatch(client, ["network", "inspect"], networkIds);
     if (
       !same(containers.map((value) => value.Id).sort(), ids) ||
-      !same(volumes.map((value) => value.Name).sort(), names)
+      !same(volumes.map((value) => value.Name).sort(), names) ||
+      !same(networks.map((value) => value.Id).sort(), networkIds)
     )
       reject("Daemon inventory inspection omitted or duplicated records.");
     if (
       new Set(containers.map((container) => container.Name)).size !==
-      containers.length
+        containers.length ||
+      new Set(networks.map((network) => network.Name)).size !== networks.length
     )
-      reject("Daemon container names are ambiguous.");
+      reject("Daemon container or network names are ambiguous.");
     for (const container of containers) {
       if (
         !container.Config ||
@@ -1179,7 +1966,19 @@ export function captureDaemonInventory(client) {
         !posix.isAbsolute(volume.Mountpoint || "")
       )
         reject("Incomplete daemon volume source evidence.");
-    return { containers, volumes };
+    for (const network of networks)
+      if (
+        typeof network.Name !== "string" ||
+        !network.Name ||
+        typeof network.Driver !== "string" ||
+        typeof network.Scope !== "string" ||
+        typeof network.Internal !== "boolean" ||
+        !network.Containers ||
+        typeof network.Containers !== "object" ||
+        Array.isArray(network.Containers)
+      )
+        reject("Incomplete daemon network record.");
+    return { containers, volumes, networks };
   };
   const firstList = list();
   const first = inspect(firstList);
@@ -1241,7 +2040,8 @@ function daemonEvents(client, since, until) {
       typeof event.Type !== "string" ||
       typeof event.Action !== "string" ||
       typeof event.Actor?.ID !== "string" ||
-      (event.Type === "container" && !/^[a-f0-9]{64}$/.test(event.Actor.ID))
+      (["container", "network"].includes(event.Type) &&
+        !/^[a-f0-9]{64}$/.test(event.Actor.ID))
     )
       reject("Incomplete daemon lifecycle event evidence.");
   return values;
@@ -1291,45 +2091,38 @@ function withoutRuntimeIdentity(config) {
   for (const key of ["Hostname", "Image", "Labels"]) delete result[key];
   return result;
 }
-function mappedVolumeNames(value, volumes) {
-  if (typeof value === "string")
-    return value
-      .replaceAll(volumes.database, baselineVolumes.database)
-      .replaceAll(volumes.files, baselineVolumes.files);
-  if (Array.isArray(value))
-    return value.map((entry) => mappedVolumeNames(entry, volumes));
-  if (value && typeof value === "object")
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [
-        key,
-        mappedVolumeNames(entry, volumes),
-      ]),
-    );
-  return value;
-}
-function pathOverlaps(left, right) {
-  const a = posix.normalize(left);
-  const b = posix.normalize(right);
-  return (
-    a === b ||
-    a.startsWith(`${b.replace(/\/$/, "")}/`) ||
-    b.startsWith(`${a.replace(/\/$/, "")}/`)
-  );
-}
 function volumeInventoryPolicy({
   baselineImage,
   candidateImage,
+  baselinePrivateDir,
+  candidatePrivateDir,
   volumes,
+  networks,
   slot,
   client,
 }) {
   const users = new Map();
   const pinnedVolumes = new Map();
+  const pinnedNetworks = new Map();
+  const pinnedNetworkById = new Map();
   const templates = new Map();
+  let baselineSecrets = null;
+  let candidateSecrets = null;
   let initialBound = false;
   let backupComplete = false;
+  let candidateReturned = false;
   let baselineStarted = false;
-  const expected = new Map([
+  const phaseHistory = new Map();
+  const getPhaseHistory = (phase) => {
+    if (!phaseHistory.has(phase)) {
+      phaseHistory.set(phase, {
+        containers: new Map(),
+        networks: new Map(),
+      });
+    }
+    return phaseHistory.get(phase);
+  };
+  const expectedVolumes = new Map([
     [
       baselineVolumes.database,
       {
@@ -1348,6 +2141,16 @@ function volumeInventoryPolicy({
         target: "/app/data/attachments",
         image: baselineImage,
         key: "attachments",
+      },
+    ],
+    [
+      baselineVolumes.mail,
+      {
+        generation: "baseline",
+        role: "mailpit",
+        target: "/data",
+        image: "axllent/mailpit:v1.28",
+        key: "mailpit-data",
       },
     ],
     [
@@ -1370,7 +2173,59 @@ function volumeInventoryPolicy({
         key: "attachments",
       },
     ],
+    [
+      volumes.mail,
+      {
+        generation: "candidate",
+        role: "mailpit",
+        target: "/data",
+        image: "axllent/mailpit:v1.28",
+        key: "mailpit-data",
+      },
+    ],
   ]);
+  const expectedNetworks = new Map([
+    [
+      baselineNetworks.default,
+      {
+        generation: "baseline",
+        key: "default",
+        internal: false,
+      },
+    ],
+    [
+      networks.backend,
+      {
+        generation: "candidate",
+        key: "backend",
+        internal: true,
+      },
+    ],
+    [
+      networks.ingress,
+      {
+        generation: "candidate",
+        key: "ingress",
+        internal: false,
+      },
+    ],
+  ]);
+  const roleImages = {
+    baseline: {
+      postgres: "postgres:18-alpine",
+      taskdesk: baselineImage,
+      traefik: "traefik:v3.6.7",
+      mailpit: "axllent/mailpit:v1.28",
+      valkey: "valkey/valkey:9-alpine",
+    },
+    candidate: {
+      postgres: "postgres:18-alpine",
+      taskdesk: candidateImage,
+      traefik: "traefik:v3.6.7",
+      mailpit: "axllent/mailpit:v1.28",
+      valkey: "valkey/valkey:9-alpine",
+    },
+  };
   const controlled = new Set([
     "copy-slot",
     "select-candidate",
@@ -1381,11 +2236,109 @@ function volumeInventoryPolicy({
     [...container.Mounts].sort((a, b) =>
       a.Destination.localeCompare(b.Destination),
     );
-  const projection = (container, names) => ({
-    config: withoutRuntimeIdentity(container.Config),
-    host: mappedVolumeNames(container.HostConfig, names),
-    mounts: mappedVolumeNames(namedMounts(container), names),
-  });
+  const projection = (container, generation) => {
+    const role = container.Config.Labels["com.docker.compose.service"];
+    const isCand = generation === "candidate";
+    const fromVolumes = isCand ? volumes : baselineVolumes;
+    const fromPrivateDir = isCand ? candidatePrivateDir : baselinePrivateDir;
+    const fromNetworkMode = isCand
+      ? networks.backend
+      : baselineNetworks.default;
+    const config = withoutRuntimeIdentity(container.Config);
+    if (isCand && candidateSecrets && baselineSecrets) {
+      config.Env = mapContainerEnvList(
+        config.Env,
+        role,
+        candidateSecrets,
+        baselineSecrets,
+      );
+    } else if (Array.isArray(config.Env)) {
+      config.Env = [...config.Env].sort();
+    }
+    const host = mapGenerationValue(container.HostConfig, {
+      fromVolumes,
+      toVolumes: baselineVolumes,
+      fromPrivateDir,
+      toPrivateDir: baselinePrivateDir,
+      fromNetworkMode,
+      toNetworkMode: baselineNetworks.default,
+    });
+    if (isCand && ["postgres", "mailpit"].includes(role)) {
+      const template = templates.get(role);
+      if (template && same(host.PortBindings || {}, {}))
+        host.PortBindings = structuredClone(template.HostConfig.PortBindings);
+    }
+    return {
+      config,
+      host,
+      mounts: mapGenerationValue(namedMounts(container), {
+        fromVolumes,
+        toVolumes: baselineVolumes,
+        fromPrivateDir,
+        toPrivateDir: baselinePrivateDir,
+      }),
+    };
+  };
+  const extractSecretsFromContainers = (containers) => {
+    const envByRole = {};
+    for (const container of containers) {
+      const role = container.Config?.Labels?.["com.docker.compose.service"];
+      if (!role) continue;
+      const env = {};
+      for (const entry of container.Config?.Env || []) {
+        const split = entry.indexOf("=");
+        if (split > 0) env[entry.slice(0, split)] = entry.slice(split + 1);
+      }
+      envByRole[role] = env;
+    }
+    if (!envByRole.postgres || !envByRole.taskdesk || !envByRole.valkey)
+      return null;
+    const pgPassword = envByRole.postgres.POSTGRES_PASSWORD;
+    const pgUser = envByRole.postgres.POSTGRES_USER;
+    const appDb = parseDatabaseUrl(
+      envByRole.taskdesk.TASKDESK_DATABASE_URL,
+      "taskdesk_app",
+    );
+    const authSecret = envByRole.taskdesk.TASKDESK_AUTH_SECRET;
+    const encryptionKey = envByRole.taskdesk.TASKDESK_ENCRYPTION_KEY;
+    const valkeyPassword = envByRole.valkey.REDISCLI_AUTH;
+    if (
+      typeof pgUser !== "string" ||
+      !pgUser ||
+      pgUser === "taskdesk_app" ||
+      typeof pgPassword !== "string" ||
+      !pgPassword ||
+      appDb.password === pgPassword ||
+      !hex.test(authSecret || "") ||
+      !hex.test(encryptionKey || "") ||
+      authSecret === encryptionKey ||
+      Object.hasOwn(envByRole.taskdesk, "TASKDESK_ENCRYPTION_KEY_PREVIOUS") ||
+      typeof valkeyPassword !== "string" ||
+      !valkeyPassword
+    )
+      reject("Incomplete or unsafe service secret configuration in inventory.");
+    const appValkey =
+      envByRole.taskdesk.TASKDESK_VALKEY_URL !== undefined
+        ? parseValkeyUrl(envByRole.taskdesk.TASKDESK_VALKEY_URL, valkeyPassword)
+        : null;
+    return {
+      pgPassword,
+      appDb,
+      migrateDb: { password: pgPassword, withPassword: () => "" },
+      migrateAppDb: null,
+      authSecret,
+      encryptionKey,
+      valkeyPassword,
+      appValkey,
+      allValues: new Set([
+        pgPassword,
+        appDb.password,
+        authSecret,
+        encryptionKey,
+        valkeyPassword,
+      ]),
+    };
+  };
   const inventoryMap = (inventory) =>
     new Map(inventory.containers.map((container) => [container.Id, container]));
   const matchSnapshot = (snapshot, inventory) => {
@@ -1410,14 +2363,15 @@ function volumeInventoryPolicy({
     matchSnapshot,
     bindInitial(snapshot, inventory) {
       matchSnapshot(snapshot, inventory);
-      for (const role of ["postgres", "taskdesk"]) {
+      baselineSecrets = extractGenerationSecrets(snapshot.config);
+      for (const role of runningServiceRoles) {
         const actual = snapshot.containers.find(
           (container) =>
             container.Config.Labels["com.docker.compose.service"] === role,
         );
-        if (!users.has(actual.Id))
+        if (!actual || !users.has(actual.Id))
           reject(
-            "Baseline volume user was not observed in the daemon inventory.",
+            "Baseline service container was not observed in the daemon inventory.",
           );
         templates.set(role, structuredClone(actual));
       }
@@ -1426,6 +2380,9 @@ function volumeInventoryPolicy({
     markBackupComplete() {
       backupComplete = true;
     },
+    markCandidateReturned() {
+      candidateReturned = true;
+    },
     allowBaselineStart() {
       baselineStarted = true;
     },
@@ -1433,13 +2390,24 @@ function volumeInventoryPolicy({
       const allVolumes = new Map(
         inventory.volumes.map((volume) => [volume.Name, volume]),
       );
+      for (const volume of inventory.volumes) {
+        if (
+          !expectedVolumes.has(volume.Name) &&
+          (volume.Name.startsWith(localProject) ||
+            volume.Labels?.["com.docker.compose.project"] === localProject ||
+            volume.Labels?.["info.taskdesk.selection.slot"])
+        )
+          reject(
+            "An unauthorized project or second-generation volume exists in the daemon inventory.",
+          );
+      }
       for (const name of Object.values(baselineVolumes))
         if (!allVolumes.has(name))
           reject(
             "A protected baseline volume is missing from the daemon inventory.",
           );
       const roots = new Map();
-      for (const [name, profile] of expected) {
+      for (const [name, profile] of expectedVolumes) {
         const volume = allVolumes.get(name);
         if (!volume) continue;
         if (
@@ -1454,8 +2422,9 @@ function volumeInventoryPolicy({
           !volume.CreatedAt ||
           volume.Labels?.["com.docker.compose.project"] !== localProject ||
           volume.Labels?.["com.docker.compose.volume"] !== profile.key ||
-          (profile.generation === "candidate" &&
-            volume.Labels?.["info.taskdesk.selection.slot"] !== slot)
+          (profile.generation === "candidate"
+            ? volume.Labels?.["info.taskdesk.selection.slot"] !== slot
+            : Boolean(volume.Labels?.["info.taskdesk.selection.slot"]))
         )
           reject("Protected daemon volume ownership or source is not proven.");
         const record = {
@@ -1481,7 +2450,7 @@ function volumeInventoryPolicy({
       const volumeRoot = posix.dirname(
         posix.dirname(allVolumes.get(baselineVolumes.database).Mountpoint),
       );
-      for (const name of expected.keys()) {
+      for (const name of expectedVolumes.keys()) {
         const intended = posix.join(volumeRoot, name, "_data");
         if (
           allVolumes.has(name) &&
@@ -1490,10 +2459,99 @@ function volumeInventoryPolicy({
           reject("The protected local volume source layout is not provable.");
         roots.set(name, intended);
       }
+      const allNetworks = new Map(
+        inventory.networks.map((network) => [network.Name, network]),
+      );
+      for (const network of inventory.networks) {
+        if (
+          !expectedNetworks.has(network.Name) &&
+          (network.Name.startsWith(localProject) ||
+            network.Labels?.["com.docker.compose.project"] === localProject ||
+            network.Labels?.["info.taskdesk.selection.slot"])
+        )
+          reject(
+            "An unauthorized project or second-generation network exists in the daemon inventory.",
+          );
+      }
+      if (!allNetworks.has(baselineNetworks.default))
+        reject(
+          "The protected baseline network is missing from the daemon inventory.",
+        );
+      for (const [name, profile] of expectedNetworks) {
+        const network = allNetworks.get(name);
+        if (!network) {
+          if (
+            profile.generation === "candidate" &&
+            pinnedNetworks.has(name) &&
+            !(
+              (phase === "return-baseline" && afterAction) ||
+              candidateReturned ||
+              ["start-baseline", "verify-return"].includes(phase)
+            )
+          )
+            reject(
+              "A candidate network disappeared before return to baseline.",
+            );
+          continue;
+        }
+        if (
+          profile.generation === "candidate" &&
+          !pinnedNetworks.has(name) &&
+          (!initialBound ||
+            !["copy-slot", "select-candidate"].includes(phase) ||
+            !afterAction)
+        )
+          reject(
+            "A candidate network appeared outside its authorized selection action.",
+          );
+        if (
+          profile.generation === "candidate" &&
+          candidateReturned &&
+          ["start-baseline", "verify-return"].includes(phase)
+        )
+          reject(
+            "A candidate network remained present after return to baseline.",
+          );
+        if (
+          !hex.test(network.Id || "") ||
+          network.Driver !== "bridge" ||
+          network.Scope !== "local" ||
+          network.Internal !== profile.internal ||
+          network.Attachable ||
+          Object.keys(network.Options || {}).length ||
+          network.Labels?.["com.docker.compose.project"] !== localProject ||
+          network.Labels?.["com.docker.compose.network"] !== profile.key ||
+          (profile.generation === "candidate"
+            ? network.Labels?.["info.taskdesk.selection.slot"] !== slot
+            : Boolean(network.Labels?.["info.taskdesk.selection.slot"]))
+        )
+          reject(
+            "Protected daemon network ownership or isolation is not proven.",
+          );
+        const record = {
+          Id: network.Id,
+          Name: network.Name,
+          Driver: network.Driver,
+          Scope: network.Scope,
+          Internal: network.Internal,
+          Attachable: Boolean(network.Attachable),
+          Options: network.Options || {},
+          Labels: network.Labels || {},
+        };
+        if (pinnedNetworks.has(name) && !same(pinnedNetworks.get(name), record))
+          reject(
+            "A protected network changed identity or options during selection.",
+          );
+        for (const [otherName, otherRecord] of pinnedNetworks)
+          if (otherName !== name && otherRecord.Id === record.Id)
+            reject("Protected networks cannot share a daemon network ID.");
+        pinnedNetworks.set(name, structuredClone(record));
+        pinnedNetworkById.set(record.Id, { name, ...profile });
+      }
       const aliases = new Map(
         inventory.volumes.map((volume) => [
           volume.Name,
-          new Set(expected.has(volume.Name) ? [volume.Name] : []),
+          new Set(expectedVolumes.has(volume.Name) ? [volume.Name] : []),
         ]),
       );
       for (let pass = 0; pass < inventory.volumes.length; pass++) {
@@ -1501,6 +2559,13 @@ function volumeInventoryPolicy({
         for (const volume of inventory.volumes) {
           const device = volume.Options?.device;
           if (typeof device !== "string" || !posix.isAbsolute(device)) continue;
+          if (
+            pathOverlaps(device, baselinePrivateDir) ||
+            pathOverlaps(device, candidatePrivateDir)
+          )
+            reject(
+              "A local volume device overlaps a protected private configuration directory.",
+            );
           for (const [name, root] of roots)
             if (
               pathOverlaps(device, root) &&
@@ -1519,12 +2584,42 @@ function volumeInventoryPolicy({
         }
         if (!changed) break;
       }
+      const candidateContainersInInventory = inventory.containers.filter(
+        (c) =>
+          c.Config?.Labels?.["com.docker.compose.project"] === localProject &&
+          c.Config?.Labels?.["info.taskdesk.selection.slot"] === slot,
+      );
+      if (candidateContainersInInventory.length && !candidateSecrets) {
+        const extracted = extractSecretsFromContainers(
+          candidateContainersInInventory,
+        );
+        if (extracted && baselineSecrets) {
+          if (
+            extracted.pgPassword === baselineSecrets.pgPassword ||
+            extracted.appDb.password === baselineSecrets.appDb.password ||
+            extracted.authSecret === baselineSecrets.authSecret ||
+            extracted.encryptionKey === baselineSecrets.encryptionKey ||
+            extracted.valkeyPassword === baselineSecrets.valkeyPassword ||
+            [...extracted.allValues].some((v) =>
+              baselineSecrets.allValues.has(v),
+            )
+          )
+            reject(
+              "Candidate container secrets overlap baseline container secrets.",
+            );
+          candidateSecrets = extracted;
+        }
+      }
       const current = new Map();
+      const roleGenerationSeen = new Set();
       for (const container of inventory.containers) {
-        const touched = new Set();
+        if (container.Id === client.id) continue;
+        const touchedVolumes = new Set();
+        let touchesBaselinePrivate = false;
+        let touchesCandidatePrivate = false;
         for (const mount of container.Mounts) {
-          if (mount.Type === "volume" && expected.has(mount.Name))
-            touched.add(mount.Name);
+          if (mount.Type === "volume" && expectedVolumes.has(mount.Name))
+            touchedVolumes.add(mount.Name);
           const alias =
             mount.Type === "volume" ? allVolumes.get(mount.Name) : null;
           if (mount.Type === "volume" && !alias)
@@ -1543,10 +2638,12 @@ function volumeInventoryPolicy({
           )
             reject("A mounted volume has an unproven physical-source alias.");
           if (alias)
-            for (const name of aliases.get(alias.Name)) touched.add(name);
+            for (const name of aliases.get(alias.Name))
+              touchedVolumes.add(name);
           for (const volume of inventory.volumes)
             if (mount.Source && pathOverlaps(mount.Source, volume.Mountpoint))
-              for (const name of aliases.get(volume.Name)) touched.add(name);
+              for (const name of aliases.get(volume.Name))
+                touchedVolumes.add(name);
           for (const [name, root] of roots)
             if (
               (mount.Source && pathOverlaps(mount.Source, root)) ||
@@ -1554,70 +2651,210 @@ function volumeInventoryPolicy({
                 posix.isAbsolute(alias.Options.device) &&
                 pathOverlaps(alias.Options.device, root))
             )
-              touched.add(name);
+              touchedVolumes.add(name);
+          if (mount.Source && pathOverlaps(mount.Source, baselinePrivateDir))
+            touchesBaselinePrivate = true;
+          if (mount.Source && pathOverlaps(mount.Source, candidatePrivateDir))
+            touchesCandidatePrivate = true;
         }
-        if (!touched.size) {
+        const attachedNetworks = Object.keys(
+          container.NetworkSettings?.Networks || {},
+        );
+        const touchesProtectedNetwork =
+          attachedNetworks.some(
+            (netName) =>
+              expectedNetworks.has(netName) || netName.startsWith(localProject),
+          ) ||
+          expectedNetworks.has(container.HostConfig?.NetworkMode) ||
+          String(container.HostConfig?.NetworkMode || "").startsWith(
+            localProject,
+          ) ||
+          inventory.networks.some(
+            (net) =>
+              expectedNetworks.has(net.Name) &&
+              Object.hasOwn(net.Containers || {}, container.Id),
+          );
+        const hasProjectIdentity =
+          container.Config.Labels?.["com.docker.compose.project"] ===
+            localProject ||
+          Boolean(container.Config.Labels?.["info.taskdesk.selection.slot"]) ||
+          container.Name.startsWith(`/${localProject}`);
+        if (
+          !touchedVolumes.size &&
+          !touchesBaselinePrivate &&
+          !touchesCandidatePrivate &&
+          !touchesProtectedNetwork &&
+          !hasProjectIdentity
+        ) {
           if (users.has(container.Id))
             reject(
-              "A registered volume user lost its protected mount evidence.",
+              "A registered project container lost its protected identity or mount evidence.",
             );
           continue;
         }
-        if (touched.size !== 1 || container.Mounts.length !== 1)
+        const containerSlot =
+          container.Config.Labels?.["info.taskdesk.selection.slot"] ?? null;
+        if (containerSlot !== null && containerSlot !== slot)
           reject(
-            "A container has overlapping or additional protected-volume access.",
+            "An unauthorized second-generation container exists in the daemon inventory.",
           );
-        const name = [...touched][0];
-        const profile = expected.get(name);
-        const mount = container.Mounts[0];
+        const generation = containerSlot === slot ? "candidate" : "baseline";
+        const role = container.Config.Labels?.["com.docker.compose.service"];
         if (
-          mount.Type !== "volume" ||
-          mount.Name !== name ||
-          mount.Source !== roots.get(name) ||
-          mount.Destination !== profile.target ||
-          mount.RW !== true ||
           container.Config.Labels?.["com.docker.compose.project"] !==
             localProject ||
-          container.Config.Labels?.["com.docker.compose.service"] !==
-            profile.role ||
-          container.Config.Image !== profile.image ||
-          container.HostConfig.NetworkMode !== `${localProject}_default` ||
-          Object.keys(container.NetworkSettings?.Networks || {}).some(
-            (network) => network !== `${localProject}_default`,
-          )
+          !runningServiceRoles.includes(role) ||
+          container.Config.Image !== roleImages[generation][role]
         )
-          reject("An unauthorized container uses a protected volume.");
-        const canonicalName = `/${localProject}-${profile.role}-1`;
+          reject(
+            "An unauthorized container uses a protected volume, network or private path.",
+          );
+        const roleKey = `${generation}:${role}`;
+        if (roleGenerationSeen.has(roleKey))
+          reject("Duplicate service container for the same generation.");
+        roleGenerationSeen.add(roleKey);
+        const genVolumes =
+          generation === "candidate" ? volumes : baselineVolumes;
+        const genPrivateDir =
+          generation === "candidate" ? candidatePrivateDir : baselinePrivateDir;
+        if (["postgres", "taskdesk", "mailpit"].includes(role)) {
+          const expectedVolName =
+            role === "postgres"
+              ? genVolumes.database
+              : role === "taskdesk"
+                ? genVolumes.files
+                : genVolumes.mail;
+          const profile = expectedVolumes.get(expectedVolName);
+          if (
+            touchedVolumes.size !== 1 ||
+            !touchedVolumes.has(expectedVolName) ||
+            touchesBaselinePrivate ||
+            touchesCandidatePrivate ||
+            container.Mounts.length !== 1 ||
+            container.Mounts[0].Type !== "volume" ||
+            container.Mounts[0].Name !== expectedVolName ||
+            container.Mounts[0].Source !== roots.get(expectedVolName) ||
+            container.Mounts[0].Destination !== profile.target ||
+            container.Mounts[0].RW !== true
+          )
+            reject("An unauthorized container uses a protected volume.");
+        } else if (role === "traefik") {
+          const expectedSource = join(genPrivateDir, "proxy");
+          if (
+            touchedVolumes.size !== 0 ||
+            (generation === "baseline"
+              ? !touchesBaselinePrivate || touchesCandidatePrivate
+              : !touchesCandidatePrivate || touchesBaselinePrivate) ||
+            container.Mounts.length !== 1 ||
+            container.Mounts[0].Type !== "bind" ||
+            container.Mounts[0].Source !== expectedSource ||
+            container.Mounts[0].Destination !== "/config" ||
+            container.Mounts[0].RW !== false
+          )
+            reject("Traefik proxy mount violates generation isolation.");
+        } else if (role === "valkey") {
+          if (
+            touchedVolumes.size !== 0 ||
+            touchesBaselinePrivate ||
+            touchesCandidatePrivate ||
+            container.Mounts.length !== 0
+          )
+            reject("Valkey container must not mount volumes or host paths.");
+        }
+        const expectedNetworkMode =
+          generation === "candidate"
+            ? networks.backend
+            : baselineNetworks.default;
+        const expectedActiveNetworks =
+          generation === "candidate"
+            ? role === "traefik"
+              ? [networks.backend, networks.ingress].sort()
+              : [networks.backend]
+            : [baselineNetworks.default];
+        const canonicalName = `/${localProject}-${role}-1`;
+        const retainedName = `${canonicalName}-${generation === "baseline" ? "retained" : "candidate"}-${slot}`;
+        const isRetainedStopped =
+          container.Name === retainedName && !container.State.Running;
+        if (
+          container.HostConfig.NetworkMode !== expectedNetworkMode ||
+          (isRetainedStopped
+            ? attachedNetworks.length !== 0
+            : !same([...attachedNetworks].sort(), expectedActiveNetworks))
+        )
+          reject(
+            "An unauthorized container network mode or attachment was observed.",
+          );
+        for (const netName of attachedNetworks) {
+          const pinnedNet = pinnedNetworks.get(netName);
+          const attachment = container.NetworkSettings?.Networks?.[netName];
+          if (
+            !pinnedNet ||
+            attachment?.NetworkID !== pinnedNet.Id ||
+            (attachment.Aliases || []).some(
+              (alias) =>
+                alias !== role && alias !== container.Name.replace(/^\//, ""),
+            ) ||
+            (attachment.Links || []).length ||
+            (attachment.DriverOpts && Object.keys(attachment.DriverOpts).length)
+          )
+            reject(
+              "Container network identity, alias or routing violates the generation contract.",
+            );
+        }
+        const expectedRolePorts = expectedPortsFor(generation, role);
+        if (
+          container.HostConfig.Privileged !== false ||
+          container.HostConfig.PublishAllPorts !== false ||
+          !same(
+            enginePorts(container.HostConfig.PortBindings),
+            expectedRolePorts,
+          ) ||
+          (container.State.Running &&
+            !same(
+              enginePorts(container.NetworkSettings?.Ports),
+              expectedRolePorts,
+            ))
+        )
+          reject(
+            "Container host port bindings violate the generation contract.",
+          );
+        const primaryVolumeName =
+          role === "postgres"
+            ? genVolumes.database
+            : role === "taskdesk"
+              ? genVolumes.files
+              : role === "mailpit"
+                ? genVolumes.mail
+                : `${generation}:${role}`;
         const known = users.get(container.Id);
         if (!known) {
           if (
             container.Name !== canonicalName ||
-            (profile.generation === "baseline"
+            (generation === "baseline"
               ? initialBound
               : !initialBound ||
                 !["copy-slot", "select-candidate"].includes(phase) ||
                 !afterAction)
           )
             reject(
-              "An unregistered container uses a protected volume, including stopped users.",
+              "An unregistered container uses a protected volume or network, including stopped users.",
             );
-          if (profile.generation === "candidate") {
-            const template = templates.get(profile.role);
+          if (generation === "candidate") {
+            const template = templates.get(role);
             if (
+              !template ||
+              !candidateSecrets ||
               !same(
-                projection(container, volumes),
-                projection(template, baselineVolumes),
+                projection(container, "candidate"),
+                projection(template, "baseline"),
               )
             )
               reject(
-                "A new candidate volume user differs from its frozen canonical profile.",
+                "A new candidate container differs from its frozen canonical profile.",
               );
-            if (
-              profile.role === "postgres" &&
-              container.Image !== template.Image
-            )
-              reject("Candidate PostgreSQL image identity changed.");
-            if (profile.role === "taskdesk") {
+            if (role !== "taskdesk" && container.Image !== template.Image)
+              reject("Candidate supporting service image identity changed.");
+            if (role === "taskdesk") {
               const image = daemonJson(
                 client.command(["image", "inspect", candidateImage]),
               );
@@ -1633,39 +2870,26 @@ function volumeInventoryPolicy({
           }
           users.set(container.Id, {
             imageId: container.Image,
-            name,
-            profile,
-            frozen: projection(
-              container,
-              profile.generation === "candidate" ? volumes : baselineVolumes,
-            ),
+            name: primaryVolumeName,
+            profile: { generation, role },
+            frozen: projection(container, generation),
           });
         } else if (
-          known.name !== name ||
+          known.name !== primaryVolumeName ||
           known.imageId !== container.Image ||
-          !same(
-            known.frozen,
-            projection(
-              container,
-              profile.generation === "candidate" ? volumes : baselineVolumes,
-            ),
-          )
+          !same(known.frozen, projection(container, generation))
         )
           reject(
-            "A registered volume user changed mounts or execution configuration.",
+            "A registered container changed mounts, secrets or execution configuration.",
           );
-        const retainedName = `${canonicalName}-${profile.generation === "baseline" ? "retained" : "candidate"}-${slot}`;
-        if (
-          container.Name !== canonicalName &&
-          (container.Name !== retainedName || container.State.Running)
-        )
+        if (container.Name !== canonicalName && !isRetainedStopped)
           reject(
-            "A retained volume user has an unexpected name or is still running.",
+            "A retained container has an unexpected name or is still running.",
           );
         if (
-          profile.generation === "baseline" &&
-          profile.role === "taskdesk" &&
-          backupComplete &&
+          generation === "baseline" &&
+          role === "taskdesk" &&
+          (backupComplete || (phase === "backup" && afterAction)) &&
           !baselineStarted &&
           container.State.Running
         )
@@ -1673,17 +2897,99 @@ function volumeInventoryPolicy({
             "A baseline application writer restarted before return proof.",
           );
         if (
-          profile.generation === "candidate" &&
-          profile.role === "taskdesk" &&
+          generation === "baseline" &&
+          ["inspect-candidate", "browser-window"].includes(phase) &&
+          (container.State.Running || container.Name !== retainedName)
+        )
+          reject(
+            "A baseline container remained active or unisolated during candidate selection.",
+          );
+        if (
+          generation === "baseline" &&
+          role === "taskdesk" &&
+          phase === "return-baseline" &&
+          !afterAction &&
+          (container.State.Running || container.Name !== retainedName)
+        )
+          reject(
+            "Baseline application writer was not isolated before return to baseline.",
+          );
+        if (
+          generation === "baseline" &&
+          ["verify-return"].includes(phase) &&
+          (!container.State.Running || container.Name !== canonicalName)
+        )
+          reject(
+            "Baseline service was not restored to running canonical state.",
+          );
+        if (
+          generation === "candidate" &&
+          role === "taskdesk" &&
           phase === "copy-slot" &&
           container.State.Running
         )
           reject("The candidate application started before copy verification.");
+        if (
+          generation === "candidate" &&
+          ["inspect-candidate", "browser-window"].includes(phase) &&
+          (!container.State.Running || container.Name !== canonicalName)
+        )
+          reject(
+            "A candidate service container is not running in canonical state during candidate selection.",
+          );
+        if (
+          generation === "candidate" &&
+          candidateReturned &&
+          ["start-baseline", "verify-return"].includes(phase)
+        )
+          reject(
+            "A candidate container remained present after return to baseline.",
+          );
         current.set(container.Id, {
-          ...profile,
-          name,
+          generation,
+          role,
+          name: primaryVolumeName,
           running: container.State.Running,
         });
+      }
+      if (
+        ["inspect-candidate", "browser-window"].includes(phase) &&
+        runningServiceRoles.some(
+          (role) =>
+            !roleGenerationSeen.has(`candidate:${role}`) ||
+            !roleGenerationSeen.has(`baseline:${role}`),
+        )
+      )
+        reject(
+          "Expected baseline and candidate generation containers are incomplete during candidate selection.",
+        );
+      for (const [netName, netProfile] of expectedNetworks) {
+        const net = allNetworks.get(netName);
+        if (!net) continue;
+        const expectedConnectedIds = inventory.containers
+          .filter((container) =>
+            Object.hasOwn(container.NetworkSettings?.Networks || {}, netName),
+          )
+          .map((container) => container.Id)
+          .sort();
+        const actualConnectedIds = Object.keys(net.Containers || {}).sort();
+        if (!same(actualConnectedIds, expectedConnectedIds))
+          reject(
+            "Network endpoint membership disagrees with inspected container network attachments.",
+          );
+        for (const id of actualConnectedIds) {
+          const entry = current.get(id);
+          const container = inventory.containers.find((c) => c.Id === id);
+          if (
+            !entry ||
+            entry.generation !== netProfile.generation ||
+            (netProfile.key === "ingress" && entry.role !== "traefik") ||
+            net.Containers[id]?.Name !== container.Name.replace(/^\//, "")
+          )
+            reject(
+              "An unauthorized or foreign endpoint is attached to a protected network.",
+            );
+        }
       }
       if (
         [...current.values()].some(
@@ -1693,12 +2999,109 @@ function volumeInventoryPolicy({
           (value) => value.generation === "baseline" && value.running,
         )
       )
-        reject("Baseline and candidate volume writers overlap.");
+        reject("Baseline and candidate generations overlap.");
       return current;
     },
-    auditEvents(events, before, after, current, phase) {
+    auditEvents(events, before, after, current, phase, afterAction = false) {
       const beforeIds = inventoryMap(before || after);
       const afterIds = inventoryMap(after);
+      const beforeNets = new Map(
+        (before || after).networks.map((network) => [network.Id, network]),
+      );
+      const afterNets = new Map(
+        after.networks.map((network) => [network.Id, network]),
+      );
+      const containerStates = new Map();
+      for (const [id, c] of beforeIds) {
+        containerStates.set(id, {
+          exists: true,
+          running: Boolean(c.State?.Running),
+          paused: Boolean(c.State?.Paused),
+          name: c.Name.replace(/^\//, ""),
+        });
+      }
+      const networkStates = new Map();
+      for (const [id, n] of beforeNets) {
+        networkStates.set(id, {
+          exists: true,
+          name: n.Name,
+          members: new Set(Object.keys(n.Containers || {})),
+        });
+      }
+      const history = getPhaseHistory(phase);
+      const containerHist = (id) => {
+        if (!history.containers.has(id)) {
+          history.containers.set(id, {
+            created: 0,
+            destroyed: 0,
+            started: 0,
+            stopped: 0,
+            stopActionRank: 0,
+            renamed: 0,
+            paused: 0,
+            unpaused: 0,
+          });
+        }
+        return history.containers.get(id);
+      };
+      const netMemberHist = (netKey, containerId) => {
+        const key = `${netKey}:${containerId}`;
+        if (!history.networks.has(key)) {
+          history.networks.set(key, { connected: 0, disconnected: 0 });
+        }
+        return history.networks.get(key);
+      };
+      const stopSequenceOrder = { kill: 1, die: 2, stop: 3 };
+      const assertNoReplayedOverlap = () => {
+        let baselineRunning = false;
+        let candidateRunning = false;
+        for (const [id, st] of containerStates) {
+          if (id === client.id || !st.exists || !st.running) continue;
+          const u = users.get(id);
+          if (!u) continue;
+          if (u.profile.generation === "baseline") baselineRunning = true;
+          if (u.profile.generation === "candidate") candidateRunning = true;
+        }
+        if (baselineRunning && candidateRunning)
+          reject("Baseline and candidate generations overlap.");
+        if (phase === "select-candidate" && candidateRunning) {
+          for (const [id, st] of containerStates) {
+            if (id === client.id || !st.exists) continue;
+            const u = users.get(id);
+            if (u?.profile.generation !== "baseline") continue;
+            const expectedRetained = `${localProject}-${u.profile.role}-1-retained-${slot}`;
+            const defaultNetState = networkStates.get(
+              pinnedNetworks.get(baselineNetworks.default)?.Id,
+            );
+            if (
+              st.running ||
+              st.name !== expectedRetained ||
+              defaultNetState?.members.has(id)
+            )
+              reject(
+                "A candidate container started before all baseline containers were stopped, disconnected and retained.",
+              );
+          }
+        }
+        if (phase === "return-baseline" && baselineRunning) {
+          for (const [id, st] of containerStates) {
+            if (id === client.id || !st.exists) continue;
+            const u = users.get(id);
+            if (u?.profile.generation !== "candidate") continue;
+            reject(
+              "A baseline container started before all candidate containers were destroyed.",
+            );
+          }
+          for (const [netId, netSt] of networkStates) {
+            if (!netSt.exists) continue;
+            const tracked = pinnedNetworkById.get(netId);
+            if (tracked?.generation === "candidate")
+              reject(
+                "A baseline container started before candidate networks were destroyed.",
+              );
+          }
+        }
+      };
       const transitions = new Set([
         "create",
         "destroy",
@@ -1710,6 +3113,13 @@ function volumeInventoryPolicy({
         "restart",
         "pause",
         "unpause",
+      ]);
+      const networkTransitions = new Set([
+        "create",
+        "connect",
+        "disconnect",
+        "destroy",
+        "remove",
       ]);
       for (const event of events) {
         if (event.Type === "container") {
@@ -1728,37 +3138,164 @@ function volumeInventoryPolicy({
           if (event.Action.startsWith("exec_")) continue;
           if (
             ["archive-path", "export", "copy"].includes(event.Action) &&
-            ["backup", "copy-slot"].includes(phase)
+            ["backup", "copy-slot"].includes(phase) &&
+            afterAction
           )
             continue;
-          if (
-            !transitions.has(event.Action) ||
-            (!controlled.has(phase) &&
-              !(
-                phase === "backup" &&
-                authorized.profile.generation === "baseline" &&
-                authorized.profile.role === "taskdesk" &&
-                ["stop", "die", "kill"].includes(event.Action)
-              ))
-          )
+          if (!transitions.has(event.Action) || !afterAction)
             reject(
               "An unexpected container lifecycle change crossed the protected action.",
             );
-          if (event.Action === "create" && !afterIds.has(event.Actor.ID))
+          const { generation, role } = authorized.profile;
+          const state = containerStates.get(event.Actor.ID) || {
+            exists: false,
+            running: false,
+            paused: false,
+            name: "",
+          };
+          const h = containerHist(event.Actor.ID);
+          const canonicalBareName = `${localProject}-${role}-1`;
+          const retainedBareName = `${canonicalBareName}-${generation === "baseline" ? "retained" : "candidate"}-${slot}`;
+          if (["pause", "unpause", "restart"].includes(event.Action))
             reject(
-              "A transient volume user has no complete daemon inspection proof.",
+              "An unexpected container lifecycle change crossed the protected action.",
             );
-          if (event.Action === "destroy" && afterIds.has(event.Actor.ID))
+          if (event.Action === "create") {
+            if (
+              generation !== "candidate" ||
+              !["copy-slot", "select-candidate"].includes(phase) ||
+              state.exists ||
+              h.created > 0 ||
+              !afterIds.has(event.Actor.ID)
+            )
+              reject(
+                "A transient volume user has no complete daemon inspection proof.",
+              );
+            state.exists = true;
+            state.running = false;
+            state.paused = false;
+            state.name = event.Actor.Attributes?.name || canonicalBareName;
+            containerStates.set(event.Actor.ID, state);
+            h.created++;
+          } else if (event.Action === "destroy") {
+            if (
+              generation !== "candidate" ||
+              phase !== "return-baseline" ||
+              !state.exists ||
+              state.running ||
+              h.destroyed > 0 ||
+              afterIds.has(event.Actor.ID)
+            )
+              reject(
+                "A container destruction event disagrees with the complete inventory.",
+              );
+            for (const netState of networkStates.values()) {
+              if (netState.exists && netState.members.has(event.Actor.ID))
+                reject(
+                  "A container was destroyed while still attached to a protected network.",
+                );
+            }
+            state.exists = false;
+            h.destroyed++;
+          } else if (event.Action === "start") {
+            const startAllowed =
+              generation === "candidate"
+                ? role === "taskdesk"
+                  ? phase === "select-candidate"
+                  : ["copy-slot", "select-candidate"].includes(phase)
+                : phase === "return-baseline"
+                  ? role !== "taskdesk"
+                  : phase === "start-baseline"
+                    ? role === "taskdesk"
+                    : false;
+            if (
+              !startAllowed ||
+              !state.exists ||
+              state.running ||
+              h.started > 0 ||
+              state.name !== canonicalBareName
+            )
+              reject(
+                "An unexpected container lifecycle change crossed the protected action.",
+              );
+            state.running = true;
+            h.started++;
+          } else if (["stop", "die", "kill"].includes(event.Action)) {
+            const stopAllowed =
+              generation === "baseline"
+                ? role === "taskdesk"
+                  ? phase === "backup"
+                  : phase === "select-candidate"
+                : phase === "return-baseline" ||
+                  (phase === "copy-slot" && role !== "taskdesk");
+            const actionRank = stopSequenceOrder[event.Action];
+            const isInitialStopEvent = state.running && h.stopped === 0;
+            const isFollowupStopEvent =
+              !state.running &&
+              h.stopped === 1 &&
+              h.stopActionRank > 0 &&
+              actionRank > h.stopActionRank &&
+              h.renamed === 0 &&
+              h.destroyed === 0;
+            if (
+              !stopAllowed ||
+              !state.exists ||
+              (!isInitialStopEvent && !isFollowupStopEvent)
+            )
+              reject(
+                "An unexpected container lifecycle change crossed the protected action.",
+              );
+            state.running = false;
+            if (isInitialStopEvent) h.stopped = 1;
+            h.stopActionRank = actionRank;
+          } else if (event.Action === "rename") {
+            const expectedNewName =
+              phase === "select-candidate"
+                ? retainedBareName
+                : phase === "return-baseline"
+                  ? canonicalBareName
+                  : null;
+            const expectedOldName =
+              phase === "select-candidate"
+                ? canonicalBareName
+                : phase === "return-baseline"
+                  ? retainedBareName
+                  : null;
+            const observedNewName = event.Actor.Attributes?.name;
+            if (
+              generation !== "baseline" ||
+              !expectedNewName ||
+              !state.exists ||
+              state.running ||
+              h.renamed > 0 ||
+              state.name !== expectedOldName ||
+              observedNewName !== expectedNewName
+            )
+              reject(
+                "An unexpected container lifecycle change crossed the protected action.",
+              );
+            state.name = observedNewName;
+            h.renamed++;
+          }
+          assertNoReplayedOverlap();
+        } else if (
+          event.Type === "volume" &&
+          (expectedVolumes.has(event.Actor.ID) ||
+            event.Actor.ID.startsWith(localProject))
+        ) {
+          if (!expectedVolumes.has(event.Actor.ID))
             reject(
-              "A container destruction event disagrees with the complete inventory.",
+              "An unauthorized project or second-generation volume lifecycle event occurred.",
             );
-        } else if (event.Type === "volume" && expected.has(event.Actor.ID)) {
           if (
             event.Action === "create" &&
-            expected.get(event.Actor.ID).generation === "candidate" &&
-            phase === "copy-slot"
-          )
+            expectedVolumes.get(event.Actor.ID).generation === "candidate" &&
+            phase === "copy-slot" &&
+            afterAction
+          ) {
+            assertNoReplayedOverlap();
             continue;
+          }
           if (
             ["mount", "unmount"].includes(event.Action) &&
             [
@@ -1767,10 +3304,128 @@ function volumeInventoryPolicy({
               "select-candidate",
               "return-baseline",
               "start-baseline",
-            ].includes(phase)
-          )
+            ].includes(phase) &&
+            afterAction
+          ) {
+            assertNoReplayedOverlap();
             continue;
+          }
           reject("An unexpected protected-volume lifecycle event occurred.");
+        } else if (event.Type === "network") {
+          const tracked =
+            pinnedNetworkById.get(event.Actor.ID) ||
+            beforeNets.get(event.Actor.ID) ||
+            afterNets.get(event.Actor.ID);
+          if (
+            !tracked ||
+            !expectedNetworks.has(tracked.name || tracked.Name) ||
+            !networkTransitions.has(event.Action) ||
+            !afterAction
+          )
+            reject(
+              "An unauthorized or transient network lifecycle event occurred during selection.",
+            );
+          const netName = tracked.name || tracked.Name;
+          const netProfile = expectedNetworks.get(netName);
+          let netState = networkStates.get(event.Actor.ID);
+          if (event.Action === "create") {
+            if (
+              netProfile.generation !== "candidate" ||
+              !["copy-slot", "select-candidate"].includes(phase) ||
+              netState?.exists ||
+              !afterNets.has(event.Actor.ID)
+            )
+              reject(
+                "An unexpected or transient network creation event occurred.",
+              );
+            netState = {
+              exists: true,
+              name: netName,
+              members: new Set(),
+            };
+            networkStates.set(event.Actor.ID, netState);
+          } else if (["destroy", "remove"].includes(event.Action)) {
+            if (
+              netProfile.generation !== "candidate" ||
+              phase !== "return-baseline" ||
+              !netState?.exists ||
+              netState.members.size > 0 ||
+              afterNets.has(event.Actor.ID)
+            )
+              reject("An unexpected network destruction event occurred.");
+            netState.exists = false;
+          } else if (["connect", "disconnect"].includes(event.Action)) {
+            const containerId = event.Actor.Attributes?.container;
+            const authorized = containerId ? users.get(containerId) : null;
+            const isBackupQuiesceDisconnect =
+              event.Action === "disconnect" &&
+              phase === "backup" &&
+              authorized?.profile.generation === "baseline" &&
+              authorized?.profile.role === "taskdesk" &&
+              netProfile.generation === "baseline" &&
+              netProfile.key === "default";
+            if (
+              !authorized ||
+              !netState?.exists ||
+              authorized.profile.generation !== netProfile.generation ||
+              (netProfile.key === "ingress" &&
+                authorized.profile.role !== "traefik") ||
+              (!controlled.has(phase) && !isBackupQuiesceDisconnect)
+            )
+              reject(
+                "An unauthorized or transient endpoint connected to or disconnected from a protected network.",
+              );
+            const cState = containerStates.get(containerId);
+            const cHist = containerHist(containerId);
+            const nh = netMemberHist(netName, containerId);
+            const { generation, role } = authorized.profile;
+            const canonicalBareName = `${localProject}-${role}-1`;
+            if (event.Action === "connect") {
+              const connectAllowed =
+                generation === "candidate"
+                  ? ["copy-slot", "select-candidate"].includes(phase)
+                  : phase === "return-baseline";
+              if (
+                !connectAllowed ||
+                !cState?.exists ||
+                cState.running ||
+                cState.name !== canonicalBareName ||
+                netState.members.has(containerId) ||
+                nh.connected > 0 ||
+                nh.disconnected > 0
+              )
+                reject(
+                  "An unauthorized or transient endpoint connected to or disconnected from a protected network.",
+                );
+              netState.members.add(containerId);
+              nh.connected++;
+            } else {
+              const disconnectAllowed =
+                generation === "baseline"
+                  ? phase === "select-candidate" ||
+                    (isBackupQuiesceDisconnect &&
+                      cState?.name === canonicalBareName &&
+                      cHist.stopped === 1 &&
+                      cHist.stopActionRank >= stopSequenceOrder.die &&
+                      cHist.stopActionRank < stopSequenceOrder.stop)
+                  : phase === "return-baseline";
+              if (
+                !disconnectAllowed ||
+                !cState?.exists ||
+                cState.running ||
+                !netState.members.has(containerId) ||
+                nh.disconnected > 0 ||
+                nh.connected > 0
+              )
+                reject(
+                  "An unauthorized or transient endpoint connected to or disconnected from a protected network.",
+                );
+              if (!isBackupQuiesceDisconnect)
+                netState.members.delete(containerId);
+              nh.disconnected++;
+            }
+          }
+          assertNoReplayedOverlap();
         }
       }
       for (const container of after.containers) {
@@ -1801,56 +3456,70 @@ function volumeInventoryPolicy({
           reject("Container running state changed without lifecycle evidence.");
       }
       for (const [id, container] of afterIds) {
-        const lifecycle = events.filter(
-          (event) => event.Type === "container" && event.Actor.ID === id,
-        );
-        const stateEvent = lifecycle
-          .filter((event) =>
-            ["start", "stop", "die", "kill", "restart"].includes(event.Action),
-          )
-          .at(-1);
+        if (id === client.id) continue;
+        const state = containerStates.get(id);
         if (
-          stateEvent &&
-          container.State.Running !==
-            ["start", "restart"].includes(stateEvent.Action)
+          !state?.exists ||
+          state.running !== Boolean(container.State?.Running) ||
+          state.paused !== Boolean(container.State?.Paused) ||
+          state.name !== container.Name.replace(/^\//, "")
         )
           reject(
-            "Inventory running state does not reflect the closing lifecycle events.",
-          );
-        const rename = lifecycle
-          .filter((event) => event.Action === "rename")
-          .at(-1);
-        if (
-          rename &&
-          rename.Actor.Attributes?.name !== container.Name.replace(/^\//, "")
-        )
-          reject("Inventory name does not reflect the closing rename event.");
-        const pause = lifecycle
-          .filter((event) => ["pause", "unpause"].includes(event.Action))
-          .at(-1);
-        if (
-          pause &&
-          Boolean(container.State.Paused) !== (pause.Action === "pause")
-        )
-          reject(
-            "Inventory pause state does not reflect the closing lifecycle event.",
+            "Inventory state does not reflect the replayed lifecycle events.",
           );
       }
-      for (const container of beforeIds.values())
-        if (
-          !afterIds.has(container.Id) &&
-          (!users.has(container.Id) ||
-            !controlled.has(phase) ||
-            !events.some(
-              (event) =>
-                event.Type === "container" &&
-                event.Actor.ID === container.Id &&
-                event.Action === "destroy",
-            ))
-        )
+      for (const [id, state] of containerStates) {
+        if (id === client.id) continue;
+        if (state.exists && !afterIds.has(id))
           reject(
             "A daemon container disappeared without authorized destruction proof.",
           );
+      }
+      for (const network of after.networks) {
+        if (!beforeNets.has(network.Id)) {
+          if (
+            !expectedNetworks.has(network.Name) ||
+            !["copy-slot", "select-candidate"].includes(phase) ||
+            !events.some(
+              (event) =>
+                event.Type === "network" &&
+                event.Actor.ID === network.Id &&
+                event.Action === "create",
+            )
+          )
+            reject("A new daemon network has no authorized lifecycle proof.");
+        }
+      }
+      for (const network of beforeNets.values()) {
+        if (!afterNets.has(network.Id)) {
+          if (
+            !expectedNetworks.has(network.Name) ||
+            expectedNetworks.get(network.Name).generation !== "candidate" ||
+            phase !== "return-baseline" ||
+            !events.some(
+              (event) =>
+                event.Type === "network" &&
+                event.Actor.ID === network.Id &&
+                ["destroy", "remove"].includes(event.Action),
+            )
+          )
+            reject(
+              "A daemon network disappeared without authorized destruction proof.",
+            );
+        }
+      }
+      for (const [netId, afterNet] of afterNets) {
+        if (!expectedNetworks.has(afterNet.Name)) continue;
+        const netState = networkStates.get(netId);
+        const afterMembers = new Set(Object.keys(afterNet.Containers || {}));
+        if (
+          !netState?.exists ||
+          !same([...netState.members].sort(), [...afterMembers].sort())
+        )
+          reject(
+            "Network endpoint inventory does not reflect the replayed connect/disconnect events.",
+          );
+      }
     },
   };
 }
@@ -1888,21 +3557,28 @@ export async function coordinateCandidateSelection({
   )
     reject("A separately reviewed runtime and verifier adapter is required.");
   const frozenPlan = structuredClone(plan);
-  const volumes = Object.freeze(candidateVolumes(frozenPlan.slot));
-  if (!releaseImage.test(frozenPlan.baselineImage || ""))
-    reject("Baseline must be a signed release digest.");
-  const candidateImage = frozenPlan.candidate?.image;
-  if (
-    !/^ghcr\.io\/thomasheinthura\/taskdesk-pr-candidate-[1-9][0-9]*-[1-9][0-9]*@sha256:[a-f0-9]{64}$/.test(
-      candidateImage || "",
-    )
-  )
-    reject("Candidate must use its dedicated run package and digest.");
+  const baselineProfile = baselineGenerationProfile({
+    image: frozenPlan.baselineImage,
+    privateDir: frozenPlan.privateDir,
+  });
+  const candidatePrivateDir =
+    frozenPlan.candidate?.privateDir ?? frozenPlan.candidatePrivateDir;
+  const candidateProfile = candidateGenerationProfile({
+    slot: frozenPlan.slot,
+    image: frozenPlan.candidate?.image,
+    privateDir: candidatePrivateDir,
+    baselinePrivateDir: baselineProfile.privateDir,
+  });
+  const volumes = candidateProfile.volumes;
+  const networks = candidateProfile.networks;
+  const candidateImage = candidateProfile.image;
   const lease = acquireProjectSelectionLease({ directory });
   const journal = join(lease.lock, "journal.jsonl");
   let sequence = 0;
   let daemonLease;
   let privateFiles;
+  let candidatePrivateFiles;
+  let baselineProfileDir;
   const record = (phase, details = {}) => {
     const fd = openSync(journal, "a", 0o600);
     try {
@@ -1944,10 +3620,32 @@ export async function coordinateCandidateSelection({
     });
     if (stopped) reject("Selection stopped during boundary inspection.");
     assertSnapshotIdentity(observed, daemonLease.identity);
-    assertPrivateFiles(observed.privateFiles);
-    if (privateFiles && !same(privateFiles, observed.privateFiles))
+    assertDisjointPrivateFiles(
+      observed.privateFiles,
+      observed.candidatePrivateFiles,
+    );
+    if (
+      (privateFiles && !same(privateFiles, observed.privateFiles)) ||
+      (candidatePrivateFiles &&
+        !same(candidatePrivateFiles, observed.candidatePrivateFiles))
+    )
       reject("Private configuration content changed during selection.");
+    if (
+      typeof observed.baselineProfileDir !== "string" ||
+      !observed.baselineProfileDir ||
+      resolve(observed.baselineProfileDir) !== observed.baselineProfileDir ||
+      pathOverlaps(observed.baselineProfileDir, baselineProfile.privateDir) ||
+      pathOverlaps(observed.baselineProfileDir, candidateProfile.privateDir) ||
+      (frozenPlan.baselineProfileDir !== undefined &&
+        observed.baselineProfileDir !== frozenPlan.baselineProfileDir) ||
+      (baselineProfileDir && observed.baselineProfileDir !== baselineProfileDir)
+    )
+      reject(
+        "Baseline browser profile directory is missing, invalid or changed during selection.",
+      );
     privateFiles ??= structuredClone(observed.privateFiles);
+    candidatePrivateFiles ??= structuredClone(observed.candidatePrivateFiles);
+    baselineProfileDir ??= observed.baselineProfileDir;
     const current = inventoryPolicy.validate(inventory, phase, afterAction);
     const window = advanceEventFence(daemonLease, eventCursor);
     inventoryPolicy.auditEvents(
@@ -1956,6 +3654,7 @@ export async function coordinateCandidateSelection({
       inventory,
       current,
       phase,
+      afterAction,
     );
     record("daemon-volume-boundary", {
       phase,
@@ -2007,7 +3706,10 @@ export async function coordinateCandidateSelection({
       slot: frozenPlan.slot,
       candidateImage,
       baselineImage: frozenPlan.baselineImage,
+      baselinePrivateDir: baselineProfile.privateDir,
+      candidatePrivateDir: candidateProfile.privateDir,
       volumes,
+      networks,
     });
     record("acquire-daemon-lease:intent");
     daemonLease = acquireDockerDaemonLease({
@@ -2019,7 +3721,10 @@ export async function coordinateCandidateSelection({
     inventoryPolicy = volumeInventoryPolicy({
       baselineImage: frozenPlan.baselineImage,
       candidateImage,
+      baselinePrivateDir: baselineProfile.privateDir,
+      candidatePrivateDir: candidateProfile.privateDir,
       volumes,
+      networks,
       slot: frozenPlan.slot,
       client: daemonLease,
     });
@@ -2029,6 +3734,8 @@ export async function coordinateCandidateSelection({
       containerId: daemonLease.id,
       identity: daemonLease.identity,
       privateFiles,
+      candidatePrivateFiles,
+      baselineProfileDir,
     });
     // Verification succeeds by throwing on any mismatch. No boolean bypass.
     await step("verify-candidate", () =>
@@ -2041,28 +3748,38 @@ export async function coordinateCandidateSelection({
       }),
     );
     assertSnapshotIdentity(initial, daemonLease.identity);
+    if (
+      initial.baselineProfileDir !== undefined &&
+      initial.baselineProfileDir !== baselineProfileDir
+    )
+      reject(
+        "Baseline snapshot browser profile directory disagrees with frozen boundary.",
+      );
     assertSelectionSnapshot(initial, {
-      image: frozenPlan.baselineImage,
-      privateDir: frozenPlan.privateDir,
+      slot: null,
+      volumes: baselineVolumes,
+      networks: baselineNetworks,
+      image: baselineProfile.image,
+      privateDir: baselineProfile.privateDir,
     });
-    assertRuntimeProof(
-      initial.runtime,
-      frozenPlan.baselineImage,
-      baselineVolumes,
-    );
+    assertRuntimeProof(initial.runtime, baselineProfile);
     inventoryPolicy.bindInitial(initial, lastInventory);
     const original = {
       ...structuredClone(initial),
-      privateDir: frozenPlan.privateDir,
+      privateDir: baselineProfile.privateDir,
     };
     if (
       !Array.isArray(initial.existingVolumeNames) ||
       Object.values(volumes).some((v) =>
         initial.existingVolumeNames.includes(v),
-      )
+      ) ||
+      (Array.isArray(initial.existingNetworkNames) &&
+        Object.values(networks).some((n) =>
+          initial.existingNetworkNames.includes(n),
+        ))
     )
       reject(
-        "Candidate slot already exists or volume inventory is unavailable.",
+        "Candidate slot already exists or volume/network inventory is unavailable.",
       );
     const baselineWriters = initial.containers.filter(
       (value) =>
@@ -2098,10 +3815,16 @@ export async function coordinateCandidateSelection({
       adapter.createAndRestoreSlot({
         ...context,
         volumes,
+        networks,
         slot: frozenPlan.slot,
         backup: structuredClone(backup),
       }),
     );
+    const volumeKeyMap = {
+      database: "postgres-data",
+      files: "attachments",
+      mail: "mailpit-data",
+    };
     for (const [key, name] of Object.entries(volumes)) {
       const volume = created?.[key];
       if (
@@ -2110,8 +3833,7 @@ export async function coordinateCandidateSelection({
         Object.keys(volume.Options || {}).length ||
         volume.Labels?.["info.taskdesk.selection.slot"] !== frozenPlan.slot ||
         volume.Labels?.["com.docker.compose.project"] !== localProject ||
-        volume.Labels?.["com.docker.compose.volume"] !==
-          (key === "database" ? "postgres-data" : "attachments")
+        volume.Labels?.["com.docker.compose.volume"] !== volumeKeyMap[key]
       )
         reject("Created candidate volume ownership is not confirmed.");
     }
@@ -2122,33 +3844,61 @@ export async function coordinateCandidateSelection({
     if (!same(copy, backup.data))
       reject("Restored database or attachments differ from the backup.");
     await step("select-candidate", (context) =>
-      adapter.selectCandidate({ ...context, image: candidateImage, volumes }),
+      adapter.selectCandidate({
+        ...context,
+        slot: frozenPlan.slot,
+        image: candidateImage,
+        privateDir: candidateProfile.privateDir,
+        volumes,
+        networks,
+      }),
     );
     const candidate = await step("inspect-candidate", (context) =>
       adapter.inspectCandidate(context),
     );
     assertSnapshotIdentity(candidate, daemonLease.identity);
+    if (
+      candidate.privateFiles !== undefined &&
+      !same(candidate.privateFiles, candidatePrivateFiles)
+    )
+      reject(
+        "Candidate snapshot private files differ from the frozen candidate configuration.",
+      );
     assertSelectionSnapshot(candidate, {
+      slot: frozenPlan.slot,
       volumes,
+      networks,
       image: candidateImage,
-      privateDir: frozenPlan.privateDir,
+      privateDir: candidateProfile.privateDir,
+      baselinePrivateDir: baselineProfile.privateDir,
     });
     inventoryPolicy.matchSnapshot(candidate, lastInventory);
-    assertRuntimeProof(candidate.runtime, candidateImage, volumes);
-    assertSelectionDelta(candidate, original, volumes, candidateImage);
+    assertRuntimeProof(candidate.runtime, candidateProfile);
+    assertSelectionDelta(candidate, original, candidateProfile);
     const browser = await step("browser-window", (context) =>
-      adapter.browserWindow(context),
-    );
-    if (browser?.passed !== true || !hex.test(browser.evidenceHash || ""))
-      reject("Browser window did not produce passing evidence.");
-    // Explicit return is the normal successful path. No rollback is attempted on failure.
-    const prestart = await step("return-baseline", (context) =>
-      adapter.returnToBaseline({
+      adapter.browserWindow({
         ...context,
-        image: frozenPlan.baselineImage,
-        volumes: baselineVolumes,
+        slot: frozenPlan.slot,
+        volumes,
+        networks,
       }),
     );
+    assertBrowserEvidence(browser, {
+      slot: frozenPlan.slot,
+      baselinePrivateDir: baselineProfile.privateDir,
+      candidatePrivateDir: candidateProfile.privateDir,
+      baselineProfileDir,
+    });
+    // Explicit return is the normal successful path. No rollback is attempted on failure.
+    const prestart = await step("return-baseline", (context) => {
+      inventoryPolicy.markCandidateReturned();
+      return adapter.returnToBaseline({
+        ...context,
+        image: baselineProfile.image,
+        volumes: baselineVolumes,
+        networks: baselineNetworks,
+      });
+    });
     const candidateWriters = candidate.containers.filter(
       (value) =>
         value.Config.Labels["com.docker.compose.service"] === "taskdesk",
@@ -2156,8 +3906,10 @@ export async function coordinateCandidateSelection({
     assertStoppedWriters(prestart?.writerState, candidateWriters);
     assertDataProof(prestart.data);
     if (
-      prestart.image !== frozenPlan.baselineImage ||
+      prestart.image !== baselineProfile.image ||
       !same(prestart.volumes, baselineVolumes) ||
+      (prestart.networks !== undefined &&
+        !same(prestart.networks, baselineNetworks)) ||
       !same(prestart.data, backup.data)
     )
       reject(
@@ -2171,21 +3923,15 @@ export async function coordinateCandidateSelection({
     );
     assertSnapshotIdentity(returned, daemonLease.identity);
     assertSelectionSnapshot(returned, {
-      image: frozenPlan.baselineImage,
-      privateDir: frozenPlan.privateDir,
+      slot: null,
+      volumes: baselineVolumes,
+      networks: baselineNetworks,
+      image: baselineProfile.image,
+      privateDir: baselineProfile.privateDir,
     });
     inventoryPolicy.matchSnapshot(returned, lastInventory);
-    assertRuntimeProof(
-      returned.runtime,
-      frozenPlan.baselineImage,
-      baselineVolumes,
-    );
-    assertSelectionDelta(
-      returned,
-      original,
-      baselineVolumes,
-      frozenPlan.baselineImage,
-    );
+    assertRuntimeProof(returned.runtime, baselineProfile);
+    assertSelectionDelta(returned, original, baselineProfile);
     record("returned-baseline", {
       prestartData: prestart.data,
       poststartData: returned.runtime.data,
@@ -2200,7 +3946,7 @@ export async function coordinateCandidateSelection({
     durableWrite(saved, readFileSync(journal));
     unlinkSync(journal);
     lease.release();
-    return { journal: saved, volumes, returnedToBaseline: true };
+    return { journal: saved, volumes, networks, returnedToBaseline: true };
   } catch {
     stopped = true;
     try {

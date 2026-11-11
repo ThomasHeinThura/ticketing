@@ -22,14 +22,22 @@ function tick(state) {
 }
 export function emitDaemonEvent(state, type, action, id, attributes = {}) {
   const container = state.inventory?.find((container) => container.Id === id);
+  const network =
+    type === "network"
+      ? state.networks?.[id] ||
+        Object.values(state.networks || {}).find((entry) => entry.Id === id)
+      : null;
+  const resolvedId = network ? network.Id : id;
   const resolvedAttributes =
     type === "container" && container
       ? { name: container.Name.replace(/^\//, ""), ...attributes }
-      : attributes;
+      : type === "network" && network
+        ? { name: network.Name, ...attributes }
+        : attributes;
   const event = {
     Type: type,
     Action: action,
-    Actor: { ID: id, Attributes: resolvedAttributes },
+    Actor: { ID: resolvedId, Attributes: resolvedAttributes },
     timeNano: tick(state),
   };
   state.events = [...(state.events || []), event].slice(-256);
@@ -79,6 +87,27 @@ export function fakeDaemon(
       if (!state.volumes || args.slice(2).some((name) => !state.volumes[name]))
         return { status: 1, stdout: "" };
       result = args.slice(2).map((name) => state.volumes[name]);
+    } else if (args[0] === "network" && args[1] === "ls") {
+      if (!state.networks) return { status: 1, stdout: "" };
+      result = Object.values(state.networks)
+        .map((network) => network.Id)
+        .sort()
+        .join("\n");
+    } else if (args[0] === "network" && args[1] === "inspect") {
+      const byId = new Map(
+        Object.values(state.networks || {}).map((network) => [
+          network.Id,
+          network,
+        ]),
+      );
+      if (
+        !state.networks ||
+        args.slice(2).some((key) => !state.networks[key] && !byId.has(key))
+      )
+        return { status: 1, stdout: "" };
+      result = args
+        .slice(2)
+        .map((key) => structuredClone(state.networks[key] || byId.get(key)));
     } else if (args[0] === "ps")
       result =
         !args.includes("--filter") && Array.isArray(state.inventory)
