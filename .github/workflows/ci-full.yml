@@ -108,7 +108,7 @@ jobs:
 
   e2e:
     name: e2e - protected-route redirect
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -127,9 +127,14 @@ jobs:
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      - name: Acquire Ubuntu Docker plugin packages
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: |
+          mkdir "$RUNNER_TEMP/taskdesk-ubuntu-debs"
+          scripts/ci/acquire-ubuntu-ci-deps.sh debs "$RUNNER_TEMP/taskdesk-ubuntu-debs"
       - name: Install Chromium
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+        run: scripts/ci/acquire-ubuntu-ci-deps.sh chromium
       - name: Run browser smoke
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:e2e
@@ -137,7 +142,7 @@ jobs:
       # fails the job on its own, so this cannot turn a failure into a pass).
       - name: Verify the deploy helpers against a real Docker engine
         if: ${{ always() && steps.scope.outputs.full != 'false' }}
-        run: scripts/ci/run-deploy-real-docker.sh
+        run: scripts/ci/run-deploy-real-docker.sh "$RUNNER_TEMP/taskdesk-ubuntu-debs"
       - name: Build and boot the exact candidate shipping image
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: scripts/ci/run-shipping-image-smoke.sh --candidate-sha "${{ github.event.pull_request.head.sha || github.sha }}"
@@ -160,7 +165,7 @@ jobs:
 
   a11y:
     name: a11y - accessibility (G4, axe)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -180,7 +185,7 @@ jobs:
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+        run: scripts/ci/acquire-ubuntu-ci-deps.sh chromium
       - name: Scan Storybook stories and browser screens
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:a11y
@@ -195,7 +200,7 @@ jobs:
 
   visual:
     name: visual regression (G8)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Screenshot baselines depend on browser and font rasterization. Pin the Playwright
     # browser and its Noble system fonts to the environment used to produce the checked-in
     # Linux snapshots; the default hosted runner produced consistent false pixel diffs.
@@ -217,12 +222,6 @@ jobs:
       - name: Build the web bundle and its transitive workspace dependencies
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm build --filter=@taskdesk/web... --force
-      - name: Normalize Ubuntu APT mirror for Chromium dependencies
-        if: ${{ steps.scope.outputs.full != 'false' }}
-        run: node scripts/ci/normalize-ubuntu-apt-mirror.mjs
-      - name: Install Chromium
-        if: ${{ steps.scope.outputs.full != 'false' }}
-        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Check inventory scope and run screen and Storybook baselines
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:visual
@@ -237,7 +236,7 @@ jobs:
 
   performance:
     name: performance - budgets (G11)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -258,7 +257,7 @@ jobs:
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+        run: scripts/ci/acquire-ubuntu-ci-deps.sh chromium
       - name: Measure G11 performance budgets
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm test:perf

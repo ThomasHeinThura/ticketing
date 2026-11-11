@@ -107,7 +107,7 @@ jobs:
 
   static:
     name: static
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -131,7 +131,7 @@ jobs:
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
       - name: Install Chromium for G3
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
+        run: scripts/ci/acquire-ubuntu-ci-deps.sh chromium
       - name: pnpm check:tokens
         if: ${{ steps.scope.outputs.full != 'false' }}
         # Token parity/literals plus density-slot enforcement and built-CSS Chromium contrast.

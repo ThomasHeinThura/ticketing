@@ -13,8 +13,6 @@ set -Eeuo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-SUDO=''
-[ "$(id -u)" -eq 0 ] || SUDO='sudo'
 
 run_suite() {
   local label="$1" out="$work/${1// /-}.out"
@@ -28,10 +26,16 @@ run_suite() {
 
 run_suite "runner toolchain"
 
-mkdir -p "$work/debs" "$work/x" "$work/config/cli-plugins"
-$SUDO apt-get update -qq
-(cd "$work/debs" && apt-get download docker-compose-v2 docker-buildx)
-for deb in "$work"/debs/*.deb; do dpkg -x "$deb" "$work/x"; done
+debs_dir="${1:-}"
+[[ $# -eq 1 && -d "$debs_dir" && ! -L "$debs_dir" ]] || { echo "Expected acquired Ubuntu DEB directory" >&2; exit 1; }
+for package in docker-compose-v2 docker-buildx; do
+  matches=("$debs_dir"/"$package"_*.deb)
+  [[ ${#matches[@]} -eq 1 && -f "${matches[0]}" ]] || { echo "Expected exactly one $package DEB" >&2; exit 1; }
+done
+
+
+mkdir -p "$work/x" "$work/config/cli-plugins"
+for deb in "$debs_dir"/*.deb; do dpkg -x "$deb" "$work/x"; done
 for plugin in docker-compose docker-buildx; do
   src="$(find "$work/x" -type f -name "$plugin" -path '*cli-plugins*' | head -n 1)"
   [ -n "$src" ] || { echo "Ubuntu package did not contain $plugin" >&2; exit 1; }
@@ -41,7 +45,7 @@ done
 export TASKDESK_DOCKER_CONFIG="$work/config"
 # Prove the second run uses Ubuntu's plugins, not the runner's: the version the CLI reports
 # through DOCKER_CONFIG must equal the version recorded in the extracted .deb packages.
-deb_version() { dpkg-deb -f "$(ls "$work"/debs/"$1"_*.deb)" Version; }
+deb_version() { dpkg-deb -f "$(ls "$debs_dir"/"$1"_*.deb)" Version; }
 want_compose="$(deb_version docker-compose-v2)"
 want_buildx="$(deb_version docker-buildx)"
 got_compose="$(DOCKER_CONFIG="$TASKDESK_DOCKER_CONFIG" docker compose version)"
