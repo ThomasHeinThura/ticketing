@@ -862,10 +862,12 @@ function RequestTypesPage() {
                                   `cf.${candidate.key}` === field.mapsTo?.field,
                               )?.name ??
                               field.mapsTo.field)
-                            : undefined}
+                            : t("unmapped", {
+                                defaultValue: "Keep in request data",
+                              })}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent alignItemWithTrigger={false}>
                         <SelectItem value="__none__">
                           {t("unmapped", {
                             defaultValue: "Keep in request data",
@@ -994,7 +996,7 @@ function RequestTypesPage() {
                                 (candidate) =>
                                   candidate.key === field.showIf?.field_key,
                               )?.label
-                            : undefined}
+                            : t("always", { defaultValue: "Always visible" })}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>

@@ -262,7 +262,7 @@ describe("request type editor", () => {
     ).toBeTruthy();
   });
 
-  it("clears mapsTo when selecting Keep in request data (D9)", async () => {
+  it("selects and clears a mapping before saving (D9)", async () => {
     renderPage();
     await screen.findAllByLabelText("Field key");
 
@@ -273,11 +273,23 @@ describe("request type editor", () => {
     const firstMapsTo = mapsToTriggers[0];
     if (!firstMapsTo) throw new Error("Maps to trigger is missing");
     fireEvent.click(firstMapsTo);
+    const descriptionOption = screen.getByRole("option", {
+      name: "Work item description",
+    });
+    fireEvent.pointerDown(descriptionOption, {
+      pointerType: "mouse",
+      button: 0,
+    });
+    fireEvent.click(descriptionOption);
+    expect(firstMapsTo.textContent).toContain("Work item description");
+    expect(firstMapsTo.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(firstMapsTo);
     const clearOption = screen.getByRole("option", {
       name: "Keep in request data",
     });
     fireEvent.pointerDown(clearOption, { pointerType: "mouse", button: 0 });
     fireEvent.click(clearOption);
+    expect(firstMapsTo.textContent).toContain("Keep in request data");
 
     const saveButton = screen.getByRole("button", { name: /^save$/i });
     fireEvent.click(saveButton);
@@ -319,14 +331,19 @@ describe("request type editor", () => {
     const showWhenTriggers = screen.getAllByRole("combobox", {
       name: "Show when",
     });
+    const firstShowWhen = showWhenTriggers[0];
     const secondShowWhen = showWhenTriggers[1];
-    if (!secondShowWhen) throw new Error("Show when trigger is missing");
+    if (!firstShowWhen || !secondShowWhen)
+      throw new Error("Show when trigger is missing");
+    expect(firstShowWhen.textContent).toContain("Always visible");
+    expect(secondShowWhen.textContent).toContain("I agree");
     fireEvent.click(secondShowWhen);
     const alwaysOption = screen.getByRole("option", {
       name: "Always visible",
     });
     fireEvent.pointerDown(alwaysOption, { pointerType: "mouse", button: 0 });
     fireEvent.click(alwaysOption);
+    expect(secondShowWhen.textContent).toContain("Always visible");
 
     const saveButton = screen.getByRole("button", { name: /^save$/i });
     fireEvent.click(saveButton);
