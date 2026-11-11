@@ -4,8 +4,10 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import os from "node:os";
@@ -21,7 +23,12 @@ function fixture(t, failure = "none") {
   const bin = path.join(dir, "bin");
   const webBin = path.join(dir, "apps/web/node_modules/.bin");
   const debs = path.join(dir, "debs");
-  for (const item of [bin, webBin, debs]) mkdirSync(item, { recursive: true });
+  const repoCi = path.join(dir, "scripts/ci");
+  for (const item of [bin, webBin, debs, repoCi])
+    mkdirSync(item, { recursive: true });
+  const copied = path.join(repoCi, "acquire-ubuntu-ci-deps.sh");
+  writeFileSync(copied, readFileSync(script));
+  chmodSync(copied, 0o755);
   const executable = (file, source) => {
     writeFileSync(file, `#!/bin/bash\nset -eu\n${source}\n`);
     chmodSync(file, 0o755);
@@ -59,7 +66,7 @@ function fixture(t, failure = "none") {
   const log = path.join(dir, "log");
   const capture = path.join(dir, "config");
   const run = (...args) =>
-    spawnSync(script, args, {
+    spawnSync(copied, args, {
       cwd: dir,
       env: {
         ...process.env,
@@ -67,7 +74,7 @@ function fixture(t, failure = "none") {
         LOG: log,
         CONFIG_CAPTURE: capture,
         FAILURE: failure,
-        EXPECTED_SCRIPT: script,
+        EXPECTED_SCRIPT: copied,
       },
       encoding: "utf8",
     });
@@ -219,4 +226,234 @@ test("a nonempty DEB directory is rejected before APT runs", (t) => {
   writeFileSync(path.join(f.debs, "stale.deb"), "stale");
   assert.notEqual(f.run("debs", f.debs).status, 0);
   assert.throws(() => f.log(), { code: "ENOENT" });
+});
+
+function bundleFixture(t, { verifier = "ok", realVerifier = false } = {}) {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "ci-apt-bundle-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const bin = path.join(dir, "bin");
+  const webBin = path.join(dir, "repo/apps/web/node_modules/.bin");
+  const debs = path.join(dir, "debs");
+  const repoCi = path.join(dir, "repo/scripts/ci");
+  for (const item of [bin, webBin, debs, repoCi])
+    mkdirSync(item, { recursive: true });
+  const copied = path.join(repoCi, "acquire-ubuntu-ci-deps.sh");
+  writeFileSync(copied, readFileSync(script));
+  chmodSync(copied, 0o755);
+  if (realVerifier) {
+    for (const name of [
+      "verify-ubuntu-ci-bundle.mjs",
+      "ubuntu-ci-bundle.manifest.json",
+    ])
+      writeFileSync(
+        path.join(repoCi, name),
+        readFileSync(path.join(root, "scripts/ci", name)),
+      );
+  } else {
+    writeFileSync(path.join(repoCi, "ubuntu-ci-bundle.manifest.json"), "{}\n");
+    writeFileSync(
+      path.join(repoCi, "verify-ubuntu-ci-bundle.mjs"),
+      `import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import path from "node:path";
+const [a, archive, m, manifest, d, parent] = process.argv.slice(2);
+appendFileSync(process.env.LOG, \`verify \${a} \${path.basename(archive)} \${path.basename(manifest)}\\n\`);
+if (process.env.VERIFIER === "fail") { process.stderr.write("Ubuntu CI bundle: archive checksum mismatch\\n"); process.exit(1); }
+const out = mkdtempSync(path.join(parent, "ubuntu-ci-bundle-"));
+for (const d of ["debs", "docker-debs", "apt-repo"]) mkdirSync(path.join(out, d));
+for (const n of ["docker-compose-v2_2_amd64.deb", "docker-buildx_1_amd64.deb"]) writeFileSync(path.join(out, "docker-debs", n), n);
+if (process.env.EXTRA_DOCKER) writeFileSync(path.join(out, "docker-debs", "docker-compose-v2_3_amd64.deb"), "x");
+const roots = [];
+for (let i = 0; i < Number(process.env.ROOT_COUNT ?? 33); i++) roots.push(\`root\${String(i).padStart(2, "0")}\`);
+writeFileSync(path.join(out, "playwright-roots.txt"), roots.join("\\n") + "\\n");
+writeFileSync(path.join(out, "apt-repo", "Packages"), "");
+process.stdout.write(out + "\\n");
+`,
+    );
+  }
+  const executable = (file, source) => {
+    writeFileSync(file, `#!/bin/bash\nset -eu\n${source}\n`);
+    chmodSync(file, 0o755);
+  };
+  executable(
+    path.join(bin, "timeout"),
+    `[[ "$1" == --kill-after=10s && "$2" == 8m && "$3" == "$EXPECTED_SCRIPT" && "$4" == --bounded ]] || exit 2
+shift 2
+exec "$@"`,
+  );
+  executable(path.join(bin, "sudo"), 'echo "sudo" >> "$LOG"; exec "$@"');
+  executable(
+    path.join(bin, "apt-get"),
+    `[[ "$1" == -c ]]
+conf="$2"
+shift 2
+echo "apt-get $*" >> "$LOG"
+echo "$DEBIAN_FRONTEND" > "$LOG.frontend.$1"
+cp "$conf" "$LOG.conf.$1"
+sed -n 's/^Dir::Etc::sourcelist "\\(.*\\)";$/\\1/p' "$conf" | while read -r list; do cp "$list" "$LOG.sources.$1"; ls "$(dirname "$list")" > "$LOG.work.$1"; done`,
+  );
+  executable(path.join(webBin, "playwright"), 'echo "playwright $*" >> "$LOG"');
+  const log = path.join(dir, "log");
+  writeFileSync(log, "");
+  const archive = path.join(dir, "bundle.tar");
+  writeFileSync(archive, "archive");
+  const run = (...args) =>
+    spawnSync(copied, args, {
+      cwd: dir,
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        LOG: log,
+        VERIFIER: verifier === "fail" ? "fail" : "ok",
+        EXPECTED_SCRIPT: copied,
+        ...(verifier === "short" ? { ROOT_COUNT: "32" } : {}),
+        ...(verifier === "dockerextra" ? { EXTRA_DOCKER: "1" } : {}),
+      },
+      encoding: "utf8",
+    });
+  return {
+    run,
+    debs,
+    archive,
+    dir,
+    logPath: log,
+    log: () => readFileSync(log, "utf8"),
+  };
+}
+
+test("bundle debs mode copies exactly the two Docker DEBs with no APT call", (t) => {
+  const f = bundleFixture(t);
+  const result = f.run("--bundle-archive", f.archive, "debs", f.debs);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(readdirSync(f.debs).sort(), [
+    "docker-buildx_1_amd64.deb",
+    "docker-compose-v2_2_amd64.deb",
+  ]);
+  assert.equal(
+    f.log(),
+    "verify --archive bundle.tar ubuntu-ci-bundle.manifest.json\n",
+  );
+});
+
+test("bundle chromium mode installs only the 33 roots from an isolated verified local repository", (t) => {
+  const f = bundleFixture(t);
+  const result = f.run("--bundle-archive", f.archive, "chromium");
+  assert.equal(result.status, 0, result.stderr);
+  const lines = f.log().trim().split("\n");
+  assert.equal(lines.length, 6);
+  assert.match(lines[0], /^verify /);
+  assert.equal(lines[1], "sudo");
+  assert.equal(lines[2], "apt-get update -qq");
+  assert.equal(lines[3], "sudo");
+  const roots = Array.from(
+    { length: 33 },
+    (_, i) => `root${String(i).padStart(2, "0")}`,
+  );
+  assert.equal(
+    lines[4],
+    `apt-get install -y --no-upgrade --no-install-recommends ${roots.join(" ")}`,
+  );
+  assert.equal(lines[5], "playwright install chromium");
+  assert.doesNotMatch(
+    f.log(),
+    /install-deps|apt-get download|\.deb|--no-download/,
+  );
+  for (const step of ["update", "install"])
+    assert.equal(
+      readFileSync(`${f.logPath}.frontend.${step}`, "utf8"),
+      "noninteractive\n",
+    );
+  const config = readFileSync(`${f.logPath}.conf.update`, "utf8");
+  for (const line of [
+    'APT::Sandbox::User "root";',
+    'APT::Get::Allow-Downgrades "false";',
+    'APT::Get::Remove "false";',
+    'APT::Get::Upgrade "false";',
+    'APT::Install-Recommends "false";',
+    'APT::Install-Suggests "false";',
+  ])
+    assert.ok(config.includes(`${line}\n`), line);
+  assert.match(config, /^Dir::Etc::sourcelist ".+\/sources\.list";$/m);
+  assert.match(config, /^Dir::Etc::sourceparts ".+\/sources\.list\.d";$/m);
+  assert.match(config, /^Dir::State::lists ".+\/lists";$/m);
+  assert.match(config, /^Dir::Cache::archives ".+\/archives";$/m);
+  assert.match(config, /^Dir::Bin::methods ".+\/apt-methods";$/m);
+  assert.doesNotMatch(config, /Acquire::|http/);
+  assert.equal(readFileSync(`${f.logPath}.conf.install`, "utf8"), config);
+  const sources = readFileSync(`${f.logPath}.sources.update`, "utf8");
+  assert.match(
+    sources,
+    /^deb \[trusted=yes\] file:\/.+\/ubuntu-ci-bundle-[^/]+\/apt-repo \.\/\n$/,
+  );
+  assert.equal(sources.trim().split("\n").length, 1);
+});
+
+test("bundle mode fails closed without any network fallback", (t) => {
+  for (const mode of [["debs"], ["chromium"]]) {
+    const f = bundleFixture(t, { verifier: "fail" });
+    const result = f.run(
+      "--bundle-archive",
+      f.archive,
+      ...mode,
+      ...(mode[0] === "debs" ? [f.debs] : []),
+    );
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /archive checksum mismatch/);
+    assert.equal(
+      f.log(),
+      "verify --archive bundle.tar ubuntu-ci-bundle.manifest.json\n",
+    );
+    assert.deepEqual(readdirSync(f.debs), []);
+  }
+});
+
+test("bundle mode rejects missing, symlinked or malformed archives and wrong package counts", (t) => {
+  const f = bundleFixture(t);
+  const link = path.join(f.dir, "link.tar");
+  symlinkSync(f.archive, link);
+  for (const args of [
+    ["--bundle-archive"],
+    ["--bundle-archive", path.join(f.dir, "absent.tar"), "chromium"],
+    ["--bundle-archive", link, "chromium"],
+    ["--bundle-archive", f.dir, "chromium"],
+  ])
+    assert.notEqual(f.run(...args).status, 0);
+  assert.equal(f.log(), "");
+  for (const verifier of ["short", "dockerextra"]) {
+    const bad = bundleFixture(t, { verifier });
+    const mode = verifier === "short" ? ["chromium"] : ["debs", bad.debs];
+    assert.equal(bad.run("--bundle-archive", bad.archive, ...mode).status, 1);
+    assert.doesNotMatch(bad.log(), /apt-get|playwright/);
+    assert.deepEqual(readdirSync(bad.debs), []);
+  }
+});
+
+test("arguments are validated before bundle verification or any acquisition", (t) => {
+  const f = bundleFixture(t);
+  for (const args of [
+    ["--bundle-archive", f.archive, "chromium", "extra"],
+    ["--bundle-archive", f.archive, "debs"],
+    ["--bundle-archive", f.archive, "debs", path.join(f.dir, "absent")],
+    ["--bundle-archive", f.archive, "other"],
+    ["--bundle-archive", f.archive],
+  ])
+    assert.equal(f.run(...args).status, 2);
+  writeFileSync(path.join(f.debs, "stale.deb"), "x");
+  assert.equal(f.run("--bundle-archive", f.archive, "debs", f.debs).status, 2);
+  assert.equal(f.log(), "");
+});
+
+test("bundle mode with the real verifier rejects a bad archive before any APT call", (t) => {
+  const f = bundleFixture(t, { realVerifier: true });
+  const result = f.run("--bundle-archive", f.archive, "chromium");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Ubuntu CI bundle: /);
+  assert.equal(f.log(), "");
+});
+
+test("workflows still use the existing APT path until the bundle is approved", () => {
+  for (const file of ["ci-fast.yml", "ci-full.yml"])
+    assert.doesNotMatch(
+      readFileSync(path.join(root, ".github/workflows", file), "utf8"),
+      /--bundle-archive/,
+    );
 });
