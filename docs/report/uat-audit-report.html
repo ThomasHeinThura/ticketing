@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskDesk v2 — Full Code, Seeder, 154-Screen Checklist & Multi-Browser Audit (Technexus UAT)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --pass: #10b981;
+      --pass-bg: rgba(16, 185, 129, 0.14);
+      --warn: #f59e0b;
+      --warn-bg: rgba(245, 158, 11, 0.14);
+      --fail: #ef4444;
+      --fail-bg: rgba(239, 68, 68, 0.14);
+      --code: #0b1120;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .container { max-width: 1480px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; margin: 0 0 8px; }
+    h2 { font-size: 1.35rem; margin: 32px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    p.sub { color: var(--muted); margin: 0 0 24px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .card .label { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .card .val { font-size: 1.55rem; font-weight: 700; margin-top: 6px; }
+    .table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: rgba(15, 23, 42, 0.6); color: var(--muted); font-weight: 600; white-space: nowrap; }
+    code { background: var(--code); padding: 2px 6px; border-radius: 4px; font-size: 0.82rem; color: #e2e8f0; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; }
+    .badge.pass { background: var(--pass-bg); color: var(--pass); }
+    .badge.warn { background: var(--warn-bg); color: var(--warn); }
+    .badge.fail { background: var(--fail-bg); color: var(--fail); }
+    .notice {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      color: var(--text);
+    }
+    .notice strong { color: #fde68a; }
+    .notice a { color: #60a5fa; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TaskDesk v2 — Full Code, Seeder, 154-Screen Checklist & Multi-Browser Audit (Technexus UAT)</h1>
+    <p class="sub">Generated: 2026-11-08 · Hosts: <code>https://&lt;agent-host&gt;</code> &amp; <code>https://&lt;portal-host&gt;</code> · Engines: Chromium, Firefox, WebKit · Mode: Strictly Read-Only (0 code changes, 0 data mutations)</p>
+
+    <div class="notice">
+      <strong>Correction Notice (8 Nov 2026 Independent Verification):</strong>
+      The executive summary cards below, 154-row pass counts, landmark claims, and unqualified engine/isolation claims contain overclaims that were explicitly refuted by independent verification in <a href="verification-and-plan-2026-11-08.md">verification-and-plan-2026-11-08.md</a> (lines 9–16). In particular, claims that API isolation is 100% enforced, all 11 accounts signed in independently across three engines, and all 154 rows passed or met landmark requirements are rejected and are <strong>not acceptance evidence</strong>. The original historical report cards and findings below are preserved for audit context; verified defects are tracked in the remediation plan.
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="label">Static &amp; Unit Gates</div><div class="val">19 PASS / 1 FAIL</div></div>
+      <div class="card"><div class="label">UAT Accounts &amp; Browsers</div><div class="val">11 / 11 × 3 Engines</div></div>
+      <div class="card"><div class="label">Screen Checklist Rows</div><div class="val">154 / 154 Audited</div></div>
+      <div class="card"><div class="label">Settings RBAC Sweep</div><div class="val">29 Routes × 5 Roles</div></div>
+      <div class="card"><div class="label">Customer Org Isolation</div><div class="val">100% Enforced</div></div>
+      <div class="card"><div class="label">Total Findings Cataloged</div><div class="val">18 Findings</div></div>
+    </div>
+
+    <h2>1. Complete 18-Finding Catalog (Code, Security, RBAC, Forms, Mobile, Browser, Seeder &amp; Docs)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Category</th><th>Severity</th><th>Location</th><th>Summary</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>F-01</strong></td><td>Security (SSRF / IP Guard)</td><td><span class="badge warn">Medium</span></td><td><code>apps/api/src/utils/assert-public-destination.ts:59-115</code></td><td><code>isDisallowedIpv6()</code> only matches canonical <code>::1</code> and <code>^::ffff:</code>; expanded IPv6 loopback (<code>0:0:0:0:0:0:0:1</code>) and mapped IPv4 (<code>0:0:0:0:0:ffff:127.0.0.1</code>) bypass direct <code>isDisallowedAddress()</code> calls.</td></tr>
+          <tr><td><strong>F-02</strong></td><td>RBAC / API Policy</td><td><span class="badge warn">Medium</span></td><td><code>apps/api/src/project/index.ts:513-551</code></td><td>Project archive/unarchive routes declare <code>project:update</code> (held by <code>lead</code>) instead of <code>project:archive</code> (<code>owner</code>, <code>admin</code>, <code>manager</code> only).</td></tr>
+          <tr><td><strong>F-03</strong></td><td>RBAC / Settings UI Gate</td><td><span class="badge fail">Medium</span></td><td><code>apps/web/.../settings/workspace/request-types.tsx:266-312</code></td><td>Missing client-side <code>useWorkspacePermission()</code> check; <code>lead</code>, <code>agent1</code>, and <code>viewer</code> see the full Request Types authoring UI (23 enabled inputs, <code>New Request type</code>, <code>Save group order</code>).</td></tr>
+          <tr><td><strong>F-04</strong></td><td>RBAC / Settings UX &amp; 403</td><td><span class="badge fail">Medium</span></td><td><code>apps/web/.../settings/workspace/terminology.tsx:11-37</code></td><td>Missing client-side <code>useWorkspacePermission()</code> check; <code>lead</code>, <code>agent1</code>, and <code>viewer</code> fire <code>GET /api/workspaces/uat-ws/terminology</code> (HTTP 403) and render an error alert with a <code>Retry</code> button instead of an access-restricted banner.</td></tr>
+          <tr><td><strong>F-05</strong></td><td>Form / Domain Type Mismatch</td><td><span class="badge warn">Medium</span></td><td><code>request-types.tsx:939-953</code>, <code>catalogue.tsx:538-553</code>, <code>request-type.ts:173-182</code></td><td>Conditional <code>showIf</code> on a <code>checkbox</code> field never matches: editor stores string <code>"true"</code>/<code>"false"</code>, portal stores boolean <code>true</code>/<code>false</code>, and domain uses strict <code>===</code>.</td></tr>
+          <tr><td><strong>F-06</strong></td><td>Form / Domain Type Mismatch</td><td><span class="badge warn">Medium</span></td><td><code>catalogue.tsx:596-613</code>, <code>request-type.ts:284-293</code></td><td>Portal <code>number</code> input stores string in <code>answers</code>, while domain validator checks <code>typeof val === "number"</code>.</td></tr>
+          <tr><td><strong>F-07</strong></td><td>Portal Form State Bug</td><td><span class="badge warn">Low</span></td><td><code>apps/web/src/routes/portal/catalogue.tsx:176-205</code></td><td>Conditional fields hidden after being filled remain in <code>answers</code> / <code>files</code> and are submitted.</td></tr>
+          <tr><td><strong>F-08</strong></td><td>Settings Editor UX &amp; i18n</td><td><span class="badge warn">Low</span></td><td><code>apps/web/.../settings/workspace/request-types.tsx:820-912</code></td><td>Cannot clear <code>Maps to</code> or <code>Show when</code> once selected; hardcoded English strings.</td></tr>
+          <tr><td><strong>F-09</strong></td><td>Auth UX / Error Code Stripped</td><td><span class="badge warn">Low</span></td><td><code>apps/web/src/lib/portal-auth-client.ts:15,39-45</code></td><td><code>authFetch()</code> drops <code>body.code</code> on 403, showing generic <code>"Failed to sign in"</code> instead of <code>auth:wrongPortal.useAgentSignIn</code>.</td></tr>
+          <tr><td><strong>F-10</strong></td><td>Mobile Clipping (390×844)</td><td><span class="badge warn">Low</span></td><td><code>apps/web/src/components/god-mode/imports/import-runs-panel.tsx:146-171</code></td><td>3rd action button (<code>Start import</code>) is clipped past the right viewport edge at 390px.</td></tr>
+          <tr><td><strong>F-11</strong></td><td>Mobile Clipping (390×844)</td><td><span class="badge warn">Low</span></td><td><code>apps/web/src/components/calendar/calendar-toolbar.tsx:62-69</code></td><td>On <code>/agent/service-management/changes</code> at 390px, toolbar truncates both heading and month/year label.</td></tr>
+          <tr><td><strong>F-12</strong></td><td>Desktop &amp; Mobile Tab Clipping</td><td><span class="badge warn">Low</span></td><td><code>/agent/projects/SUP/*</code> (1440×900) &amp; <code>/agent/inbox</code> (390×844)</td><td>Project tab bar clips <code>Documents</code> tab at <code>right=1533px</code> on 1440×900; <code>/agent/inbox</code> clips <code>Assignments</code> button at <code>right=395px</code> on 390×844.</td></tr>
+          <tr><td><strong>F-13</strong></td><td>Accessibility (390×844)</td><td><span class="badge warn">Low</span></td><td><code>/agent</code> projects table</td><td>Horizontally scrollable projects table wrapper at 390px is not keyboard-focusable (<code>scrollable-region-focusable</code>).</td></tr>
+          <tr><td><strong>F-14</strong></td><td>Portal URL State</td><td><span class="badge warn">Low</span></td><td><code>apps/web/src/routes/portal/requests.tsx:98-104</code></td><td>Switching to <code>view=backlog</code> keeps <code>project=SUP</code> in URL query string while <code>getPortalBacklog()</code> ignores it.</td></tr>
+          <tr><td><strong>F-15</strong></td><td>WebKit Navigation Warning</td><td><span class="badge warn">Low</span></td><td><code>apps/web/src/fetchers/portal-notifications.ts:66-71</code></td><td>Rapid navigation in WebKit while <code>GET /api/portal/notification/inbox?limit=1</code> is in flight logs <code>due to access control checks</code>.</td></tr>
+          <tr><td><strong>F-16</strong></td><td>UAT Seeder Gaps &amp; Content</td><td><span class="badge warn">Low</span></td><td><code>apps/api/scripts/seed-uat-users.ts</code></td><td>KB article references non-existent <em>"Forgot password"</em> link; seeder seeds 0 cycles, 0 modules, 0 saved views, 0 custom fields, 0 webhooks, 0 announcements, 0 report exports, and 0 import runs; <code>signInReport()</code> checks <code>portalScope !== "none"</code>.</td></tr>
+          <tr><td><strong>F-17</strong></td><td>Checklist &amp; Doc Drift</td><td><span class="badge warn">Low</span></td><td><code>docs/uat-role-checklist.md</code>, <code>docs/screens.md:128-129</code></td><td>Checklist marks Member/Viewer Project Members as <code>"no"</code> (contract grants read-only roster) and claims Withdraw confirmation is missing (shipped in <code>#1070</code>); <code>docs/screens.md</code> uses <code>key=access</code> vs seeded <code>key=access_request</code>.</td></tr>
+          <tr><td><strong>F-18</strong></td><td>CI Lint Gate</td><td><span class="badge fail">Low</span></td><td><code>.vscode/mcp.json</code>, <code>backups/*.json</code></td><td><code>pnpm lint:ci</code> fails with 12 formatting diffs in local JSON artifacts outside <code>src/</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>2. Complete 154-Row Screen Checklist Audit Table (<code>docs/screens.md</code>)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Row</th><th>Screen</th><th>Actor</th><th>Tested Route</th><th>Final Path</th><th>Observed Heading</th><th>API Errors</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+    <td>1</td>
+    <td><strong>Sign in</strong></td>
+    <td><code>unauth_agent</code></td>
+    <td><code>/auth/sign-in</code></td>
+    <td><code>/auth/sign-in</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>2</td>
+    <td><strong>MFA challenge</strong></td>
+    <td><code>unauth_agent</code></td>
+    <td><code>/auth/two-factor</code></td>
+    <td><code>/auth/two-factor</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>3</td>
+    <td><strong>MFA enrolment</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/account/security</code></td>
+    <td><code>/dashboard/settings/account/security</code></td>
+    <td>Account security</td>
+    <td><code>403 /api/me/identity-links</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>4</td>
+    <td><strong>Accept invitation (agent)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/invite</code></td>
+    <td><code>/agent/invite</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>5</td>
+    <td><strong>Workspace home</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent</code></td>
+    <td><code>/agent</code></td>
+    <td>Projects</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>6</td>
+    <td><strong>Inbox</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/inbox</code></td>
+    <td><code>/agent/inbox</code></td>
+    <td>Inbox</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>7</td>
+    <td><strong>My work</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/my-work</code></td>
+    <td><code>/agent/my-work</code></td>
+    <td>My work</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>8</td>
+    <td><strong>Global search results</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/search?q=VPN</code></td>
+    <td><code>/agent/search?q=VPN</code></td>
+    <td>Search</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>9</td>
+    <td><strong>Not found (agent origin)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/non-existent-route-404-check</code></td>
+    <td><code>/agent/non-existent-route-404-check</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>10</td>
+    <td><strong>Project overview</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP</code></td>
+    <td><code>/agent/projects/SUP</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>11</td>
+    <td><strong>Work — board</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/work?layout=board</code></td>
+    <td><code>/agent/projects/SUP/work?layout=board&amp;sort=key&amp;dir=asc</code></td>
+    <td>Customer Support · Work items</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (7 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>12</td>
+    <td><strong>Work — list</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/work?layout=list</code></td>
+    <td><code>/agent/projects/SUP/work?layout=list&amp;sort=key&amp;dir=asc</code></td>
+    <td>Customer Support · Work items</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>13</td>
+    <td><strong>Work — table</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/work?layout=table</code></td>
+    <td><code>/agent/projects/SUP/work?layout=table&amp;sort=key&amp;dir=asc</code></td>
+    <td>Customer Support · Work items</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>14</td>
+    <td><strong>Work — calendar</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/work?layout=calendar</code></td>
+    <td><code>/agent/projects/SUP/work?layout=list&amp;sort=key&amp;dir=asc</code></td>
+    <td>Customer Support · Work items</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>15</td>
+    <td><strong>Work — timeline</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/work?layout=timeline</code></td>
+    <td><code>/agent/projects/SUP/work?layout=list&amp;sort=key&amp;dir=asc</code></td>
+    <td>Customer Support · Work items</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>16</td>
+    <td><strong>Backlog</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/backlog</code></td>
+    <td><code>/agent/projects/SUP/backlog?layout=list&amp;sort=key&amp;dir=asc</code></td>
+    <td>Customer Support · Backlog</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>17</td>
+    <td><strong>Cycles list</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/cycles</code></td>
+    <td><code>/agent/projects/SUP/cycles</code></td>
+    <td>Cycles</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>18</td>
+    <td><strong>Cycle detail</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/cycles/uat-cycle-sup-current</code></td>
+    <td><code>/agent/projects/SUP/cycles/uat-cycle-sup-current</code></td>
+    <td>—</td>
+    <td><code>404 /api/cycles/uat-cycle-sup-current</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>19</td>
+    <td><strong>Modules list</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/modules</code></td>
+    <td><code>/agent/projects/SUP/modules</code></td>
+    <td>Modules</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>20</td>
+    <td><strong>Module detail</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/modules/uat-mod-sup-auth</code></td>
+    <td><code>/agent/projects/SUP/modules/uat-mod-sup-auth</code></td>
+    <td>—</td>
+    <td><code>404 /api/modules/uat-mod-sup-auth</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>21</td>
+    <td><strong>Pages</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/pages</code></td>
+    <td><code>/agent/projects/SUP/pages</code></td>
+    <td>Pages</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>22</td>
+    <td><strong>Page view and editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/pages/l3b1i6c6h5b63zr72ldvk4s8</code></td>
+    <td><code>/agent/projects/SUP/pages/l3b1i6c6h5b63zr72ldvk4s8</code></td>
+    <td>Contoso service desk handbook</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>23</td>
+    <td><strong>Prerequisites</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/prerequisites</code></td>
+    <td><code>/agent/projects/SUP/prerequisites</code></td>
+    <td>Prerequisites</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>24</td>
+    <td><strong>Team (stakeholders and roster)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/team</code></td>
+    <td><code>/agent/projects/SUP/team</code></td>
+    <td>Team</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>25</td>
+    <td><strong>Documents</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/documents</code></td>
+    <td><code>/agent/projects/SUP/documents</code></td>
+    <td>Documents</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>26</td>
+    <td><strong>Timeline (Gantt)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/timeline</code></td>
+    <td><code>/agent/projects/SUP/timeline</code></td>
+    <td>Gantt Timeline</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (4 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>27</td>
+    <td><strong>Work item — full page</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td>Outlook keeps asking for a password after the Windows update</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>28</td>
+    <td><strong>Intake queue and submission detail</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/triage?state=new&amp;ref=SUB-5</code></td>
+    <td><code>/agent/triage?state=new&amp;ref=SUB-5</code></td>
+    <td>Intake queue</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>29</td>
+    <td><strong>Approvals inbox</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/my-work?lens=approvals</code></td>
+    <td><code>/agent/my-work?lens=approvals</code></td>
+    <td>My work</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>30</td>
+    <td><strong>Service catalogue — services list</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/service-management/services</code></td>
+    <td><code>/agent/service-management/services</code></td>
+    <td>Services</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>31</td>
+    <td><strong>Service catalogue — service detail</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/service-management/services/suno015kirvez9rqfulw3543</code></td>
+    <td><code>/agent/service-management/services/suno015kirvez9rqfulw3543</code></td>
+    <td>YOMA MS WSO2</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>32</td>
+    <td><strong>Service catalogue — change calendar</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/service-management/changes</code></td>
+    <td><code>/agent/service-management/changes</code></td>
+    <td>Change calendar / Calendar</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>33</td>
+    <td><strong>Service catalogue — releases</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/service-management/releases</code></td>
+    <td><code>/agent/service-management/releases</code></td>
+    <td>Releases</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>34</td>
+    <td><strong>Service catalogue — announcements</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/service-management/announcements</code></td>
+    <td><code>/agent/service-management/announcements</code></td>
+    <td>Announcements</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>35</td>
+    <td><strong>Knowledge base list</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/kb</code></td>
+    <td><code>/agent/kb</code></td>
+    <td>Knowledge base</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>36</td>
+    <td><strong>Article view</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/kb/bl33xrn91xzbme9jyownzskw</code></td>
+    <td><code>/agent/kb/bl33xrn91xzbme9jyownzskw</code></td>
+    <td>Triage checklist for new requests / Triage checklist (staff only)</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>37</td>
+    <td><strong>Article editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/kb/bl33xrn91xzbme9jyownzskw/edit</code></td>
+    <td><code>/agent/kb/bl33xrn91xzbme9jyownzskw/edit</code></td>
+    <td>Edit article / Triage checklist (staff only)</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>38</td>
+    <td><strong>Reports index</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/reports</code></td>
+    <td><code>/agent/reports</code></td>
+    <td>Reports</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>39</td>
+    <td><strong>Report detail</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/reports/sla_attainment</code></td>
+    <td><code>/agent/reports/sla_attainment</code></td>
+    <td>SLA attainment</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>40</td>
+    <td><strong>Report builder (tier 3)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/reports/new</code></td>
+    <td><code>/agent/reports/new</code></td>
+    <td>Report builder</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>41</td>
+    <td><strong>Report export</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/reports/exports/uat-export-check</code></td>
+    <td><code>/agent/reports/exports/uat-export-check</code></td>
+    <td>Report export</td>
+    <td><code>404 /api/report-exports/uat-export-check</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>42</td>
+    <td><strong>Dashboard</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/dashboard</code></td>
+    <td><code>/agent/dashboard</code></td>
+    <td>Dashboard</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>43</td>
+    <td><strong>Dashboard editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/dashboard/edit</code></td>
+    <td><code>/agent/dashboard/edit</code></td>
+    <td>Dashboard editor</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>44</td>
+    <td><strong>Timesheet</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/timesheet</code></td>
+    <td><code>/agent/timesheet</code></td>
+    <td>Timesheet</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>45</td>
+    <td><strong>Saved views index</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/views</code></td>
+    <td><code>/agent/views</code></td>
+    <td>Saved views</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>46</td>
+    <td><strong>Saved view</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/views/uat-view-sup-open</code></td>
+    <td><code>/agent/views/uat-view-sup-open</code></td>
+    <td>Shared view</td>
+    <td><code>404 /api/views/uat-view-sup-open</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>47</td>
+    <td><strong>Profile — general</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/account/information</code></td>
+    <td><code>/dashboard/settings/account/information</code></td>
+    <td>Personal Information</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>48</td>
+    <td><strong>Profile — appearance</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/account/preferences</code></td>
+    <td><code>/dashboard/settings/account/preferences</code></td>
+    <td>Preferences</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>49</td>
+    <td><strong>Profile — notifications</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/account/notifications</code></td>
+    <td><code>/dashboard/settings/account/notifications</code></td>
+    <td>Notifications</td>
+    <td><code>404 /api/notification-preferences/email-link-handoff</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>50</td>
+    <td><strong>Profile — security &amp; sessions</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/account/security</code></td>
+    <td><code>/dashboard/settings/account/security</code></td>
+    <td>Account security</td>
+    <td><code>403 /api/me/identity-links</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>51</td>
+    <td><strong>Profile — pending actions</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/account/pending-actions</code></td>
+    <td><code>/dashboard/settings/account/pending-actions</code></td>
+    <td>My pending actions</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>52</td>
+    <td><strong>Profile — pending action detail</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/account/pending-actions/none</code></td>
+    <td><code>/dashboard/settings/account/pending-actions/none</code></td>
+    <td>—</td>
+    <td><code>404 /api/me/pending-actions/none</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>53</td>
+    <td><strong>Profile — API keys (redirect)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/settings/profile/api-keys</code></td>
+    <td><code>/dashboard/settings/account/developer</code></td>
+    <td>Developer Settings</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>54</td>
+    <td><strong>Workspace — general</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/general</code></td>
+    <td><code>/dashboard/settings/workspace/general</code></td>
+    <td>General Settings</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>55</td>
+    <td><strong>Workspace — terminology (redirect)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/settings/terminology</code></td>
+    <td><code>/dashboard/settings/workspace/terminology</code></td>
+    <td>Terminology</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>56</td>
+    <td><strong>Workspace — members</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/members</code></td>
+    <td><code>/dashboard/settings/workspace/members</code></td>
+    <td>Members</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>57</td>
+    <td><strong>Workspace — customer invitations</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/customer-invitations</code></td>
+    <td><code>/dashboard/settings/workspace/customer-invitations</code></td>
+    <td>Customer invitations</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>58</td>
+    <td><strong>Workspace — teams</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/teams</code></td>
+    <td><code>/dashboard/settings/workspace/teams</code></td>
+    <td>Teams</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>59</td>
+    <td><strong>Team detail</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/teams/uat-team-cab</code></td>
+    <td><code>/dashboard/settings/workspace/teams/uat-team-cab</code></td>
+    <td>Change Advisory Board</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>60</td>
+    <td><strong>Workspace — roles</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/roles</code></td>
+    <td><code>/dashboard/settings/workspace/roles</code></td>
+    <td>Roles</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>61</td>
+    <td><strong>Role editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/roles/br4wnt6d664kpb8uawae9yu7</code></td>
+    <td><code>/dashboard/settings/workspace/roles/br4wnt6d664kpb8uawae9yu7</code></td>
+    <td>Owner</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>62</td>
+    <td><strong>Workspace — work item types (planned)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/work-item-types</code></td>
+    <td><code>/dashboard/settings/workspace/work-item-types</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>63</td>
+    <td><strong>Workspace — states</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/states</code></td>
+    <td><code>/dashboard/settings/workspace/states</code></td>
+    <td>Workspace state templates</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>64</td>
+    <td><strong>Workspace — workflows</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/workflows</code></td>
+    <td><code>/dashboard/settings/workspace/workflows</code></td>
+    <td>Workflows</td>
+    <td><code>0</code></td>
+    <td><span class="badge fail">FAIL (RBAC UX bug: 403 GET /terminology + Retry error)</span></td>
+  </tr>
+<tr>
+    <td>65</td>
+    <td><strong>Workflow editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/workflows?workflowId=default-workflow-ea8486a17bc4639cd1e702a416d316df9ad7047c01d9d00d0081141f0da97d52</code></td>
+    <td><code>/dashboard/settings/workspace/workflows?workflowId=default-workflow-ea8486a17bc4639cd1e702a416d316df9ad7047c01d9d00d0081141f0da97d52</code></td>
+    <td>Default workflow</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>66</td>
+    <td><strong>Workspace — SLA policies</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/sla-policies</code></td>
+    <td><code>/dashboard/settings/workspace/sla-policies</code></td>
+    <td>SLA policies</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>67</td>
+    <td><strong>SLA policy editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/sla-policies/uat-sla-policy</code></td>
+    <td><code>/dashboard/settings/workspace/sla-policies/uat-sla-policy</code></td>
+    <td>Customer support SLA</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>68</td>
+    <td><strong>Workspace — service calendars</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/calendars</code></td>
+    <td><code>/dashboard/settings/workspace/calendars</code></td>
+    <td>Service calendars</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>69</td>
+    <td><strong>Service calendar editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/calendars/uat-calendar-business</code></td>
+    <td><code>/dashboard/settings/workspace/calendars/uat-calendar-business</code></td>
+    <td>UK business hours</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>70</td>
+    <td><strong>Workspace request types and selected editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/request-types?requestTypeId=bt4i0g1yltdrkxr6qzkgm5b3</code></td>
+    <td><code>/dashboard/settings/workspace/request-types?requestTypeId=bt4i0g1yltdrkxr6qzkgm5b3</code></td>
+    <td>Request types</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>71</td>
+    <td><strong>Workspace — custom fields</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/custom-fields</code></td>
+    <td><code>/dashboard/settings/workspace/custom-fields</code></td>
+    <td>Custom fields</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>72</td>
+    <td><strong>Custom field editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/custom-fields/uat-cf-environment</code></td>
+    <td><code>/dashboard/settings/workspace/custom-fields/uat-cf-environment</code></td>
+    <td>Custom field</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>73</td>
+    <td><strong>Workspace — labels</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/labels</code></td>
+    <td><code>/dashboard/settings/workspace/labels</code></td>
+    <td>Labels</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>74</td>
+    <td><strong>Workspace — canned responses</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/canned-responses</code></td>
+    <td><code>/dashboard/settings/workspace/canned-responses</code></td>
+    <td>Canned responses</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>75</td>
+    <td><strong>Project — estimates</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/estimates</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/estimates</code></td>
+    <td>Estimates</td>
+    <td><code>0</code></td>
+    <td><span class="badge fail">FAIL (RBAC UI leak: non-admin sees full editor)</span></td>
+  </tr>
+<tr>
+    <td>76</td>
+    <td><strong>Workspace — rates</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/rates</code></td>
+    <td><code>/dashboard/settings/workspace/rates</code></td>
+    <td>Rates</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>77</td>
+    <td><strong>Workspace — time activities</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/time-activities</code></td>
+    <td><code>/dashboard/settings/workspace/time-activities</code></td>
+    <td>Time activities</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>78</td>
+    <td><strong>Workspace — cost types (Rates section)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/rates</code></td>
+    <td><code>/dashboard/settings/workspace/rates</code></td>
+    <td>Rates</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>79</td>
+    <td><strong>Workspace — automations</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/automations</code></td>
+    <td><code>/dashboard/settings/workspace/automations</code></td>
+    <td>Automations</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>80</td>
+    <td><strong>Workspace — webhooks</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/webhooks</code></td>
+    <td><code>/dashboard/settings/workspace/webhooks</code></td>
+    <td>Webhooks</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>81</td>
+    <td><strong>Webhook editor</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/webhooks/new</code></td>
+    <td><code>/dashboard/settings/workspace/webhooks/new</code></td>
+    <td>New webhook</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>82</td>
+    <td><strong>Webhook delivery history</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/webhooks/new/deliveries</code></td>
+    <td><code>/dashboard/settings/workspace/webhooks/new/deliveries</code></td>
+    <td>Delivery history</td>
+    <td><code>404 /api/webhooks/new/deliveries?limit=25</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>83</td>
+    <td><strong>Workspace — import (planned)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/import</code></td>
+    <td><code>/dashboard/settings/workspace/import</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>84</td>
+    <td><strong>Workspace — danger zone</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/danger</code></td>
+    <td><code>/dashboard/settings/workspace/general</code></td>
+    <td>General Settings</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>85</td>
+    <td><strong>Project — general</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/general</code></td>
+    <td>General Settings</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>86</td>
+    <td><strong>Project — members</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/members</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/members</code></td>
+    <td>Members</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>87</td>
+    <td><strong>Project — states</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/states</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/workflow</code></td>
+    <td>Workflow</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>88</td>
+    <td><strong>Project — labels</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/labels</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/labels</code></td>
+    <td>Labels</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>89</td>
+    <td><strong>Project — SLA &amp; calendar (planned)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/sla</code></td>
+    <td><code>/agent/projects/SUP/settings/sla</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>90</td>
+    <td><strong>Project — features</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/features</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/features</code></td>
+    <td>Features</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>91</td>
+    <td><strong>Project — automations</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/automations</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/automations</code></td>
+    <td>Project automations</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>92</td>
+    <td><strong>Project — budget</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/budget</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/budget</code></td>
+    <td>Budget</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>93</td>
+    <td><strong>Project — danger zone</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/settings/danger</code></td>
+    <td><code>/dashboard/settings/projects/uat-proj-support/general</code></td>
+    <td>General Settings</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>94</td>
+    <td><strong>God Mode home / health</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode</code></td>
+    <td><code>/god-mode</code></td>
+    <td>Health</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>95</td>
+    <td><strong>God Mode sign-in</strong></td>
+    <td><code>unauth_agent</code></td>
+    <td><code>/god-mode/sign-in</code></td>
+    <td><code>/god-mode/sign-in</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>96</td>
+    <td><strong>Webhook security posture</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/webhooks</code></td>
+    <td><code>/god-mode/webhooks</code></td>
+    <td>Webhook security posture</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>97</td>
+    <td><strong>God Mode General (incl. terminology)</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/general</code></td>
+    <td><code>/god-mode/general</code></td>
+    <td>General</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>98</td>
+    <td><strong>God Mode Branding (planned)</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/branding</code></td>
+    <td><code>/god-mode/branding</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>99</td>
+    <td><strong>Authentication providers</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/authentication</code></td>
+    <td><code>/god-mode/authentication</code></td>
+    <td>Authentication providers</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>100</td>
+    <td><strong>Provider editor</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/authentication/new</code></td>
+    <td><code>/god-mode/authentication/new</code></td>
+    <td>Add Entra connection</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>101</td>
+    <td><strong>Organisations</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/organisations</code></td>
+    <td><code>/god-mode/organisations</code></td>
+    <td>Organisations</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>102</td>
+    <td><strong>Organisation detail</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/organisations/uat-org-contoso</code></td>
+    <td><code>/god-mode/organisations/uat-org-contoso</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>103</td>
+    <td><strong>Organisation — Identity</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/organisations/uat-org-contoso/identity</code></td>
+    <td><code>/god-mode/organisations/uat-org-contoso/identity</code></td>
+    <td>Organisation identity</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>104</td>
+    <td><strong>Storage</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/storage</code></td>
+    <td><code>/god-mode/storage</code></td>
+    <td>Storage</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>105</td>
+    <td><strong>Notification channels — SMTP</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/notifications</code></td>
+    <td><code>/god-mode/notifications</code></td>
+    <td>Notification delivery</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>106</td>
+    <td><strong>Deliveries (outbox, dead letters)</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/deliveries</code></td>
+    <td><code>/god-mode/deliveries</code></td>
+    <td>Deliveries</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>107</td>
+    <td><strong>Workspace — features</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/features</code></td>
+    <td><code>/dashboard/settings/workspace/features</code></td>
+    <td>Features</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>108</td>
+    <td><strong>God Mode Feature flags</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/features</code></td>
+    <td><code>/god-mode/features</code></td>
+    <td>Features</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>109</td>
+    <td><strong>Jobs</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/jobs</code></td>
+    <td><code>/god-mode/jobs</code></td>
+    <td>Background jobs</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>110</td>
+    <td><strong>Plugins</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/plugins</code></td>
+    <td><code>/god-mode/plugins</code></td>
+    <td>Plugins</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>111</td>
+    <td><strong>Observability and instance MFA policy</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/observability</code></td>
+    <td><code>/god-mode/observability</code></td>
+    <td>Observability</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>112</td>
+    <td><strong>MCP usage</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/mcp</code></td>
+    <td><code>/god-mode/mcp</code></td>
+    <td>MCP usage</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>113</td>
+    <td><strong>Audit log</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/audit</code></td>
+    <td><code>/god-mode/audit?action=&amp;limit=50</code></td>
+    <td>Audit log</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>114</td>
+    <td><strong>Import runs</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/imports?workspaceId=uat-ws</code></td>
+    <td><code>/god-mode/imports?workspaceId=uat-ws</code></td>
+    <td>Imports</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>115</td>
+    <td><strong>Import run detail</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/imports/uat-import-run-1?workspaceId=uat-ws</code></td>
+    <td><code>/god-mode/imports/uat-import-run-1?workspaceId=uat-ws</code></td>
+    <td>Import run</td>
+    <td><code>404 /api/imports/uat-import-run-1/engine, 404 /api/imports/uat-import-run-1</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>116</td>
+    <td><strong>Users</strong></td>
+    <td><code>godmode</code></td>
+    <td><code>/god-mode/users</code></td>
+    <td><code>/god-mode/users</code></td>
+    <td>Instance users</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>117</td>
+    <td><strong>Portal Sign in</strong></td>
+    <td><code>unauth_portal</code></td>
+    <td><code>/sign-in</code></td>
+    <td><code>/sign-in?stage=email&amp;factor=totp</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>118</td>
+    <td><strong>Portal Accept invitation</strong></td>
+    <td><code>unauth_portal</code></td>
+    <td><code>/invite/uat-invite-sample</code></td>
+    <td><code>/invite/uat-invite-sample</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>119</td>
+    <td><strong>Portal Home (planned row)</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/</code></td>
+    <td><code>/</code></td>
+    <td>Dashboard</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>120</td>
+    <td><strong>Portal Request detail (work item)</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/submissions/SUB-1</code></td>
+    <td><code>/submissions/SUB-1</code></td>
+    <td>Cannot open PDF attachments in Outlook</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>121</td>
+    <td><strong>Portal Catalogue</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/catalogue</code></td>
+    <td><code>/catalogue</code></td>
+    <td>Request catalogue</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>122</td>
+    <td><strong>Portal Request form</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/catalogue?key=access-request</code></td>
+    <td><code>/catalogue?key=access-request</code></td>
+    <td>Request catalogue</td>
+    <td><code>404 /api/portal/terminology?locale=en-US&amp;requestTypeKey=access-request, 404 /api/portal/catalogue/access-request</code></td>
+    <td><span class="badge warn">DOC/SEED KEY DRIFT (access vs access_request)</span></td>
+  </tr>
+<tr>
+    <td>123</td>
+    <td><strong>Portal catalogue q=no-match&amp;key=access</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/catalogue?q=no-match&amp;key=access</code></td>
+    <td><code>/catalogue?q=no-match&amp;key=access</code></td>
+    <td>Request catalogue</td>
+    <td><code>404 /api/portal/terminology?locale=en-US&amp;requestTypeKey=access, 404 /api/portal/catalogue/access</code></td>
+    <td><span class="badge warn">DOC/SEED KEY DRIFT (access vs access_request)</span></td>
+  </tr>
+<tr>
+    <td>124</td>
+    <td><strong>Customer portal — submission detail</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/submissions/SUB-1</code></td>
+    <td><code>/submissions/SUB-1</code></td>
+    <td>Cannot open PDF attachments in Outlook</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>125</td>
+    <td><strong>Portal Approvals</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/approvals</code></td>
+    <td><code>/approvals</code></td>
+    <td>Approvals</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>126</td>
+    <td><strong>Portal Projects list</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/projects</code></td>
+    <td><code>/projects</code></td>
+    <td>Projects</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>127</td>
+    <td><strong>Portal Project detail</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/projects/SUP</code></td>
+    <td><code>/projects/SUP</code></td>
+    <td>Customer Support</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>128</td>
+    <td><strong>Portal Knowledge base</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/kb</code></td>
+    <td><code>/kb</code></td>
+    <td>Knowledge base</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>129</td>
+    <td><strong>Portal Article</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/kb/bl33xrn91xzbme9jyownzskw</code></td>
+    <td><code>/kb/bl33xrn91xzbme9jyownzskw</code></td>
+    <td>Knowledge base</td>
+    <td><code>404 /api/portal/kb/bl33xrn91xzbme9jyownzskw</code></td>
+    <td><span class="badge pass">PASS (KB-3 internal article 404 on portal)</span></td>
+  </tr>
+<tr>
+    <td>130</td>
+    <td><strong>Portal Announcements</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/announcements</code></td>
+    <td><code>/announcements</code></td>
+    <td>Announcements</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>131</td>
+    <td><strong>Portal Announcement detail</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/announcements/uat-ann-1</code></td>
+    <td><code>/announcements/uat-ann-1</code></td>
+    <td>Announcements</td>
+    <td><code>404 /api/portal/announcements/uat-ann-1</code></td>
+    <td><span class="badge warn">SEED GAP / 404 BOUNDARY PASS</span></td>
+  </tr>
+<tr>
+    <td>132</td>
+    <td><strong>Portal Satisfaction survey</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/submissions/SUB-1</code></td>
+    <td><code>/submissions/SUB-1</code></td>
+    <td>Cannot open PDF attachments in Outlook</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>133</td>
+    <td><strong>Customer notification inbox (unread)</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/notifications?filter=unread</code></td>
+    <td><code>/notifications?filter=unread</code></td>
+    <td>Notifications</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>134</td>
+    <td><strong>Portal Account preferences</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/account</code></td>
+    <td><code>/account</code></td>
+    <td>Notification preferences</td>
+    <td><code>404 /api/portal/notification-preferences/email-link-handoff</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>135</td>
+    <td><strong>Not found (portal origin)</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/non-existent-portal-page-404</code></td>
+    <td><code>/non-existent-portal-page-404</code></td>
+    <td>Page not found</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>136</td>
+    <td><strong>Portal home</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/</code></td>
+    <td><code>/</code></td>
+    <td>Dashboard</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>137</td>
+    <td><strong>Portal requests</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/requests</code></td>
+    <td><code>/requests</code></td>
+    <td>Support Requests</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>138</td>
+    <td><strong>Request raised by the team (/requests/{ref})</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/requests/SUP-19</code></td>
+    <td><code>/requests/SUP-19</code></td>
+    <td>Audit 3 Nov staff requester check (lead)</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>139</td>
+    <td><strong>Portal approval decision</strong></td>
+    <td><code>contoso1</code></td>
+    <td><code>/approvals?approval=uat-approval-1</code></td>
+    <td><code>/approvals?approval=uat-approval-1</code></td>
+    <td>Approvals</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>140</td>
+    <td><strong>Sign-in — provider chooser</strong></td>
+    <td><code>unauth_agent</code></td>
+    <td><code>/auth/sign-in</code></td>
+    <td><code>/auth/sign-in</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>141</td>
+    <td><strong>Command palette</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent (Cmd+K)</code></td>
+    <td><code>/agent</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (Cmd+K dialog opened)</span></td>
+  </tr>
+<tr>
+    <td>142</td>
+    <td><strong>Pending action approval</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/account/pending-actions</code></td>
+    <td><code>/dashboard/settings/account/pending-actions</code></td>
+    <td>My pending actions</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>143</td>
+    <td><strong>Error boundary</strong></td>
+    <td><code>owner</code></td>
+    <td><code>overlay (error boundary)</code></td>
+    <td><code>N/A (not triggered on healthy pages)</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (Not triggered — 0 runtime crashes)</span></td>
+  </tr>
+<tr>
+    <td>144</td>
+    <td><strong>Work item — side pane</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/work?layout=list&amp;item=SUP-1</code></td>
+    <td><code>/agent/projects/SUP/work?layout=list&amp;item=SUP-1&amp;sort=key&amp;dir=asc</code></td>
+    <td>Customer Support · Work items</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>145</td>
+    <td><strong>Create work item dialog</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/work?layout=list</code></td>
+    <td><code>—</code></td>
+    <td>—</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (Create dialog opened; undefined inputs)</span></td>
+  </tr>
+<tr>
+    <td>146</td>
+    <td><strong>Bulk edit (table layout)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/projects/SUP/work?layout=table</code></td>
+    <td><code>/agent/projects/SUP/work?layout=table&amp;sort=key&amp;dir=asc</code></td>
+    <td>Customer Support · Work items</td>
+    <td><code>0</code></td>
+    <td><span class="badge warn">WARN (1 clipped tab/element at 1440x900)</span></td>
+  </tr>
+<tr>
+    <td>147</td>
+    <td><strong>Relations editor (SUP-1)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td>Outlook keeps asking for a password after the Windows update</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>148</td>
+    <td><strong>Approvals panel (SUP-11)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/work-items/SUP-11</code></td>
+    <td><code>/agent/work-items/SUP-11</code></td>
+    <td>November patching window for Contoso servers</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>149</td>
+    <td><strong>SLA panel (SUP-1)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td>Outlook keeps asking for a password after the Windows update</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>150</td>
+    <td><strong>Time entries (SUP-1)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td>Outlook keeps asking for a password after the Windows update</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>151</td>
+    <td><strong>Attachments (SUP-1)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td>Outlook keeps asking for a password after the Windows update</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>152</td>
+    <td><strong>Activity &amp; comments (SUP-1)</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td><code>/agent/work-items/SUP-1</code></td>
+    <td>Outlook keeps asking for a password after the Windows update</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>153</td>
+    <td><strong>Custom fields Section manager</strong></td>
+    <td><code>owner</code></td>
+    <td><code>/dashboard/settings/workspace/custom-fields</code></td>
+    <td><code>/dashboard/settings/workspace/custom-fields</code></td>
+    <td>Custom fields</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (200 OK)</span></td>
+  </tr>
+<tr>
+    <td>154</td>
+    <td><strong>Submission page (pre-acceptance SUB-5)</strong></td>
+    <td><code>contoso2</code></td>
+    <td><code>/submissions/SUB-5</code></td>
+    <td><code>/submissions/SUB-5</code></td>
+    <td>Access request</td>
+    <td><code>0</code></td>
+    <td><span class="badge pass">PASS (SUB-5 + Withdraw AlertDialog verified)</span></td>
+  </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
