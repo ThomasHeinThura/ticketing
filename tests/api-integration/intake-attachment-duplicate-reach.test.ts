@@ -15,10 +15,12 @@ import {
   listStaffSubmissionAttachments,
 } from "../../apps/api/src/attachment/repository";
 import db, { schema } from "../../apps/api/src/database";
+import { acceptSubmission } from "../../apps/api/src/intake/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import {
   addCustomer,
   buildTenant,
+  PORTAL_HOST,
   personOf,
   portalRequest,
   type Tenant,
@@ -26,6 +28,7 @@ import {
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
+import { seedIntake, submissionRow, submitAs } from "./helpers/intake-http";
 
 async function seed() {
   const t = await buildTenant("dup-reach");
@@ -138,6 +141,182 @@ const names = async (response: Response) =>
 describe("submission attachment lists respect the duplicate link (CP-16)", () => {
   let t: Tenant;
   beforeEach(async () => resetTestDatabase());
+
+  it("withdraws a hidden upload from portal access on acceptance while retaining staff access", async () => {
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: isolated filesystem fixture.
+    const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: isolated filesystem fixture.
+    const originalDriver = process.env.TASKDESK_STORAGE_DRIVER;
+    const root = await mkdtemp(path.join(tmpdir(), "taskdesk-hidden-upload-"));
+    process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: isolated filesystem fixture.
+    delete process.env.TASKDESK_STORAGE_DRIVER;
+    try {
+      const s = await seedIntake("hidden-retention");
+      const formSchema = {
+        fields: [
+          {
+            key: "summary",
+            type: "text",
+            label: "Summary",
+            required: true,
+            mapsTo: { field: "title" },
+          },
+          { key: "gate", type: "text", label: "Gate" },
+          {
+            key: "hidden",
+            type: "file",
+            label: "Hidden",
+            showIf: { field_key: "gate", op: "eq", value: "on" },
+          },
+        ],
+      };
+      await db
+        .update(schema.requestTypeVersionTable)
+        .set({ formSchema })
+        .where(eq(schema.requestTypeVersionTable.id, s.version.id));
+      const ref = await submitAs(s, s.customer);
+      const submission = await submissionRow(ref);
+      await db
+        .update(schema.submissionTable)
+        .set({ formData: { summary: "Cannot sign in", gate: "on" } })
+        .where(eq(schema.submissionTable.id, submission.id));
+      const bytes = Buffer.from("%PDF-1.4\n%retained file\n%%EOF\n");
+      const objectKey = `workspace/${s.t.workspaceId}/submission/${submission.id}/attachment/${randomUUID()}/final/token-retained.pdf`;
+      await mkdir(path.dirname(path.join(root, objectKey)), {
+        recursive: true,
+      });
+      await writeFile(path.join(root, objectKey), bytes);
+      const [ready, pending] = await db
+        .insert(schema.attachmentTable)
+        .values([
+          {
+            workspaceId: s.t.workspaceId,
+            organisationId: s.customer.orgId,
+            submissionId: submission.id,
+            submissionFieldKey: "hidden",
+            objectKey,
+            filename: "retained.pdf",
+            mimeType: "application/pdf",
+            size: bytes.length,
+            state: "ready",
+            customerVisible: true,
+            uploadedBy: s.customer.person.id,
+          },
+          {
+            workspaceId: s.t.workspaceId,
+            organisationId: s.customer.orgId,
+            submissionId: submission.id,
+            submissionFieldKey: "hidden",
+            objectKey: `pending/${randomUUID()}`,
+            filename: "pending.pdf",
+            mimeType: "application/pdf",
+            size: bytes.length,
+            state: "pending",
+            customerVisible: true,
+            uploadedBy: s.customer.person.id,
+          },
+        ])
+        .returning();
+      if (!ready || !pending) throw new Error("missing upload fixture");
+      const base = `/api/portal/submissions/${ref}/attachments`;
+      const issued = await portalRequest(
+        s.t,
+        s.customer,
+        `${base}/${ready.id}`,
+      );
+      expect(issued.status).toBe(302);
+      const location = issued.headers.get("location");
+      if (!location) throw new Error("missing portal download location");
+      const target = new URL(location);
+      mockAuthenticatedSession(s.customer.user, { portal: "customer" });
+      const initialBytes = await s.t.app.request(
+        `http://${PORTAL_HOST}${target.pathname}${target.search}`,
+        { headers: { host: PORTAL_HOST } },
+      );
+      expect(initialBytes.status).toBe(200);
+      expect(Buffer.from(await initialBytes.arrayBuffer())).toEqual(bytes);
+      await db
+        .update(schema.submissionTable)
+        .set({ formData: { summary: "Cannot sign in", gate: "off" } })
+        .where(eq(schema.submissionTable.id, submission.id));
+      const converted = await acceptSubmission(
+        ref,
+        s.t.workspaceId,
+        s.t.requesterPerson.id,
+        s.t.project.id,
+        s.t.type.id,
+        async () => true,
+      );
+      const list = await portalRequest(s.t, s.customer, base);
+      expect(list.status).toBe(200);
+      expect(await names(list)).not.toContain("retained.pdf");
+      expect(
+        (await portalRequest(s.t, s.customer, `${base}/${ready.id}`)).status,
+      ).toBe(404);
+      expect(
+        (await portalRequest(s.t, s.customer, `${base}/${ready.id}/preview`))
+          .status,
+      ).toBe(404);
+      expect(
+        (
+          await portalRequest(
+            s.t,
+            s.customer,
+            `${base}/${pending.id}/complete`,
+            { method: "POST" },
+          )
+        ).status,
+      ).toBe(404);
+      mockAuthenticatedSession(s.customer.user, { portal: "customer" });
+      for (const [method, range] of [
+        ["GET", undefined],
+        ["HEAD", undefined],
+        ["GET", "bytes=0-2"],
+      ] as const) {
+        const response = await s.t.app.request(
+          `http://${PORTAL_HOST}${target.pathname}${target.search}`,
+          {
+            method,
+            headers: { host: PORTAL_HOST, ...(range ? { Range: range } : {}) },
+          },
+        );
+        expect(response.status).toBe(404);
+      }
+      mockAuthenticatedSession(s.t.requester.user);
+      const staffList = await s.t.app.request(
+        `/api/submissions/${ref}/attachments`,
+      );
+      expect(staffList.status).toBe(200);
+      expect(await names(staffList)).toContain("retained.pdf");
+      const staffPreview = await s.t.app.request(
+        `/api/submissions/${ref}/attachments/${ready.id}/preview`,
+      );
+      expect(staffPreview.status).toBe(200);
+      expect(Buffer.from(await staffPreview.arrayBuffer())).toEqual(bytes);
+      const [retained] = await db
+        .select()
+        .from(schema.attachmentTable)
+        .where(eq(schema.attachmentTable.id, ready.id));
+      expect(retained).toMatchObject({
+        submissionId: submission.id,
+        workItemId: null,
+        customerVisible: false,
+        state: "ready",
+      });
+      expect(converted.workItem.id).toBeTruthy();
+    } finally {
+      if (originalRoot === undefined)
+        // biome-ignore lint/suspicious/noUndeclaredEnvVars: restore isolated fixture setting.
+        delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+      else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
+      if (originalDriver === undefined)
+        // biome-ignore lint/suspicious/noUndeclaredEnvVars: restore isolated fixture setting.
+        delete process.env.TASKDESK_STORAGE_DRIVER;
+      else process.env.TASKDESK_STORAGE_DRIVER = originalDriver;
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 
   it("streams authorized portal/staff PDFs and hides duplicate, foreign, and deleted attachments", async () => {
     // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.

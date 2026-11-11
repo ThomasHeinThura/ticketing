@@ -61,29 +61,22 @@ type Field = {
     value?: unknown;
   } | null;
 };
-const fieldTypeLabels: Record<Field["type"], string> = {
-  text: "Text",
-  textarea: "Long text",
-  select: "Select",
-  checkbox: "Checkbox",
-  file: "File",
+const priorityValues = ["low", "medium", "high", "urgent"] as const;
+type PriorityValue = (typeof priorityValues)[number];
+const priorityLabels: Record<PriorityValue, string> = {
+  low: "tasks:priority.low",
+  medium: "tasks:priority.medium",
+  high: "tasks:priority.high",
+  urgent: "tasks:priority.urgent",
 };
-const mapsToLabels: Record<string, string> = {
-  title: "Work item title",
-  description: "Work item description",
-  priority: "Work item priority",
-};
-const priorityLabels: Record<string, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  urgent: "Urgent",
-};
-function priorityValueFor(field: Field, option: string): string | null {
-  return (
-    field.mapsTo?.map?.[option] ??
-    (Object.hasOwn(priorityLabels, option) ? option : null)
-  );
+function priorityValueFor(field: Field, option: string): PriorityValue | null {
+  const mapped = field.mapsTo?.map?.[option];
+  if (mapped && Object.hasOwn(priorityLabels, mapped)) {
+    return mapped as PriorityValue;
+  }
+  return Object.hasOwn(priorityLabels, option)
+    ? (option as PriorityValue)
+    : null;
 }
 type RequestType = {
   id: string;
@@ -103,20 +96,20 @@ type RequestType = {
 };
 let rowCounter = 0;
 const newRowId = () => `row-${++rowCounter}`;
-const blank = (): Omit<
-  RequestType,
-  "id" | "version" | "published" | "key"
-> => ({
+const blank = (
+  group: string,
+  summary: string,
+): Omit<RequestType, "id" | "version" | "published" | "key"> => ({
   name: "",
   description: "",
-  group: "General",
+  group,
   workItemTypeId: "",
   defaultProjectId: null,
   formSchema: {
     fields: [
       {
         key: "title",
-        label: "Summary",
+        label: summary,
         type: "text",
         required: true,
         mapsTo: { field: "title" },
@@ -130,7 +123,7 @@ const blank = (): Omit<
 });
 
 function RequestTypesPage() {
-  const { t } = useTranslation("requestTypes");
+  const { t } = useTranslation(["requestTypes", "tasks"]);
   const workspace = useActiveWorkspace();
   const queryClient = useQueryClient();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -157,7 +150,7 @@ function RequestTypesPage() {
   );
   const [draft, setDraft] = useState<
     Omit<RequestType, "id" | "version" | "published" | "key">
-  >(blank());
+  >(() => blank(t("defaultGroup"), t("defaultSummary")));
   const [dragged, setDragged] = useState<number | null>(null);
   // Stable per-row ids (parallel to draft.formSchema.fields): the field key is
   // user-editable, so keying a row by it remounted the row on every keystroke.
@@ -248,13 +241,27 @@ function RequestTypesPage() {
   const choose = (id: string | null) => {
     setSelected(id);
     if (!id) {
-      const fresh = blank();
+      const fresh = blank(t("defaultGroup"), t("defaultSummary"));
       setDraft(fresh);
       setRowIds(fresh.formSchema.fields.map(() => newRowId()));
       setOptionsText({});
     }
   };
   const fields = draft.formSchema.fields;
+  const fieldTypeLabels: Record<Field["type"], string> = {
+    text: t("text", { defaultValue: "Text" }),
+    textarea: t("longText", { defaultValue: "Long text" }),
+    select: t("select", { defaultValue: "Select" }),
+    checkbox: t("checkbox", { defaultValue: "Checkbox" }),
+    file: t("file", { defaultValue: "File" }),
+  };
+  const mapsToLabels: Record<string, string> = {
+    title: t("titleMapping", { defaultValue: "Work item title" }),
+    description: t("descriptionMapping", {
+      defaultValue: "Work item description",
+    }),
+    priority: t("priorityMapping", { defaultValue: "Work item priority" }),
+  };
   const previewVisibility = resolveIntakeVisibility(
     draft.formSchema as unknown as FormSchema,
     previewValues,
@@ -373,7 +380,7 @@ function RequestTypesPage() {
           <div className="flex min-w-0 flex-col gap-4">
             {groupOrder.data ? (
               <section
-                aria-label="Catalogue group order"
+                aria-label={t("groupOrderTitle")}
                 className="flex flex-col gap-3 rounded-md border p-4"
               >
                 <div>
@@ -530,7 +537,7 @@ function RequestTypesPage() {
                 className="flex flex-col gap-1"
                 htmlFor="request-type-name"
               >
-                Name
+                {t("name")}
                 <Input
                   id="request-type-name"
                   value={draft.name}
@@ -541,7 +548,7 @@ function RequestTypesPage() {
                 className="flex flex-col gap-1"
                 htmlFor="request-type-group"
               >
-                Catalogue group
+                {t("group")}
                 <Input
                   id="request-type-group"
                   value={draft.group}
@@ -554,7 +561,7 @@ function RequestTypesPage() {
                 className="flex flex-col gap-1 sm:col-span-2"
                 htmlFor="request-type-description"
               >
-                Description
+                {t("summary")}
                 <Textarea
                   id="request-type-description"
                   value={draft.description ?? ""}
@@ -567,7 +574,7 @@ function RequestTypesPage() {
                 className="flex flex-col gap-1"
                 htmlFor="request-type-work-item-type"
               >
-                Work item type
+                {t("workItemType")}
                 <Select
                   value={draft.workItemTypeId || null}
                   onValueChange={(value) =>
@@ -575,7 +582,7 @@ function RequestTypesPage() {
                   }
                 >
                   <SelectTrigger id="request-type-work-item-type">
-                    <SelectValue placeholder="Choose a type">
+                    <SelectValue placeholder={t("chooseType")}>
                       {
                         workItemTypes.data?.find(
                           (type) => type.id === draft.workItemTypeId,
@@ -596,7 +603,7 @@ function RequestTypesPage() {
                 className="flex flex-col gap-1"
                 htmlFor="request-type-project"
               >
-                Default project ID
+                {t("projectId")}
                 <Input
                   id="request-type-project"
                   value={draft.defaultProjectId ?? ""}
@@ -638,7 +645,7 @@ function RequestTypesPage() {
                     setDraft({ ...draft, customerVisible: Boolean(checked) })
                   }
                 />{" "}
-                Visible to customers
+                {t("visible", { defaultValue: "Visible to customers" })}
               </label>
               <label htmlFor="request-type-auto-accept">
                 <Checkbox
@@ -648,7 +655,7 @@ function RequestTypesPage() {
                     setDraft({ ...draft, autoAccept: Boolean(checked) })
                   }
                 />{" "}
-                Auto accept
+                {t("autoAccept", { defaultValue: "Auto accept" })}
               </label>
               <label htmlFor="request-type-force-private">
                 <Checkbox
@@ -658,11 +665,15 @@ function RequestTypesPage() {
                     setDraft({ ...draft, forcePrivate: Boolean(checked) })
                   }
                 />{" "}
-                Keep submissions private
+                {t("forcePrivate", {
+                  defaultValue: "Keep submissions private",
+                })}
               </label>
             </div>
             <div className="flex items-center justify-between">
-              <h3 className="font-medium">Form fields</h3>
+              <h3 className="font-medium">
+                {t("fields", { defaultValue: "Form fields" })}
+              </h3>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -674,7 +685,7 @@ function RequestTypesPage() {
                         ...fields,
                         {
                           key: `field_${fields.length + 1}`,
-                          label: "New question",
+                          label: t("newQuestion"),
                           type: "text",
                           required: false,
                         },
@@ -683,7 +694,7 @@ function RequestTypesPage() {
                   });
                 }}
               >
-                Add field
+                {t("addField", { defaultValue: "Add field" })}
               </Button>
             </div>
             {fields.map((field, index) => {
@@ -701,7 +712,7 @@ function RequestTypesPage() {
                   className="grid gap-2 rounded border p-3 sm:grid-cols-[1fr_1fr_auto_auto]"
                 >
                   <label htmlFor={`field-key-${index}`}>
-                    Field key
+                    {t("fieldKey", { defaultValue: "Field key" })}
                     <Input
                       id={`field-key-${index}`}
                       value={field.key}
@@ -711,7 +722,7 @@ function RequestTypesPage() {
                     />
                   </label>
                   <label htmlFor={`field-label-${index}`}>
-                    Customer label
+                    {t("label", { defaultValue: "Customer label" })}
                     <Input
                       id={`field-label-${index}`}
                       value={field.label}
@@ -721,7 +732,7 @@ function RequestTypesPage() {
                     />
                   </label>
                   <label htmlFor={`field-type-${index}`}>
-                    Type
+                    {t("type", { defaultValue: "Type" })}
                     <Select
                       value={field.type}
                       onValueChange={(value) =>
@@ -733,11 +744,21 @@ function RequestTypesPage() {
                         <SelectValue>{fieldTypeLabels[field.type]}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="textarea">Long text</SelectItem>
-                        <SelectItem value="select">Select</SelectItem>
-                        <SelectItem value="checkbox">Checkbox</SelectItem>
-                        <SelectItem value="file">File</SelectItem>
+                        <SelectItem value="text">
+                          {t("text", { defaultValue: "Text" })}
+                        </SelectItem>
+                        <SelectItem value="textarea">
+                          {t("longText", { defaultValue: "Long text" })}
+                        </SelectItem>
+                        <SelectItem value="select">
+                          {t("select", { defaultValue: "Select" })}
+                        </SelectItem>
+                        <SelectItem value="checkbox">
+                          {t("checkbox", { defaultValue: "Checkbox" })}
+                        </SelectItem>
+                        <SelectItem value="file">
+                          {t("file", { defaultValue: "File" })}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </label>
@@ -753,7 +774,7 @@ function RequestTypesPage() {
                         updateField(index, { required: Boolean(checked) })
                       }
                     />{" "}
-                    Required
+                    {t("required", { defaultValue: "Required" })}
                   </label>
                   {field.type === "file" && (
                     <p
@@ -764,15 +785,15 @@ function RequestTypesPage() {
                       }
                     >
                       {field.required
-                        ? "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish."
-                        : "Required is unavailable for file uploads until the submission file contract is defined."}
+                        ? t("requiredFileInvalid")
+                        : t("requiredFileUnavailable")}
                     </p>
                   )}
                   <label
                     className="sm:col-span-2"
                     htmlFor={`field-help-${index}`}
                   >
-                    Help text
+                    {t("help", { defaultValue: "Help text" })}
                     <Input
                       id={`field-help-${index}`}
                       value={field.help ?? ""}
@@ -787,7 +808,7 @@ function RequestTypesPage() {
                     className="sm:col-span-2"
                     htmlFor={`field-options-${index}`}
                   >
-                    Options (one per line)
+                    {t("options", { defaultValue: "Options (one per line)" })}
                     <Textarea
                       id={`field-options-${index}`}
                       value={
@@ -816,17 +837,24 @@ function RequestTypesPage() {
                     />
                   </label>
                   <label htmlFor={`field-maps-to-${index}`}>
-                    Maps to
+                    {t("mapsTo", { defaultValue: "Maps to" })}
                     <Select
-                      value={field.mapsTo?.field ?? null}
+                      value={field.mapsTo?.field ?? "__none__"}
                       onValueChange={(value) =>
                         updateField(index, {
-                          mapsTo: value ? { field: value } : undefined,
+                          mapsTo:
+                            value && value !== "__none__"
+                              ? { field: value }
+                              : undefined,
                         })
                       }
                     >
                       <SelectTrigger id={`field-maps-to-${index}`}>
-                        <SelectValue placeholder="Keep in request data">
+                        <SelectValue
+                          placeholder={t("unmapped", {
+                            defaultValue: "Keep in request data",
+                          })}
+                        >
                           {field.mapsTo?.field
                             ? (mapsToLabels[field.mapsTo.field] ??
                               collectableFields.find(
@@ -838,12 +866,25 @@ function RequestTypesPage() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="title">Work item title</SelectItem>
+                        <SelectItem value="__none__">
+                          {t("unmapped", {
+                            defaultValue: "Keep in request data",
+                          })}
+                        </SelectItem>
+                        <SelectItem value="title">
+                          {t("titleMapping", {
+                            defaultValue: "Work item title",
+                          })}
+                        </SelectItem>
                         <SelectItem value="description">
-                          Work item description
+                          {t("descriptionMapping", {
+                            defaultValue: "Work item description",
+                          })}
                         </SelectItem>
                         <SelectItem value="priority">
-                          Work item priority
+                          {t("priorityMapping", {
+                            defaultValue: "Work item priority",
+                          })}
                         </SelectItem>
                         {collectableFields.map((candidate) => (
                           <SelectItem
@@ -860,7 +901,9 @@ function RequestTypesPage() {
                     field.mapsTo?.field === "priority" && (
                       <fieldset className="flex flex-col gap-2 sm:col-span-2">
                         <legend className="font-medium">
-                          Priority value mapping
+                          {t("priorityValueMapping", {
+                            defaultValue: "Priority value mapping",
+                          })}
                         </legend>
                         {field.options?.map((option) => (
                           <label
@@ -883,17 +926,38 @@ function RequestTypesPage() {
                               <SelectTrigger
                                 id={`field-map-${index}-${option}`}
                               >
-                                <SelectValue placeholder="Choose priority">
-                                  {priorityLabels[
-                                    priorityValueFor(field, option) ?? ""
-                                  ] ?? undefined}
+                                <SelectValue
+                                  placeholder={t("choosePriority", {
+                                    defaultValue: "Choose priority",
+                                  })}
+                                >
+                                  {(() => {
+                                    const val = priorityValueFor(field, option);
+                                    if (val === "low")
+                                      return t("tasks:priority.low");
+                                    if (val === "medium")
+                                      return t("tasks:priority.medium");
+                                    if (val === "high")
+                                      return t("tasks:priority.high");
+                                    if (val === "urgent")
+                                      return t("tasks:priority.urgent");
+                                    return undefined;
+                                  })()}
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="low">Low</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="high">High</SelectItem>
-                                <SelectItem value="urgent">Urgent</SelectItem>
+                                <SelectItem value="low">
+                                  {t("tasks:priority.low")}
+                                </SelectItem>
+                                <SelectItem value="medium">
+                                  {t("tasks:priority.medium")}
+                                </SelectItem>
+                                <SelectItem value="high">
+                                  {t("tasks:priority.high")}
+                                </SelectItem>
+                                <SelectItem value="urgent">
+                                  {t("tasks:priority.urgent")}
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           </label>
@@ -901,19 +965,30 @@ function RequestTypesPage() {
                       </fieldset>
                     )}
                   <label htmlFor={`field-show-when-${index}`}>
-                    Show when
+                    {t("showWhen", { defaultValue: "Show when" })}
                     <Select
-                      value={field.showIf?.field_key ?? null}
-                      onValueChange={(value) =>
-                        updateField(index, {
-                          showIf: value
-                            ? { field_key: value, op: "eq", value: "" }
-                            : undefined,
-                        })
-                      }
+                      value={field.showIf?.field_key ?? "__always__"}
+                      onValueChange={(value) => {
+                        if (!value || value === "__always__") {
+                          updateField(index, { showIf: undefined });
+                        } else {
+                          const target = fields.find((f) => f.key === value);
+                          updateField(index, {
+                            showIf: {
+                              field_key: value,
+                              op: "eq",
+                              value: target?.type === "checkbox" ? true : "",
+                            },
+                          });
+                        }
+                      }}
                     >
                       <SelectTrigger id={`field-show-when-${index}`}>
-                        <SelectValue placeholder="Always visible">
+                        <SelectValue
+                          placeholder={t("always", {
+                            defaultValue: "Always visible",
+                          })}
+                        >
                           {field.showIf
                             ? fields.find(
                                 (candidate) =>
@@ -923,6 +998,11 @@ function RequestTypesPage() {
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="__always__">
+                          {t("always", {
+                            defaultValue: "Always visible",
+                          })}
+                        </SelectItem>
                         {fields
                           .filter((candidate) => candidate.key !== field.key)
                           .map((candidate) => (
@@ -938,22 +1018,59 @@ function RequestTypesPage() {
                   </label>
                   {field.showIf && (
                     <label htmlFor={`field-show-value-${index}`}>
-                      Equals value
-                      <Input
-                        id={`field-show-value-${index}`}
-                        value={String(field.showIf.value ?? "")}
-                        onChange={(e) =>
-                          updateField(index, {
-                            showIf: {
-                              ...(field.showIf ?? {
-                                field_key: "",
-                                op: "eq",
-                              }),
-                              value: e.target.value,
-                            },
-                          })
-                        }
-                      />
+                      {t("equals", { defaultValue: "Equals value" })}
+                      {fields.find((f) => f.key === field.showIf?.field_key)
+                        ?.type === "checkbox" ? (
+                        <Select
+                          value={String(
+                            field.showIf.value === true ||
+                              field.showIf.value === "true",
+                          )}
+                          onValueChange={(val) =>
+                            updateField(index, {
+                              showIf: {
+                                ...(field.showIf ?? {
+                                  field_key: "",
+                                  op: "eq",
+                                }),
+                                value: val === "true",
+                              },
+                            })
+                          }
+                        >
+                          <SelectTrigger id={`field-show-value-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">
+                              {t("common:boolean.true", {
+                                defaultValue: "True",
+                              })}
+                            </SelectItem>
+                            <SelectItem value="false">
+                              {t("common:boolean.false", {
+                                defaultValue: "False",
+                              })}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          id={`field-show-value-${index}`}
+                          value={String(field.showIf.value ?? "")}
+                          onChange={(e) =>
+                            updateField(index, {
+                              showIf: {
+                                ...(field.showIf ?? {
+                                  field_key: "",
+                                  op: "eq",
+                                }),
+                                value: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      )}
                     </label>
                   )}
                   {field.type === "file" && (
@@ -968,13 +1085,16 @@ function RequestTypesPage() {
                           updateField(index, { multiple: Boolean(checked) })
                         }
                       />{" "}
-                      Allow multiple files
+                      {t("multiple", { defaultValue: "Allow multiple files" })}
                     </label>
                   )}
                   <div className="flex gap-1">
                     <Button
                       variant="outline"
-                      aria-label={`Move ${field.label} up`}
+                      aria-label={t("moveUp", {
+                        name: field.label,
+                        defaultValue: `Move ${field.label} up`,
+                      })}
                       disabled={index === 0}
                       onClick={() => reorder(index, index - 1)}
                     >
@@ -982,7 +1102,10 @@ function RequestTypesPage() {
                     </Button>
                     <Button
                       variant="outline"
-                      aria-label={`Move ${field.label} down`}
+                      aria-label={t("moveDown", {
+                        name: field.label,
+                        defaultValue: `Move ${field.label} down`,
+                      })}
                       disabled={index === fields.length - 1}
                       onClick={() => reorder(index, index + 1)}
                     >
@@ -990,7 +1113,10 @@ function RequestTypesPage() {
                     </Button>
                     <Button
                       variant="destructive"
-                      aria-label={`Remove ${field.label}`}
+                      aria-label={t("removeField", {
+                        name: field.label,
+                        defaultValue: `Remove ${field.label}`,
+                      })}
                       onClick={() => {
                         setRowIds((current) =>
                           current.filter((_, i) => i !== index),
@@ -1003,16 +1129,21 @@ function RequestTypesPage() {
                         });
                       }}
                     >
-                      Remove
+                      {t("remove", { defaultValue: "Remove" })}
                     </Button>
                   </div>
                 </article>
               );
             })}
             <section className="rounded-md bg-muted p-4">
-              <h3 className="font-medium">Customer preview</h3>
+              <h3 className="font-medium">
+                {t("preview", { defaultValue: "Customer preview" })}
+              </h3>
               <p className="text-sm text-muted-foreground">
-                {draft.description || "Request form description"}
+                {draft.description ||
+                  t("previewDescription", {
+                    defaultValue: "Request form description",
+                  })}
               </p>
               <div className="mt-3 grid gap-3">
                 {fields
@@ -1044,7 +1175,11 @@ function RequestTypesPage() {
                           }
                         >
                           <SelectTrigger aria-label={field.label}>
-                            <SelectValue placeholder="Choose…" />
+                            <SelectValue
+                              placeholder={t("choose", {
+                                defaultValue: "Choose…",
+                              })}
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {field.options?.map((option) => (
@@ -1096,24 +1231,22 @@ function RequestTypesPage() {
               }
             >
               {titleMappingValid
-                ? "Exactly one required text field maps to the work item title."
-                : "Publishing requires exactly one required text field mapped to the work item title."}
+                ? t("titleMappingValid")
+                : t("titleMappingInvalid")}
             </p>
             {!priorityMappingValid && (
               <p className="text-sm text-destructive" role="alert">
-                Every priority option must map to low, medium, high, or urgent
-                before publishing.
+                {t("priorityMappingInvalid")}
               </p>
             )}
             {!requiredFileValid && (
               <p className="text-sm text-destructive" role="alert">
-                Required file uploads are not publishable until the submission
-                file contract is defined; clear Required to publish.
+                {t("requiredFileInvalid")}
               </p>
             )}
             {selectedType?.key && (
               <p className="text-xs text-muted-foreground">
-                Opaque catalogue key: {selectedType.key}
+                {t("opaqueKey", { key: selectedType.key })}
               </p>
             )}
             <div className="flex flex-wrap gap-2">
@@ -1156,7 +1289,7 @@ function RequestTypesPage() {
                 | undefined
             )?.versions?.length ? (
               <section>
-                <h3 className="font-medium">Published versions</h3>
+                <h3 className="font-medium">{t("versions")}</h3>
                 <ol className="text-sm">
                   {(
                     detail.data as unknown as {
@@ -1164,7 +1297,7 @@ function RequestTypesPage() {
                     }
                   ).versions.map((version) => (
                     <li key={version.number}>
-                      Version {version.number} ·{" "}
+                      {t("version", { number: version.number })} ·{" "}
                       {new Date(version.createdAt).toLocaleString()}
                     </li>
                   ))}

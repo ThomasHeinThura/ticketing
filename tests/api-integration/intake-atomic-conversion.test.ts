@@ -21,6 +21,7 @@ import {
   publishRequestType,
 } from "../../apps/api/src/intake/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import { cleanAttachment } from "../../apps/api/src/scheduler/attachment-cleanup";
 import * as storage from "../../apps/api/src/storage";
 import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
@@ -393,6 +394,114 @@ describe("intake atomic conversion", () => {
     expect(JSON.stringify(visibleItem?.description)).toContain(
       "visible description",
     );
+  });
+
+  it("retains completed hidden uploads as staff-only submission history", async () => {
+    const formSchema: FormSchema = {
+      fields: [
+        {
+          key: "summary",
+          type: "text",
+          label: "Summary",
+          mapsTo: { field: "title" },
+        },
+        { key: "gate", type: "text", label: "Gate" },
+        { key: "visible", type: "file", label: "Visible" },
+        {
+          key: "hidden",
+          type: "file",
+          label: "Hidden",
+          showIf: { field_key: "gate", op: "eq", value: "on" },
+        },
+      ],
+    };
+    const fixture = await createManualAcceptanceFixture(formSchema, {
+      summary: "Request",
+      gate: "off",
+    });
+    const rows = await db
+      .insert(schema.attachmentTable)
+      .values(
+        (
+          [
+            ["hidden", "ready"],
+            ["hidden", "pending"],
+            ["visible", "ready"],
+          ] as const
+        ).map(([field, state]) => ({
+          workspaceId: fixture.workspace.id,
+          organisationId: fixture.submission.organisationId,
+          submissionId: fixture.submission.id,
+          submissionFieldKey: field,
+          objectKey: `pending/${randomUUID()}`,
+          filename: `${field}-${state}.txt`,
+          mimeType: "text/plain",
+          size: 6,
+          state,
+          customerVisible: true,
+          uploadedBy: fixture.submission.requesterId,
+        })),
+      )
+      .returning();
+    const [hiddenReady, hiddenPending, visibleReady] = rows;
+    if (!hiddenReady || !hiddenPending || !visibleReady)
+      throw new Error("missing attachments");
+    const converted = await acceptSubmission(
+      `SUB-${fixture.submission.number}`,
+      fixture.workspace.id,
+      fixture.staff.id,
+      fixture.project.id,
+      fixture.type.id,
+      async () => true,
+    );
+    const after = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.submissionId, fixture.submission.id));
+    expect(after.find((row) => row.id === hiddenReady.id)).toMatchObject({
+      state: "ready",
+      customerVisible: false,
+      deletedAt: null,
+      workItemId: null,
+      objectKey: hiddenReady.objectKey,
+    });
+    expect(after.find((row) => row.id === hiddenPending.id)).toMatchObject({
+      state: "deleted",
+      customerVisible: false,
+      workItemId: null,
+    });
+    const deleteObject = vi
+      .spyOn(storage, "deleteStorageObject")
+      .mockResolvedValue();
+    expect(await cleanAttachment(hiddenReady.id, "deleted")).toBe(false);
+    expect(await cleanAttachment(hiddenReady.id, "pending")).toBe(false);
+    expect(deleteObject).not.toHaveBeenCalled();
+    const [transferred] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, visibleReady.id));
+    expect(transferred).toMatchObject({
+      submissionId: null,
+      workItemId: converted.workItem.id,
+      state: "ready",
+      customerVisible: true,
+    });
+    const [audit] = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "submission.accepted"),
+          eq(schema.auditLogTable.entityId, fixture.submission.id),
+        ),
+      );
+    expect(audit?.after).toMatchObject({
+      suppressedAttachmentIds: expect.arrayContaining([
+        hiddenReady.id,
+        hiddenPending.id,
+      ]),
+      suppressedAttachmentCount: 2,
+    });
   });
 
   it("serializes manual acceptance with project archival", async () => {
@@ -1105,6 +1214,13 @@ describe("intake atomic conversion", () => {
           required: true,
           mapsTo: { field: "title" },
         },
+        { key: "gate", type: "text", label: "Gate" },
+        {
+          key: "hidden",
+          type: "file",
+          label: "Hidden",
+          showIf: { field_key: "gate", op: "eq", value: "on" },
+        },
       ],
     };
     const requestType = requireRow(
@@ -1146,10 +1262,17 @@ describe("intake atomic conversion", () => {
     const result = await createSubmission({
       userId: customerUser.id,
       key: requestType.key,
-      formData: { summary: "Reset access" },
+      formData: { summary: "Reset access", gate: "off", hidden: "forged-file" },
     });
     expect(result.state).toBe("accepted");
     expect(result.workItemId).toBeTruthy();
+    expect(result.formData).not.toHaveProperty("hidden");
+    expect(
+      await db
+        .select()
+        .from(schema.attachmentTable)
+        .where(eq(schema.attachmentTable.submissionId, result.id)),
+    ).toEqual([]);
     const [acceptedSubmission] = await db
       .select({
         claimedBy: schema.submissionTable.claimedBy,
@@ -1167,7 +1290,7 @@ describe("intake atomic conversion", () => {
     );
     expect(portalPage.workItem).toMatchObject({
       title: "Reset access",
-      description: "",
+      description: "## Additional details\n- **Gate:** off",
       priority: null,
     });
     expect(portalPage.workItem).not.toHaveProperty("key");

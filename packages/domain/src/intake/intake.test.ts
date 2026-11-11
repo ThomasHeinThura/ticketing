@@ -15,10 +15,14 @@ import {
 } from "./duplicate.js";
 import {
   catalogueFor,
+  getConditionDrivingKeys,
   isFieldVisible,
   isRequestTypeVisible,
   MAX_TEXT_ANSWER_LENGTH,
+  normalizeDraftAnswers,
+  normalizeFormSchema,
   resolveFormVisibility,
+  sanitizeSubmissionData,
   translateMapsTo,
   validateFormSchema,
   validateSubmissionData,
@@ -1222,5 +1226,514 @@ describe("duplicate similarity scoring (IQ-18)", () => {
       0.5,
     );
     expect(suggestions.map((s) => s.id)).toEqual(["a", "b"]);
+  });
+});
+
+// --- D4: Checkbox condition normalisation (repairs published versions) ----------
+describe("normalizeFormSchema and checkbox condition evaluation (D4)", () => {
+  const publishedSchemaWithStrings: FormSchema = {
+    fields: [
+      { key: "has_hardware", type: "checkbox", label: "Hardware involved?" },
+      {
+        key: "serial_number",
+        type: "text",
+        label: "Serial number",
+        required: true,
+        showIf: { field_key: "has_hardware", op: "eq", value: "true" },
+      },
+      {
+        key: "software_name",
+        type: "text",
+        label: "Software name",
+        required: true,
+        showIf: { field_key: "has_hardware", op: "eq", value: "false" },
+      },
+    ],
+  };
+
+  it("normalises string 'true' and 'false' conditions for checkbox controllers", () => {
+    const normalised = normalizeFormSchema(publishedSchemaWithStrings);
+    expect(normalised.fields[1]?.showIf?.value).toBe(true);
+    expect(normalised.fields[2]?.showIf?.value).toBe(false);
+  });
+
+  it("evaluates visibility when actual boolean matches published string 'true' or 'false'", () => {
+    // When customer checked the box: actual has_hardware is boolean true
+    const trueVisibility = resolveFormVisibility(publishedSchemaWithStrings, {
+      has_hardware: true,
+    });
+    expect(trueVisibility.get("serial_number")).toBe(true);
+    expect(trueVisibility.get("software_name")).toBe(false);
+
+    // When customer unchecked the box: actual has_hardware is boolean false
+    const falseVisibility = resolveFormVisibility(publishedSchemaWithStrings, {
+      has_hardware: false,
+    });
+    expect(falseVisibility.get("serial_number")).toBe(false);
+    expect(falseVisibility.get("software_name")).toBe(true);
+  });
+
+  it("evaluates 'neq' condition correctly with boolean actual and string condition value", () => {
+    const neqSchema: FormSchema = {
+      fields: [
+        { key: "agree", type: "checkbox", label: "I agree" },
+        {
+          key: "reason",
+          type: "text",
+          label: "Reason",
+          showIf: { field_key: "agree", op: "neq", value: "true" },
+        },
+      ],
+    };
+    const reasonField = neqSchema.fields[1];
+    expect(reasonField).toBeDefined();
+    if (reasonField) {
+      // If agree is true, reason should hide
+      expect(isFieldVisible(neqSchema, reasonField, { agree: true })).toBe(
+        false,
+      );
+      // If agree is false, reason should show
+      expect(isFieldVisible(neqSchema, reasonField, { agree: false })).toBe(
+        true,
+      );
+    }
+  });
+
+  it("evaluates 'in' condition with string array matching boolean actual", () => {
+    const inSchema: FormSchema = {
+      fields: [
+        { key: "active", type: "checkbox", label: "Active?" },
+        {
+          key: "details",
+          type: "text",
+          label: "Details",
+          showIf: {
+            field_key: "active",
+            op: "in",
+            value: [
+              "true",
+            ] as unknown as FormSchema["fields"][number]["showIf"] extends {
+              value?: infer V;
+            }
+              ? V
+              : never,
+          },
+        },
+      ],
+    };
+    const detailsField = inSchema.fields[1];
+    expect(detailsField).toBeDefined();
+    if (detailsField) {
+      expect(isFieldVisible(inSchema, detailsField, { active: true })).toBe(
+        true,
+      );
+      expect(isFieldVisible(inSchema, detailsField, { active: false })).toBe(
+        false,
+      );
+    }
+  });
+
+  it("does not mutate condition values for non-checkbox controlling fields", () => {
+    const selectSchema: FormSchema = {
+      fields: [
+        {
+          key: "status",
+          type: "select",
+          label: "Status",
+          options: ["true", "false", "pending"],
+        },
+        {
+          key: "notes",
+          type: "text",
+          label: "Notes",
+          showIf: { field_key: "status", op: "eq", value: "true" },
+        },
+      ],
+    };
+    const normalised = normalizeFormSchema(selectSchema);
+    expect(normalised.fields[1]?.showIf?.value).toBe("true");
+  });
+});
+
+// --- D5: Server-side answer stripping (sanitizeSubmissionData) -----------------
+describe("sanitizeSubmissionData (D5)", () => {
+  const schema: FormSchema = {
+    fields: [
+      { key: "title", type: "text", label: "Title", required: true },
+      { key: "urgent", type: "checkbox", label: "Urgent?" },
+      {
+        key: "reason",
+        type: "text",
+        label: "Reason",
+        showIf: { field_key: "urgent", op: "eq", value: true },
+      },
+      {
+        key: "file_attachment",
+        type: "file",
+        label: "Attachment",
+      },
+      {
+        key: "count",
+        type: "number",
+        label: "Count",
+      },
+      {
+        key: "category",
+        type: "select",
+        label: "Category",
+        options: ["Billing", "Technical"],
+      },
+    ],
+  };
+
+  it("strips hidden, undeclared, and wrong-type answers while preserving visible valid answers", () => {
+    const rawData = {
+      title: "Broken laptop",
+      urgent: false, // reason is hidden because urgent is false
+      reason: "Smuggled hidden text", // hidden answer
+      injected_unknown_key: "malicious or undeclared", // undeclared answer
+      file_attachment: "filename.png", // file fields belong in attachment table, not form_data
+      count: "not-a-number", // wrong-type answer
+      category: "Billing", // valid select option
+    };
+
+    const sanitized = sanitizeSubmissionData(
+      schema,
+      rawData as Record<string, FormValue>,
+    );
+
+    expect(sanitized).toEqual({
+      title: "Broken laptop",
+      urgent: false,
+      category: "Billing",
+    });
+    expect(Object.hasOwn(sanitized, "reason")).toBe(false);
+    expect(Object.hasOwn(sanitized, "injected_unknown_key")).toBe(false);
+    expect(Object.hasOwn(sanitized, "file_attachment")).toBe(false);
+    expect(Object.hasOwn(sanitized, "count")).toBe(false);
+  });
+
+  it("treats an untouched checkbox as false for visibility and sanitization", () => {
+    const conditional: FormSchema = {
+      fields: [
+        { key: "gate", type: "checkbox", label: "Gate" },
+        {
+          key: "details",
+          type: "text",
+          label: "Details",
+          required: true,
+          showIf: { field_key: "gate", op: "eq", value: false },
+        },
+        {
+          key: "hidden",
+          type: "text",
+          label: "Hidden",
+          showIf: { field_key: "gate", op: "eq", value: true },
+        },
+      ],
+    };
+    expect(resolveFormVisibility(conditional, {}).get("details")).toBe(true);
+    expect(validateSubmissionData(conditional, {})).toContainEqual({
+      key: "details",
+      problem: "required_missing",
+    });
+    expect(
+      sanitizeSubmissionData(conditional, {
+        details: "kept",
+        hidden: "discarded",
+      }),
+    ).toEqual({ details: "kept" });
+  });
+
+  it("preserves number fields when submitted as valid finite numbers", () => {
+    const rawData = {
+      title: "Request",
+      urgent: true,
+      reason: "Urgent issue",
+      count: 42,
+    };
+    const sanitized = sanitizeSubmissionData(schema, rawData);
+    expect(sanitized.count).toBe(42);
+    expect(sanitized.reason).toBe("Urgent issue");
+  });
+
+  it("strips select answers that are not members of declared options", () => {
+    const rawData = {
+      title: "Valid title",
+      category: "HackedOption",
+    };
+    const sanitized = sanitizeSubmissionData(schema, rawData);
+    expect(Object.hasOwn(sanitized, "category")).toBe(false);
+  });
+});
+
+// --- Legacy numeric draft answer normalization and conditional visibility ------
+describe("normalizeDraftAnswers and legacy numeric draft handling", () => {
+  const schema: FormSchema = {
+    fields: [
+      { key: "title", type: "text", label: "Title", required: true },
+      { key: "seat_count", type: "number", label: "Seat count" },
+      {
+        key: "volume_license",
+        type: "text",
+        label: "License Key",
+        required: true,
+        showIf: { field_key: "seat_count", op: "eq", value: 50 },
+      },
+    ],
+  };
+
+  it("normalises numeric strings to numbers before visibility, validation, and sanitization", () => {
+    const legacyDraft = {
+      title: "New order",
+      seat_count: "50",
+      volume_license: "VOL-50-KEY",
+    };
+
+    // 1. normalizeDraftAnswers directly coerces numeric string to number
+    const normalized = normalizeDraftAnswers(schema, legacyDraft);
+    expect(normalized.seat_count).toBe(50);
+    expect(typeof normalized.seat_count).toBe("number");
+    expect(normalized.volume_license).toBe("VOL-50-KEY");
+
+    // 2. resolveFormVisibility resolves volume_license to visible when seat_count is string "50"
+    const visibility = resolveFormVisibility(schema, legacyDraft);
+    expect(visibility.get("volume_license")).toBe(true);
+
+    // 3. validateSubmissionData passes with 0 errors (does not reject seat_count as wrong_type)
+    const errors = validateSubmissionData(schema, legacyDraft);
+    expect(errors).toEqual([]);
+
+    // 4. sanitizeSubmissionData keeps both seat_count (as number) and required conditional volume_license
+    const sanitized = sanitizeSubmissionData(schema, legacyDraft);
+    expect(sanitized).toEqual({
+      title: "New order",
+      seat_count: 50,
+      volume_license: "VOL-50-KEY",
+    });
+  });
+
+  it("hides conditional field and strips its smuggled answer when numeric string does not match", () => {
+    const legacyDraft = {
+      title: "New order",
+      seat_count: "10",
+      volume_license: "Smuggled key",
+    };
+
+    const visibility = resolveFormVisibility(schema, legacyDraft);
+    expect(visibility.get("volume_license")).toBe(false);
+
+    const sanitized = sanitizeSubmissionData(schema, legacyDraft);
+    expect(sanitized).toEqual({
+      title: "New order",
+      seat_count: 10,
+    });
+    expect(Object.hasOwn(sanitized, "volume_license")).toBe(false);
+  });
+
+  it("flags wrong_type if a number field contains a non-numeric string", () => {
+    const badDraft = {
+      title: "New order",
+      seat_count: "not_a_number",
+    };
+    const errors = validateSubmissionData(schema, badDraft);
+    expect(errors).toContainEqual(
+      expect.objectContaining({ key: "seat_count", problem: "wrong_type" }),
+    );
+  });
+});
+
+// --- Preservation of accepted __proto__ keys in domain accumulators ------------
+describe("preserve accepted __proto__ keys in domain accumulators", () => {
+  const schemaWithProto: FormSchema = {
+    fields: [
+      { key: "title", type: "text", label: "Title", required: true },
+      { key: "__proto__", type: "text", label: "Proto payload" },
+    ],
+  };
+
+  it("preserves __proto__ as an own enumerable property through normalizeDraftAnswers and sanitizeSubmissionData", () => {
+    const rawData = { title: "Test submission" };
+    Object.defineProperty(rawData, "__proto__", {
+      value: "special-proto-value",
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+
+    expect(Object.hasOwn(rawData, "__proto__")).toBe(true);
+
+    // normalizeDraftAnswers accumulator
+    const normalized = normalizeDraftAnswers(schemaWithProto, rawData);
+    expect(Object.hasOwn(normalized, "__proto__")).toBe(true);
+    expect(Reflect.get(normalized, "__proto__")).toBe("special-proto-value");
+    expect(Object.keys(normalized)).toContain("__proto__");
+
+    // sanitizeSubmissionData accumulator
+    const sanitized = sanitizeSubmissionData(schemaWithProto, rawData);
+    expect(Object.hasOwn(sanitized, "__proto__")).toBe(true);
+    expect(Reflect.get(sanitized, "__proto__")).toBe("special-proto-value");
+    expect(Object.keys(sanitized)).toContain("__proto__");
+    expect(JSON.stringify(sanitized)).toContain(
+      '"__proto__":"special-proto-value"',
+    );
+
+    // Confirm that the object's prototype was not hijacked
+    expect(Object.getPrototypeOf(sanitized)).toBe(Object.prototype);
+  });
+});
+
+// --- Preservation of condition-driving blank values (Finding: eq-empty) --------
+describe("preservation of condition-driving blank values (showIf eq-empty)", () => {
+  const schemaWithEqEmpty: FormSchema = {
+    fields: [
+      { key: "title", type: "text", label: "Title", required: true },
+      { key: "controller", type: "text", label: "Controller text" },
+      {
+        key: "dependent_text",
+        type: "text",
+        label: "Dependent text",
+        showIf: { field_key: "controller", op: "eq", value: "" },
+      },
+      {
+        key: "dependent_file",
+        type: "file",
+        label: "Dependent file",
+        showIf: { field_key: "controller", op: "eq", value: "" },
+      },
+      { key: "unrelated_blank", type: "text", label: "Unrelated text" },
+    ],
+  };
+
+  it("identifies condition driving keys accurately", () => {
+    const driving = getConditionDrivingKeys(schemaWithEqEmpty);
+    expect(driving.has("controller")).toBe(true);
+    expect(driving.has("title")).toBe(false);
+    expect(driving.has("dependent_text")).toBe(false);
+    expect(driving.has("unrelated_blank")).toBe(false);
+  });
+
+  it("evaluates dependent text and file as visible when controller is empty string or omitted", () => {
+    // Explicit empty string
+    const visibilityExplicit = resolveFormVisibility(schemaWithEqEmpty, {
+      title: "My title",
+      controller: "",
+    });
+    expect(visibilityExplicit.get("dependent_text")).toBe(true);
+    expect(visibilityExplicit.get("dependent_file")).toBe(true);
+
+    // Omitted controller (blank text field in UI)
+    const visibilityOmitted = resolveFormVisibility(schemaWithEqEmpty, {
+      title: "My title",
+    });
+    expect(visibilityOmitted.get("dependent_text")).toBe(true);
+    expect(visibilityOmitted.get("dependent_file")).toBe(true);
+
+    // File field is in visibleFields for presign check
+    const visibleExplicit = visibleFields(schemaWithEqEmpty, {
+      title: "My title",
+      controller: "",
+    });
+    expect(visibleExplicit.map((f) => f.key)).toContain("dependent_file");
+
+    const visibleOmitted = visibleFields(schemaWithEqEmpty, {
+      title: "My title",
+    });
+    expect(visibleOmitted.map((f) => f.key)).toContain("dependent_file");
+  });
+
+  it("negative regression: hides dependent text and file when controller is non-empty", () => {
+    const visibility = resolveFormVisibility(schemaWithEqEmpty, {
+      title: "My title",
+      controller: "non-empty-text",
+    });
+    expect(visibility.get("dependent_text")).toBe(false);
+    expect(visibility.get("dependent_file")).toBe(false);
+
+    const visible = visibleFields(schemaWithEqEmpty, {
+      title: "My title",
+      controller: "non-empty-text",
+    });
+    expect(visible.map((f) => f.key)).not.toContain("dependent_file");
+    expect(visible.map((f) => f.key)).not.toContain("dependent_text");
+  });
+
+  it("negative regression: a hidden controller never makes dependent visible (N1 defense)", () => {
+    const chainedSchema: FormSchema = {
+      fields: [
+        { key: "gate", type: "checkbox", label: "Gate" },
+        {
+          key: "controller",
+          type: "text",
+          label: "Controller",
+          showIf: { field_key: "gate", op: "eq", value: true },
+        },
+        {
+          key: "dependent",
+          type: "text",
+          label: "Dependent",
+          showIf: { field_key: "controller", op: "eq", value: "" },
+        },
+      ],
+    };
+    // gate=false hides controller. Hidden controller's blank/smuggled value must never satisfy eq-empty
+    const visibility = resolveFormVisibility(chainedSchema, { gate: false });
+    expect(visibility.get("controller")).toBe(false);
+    expect(visibility.get("dependent")).toBe(false);
+  });
+
+  it("sanitizeSubmissionData preserves condition-driving blank values while stripping unrelated blank answers", () => {
+    const rawData = {
+      title: "Issue report",
+      controller: "",
+      dependent_text: "Visible because controller is empty",
+      unrelated_blank: "",
+    };
+
+    const sanitized = sanitizeSubmissionData(schemaWithEqEmpty, rawData);
+
+    // controller is preserved with "" so server visibility and presign succeed
+    expect(sanitized.controller).toBe("");
+    expect(Object.hasOwn(sanitized, "controller")).toBe(true);
+
+    // dependent answer is kept
+    expect(sanitized.dependent_text).toBe(
+      "Visible because controller is empty",
+    );
+
+    // unrelated blank answer is stripped
+    expect(Object.hasOwn(sanitized, "unrelated_blank")).toBe(false);
+  });
+
+  it("negative regression: sanitizeSubmissionData strips smuggled dependent answer when controller is non-empty", () => {
+    const rawData = {
+      title: "Issue report",
+      controller: "non-empty-controller",
+      dependent_text: "Smuggled hidden answer",
+    };
+
+    const sanitized = sanitizeSubmissionData(schemaWithEqEmpty, rawData);
+    expect(sanitized.controller).toBe("non-empty-controller");
+    expect(Object.hasOwn(sanitized, "dependent_text")).toBe(false);
+  });
+
+  it("reload and persisted draft: preserves dependent visibility when draft has empty or omitted controller", () => {
+    const draft1 = {
+      title: "Draft 1",
+      controller: "",
+      dependent_text: "Persisted text",
+    };
+    const norm1 = normalizeDraftAnswers(schemaWithEqEmpty, draft1);
+    expect(norm1.controller).toBe("");
+    const vis1 = resolveFormVisibility(schemaWithEqEmpty, norm1);
+    expect(vis1.get("dependent_text")).toBe(true);
+
+    const draft2 = {
+      title: "Draft 2",
+      dependent_text: "Persisted text",
+    };
+    const norm2 = normalizeDraftAnswers(schemaWithEqEmpty, draft2);
+    const vis2 = resolveFormVisibility(schemaWithEqEmpty, norm2);
+    expect(vis2.get("dependent_text")).toBe(true);
   });
 });

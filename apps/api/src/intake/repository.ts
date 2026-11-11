@@ -2,8 +2,10 @@ import { createId } from "@paralleldrive/cuid2";
 import type { FormSchema, FormValue, JsonValue } from "@taskdesk/domain";
 import {
   formatSubmissionReference,
+  normalizeFormSchema,
   parseSubmissionReference,
   renderUnmappedIntoDescription,
+  sanitizeSubmissionData,
   transitionSubmission,
   translateMapsTo,
   validateFormSchema,
@@ -134,13 +136,23 @@ type MaterializedWorkItemDescription<T extends { description: unknown }> = Omit<
 function materializeRequestType<T extends { formSchema: unknown }>(
   row: T,
 ): MaterializedRequestType<T> {
-  return { ...row, formSchema: row.formSchema as JsonValue };
+  return {
+    ...row,
+    formSchema: normalizeFormSchema(
+      row.formSchema as FormSchema,
+    ) as unknown as JsonValue,
+  };
 }
 
 function materializeRequestTypeVersion<T extends { formSchema: unknown }>(
   row: T,
 ): MaterializedRequestTypeVersion<T> {
-  return { ...row, formSchema: row.formSchema as JsonValue };
+  return {
+    ...row,
+    formSchema: normalizeFormSchema(
+      row.formSchema as FormSchema,
+    ) as unknown as JsonValue,
+  };
 }
 
 function materializeSubmission<T extends { formData: unknown }>(
@@ -529,7 +541,7 @@ export async function publishRequestType(id: string, actorId: string) {
         workspaceId: type.workspaceId,
         requestTypeId: id,
         number: (latest?.number ?? 0) + 1,
-        formSchema,
+        formSchema: normalizeFormSchema(formSchema),
         workItemTypeId: type.workItemTypeId,
         defaultProjectId: type.defaultProjectId,
         slaPolicyId: type.slaPolicyId,
@@ -904,14 +916,19 @@ export async function createSubmission(input: {
       }).enabled
     )
       throw new HTTPException(404, { message: "Request type not found" });
+    const formSchema = normalizeFormSchema(version.formSchema as FormSchema);
     const errors = validateSubmissionData(
-      version.formSchema as FormSchema,
+      formSchema,
       input.formData as Record<string, FormValue>,
     );
     if (errors.length)
       throw new HTTPException(422, {
         message: "Form answers do not match this request type",
       });
+    const sanitizedFormData = sanitizeSubmissionData(
+      formSchema,
+      input.formData as Record<string, FormValue>,
+    );
     const [organisation] = await tx
       .select({
         defaultCustomerVisibility:
@@ -935,7 +952,7 @@ export async function createSubmission(input: {
         requesterId: identity.personId,
         requestTypeId: currentType.type.id,
         requestTypeVersionId: version.id,
-        formData: input.formData,
+        formData: sanitizedFormData,
         customerVisibility: visibility,
         submittedAt: new Date(),
         state: "new",
@@ -1136,7 +1153,7 @@ async function convertSubmissionInTransaction(
     throw new HTTPException(422, {
       message: "Destination project has no default state",
     });
-  const form = version.formSchema as FormSchema;
+  const form = normalizeFormSchema(version.formSchema as FormSchema);
   const data = submission.formData as Record<string, unknown>;
   const mappedFields = translateMapsTo(form, data as Record<string, FormValue>);
   const title =
@@ -1330,10 +1347,40 @@ async function convertSubmissionInTransaction(
       createdAt: message.createdAt,
       updatedAt: message.createdAt,
     });
-  await tx
-    .update(schema.attachmentTable)
-    .set({ submissionId: null, workItemId: item.id })
+  const visible = visibleFields(form, data as Record<string, FormValue>);
+  const visibleFileFieldKeys = new Set(
+    visible.filter((f) => f.type === "file").map((f) => f.key),
+  );
+  const attachments = await tx
+    .select({
+      id: schema.attachmentTable.id,
+      submissionFieldKey: schema.attachmentTable.submissionFieldKey,
+      state: schema.attachmentTable.state,
+    })
+    .from(schema.attachmentTable)
     .where(eq(schema.attachmentTable.submissionId, submission.id));
+  const suppressedAttachmentIds: string[] = [];
+  for (const att of attachments) {
+    if (
+      att.submissionFieldKey === null ||
+      visibleFileFieldKeys.has(att.submissionFieldKey)
+    ) {
+      await tx
+        .update(schema.attachmentTable)
+        .set({ submissionId: null, workItemId: item.id })
+        .where(eq(schema.attachmentTable.id, att.id));
+    } else {
+      suppressedAttachmentIds.push(att.id);
+      await tx
+        .update(schema.attachmentTable)
+        .set(
+          att.state === "pending"
+            ? { state: "deleted", deletedAt: now, customerVisible: false }
+            : { customerVisible: false },
+        )
+        .where(eq(schema.attachmentTable.id, att.id));
+    }
+  }
   await tx
     .update(schema.requestParticipantTable)
     .set({ submissionId: null, workItemId: item.id })
@@ -1382,6 +1429,12 @@ async function convertSubmissionInTransaction(
     after: {
       ref: formatSubmissionReference(submission.number),
       workItemKey: item.key,
+      ...(suppressedAttachmentIds.length > 0
+        ? {
+            suppressedAttachmentIds,
+            suppressedAttachmentCount: suppressedAttachmentIds.length,
+          }
+        : {}),
       ...(customFields.skipped.length > 0
         ? { customFieldsSkipped: customFields.skipped }
         : {}),

@@ -1330,9 +1330,11 @@ and `work_item_id` (set on acceptance) — [data-model.md](data-model.md).
 - `IQ-8` On acceptance, form data is mapped onto native and custom fields per the request
   type's `mapsTo` rules, and anything unmapped is rendered into the description under a
   clear heading.
-- `IQ-9` Attachments transfer to the work item, preserving customer visibility
-  (`attachment.submission_id` before acceptance, `attachment.work_item_id` after —
-  [data-model.md](data-model.md)).
+- `IQ-9` Attachments for visible fields and thread attachments transfer to the work item,
+  preserving customer visibility. Completed uploads for hidden fields remain ready on the
+  submission as staff-only history; pending hidden uploads are cancelled for existing cleanup.
+  The acceptance audit records suppressed attachment IDs and count. Hidden uploads are never
+  transferred to the work item or exposed through customer routes.
 - `IQ-10` The submission thread transfers to the work item as public comments, **preserving
   each message's original `created_at`** (not the moment of transfer), so the conversation
   is not lost and so `SLA-7`'s `first_response_at` — set from the earliest public staff

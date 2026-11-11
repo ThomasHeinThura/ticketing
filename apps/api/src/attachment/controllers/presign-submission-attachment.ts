@@ -1,6 +1,12 @@
 import { createId } from "@paralleldrive/cuid2";
+import {
+  type FormSchema,
+  type FormValue,
+  isFieldVisible,
+} from "@taskdesk/domain";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import { formSchema as intakeFormSchema } from "../../intake/schema";
 import {
   buildAttachmentStorageKey,
   getFileExtension,
@@ -25,6 +31,48 @@ import {
   lockSubmissionForPresign,
 } from "../repository";
 import { assertOrganisationStorageQuota } from "../storage-quota";
+
+function isFormValue(value: unknown): value is FormValue {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value)) ||
+    (Array.isArray(value) && value.every(isFormValue))
+  );
+}
+
+/** Reject malformed persisted snapshots before evaluating attachment visibility. */
+export function parseAttachmentFormSchema(value: unknown): FormSchema | null {
+  const parsed = intakeFormSchema.safeParse(value);
+  if (!parsed.success) return null;
+  const fields: FormSchema["fields"][number][] = [];
+  for (const field of parsed.data.fields) {
+    const condition = field.showIf;
+    if (
+      condition &&
+      condition.value !== undefined &&
+      !isFormValue(condition.value)
+    )
+      return null;
+    const { showIf: _showIf, ...rest } = field;
+    if (condition) {
+      const { value: conditionValue, ...restCondition } = condition;
+      if (conditionValue !== undefined && !isFormValue(conditionValue))
+        return null;
+      fields.push({
+        ...rest,
+        showIf:
+          conditionValue === undefined
+            ? restCondition
+            : { ...restCondition, value: conditionValue },
+      });
+    } else {
+      fields.push({ ...rest, showIf: condition });
+    }
+  }
+  return { fields };
+}
 
 /**
  * A customer upload on their own request (AT-3: customer uploads are customer-visible). While the
@@ -209,23 +257,20 @@ export async function presignSubmissionAttachment(input: {
         tx,
         locked.requestTypeVersionId,
       );
-      const fields =
-        (
-          snapshot?.formSchema as
-            | {
-                fields?: Array<{
-                  key?: string;
-                  type?: string;
-                  multiple?: boolean;
-                }>;
-              }
-            | undefined
-        )?.fields ?? [];
-      const field = fields.find(
+      const formSchema = parseAttachmentFormSchema(snapshot?.formSchema);
+      const field = formSchema?.fields.find(
         (candidate) =>
           candidate.key === input.fieldKey && candidate.type === "file",
       );
-      if (!field)
+      if (
+        !formSchema ||
+        !field ||
+        !isFieldVisible(
+          formSchema,
+          field,
+          (locked.formData ?? {}) as Record<string, FormValue>,
+        )
+      )
         throw new HTTPException(400, {
           message: "The attachment field is not part of this submitted form.",
         });

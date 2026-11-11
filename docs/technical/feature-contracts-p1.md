@@ -1502,7 +1502,8 @@ This document covers behaviour and interface.
 - `AT-2` Upload is direct to object storage via a presigned POST. The portal download
   exception to the API byte-proxy rule is defined in `AT-5` and `CP-19`.
 - `AT-3` Every attachment carries `customer_visible`. Staff uploads default to **not**
-  visible; customer uploads default to visible.
+  visible; customer uploads default to visible. Completed uploads from hidden form fields
+  retained on an accepted submission are staff-only (`IQ-9`).
 - `AT-4` An attachment on an internal comment is always internal, whatever its own flag
   says.
   Staff share a file with the customer by attaching it to a public comment with "Share these

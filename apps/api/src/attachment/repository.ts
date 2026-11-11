@@ -532,6 +532,7 @@ export async function lockSubmissionForPresign(
       requesterId: submissionTable.requesterId,
       state: submissionTable.state,
       requestTypeVersionId: submissionTable.requestTypeVersionId,
+      formData: submissionTable.formData,
     })
     .from(submissionTable)
     .where(
