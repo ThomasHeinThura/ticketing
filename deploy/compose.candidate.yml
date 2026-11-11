@@ -17,6 +17,7 @@ services:
   taskdesk:
     environment:
       TASKDESK_ROLE: web
+      TASKDESK_CANDIDATE_READ_ONLY: "1"
     networks:
       - backend
     labels:

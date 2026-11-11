@@ -2,6 +2,7 @@ import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { IMPERSONATION_SESSION_SECONDS } from "../../auth/impersonation-context";
+import { isCandidateReadOnlyActive } from "../../candidate-read-only";
 import { attributedRoutesToClassify } from "../../permissions/shadow-middleware";
 import { policyRegistry } from "../../policy-registry";
 import { impersonatorStillEligible } from "./eligibility";
@@ -86,6 +87,12 @@ export async function enforceImpersonationRestrictions(
     createdAt?: Date | string;
   } | null;
   if (!session?.impersonatedBy) return;
+
+  if (isCandidateReadOnlyActive()) {
+    throw new HTTPException(403, {
+      message: "impersonation is not allowed in candidate read-only mode",
+    });
+  }
 
   const createdAt = session.createdAt ? new Date(session.createdAt) : null;
   if (

@@ -40,6 +40,13 @@ import {
 } from "./auth/local-factor-service";
 import stepUp from "./auth/step-up-api";
 import automation from "./automation";
+import {
+  assertCandidateServingBootPrerequisites,
+  createCandidateReadOnlyForbiddenResponse,
+  evaluateCandidateAuthPostBody,
+  evaluateCandidateReadOnlyRequest,
+  isCandidateReadOnlyActive,
+} from "./candidate-read-only";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
@@ -192,6 +199,7 @@ import { portalProjectRouter } from "./project/portal-projects";
 import { projectSettingsInheritanceApi as projectSettingsInheritance } from "./project/settings-inheritance";
 import report from "./report";
 import {
+  parseCandidateReadOnly,
   parseTaskDeskRole,
   roleOwnsGeneralJobs,
   roleOwnsHttp,
@@ -532,6 +540,16 @@ async function handleAuthRequest(
   headers?: Headers,
   mutation?: ExplicitCredentialMutation,
 ) {
+  const candidateDecision = evaluateCandidateReadOnlyRequest({
+    method: c.req.method,
+    pathname: c.req.path,
+    url: c.req.url,
+    headers: headers ?? c.req.raw.headers,
+  });
+  if (!candidateDecision.allowed) {
+    return createCandidateReadOnlyForbiddenResponse(candidateDecision);
+  }
+
   if (
     hasInvalidExplicitCredential(
       c.req.header("Authorization"),
@@ -546,12 +564,36 @@ async function handleAuthRequest(
   const selected = authForRequest(c);
   if (!portal) throw new HTTPException(403, { message: "Forbidden" });
 
+  const candidateReadOnly = isCandidateReadOnlyActive();
+  if (candidateReadOnly && portal !== "agent") {
+    return createCandidateReadOnlyForbiddenResponse();
+  }
   const session = await selected.api.getSession({
     headers: c.req.raw.headers,
+    ...(candidateReadOnly ? { query: { disableRefresh: true } } : {}),
   });
+  if (candidateReadOnly) {
+    if (c.req.method === "POST" && c.req.path === "/api/auth/sign-out") {
+      // Only an existing, non-impersonated session may be revoked; the impersonation check
+      // below rejects impersonated sessions in candidate mode.
+      if (!session?.session) {
+        throw new HTTPException(401, { message: "Unauthorized" });
+      }
+    }
+    const bodyDecision = await evaluateCandidateAuthPostBody({
+      pathname: c.req.path,
+      request: c.req.raw,
+    });
+    if (!bodyDecision.allowed) {
+      return createCandidateReadOnlyForbiddenResponse(bodyDecision);
+    }
+  }
   if (
     session?.session &&
     (session.session.portal !== portal ||
+      (candidateReadOnly &&
+        (session.session as { impersonatedBy?: string | null })
+          .impersonatedBy != null) ||
       (portal === "customer" &&
         !(await hasCustomerPortalIdentity(session.user.id))))
   ) {
@@ -583,7 +625,8 @@ async function handleAuthRequest(
   const authRequest = buildAuthRequest(c, headers);
   if (
     c.req.method === "POST" &&
-    c.req.path === "/api/auth/two-factor/verify-totp"
+    c.req.path === "/api/auth/two-factor/verify-totp" &&
+    !isCandidateReadOnlyActive()
   ) {
     try {
       return await withTotpSessionEnrollment(() =>
@@ -1113,6 +1156,18 @@ export function createApp(
       c.req.path,
     );
     if (selected === "invalid") return denyByHost(c);
+    if (isCandidateReadOnlyActive() && selected === "portal") {
+      return createCandidateReadOnlyForbiddenResponse();
+    }
+    const candidateDecision = evaluateCandidateReadOnlyRequest({
+      method: c.req.method,
+      pathname: c.req.path,
+      url: c.req.url,
+      headers: c.req.raw.headers,
+    });
+    if (!candidateDecision.allowed) {
+      return createCandidateReadOnlyForbiddenResponse(candidateDecision);
+    }
     if (isScimPath && selected !== "agent") return denyByHost(c);
     if (
       isWebSocketUpgrade &&
@@ -2093,6 +2148,15 @@ export function createApp(
     // uninvoked arrow function, or authenticateApiRequest never runs and every
     // request through this guard succeeds unauthenticated.
     try {
+      const candidateDecision = evaluateCandidateReadOnlyRequest({
+        method: c.req.method,
+        pathname: c.req.path,
+        url: c.req.url,
+        headers: c.req.raw.headers,
+      });
+      if (!candidateDecision.allowed) {
+        return createCandidateReadOnlyForbiddenResponse(candidateDecision);
+      }
       if (c.req.path === "/api/ws" || c.req.path.startsWith("/api/ws/")) {
         const hostResult = checkWebSocketOrigin({
           host: c.req.header("Host") ?? null,
@@ -2104,6 +2168,30 @@ export function createApp(
           throw new HTTPException(403, { message: "Forbidden" });
       }
       await authenticateApiRequest(c);
+      if (isCandidateReadOnlyActive()) {
+        const activeWorkspaceId = (
+          c.get("session") as {
+            activeOrganizationId?: string | null;
+          } | null
+        )?.activeOrganizationId?.trim();
+        if (!activeWorkspaceId) {
+          return createCandidateReadOnlyForbiddenResponse({
+            allowed: false,
+            status: 403,
+            reason: "invalid_query_parameters",
+          });
+        }
+        const scopedDecision = evaluateCandidateReadOnlyRequest({
+          method: c.req.method,
+          pathname: c.req.path,
+          url: c.req.url,
+          headers: c.req.raw.headers,
+          approvedWorkspaceId: activeWorkspaceId,
+        });
+        if (!scopedDecision.allowed) {
+          return createCandidateReadOnlyForbiddenResponse(scopedDecision);
+        }
+      }
       await enforceLocalFactorEnrollment(c);
       const csrfResponse = await csrfProtectionMiddleware()(c, async () => {});
       if (csrfResponse instanceof Response) return csrfResponse;
@@ -2870,6 +2958,7 @@ export function createApp(
  * Deployment depends on it completing successfully and never receives that variable.
  */
 export async function runMigrationStep(): Promise<void> {
+  parseCandidateReadOnly(process.env.TASKDESK_CANDIDATE_READ_ONLY, "migrate");
   const currentDir = dirname(fileURLToPath(import.meta.url));
 
   // Every DDL step below runs on the migration/owner connection
@@ -2965,7 +3054,16 @@ export async function runPositionRecoveryBootTask(): Promise<void> {
 export async function runApiBootTasks(
   options: Pick<NodeServerShutdownOptions, "hostname" | "role"> = {},
 ): Promise<void> {
-  const role = options.role ?? "all";
+  const role =
+    options.role ??
+    (process.env.TASKDESK_CANDIDATE_READ_ONLY === "1" &&
+    process.env.TASKDESK_ROLE
+      ? (parseTaskDeskRole(process.env.TASKDESK_ROLE) as ServingRole)
+      : "all");
+  const candidateReadOnly = parseCandidateReadOnly(
+    process.env.TASKDESK_CANDIDATE_READ_ONLY,
+    role,
+  );
   // S1's structural backstop: fail loudly, before anything else, if this process's
   // own environment carries the owner/migration credential at all. A correctly
   // configured compose/Helm deployment never sets it here in the first place; this
@@ -2981,6 +3079,19 @@ export async function runApiBootTasks(
   await assertApplicationRoleIsNotPrivileged(getDatabase());
 
   console.log(`🔐 ${policyRegistry.entries.length} policies loaded`);
+
+  if (candidateReadOnly) {
+    await assertCandidateServingBootPrerequisites();
+    if (roleOwnsHttp(role)) {
+      await startAuthConfigRuntime({ poll: false });
+    }
+    await startObservabilityRuntime({
+      ...(options.hostname ? { hostname: options.hostname } : {}),
+      metricsListener: roleOwnsHttp(role),
+      poll: false,
+    });
+    return;
+  }
 
   await migrateColumns();
   if (roleOwnsHttp(role)) await startAuthConfigRuntime();
@@ -3400,6 +3511,7 @@ if (isMainModule) {
   let role: ReturnType<typeof parseTaskDeskRole>;
   try {
     role = parseTaskDeskRole();
+    parseCandidateReadOnly(process.env.TASKDESK_CANDIDATE_READ_ONLY, role);
   } catch {
     logHttpLifecycleFailure();
     process.exit(1);

@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { isCandidateReadOnlyActive } from "../../candidate-read-only";
 import db, { schema } from "../../database";
 import {
   createTaskDeskLogger,
@@ -120,8 +121,13 @@ export function recordAuditWriteFailure(
 }
 
 export async function startObservabilityRuntime(
-  options: { hostname?: string; metricsListener?: boolean } = {},
+  options: {
+    hostname?: string;
+    metricsListener?: boolean;
+    poll?: boolean;
+  } = {},
 ): Promise<void> {
+  const candidateReadOnly = isCandidateReadOnlyActive();
   const [row] = await db
     .select({
       version: schema.instanceSettingTable.observabilityConfigVersion,
@@ -184,6 +190,9 @@ export async function startObservabilityRuntime(
       }),
     initialVersion: row.version,
   });
+  if (options.poll === false || candidateReadOnly) {
+    return;
+  }
   refreshTimer = setInterval(() => {
     void refreshController?.refresh();
   }, 5_000);

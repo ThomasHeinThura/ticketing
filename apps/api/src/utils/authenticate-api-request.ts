@@ -5,6 +5,7 @@ import type { ApiKeyKind } from "../api-key/credential";
 import { clientIpForContext, enforceApiKeyRequest } from "../api-key/enforce";
 import { loadApiKeyKind } from "../api-key/repository";
 import { authForHost, hasCustomerPortalIdentity, portalForHost } from "../auth";
+import { isCandidateReadOnlyActive } from "../candidate-read-only";
 import { mcpFeatureEnabled } from "./mcp-feature-enabled";
 import { auditMcpRequest } from "./mcp-request-audit";
 import { verifyApiKey } from "./verify-api-key";
@@ -21,11 +22,23 @@ async function getSession(headers: Headers) {
   const auth = authForHost(headers.get("host"));
   const portal = portalForHost(headers.get("host"));
   if (!auth || !portal) return null;
+  const candidateReadOnly = isCandidateReadOnlyActive();
+  if (candidateReadOnly && portal !== "agent") {
+    throw new HTTPException(403, {
+      message: "Request blocked by candidate read-only mode.",
+    });
+  }
   try {
-    const result = await auth.api.getSession({ headers });
+    const result = await auth.api.getSession({
+      headers,
+      ...(candidateReadOnly ? { query: { disableRefresh: true } } : {}),
+    });
     if (
       result?.session &&
       (result.session.portal !== portal ||
+        (candidateReadOnly &&
+          (result.session as { impersonatedBy?: string | null })
+            .impersonatedBy != null) ||
         (portal === "customer" &&
           !(await hasCustomerPortalIdentity(result.user.id))))
     ) {

@@ -87,6 +87,12 @@ const data = {
   tableCount: schemaCatalogue.tables.length,
   fileCount: 8,
   factorState: { storedRows: 2, enabledUsers: 2 },
+  intrinsicAuthState: {
+    storedPasswordRows: 1,
+    enabledPasswordRows: 1,
+    agentPasswordEnabled: true,
+    customerPasswordEnabled: true,
+  },
   preservation: {
     schemaFingerprint: reviewedSchemaHash,
     tables: preservedTables,
@@ -123,7 +129,7 @@ const transformedProof = {
   outbound: {
     enabledIdentityConnections: 0,
     enabledScimConnections: 0,
-    enabledPlugins: 0,
+    enabledExternalPlugins: 0,
     activeWebhooks: 0,
     enabledAutomations: 0,
     runnableJobHandlers: 0,
@@ -133,6 +139,13 @@ const transformedProof = {
     actionableAutomationRuns: 0,
     actionableInvitationDeliveries: 0,
     runnableImportRuns: 0,
+  },
+  intrinsicAuth: {
+    allowedPluginIds: ["auth.password"],
+    storedPasswordRows: 1,
+    enabledPasswordRows: 1,
+    agentPasswordEnabled: true,
+    customerPasswordEnabled: true,
   },
   mfa: {
     mode: "reencrypted",
@@ -176,6 +189,7 @@ const candidateEnvSecrets = {
   },
   taskdesk: {
     TASKDESK_ROLE: "web",
+    TASKDESK_CANDIDATE_READ_ONLY: "1",
     TASKDESK_DATABASE_URL:
       "postgres://taskdesk_app:candidate-app-secret@postgres/taskdesk_test",
     TASKDESK_AUTH_SECRET: "3".repeat(64),
@@ -685,6 +699,7 @@ function fixture(t) {
       data: structuredClone(transformedData),
       credentials: structuredClone(transformedProof.credentials),
       outbound: structuredClone(transformedProof.outbound),
+      intrinsicAuth: structuredClone(transformedProof.intrinsicAuth),
       mfa: structuredClone(transformedProof.mfa),
     }),
     browserWindow: () => defaultBrowserResult(slot),
@@ -824,14 +839,14 @@ const appContainer = (s) =>
     (c) => c.Config.Labels["com.docker.compose.service"] === "taskdesk",
   );
 
-test("candidate overlay selects web while canonical baseline and migration keep their roles", () => {
+test("candidate overlay selects web and candidate read-only mode while canonical baseline and migration keep their roles", () => {
   const overlay = readFileSync(
     new URL("../../deploy/compose.candidate.yml", import.meta.url),
     "utf8",
   );
   assert.ok(
     overlay.includes(
-      "  taskdesk:\n    environment:\n      TASKDESK_ROLE: web\n",
+      '  taskdesk:\n    environment:\n      TASKDESK_ROLE: web\n      TASKDESK_CANDIDATE_READ_ONLY: "1"\n',
     ),
   );
   assert.equal(
@@ -839,18 +854,36 @@ test("candidate overlay selects web while canonical baseline and migration keep 
     "all",
   );
   assert.equal(
+    snapshot().config.services.taskdesk.environment
+      .TASKDESK_CANDIDATE_READ_ONLY,
+    undefined,
+  );
+  assert.equal(
     snapshot(image, candidateVolumes(slot)).config.services.taskdesk.environment
       .TASKDESK_ROLE,
     "web",
   );
-  for (const selected of [snapshot(), snapshot(image, candidateVolumes(slot))])
+  assert.equal(
+    snapshot(image, candidateVolumes(slot)).config.services.taskdesk.environment
+      .TASKDESK_CANDIDATE_READ_ONLY,
+    "1",
+  );
+  for (const selected of [
+    snapshot(),
+    snapshot(image, candidateVolumes(slot)),
+  ]) {
     assert.equal(
       selected.config.services.migrate.environment.TASKDESK_ROLE,
       "migrate",
     );
+    assert.equal(
+      selected.config.services.migrate.environment.TASKDESK_CANDIDATE_READ_ONLY,
+      undefined,
+    );
+  }
 });
 
-test("candidate and baseline reject application role drift in Compose or engine", () => {
+test("candidate and baseline reject application role or read-only mode drift in Compose or engine", () => {
   const candidateProfile = {
     slot,
     volumes: candidateVolumes(slot),
@@ -866,6 +899,16 @@ test("candidate and baseline reject application role drift in Compose or engine"
     else candidate.config.services.taskdesk.environment.TASKDESK_ROLE = role;
     assert.throws(() => assertSelectionSnapshot(candidate, candidateProfile));
   }
+  for (const readOnly of ["0", "false", "true", undefined]) {
+    const candidate = snapshot(image, candidateVolumes(slot));
+    if (readOnly === undefined)
+      delete candidate.config.services.taskdesk.environment
+        .TASKDESK_CANDIDATE_READ_ONLY;
+    else
+      candidate.config.services.taskdesk.environment.TASKDESK_CANDIDATE_READ_ONLY =
+        readOnly;
+    assert.throws(() => assertSelectionSnapshot(candidate, candidateProfile));
+  }
   for (const role of ["all", "jobs", undefined]) {
     const candidate = snapshot(image, candidateVolumes(slot));
     const env = appContainer(candidate).Config.Env;
@@ -874,10 +917,50 @@ test("candidate and baseline reject application role drift in Compose or engine"
     else env[index] = `TASKDESK_ROLE=${role}`;
     assert.throws(() => assertSelectionSnapshot(candidate, candidateProfile));
   }
+  for (const readOnly of ["0", "false", "true", undefined]) {
+    const candidate = snapshot(image, candidateVolumes(slot));
+    const env = appContainer(candidate).Config.Env;
+    const index = env.findIndex((item) =>
+      item.startsWith("TASKDESK_CANDIDATE_READ_ONLY="),
+    );
+    if (readOnly === undefined) env.splice(index, 1);
+    else env[index] = `TASKDESK_CANDIDATE_READ_ONLY=${readOnly}`;
+    assert.throws(() => assertSelectionSnapshot(candidate, candidateProfile));
+  }
+  for (const shadow of ["sample", "all", "1", "true"]) {
+    const candidateWithShadow = snapshot(image, candidateVolumes(slot));
+    candidateWithShadow.config.services.taskdesk.environment.TASKDESK_POLICY_SHADOW =
+      shadow;
+    assert.throws(() =>
+      assertSelectionSnapshot(candidateWithShadow, candidateProfile),
+    );
+    const candidateWithEngineShadow = snapshot(image, candidateVolumes(slot));
+    appContainer(candidateWithEngineShadow).Config.Env.push(
+      `TASKDESK_POLICY_SHADOW=${shadow}`,
+    );
+    assert.throws(() =>
+      assertSelectionSnapshot(candidateWithEngineShadow, candidateProfile),
+    );
+  }
+  const candidateWithMigrateReadOnly = snapshot(image, candidateVolumes(slot));
+  candidateWithMigrateReadOnly.config.services.migrate.environment.TASKDESK_CANDIDATE_READ_ONLY =
+    "1";
+  assert.throws(() =>
+    assertSelectionSnapshot(candidateWithMigrateReadOnly, candidateProfile),
+  );
   const baseline = snapshot();
   baseline.config.services.taskdesk.environment.TASKDESK_ROLE = "web";
   assert.throws(() =>
     assertSelectionSnapshot(baseline, {
+      image: baselineImage,
+      privateDir: baselinePrivateDir,
+    }),
+  );
+  const baselineWithReadOnly = snapshot();
+  baselineWithReadOnly.config.services.taskdesk.environment.TASKDESK_CANDIDATE_READ_ONLY =
+    "1";
+  assert.throws(() =>
+    assertSelectionSnapshot(baselineWithReadOnly, {
       image: baselineImage,
       privateDir: baselinePrivateDir,
     }),
@@ -2355,6 +2438,64 @@ for (const [name, change] of [
     },
   ],
   [
+    "enabled external plugin",
+    (proof) => {
+      proof.outbound.enabledExternalPlugins = 1;
+    },
+  ],
+  [
+    "legacy enabledPlugins key",
+    (proof) => {
+      delete proof.outbound.enabledExternalPlugins;
+      proof.outbound.enabledPlugins = 0;
+    },
+  ],
+  [
+    "magic-link plugin allowlisted",
+    (proof) => {
+      proof.intrinsicAuth.allowedPluginIds = [
+        "auth.password",
+        "auth.magic-link",
+      ];
+    },
+  ],
+  [
+    "email-otp plugin allowlisted",
+    (proof) => {
+      proof.intrinsicAuth.allowedPluginIds = ["auth.email-otp"];
+    },
+  ],
+  [
+    "empty plugin allowlist",
+    (proof) => {
+      proof.intrinsicAuth.allowedPluginIds = [];
+    },
+  ],
+  [
+    "disabled agent password",
+    (proof) => {
+      proof.intrinsicAuth.agentPasswordEnabled = false;
+    },
+  ],
+  [
+    "changed stored password rows",
+    (proof) => {
+      proof.intrinsicAuth.storedPasswordRows = 2;
+    },
+  ],
+  [
+    "changed enabled password rows",
+    (proof) => {
+      proof.intrinsicAuth.enabledPasswordRows = 0;
+    },
+  ],
+  [
+    "changed customer password state",
+    (proof) => {
+      proof.intrinsicAuth.customerPasswordEnabled = false;
+    },
+  ],
+  [
     "unreadable MFA",
     (proof) => {
       proof.mfa.storedRows = 1;
@@ -2491,6 +2632,64 @@ for (const [name, change] of [
     },
   ],
   [
+    "enabled external plugin",
+    (proof) => {
+      proof.outbound.enabledExternalPlugins = 1;
+    },
+  ],
+  [
+    "legacy enabledPlugins key",
+    (proof) => {
+      delete proof.outbound.enabledExternalPlugins;
+      proof.outbound.enabledPlugins = 0;
+    },
+  ],
+  [
+    "magic-link plugin allowlisted",
+    (proof) => {
+      proof.intrinsicAuth.allowedPluginIds = [
+        "auth.password",
+        "auth.magic-link",
+      ];
+    },
+  ],
+  [
+    "email-otp plugin allowlisted",
+    (proof) => {
+      proof.intrinsicAuth.allowedPluginIds = ["auth.email-otp"];
+    },
+  ],
+  [
+    "empty plugin allowlist",
+    (proof) => {
+      proof.intrinsicAuth.allowedPluginIds = [];
+    },
+  ],
+  [
+    "disabled agent password",
+    (proof) => {
+      proof.intrinsicAuth.agentPasswordEnabled = false;
+    },
+  ],
+  [
+    "changed stored password rows",
+    (proof) => {
+      proof.intrinsicAuth.storedPasswordRows = 2;
+    },
+  ],
+  [
+    "changed enabled password rows",
+    (proof) => {
+      proof.intrinsicAuth.enabledPasswordRows = 0;
+    },
+  ],
+  [
+    "changed customer password state",
+    (proof) => {
+      proof.intrinsicAuth.customerPasswordEnabled = false;
+    },
+  ],
+  [
     "changed MFA enrollment",
     (proof) => {
       proof.mfa.storedRows = 1;
@@ -2507,6 +2706,66 @@ for (const [name, change] of [
     };
     await assert.rejects(coordinateCandidateSelection(f), /retained/);
     assert.equal(f.calls.includes("browserWindow"), false);
+  });
+}
+
+for (const [name, change] of [
+  [
+    "disabled agent password",
+    (source) => {
+      source.intrinsicAuthState.agentPasswordEnabled = false;
+    },
+  ],
+  [
+    "missing intrinsic state",
+    (source) => {
+      delete source.intrinsicAuthState;
+    },
+  ],
+  [
+    "extra intrinsic key",
+    (source) => {
+      source.intrinsicAuthState.extra = 1;
+    },
+  ],
+  [
+    "enabled rows above stored rows",
+    (source) => {
+      source.intrinsicAuthState.enabledPasswordRows = 2;
+    },
+  ],
+  [
+    "non-boolean customer password state",
+    (source) => {
+      source.intrinsicAuthState.customerPasswordEnabled = "yes";
+    },
+  ],
+  [
+    "stored rows differing from candidate proof",
+    (source) => {
+      source.intrinsicAuthState.storedPasswordRows = 2;
+    },
+  ],
+  [
+    "enabled rows differing from candidate proof",
+    (source) => {
+      source.intrinsicAuthState.enabledPasswordRows = 0;
+    },
+  ],
+  [
+    "customer password differing from candidate proof",
+    (source) => {
+      source.intrinsicAuthState.customerPasswordEnabled = false;
+    },
+  ],
+]) {
+  test(`quiesced source rejects ${name} before candidate start`, async (t) => {
+    const f = fixture(t);
+    f.backup.data = structuredClone(data);
+    change(f.backup.data);
+    f.adapter.inspectCopiedData = async () => structuredClone(f.backup.data);
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("selectCandidate"), false);
   });
 }
 

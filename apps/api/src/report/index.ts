@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import { isCandidateReadOnlyActive } from "../candidate-read-only";
 import db from "../database";
 import { listWorkspaceFeatures } from "../feature-flag/repository";
 import {
@@ -1065,7 +1066,9 @@ router
   .openapi(listDashboardsRoute, async (c) => {
     const identity = await identityOf(c);
     const workspaceId = c.get("workspaceId");
-    await ensureDefaultDashboard(workspaceId, identity.personId, actorOf(c));
+    if (!isCandidateReadOnlyActive()) {
+      await ensureDefaultDashboard(workspaceId, identity.personId, actorOf(c));
+    }
     const canManage = await holds(c, "workspace:manage_settings");
     const rows = await listDashboards(workspaceId, identity.personId);
     return c.json(

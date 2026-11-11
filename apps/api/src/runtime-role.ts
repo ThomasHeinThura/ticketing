@@ -31,6 +31,41 @@ export function roleOwnsGeneralJobs(role: ServingRole): boolean {
   return role !== "web";
 }
 
+export function parseCandidateReadOnly(
+  value = process.env.TASKDESK_CANDIDATE_READ_ONLY,
+  role: TaskDeskRole = parseTaskDeskRole(process.env.TASKDESK_ROLE),
+  policyShadow = process.env.TASKDESK_POLICY_SHADOW,
+): boolean {
+  if (
+    value === undefined ||
+    value === "" ||
+    value === "0" ||
+    value === "false"
+  ) {
+    return false;
+  }
+  if (value !== "1" && value !== "true") {
+    throw new Error(
+      "TASKDESK_CANDIDATE_READ_ONLY must be unset, 0, false, 1, or true",
+    );
+  }
+  if (role !== "web") {
+    throw new Error(
+      `TASKDESK_CANDIDATE_READ_ONLY requires TASKDESK_ROLE=web (received TASKDESK_ROLE=${role})`,
+    );
+  }
+  if (
+    policyShadow !== undefined &&
+    policyShadow !== "" &&
+    policyShadow !== "off"
+  ) {
+    throw new Error(
+      `TASKDESK_CANDIDATE_READ_ONLY requires TASKDESK_POLICY_SHADOW to be unset or off (received TASKDESK_POLICY_SHADOW=${policyShadow})`,
+    );
+  }
+  return true;
+}
+
 export const JOB_LIVENESS_SOCKET_PATH = "/tmp/taskdesk-liveness.sock";
 const LIVENESS_REQUEST = "ping\n";
 const LIVENESS_RESPONSE = "pong\n";

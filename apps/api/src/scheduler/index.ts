@@ -8,7 +8,7 @@ import {
   runScheduledJobWithHistory,
   startJobRunWorker,
 } from "../instance/jobs/runtime";
-import type { ServingRole } from "../runtime-role";
+import { parseCandidateReadOnly, type ServingRole } from "../runtime-role";
 import {
   cleanupPendingAttachments,
   collectDeletedAttachments,
@@ -253,6 +253,9 @@ function createOnDemandJobDefinitions(): ReadonlyArray<RegisteredJobDefinition> 
 }
 
 export function initializeScheduler(role: ServingRole = "all"): void {
+  if (parseCandidateReadOnly(process.env.TASKDESK_CANDIDATE_READ_ONLY, role)) {
+    return;
+  }
   if (jobs.length > 0) return;
   schedulerRole = role;
   const definitions = createRegisteredJobDefinitions();
@@ -393,6 +396,7 @@ export function nextScheduledAt(
 
 /** Exact job names and live schedule state registered in this process. */
 export function registeredJobCatalog(): readonly RegisteredJobStatus[] {
+  const candidateReadOnly = parseCandidateReadOnly();
   const definitions =
     registeredDefinitions.length > 0
       ? registeredDefinitions
@@ -403,8 +407,9 @@ export function registeredJobCatalog(): readonly RegisteredJobStatus[] {
         ];
   return definitions.map((definition) => {
     const cron = registeredByName.get(definition.name);
-    const enabled =
-      definition.onDemand === true
+    const enabled = candidateReadOnly
+      ? false
+      : definition.onDemand === true
         ? true
         : (runtimeJobEnabled.get(definition.name) ?? true);
     return {
@@ -413,11 +418,12 @@ export function registeredJobCatalog(): readonly RegisteredJobStatus[] {
       timezone: definition.timezone ?? null,
       enabled,
       nextRunAt:
-        definition.onDemand === true || !enabled
+        candidateReadOnly || definition.onDemand === true || !enabled
           ? null
           : (cron?.nextRun() ??
             nextScheduledAt(definition.pattern, definition.timezone)),
-      manualRunAllowed: definition.manualRunAllowed !== false,
+      manualRunAllowed:
+        !candidateReadOnly && definition.manualRunAllowed !== false,
     };
   });
 }

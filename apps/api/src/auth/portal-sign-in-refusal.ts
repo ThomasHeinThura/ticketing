@@ -1,4 +1,5 @@
 import { appendAuditLog } from "../audit/audit-writer";
+import { isCandidateReadOnlyActive } from "../candidate-read-only";
 import db from "../database";
 import { userHasLinkedData } from "./repository";
 
@@ -46,6 +47,9 @@ export async function auditPortalSignInRefusal(
   userId: string,
   reason: string,
 ): Promise<void> {
+  if (isCandidateReadOnlyActive()) {
+    return;
+  }
   try {
     await appendAuditLog(db, {
       actorId: null,

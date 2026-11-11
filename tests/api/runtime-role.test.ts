@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  parseCandidateReadOnly,
   parseTaskDeskRole,
   roleOwnsGeneralJobs,
   roleOwnsHttp,
@@ -35,6 +36,38 @@ describe("runtime role ownership", () => {
     expect(parseTaskDeskRole(undefined)).toBe("all");
     expect(parseTaskDeskRole("web")).toBe("web");
     expect(() => parseTaskDeskRole("worker")).toThrow("TASKDESK_ROLE");
+  });
+
+  it("parses TASKDESK_CANDIDATE_READ_ONLY strictly and binds it to TASKDESK_ROLE=web", () => {
+    expect(parseCandidateReadOnly(undefined, "all")).toBe(false);
+    expect(parseCandidateReadOnly("", "web")).toBe(false);
+    expect(parseCandidateReadOnly("0", "web")).toBe(false);
+    expect(parseCandidateReadOnly("false", "all")).toBe(false);
+    expect(parseCandidateReadOnly("1", "web")).toBe(true);
+    expect(parseCandidateReadOnly("true", "web")).toBe(true);
+
+    for (const invalidRole of ["all", "jobs", "migrate"] as const) {
+      expect(() => parseCandidateReadOnly("1", invalidRole)).toThrow(
+        "TASKDESK_CANDIDATE_READ_ONLY requires TASKDESK_ROLE=web",
+      );
+      expect(() => parseCandidateReadOnly("true", invalidRole)).toThrow(
+        "TASKDESK_CANDIDATE_READ_ONLY requires TASKDESK_ROLE=web",
+      );
+    }
+
+    for (const invalidValue of ["yes", "on", "2", "readonly"]) {
+      expect(() => parseCandidateReadOnly(invalidValue, "web")).toThrow(
+        "TASKDESK_CANDIDATE_READ_ONLY must be unset, 0, false, 1, or true",
+      );
+    }
+
+    expect(parseCandidateReadOnly("1", "web", "off")).toBe(true);
+    expect(parseCandidateReadOnly("1", "web", "")).toBe(true);
+    for (const shadowMode of ["sample", "all", "1", "true"]) {
+      expect(() => parseCandidateReadOnly("1", "web", shadowMode)).toThrow(
+        "TASKDESK_CANDIDATE_READ_ONLY requires TASKDESK_POLICY_SHADOW to be unset or off",
+      );
+    }
   });
 
   it("assigns HTTP and general jobs to the documented roles", () => {

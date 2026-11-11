@@ -52,6 +52,7 @@ import {
 } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
+import { isCandidateReadOnlyActive } from "../candidate-read-only";
 import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
 import {
@@ -630,7 +631,7 @@ export async function runNextWithPolicyShadow(
   c: Context,
   next: Next,
 ): Promise<void> {
-  if (!policyShadowEnabled) {
+  if (!policyShadowEnabled || isCandidateReadOnlyActive()) {
     await next();
     return;
   }

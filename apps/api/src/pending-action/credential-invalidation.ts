@@ -9,6 +9,7 @@ import type {
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { and, eq, inArray, ne, type SQL } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
+import { isCandidateReadOnlyActive } from "../candidate-read-only";
 import db, { schema as importedSchema } from "../database";
 import {
   apikeyTable,
@@ -832,6 +833,11 @@ function withCredentialRevocationWrites<
   return {
     ...target,
     update: async <T>(input: AdapterUpdateInput) => {
+      if (isCandidateReadOnlyActive() && input.model === "user") {
+        throw new Error(
+          "Candidate read-only mode forbids Better Auth user row updates",
+        );
+      }
       if (input.model !== "apikey") {
         return target.update<T>(input);
       }
@@ -1009,6 +1015,9 @@ function withCredentialRevocationWrites<
       return target.delete(input);
     },
     deleteMany: async (input) => {
+      if (isCandidateReadOnlyActive() && input.model === "verification") {
+        return 0;
+      }
       const state = explicitMutationStorage.getStore();
       if (isExplicitSessionMutation(state) && input.model === "session") {
         const userSelector = exactSelector(input.where, "userId");

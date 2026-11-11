@@ -3,7 +3,11 @@ import { apiKey } from "@better-auth/api-key";
 import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import {
+  APIError,
+  createAuthMiddleware,
+  getSessionFromCtx,
+} from "better-auth/api";
 import { deleteSessionCookie } from "better-auth/cookies";
 import {
   admin as adminPlugin,
@@ -49,6 +53,11 @@ import {
   establishVerifiedLocalStaffPerson,
   verifiedLocalEmailClaimMethod,
 } from "./auth/verified-placeholder-claim";
+import {
+  assertCandidateReadOnlyAuthActionAllowed,
+  CANDIDATE_READ_ONLY_ERROR_MESSAGE,
+  isCandidateReadOnlyActive,
+} from "./candidate-read-only";
 import { readCustomerInvitationContinuationContext } from "./customer-invitation/continuation-context";
 import {
   acceptCustomerInvitation,
@@ -222,7 +231,7 @@ function withExplicitServerCredentialMutations<T extends object>(
                   Reflect.apply(targetMethod, thisArgument, args),
                 );
               }
-              if (apiMethod === "verifyTOTP") {
+              if (apiMethod === "verifyTOTP" && !isCandidateReadOnlyActive()) {
                 return withTotpSessionEnrollment(() =>
                   Reflect.apply(targetMethod, thisArgument, args),
                 );
@@ -325,6 +334,11 @@ export function resolveLocalAuthProviders(
 export function effectiveLocalAuthProviders(
   providers: LocalAuthProviders,
 ): LocalAuthProviders {
+  if (isCandidateReadOnlyActive()) {
+    // Candidate mode permits only password sign-in plus existing-factor TOTP. Magic-link and
+    // email-OTP default to enabled without a stored row, so they are masked unconditionally.
+    return { ...providers, magicLink: false, emailOtp: false };
+  }
   return {
     ...providers,
     emailOtp: providers.emailOtp && !isEmailOtpSignInDisabled,
@@ -654,7 +668,18 @@ function createAuth(
       // /api/auth/reference that pulls an UNPINNED @scalar/api-reference bundle
       // from a third-party CDN into the API's own cookie origin.
     ],
+    verification: {
+      get disableCleanup() {
+        return isCandidateReadOnlyActive();
+      },
+    },
     session: {
+      get deferSessionRefresh() {
+        return isCandidateReadOnlyActive();
+      },
+      get disableSessionRefresh() {
+        return isCandidateReadOnlyActive();
+      },
       // Cookie cache disabled in #6. kaneo cached the session in the cookie for
       // five minutes, and that path returns session data with NO database read —
       // so a revoked session kept working for up to five minutes, and a forged
@@ -972,6 +997,53 @@ function createAuth(
           throw new APIError("NOT_FOUND", { message: "Not found" });
         }
 
+        const candidateReadOnly = isCandidateReadOnlyActive();
+        if (candidateReadOnly) {
+          let twoFactorCookieValue: string | null = null;
+          if (ctx.path === "/two-factor/verify-totp") {
+            const factorCookie = ctx.context.createAuthCookie("two_factor");
+            try {
+              const signed = await ctx.getSignedCookie(
+                factorCookie.name,
+                ctx.context.secret,
+              );
+              twoFactorCookieValue =
+                typeof signed === "string" && signed.length > 0
+                  ? signed
+                  : (ctx.getCookie(factorCookie.name) ?? null);
+            } catch {
+              twoFactorCookieValue = ctx.getCookie(factorCookie.name) ?? null;
+            }
+          }
+          let sessionUser: { id: string } | null =
+            ctx.context.session?.user ?? null;
+          let sessionImpersonatedBy: string | null = null;
+          if (ctx.path === "/sign-out") {
+            const found = await getSessionFromCtx(ctx, {
+              disableRefresh: true,
+            }).catch(() => null);
+            sessionUser = found?.user ?? null;
+            sessionImpersonatedBy =
+              (found?.session as { impersonatedBy?: string | null } | undefined)
+                ?.impersonatedBy ?? null;
+          }
+          const decision = await assertCandidateReadOnlyAuthActionAllowed({
+            path: ctx.path,
+            method: ctx.request?.method ?? (ctx.body ? "POST" : "GET"),
+            portal,
+            headers: ctx.headers ?? undefined,
+            body: ctx.body,
+            existingSessionUserId: sessionUser?.id ?? null,
+            sessionImpersonatedBy,
+            twoFactorCookieValue,
+          });
+          if (!decision.allowed) {
+            throw new APIError("FORBIDDEN", {
+              message: CANDIDATE_READ_ONLY_ERROR_MESSAGE,
+            });
+          }
+        }
+
         if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
           const state = await loadLocalFactorState(ctx.context.session.user.id);
           if (state.policy.mode === "off") {
@@ -1112,9 +1184,11 @@ function createAuth(
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
+        const candidateReadOnly = isCandidateReadOnlyActive();
         const newSession = ctx.context.newSession;
         const previousSession = ctx.context.session;
         const completedEnrollment =
+          !candidateReadOnly &&
           ctx.path === "/two-factor/verify-totp" &&
           previousSession?.user.twoFactorEnabled !== true &&
           newSession?.user.twoFactorEnabled === true;
@@ -1300,7 +1374,7 @@ function createAuth(
         }
 
         const totpTransaction =
-          ctx.path === "/two-factor/verify-totp"
+          !candidateReadOnly && ctx.path === "/two-factor/verify-totp"
             ? currentTotpEnrollmentTransaction()
             : null;
         if (portal === "agent" && verifiedClaimMethod) {
@@ -1513,8 +1587,12 @@ export async function reloadAuthConfiguration(): Promise<boolean> {
 }
 
 /** Initial load and documented 10-second database fallback for replicas. */
-export async function startAuthConfigRuntime(): Promise<void> {
+export async function startAuthConfigRuntime(
+  options: { poll?: boolean } = {},
+): Promise<void> {
+  const candidateReadOnly = isCandidateReadOnlyActive();
   await reloadAuthConfiguration();
+  if (options.poll === false || candidateReadOnly) return;
   if (authConfigPoller) return;
   authConfigPoller = setInterval(() => {
     void reloadAuthConfiguration().catch(() => {

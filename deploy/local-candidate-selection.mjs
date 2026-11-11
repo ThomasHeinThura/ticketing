@@ -447,6 +447,18 @@ export function canonicalSelectionConfig({
     if (slotLabels) service.labels = structuredClone(slotLabels);
   }
   services.taskdesk.environment.TASKDESK_ROLE = isCandidate ? "web" : "all";
+  if (isCandidate) {
+    if (
+      services.taskdesk.environment.TASKDESK_POLICY_SHADOW !== undefined &&
+      services.taskdesk.environment.TASKDESK_POLICY_SHADOW !== "" &&
+      services.taskdesk.environment.TASKDESK_POLICY_SHADOW !== "off"
+    )
+      reject("Candidate application must not enable TASKDESK_POLICY_SHADOW.");
+    services.taskdesk.environment.TASKDESK_CANDIDATE_READ_ONLY = "1";
+  } else {
+    delete services.taskdesk.environment.TASKDESK_CANDIDATE_READ_ONLY;
+  }
+  delete services.migrate.environment.TASKDESK_CANDIDATE_READ_ONLY;
   services.mailpit.environment = { MP_DATABASE: "/data/mailpit.db" };
   return {
     name: localProject,
@@ -982,7 +994,16 @@ function mapContainerEnvList(
   if (candidateWebToBaselineAll && role === "taskdesk") {
     if (entries.TASKDESK_ROLE !== "web")
       reject("Candidate application must use TASKDESK_ROLE=web.");
+    if (entries.TASKDESK_CANDIDATE_READ_ONLY !== "1")
+      reject("Candidate application must use TASKDESK_CANDIDATE_READ_ONLY=1.");
+    if (
+      entries.TASKDESK_POLICY_SHADOW !== undefined &&
+      entries.TASKDESK_POLICY_SHADOW !== "" &&
+      entries.TASKDESK_POLICY_SHADOW !== "off"
+    )
+      reject("Candidate application must not enable TASKDESK_POLICY_SHADOW.");
     entries.TASKDESK_ROLE = "all";
+    delete entries.TASKDESK_CANDIDATE_READ_ONLY;
   }
   const mapped = mapEnvironmentSecrets(entries, role, fromSecrets, toSecrets);
   return Object.entries(mapped)
@@ -1109,8 +1130,19 @@ function assertSelectionDelta(snapshot, original, profile) {
     if (slotLabels)
       expectedConfig.services[role].labels = structuredClone(slotLabels);
   }
-  if (isCandidate)
+  if (isCandidate) {
+    const candidateShadow =
+      snapshot.config?.services?.taskdesk?.environment?.TASKDESK_POLICY_SHADOW;
+    if (
+      candidateShadow !== undefined &&
+      candidateShadow !== "" &&
+      candidateShadow !== "off"
+    )
+      reject("Candidate application must not enable TASKDESK_POLICY_SHADOW.");
     expectedConfig.services.taskdesk.environment.TASKDESK_ROLE = "web";
+    expectedConfig.services.taskdesk.environment.TASKDESK_CANDIDATE_READ_ONLY =
+      "1";
+  }
   if (isCandidate) {
     delete expectedConfig.services.postgres.ports;
     delete expectedConfig.services.mailpit.ports;
@@ -1905,7 +1937,7 @@ const zeroCredentialCounts = Object.freeze([
 const zeroOutboundCounts = Object.freeze([
   "enabledIdentityConnections",
   "enabledScimConnections",
-  "enabledPlugins",
+  "enabledExternalPlugins",
   "activeWebhooks",
   "enabledAutomations",
   // Count resolved runnable handlers, including the web-role invitation poller
@@ -1959,10 +1991,59 @@ function assertFactorSource(data) {
   return factors;
 }
 
+function assertIntrinsicAuthSource(data) {
+  const intrinsicAuth = data?.intrinsicAuthState;
+  if (
+    !intrinsicAuth ||
+    typeof intrinsicAuth !== "object" ||
+    Array.isArray(intrinsicAuth) ||
+    !same(Object.keys(intrinsicAuth).sort(), [
+      "agentPasswordEnabled",
+      "customerPasswordEnabled",
+      "enabledPasswordRows",
+      "storedPasswordRows",
+    ]) ||
+    !Number.isInteger(intrinsicAuth.storedPasswordRows) ||
+    intrinsicAuth.storedPasswordRows < 0 ||
+    !Number.isInteger(intrinsicAuth.enabledPasswordRows) ||
+    intrinsicAuth.enabledPasswordRows < 0 ||
+    intrinsicAuth.enabledPasswordRows > intrinsicAuth.storedPasswordRows ||
+    intrinsicAuth.agentPasswordEnabled !== true ||
+    typeof intrinsicAuth.customerPasswordEnabled !== "boolean"
+  )
+    reject("Quiesced source intrinsic password state is missing or invalid.");
+  return intrinsicAuth;
+}
+
 function assertCandidateSecurity(proof, source) {
   assertZeroCounts(proof?.credentials, zeroCredentialCounts);
   assertZeroCounts(proof?.outbound, zeroOutboundCounts);
   const original = assertFactorSource(source);
+  const baselineIntrinsicAuth = assertIntrinsicAuthSource(source);
+  const intrinsicAuth = proof?.intrinsicAuth;
+  if (
+    !intrinsicAuth ||
+    typeof intrinsicAuth !== "object" ||
+    Array.isArray(intrinsicAuth) ||
+    !same(Object.keys(intrinsicAuth).sort(), [
+      "agentPasswordEnabled",
+      "allowedPluginIds",
+      "customerPasswordEnabled",
+      "enabledPasswordRows",
+      "storedPasswordRows",
+    ]) ||
+    !same(intrinsicAuth.allowedPluginIds, ["auth.password"]) ||
+    intrinsicAuth.storedPasswordRows !==
+      baselineIntrinsicAuth.storedPasswordRows ||
+    intrinsicAuth.enabledPasswordRows !==
+      baselineIntrinsicAuth.enabledPasswordRows ||
+    intrinsicAuth.agentPasswordEnabled !== true ||
+    intrinsicAuth.customerPasswordEnabled !==
+      baselineIntrinsicAuth.customerPasswordEnabled
+  )
+    reject(
+      "Candidate intrinsic password allowlist or enabled state was not preserved.",
+    );
   const mfa = proof?.mfa;
   if (
     mfa?.mode !== "reencrypted" ||
@@ -4136,6 +4217,7 @@ export async function coordinateCandidateSelection({
       reject("Restored database or attachments differ from the backup.");
     assertPreservationProof(copy);
     assertFactorSource(copy);
+    assertIntrinsicAuthSource(copy);
     const baselineIdentity = {
       postgresContainerId: initial.containers.find(
         (container) =>
