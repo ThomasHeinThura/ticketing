@@ -126,7 +126,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Request detail (work item) | `/submissions/{ref}` | route | P3 | ⬜ |
 | Catalogue | `/catalogue` | route | P3 | ⬜ |
 | Request form | `/catalogue?key={typeKey}` | route | P3 | ⬜ |
-| Customer portal — request catalogue and selected form | `/catalogue?q=no-match&key=access` | route | P3 | 🟡 |
+| Customer portal — request catalogue and selected form (`key=access` is a fixture key; UAT keys are generated, open form from a card) | `/catalogue?q=no-match&key=access` | route | P3 | 🟡 |
 | Customer portal — submission detail | `/submissions/{ref}` | route | P3 | 🟡 |
 | Approvals | `/approvals` | route | P3 | ⬜ |
 | Projects list | `/projects` | route | P3 | 🟡 |
