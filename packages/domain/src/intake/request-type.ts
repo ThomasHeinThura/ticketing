@@ -209,11 +209,16 @@ function valuesEqual(a: FormValue, b: FormValue): boolean {
  */
 export function normalizeDraftAnswers(
   schema: FormSchema,
-  data: Readonly<Record<string, unknown>>,
+  data: unknown,
 ): Record<string, FormValue> {
   const normalizedSchema = normalizeFormSchema(schema);
   const byKey = new Map(normalizedSchema.fields.map((f) => [f.key, f]));
   const result: Record<string, FormValue> = {};
+  // Older submissions can contain any JSON value. Visibility only consumes answer
+  // objects; the repository still returns the original stored value to callers.
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return result;
+  }
   for (const key of Object.getOwnPropertyNames(data)) {
     const field = byKey.get(key);
     let value = (data as Record<string, unknown>)[key] as FormValue;
@@ -300,7 +305,7 @@ export function getConditionDrivingKeys(
  */
 export function resolveFormVisibility(
   schema: FormSchema,
-  data: Readonly<Record<string, FormValue>>,
+  data: unknown,
 ): ReadonlyMap<string, boolean> {
   const normalized = normalizeFormSchema(schema);
   const normalizedData = normalizeDraftAnswers(normalized, data);
@@ -376,7 +381,7 @@ export function isFieldVisible(
 /** The fields a customer actually sees for the data so far — required checks apply only here. */
 export function visibleFields(
   schema: FormSchema,
-  data: Readonly<Record<string, FormValue>>,
+  data: unknown,
 ): readonly FormField[] {
   const visibility = resolveFormVisibility(schema, data);
   return schema.fields.filter((f) => visibility.get(f.key) ?? true);

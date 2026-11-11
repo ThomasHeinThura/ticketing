@@ -1483,6 +1483,16 @@ describe("normalizeDraftAnswers and legacy numeric draft handling", () => {
     ],
   };
 
+  it.each([null, 7, "plain text", ["one", 2]])(
+    "treats a legacy non-object JSON value (%j) as no answers for visibility",
+    (legacyValue) => {
+      expect(normalizeDraftAnswers(schema, legacyValue)).toEqual({});
+      expect(
+        resolveFormVisibility(schema, legacyValue).get("volume_license"),
+      ).toBe(false);
+    },
+  );
+
   it("normalises numeric strings to numbers before visibility, validation, and sanitization", () => {
     const legacyDraft = {
       title: "New order",
