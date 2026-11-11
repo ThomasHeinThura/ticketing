@@ -55,6 +55,25 @@ const releaseImage =
   /^ghcr\.io\/thomasheinthura\/taskdesk@sha256:[a-f0-9]{64}$/;
 const candidateImagePattern =
   /^ghcr\.io\/thomasheinthura\/taskdesk-pr-candidate-[1-9][0-9]*-[1-9][0-9]*@sha256:[a-f0-9]{64}$/;
+const reviewedBaselineImage =
+  "ghcr.io/thomasheinthura/taskdesk@sha256:223bd9969611370939a0b8bf4b5fcbfd575a39390a40ff98cf76508e22e6e5bc";
+const reviewedCatalogueHash =
+  "5527479fdc0b90c18d06f3fb0c19a1ae84d6f0950f5b8fdcfcca6f79ff254b98";
+const reviewedCatalogue = JSON.parse(
+  readFileSync(
+    new URL("./local-candidate-schema-catalogue.json", import.meta.url),
+  ),
+);
+const reviewedTables = reviewedCatalogue.tables;
+if (
+  !Array.isArray(reviewedTables) ||
+  reviewedCatalogue.sourceImage !== reviewedBaselineImage ||
+  reviewedTables.length !== 184 ||
+  reviewedTables.reduce((total, entry) => total + entry.columns.length, 0) !==
+    1974 ||
+  hash(JSON.stringify(reviewedTables)) !== reviewedCatalogueHash
+)
+  reject("Reviewed candidate physical schema catalogue is missing or changed.");
 function syncDirectory(directory) {
   const fd = openSync(directory, "r");
   try {
@@ -427,6 +446,7 @@ export function canonicalSelectionConfig({
     service.environment = structuredClone(environment[name] || {});
     if (slotLabels) service.labels = structuredClone(slotLabels);
   }
+  services.taskdesk.environment.TASKDESK_ROLE = isCandidate ? "web" : "all";
   services.mailpit.environment = { MP_DATABASE: "/data/mailpit.db" };
   return {
     name: localProject,
@@ -947,11 +967,22 @@ function mapEnvironmentSecrets(environment, role, fromSecrets, toSecrets) {
   return next;
 }
 
-function mapContainerEnvList(envList, role, fromSecrets, toSecrets) {
+function mapContainerEnvList(
+  envList,
+  role,
+  fromSecrets,
+  toSecrets,
+  candidateWebToBaselineAll = false,
+) {
   const entries = {};
   for (const item of envList || []) {
     const split = item.indexOf("=");
     entries[item.slice(0, split)] = item.slice(split + 1);
+  }
+  if (candidateWebToBaselineAll && role === "taskdesk") {
+    if (entries.TASKDESK_ROLE !== "web")
+      reject("Candidate application must use TASKDESK_ROLE=web.");
+    entries.TASKDESK_ROLE = "all";
   }
   const mapped = mapEnvironmentSecrets(entries, role, fromSecrets, toSecrets);
   return Object.entries(mapped)
@@ -1078,6 +1109,8 @@ function assertSelectionDelta(snapshot, original, profile) {
     if (slotLabels)
       expectedConfig.services[role].labels = structuredClone(slotLabels);
   }
+  if (isCandidate)
+    expectedConfig.services.taskdesk.environment.TASKDESK_ROLE = "web";
   if (isCandidate) {
     delete expectedConfig.services.postgres.ports;
     delete expectedConfig.services.mailpit.ports;
@@ -1138,6 +1171,7 @@ function assertSelectionDelta(snapshot, original, profile) {
           role,
           secrets,
           baselineSecrets,
+          isCandidate && volumes !== baselineVolumes,
         );
         const host = mapGenerationValue(container.HostConfig, {
           fromVolumes: volumes,
@@ -1429,7 +1463,7 @@ export function assertSelectionSnapshot(
       reject("Unexpected migration role.");
     if (
       serviceName === "taskdesk" &&
-      (!["all", "web"].includes(vars.TASKDESK_ROLE || "all") ||
+      (vars.TASKDESK_ROLE !== (isCandidate ? "web" : "all") ||
         (vars.TASKDESK_STORAGE_DRIVER || "filesystem") !== "filesystem")
     )
       reject("Unexpected app role or storage.");
@@ -1719,6 +1753,237 @@ function assertDataProof(proof) {
     !hex.test(proof.migrationFingerprint || "")
   )
     reject("Database and attachment proof is incomplete.");
+}
+
+// Only these transient credential/session tables may lose rows in the candidate
+// copy, and they must be emptied. Every other table keeps its row count and
+// protected projection exactly.
+const scrubDeletableTables = new Set([
+  "public.session",
+  "public.verification",
+  "public.step_up_confirmation",
+  "public.customer_invitation_auth_continuation",
+]);
+// The runtime verifier must enumerate every physical column from PostgreSQL,
+// then hash every row ID and every non-excluded value in canonical order. New
+// columns fail closed until this reviewed exclusion list is updated.
+const scrubColumnAllowlist = new Set(
+  [
+    "account.access_token",
+    "account.refresh_token",
+    "account.id_token",
+    "apikey.enabled",
+    "api_key.disabled_at",
+    "api_key.disabled_reason",
+    "two_factor.secret",
+    "two_factor.backup_codes",
+    "instance_plugin_config.secrets",
+    "instance_plugin_config.enabled",
+    "identity_connection.client_secret",
+    "identity_connection.enabled",
+    "scim_connection.token_hash",
+    "scim_connection.token_prefix",
+    "scim_connection.enabled",
+    "instance_setting.metrics_token_hash",
+    "instance_setting.metrics_token_rotated_at",
+    "instance_setting.setup_token_hash",
+    "instance_setting.setup_token_expires_at",
+    "webhook.secret",
+    "webhook.secret_previous",
+    "webhook.active",
+    "webhook.disabled_at",
+    "webhook.disabled_reason",
+    "user_notification_preference.ntfy_token",
+    "user_notification_preference.gotify_token",
+    "user_notification_preference.webhook_secret",
+    "import_source_connection.credential_ciphertext",
+    "customer_invitation_delivery.envelope",
+    "customer_invitation_delivery.credential_hash",
+    "customer_invitation_delivery.owner_id",
+    "customer_invitation_delivery.lease_id",
+    "customer_invitation_delivery.lease_expires_at",
+    "customer_invitation_delivery.state",
+    "customer_invitation_delivery.terminal_code",
+    "customer_invitation_delivery.updated_at",
+    "invitation.credential_hash",
+    "invitation.status",
+    "automation.enabled",
+    "instance_job_configuration.enabled",
+    "outbox.state",
+    "notification_delivery.state",
+    "webhook_delivery.state",
+    "automation_run.state",
+    "import_run.state",
+  ].map((column) => `public.${column}`),
+);
+const reviewedPhysicalColumns = new Set(
+  reviewedTables.flatMap((entry) =>
+    entry.columns.map((column) => `${entry.schema}.${entry.table}.${column}`),
+  ),
+);
+if (
+  [...scrubColumnAllowlist].some(
+    (column) => !reviewedPhysicalColumns.has(column),
+  )
+)
+  reject("Scrub column allowlist differs from the reviewed physical schema.");
+
+function assertPreservationProof(data) {
+  const proof = data?.preservation;
+  const tables = proof?.tables;
+  if (
+    proof?.schemaFingerprint !== reviewedCatalogueHash ||
+    !Array.isArray(tables) ||
+    tables.length !== reviewedTables.length ||
+    data.tableCount !== reviewedTables.length ||
+    !same(
+      tables.map((entry) => ({
+        schema: entry.schema,
+        table: entry.table,
+        columns: entry.columns,
+      })),
+      reviewedTables,
+    ) ||
+    tables.some(
+      (entry) =>
+        !Number.isInteger(entry.rowCount) ||
+        entry.rowCount < 0 ||
+        !hex.test(entry.protectedFingerprint || "") ||
+        !Array.isArray(entry.excludedColumns) ||
+        new Set(entry.excludedColumns).size !== entry.excludedColumns.length ||
+        entry.excludedColumns.some(
+          (column) =>
+            !entry.columns.includes(column) ||
+            !scrubColumnAllowlist.has(
+              `${entry.schema}.${entry.table}.${column}`,
+            ),
+        ),
+    )
+  )
+    reject("Complete per-table preservation proof is missing.");
+  return proof;
+}
+
+function assertPreservedBusinessData(source, target) {
+  const before = assertPreservationProof(source);
+  const after = assertPreservationProof(target);
+  if (before.schemaFingerprint !== after.schemaFingerprint)
+    reject("Candidate schema changed before migration.");
+  const targetTables = new Map(
+    after.tables.map((entry) => [`${entry.schema}.${entry.table}`, entry]),
+  );
+  for (const entry of before.tables) {
+    const tableName = `${entry.schema}.${entry.table}`;
+    const current = targetTables.get(tableName);
+    if (
+      !current ||
+      !same(current.columns, entry.columns) ||
+      !same(current.excludedColumns, entry.excludedColumns) ||
+      (scrubDeletableTables.has(tableName)
+        ? current.rowCount !== 0
+        : current.rowCount !== entry.rowCount ||
+          current.protectedFingerprint !== entry.protectedFingerprint)
+    )
+      reject("Candidate lost or changed preserved business data.");
+  }
+}
+
+const zeroCredentialCounts = Object.freeze([
+  "sessions",
+  "verifications",
+  "stepUpConfirmations",
+  "activeApiKeys",
+  "accountProviderTokens",
+  "invitationCredentials",
+  "authContinuations",
+  "scimTokens",
+  "metricsTokens",
+  "setupTokens",
+  "oldKeyEnvelopes",
+  "unreadableEnvelopes",
+]);
+const zeroOutboundCounts = Object.freeze([
+  "enabledIdentityConnections",
+  "enabledScimConnections",
+  "enabledPlugins",
+  "activeWebhooks",
+  "enabledAutomations",
+  // Count resolved runnable handlers, including the web-role invitation poller
+  // and default-enabled jobs without a configuration row. Count actionable rows
+  // regardless of next-attempt time.
+  "runnableJobHandlers",
+  "actionableOutboxEvents",
+  "pendingNotificationDeliveries",
+  "pendingWebhookDeliveries",
+  "actionableAutomationRuns",
+  "actionableInvitationDeliveries",
+  "runnableImportRuns",
+]);
+
+function assertZeroCounts(actual, keys) {
+  if (
+    !actual ||
+    !same(Object.keys(actual).sort(), [...keys].sort()) ||
+    keys.some((key) => actual[key] !== 0)
+  )
+    reject("Transformed copy has live credentials or outbound work.");
+}
+
+function assertTransformIdentity(proof, copy, slot, volumes) {
+  assertDataProof(proof?.data);
+  if (
+    proof.slot !== slot ||
+    !same(proof.volumes, volumes) ||
+    proof.sourceDatabaseFingerprint !== copy.databaseFingerprint ||
+    proof.data.filesFingerprint !== copy.filesFingerprint ||
+    proof.data.fileCount !== copy.fileCount ||
+    proof.data.migrationFingerprint !== copy.migrationFingerprint ||
+    proof.data.tableCount !== copy.tableCount
+  )
+    reject(
+      "Transformed copy identity or attachment proof differs from the restored copy.",
+    );
+}
+
+function assertFactorSource(data) {
+  const factors = data?.factorState;
+  if (
+    !factors ||
+    !Number.isInteger(factors.storedRows) ||
+    factors.storedRows < 0 ||
+    !Number.isInteger(factors.enabledUsers) ||
+    factors.enabledUsers < 0 ||
+    factors.enabledUsers > factors.storedRows
+  )
+    reject("Quiesced source MFA counts are missing or inconsistent.");
+  return factors;
+}
+
+function assertCandidateSecurity(proof, source) {
+  assertZeroCounts(proof?.credentials, zeroCredentialCounts);
+  assertZeroCounts(proof?.outbound, zeroOutboundCounts);
+  const original = assertFactorSource(source);
+  const mfa = proof?.mfa;
+  if (
+    mfa?.mode !== "reencrypted" ||
+    mfa.storedRows !== original.storedRows ||
+    mfa.enabledUsers !== original.enabledUsers ||
+    mfa.candidateReadableRows !== original.storedRows ||
+    mfa.baselineReadableRows !== 0
+  )
+    reject(
+      "Candidate MFA rows or enabled-user state were not preserved under the fresh auth secret.",
+    );
+}
+
+function assertTransformedProof(proof, receipt, copy, slot, volumes) {
+  assertTransformIdentity(proof, copy, slot, volumes);
+  if (!same(proof.data, receipt.data))
+    reject(
+      "Independent transformed copy inspection disagrees with the transform receipt.",
+    );
+  assertPreservedBusinessData(copy, proof.data);
+  assertCandidateSecurity(proof, copy);
 }
 function assertRuntimeProof(proof, profile) {
   if (
@@ -2251,6 +2516,7 @@ function volumeInventoryPolicy({
         role,
         candidateSecrets,
         baselineSecrets,
+        true,
       );
     } else if (Array.isArray(config.Env)) {
       config.Env = [...config.Env].sort();
@@ -2925,10 +3191,18 @@ function volumeInventoryPolicy({
         if (
           generation === "candidate" &&
           role === "taskdesk" &&
-          phase === "copy-slot" &&
+          [
+            "copy-slot",
+            "verify-copy",
+            "transform-copy",
+            "verify-baseline-after-transform",
+            "verify-transformed-copy",
+          ].includes(phase) &&
           container.State.Running
         )
-          reject("The candidate application started before copy verification.");
+          reject(
+            "The candidate application started before transformed copy verification.",
+          );
         if (
           generation === "candidate" &&
           ["inspect-candidate", "browser-window"].includes(phase) &&
@@ -3135,7 +3409,18 @@ function volumeInventoryPolicy({
             reject(
               "Unexplained daemon-wide container activity occurred during selection.",
             );
-          if (event.Action.startsWith("exec_")) continue;
+          if (event.Action.startsWith("exec_")) {
+            if (
+              phase === "verify-baseline-after-transform" ||
+              (["transform-copy", "verify-transformed-copy"].includes(phase) &&
+                (authorized.profile.generation !== "candidate" ||
+                  authorized.profile.role !== "postgres"))
+            )
+              reject(
+                "Only the candidate PostgreSQL service may execute during copy transformation.",
+              );
+            continue;
+          }
           if (
             ["archive-path", "export", "copy"].includes(event.Action) &&
             ["backup", "copy-slot"].includes(phase) &&
@@ -3543,8 +3828,12 @@ export async function coordinateCandidateSelection({
     "verifyBackupArchive",
     "createAndRestoreSlot",
     "inspectCopiedData",
+    "transformCopiedData",
+    "inspectBaselineData",
+    "verifyTransformedData",
     "selectCandidate",
     "inspectCandidate",
+    "inspectCandidateSecurity",
     "browserWindow",
     "returnToBaseline",
     "inspectReturnedBaseline",
@@ -3557,6 +3846,8 @@ export async function coordinateCandidateSelection({
   )
     reject("A separately reviewed runtime and verifier adapter is required.");
   const frozenPlan = structuredClone(plan);
+  if (frozenPlan.baselineImage !== reviewedBaselineImage)
+    reject("Candidate copy requires the reviewed baseline image digest.");
   const baselineProfile = baselineGenerationProfile({
     image: frozenPlan.baselineImage,
     privateDir: frozenPlan.privateDir,
@@ -3843,6 +4134,74 @@ export async function coordinateCandidateSelection({
     assertDataProof(copy);
     if (!same(copy, backup.data))
       reject("Restored database or attachments differ from the backup.");
+    assertPreservationProof(copy);
+    assertFactorSource(copy);
+    const baselineIdentity = {
+      postgresContainerId: initial.containers.find(
+        (container) =>
+          container.Config.Labels["com.docker.compose.service"] === "postgres",
+      ).Id,
+      volume: baselineVolumes.database,
+      databaseName: initial.config.services.postgres.environment.POSTGRES_DB,
+    };
+    // The copy first matches the quiesced backup exactly. Only the candidate
+    // database may change from here; no candidate application writer may start.
+    const receipt = await step("transform-copy", (context) =>
+      adapter.transformCopiedData({
+        ...context,
+        slot: frozenPlan.slot,
+        volumes,
+        source: structuredClone(copy),
+      }),
+    );
+    const baselineAfterTransform = await step(
+      "verify-baseline-after-transform",
+      (context) =>
+        adapter.inspectBaselineData({
+          ...context,
+          docker: readonlyDocker,
+          expected: structuredClone(baselineIdentity),
+        }),
+    );
+    assertDataProof(baselineAfterTransform?.data);
+    if (
+      !same(
+        {
+          postgresContainerId: baselineAfterTransform.postgresContainerId,
+          volume: baselineAfterTransform.volume,
+          databaseName: baselineAfterTransform.databaseName,
+        },
+        baselineIdentity,
+      ) ||
+      !same(baselineAfterTransform.data, backup.data)
+    )
+      reject(
+        "Fresh baseline read differs from the quiesced backup after candidate transformation.",
+      );
+    assertTransformIdentity(receipt, copy, frozenPlan.slot, volumes);
+    // This callback must inspect the restored candidate storage independently
+    // of the transform receipt. The runtime adapter remains separately reviewed.
+    const transformed = await step("verify-transformed-copy", (context) =>
+      adapter.verifyTransformedData({
+        ...context,
+        slot: frozenPlan.slot,
+        volumes,
+        source: structuredClone(copy),
+        receipt: structuredClone(receipt),
+      }),
+    );
+    assertTransformedProof(
+      transformed,
+      receipt,
+      copy,
+      frozenPlan.slot,
+      volumes,
+    );
+    record("transformed-copy-verified", {
+      sourceDatabaseFingerprint: copy.databaseFingerprint,
+      data: transformed.data,
+      mfaMode: transformed.mfa.mode,
+    });
     await step("select-candidate", (context) =>
       adapter.selectCandidate({
         ...context,
@@ -3875,6 +4234,50 @@ export async function coordinateCandidateSelection({
     inventoryPolicy.matchSnapshot(candidate, lastInventory);
     assertRuntimeProof(candidate.runtime, candidateProfile);
     assertSelectionDelta(candidate, original, candidateProfile);
+    if (
+      candidate.runtime.data.filesFingerprint !==
+        transformed.data.filesFingerprint ||
+      candidate.runtime.data.fileCount !== transformed.data.fileCount
+    )
+      reject(
+        "Candidate attachment data changed after transformed copy verification.",
+      );
+    const candidateIdentity = {
+      postgresContainerId: candidate.containers.find(
+        (container) =>
+          container.Config.Labels["com.docker.compose.service"] === "postgres",
+      ).Id,
+      appContainerId: candidate.containers.find(
+        (container) =>
+          container.Config.Labels["com.docker.compose.service"] === "taskdesk",
+      ).Id,
+      volume: volumes.database,
+      databaseName: candidate.config.services.postgres.environment.POSTGRES_DB,
+    };
+    const postStart = await step("verify-candidate-after-start", (context) =>
+      adapter.inspectCandidateSecurity({
+        ...context,
+        expected: structuredClone(candidateIdentity),
+        source: structuredClone(copy),
+      }),
+    );
+    assertDataProof(postStart?.data);
+    if (
+      !same(
+        {
+          postgresContainerId: postStart.postgresContainerId,
+          appContainerId: postStart.appContainerId,
+          volume: postStart.volume,
+          databaseName: postStart.databaseName,
+        },
+        candidateIdentity,
+      ) ||
+      !same(postStart.data, candidate.runtime.data)
+    )
+      reject(
+        "Fresh post-start security proof is not bound to the running candidate data.",
+      );
+    assertCandidateSecurity(postStart, copy);
     const browser = await step("browser-window", (context) =>
       adapter.browserWindow({
         ...context,

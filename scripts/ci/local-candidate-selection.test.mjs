@@ -44,18 +44,108 @@ import {
 } from "./local-candidate-fake-daemon.mjs";
 
 const digest = (value) => createHash("sha256").update(value).digest("hex");
-const baselineImage = `ghcr.io/thomasheinthura/taskdesk@sha256:${"a".repeat(64)}`;
+const baselineImage =
+  "ghcr.io/thomasheinthura/taskdesk@sha256:223bd9969611370939a0b8bf4b5fcbfd575a39390a40ff98cf76508e22e6e5bc";
 const image = `ghcr.io/thomasheinthura/taskdesk-pr-candidate-123-1@sha256:${"b".repeat(64)}`;
 const slot = "d".repeat(32);
 const baselinePrivateDir = "/private";
 const candidatePrivateDir = "/private-candidate";
+const schemaCatalogue = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../deploy/local-candidate-schema-catalogue.json",
+      import.meta.url,
+    ),
+  ),
+);
+const reviewedSchemaHash = digest(JSON.stringify(schemaCatalogue.tables));
+const preservedTables = schemaCatalogue.tables.map((entry) => {
+  const name = `${entry.schema}.${entry.table}`;
+  const rows = {
+    "public.session": 3,
+    "public.apikey": 2,
+    "public.api_key": 2,
+    "public.api_key_rate_limit_counter": 3,
+    "public.mcp_tool_invocation": 2,
+  };
+  return {
+    ...entry,
+    rowCount: rows[name] ?? 0,
+    protectedFingerprint: digest(`${name}:source protected rows`),
+    excludedColumns:
+      name === "public.apikey"
+        ? ["enabled"]
+        : name === "public.api_key"
+          ? ["disabled_at", "disabled_reason"]
+          : [],
+  };
+});
 const data = {
   databaseFingerprint: digest("db"),
   filesFingerprint: digest("files"),
   migrationFingerprint: digest("migrations"),
-  tableCount: 184,
+  tableCount: schemaCatalogue.tables.length,
   fileCount: 8,
+  factorState: { storedRows: 2, enabledUsers: 2 },
+  preservation: {
+    schemaFingerprint: reviewedSchemaHash,
+    tables: preservedTables,
+  },
 };
+const transformedData = structuredClone(data);
+transformedData.databaseFingerprint = digest(
+  "candidate database after credential scrub",
+);
+const copiedSession = transformedData.preservation.tables.find(
+  (entry) => entry.schema === "public" && entry.table === "session",
+);
+copiedSession.rowCount = 0;
+copiedSession.protectedFingerprint = digest("empty session table");
+const transformedProof = {
+  slot,
+  volumes: candidateVolumes(slot),
+  sourceDatabaseFingerprint: data.databaseFingerprint,
+  data: transformedData,
+  credentials: {
+    sessions: 0,
+    verifications: 0,
+    stepUpConfirmations: 0,
+    activeApiKeys: 0,
+    accountProviderTokens: 0,
+    invitationCredentials: 0,
+    authContinuations: 0,
+    scimTokens: 0,
+    metricsTokens: 0,
+    setupTokens: 0,
+    oldKeyEnvelopes: 0,
+    unreadableEnvelopes: 0,
+  },
+  outbound: {
+    enabledIdentityConnections: 0,
+    enabledScimConnections: 0,
+    enabledPlugins: 0,
+    activeWebhooks: 0,
+    enabledAutomations: 0,
+    runnableJobHandlers: 0,
+    actionableOutboxEvents: 0,
+    pendingNotificationDeliveries: 0,
+    pendingWebhookDeliveries: 0,
+    actionableAutomationRuns: 0,
+    actionableInvitationDeliveries: 0,
+    runnableImportRuns: 0,
+  },
+  mfa: {
+    mode: "reencrypted",
+    storedRows: 2,
+    enabledUsers: 2,
+    candidateReadableRows: 2,
+    baselineReadableRows: 0,
+  },
+};
+const projectionTable = (proof, table) =>
+  proof.data.preservation.tables.find(
+    (entry) => entry.schema === "public" && entry.table === table,
+  );
 const baselineEnvSecrets = {
   postgres: {
     POSTGRES_DB: "taskdesk_test",
@@ -63,6 +153,7 @@ const baselineEnvSecrets = {
     POSTGRES_PASSWORD: "baseline-pg-secret",
   },
   taskdesk: {
+    TASKDESK_ROLE: "all",
     TASKDESK_DATABASE_URL:
       "postgres://taskdesk_app:baseline-app-secret@postgres/taskdesk_test",
     TASKDESK_AUTH_SECRET: "1".repeat(64),
@@ -84,6 +175,7 @@ const candidateEnvSecrets = {
     POSTGRES_PASSWORD: "candidate-pg-secret",
   },
   taskdesk: {
+    TASKDESK_ROLE: "web",
     TASKDESK_DATABASE_URL:
       "postgres://taskdesk_app:candidate-app-secret@postgres/taskdesk_test",
     TASKDESK_AUTH_SECRET: "3".repeat(64),
@@ -503,6 +595,25 @@ function fixture(t) {
       return created;
     },
     inspectCopiedData: () => structuredClone(data),
+    transformCopiedData: () => {
+      const {
+        slot: activeSlot,
+        volumes,
+        sourceDatabaseFingerprint,
+        data: next,
+      } = transformedProof;
+      return structuredClone({
+        slot: activeSlot,
+        volumes,
+        sourceDatabaseFingerprint,
+        data: next,
+      });
+    },
+    inspectBaselineData: ({ expected }) => ({
+      ...structuredClone(expected),
+      data: structuredClone(data),
+    }),
+    verifyTransformedData: () => structuredClone(transformedProof),
     selectCandidate: () => {
       const baseSnap = snapshot();
       const candSnap = snapshot(image, candidateVolumes(slot));
@@ -561,9 +672,20 @@ function fixture(t) {
         emitDaemonEvent(daemon.state, "container", "start", current.Id);
       }
     },
-    inspectCandidate: () => ({
-      ...snapshot(image, candidateVolumes(slot)),
-      privateFiles: structuredClone(candidatePrivateFiles),
+    inspectCandidate: () => {
+      const current = snapshot(image, candidateVolumes(slot));
+      current.runtime.data = structuredClone(transformedData);
+      return {
+        ...current,
+        privateFiles: structuredClone(candidatePrivateFiles),
+      };
+    },
+    inspectCandidateSecurity: ({ expected }) => ({
+      ...structuredClone(expected),
+      data: structuredClone(transformedData),
+      credentials: structuredClone(transformedProof.credentials),
+      outbound: structuredClone(transformedProof.outbound),
+      mfa: structuredClone(transformedProof.mfa),
     }),
     browserWindow: () => defaultBrowserResult(slot),
     returnToBaseline: () => {
@@ -701,6 +823,85 @@ const appContainer = (s) =>
   s.containers.find(
     (c) => c.Config.Labels["com.docker.compose.service"] === "taskdesk",
   );
+
+test("candidate overlay selects web while canonical baseline and migration keep their roles", () => {
+  const overlay = readFileSync(
+    new URL("../../deploy/compose.candidate.yml", import.meta.url),
+    "utf8",
+  );
+  assert.ok(
+    overlay.includes(
+      "  taskdesk:\n    environment:\n      TASKDESK_ROLE: web\n",
+    ),
+  );
+  assert.equal(
+    snapshot().config.services.taskdesk.environment.TASKDESK_ROLE,
+    "all",
+  );
+  assert.equal(
+    snapshot(image, candidateVolumes(slot)).config.services.taskdesk.environment
+      .TASKDESK_ROLE,
+    "web",
+  );
+  for (const selected of [snapshot(), snapshot(image, candidateVolumes(slot))])
+    assert.equal(
+      selected.config.services.migrate.environment.TASKDESK_ROLE,
+      "migrate",
+    );
+});
+
+test("candidate and baseline reject application role drift in Compose or engine", () => {
+  const candidateProfile = {
+    slot,
+    volumes: candidateVolumes(slot),
+    networks: candidateNetworks(slot),
+    image,
+    privateDir: candidatePrivateDir,
+    baselinePrivateDir,
+  };
+  for (const role of ["all", "jobs", "migrate", undefined]) {
+    const candidate = snapshot(image, candidateVolumes(slot));
+    if (role === undefined)
+      delete candidate.config.services.taskdesk.environment.TASKDESK_ROLE;
+    else candidate.config.services.taskdesk.environment.TASKDESK_ROLE = role;
+    assert.throws(() => assertSelectionSnapshot(candidate, candidateProfile));
+  }
+  for (const role of ["all", "jobs", undefined]) {
+    const candidate = snapshot(image, candidateVolumes(slot));
+    const env = appContainer(candidate).Config.Env;
+    const index = env.findIndex((item) => item.startsWith("TASKDESK_ROLE="));
+    if (role === undefined) env.splice(index, 1);
+    else env[index] = `TASKDESK_ROLE=${role}`;
+    assert.throws(() => assertSelectionSnapshot(candidate, candidateProfile));
+  }
+  const baseline = snapshot();
+  baseline.config.services.taskdesk.environment.TASKDESK_ROLE = "web";
+  assert.throws(() =>
+    assertSelectionSnapshot(baseline, {
+      image: baselineImage,
+      privateDir: baselinePrivateDir,
+    }),
+  );
+});
+
+test("candidate role drift retains locks before browser and return", async (t) => {
+  const f = fixture(t);
+  f.adapter.inspectCandidate = async () => {
+    const candidate = snapshot(image, candidateVolumes(slot));
+    candidate.runtime.data = structuredClone(transformedData);
+    appContainer(candidate).Config.Env = appContainer(candidate).Config.Env.map(
+      (item) => (item === "TASKDESK_ROLE=web" ? "TASKDESK_ROLE=all" : item),
+    );
+    return {
+      ...candidate,
+      privateFiles: structuredClone(f.candidatePrivateFiles),
+    };
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("browserWindow"), false);
+  assert.equal(f.calls.includes("returnToBaseline"), false);
+  assert.equal(retained(f), true);
+});
 
 test("host fence refuses stale or malformed entries and requires exact ownership to release", (t) => {
   const f = fixture(t);
@@ -989,13 +1190,19 @@ test("supporting image healthcheck is inherited when Compose leaves it unset", (
   );
 });
 
-test("independently captured Compose 5.6.1 JSON passes for baseline and candidate without accepting override fields", () => {
+test("captured Compose 5.6.1 shape accepts the reviewed baseline digest without override fields", () => {
   const captured = JSON.parse(
     readFileSync(
       new URL("./local-candidate-compose-real.fixture.json", import.meta.url),
       "utf8",
     ),
   );
+  // The offline Compose capture predates the reviewed signed release. Re-pin
+  // only its application images; preserve the captured service shape.
+  for (const role of ["taskdesk", "migrate"])
+    captured.config.services[role].image = baselineImage;
+  captured.config.services.taskdesk.environment.TASKDESK_ROLE = "all";
+  captured.candidateConfig.services.taskdesk.environment.TASKDESK_ROLE = "web";
   assert.equal(captured.composeVersion, "5.6.1");
   assert.equal(captured.config.services.taskdesk.command, null);
   assert.deepEqual(captured.config.networks.default.ipam, {});
@@ -1996,6 +2203,374 @@ test("complete mocked cycle retains durable journal and proves return before unl
     events.findIndex((e) => e.phase === "backup-verified") <
       events.findIndex((e) => e.phase === "copy-slot:intent"),
   );
+  assert.ok(
+    events.findIndex((e) => e.phase === "verify-copy:complete") <
+      events.findIndex((e) => e.phase === "transform-copy:intent"),
+  );
+  assert.ok(
+    events.findIndex((e) => e.phase === "transformed-copy-verified") <
+      events.findIndex((e) => e.phase === "select-candidate:intent"),
+  );
+  assert.ok(
+    events.findIndex((e) => e.phase === "transform-copy:complete") <
+      events.findIndex(
+        (e) => e.phase === "verify-baseline-after-transform:intent",
+      ),
+  );
+  assert.ok(
+    events.findIndex(
+      (e) => e.phase === "verify-candidate-after-start:complete",
+    ) < events.findIndex((e) => e.phase === "browser-window:intent"),
+  );
+});
+
+for (const method of [
+  "transformCopiedData",
+  "inspectBaselineData",
+  "verifyTransformedData",
+  "inspectCandidateSecurity",
+]) {
+  test(`missing ${method} callback cannot activate candidate`, async (t) => {
+    const f = fixture(t);
+    delete f.adapter[method];
+    await assert.rejects(
+      coordinateCandidateSelection(f),
+      /separately reviewed/,
+    );
+    assert.equal(retained(f), false);
+    assert.deepEqual(f.calls, []);
+  });
+}
+
+for (const [name, change] of [
+  [
+    "wrong source",
+    (proof) => {
+      proof.sourceDatabaseFingerprint = digest("other");
+    },
+  ],
+  [
+    "baseline volume",
+    (proof) => {
+      proof.volumes = baselineVolumes;
+    },
+  ],
+  [
+    "changed attachment",
+    (proof) => {
+      proof.data.filesFingerprint = digest("other");
+    },
+  ],
+  [
+    "changed migration state",
+    (proof) => {
+      proof.data.migrationFingerprint = digest("other");
+    },
+  ],
+  [
+    "receipt disagreement",
+    (proof) => {
+      proof.data.databaseFingerprint = digest("other");
+    },
+  ],
+  [
+    "lost business row",
+    (proof) => {
+      projectionTable(proof, "mcp_tool_invocation").rowCount -= 1;
+    },
+  ],
+  [
+    "changed protected business column",
+    (proof) => {
+      projectionTable(proof, "mcp_tool_invocation").protectedFingerprint =
+        digest("other");
+    },
+  ],
+  [
+    "incomplete table catalogue",
+    (proof) => {
+      proof.data.preservation.tables.pop();
+    },
+  ],
+  [
+    "unreviewed excluded business column",
+    (proof) => {
+      projectionTable(proof, "mcp_tool_invocation").excludedColumns = [
+        "invocation_id",
+      ];
+    },
+  ],
+  [
+    "added transient credential row",
+    (proof) => {
+      projectionTable(proof, "session").rowCount = 4;
+    },
+  ],
+  [
+    "deleted API key parent row",
+    (proof) => {
+      projectionTable(proof, "apikey").rowCount = 1;
+    },
+  ],
+  [
+    "deleted API key extension row",
+    (proof) => {
+      projectionTable(proof, "api_key").rowCount = 1;
+    },
+  ],
+  [
+    "deleted API key child metadata",
+    (proof) => {
+      projectionTable(proof, "api_key_rate_limit_counter").rowCount = 2;
+    },
+  ],
+  [
+    "live session",
+    (proof) => {
+      proof.credentials.sessions = 1;
+    },
+  ],
+  [
+    "missing credential counter",
+    (proof) => {
+      delete proof.credentials.activeApiKeys;
+    },
+  ],
+  [
+    "active copied API key",
+    (proof) => {
+      proof.credentials.activeApiKeys = 1;
+    },
+  ],
+  [
+    "pending delivery",
+    (proof) => {
+      proof.outbound.pendingWebhookDeliveries = 1;
+    },
+  ],
+  [
+    "default runnable job",
+    (proof) => {
+      proof.outbound.runnableJobHandlers = 1;
+    },
+  ],
+  [
+    "unreadable MFA",
+    (proof) => {
+      proof.mfa.storedRows = 1;
+    },
+  ],
+  [
+    "lost MFA-enabled user",
+    (proof) => {
+      proof.mfa.enabledUsers = 1;
+    },
+  ],
+  [
+    "MFA reset mode",
+    (proof) => {
+      proof.mfa.mode = "reset";
+    },
+  ],
+]) {
+  test(`transformed copy verification rejects ${name} before candidate start`, async (t) => {
+    const f = fixture(t);
+    const verify = f.adapter.verifyTransformedData;
+    f.adapter.verifyTransformedData = async (...args) => {
+      const proof = await verify(...args);
+      change(proof);
+      return proof;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("selectCandidate"), false);
+    assert.equal(retained(f), true);
+  });
+}
+
+test("unreviewed baseline image is rejected before lease or adapter work", async (t) => {
+  const f = fixture(t);
+  f.plan.baselineImage = `ghcr.io/thomasheinthura/taskdesk@sha256:${"a".repeat(64)}`;
+  await assert.rejects(
+    coordinateCandidateSelection(f),
+    /reviewed baseline image/,
+  );
+  assert.equal(retained(f), false);
+  assert.deepEqual(f.calls, []);
+});
+
+test("unknown source physical column blocks before transformation", async (t) => {
+  const f = fixture(t);
+  f.backup.data = structuredClone(data);
+  f.backup.data.preservation.tables
+    .find((entry) => entry.schema === "public" && entry.table === "account")
+    .columns.push("unreviewed_column");
+  f.adapter.inspectCopiedData = async () => structuredClone(f.backup.data);
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("transformCopiedData"), false);
+});
+
+test("unknown target physical column blocks even when receipt agrees", async (t) => {
+  const f = fixture(t);
+  const transform = f.adapter.transformCopiedData;
+  f.adapter.transformCopiedData = async (...args) => {
+    const receipt = await transform(...args);
+    receipt.data.preservation.tables
+      .find((entry) => entry.schema === "public" && entry.table === "account")
+      .columns.push("unreviewed_column");
+    return receipt;
+  };
+  const verify = f.adapter.verifyTransformedData;
+  f.adapter.verifyTransformedData = async (...args) => {
+    const proof = await verify(...args);
+    proof.data.preservation.tables
+      .find((entry) => entry.schema === "public" && entry.table === "account")
+      .columns.push("unreviewed_column");
+    return proof;
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("selectCandidate"), false);
+});
+
+for (const [name, change] of [
+  [
+    "database identity",
+    (proof) => {
+      proof.databaseName = "native_test";
+    },
+  ],
+  [
+    "baseline volume",
+    (proof) => {
+      proof.volume = candidateVolumes(slot).database;
+    },
+  ],
+  [
+    "baseline data",
+    (proof) => {
+      proof.data.databaseFingerprint = digest("changed baseline");
+    },
+  ],
+]) {
+  test(`fresh baseline inspection rejects changed ${name} before candidate verification`, async (t) => {
+    const f = fixture(t);
+    const inspect = f.adapter.inspectBaselineData;
+    f.adapter.inspectBaselineData = async (...args) => {
+      const proof = await inspect(...args);
+      change(proof);
+      return proof;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("verifyTransformedData"), false);
+    assert.equal(f.calls.includes("selectCandidate"), false);
+  });
+}
+
+for (const [name, change] of [
+  [
+    "candidate database identity",
+    (proof) => {
+      proof.databaseName = "native_test";
+    },
+  ],
+  [
+    "candidate data identity",
+    (proof) => {
+      proof.data.databaseFingerprint = digest("stale inspection");
+    },
+  ],
+  [
+    "live session",
+    (proof) => {
+      proof.credentials.sessions = 1;
+    },
+  ],
+  [
+    "runnable outbound job",
+    (proof) => {
+      proof.outbound.runnableJobHandlers = 1;
+    },
+  ],
+  [
+    "changed MFA enrollment",
+    (proof) => {
+      proof.mfa.storedRows = 1;
+    },
+  ],
+]) {
+  test(`post-start security inspection rejects ${name} before browser`, async (t) => {
+    const f = fixture(t);
+    const inspect = f.adapter.inspectCandidateSecurity;
+    f.adapter.inspectCandidateSecurity = async (...args) => {
+      const proof = await inspect(...args);
+      change(proof);
+      return proof;
+    };
+    await assert.rejects(coordinateCandidateSelection(f), /retained/);
+    assert.equal(f.calls.includes("browserWindow"), false);
+  });
+}
+
+test("transform receipt disagreement stops before independent verification", async (t) => {
+  const f = fixture(t);
+  const transform = f.adapter.transformCopiedData;
+  f.adapter.transformCopiedData = async (...args) => {
+    const receipt = await transform(...args);
+    receipt.data.fileCount += 1;
+    return receipt;
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("verifyTransformedData"), false);
+  assert.equal(f.calls.includes("selectCandidate"), false);
+});
+
+test("transform may not start candidate application before verification", async (t) => {
+  const f = fixture(t);
+  const transform = f.adapter.transformCopiedData;
+  f.adapter.transformCopiedData = async (...args) => {
+    await f.adapter.selectCandidate();
+    return transform(...args);
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("verifyTransformedData"), false);
+});
+
+test("baseline PostgreSQL exec event during candidate transform fails closed", async (t) => {
+  const f = fixture(t);
+  const transform = f.adapter.transformCopiedData;
+  f.adapter.transformCopiedData = async (...args) => {
+    const baselinePostgres = f.daemon.state.inventory.find(
+      (container) =>
+        container.Config.Labels["com.docker.compose.service"] === "postgres",
+    );
+    emitDaemonEvent(
+      f.daemon.state,
+      "container",
+      "exec_start",
+      baselinePostgres.Id,
+    );
+    return transform(...args);
+  };
+  await assert.rejects(coordinateCandidateSelection(f), /retained/);
+  assert.equal(f.calls.includes("verifyTransformedData"), false);
+  assert.equal(f.calls.includes("selectCandidate"), false);
+});
+
+test("verified reencrypted MFA is accepted before candidate selection", async (t) => {
+  const f = fixture(t);
+  const verify = f.adapter.verifyTransformedData;
+  f.adapter.verifyTransformedData = async (...args) => {
+    const proof = await verify(...args);
+    proof.mfa = {
+      mode: "reencrypted",
+      storedRows: 2,
+      enabledUsers: 2,
+      candidateReadableRows: 2,
+      baselineReadableRows: 0,
+    };
+    return proof;
+  };
+  const result = await coordinateCandidateSelection(f);
+  assert.equal(result.returnedToBaseline, true);
 });
 
 test("missing operational adapter cannot activate candidate", async (t) => {
@@ -2982,6 +3557,7 @@ test("real compose.candidate.yml and captured Compose 5.6.1 config derive runtim
       "utf8",
     ),
   );
+  captured.candidateConfig.services.taskdesk.environment.TASKDESK_ROLE = "web";
   const deriveRuntimeSnapshotFromConfig = (candidateConfig) => {
     const base = snapshot(image, candidateVolumes(slot));
     base.config = structuredClone(candidateConfig);

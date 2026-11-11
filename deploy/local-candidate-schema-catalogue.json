@@ -1,0 +1,2978 @@
+{
+	"source": "read-only canonical local SIT pg_catalog, 2026-11-11",
+	"tables": [
+		{
+			"schema": "drizzle",
+			"table": "__drizzle_migrations",
+			"columns": ["id", "hash", "created_at"]
+		},
+		{
+			"schema": "public",
+			"table": "account",
+			"columns": [
+				"id",
+				"account_id",
+				"provider_id",
+				"user_id",
+				"access_token",
+				"refresh_token",
+				"id_token",
+				"access_token_expires_at",
+				"refresh_token_expires_at",
+				"scope",
+				"password",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "activity",
+			"columns": [
+				"id",
+				"workspace_id",
+				"work_item_id",
+				"actor_id",
+				"actor_type",
+				"verb",
+				"field",
+				"old_value",
+				"new_value",
+				"payload",
+				"visibility",
+				"workflow_version_id",
+				"created_at",
+				"seq",
+				"origin",
+				"imported_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "announcement",
+			"columns": [
+				"id",
+				"workspace_id",
+				"title",
+				"body",
+				"severity",
+				"audience",
+				"starts_at",
+				"ends_at",
+				"published_at",
+				"created_by",
+				"updated_by",
+				"version",
+				"created_at",
+				"updated_at",
+				"deleted_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "announcement_organisation",
+			"columns": ["workspace_id", "announcement_id", "organisation_id"]
+		},
+		{
+			"schema": "public",
+			"table": "announcement_project",
+			"columns": ["workspace_id", "announcement_id", "project_id"]
+		},
+		{
+			"schema": "public",
+			"table": "api_key",
+			"columns": [
+				"apikey_id",
+				"workspace_id",
+				"person_id",
+				"created_by_person_id",
+				"capabilities",
+				"ip_allowlist",
+				"rate_limit_per_minute",
+				"last_used_at",
+				"last_used_ip",
+				"is_mcp",
+				"disabled_at",
+				"disabled_reason",
+				"created_at",
+				"admin_ownership_transferred_at",
+				"former_creator_at",
+				"reattestation_required_at",
+				"reattested_at",
+				"reattested_by_person_id",
+				"accountability_version"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "api_key_rate_limit_counter",
+			"columns": ["api_key_id", "bucket", "window_started_at", "request_count"]
+		},
+		{
+			"schema": "public",
+			"table": "apikey",
+			"columns": [
+				"id",
+				"name",
+				"start",
+				"prefix",
+				"key",
+				"user_id",
+				"refill_interval",
+				"refill_amount",
+				"last_refill_at",
+				"enabled",
+				"rate_limit_enabled",
+				"rate_limit_time_window",
+				"rate_limit_max",
+				"request_count",
+				"remaining",
+				"last_request",
+				"expires_at",
+				"created_at",
+				"updated_at",
+				"permissions",
+				"metadata",
+				"config_id",
+				"reference_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "approval",
+			"columns": [
+				"id",
+				"work_item_id",
+				"transition_id",
+				"kind",
+				"requested_by",
+				"approver_id",
+				"state",
+				"created_at",
+				"expires_at",
+				"reminder_50_sent_at",
+				"reminder_90_sent_at",
+				"decided_at",
+				"decision_note",
+				"workspace_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "asset",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"task_id",
+				"activity_id",
+				"object_key",
+				"filename",
+				"mime_type",
+				"size",
+				"kind",
+				"surface",
+				"created_by",
+				"created_at",
+				"detached_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "attachment",
+			"columns": [
+				"id",
+				"workspace_id",
+				"organisation_id",
+				"work_item_id",
+				"comment_id",
+				"submission_id",
+				"object_key",
+				"filename",
+				"mime_type",
+				"size",
+				"state",
+				"customer_visible",
+				"uploaded_by",
+				"deleted_at",
+				"created_at",
+				"updated_at",
+				"submission_field_key"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "attachment_object_gc",
+			"columns": ["object_key", "source_workspace_id", "queued_at", "attempts"]
+		},
+		{
+			"schema": "public",
+			"table": "audit_chain_anchor",
+			"columns": [
+				"id",
+				"created_at",
+				"purged_through_at",
+				"last_purged_row_hash",
+				"first_purged_created_at",
+				"purged_count",
+				"next_row_hash"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "audit_log",
+			"columns": [
+				"id",
+				"actor_id",
+				"actor_type",
+				"api_key_id",
+				"impersonator_id",
+				"actor_ip",
+				"user_agent",
+				"trace_id",
+				"workspace_id",
+				"organisation_id",
+				"action",
+				"entity_type",
+				"entity_id",
+				"before",
+				"after",
+				"created_at",
+				"prev_hash",
+				"row_hash",
+				"seq",
+				"project_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "automation",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"project_filter",
+				"name",
+				"enabled",
+				"trigger",
+				"schedule_cron",
+				"conditions",
+				"actions",
+				"effective_role_id",
+				"position",
+				"stop_processing",
+				"flagged_reason",
+				"fire_count",
+				"last_run_at",
+				"created_by",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "automation_run",
+			"columns": [
+				"id",
+				"automation_id",
+				"workspace_id",
+				"work_item_id",
+				"work_item_key",
+				"project_id",
+				"event_id",
+				"origin",
+				"position",
+				"depth",
+				"triggered_at",
+				"state",
+				"matched",
+				"results",
+				"error",
+				"lease_expires_at",
+				"finished_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "available_hours",
+			"columns": [
+				"id",
+				"workspace_id",
+				"person_id",
+				"minutes_per_week",
+				"effective_from",
+				"created_by",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "budget",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"name",
+				"planned_amount_minor",
+				"currency",
+				"period_start",
+				"period_end",
+				"created_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "budget_threshold_notice",
+			"columns": ["budget_id", "threshold", "created_at"]
+		},
+		{
+			"schema": "public",
+			"table": "canned_response",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"body",
+				"visibility_default",
+				"created_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "change_detail",
+			"columns": [
+				"work_item_id",
+				"workspace_id",
+				"risk",
+				"window_start",
+				"window_end",
+				"rollback_plan",
+				"release_id",
+				"freeze_override",
+				"freeze_override_reason",
+				"freeze_override_by",
+				"freeze_override_at",
+				"freeze_override_freezes",
+				"approved_at",
+				"updated_by",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "change_freeze",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"reason",
+				"starts_at",
+				"ends_at",
+				"cancelled_at",
+				"cancelled_by",
+				"created_by",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "change_service",
+			"columns": ["workspace_id", "work_item_id", "service_id", "created_at"]
+		},
+		{
+			"schema": "public",
+			"table": "checklist_item",
+			"columns": [
+				"id",
+				"workspace_id",
+				"work_item_id",
+				"template_id",
+				"release_id",
+				"position",
+				"text",
+				"done_at",
+				"done_by",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "checklist_template",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"archived_at",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "column",
+			"columns": [
+				"id",
+				"project_id",
+				"name",
+				"slug",
+				"position",
+				"icon",
+				"color",
+				"is_final",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "comment",
+			"columns": [
+				"id",
+				"workspace_id",
+				"work_item_id",
+				"author_id",
+				"actor_type",
+				"body",
+				"visibility",
+				"activity_id",
+				"edited_at",
+				"deleted_at",
+				"deleted_by",
+				"created_at",
+				"updated_at",
+				"origin",
+				"imported_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "comment_version",
+			"columns": [
+				"id",
+				"comment_id",
+				"number",
+				"body",
+				"edited_by",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "cost_entry",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"work_item_id",
+				"cost_type_id",
+				"person_id",
+				"date",
+				"units",
+				"rate_minor",
+				"amount_minor",
+				"currency",
+				"billable",
+				"note",
+				"created_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "cost_type",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"unit",
+				"default_rate_minor",
+				"currency",
+				"billable",
+				"archived_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "custom_field",
+			"columns": [
+				"id",
+				"workspace_id",
+				"section_id",
+				"entity_type",
+				"key",
+				"name",
+				"format",
+				"options",
+				"default_value",
+				"help_text",
+				"customer_visible",
+				"visibility_condition",
+				"position",
+				"deleted_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "custom_field_section",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"position",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "custom_field_type_visibility",
+			"columns": [
+				"custom_field_id",
+				"work_item_type_id",
+				"visible",
+				"required",
+				"workspace_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "custom_field_value",
+			"columns": [
+				"id",
+				"custom_field_id",
+				"entity_type",
+				"entity_id",
+				"value",
+				"project_id",
+				"organisation_id",
+				"created_at",
+				"updated_at",
+				"workspace_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "customer_invitation_auth_continuation",
+			"columns": [
+				"id",
+				"invitation_id",
+				"credential_hash",
+				"nonce_hash",
+				"expires_at",
+				"consumed_at",
+				"created_at",
+				"accepted_user_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "customer_invitation_delivery",
+			"columns": [
+				"id",
+				"invitation_id",
+				"credential_hash",
+				"resend",
+				"envelope",
+				"state",
+				"attempts",
+				"next_attempt_at",
+				"expires_at",
+				"lease_id",
+				"lease_expires_at",
+				"terminal_code",
+				"created_at",
+				"updated_at",
+				"owner_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "cutover_rehearsal",
+			"columns": [
+				"id",
+				"rehearsal_key",
+				"workspace_id",
+				"import_run_id",
+				"status",
+				"database_name",
+				"freeze_boundary",
+				"steps",
+				"timings",
+				"report",
+				"started_at",
+				"finished_at",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "cycle",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"name",
+				"start_date",
+				"end_date",
+				"completed_at",
+				"completed_by",
+				"created_by",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "cycle_scope_event",
+			"columns": [
+				"id",
+				"workspace_id",
+				"cycle_id",
+				"work_item_id",
+				"kind",
+				"at",
+				"actor_id",
+				"after_start",
+				"retrospective"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "cycle_snapshot",
+			"columns": [
+				"cycle_id",
+				"date",
+				"unit",
+				"scope_points",
+				"completed_points",
+				"item_count",
+				"completed_count",
+				"unestimated_count",
+				"summary",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "dashboard",
+			"columns": [
+				"id",
+				"workspace_id",
+				"owner_id",
+				"name",
+				"scope",
+				"is_default",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "dashboard_widget",
+			"columns": [
+				"id",
+				"dashboard_id",
+				"report_key",
+				"saved_view_id",
+				"chart_type",
+				"filters",
+				"x",
+				"y",
+				"w",
+				"h",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "deflection_event",
+			"columns": [
+				"id",
+				"workspace_id",
+				"person_id",
+				"request_type_id",
+				"kb_article_id",
+				"query",
+				"abandoned_at",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "document_link",
+			"columns": [
+				"id",
+				"project_id",
+				"url",
+				"title",
+				"customer_visible",
+				"created_at",
+				"kind",
+				"description",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "estimate",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"system",
+				"active",
+				"created_by",
+				"created_at",
+				"deactivated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "estimate_change",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"kind",
+				"from_system",
+				"to_system",
+				"mapped_count",
+				"cleared_count",
+				"actor_id",
+				"changed_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "estimate_point",
+			"columns": [
+				"id",
+				"estimate_id",
+				"key",
+				"value",
+				"weight",
+				"position",
+				"archived_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "external_identity",
+			"columns": [
+				"id",
+				"identity_connection_id",
+				"person_id",
+				"user_id",
+				"issuer",
+				"subject",
+				"scim_external_id",
+				"user_name_snapshot",
+				"email_snapshot",
+				"active",
+				"provisioned_via",
+				"first_seen_at",
+				"last_login_at",
+				"deactivated_at",
+				"orphaned_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "external_link",
+			"columns": [
+				"id",
+				"task_id",
+				"resource_type",
+				"external_id",
+				"url",
+				"title",
+				"metadata",
+				"created_at",
+				"updated_at",
+				"workspace_id",
+				"work_item_id",
+				"entity_type",
+				"entity_id",
+				"system",
+				"project_id",
+				"organisation_id",
+				"origin",
+				"import_run_id",
+				"source_created_at",
+				"source_updated_at",
+				"source_resolved_at",
+				"last_seen_at",
+				"stale_at",
+				"deferred_links",
+				"plugin_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "hourly_rate",
+			"columns": [
+				"id",
+				"workspace_id",
+				"person_id",
+				"project_id",
+				"rate_minor",
+				"currency",
+				"effective_from",
+				"created_by",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "idempotency_key",
+			"columns": [
+				"id",
+				"actor_type",
+				"actor_id",
+				"key",
+				"route",
+				"request_hash",
+				"state",
+				"response_status",
+				"response_body",
+				"created_at",
+				"expires_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "identity_connection",
+			"columns": [
+				"id",
+				"provider_type",
+				"portal_scope",
+				"organisation_id",
+				"display_name",
+				"issuer",
+				"tenant_id",
+				"client_id",
+				"client_secret",
+				"redirect_uri",
+				"scopes",
+				"claim_mapping",
+				"domain_bindings",
+				"jit_policy",
+				"max_role_rank",
+				"mfa_upstream_mode",
+				"enabled",
+				"config_version",
+				"health_state",
+				"health_checked_at",
+				"created_by",
+				"updated_by",
+				"created_at",
+				"updated_at",
+				"default_workspace_id",
+				"deleted_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "import_chunk",
+			"columns": [
+				"id",
+				"import_run_id",
+				"chunk_id",
+				"sequence",
+				"state",
+				"expected_run_version",
+				"input_digest",
+				"input_payload",
+				"report",
+				"record_count",
+				"source_cursor",
+				"pending_action_id",
+				"expires_at",
+				"created_at",
+				"committed_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "import_loss",
+			"columns": [
+				"id",
+				"workspace_id",
+				"import_run_id",
+				"import_chunk_id",
+				"source_type",
+				"source_id",
+				"code",
+				"detail_code",
+				"source_url",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "import_mapping_profile",
+			"columns": [
+				"id",
+				"workspace_id",
+				"plugin_id",
+				"source_ref",
+				"name",
+				"mapping",
+				"mapping_version",
+				"version",
+				"created_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "import_placeholder_claim",
+			"columns": [
+				"person_id",
+				"import_run_id",
+				"normalized_email",
+				"created_at",
+				"claimed_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "import_reconciliation",
+			"columns": [
+				"id",
+				"workspace_id",
+				"import_run_id",
+				"plugin_id",
+				"source_ref",
+				"status",
+				"source_available",
+				"version",
+				"seed",
+				"snapshot",
+				"computed_by",
+				"computed_at",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "import_record_link",
+			"columns": [
+				"id",
+				"workspace_id",
+				"plugin_id",
+				"source_ref",
+				"import_run_id",
+				"first_import_run_id",
+				"source_type",
+				"source_id",
+				"source_hash",
+				"target_content_hash",
+				"target_type",
+				"target_id",
+				"source_url",
+				"first_seen_at",
+				"last_seen_at",
+				"stale_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "import_run",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"plugin_id",
+				"source_ref",
+				"profile_id",
+				"started_by",
+				"started_by_api_key_id",
+				"state",
+				"stats",
+				"log",
+				"version",
+				"dry_run_digest",
+				"dry_run_expires_at",
+				"next_cursor",
+				"last_committed_chunk",
+				"created_at",
+				"updated_at",
+				"source_connection_id",
+				"engine_phase",
+				"source_cursor",
+				"paused_reason",
+				"approved_digest",
+				"approved_count",
+				"approved_mapping_version",
+				"approval_pending_action_id",
+				"engine_discovery",
+				"engine_dry_run_digest",
+				"engine_dry_run_mapping_version",
+				"engine_dry_run_report",
+				"engine_dry_run_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "import_source_connection",
+			"columns": [
+				"id",
+				"workspace_id",
+				"plugin_id",
+				"name",
+				"config",
+				"credential_ciphertext",
+				"read_only",
+				"created_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "instance_feature_flag",
+			"columns": [
+				"feature_key",
+				"enabled",
+				"locked",
+				"version",
+				"updated_by",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "instance_job_configuration",
+			"columns": [
+				"name",
+				"pattern",
+				"enabled",
+				"version",
+				"updated_at",
+				"updated_by_person_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "instance_job_run",
+			"columns": [
+				"id",
+				"name",
+				"trigger",
+				"state",
+				"requested_at",
+				"started_at",
+				"heartbeat_at",
+				"finished_at",
+				"runner_id",
+				"run_lease_expires_at",
+				"actor_person_id",
+				"error_code",
+				"duration_ms"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "instance_plugin_config",
+			"columns": [
+				"id",
+				"plugin_id",
+				"instance_key",
+				"display_name",
+				"enabled",
+				"config",
+				"secrets",
+				"scope",
+				"workspace_id",
+				"portal_scope",
+				"config_version",
+				"created_at",
+				"updated_at",
+				"updated_by"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "instance_setting",
+			"columns": [
+				"id",
+				"setup_completed_at",
+				"setup_token_hash",
+				"setup_token_expires_at",
+				"created_at",
+				"updated_at",
+				"attachment_max_bytes",
+				"attachment_max_per_item",
+				"attachment_allowed_extensions",
+				"local_factor_policy",
+				"observability_log_levels",
+				"observability_config_version",
+				"metrics_token_hash",
+				"metrics_token_rotated_at",
+				"approval_default_expiry_days",
+				"clarification_window_days",
+				"reopen_window_days",
+				"notification_retention_days",
+				"timezone",
+				"anonymous_rate_limit_window_ms",
+				"anonymous_rate_limit_max",
+				"mcp_write_ceiling_per_minute",
+				"api_key_burst_threshold",
+				"invitation_lifetime_hours",
+				"customer_invitation_create_window_minutes",
+				"customer_invitation_per_inviter_limit",
+				"customer_invitation_per_organisation_limit",
+				"customer_invitation_resend_cooldown_seconds",
+				"csp_mode"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "invitation",
+			"columns": [
+				"id",
+				"workspace_id",
+				"email",
+				"role",
+				"team_id",
+				"status",
+				"expires_at",
+				"inviter_id",
+				"created_at",
+				"scope",
+				"organisation_id",
+				"credential_hash",
+				"last_sent_at",
+				"accepted_at",
+				"accepted_person_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "job_lease",
+			"columns": ["name", "owner", "expires_at"]
+		},
+		{
+			"schema": "public",
+			"table": "kb_article",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"category_id",
+				"title",
+				"body",
+				"body_text",
+				"state",
+				"customer_visible",
+				"author_id",
+				"owner_id",
+				"review_due_at",
+				"view_count",
+				"published_at",
+				"published_version",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "kb_article_feedback",
+			"columns": [
+				"id",
+				"article_id",
+				"person_id",
+				"helpful",
+				"comment",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "kb_article_version",
+			"columns": [
+				"id",
+				"article_id",
+				"number",
+				"title",
+				"body",
+				"body_text",
+				"created_by",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "kb_category",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"parent_id",
+				"position",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "label",
+			"columns": [
+				"id",
+				"name",
+				"color",
+				"created_at",
+				"task_id",
+				"workspace_id",
+				"updated_at",
+				"project_id",
+				"key"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "legal_hold",
+			"columns": [
+				"id",
+				"scope",
+				"scope_id",
+				"placed_by",
+				"placed_at",
+				"reason",
+				"lifted_by",
+				"lifted_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "mcp_tool_invocation",
+			"columns": [
+				"api_key_id",
+				"invocation_id",
+				"tool_name",
+				"duration_ms",
+				"outcome",
+				"recorded_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "membership",
+			"columns": [
+				"id",
+				"person_id",
+				"scope",
+				"scope_id",
+				"role_id",
+				"sees_all",
+				"inherited_from",
+				"derived_from",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "membership_grant",
+			"columns": [
+				"id",
+				"membership_id",
+				"person_id",
+				"scope",
+				"scope_id",
+				"role_id",
+				"source_kind",
+				"external_identity_id",
+				"identity_connection_id",
+				"oidc_group_mapping_id",
+				"scim_group_mapping_id",
+				"sees_all",
+				"direct_origin",
+				"granted_by_person_id",
+				"created_at",
+				"updated_at",
+				"last_confirmed_at",
+				"revoked_at",
+				"revocation_reason"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "metric_snapshot",
+			"columns": [
+				"id",
+				"workspace_id",
+				"period_start",
+				"period_end",
+				"grain",
+				"metric_key",
+				"project_id",
+				"organisation_id",
+				"dimensions",
+				"measures",
+				"computed_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "metric_snapshot_day",
+			"columns": [
+				"workspace_id",
+				"period_start",
+				"computed_at",
+				"snapshot_version",
+				"epoch",
+				"gen"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "metric_snapshot_day_gen",
+			"columns": ["workspace_id", "period_start", "gen"]
+		},
+		{
+			"schema": "public",
+			"table": "metric_snapshot_epoch",
+			"columns": ["workspace_id", "epoch"]
+		},
+		{
+			"schema": "public",
+			"table": "milestone",
+			"columns": [
+				"id",
+				"project_id",
+				"name",
+				"date",
+				"reached_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "module",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"name",
+				"description",
+				"lead_id",
+				"state",
+				"target_date",
+				"created_by",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "notification",
+			"columns": [
+				"id",
+				"title",
+				"content",
+				"type",
+				"is_read",
+				"resource_id",
+				"resource_type",
+				"created_at",
+				"user_id",
+				"event_data",
+				"updated_at",
+				"person_id",
+				"event_id",
+				"kind",
+				"body",
+				"read_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "notification_delivery",
+			"columns": [
+				"id",
+				"event_id",
+				"recipient_person_id",
+				"channel",
+				"workspace_id",
+				"organisation_id",
+				"dedupe_key",
+				"digest_id",
+				"state",
+				"attempts",
+				"next_attempt_at",
+				"delivered_at",
+				"last_error",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "notification_digest",
+			"columns": [
+				"id",
+				"recipient_person_id",
+				"channel",
+				"workspace_id",
+				"organisation_id",
+				"cadence",
+				"timezone",
+				"window_start_at",
+				"window_end_at",
+				"state",
+				"attempts",
+				"next_attempt_at",
+				"delivered_at",
+				"last_error",
+				"payload_hash",
+				"lease_token",
+				"lease_expires_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "notification_preference",
+			"columns": [
+				"person_id",
+				"scope",
+				"scope_id",
+				"channel",
+				"event_kind",
+				"enabled",
+				"digest"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "notification_preference_handoff",
+			"columns": [
+				"handle_hash",
+				"audience",
+				"recipient_person_id",
+				"event_kind",
+				"channel",
+				"scope",
+				"scope_id",
+				"created_at",
+				"expires_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "oidc_group_mapping",
+			"columns": [
+				"id",
+				"identity_connection_id",
+				"external_group_id",
+				"external_group_name_snapshot",
+				"role_id",
+				"scope",
+				"scope_id",
+				"enabled",
+				"created_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "organisation",
+			"columns": [
+				"id",
+				"key",
+				"name",
+				"is_internal",
+				"domain",
+				"active",
+				"portal_access",
+				"deleted_at",
+				"purge_after",
+				"default_customer_visibility",
+				"created_at",
+				"updated_at",
+				"deletion_generation"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "organisation_deletion_project_snapshot",
+			"columns": [
+				"operation_id",
+				"organisation_id",
+				"project_id",
+				"prior_archived_at",
+				"prior_archive_version",
+				"expected_archive_version",
+				"archived_by_operation"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "organisation_deletion_snapshot",
+			"columns": [
+				"organisation_id",
+				"operation_id",
+				"generation",
+				"deleted_at",
+				"purge_after",
+				"prior_active",
+				"prior_portal_access"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "organisation_project_default",
+			"columns": [
+				"organisation_id",
+				"workspace_id",
+				"service_calendar_id",
+				"sla_policy_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "organisation_quota",
+			"columns": [
+				"id",
+				"organisation_id",
+				"max_projects",
+				"max_work_items",
+				"max_storage_bytes",
+				"max_portal_users",
+				"max_api_requests_per_minute",
+				"max_webhooks",
+				"updated_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "organisation_request_type",
+			"columns": ["organisation_id", "request_type_id"]
+		},
+		{
+			"schema": "public",
+			"table": "outbox",
+			"columns": [
+				"event_id",
+				"kind",
+				"payload",
+				"dedupe_key",
+				"workspace_id",
+				"organisation_id",
+				"state",
+				"attempts",
+				"next_attempt_at",
+				"last_error",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "outbox_dedupe_reservation",
+			"columns": [
+				"reservation_key",
+				"recipient_person_id",
+				"channel",
+				"dedupe_key",
+				"owner_delivery_id",
+				"lease_token",
+				"lease_expires_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "pending_action",
+			"columns": [
+				"id",
+				"requested_by_person_id",
+				"credential_type",
+				"credential_id",
+				"origin",
+				"action",
+				"target_type",
+				"target_ids",
+				"target_versions",
+				"payload",
+				"route_key",
+				"payload_hash",
+				"payload_summary",
+				"workspace_id",
+				"project_id",
+				"organisation_id",
+				"confirmation_required",
+				"confirmation_supplied",
+				"state",
+				"invalidation_reason",
+				"created_at",
+				"expires_at",
+				"decided_by_person_id",
+				"decision_session_id",
+				"decided_at",
+				"step_up_token_id",
+				"executed_at",
+				"error",
+				"trace_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "person",
+			"columns": [
+				"id",
+				"user_id",
+				"organisation_id",
+				"side",
+				"job_title",
+				"active",
+				"is_placeholder",
+				"locale",
+				"quiet_hours_start",
+				"quiet_hours_end",
+				"quiet_hours_timezone",
+				"created_at",
+				"updated_at",
+				"display_name"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "policy_shadow_event",
+			"columns": [
+				"id",
+				"day",
+				"route_key",
+				"router_group",
+				"policy_kind",
+				"policy_capability",
+				"outcome",
+				"reason_code",
+				"legacy_allowed",
+				"legacy_status",
+				"policy_allowed",
+				"policy_status",
+				"policy_code",
+				"diagnostic",
+				"identity_kind",
+				"workspace_id",
+				"trace_id",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "policy_shadow_tally",
+			"columns": [
+				"id",
+				"day",
+				"route_key",
+				"router_group",
+				"outcome",
+				"reason_code",
+				"count",
+				"last_seen_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "prerequisite",
+			"columns": [
+				"id",
+				"project_id",
+				"title",
+				"owner_side",
+				"due_date",
+				"is_blocking",
+				"completed_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "project",
+			"columns": [
+				"id",
+				"workspace_id",
+				"slug",
+				"icon",
+				"name",
+				"description",
+				"created_at",
+				"archived_at",
+				"last_task_number",
+				"position",
+				"deleted_at",
+				"purge_after",
+				"default_comment_visibility",
+				"sla_policy_id",
+				"organisation_id",
+				"kind",
+				"health",
+				"support_level",
+				"service_calendar_id",
+				"created_by",
+				"parent_id",
+				"manager_id",
+				"start_date",
+				"end_date",
+				"default_assignee_id",
+				"owner_team_id",
+				"default_billable",
+				"archive_version",
+				"organisation_deletion_operation_id",
+				"sla_policy_mode",
+				"service_calendar_mode",
+				"state_set_mode",
+				"project_settings_version",
+				"objective",
+				"in_scope",
+				"out_of_scope",
+				"success_criteria",
+				"status_note",
+				"status_note_at",
+				"status"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "project_agile_setting",
+			"columns": [
+				"project_id",
+				"workspace_id",
+				"cycle_incomplete_policy",
+				"version",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "project_contract",
+			"columns": [
+				"project_id",
+				"start_date",
+				"end_date",
+				"contracted_minutes",
+				"coverage",
+				"kickoff_status",
+				"kickoff_date",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "project_feature_flag",
+			"columns": [
+				"project_id",
+				"feature_key",
+				"enabled",
+				"version",
+				"updated_by",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "project_page",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"parent_id",
+				"title",
+				"body",
+				"body_text",
+				"version",
+				"created_by",
+				"updated_by",
+				"created_at",
+				"updated_at",
+				"deleted_at",
+				"purge_after"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "project_page_version",
+			"columns": [
+				"id",
+				"page_id",
+				"number",
+				"title",
+				"body",
+				"body_text",
+				"kind",
+				"restored_from",
+				"created_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "project_slug_claim",
+			"columns": ["slug", "project_id", "created_at"]
+		},
+		{
+			"schema": "public",
+			"table": "provisioning_event",
+			"columns": [
+				"id",
+				"identity_connection_id",
+				"scim_connection_id",
+				"external_identity_id",
+				"kind",
+				"outcome",
+				"detail",
+				"actor_type",
+				"trace_id",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "release",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"service_id",
+				"planned_date",
+				"status",
+				"notes",
+				"notes_generated_at",
+				"notes_edited_at",
+				"publish_to_portal",
+				"published_at",
+				"created_by",
+				"version",
+				"created_at",
+				"updated_at",
+				"portal_snapshot"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "report_export",
+			"columns": [
+				"id",
+				"workspace_id",
+				"person_id",
+				"user_id",
+				"kind",
+				"report_key",
+				"title",
+				"spec",
+				"caps",
+				"status",
+				"rates_included",
+				"filename",
+				"content",
+				"row_count",
+				"byte_size",
+				"truncated",
+				"error",
+				"download_count",
+				"created_at",
+				"started_at",
+				"finished_at",
+				"expires_at",
+				"downloaded_at",
+				"notified_at",
+				"notify_claimed_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "report_export_chunk",
+			"columns": ["export_id", "seq", "content"]
+		},
+		{
+			"schema": "public",
+			"table": "request_participant",
+			"columns": [
+				"id",
+				"work_item_id",
+				"submission_id",
+				"person_id",
+				"added_by",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "request_rate_limit_counter",
+			"columns": [
+				"bucket",
+				"key_hash",
+				"window_started_at",
+				"count",
+				"expires_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "request_type",
+			"columns": [
+				"id",
+				"workspace_id",
+				"key",
+				"name",
+				"description",
+				"icon",
+				"group",
+				"work_item_type_id",
+				"form_schema",
+				"sla_policy_id",
+				"default_assignee_id",
+				"auto_accept",
+				"customer_visible",
+				"force_private",
+				"published",
+				"position",
+				"version",
+				"created_at",
+				"updated_at",
+				"default_project_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "request_type_group_order",
+			"columns": ["workspace_id", "ordered_groups", "version", "updated_at"]
+		},
+		{
+			"schema": "public",
+			"table": "request_type_version",
+			"columns": [
+				"id",
+				"workspace_id",
+				"request_type_id",
+				"number",
+				"form_schema",
+				"work_item_type_id",
+				"sla_policy_id",
+				"default_assignee_id",
+				"effective_from",
+				"created_at",
+				"default_project_id",
+				"auto_accept"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "role",
+			"columns": [
+				"id",
+				"scope",
+				"workspace_id",
+				"key",
+				"name",
+				"description",
+				"rank",
+				"capabilities",
+				"is_system",
+				"is_editable",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "running_timer",
+			"columns": [
+				"person_id",
+				"workspace_id",
+				"project_id",
+				"work_item_id",
+				"activity_id",
+				"description",
+				"billable",
+				"started_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "satisfaction_rating",
+			"columns": [
+				"id",
+				"work_item_id",
+				"person_id",
+				"score",
+				"comment",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "saved_view",
+			"columns": [
+				"id",
+				"workspace_id",
+				"created_by",
+				"name",
+				"scope",
+				"scope_id",
+				"visibility",
+				"shared_with_team_id",
+				"query",
+				"layout",
+				"created_at",
+				"updated_at",
+				"queue_pair_id",
+				"queue_version"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "scheduled_transition",
+			"columns": [
+				"id",
+				"project_id",
+				"work_item_id",
+				"transition_id",
+				"from_state_id",
+				"to_state_id",
+				"due_at",
+				"state",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "scim_connection",
+			"columns": [
+				"identity_connection_id",
+				"token_hash",
+				"token_prefix",
+				"token_created_at",
+				"token_rotated_at",
+				"allowed_resources",
+				"attribute_mapping",
+				"lifecycle_policy",
+				"enabled",
+				"last_sync_at",
+				"last_sync_outcome",
+				"last_failure",
+				"match_attributes"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "scim_group",
+			"columns": [
+				"id",
+				"scim_connection_id",
+				"external_id",
+				"display_name",
+				"active",
+				"created_at",
+				"updated_at",
+				"deactivated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "scim_group_directory_member",
+			"columns": [
+				"id",
+				"scim_connection_id",
+				"scim_group_id",
+				"external_identity_id",
+				"active",
+				"created_at",
+				"updated_at",
+				"removed_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "scim_group_mapping",
+			"columns": [
+				"id",
+				"scim_connection_id",
+				"external_group_id",
+				"external_group_name_snapshot",
+				"role_id",
+				"scope",
+				"scope_id",
+				"enabled",
+				"created_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "scim_group_member",
+			"columns": [
+				"id",
+				"scim_group_mapping_id",
+				"external_identity_id",
+				"membership_id",
+				"membership_grant_id",
+				"revoked_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "service",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"description",
+				"category",
+				"owner_team_id",
+				"support_level",
+				"service_calendar_id",
+				"status",
+				"status_note",
+				"status_changed_at",
+				"status_changed_by",
+				"created_by",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "service_calendar",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"timezone",
+				"windows",
+				"holidays",
+				"version",
+				"created_at",
+				"updated_at",
+				"key"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "service_dependency",
+			"columns": [
+				"workspace_id",
+				"service_id",
+				"depends_on_service_id",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "service_link",
+			"columns": [
+				"id",
+				"workspace_id",
+				"service_id",
+				"kind",
+				"label",
+				"url",
+				"project_id",
+				"kb_article_id",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "service_release_checklist_item",
+			"columns": ["id", "workspace_id", "service_id", "position", "text"]
+		},
+		{
+			"schema": "public",
+			"table": "session",
+			"columns": [
+				"id",
+				"user_id",
+				"expires_at",
+				"token",
+				"created_at",
+				"updated_at",
+				"ip_address",
+				"user_agent",
+				"active_organization_id",
+				"active_team_id",
+				"impersonated_by",
+				"portal",
+				"identity_connection_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "sla_escalation",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"work_item_id",
+				"metric",
+				"trigger_event_id",
+				"state_id_at_start",
+				"assignee_id_at_start",
+				"last_order",
+				"next_due_at",
+				"state",
+				"stop_reason",
+				"started_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "sla_goal",
+			"columns": [
+				"id",
+				"workspace_id",
+				"version_id",
+				"metric",
+				"work_item_type_id",
+				"priority",
+				"target_minutes"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "sla_pause",
+			"columns": ["work_item_id", "metric", "started_at", "ended_at", "reason"]
+		},
+		{
+			"schema": "public",
+			"table": "sla_policy",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"description",
+				"active_version_id",
+				"version",
+				"created_at",
+				"updated_at",
+				"key"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "sla_policy_version",
+			"columns": [
+				"id",
+				"workspace_id",
+				"policy_id",
+				"number",
+				"calendar_id",
+				"at_risk_threshold_pct",
+				"effective_from",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "stakeholder",
+			"columns": [
+				"id",
+				"project_id",
+				"person_id",
+				"role",
+				"escalation_order",
+				"escalation_wait_minutes",
+				"active",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "state",
+			"columns": [
+				"id",
+				"project_id",
+				"state_template_id",
+				"position",
+				"is_default",
+				"archived_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "state_template",
+			"columns": [
+				"id",
+				"workspace_id",
+				"key",
+				"name",
+				"group",
+				"colour",
+				"archived_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "state_wip_limit",
+			"columns": ["state_id", "project_id", "wip_limit", "updated_at"]
+		},
+		{
+			"schema": "public",
+			"table": "step_up_confirmation",
+			"columns": [
+				"id",
+				"person_id",
+				"session_id",
+				"binding_kind",
+				"pending_action_id",
+				"operation_key",
+				"route_key",
+				"expected_version",
+				"body_hash",
+				"challenge_nonce_hash",
+				"state",
+				"token_hash",
+				"auth_method",
+				"authenticated_at",
+				"issued_at",
+				"consumed_at",
+				"created_at",
+				"challenge_expires_at",
+				"token_expires_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "submission",
+			"columns": [
+				"id",
+				"number",
+				"organisation_id",
+				"requester_id",
+				"request_type_id",
+				"request_type_version_id",
+				"form_data",
+				"state",
+				"claimed_by",
+				"claimed_at",
+				"customer_visibility",
+				"work_item_id",
+				"created_at",
+				"updated_at",
+				"version",
+				"submitted_at",
+				"clarifying_since",
+				"auto_declined_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "submission_message",
+			"columns": [
+				"id",
+				"submission_id",
+				"author_id",
+				"actor_type",
+				"body",
+				"created_at",
+				"reason_code",
+				"reason_params"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "task",
+			"columns": [
+				"id",
+				"project_id",
+				"position",
+				"number",
+				"title",
+				"description",
+				"status",
+				"priority",
+				"due_date",
+				"created_at",
+				"assignee_id",
+				"column_id",
+				"start_date",
+				"updated_at",
+				"version"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "task_activity",
+			"columns": [
+				"id",
+				"task_id",
+				"type",
+				"created_at",
+				"content",
+				"user_id",
+				"external_user_name",
+				"external_user_avatar",
+				"external_source",
+				"external_url",
+				"event_data",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "task_comment",
+			"columns": [
+				"id",
+				"task_id",
+				"user_id",
+				"content",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "task_relation",
+			"columns": [
+				"id",
+				"source_task_id",
+				"target_task_id",
+				"relation_type",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "task_reminder_sent",
+			"columns": ["id", "task_id", "reminder_type", "created_at", "updated_at"]
+		},
+		{
+			"schema": "public",
+			"table": "task_time_entry",
+			"columns": [
+				"id",
+				"task_id",
+				"description",
+				"start_time",
+				"end_time",
+				"duration",
+				"created_at",
+				"user_id",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "team",
+			"columns": [
+				"id",
+				"name",
+				"workspace_id",
+				"created_at",
+				"updated_at",
+				"is_cab",
+				"capacity_days_per_week"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "team_member",
+			"columns": [
+				"id",
+				"team_id",
+				"user_id",
+				"created_at",
+				"is_lead",
+				"allocation_pct"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "terminology_override",
+			"columns": [
+				"scope",
+				"workspace_id",
+				"audience",
+				"term_key",
+				"locale",
+				"forms"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "time_activity",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"position",
+				"archived_at",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "time_entry",
+			"columns": [
+				"id",
+				"workspace_id",
+				"project_id",
+				"work_item_id",
+				"person_id",
+				"date",
+				"minutes",
+				"activity_id",
+				"description",
+				"billable",
+				"rate_minor",
+				"currency",
+				"source",
+				"needs_review",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "two_factor",
+			"columns": [
+				"id",
+				"secret",
+				"backup_codes",
+				"user_id",
+				"verified",
+				"failed_verification_count",
+				"locked_until"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "user",
+			"columns": [
+				"id",
+				"name",
+				"email",
+				"created_at",
+				"email_verified",
+				"image",
+				"updated_at",
+				"is_anonymous",
+				"locale",
+				"role",
+				"banned",
+				"ban_reason",
+				"ban_expires",
+				"two_factor_enabled"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "user_avatar",
+			"columns": [
+				"id",
+				"user_id",
+				"mime_type",
+				"size",
+				"data",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "user_notification_preference",
+			"columns": [
+				"id",
+				"user_id",
+				"email_enabled",
+				"ntfy_enabled",
+				"ntfy_server_url",
+				"ntfy_topic",
+				"ntfy_token",
+				"gotify_enabled",
+				"gotify_server_url",
+				"gotify_token",
+				"webhook_enabled",
+				"webhook_url",
+				"webhook_secret",
+				"created_at",
+				"updated_at",
+				"task_assignment_enabled",
+				"task_comment_enabled",
+				"task_status_change_enabled",
+				"due_date_reminder_enabled",
+				"due_date_reminder_lead_time_minutes"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "user_notification_workspace_project",
+			"columns": [
+				"id",
+				"workspace_id",
+				"workspace_rule_id",
+				"project_id",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "user_notification_workspace_rule",
+			"columns": [
+				"id",
+				"user_id",
+				"workspace_id",
+				"is_active",
+				"email_enabled",
+				"ntfy_enabled",
+				"gotify_enabled",
+				"webhook_enabled",
+				"project_mode",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "user_preference",
+			"columns": [
+				"id",
+				"person_id",
+				"scope",
+				"scope_id",
+				"key",
+				"value",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "verification",
+			"columns": [
+				"id",
+				"identifier",
+				"value",
+				"expires_at",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "watcher",
+			"columns": [
+				"id",
+				"work_item_id",
+				"person_id",
+				"source",
+				"muted",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "webhook",
+			"columns": [
+				"id",
+				"workspace_id",
+				"name",
+				"url",
+				"secret",
+				"secret_previous",
+				"secret_rotated_at",
+				"events",
+				"active",
+				"disabled_at",
+				"disabled_reason",
+				"failing_since",
+				"last_error",
+				"created_by",
+				"version",
+				"created_at",
+				"updated_at",
+				"destination_changed_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "webhook_delivery",
+			"columns": [
+				"id",
+				"webhook_id",
+				"workspace_id",
+				"event_id",
+				"event_kind",
+				"source",
+				"redelivery_of",
+				"project_id",
+				"attempt",
+				"state",
+				"next_attempt_at",
+				"lease_token",
+				"lease_expires_at",
+				"status_code",
+				"duration_ms",
+				"request_body",
+				"response_body",
+				"error",
+				"attempted_at",
+				"created_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "work_item",
+			"columns": [
+				"id",
+				"project_id",
+				"type_id",
+				"number",
+				"key",
+				"title",
+				"description",
+				"state_id",
+				"priority",
+				"assignee_id",
+				"requester_id",
+				"parent_id",
+				"service_id",
+				"start_date",
+				"due_date",
+				"position",
+				"estimate_point_id",
+				"cycle_id",
+				"module_id",
+				"sla_started_at",
+				"first_response_at",
+				"resolved_at",
+				"customer_visibility",
+				"archived_at",
+				"deleted_at",
+				"version",
+				"created_at",
+				"updated_at",
+				"workspace_id",
+				"sla_policy_version_id"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "work_item_key_alias",
+			"columns": ["id", "old_key", "work_item_id", "created_at", "updated_at"]
+		},
+		{
+			"schema": "public",
+			"table": "work_item_key_claim",
+			"columns": ["key", "work_item_id", "created_at"]
+		},
+		{
+			"schema": "public",
+			"table": "work_item_label",
+			"columns": ["work_item_id", "label_id"]
+		},
+		{
+			"schema": "public",
+			"table": "work_item_relation",
+			"columns": [
+				"id",
+				"source_id",
+				"target_id",
+				"type",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "work_item_sla_cache",
+			"columns": ["work_item_id", "metric", "state", "due_at", "computed_at"]
+		},
+		{
+			"schema": "public",
+			"table": "work_item_template",
+			"columns": [
+				"id",
+				"workspace_id",
+				"type_id",
+				"name",
+				"title",
+				"description",
+				"labels",
+				"custom_field_values",
+				"checklist_template_id",
+				"recurrence",
+				"archived_at",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "work_item_type",
+			"columns": [
+				"id",
+				"workspace_id",
+				"key",
+				"name",
+				"icon",
+				"category",
+				"workflow_id",
+				"sla_policy_id",
+				"is_epic",
+				"is_change",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "workflow",
+			"columns": [
+				"id",
+				"workspace_id",
+				"key",
+				"name",
+				"active_version_id",
+				"version",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "workflow_rule",
+			"columns": [
+				"id",
+				"project_id",
+				"integration_type",
+				"event_type",
+				"column_id",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "workflow_transition",
+			"columns": [
+				"id",
+				"version_id",
+				"from_state_template_id",
+				"to_state_template_id",
+				"role_id",
+				"note_policy",
+				"note_visibility",
+				"requires_approval",
+				"approval_policy",
+				"requires_cab",
+				"is_reopen",
+				"guards",
+				"effects",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "workflow_version",
+			"columns": [
+				"id",
+				"workflow_id",
+				"number",
+				"published_at",
+				"published_by",
+				"created_at",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "workspace",
+			"columns": [
+				"id",
+				"name",
+				"description",
+				"created_at",
+				"slug",
+				"logo",
+				"metadata",
+				"organisation_id",
+				"default_sla_policy_id",
+				"deleted_at",
+				"purge_after",
+				"time_entry_backdate_limit_days",
+				"kb_review_step_enabled",
+				"default_service_calendar_id",
+				"project_settings_version"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "workspace_feature_flag",
+			"columns": [
+				"workspace_id",
+				"feature_key",
+				"enabled",
+				"version",
+				"updated_by",
+				"updated_at"
+			]
+		},
+		{
+			"schema": "public",
+			"table": "workspace_member",
+			"columns": ["id", "workspace_id", "role", "joined_at", "user_id"]
+		},
+		{
+			"schema": "public",
+			"table": "workspace_role",
+			"columns": [
+				"id",
+				"workspace_id",
+				"role",
+				"permission",
+				"created_at",
+				"updated_at",
+				"is_system"
+			]
+		}
+	],
+	"sourceImage": "ghcr.io/thomasheinthura/taskdesk@sha256:223bd9969611370939a0b8bf4b5fcbfd575a39390a40ff98cf76508e22e6e5bc"
+}
