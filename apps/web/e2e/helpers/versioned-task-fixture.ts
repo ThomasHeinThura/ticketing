@@ -7,7 +7,7 @@ type FixtureTask = {
   title: string;
   description: string | null;
   status: string;
-  priority: string;
+  priority: string | null;
   startDate: string | null;
   dueDate: string | null;
   createdAt: string;
