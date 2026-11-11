@@ -2,7 +2,7 @@
 
 **Checked:** 8 Nov 2026 by Claude (Opus agents), against `main` 733c99d (release 1f9d949 + docs), the source, anonymous GETs to UAT, and the repo's mocked browser fixtures. Every confirmed defect was re-checked by a second agent trying to refute it; all held. Local SIT was down during the check (Docker Desktop not running), so screen claims that need a signed-in local session were checked on fixtures only. No tracked file, UAT data or seed was changed.
 
-Reports checked: `openai-uat-audit-2026-11-08.md` and `openai-uat-browser-audit-2026-11-08.md` (Codex), `gemini-uat-full-audit-2026-11-08.md` (Gemini). `report.md` is a byte-identical copy of the Gemini report.
+Reports checked: `openai-uat-audit-2026-11-08.md` and `openai-uat-browser-audit-2026-11-08.md` (Codex), `gemini-uat-full-audit-2026-11-08.md` (Gemini). `report.md` was an untracked byte-identical copy of the Gemini report and was removed on 11 Nov after verified private backup.
 
 ## 1. How accurate the reports are
 
