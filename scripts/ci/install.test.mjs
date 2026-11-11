@@ -114,6 +114,7 @@ async function fixture(
     "deploy/.env.example",
     "deploy/local-release.mjs",
     "deploy/local-candidate-selection.mjs",
+    "deploy/local-candidate-schema-catalogue.json",
     "deploy/local-candidate-daemon-lease.mjs",
     "deploy/compose.testing.yml",
     "deploy/compose.local.yml",
@@ -130,6 +131,7 @@ async function fixture(
         "scripts/lib/deploy-checks.sh",
         "deploy/local-release.mjs",
         "deploy/local-candidate-selection.mjs",
+        "deploy/local-candidate-schema-catalogue.json",
         "deploy/local-candidate-daemon-lease.mjs",
       ].includes(file)
         ? await readFile(path.join(root, file))
@@ -514,6 +516,23 @@ test("local installer verifies archive signatures and selects requested digest w
   await writeFile(path.join(f.path, ".env"), rootEnv);
   const first = run(f, ["--version", "1.2.3", "--dir", f.path, "--yes"]);
   assert.equal(first.status, 0, first.stderr);
+  assert.deepEqual(
+    await readFile(
+      path.join(f.path, "deploy/local-candidate-schema-catalogue.json"),
+    ),
+    await readFile(
+      path.join(root, "deploy/local-candidate-schema-catalogue.json"),
+    ),
+  );
+  const imported = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", 'await import("./deploy/local-release.mjs")'],
+    {
+      cwd: f.path,
+      encoding: "utf8",
+    },
+  );
+  assert.equal(imported.status, 0, imported.stderr);
   const cosignArgs = await readFile(path.join(f.temp, "cosign.log"), "utf8");
   assert.equal((cosignArgs.match(/verify-blob/g) ?? []).length, 2);
   assert.match(cosignArgs, /release\.yml@refs\/heads\/main/);
@@ -552,6 +571,7 @@ test("archive contains the real local helper and extracted local help works with
   const listed = execFileSync("tar", ["-tzf", f.archive], { encoding: "utf8" });
   assert.match(listed, /deploy\/local-release\.mjs/);
   assert.match(listed, /deploy\/local-candidate-selection\.mjs/);
+  assert.match(listed, /deploy\/local-candidate-schema-catalogue\.json/);
   assert.match(listed, /deploy\/local-candidate-daemon-lease\.mjs/);
   assert.match(listed, /deploy\/compose\.testing\.yml/);
 });

@@ -286,7 +286,7 @@ for required in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh s
   [[ -f "${RELEASE_ROOT}/${required}" && ! -L "${RELEASE_ROOT}/${required}" ]] || die "release archive is missing a required regular file: ${required}"
 done
 if [[ "$MODE" == local ]]; then
-  for required in deploy/local-release.mjs deploy/local-candidate-selection.mjs deploy/local-candidate-daemon-lease.mjs deploy/compose.testing.yml; do
+  for required in deploy/local-release.mjs deploy/local-candidate-selection.mjs deploy/local-candidate-schema-catalogue.json deploy/local-candidate-daemon-lease.mjs deploy/compose.testing.yml; do
     [[ -f "${RELEASE_ROOT}/${required}" && ! -L "${RELEASE_ROOT}/${required}" ]] || die "release archive is missing a required regular file: ${required}"
   done
 fi
@@ -353,7 +353,7 @@ fi
 LOCAL_BOOTSTRAP_MUTATING=0
 mkdir -p "$INSTALL_DIR"
 [[ -d "$INSTALL_DIR" && ! -L "$INSTALL_DIR" ]] || die '--dir must be a real directory'
-for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/compose.testing.yml deploy/local-release.mjs deploy/local-candidate-selection.mjs deploy/local-candidate-daemon-lease.mjs deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
+for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/compose.testing.yml deploy/local-release.mjs deploy/local-candidate-selection.mjs deploy/local-candidate-schema-catalogue.json deploy/local-candidate-daemon-lease.mjs deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
   [[ -f "${RELEASE_ROOT}/${member}" ]] || continue
   parent="$INSTALL_DIR"
   IFS=/ read -r -a parts <<< "$(dirname "$member")"
