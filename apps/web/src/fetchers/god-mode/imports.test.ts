@@ -227,20 +227,19 @@ describe("God Mode imports fetchers", () => {
   });
 });
 
-it("keeps an import reason from the real server error handler", async () => {
-  const { Hono } = await import("hono");
-  const { handleServerError } = await import(
-    "../../../../api/src/observability/server-error-handler"
+// The server side of this contract is pinned in tests/api/observability/server-error-handler.test.ts:
+// an allowlisted import reason arrives as `{ message, reason, requestId }` with status 502.
+it("keeps an import reason from the server error body", async () => {
+  mocks.apiFetch.mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        message: "Source connection failed",
+        reason: "auth_failed",
+        requestId: "0123456789abcdef0123456789abcdef",
+      }),
+      { status: 502, headers: { "content-type": "application/json" } },
+    ),
   );
-  const { ImportConnectError } = await import(
-    "../../../../api/src/imports/engine/connect-error"
-  );
-  const app = new Hono();
-  app.get("/test", () => {
-    throw new ImportConnectError("auth_failed");
-  });
-  app.onError((error, context) => handleServerError(error, context, () => {}));
-  mocks.apiFetch.mockImplementation(() => app.request("/test"));
   const caught = await listImportSources("workspace-1").catch(
     (error: unknown) => error,
   );
