@@ -18,6 +18,7 @@ import {
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Info } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -117,6 +118,7 @@ export function DashboardWidgetCard({
 }) {
   const { t } = useTranslation();
   const data = useWidgetData(workspaceId, dashboardId, widget.id, version);
+  const placeholderVisible = useDelayedPending(data.isLoading);
   const [showing, setShowing] = useState<"chart" | "table">("chart");
   const { size: contentSize, measureRef } = useElementSize();
   const report = data.data;
@@ -206,8 +208,14 @@ export function DashboardWidgetCard({
           >
             <div className="space-y-2">
               {footer}
-              {data.isLoading ? (
-                <Skeleton className="h-full min-h-16 w-full" />
+              {!data.isError &&
+              (data.isLoading || (placeholderVisible && data.data)) ? (
+                <Skeleton
+                  className="h-full min-h-16 w-full"
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                />
               ) : data.isError || !report ? (
                 <ReportError error={data.error} />
               ) : report.empty ? (

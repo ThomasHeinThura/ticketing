@@ -21,6 +21,7 @@ import {
   EmptyHeader,
   Input,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, Download, Paperclip } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -319,6 +320,7 @@ function PortalSubmissionContent() {
   const generalUpload =
     canUpload && openForFiles && formFileFields.length === 0;
   const replyUpload = canUpload && acceptedForFiles;
+  const placeholderVisible = useDelayedPending(page.isLoading);
   const attachments = useQuery({
     queryKey: ["portal", portalUserId, "submission", ref, "attachments"],
     queryFn: () => getPortalSubmissionAttachments(ref),
@@ -423,8 +425,12 @@ function PortalSubmissionContent() {
             {t("common:actions.retry", { defaultValue: "Retry" })}
           </Button>
         </Alert>
-      ) : !record ? (
-        <div className="flex flex-col gap-4" role="status">
+      ) : !record || placeholderVisible ? (
+        <div
+          className="flex flex-col gap-4"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <span className="sr-only">
             {t("common:empty.loading", { defaultValue: "Loading…" })}
           </span>

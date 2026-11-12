@@ -18,6 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -93,8 +94,21 @@ export function ImportRunsPanel({
     enabled: Boolean(selectedWorkspaceId),
     retry: false,
   });
+  const runsPlaceholder = useDelayedPending(runs.isPending);
 
-  if (workspaces.isPending) return <Skeleton className="h-72 w-full" />;
+  const workspacesPlaceholderVisible = useDelayedPending(workspaces.isPending);
+  if (
+    !workspaces.isError &&
+    (workspaces.isPending || (workspacesPlaceholderVisible && workspaces.data))
+  )
+    return (
+      <Skeleton
+        className="h-72 w-full"
+        style={{
+          visibility: workspacesPlaceholderVisible ? "visible" : "hidden",
+        }}
+      />
+    );
   if (workspaces.error instanceof HttpError && workspaces.error.status === 403)
     return (
       <Alert variant="info">
@@ -179,8 +193,11 @@ export function ImportRunsPanel({
             <EmptyDescription>{t("noWorkspacesDescription")}</EmptyDescription>
           </EmptyHeader>
         </Empty>
-      ) : runs.isPending ? (
-        <Skeleton className="h-64 w-full" />
+      ) : !runs.isError && (runs.isPending || runsPlaceholder) ? (
+        <Skeleton
+          className="h-64 w-full"
+          style={{ visibility: runsPlaceholder ? "visible" : "hidden" }}
+        />
       ) : runs.isError ? (
         <Alert variant="error">
           <AlertTitle>{t("loadErrorTitle")}</AlertTitle>

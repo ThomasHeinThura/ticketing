@@ -19,6 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
@@ -44,6 +45,7 @@ function GodModeAuditRoute() {
     action: actionFilter.trim() || undefined,
   });
 
+  const placeholderVisible = useDelayedPending(isAdmin && query.isLoading);
   if (!isAdmin) {
     return (
       <>
@@ -147,8 +149,10 @@ function GodModeAuditRoute() {
               </Button>
             </AlertDescription>
           </Alert>
-        ) : query.isLoading ? (
-          <Card>
+        ) : query.isLoading || placeholderVisible ? (
+          <Card
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             <CardContent className="flex flex-col gap-3 p-4">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />

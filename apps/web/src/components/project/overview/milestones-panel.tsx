@@ -18,6 +18,7 @@ import {
   MenuPopup,
   MenuTrigger,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   CheckCircle2,
@@ -109,6 +110,7 @@ export function MilestonesPanel({
     onError: (error) => toast.error(failure(error)),
   });
 
+  const placeholderVisible = useDelayedPending(query.isLoading);
   const milestones = query.data ?? [];
   const states = milestoneStates(milestones);
 
@@ -125,8 +127,14 @@ export function MilestonesPanel({
         ) : null
       }
     >
-      {query.isLoading ? (
-        <div role="status" aria-label={t("loading")} className="space-y-2">
+      {!query.isError &&
+      (query.isLoading || (placeholderVisible && query.data)) ? (
+        <div
+          role="status"
+          aria-label={t("loading")}
+          className="space-y-2"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <Skeleton className="h-5 w-full" />
           <Skeleton className="h-5 w-2/3" />
         </div>

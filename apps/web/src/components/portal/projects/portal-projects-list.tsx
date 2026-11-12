@@ -24,6 +24,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
@@ -78,6 +79,7 @@ export function PortalProjectsList({
     staleTime: 60_000,
     refetchOnMount: "always",
   });
+  const placeholderVisible = useDelayedPending(projects.isLoading);
   const all = projects.data?.data ?? [];
   const visible = all.filter(
     (project) =>
@@ -157,8 +159,8 @@ export function PortalProjectsList({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : projects.isLoading ? (
-        <Card>
+      ) : projects.isLoading || placeholderVisible ? (
+        <Card style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
           <CardContent
             className="flex flex-col gap-3 p-4"
             role="status"

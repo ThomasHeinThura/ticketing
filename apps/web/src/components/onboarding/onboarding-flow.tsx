@@ -10,6 +10,8 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  motionBezierOut,
+  motionDurationMs,
 } from "@taskdesk/ui";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
@@ -40,9 +42,9 @@ export type WorkspaceFormValues = {
 function useFadeTransition() {
   const reduceMotion = useReducedMotion();
   return {
-    initial: { opacity: 0, y: reduceMotion ? 0 : 20 },
+    initial: { opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 20 },
     animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: reduceMotion ? 0 : -20 },
+    exit: { opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : -20 },
   };
 }
 
@@ -132,7 +134,10 @@ export function OnboardingFlow() {
       initial="initial"
       animate="animate"
       exit="exit"
-      transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+      transition={{
+        duration: motionDurationMs("slow") / 1000,
+        ease: motionBezierOut(),
+      }}
       className="w-full max-w-sm mx-auto"
     >
       <Logo className="mx-auto mb-6 w-full flex items-end justify-center" />
@@ -230,7 +235,10 @@ export function OnboardingFlow() {
       initial="initial"
       animate="animate"
       exit="exit"
-      transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+      transition={{
+        duration: motionDurationMs("slow") / 1000,
+        ease: motionBezierOut(),
+      }}
       className="w-full max-w-sm mx-auto"
     >
       <Logo className="mx-auto mb-6 w-full flex items-end justify-center" />

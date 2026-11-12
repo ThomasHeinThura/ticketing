@@ -18,6 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -94,8 +95,15 @@ export default function WorkItemCosts({ item }: { item: WorkItemDetailRow }) {
     onError: (error) => toast.error(message(error)),
   });
 
+  const placeholderVisible = useDelayedPending(costs.isLoading);
   if (!visible) return null;
-  if (costs.isLoading) return <Skeleton className="h-12 w-full" />;
+  if (!costs.isError && (costs.isLoading || (placeholderVisible && costs.data)))
+    return (
+      <Skeleton
+        className="h-12 w-full"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      />
+    );
   // A refusal (feature switched off meanwhile, no reach) hides the section like the gate does.
   if (isRefused(costs.error)) return null;
   if (costs.isError || !list)

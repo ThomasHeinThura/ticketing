@@ -16,6 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import type { CustomQueryInput, DrillItem } from "@/fetchers/report";
@@ -215,6 +216,7 @@ export function DrillItemsDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const placeholderVisible = useDelayedPending(items.isLoading);
   const list = items.data?.data ?? [];
   const kind = list[0]?.kind ?? "work_item";
   return (
@@ -235,12 +237,15 @@ export function DrillItemsDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] overflow-y-auto px-6 pb-6">
-          {items.isLoading ? (
-            <Skeleton className="h-24 w-full" />
-          ) : items.isError ? (
+          {items.isError ? (
             <p className="text-destructive-foreground text-sm">
               {t("reports:drill.loadError")}
             </p>
+          ) : items.isLoading || placeholderVisible ? (
+            <Skeleton
+              className="h-24 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
           ) : list.length === 0 ? (
             <Empty>
               <EmptyHeader>

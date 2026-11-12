@@ -18,6 +18,7 @@ import {
   SelectValue,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -43,6 +44,7 @@ export function PortalCanonicalPreferencesPage({
     queryKey: ["portal", portalUserId, "canonical-notification-preferences"],
     queryFn: getPortalCanonicalPreferences,
   });
+  const placeholderVisible = useDelayedPending(preferences.isLoading);
   const handoff = useQuery({
     queryKey: ["portal", portalUserId, "notification-preference-handoff"],
     queryFn: getPortalEmailLinkHandoff,
@@ -111,8 +113,19 @@ export function PortalCanonicalPreferencesPage({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : preferences.isLoading || !mention || !comment ? (
-        <Card>
+      ) : preferences.isLoading ||
+        !mention ||
+        !comment ||
+        placeholderVisible ? (
+        <Card
+          style={{
+            visibility:
+              placeholderVisible ||
+              (!preferences.isLoading && (!mention || !comment))
+                ? "visible"
+                : "hidden",
+          }}
+        >
           <CardContent className="space-y-3 p-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />

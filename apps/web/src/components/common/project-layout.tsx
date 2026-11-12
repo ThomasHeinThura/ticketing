@@ -1,3 +1,4 @@
+import { DelayedSuspense, useDelayedPending } from "@taskdesk/ui";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ProjectLayoutControlsFallback from "@/components/common/header/project-layout-controls-fallback";
@@ -64,6 +65,8 @@ export default function ProjectLayout({
     projectLayoutControlsReady,
   );
 
+  const controlsPlaceholder = useDelayedPending(!showProjectLayoutControls);
+
   // Keep the synchronous Kaneo shell usable, then fetch the larger project controls
   // after the primary content has rendered. The fixed header keeps its geometry.
   useEffect(() => {
@@ -104,8 +107,8 @@ export default function ProjectLayout({
               <WorkspaceCrumbSelect />
               <span className="text-foreground text-xs">/</span>
             </div>
-            {showProjectLayoutControls ? (
-              <Suspense
+            {showProjectLayoutControls && !controlsPlaceholder ? (
+              <DelayedSuspense
                 fallback={
                   <ProjectLayoutControlsFallback
                     projectName={project?.name}
@@ -123,13 +126,20 @@ export default function ProjectLayout({
                   activeView={activeView}
                   onAddProject={() => setIsCreateProjectModalOpen(true)}
                 />
-              </Suspense>
+              </DelayedSuspense>
             ) : (
-              <ProjectLayoutControlsFallback
-                projectName={project?.name}
-                showViewSwitcher={showViewSwitcher}
-                viewLabels={projectLayoutViewLabels}
-              />
+              <div
+                style={{
+                  display: "contents",
+                  visibility: controlsPlaceholder ? "visible" : "hidden",
+                }}
+              >
+                <ProjectLayoutControlsFallback
+                  projectName={project?.name}
+                  showViewSwitcher={showViewSwitcher}
+                  viewLabels={projectLayoutViewLabels}
+                />
+              </div>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">

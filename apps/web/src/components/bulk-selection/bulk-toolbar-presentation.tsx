@@ -72,7 +72,7 @@ export default function BulkToolbarPresentation({
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   if (!selectedCount) return null;
   return (
-    <div className="-translate-x-1/2 fixed bottom-6 left-1/2 z-50 transition-[translate,opacity] duration-200 ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:starting:translate-y-0">
+    <div className="-translate-x-1/2 fixed bottom-6 left-1/2 z-50 transition-[translate,opacity] duration-base ease-out starting:translate-y-3 starting:opacity-0 motion-reduce:starting:translate-y-0">
       <Toolbar
         aria-label={t("workItems:bulk.toolbarLabel")}
         className="items-center gap-1 rounded-xl border-border/80 bg-background px-1.5 py-1 shadow-lg/8"

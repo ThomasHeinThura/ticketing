@@ -16,6 +16,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -233,6 +234,10 @@ function MappingForm({
   }
 
   const loadingOptions = targets.isPending;
+  const optionsPlaceholder = useDelayedPending(loadingOptions);
+  const rolesPlaceholder = useDelayedPending(
+    Boolean(draft.scopeId && roles.isPending),
+  );
   return (
     <form
       aria-labelledby="scim-mapping-form-heading"
@@ -257,8 +262,13 @@ function MappingForm({
           </AlertDescription>
         </Alert>
       ) : null}
-      {loadingOptions ? (
-        <p role="status">{t("scim.groups.optionsLoading")}</p>
+      {!targets.isError && (loadingOptions || optionsPlaceholder) ? (
+        <p
+          role="status"
+          style={{ visibility: optionsPlaceholder ? "visible" : "hidden" }}
+        >
+          {t("scim.groups.optionsLoading")}
+        </p>
       ) : null}
       {existing ? (
         <p className="break-all text-sm">
@@ -351,8 +361,10 @@ function MappingForm({
               <SelectTrigger id="scim-map-role">
                 <SelectValue
                   placeholder={
-                    draft.scopeId && roles.isPending
-                      ? t("scim.groups.rolesLoading")
+                    draft.scopeId && (roles.isPending || rolesPlaceholder)
+                      ? rolesPlaceholder
+                        ? t("scim.groups.rolesLoading")
+                        : ""
                       : t("scim.groups.chooseRole")
                   }
                 />

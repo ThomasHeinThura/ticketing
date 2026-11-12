@@ -11,6 +11,7 @@ import {
   Badge,
   Button,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -79,6 +80,7 @@ function ReparentPreviewDialog({
   const { t } = useTranslation();
   const open = parentId !== undefined;
   const preview = useGetReparentPreview(projectId, parentId);
+  const placeholderVisible = useDelayedPending(open && preview.isLoading);
   const data = preview.data;
   const nothingChanges =
     data !== undefined &&
@@ -103,8 +105,12 @@ function ReparentPreviewDialog({
         </AlertDialogHeader>
 
         <div className="space-y-3" data-testid="reparent-preview">
-          {preview.isLoading ? (
-            <div aria-busy="true" className="space-y-2">
+          {!preview.isError && (preview.isLoading || placeholderVisible) ? (
+            <div
+              aria-busy="true"
+              className="space-y-2"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
               <Skeleton className="h-4 w-48" />
               <Skeleton className="h-4 w-40" />
             </div>
@@ -126,7 +132,7 @@ function ReparentPreviewDialog({
               </AlertDescription>
             </Alert>
           ) : null}
-          {data && !data.refusal ? (
+          {!placeholderVisible && data && !data.refusal ? (
             <>
               <PersonList
                 testId="reparent-gains"
@@ -189,6 +195,7 @@ function ReparentPreviewDialog({
               isMoving ||
               preview.isLoading ||
               preview.isError ||
+              placeholderVisible ||
               !!data?.refusal
             }
             onClick={onConfirm}

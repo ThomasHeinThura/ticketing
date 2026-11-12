@@ -77,10 +77,15 @@ export function PageFrame({
   );
 }
 
-export function LoadingRows() {
+export function LoadingRows({ visible = true }: { visible?: boolean }) {
   const { t } = useTranslation("serviceManagement");
   return (
-    <div role="status" aria-label={t("common.loading")} className="space-y-3">
+    <div
+      role="status"
+      aria-label={t("common.loading")}
+      className="space-y-3"
+      style={{ visibility: visible ? "visible" : "hidden" }}
+    >
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-16 w-full" />
     </div>

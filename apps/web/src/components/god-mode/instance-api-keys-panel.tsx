@@ -13,6 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { listInstanceApiKeys } from "@/fetchers/god-mode/instance-api-keys";
@@ -33,7 +34,14 @@ export function InstanceApiKeysPanel() {
     retry: false,
   });
 
-  if (query.isPending) return <Skeleton className="h-64 w-full" />;
+  const placeholderVisible = useDelayedPending(query.isPending);
+  if (!query.isError && (query.isPending || (placeholderVisible && query.data)))
+    return (
+      <Skeleton
+        className="h-64 w-full"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (query.error instanceof HttpError && query.error.status === 403)
     return (
       <Alert variant="info">

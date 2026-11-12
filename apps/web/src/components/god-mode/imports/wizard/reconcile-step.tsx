@@ -22,6 +22,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import {
@@ -83,6 +84,7 @@ export function ReconcileStep({
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
+  const placeholderVisible = useDelayedPending(losses.isPending);
   const done = COUNTERS.reduce((sum, key) => sum + (run.stats[key] ?? 0), 0);
   const total = run.dryRun?.total;
   const pages = losses.data?.pages ?? [];
@@ -211,8 +213,11 @@ export function ReconcileStep({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {losses.isPending ? (
-            <Skeleton className="h-24 w-full" />
+          {!losses.isError && (losses.isPending || placeholderVisible) ? (
+            <Skeleton
+              className="h-24 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
           ) : losses.isError ? (
             <Alert variant="error">
               <AlertTitle>{t("wizard.losses.errorTitle")}</AlertTitle>

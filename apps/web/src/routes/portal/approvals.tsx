@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CheckCircle } from "lucide-react";
 import { useState } from "react";
@@ -54,6 +55,7 @@ function PortalApprovals() {
     queryKey: ["portal", portalUserId, "approvals"],
     queryFn: getPortalApprovals,
   });
+  const placeholderVisible = useDelayedPending(query.isPending);
   const [noteDraft, setNoteDraft] = useState({ id: selectedId, value: "" });
   const note = noteDraft.id === selectedId ? noteDraft.value : "";
   const [announcement, setAnnouncement] = useState("");
@@ -104,6 +106,11 @@ function PortalApprovals() {
           </Button>
         </Alert>
       ) : query.isPending ? (
+        <Skeleton
+          className="h-24 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      ) : placeholderVisible ? (
         <Skeleton className="h-24 w-full" />
       ) : !query.data.approvals.length ? (
         // UX-1a (CP-4): the shared empty look, with the way back to the customer's requests.

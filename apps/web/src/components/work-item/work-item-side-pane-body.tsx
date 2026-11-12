@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import { Button, DelayedSuspense, useDelayedPending } from "@taskdesk/ui";
 import { Maximize2, X } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import type { ActivityFilter } from "@/components/work-item/work-item-activity";
@@ -51,6 +51,9 @@ export default function WorkItemSidePaneBody({
     accessLostKey === itemKey ||
     (error instanceof HttpError && error.status === 404);
   const item = isNotFound ? undefined : cachedItem;
+  const placeholderVisible = useDelayedPending(
+    !item && !isNotFound && !isError,
+  );
 
   return (
     <div
@@ -100,10 +103,17 @@ export default function WorkItemSidePaneBody({
         {/* The item's own loading state sits outside the boundary: inside it, a boundary that
             had already shown it kept it mounted (hidden) beside its fallback while the detail
             code loaded, so the pane carried two loading regions at once. */}
-        {!item && !isNotFound && !isError ? (
-          <WorkItemDetailLoading />
+        {!isNotFound && !isError && (!item || placeholderVisible) ? (
+          <div
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
+            <WorkItemDetailLoading />
+          </div>
         ) : (
-          <Suspense fallback={<WorkItemDetailLoading />}>
+          <DelayedSuspense
+            immediate={isNotFound || isError}
+            fallback={<WorkItemDetailLoading />}
+          >
             {item ? (
               <SidePaneDetailWithProject
                 item={item}
@@ -129,7 +139,7 @@ export default function WorkItemSidePaneBody({
                 onAccessLost={onAccessLost}
               />
             )}
-          </Suspense>
+          </DelayedSuspense>
         )}
       </div>
     </div>

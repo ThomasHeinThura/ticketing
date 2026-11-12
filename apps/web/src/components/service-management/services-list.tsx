@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -299,6 +300,7 @@ export function ServicesList({ q }: { q?: string }) {
   }, [catalogueOn]);
   const [draft, setDraft] = useState(q ?? "");
   const loading = workspaceLoading || status.isLoading || services.isLoading;
+  const placeholderVisible = useDelayedPending(loading);
   return (
     <>
       <PageTitle title={t("services.list.title")} />
@@ -362,8 +364,8 @@ export function ServicesList({ q }: { q?: string }) {
                 </Button>
               </form>
             </search>
-            {loading ? (
-              <LoadingRows />
+            {!services.isError && (loading || placeholderVisible) ? (
+              <LoadingRows visible={placeholderVisible} />
             ) : services.isError ? (
               <QueryFailure
                 error={services.error}

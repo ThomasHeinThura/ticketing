@@ -1,5 +1,5 @@
-import { Button, Skeleton } from "@taskdesk/ui";
-import { lazy, Suspense } from "react";
+import { Button, DelayedSuspense, Skeleton } from "@taskdesk/ui";
+import { lazy } from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateWorkItemDialogProps } from "./create-work-item-dialog-form";
 
@@ -16,7 +16,7 @@ export function CreateWorkItemDialogContent({
   initialState,
 }: CreateWorkItemDialogProps) {
   return (
-    <Suspense
+    <DelayedSuspense
       fallback={
         <div
           className="flex flex-col flex-1 min-h-0 space-y-6 px-6"
@@ -38,7 +38,7 @@ export function CreateWorkItemDialogContent({
         workspaceId={workspaceId}
         initialState={initialState}
       />
-    </Suspense>
+    </DelayedSuspense>
   );
 }
 

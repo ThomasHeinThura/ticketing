@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Input } from "@taskdesk/ui";
+import { Button, Input, useDelayedPending } from "@taskdesk/ui";
 import { Paperclip } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -80,6 +80,7 @@ export default function WorkItemAttachments({
         showRecoverable ? "recoverable" : "live",
       ),
   });
+  const placeholderVisible = useDelayedPending(list.isLoading);
   // Person IDs to names: the same reach-filtered source the comment composer mentions from.
   const people = useQuery({
     queryKey: [
@@ -245,8 +246,12 @@ export default function WorkItemAttachments({
         </p>
       ) : null}
       <WorkItemUploadList uploads={uploads} />
-      {list.isLoading ? (
-        <p className="text-muted-foreground text-sm" role="status">
+      {!list.isError && (list.isLoading || placeholderVisible) ? (
+        <p
+          className="text-muted-foreground text-sm"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           {t("common:empty.loading")}
         </p>
       ) : list.isError ? (

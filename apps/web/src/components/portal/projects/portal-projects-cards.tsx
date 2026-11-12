@@ -11,6 +11,7 @@ import {
   CardPanel,
   CardTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import type { PortalProjectOption } from "@/fetchers/portal/projects";
 import { portalProjectsOptions } from "@/hooks/queries/portal/portal-projects-options";
@@ -92,10 +93,12 @@ export function PortalProjectsCards({
     // The dashboard loader refreshes on entry and the mount reuses that read.
     refetchOnMount: prefetched ? false : "always",
   });
+  const placeholderVisible = useDelayedPending(projects.isLoading);
   const visible = (projects.data?.data ?? []).filter(
     (project) => !projectKey || project.key === projectKey,
   );
-  if (projects.isSuccess && visible.length === 0) return null;
+  if (projects.isSuccess && visible.length === 0 && !placeholderVisible)
+    return null;
 
   return (
     <section
@@ -127,9 +130,10 @@ export function PortalProjectsCards({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : projects.isPending ? (
+      ) : projects.isPending || placeholderVisible ? (
         <div
           className="grid gap-3 sm:grid-cols-2"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           role="status"
           aria-label={t("projects.dashboard.title")}
         >

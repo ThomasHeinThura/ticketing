@@ -9,6 +9,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -66,6 +67,10 @@ function DashboardViewScreen({
     list.find((entry) => entry.isDefault) ??
     list[0];
   const dashboard = useDashboard(workspaceId, chosen?.id ?? "");
+  const dashboardsPlaceholder = useDelayedPending(
+    dashboards.isLoading || !workspace,
+  );
+  const dashboardPlaceholder = useDelayedPending(dashboard.isLoading);
   const catalogue = useReportCatalogue(workspaceId);
   const { wide, measureRef } = useWideGrid();
   return (
@@ -114,8 +119,12 @@ function DashboardViewScreen({
             </Button>
           </div>
         </div>
-        {dashboards.isLoading || !workspace ? (
-          <Skeleton className="h-48 w-full" />
+        {!dashboards.isError &&
+        (dashboards.isLoading || !workspace || dashboardsPlaceholder) ? (
+          <Skeleton
+            className="h-48 w-full"
+            style={{ visibility: dashboardsPlaceholder ? "visible" : "hidden" }}
+          />
         ) : dashboards.isError ? (
           <ReportError error={dashboards.error} />
         ) : !chosen ? (
@@ -127,8 +136,12 @@ function DashboardViewScreen({
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
-        ) : dashboard.isLoading ? (
-          <Skeleton className="h-48 w-full" />
+        ) : !dashboard.isError &&
+          (dashboard.isLoading || dashboardPlaceholder) ? (
+          <Skeleton
+            className="h-48 w-full"
+            style={{ visibility: dashboardPlaceholder ? "visible" : "hidden" }}
+          />
         ) : dashboard.isError || !dashboard.data ? (
           <ReportError error={dashboard.error} />
         ) : (

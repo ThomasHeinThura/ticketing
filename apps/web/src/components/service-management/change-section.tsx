@@ -16,6 +16,7 @@ import {
   SelectValue,
   Skeleton,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -383,8 +384,18 @@ export default function WorkItemChangeSection({
   const status = useCatalogueStatus(workspaceId);
   const change = useChange(workItemKey);
   const permission = useWorkspacePermission(workspaceId);
+  const placeholderVisible = useDelayedPending(change.isLoading);
   if (!status.data?.enabled) return null;
-  if (change.isLoading) return <Skeleton className="h-24 w-full" />;
+  if (
+    !change.isError &&
+    (change.isLoading || (placeholderVisible && change.data))
+  )
+    return (
+      <Skeleton
+        className="h-24 w-full"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (change.isError || !change.data)
     return (
       <p role="alert" className="text-sm text-muted-foreground">

@@ -25,6 +25,7 @@ import {
   Input,
   Label,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -157,6 +158,7 @@ export function TeamsList() {
   const canManage = canManageWorkspaceSettings() && !isCheckingPermissions;
   const [creating, setCreating] = useState(false);
   const loading = workspaceLoading || teams.isLoading;
+  const placeholderVisible = useDelayedPending(loading);
   return (
     <>
       <PageTitle title={t("teams:list.title")} />
@@ -175,8 +177,9 @@ export function TeamsList() {
             </Button>
           ) : null}
         </div>
-        {loading ? (
+        {!teams.isError && (loading || placeholderVisible) ? (
           <div
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             role="status"
             aria-label={t("teams:list.loading")}
             className="space-y-3"

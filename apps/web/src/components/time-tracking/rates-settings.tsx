@@ -18,6 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -101,6 +102,7 @@ function RatesSettingsContent() {
   const people = rates.data?.people ?? [];
   const chosenPerson = people.find((person) => person.personId === personId);
   const loading = workspaceLoading || rates.isLoading;
+  const placeholderVisible = useDelayedPending(loading);
   const canSubmit =
     Boolean(personId) &&
     minor !== null &&
@@ -108,8 +110,12 @@ function RatesSettingsContent() {
     !add.isPending;
   return (
     <RatesSettingsFrame>
-      {loading ? (
-        <Skeleton className="h-32 w-full" role="status" />
+      {!rates.isError && (loading || (placeholderVisible && rates.data)) ? (
+        <Skeleton
+          className="h-32 w-full"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
       ) : isForbiddenError(rates.error) ? (
         <Alert variant="error">
           <AlertTitle>{t("timeTracking:rates.forbiddenTitle")}</AlertTitle>

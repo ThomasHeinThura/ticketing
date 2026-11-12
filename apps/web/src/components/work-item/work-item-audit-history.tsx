@@ -12,6 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronDown, History } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -50,6 +51,10 @@ export default function WorkItemAuditHistory({
   const [at, setAt] = useState<string | null>(null);
   const history = useGetWorkItemAuditHistory(workItemKey, open);
   const snapshot = useGetWorkItemReconstruction(workItemKey, at);
+  const historyPlaceholder = useDelayedPending(open && history.isLoading);
+  const snapshotPlaceholder = useDelayedPending(
+    Boolean(at) && snapshot.isLoading,
+  );
   const fields = Object.entries(snapshot.data?.snapshot?.fields ?? {});
   const states = useGetProjectStates(projectId, open);
   const people = useGetActiveWorkspaceUsers(workspaceId ?? "", open && !!at);
@@ -96,7 +101,12 @@ export default function WorkItemAuditHistory({
       />
       <CollapsibleContent>
         <div className="mt-2 flex flex-col gap-3">
-          {history.isLoading && <Skeleton className="h-16 w-full" />}
+          {!history.isError && (history.isLoading || historyPlaceholder) && (
+            <Skeleton
+              className="h-16 w-full"
+              style={{ visibility: historyPlaceholder ? "visible" : "hidden" }}
+            />
+          )}
           {history.isError && (
             <Alert variant="error">
               <AlertDescription>
@@ -106,56 +116,62 @@ export default function WorkItemAuditHistory({
               </AlertDescription>
             </Alert>
           )}
-          {history.data && history.data.rows.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              {t("workItems:auditHistory.empty", {
-                defaultValue: "No audited changes for this work item.",
-              })}
-            </p>
-          )}
-          {history.data && history.data.rows.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    {t("workItems:auditHistory.when", { defaultValue: "When" })}
-                  </TableHead>
-                  <TableHead>
-                    {t("workItems:auditHistory.action", {
-                      defaultValue: "Action",
-                    })}
-                  </TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {history.data.rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{formatDateTime(row.createdAt)}</TableCell>
-                    <TableCell>
-                      {auditActionLabel(row.action, t)}
-                      {auditStateChange(row.before, row.after, lookups) && (
-                        <span className="block text-muted-foreground text-xs">
-                          {auditStateChange(row.before, row.after, lookups)}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setAt(row.createdAt)}
-                      >
-                        {t("workItems:auditHistory.stateThen", {
-                          defaultValue: "State then",
-                        })}
-                      </Button>
-                    </TableCell>
+          {!historyPlaceholder &&
+            history.data &&
+            history.data.rows.length === 0 && (
+              <p className="text-muted-foreground text-sm">
+                {t("workItems:auditHistory.empty", {
+                  defaultValue: "No audited changes for this work item.",
+                })}
+              </p>
+            )}
+          {!historyPlaceholder &&
+            history.data &&
+            history.data.rows.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      {t("workItems:auditHistory.when", {
+                        defaultValue: "When",
+                      })}
+                    </TableHead>
+                    <TableHead>
+                      {t("workItems:auditHistory.action", {
+                        defaultValue: "Action",
+                      })}
+                    </TableHead>
+                    <TableHead />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {history.data.rows.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>{formatDateTime(row.createdAt)}</TableCell>
+                      <TableCell>
+                        {auditActionLabel(row.action, t)}
+                        {auditStateChange(row.before, row.after, lookups) && (
+                          <span className="block text-muted-foreground text-xs">
+                            {auditStateChange(row.before, row.after, lookups)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAt(row.createdAt)}
+                        >
+                          {t("workItems:auditHistory.stateThen", {
+                            defaultValue: "State then",
+                          })}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           {at && (
             <div className="flex flex-col gap-2">
               <p className="font-medium text-sm">
@@ -164,7 +180,15 @@ export default function WorkItemAuditHistory({
                   when: formatDateTime(at),
                 })}
               </p>
-              {snapshot.isLoading && <Skeleton className="h-12 w-full" />}
+              {!snapshot.isError &&
+                (snapshot.isLoading || snapshotPlaceholder) && (
+                  <Skeleton
+                    className="h-12 w-full"
+                    style={{
+                      visibility: snapshotPlaceholder ? "visible" : "hidden",
+                    }}
+                  />
+                )}
               {snapshot.isError && (
                 <Alert variant="error">
                   <AlertDescription>
@@ -174,14 +198,14 @@ export default function WorkItemAuditHistory({
                   </AlertDescription>
                 </Alert>
               )}
-              {snapshot.data && fields.length === 0 && (
+              {!snapshotPlaceholder && snapshot.data && fields.length === 0 && (
                 <p className="text-muted-foreground text-sm">
                   {t("workItems:auditHistory.noFields", {
                     defaultValue: "No field values were recorded by then.",
                   })}
                 </p>
               )}
-              {fields.length > 0 && (
+              {!snapshotPlaceholder && fields.length > 0 && (
                 <Table>
                   <TableBody>
                     {fields.map(([field, value]) => (

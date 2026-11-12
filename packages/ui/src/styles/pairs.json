@@ -8513,7 +8513,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -8552,7 +8552,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -8579,7 +8579,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -8628,7 +8628,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -8885,7 +8885,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -8924,7 +8924,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -8951,7 +8951,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -9000,7 +9000,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -9063,7 +9063,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -9154,7 +9154,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -9245,7 +9245,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -9336,7 +9336,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -11086,7 +11086,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -11113,7 +11113,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -11140,7 +11140,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -11167,7 +11167,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -11828,7 +11828,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -11855,7 +11855,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -11882,7 +11882,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -11909,7 +11909,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -12360,7 +12360,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -12394,7 +12394,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -12504,7 +12504,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -12538,7 +12538,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -18691,7 +18691,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -18718,7 +18718,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -18745,7 +18745,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19403,7 +19403,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19445,7 +19445,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19719,7 +19719,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19746,7 +19746,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19773,7 +19773,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19800,7 +19800,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19827,7 +19827,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19854,7 +19854,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -19914,7 +19914,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -20049,7 +20049,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -21604,7 +21604,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -21631,7 +21631,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -21658,7 +21658,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22316,7 +22316,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22358,7 +22358,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22632,7 +22632,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22659,7 +22659,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22686,7 +22686,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22713,7 +22713,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22740,7 +22740,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22767,7 +22767,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22827,7 +22827,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -22962,7 +22962,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -24545,7 +24545,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -24579,7 +24579,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -24689,7 +24689,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -24723,7 +24723,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -26888,7 +26888,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -26901,7 +26901,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -27588,7 +27588,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -27601,7 +27601,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -29454,7 +29454,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -29522,7 +29522,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -32734,7 +32734,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -32794,7 +32794,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -32854,7 +32854,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -33066,7 +33066,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -33126,7 +33126,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -33186,7 +33186,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -33961,7 +33961,6 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
@@ -34026,6 +34025,7 @@
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::FactsPanel::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectInheritanceSettings::div[0]/Select[0]/SelectTrigger[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -34420,7 +34420,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -36562,20 +36562,6 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
@@ -37720,6 +37706,20 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/team.tsx:/_layout/_authenticated/agent/projects/$projectKey/team",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -38712,7 +38712,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -38739,7 +38739,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -38766,7 +38766,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39192,7 +39192,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39219,7 +39219,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39246,7 +39246,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39849,7 +39849,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39876,7 +39876,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39903,7 +39903,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39930,7 +39930,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39957,7 +39957,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -39984,7 +39984,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40011,7 +40011,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40038,7 +40038,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40272,7 +40272,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40299,7 +40299,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40326,7 +40326,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40353,7 +40353,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40380,7 +40380,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40407,7 +40407,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40434,7 +40434,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40461,7 +40461,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40488,7 +40488,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40515,7 +40515,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40542,7 +40542,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40569,7 +40569,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40596,7 +40596,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40623,7 +40623,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40650,7 +40650,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40677,7 +40677,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40704,7 +40704,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40731,7 +40731,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40758,7 +40758,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40785,7 +40785,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40812,7 +40812,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40839,7 +40839,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40866,7 +40866,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -40893,7 +40893,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41100,7 +41100,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41127,7 +41127,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41154,7 +41154,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41181,7 +41181,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41208,7 +41208,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41235,7 +41235,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41262,7 +41262,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41289,7 +41289,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41316,7 +41316,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41343,7 +41343,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41370,7 +41370,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41640,7 +41640,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41667,7 +41667,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41841,7 +41841,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41868,7 +41868,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41895,7 +41895,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41922,7 +41922,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41949,7 +41949,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -41976,7 +41976,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42003,7 +42003,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42030,7 +42030,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42057,7 +42057,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42084,7 +42084,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42111,7 +42111,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42138,7 +42138,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42165,7 +42165,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42203,7 +42203,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42230,7 +42230,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42257,7 +42257,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42284,7 +42284,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42311,7 +42311,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42338,7 +42338,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42468,7 +42468,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -42517,7 +42517,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -45483,7 +45483,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -45833,7 +45833,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -46017,7 +46017,6 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
@@ -46082,6 +46081,7 @@
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::FactsPanel::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectInheritanceSettings::div[0]/Select[0]/SelectTrigger[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -46477,7 +46477,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -48619,20 +48619,6 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
@@ -49777,6 +49763,20 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/team.tsx:/_layout/_authenticated/agent/projects/$projectKey/team",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -50769,7 +50769,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -50796,7 +50796,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -50823,7 +50823,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -51249,7 +51249,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -51276,7 +51276,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -51303,7 +51303,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -51906,7 +51906,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -51933,7 +51933,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -51960,7 +51960,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -51987,7 +51987,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52014,7 +52014,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52041,7 +52041,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52068,7 +52068,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52095,7 +52095,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52329,7 +52329,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52356,7 +52356,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52383,7 +52383,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52410,7 +52410,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52437,7 +52437,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52464,7 +52464,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52491,7 +52491,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52518,7 +52518,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52545,7 +52545,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52572,7 +52572,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52599,7 +52599,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52626,7 +52626,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52653,7 +52653,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52680,7 +52680,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52707,7 +52707,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52734,7 +52734,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52761,7 +52761,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52788,7 +52788,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52815,7 +52815,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52842,7 +52842,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52869,7 +52869,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52896,7 +52896,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52923,7 +52923,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -52950,7 +52950,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53157,7 +53157,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53184,7 +53184,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53211,7 +53211,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53238,7 +53238,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53265,7 +53265,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53292,7 +53292,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53319,7 +53319,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53346,7 +53346,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53373,7 +53373,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53400,7 +53400,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53427,7 +53427,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53697,7 +53697,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53724,7 +53724,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53898,7 +53898,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53925,7 +53925,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53952,7 +53952,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -53979,7 +53979,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54006,7 +54006,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54033,7 +54033,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54060,7 +54060,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54087,7 +54087,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54114,7 +54114,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54141,7 +54141,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54168,7 +54168,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54195,7 +54195,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54222,7 +54222,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54260,7 +54260,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54287,7 +54287,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54314,7 +54314,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54341,7 +54341,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54368,7 +54368,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54395,7 +54395,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54525,7 +54525,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -54574,7 +54574,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -57619,7 +57619,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -58011,7 +58011,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -58110,7 +58110,7 @@
 					"apps/web/src/components/task/task-detail-presentation.tsx:TaskDetailContentPresentation",
 					"jsx:div[0]/span[0]>bg-border",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -58198,7 +58198,7 @@
 					"apps/web/src/components/task/task-detail-presentation.tsx:TaskDetailContentPresentation",
 					"jsx:div[0]/span[0]>bg-border",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -58387,7 +58387,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -58421,7 +58421,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -58531,7 +58531,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -58565,7 +58565,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -72470,7 +72470,7 @@
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -72531,7 +72531,7 @@
 					"apps/web/src/components/service-management/shared.tsx:MutationError",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -73203,7 +73203,7 @@
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -73235,7 +73235,7 @@
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -73405,7 +73405,7 @@
 					"apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -73437,7 +73437,7 @@
 					"apps/web/src/components/work-item/work-item-approvals.tsx:WorkItemApprovals",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -73469,7 +73469,7 @@
 					"apps/web/src/components/work-item/work-item-audit-history.tsx:WorkItemAuditHistory",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -73552,7 +73552,7 @@
 					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -75084,7 +75084,7 @@
 					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -77537,7 +77537,7 @@
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -77598,7 +77598,7 @@
 					"apps/web/src/components/service-management/shared.tsx:MutationError",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -78270,7 +78270,7 @@
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -78302,7 +78302,7 @@
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -78472,7 +78472,7 @@
 					"apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -78504,7 +78504,7 @@
 					"apps/web/src/components/work-item/work-item-approvals.tsx:WorkItemApprovals",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -78536,7 +78536,7 @@
 					"apps/web/src/components/work-item/work-item-audit-history.tsx:WorkItemAuditHistory",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -78619,7 +78619,7 @@
 					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -80151,7 +80151,7 @@
 					"apps/web/src/components/intake/submission-detail-sheet-body.tsx:SubmissionDetailSheetBody",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -81875,7 +81875,7 @@
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -83144,7 +83144,7 @@
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -83754,7 +83754,7 @@
 					"apps/web/src/components/work-item/work-item-approval-request.tsx:ApprovalRequestForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -85724,6 +85724,7 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
@@ -85742,6 +85743,18 @@
 					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
 				],
 				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project-list/projects-page.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:ProjectsPage",
+					"jsx:WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]",
+					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
+				],
+				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project-list/projects-page.tsx"
 			},
@@ -86640,6 +86653,7 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
@@ -86658,6 +86672,18 @@
 					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
 				],
 				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project-list/projects-page.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:ProjectsPage",
+					"jsx:WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]",
+					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
+				],
+				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project-list/projects-page.tsx"
 			},
@@ -88703,7 +88729,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -88716,7 +88742,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -88729,7 +88755,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -88742,7 +88768,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -94239,7 +94265,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -94252,7 +94278,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -94265,7 +94291,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -94278,7 +94304,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/intake/submission-detail-sheet.tsx:SubmissionDetailSheet",
-					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/SubmissionDetailSheetBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/SubmissionDetailSheetBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -102371,7 +102397,7 @@
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -102489,7 +102515,7 @@
 					"apps/web/src/components/time-tracking/time-shared.tsx:ReviewNotice",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -102572,7 +102598,7 @@
 					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -102604,7 +102630,7 @@
 					"apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -102733,7 +102759,7 @@
 					"apps/web/src/components/work-item/work-item-properties.tsx:ConflictNotice",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -102766,7 +102792,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/WorkItemDetailWithProject[0]/Alert[0]/AlertDescription[0]",
+					"jsx:div[0]/DelayedSuspense[0]/WorkItemDetailWithProject[0]/Alert[0]/AlertDescription[0]",
 					"component-slot:apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailWithProject.realtimeNotice",
 					"component-slot:apps/web/src/components/work-item/work-item-detail.tsx:default.pageNotice",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.notice",
@@ -103757,7 +103783,7 @@
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -103875,7 +103901,7 @@
 					"apps/web/src/components/time-tracking/time-shared.tsx:ReviewNotice",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -103958,7 +103984,7 @@
 					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -103990,7 +104016,7 @@
 					"apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -104119,7 +104145,7 @@
 					"apps/web/src/components/work-item/work-item-properties.tsx:ConflictNotice",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
 					"opaque-backdrop:bg-background"
@@ -104152,7 +104178,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/WorkItemDetailWithProject[0]/Alert[0]/AlertDescription[0]",
+					"jsx:div[0]/DelayedSuspense[0]/WorkItemDetailWithProject[0]/Alert[0]/AlertDescription[0]",
 					"component-slot:apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailWithProject.realtimeNotice",
 					"component-slot:apps/web/src/components/work-item/work-item-detail.tsx:default.pageNotice",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.notice",
@@ -111103,7 +111129,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111130,7 +111156,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111157,7 +111183,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111184,7 +111210,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111233,7 +111259,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111301,7 +111327,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111351,7 +111377,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111378,7 +111404,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111405,7 +111431,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111432,7 +111458,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111481,7 +111507,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
@@ -111549,7 +111575,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/work-items/$key.tsx:WorkItemDetailRouteComponent",
-					"jsx:div[0]/Suspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
+					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],

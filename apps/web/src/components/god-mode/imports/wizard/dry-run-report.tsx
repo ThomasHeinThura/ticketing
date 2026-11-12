@@ -21,6 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -303,6 +304,7 @@ export function DryRunStep({
   });
   const job = run.job?.kind === "dry_run" ? run.job : null;
   const running = job?.status === "running";
+  const placeholderVisible = useDelayedPending(!running && report.isPending);
   const doneAt = job?.status === "completed" ? job.updatedAt : null;
   useEffect(() => {
     if (!doneAt) return;
@@ -354,8 +356,12 @@ export function DryRunStep({
           </AlertDescription>
         </Alert>
       ) : null}
-      {running ? null : report.isPending ? (
-        <Skeleton className="h-48 w-full" />
+      {running ? null : !report.isError &&
+        (report.isPending || placeholderVisible) ? (
+        <Skeleton
+          className="h-48 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
       ) : report.isError ? (
         <Alert variant="error">
           <AlertTitle>{t("wizard.dryRun.loadErrorTitle")}</AlertTitle>

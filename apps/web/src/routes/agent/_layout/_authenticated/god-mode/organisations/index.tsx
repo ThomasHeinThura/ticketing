@@ -14,6 +14,7 @@ import {
   Checkbox,
   Separator,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -59,6 +60,7 @@ function GodModeOrganisationsRoute() {
     enabled: isAdmin,
     staleTime: 15_000,
   });
+  const placeholderVisible = useDelayedPending(isAdmin && query.isPending);
   if (!isAdmin)
     return (
       <>
@@ -97,8 +99,13 @@ function GodModeOrganisationsRoute() {
           </Button>
         </div>
 
-        {query.isPending ? (
-          <div aria-label={t("loading")} className="space-y-3" role="status">
+        {!query.isError && (query.isPending || placeholderVisible) ? (
+          <div
+            aria-label={t("loading")}
+            className="space-y-3"
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             <Skeleton className="h-8 w-64" />
             <Skeleton className="h-72 w-full" />
           </div>
@@ -120,7 +127,9 @@ function GodModeOrganisationsRoute() {
           </Alert>
         ) : null}
 
-        {query.isSuccess && query.data.data.length === 0 ? (
+        {!placeholderVisible &&
+        query.isSuccess &&
+        query.data.data.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-sm text-muted-foreground">
               {t("empty")}
@@ -128,7 +137,7 @@ function GodModeOrganisationsRoute() {
           </Card>
         ) : null}
 
-        {query.data?.data.length ? (
+        {!placeholderVisible && query.data?.data.length ? (
           <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.6fr)]">
             <Card className="min-w-0">
               <CardHeader>

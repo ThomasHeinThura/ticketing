@@ -9,6 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import {
@@ -123,6 +124,9 @@ export function ProjectKindFields({
 }) {
   const { t } = useTranslation();
   const managed = values.kind === "managed_service";
+  const placeholderVisible = useDelayedPending(
+    managed && options.slaOn && options.calendars.isPending,
+  );
   const calendarList = options.calendars.data?.data ?? [];
   // Nothing resolves: the default is not offered and a calendar must be chosen.
   const mustChoose = inheritedCalendarId === null;
@@ -181,7 +185,7 @@ export function ProjectKindFields({
               <Label
                 key={kind}
                 className={cn(
-                  "flex cursor-pointer items-start gap-2.5 rounded-xl border border-border p-3 font-normal transition-colors duration-150",
+                  "flex cursor-pointer items-start gap-2.5 rounded-xl border border-border p-3 font-normal transition-colors duration-fast",
                   checked
                     ? "bg-muted/50 border-primary/40"
                     : "hover:bg-muted/30",
@@ -291,8 +295,17 @@ export function ProjectKindFields({
             id="project-service-calendar-hint"
             className="text-xs sm:col-span-2"
           >
-            {options.slaOn && options.calendars.isPending ? (
-              <p role="status" className="text-muted-foreground">
+            {options.slaOn &&
+            !options.calendars.isError &&
+            (options.calendars.isPending ||
+              (placeholderVisible && !noDefault)) ? (
+              <p
+                role="status"
+                className="text-muted-foreground"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              >
                 {t("common:modals.createProject.calendarsLoading")}
               </p>
             ) : options.slaOn && options.calendars.isError ? (

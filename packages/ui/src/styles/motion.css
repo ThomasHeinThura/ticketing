@@ -4,10 +4,8 @@
  * The easing curves (--ease-out, --ease-in-out, --ease-spring) and the three durations
  * (--duration-fast, --duration-base, --duration-slow) are declared inside theme.css's
  * @theme inline block, next to each other — they are not duplicated here. This file carries
- * the shared press utility and the reduced-motion override. The override started as kaneo's
- * apps/web/src/index.css block, copied verbatim at extraction. It deliberately does NOT
- * collapse every duration to zero — it keeps the opacity feedback and drops only movement
- * and container morphs.
+ * the shared press utility and the reduced-motion override. Under reduced motion all CSS
+ * transitions and animations stop; control state, focus and colour still change instantly.
  */
 
 /* Press feedback (design-and-decisions.md#motion-press-feedback): the one shared press rule.
@@ -40,11 +38,19 @@
   }
 }
 
-/* Reduced motion: keep opacity feedback, drop movement (scale/translate) and
-   container morphs. Tailwind v4 scale/translate utilities use the standalone
-   CSS properties, so forcing them here neutralizes entrance/exit movement
-   while transition-property keeps the fade. */
+/* Reduced motion: state changes remain, but animations and transitions stop.
+   The slot-specific rules below also neutralize pressed scale and skeleton shimmer. */
 @media (prefers-reduced-motion: reduce) {
+  /* Stop CSS and Tailwind animation, including inline transitions and pseudo-elements. */
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
   [data-slot="popover-popup"],
   [data-slot="select-popup"],
   [data-slot="menu-popup"],
@@ -58,15 +64,13 @@
     transition-property: opacity !important;
   }
 
-  /* Positioners (popover, tooltip, select, menu, combobox, ...) animate
-     top/left/right/bottom/transform on reposition; that is movement, so drop
-     it. The popup's own opacity transition above is the feedback we keep. */
+  /* Positioners (popover, tooltip, select, menu, combobox, ...) must snap
+     when they reposition. All popup state changes above are also instantaneous. */
   [data-slot$="-positioner"] {
     transition-property: none !important;
   }
 
-  /* Button press scale is movement. Keep the box-shadow (focus/hover) feedback
-     and drop the scale, including the active/pressed 0.97 state. */
+  /* Drop the pressed scale; focus and hover feedback remains instantaneous. */
   [data-slot="button"] {
     scale: none !important;
     transition-property: box-shadow !important;
@@ -76,6 +80,12 @@
      loses the pressed scale too; their colour/shadow feedback is unchanged. */
   .press-feedback {
     scale: none !important;
+    transition-property: none !important;
+  }
+
+  /* Toasts must not animate height or transform when entering or leaving. */
+  [data-slot="toast-popup"] {
+    transition: none !important;
   }
 
   /* Tab indicator snaps to the selected tab instead of sliding or morphing width. */
@@ -90,7 +100,12 @@
     transition: none !important;
   }
 
-  /* Switch helper text keeps its fade and drops the slide. */
+  [data-slot="menu-checkbox-thumb"] {
+    scale: none !important;
+    transition: none !important;
+  }
+
+  /* Switch helper text changes instantly without sliding. */
   [data-slot="switch-helper-line"] {
     translate: none !important;
     transition-property: opacity, visibility !important;
@@ -98,6 +113,10 @@
 
   /* Skeleton shimmer is movement: stop the sweep and drop the highlight band, so the
      placeholder is a flat muted block. */
+  .animate-spin {
+    animation: none !important;
+  }
+
   [data-slot="skeleton"],
   .animate-skeleton {
     --skeleton-highlight: transparent !important;

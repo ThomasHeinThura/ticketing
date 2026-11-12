@@ -11,6 +11,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CheckCircle, Loader2, Mail, X } from "lucide-react";
 import { useState } from "react";
@@ -36,6 +37,7 @@ function InvitationsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: invitations = [], isLoading } = usePendingInvitations();
+  const placeholderVisible = useDelayedPending(isLoading);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const acceptInvitationMutation = useAcceptInvitation();
@@ -152,8 +154,13 @@ function InvitationsPage() {
         </Layout.Header>
         <Layout.Content>
           <div className="p-6 space-y-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-20">
+            {isLoading || placeholderVisible ? (
+              <div
+                className="flex items-center justify-center py-20"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              >
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : invitations.length === 0 ? (

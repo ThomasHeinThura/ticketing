@@ -17,6 +17,7 @@ import {
   ProgressIndicator,
   ProgressTrack,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Plus } from "lucide-react";
 import { useState } from "react";
@@ -86,6 +87,7 @@ export function ContractPanel({
   const contract = data?.contract ?? null;
   const locale = i18n.language;
 
+  const placeholderVisible = useDelayedPending(query.isLoading);
   return (
     <Panel
       title={t("contract.title")}
@@ -108,8 +110,14 @@ export function ContractPanel({
         ) : null
       }
     >
-      {query.isLoading ? (
-        <div role="status" aria-label={t("loading")} className="space-y-2">
+      {!query.isError &&
+      (query.isLoading || (placeholderVisible && query.data)) ? (
+        <div
+          role="status"
+          aria-label={t("loading")}
+          className="space-y-2"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="h-2 w-full" />
         </div>

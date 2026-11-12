@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -117,6 +118,7 @@ function VersionPreview({
     retry: (count, error) =>
       !(error instanceof HttpError && error.status < 500) && count < 2,
   });
+  const versionPlaceholder = useDelayedPending(version.isLoading);
   const missing =
     version.error instanceof HttpError && version.error.status === 404;
   const onMissingRef = useRef(onMissing);
@@ -134,7 +136,12 @@ function VersionPreview({
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] space-y-3 overflow-y-auto px-6">
-          {version.isLoading ? <Skeleton className="h-32 w-full" /> : null}
+          {!version.isError && (version.isLoading || versionPlaceholder) ? (
+            <Skeleton
+              className="h-32 w-full"
+              style={{ visibility: versionPlaceholder ? "visible" : "hidden" }}
+            />
+          ) : null}
           {version.isError ? (
             <Alert variant={missing ? "info" : "error"}>
               <AlertDescription>
@@ -142,7 +149,7 @@ function VersionPreview({
               </AlertDescription>
             </Alert>
           ) : null}
-          {version.data ? (
+          {version.data && !versionPlaceholder ? (
             <>
               <p className="font-semibold">{version.data.title}</p>
               <KbArticleContent body={version.data.body} />
@@ -184,6 +191,7 @@ function History({
     queryKey: pageKeys.versions(projectKey, page.id),
     queryFn: () => getPageVersions(projectKey, page.id),
   });
+  const versionsPlaceholder = useDelayedPending(versions.isLoading);
   const restore = useMutation({
     mutationFn: async (number: number) =>
       restorePageVersion(projectKey, page.id, number, await beforeRestore()),
@@ -219,43 +227,50 @@ function History({
         <CardTitle>{t("history.title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {versions.isLoading ? <Skeleton className="h-20 w-full" /> : null}
+        {!versions.isError && (versions.isLoading || versionsPlaceholder) ? (
+          <Skeleton
+            className="h-20 w-full"
+            style={{ visibility: versionsPlaceholder ? "visible" : "hidden" }}
+          />
+        ) : null}
         {versions.isError ? (
           <Alert variant="error">
             <AlertDescription>{t("history.loadFailed")}</AlertDescription>
           </Alert>
         ) : null}
         <ol className="flex flex-col gap-2" aria-label={t("history.title")}>
-          {(versions.data?.versions ?? []).map((version) => (
-            <li
-              key={version.number}
-              className="flex flex-col gap-1 rounded-md border px-3 py-2"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-sm">
-                  {t("history.version", { number: version.number })}
-                </span>
-                {version.number === page.version ? (
-                  <Badge variant="secondary">{t("history.current")}</Badge>
-                ) : null}
-              </div>
-              <p className="text-muted-foreground text-xs">
-                {label(version)}
-                {" · "}
-                {version.createdBy?.name ?? t("common.unknownPerson")}
-                {" · "}
-                {format.format(new Date(version.updatedAt))}
-              </p>
-              <Button
-                size="xs"
-                variant="outline"
-                className="self-start"
-                onClick={() => setPreviewing(version.number)}
+          {(versionsPlaceholder ? [] : (versions.data?.versions ?? [])).map(
+            (version) => (
+              <li
+                key={version.number}
+                className="flex flex-col gap-1 rounded-md border px-3 py-2"
               >
-                {t("history.view")}
-              </Button>
-            </li>
-          ))}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-sm">
+                    {t("history.version", { number: version.number })}
+                  </span>
+                  {version.number === page.version ? (
+                    <Badge variant="secondary">{t("history.current")}</Badge>
+                  ) : null}
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  {label(version)}
+                  {" · "}
+                  {version.createdBy?.name ?? t("common.unknownPerson")}
+                  {" · "}
+                  {format.format(new Date(version.updatedAt))}
+                </p>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  className="self-start"
+                  onClick={() => setPreviewing(version.number)}
+                >
+                  {t("history.view")}
+                </Button>
+              </li>
+            ),
+          )}
         </ol>
       </CardContent>
       {previewing !== null ? (
@@ -708,11 +723,13 @@ export function PageDetail({
     retry: (count, error) =>
       !(error instanceof HttpError && error.status < 500) && count < 2,
   });
-  if (query.isLoading)
+  const placeholderVisible = useDelayedPending(query.isLoading);
+  if (!query.isError && (query.isLoading || placeholderVisible))
     return (
       <div
         className="mx-auto flex max-w-6xl flex-col gap-3 p-4"
         role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("common.loading")}
       >
         <Skeleton className="h-10 w-full" />

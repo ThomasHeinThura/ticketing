@@ -26,6 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -379,6 +380,7 @@ export function TeamDetailView({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const team = useTeam(teamId, showInactive);
+  const placeholderVisible = useDelayedPending(team.isLoading);
   return (
     <>
       <PageTitle title={team.data?.name ?? t("teams:detail.pageTitle")} />
@@ -401,8 +403,12 @@ export function TeamDetailView({
             ) : null}
           </div>
         </div>
-        {team.isLoading ? (
-          <div role="status" aria-label={t("teams:detail.loading")}>
+        {!team.isError && (team.isLoading || placeholderVisible) ? (
+          <div
+            role="status"
+            aria-label={t("teams:detail.loading")}
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             <Skeleton className="h-48 w-full" />
           </div>
         ) : team.isError || !team.data ? (

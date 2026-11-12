@@ -28,6 +28,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
+  motionDurationMs,
+  motionEasing,
   Progress,
   Select,
   SelectContent,
@@ -41,6 +43,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { LayoutGrid, Plus } from "lucide-react";
 import {
@@ -91,7 +94,10 @@ function SortableProjectRow({
     // replays the same move from a stale offset.
     animateLayoutChanges: () => false,
     // dnd-kit defaults to `ease`; this is the app's curve.
-    transition: { duration: 200, easing: "var(--ease-out)" },
+    transition: {
+      duration: motionDurationMs("base"),
+      easing: motionEasing("out"),
+    },
   });
 
   const style: CSSProperties = {
@@ -147,11 +153,16 @@ export default function ProjectsPage({
   const setKindFilter = onKindFilterChange ?? setLocalKindFilter;
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const navigate = useNavigate();
-  const { data: listedProjects, isLoading } = useGetProjects({
+  const {
+    data: listedProjects,
+    isLoading,
+    isError,
+  } = useGetProjects({
     workspaceId,
     includeArchived: recoveryMode,
     includeDeleted: recoveryMode,
   });
+  const placeholderVisible = useDelayedPending(isLoading);
   const projects = recoveryMode
     ? listedProjects?.filter((project) => project.deletedAt !== null)
     : listedProjects;
@@ -315,7 +326,7 @@ export default function ProjectsPage({
     });
   };
 
-  if (isLoading) {
+  if (!isError && (isLoading || (placeholderVisible && listedProjects))) {
     return (
       <WorkspaceLayout
         title={t("workspace:projects.pageTitle")}
@@ -350,7 +361,9 @@ export default function ProjectsPage({
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             {[1, 2, 3].map((i) => (
               <TableRow key={i}>
                 <TableCell className="py-3">

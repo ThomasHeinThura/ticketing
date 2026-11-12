@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -94,8 +95,15 @@ export function NotificationProviderEditor() {
     queryFn: listSupportedPlugins,
     retry: false,
   });
-  if (query.isPending || pluginQuery.isPending)
-    return <Skeleton className="h-48 w-full" />;
+  const pending = query.isPending || pluginQuery.isPending;
+  const placeholderVisible = useDelayedPending(pending);
+  if (!query.isError && !pluginQuery.isError && (pending || placeholderVisible))
+    return (
+      <Skeleton
+        className="h-48 w-full"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (query.isError)
     return (
       <Alert variant="error">
@@ -116,6 +124,7 @@ export function NotificationProviderEditor() {
         </Button>
       </Alert>
     );
+  if (!query.data || !pluginQuery.data) return null;
   const plugin = pluginQuery.data.plugins.find(
     (item) => item.id === "notify.email",
   );

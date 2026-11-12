@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -253,10 +254,12 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
   // the Services list does; the off state comes before the filter and New release.
   const catalogueOff = status.data?.enabled === false;
   const statusPending = !status.data && !status.isError;
+  const statusPlaceholder = useDelayedPending(statusPending);
   const listReady = status.data?.enabled === true || status.isError;
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const services = useServices(listReady ? workspaceId : "");
   const releases = useReleases(listReady ? workspaceId : "", search.serviceId);
+  const listPlaceholder = useDelayedPending(releases.isLoading || !workspace);
   const [creating, setCreating] = useState(false);
   return (
     <>
@@ -274,8 +277,9 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
         }
       >
         <SectionNav active="releases" />
-        {statusPending ? (
-          <LoadingRows />
+        {statusPending ||
+        (statusPlaceholder && !catalogueOff && !status.isError) ? (
+          <LoadingRows visible={statusPlaceholder} />
         ) : catalogueOff ? (
           <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : (
@@ -303,8 +307,9 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
                 }
               />
             </div>
-            {releases.isLoading || !workspace ? (
-              <LoadingRows />
+            {!releases.isError &&
+            (releases.isLoading || !workspace || listPlaceholder) ? (
+              <LoadingRows visible={listPlaceholder} />
             ) : releases.isError ? (
               <QueryFailure
                 error={releases.error}

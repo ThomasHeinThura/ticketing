@@ -13,6 +13,7 @@ import {
   CardTitle,
   Input,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -153,6 +154,10 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
     signUp.data === "refused" ||
     signUp.isError;
   const done = accept.isSuccess || signUp.data === "created";
+  const readPending =
+    session === "loading" ||
+    (session === "signed-out" && Boolean(credential) && authMethods.isPending);
+  const readPlaceholderVisible = useDelayedPending(readPending);
 
   function submitSignUp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -195,7 +200,11 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
     );
   else if (session === "loading")
     body = (
-      <div role="status" aria-label={t("loading")}>
+      <div
+        role="status"
+        aria-label={t("loading")}
+        style={{ visibility: readPlaceholderVisible ? "visible" : "hidden" }}
+      >
         <Skeleton className="h-10 w-full" />
       </div>
     );
@@ -214,13 +223,23 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
         <Skeleton className="h-10 w-full" />
       </div>
     );
+  else if (readPlaceholderVisible && credential && !authMethods.isError)
+    body = (
+      <div role="status" aria-label={t("loading")}>
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
   else if (session === "signed-in" && credential)
     body = <p className="text-sm">{t("accept.ready")}</p>;
   else if (!credential) body = invalid;
   else if (authMethods.isError) body = invalid;
   else if (authMethods.isPending)
     body = (
-      <div role="status" aria-label={t("loading")}>
+      <div
+        role="status"
+        aria-label={t("loading")}
+        style={{ visibility: readPlaceholderVisible ? "visible" : "hidden" }}
+      >
         <Skeleton className="h-10 w-full" />
       </div>
     );

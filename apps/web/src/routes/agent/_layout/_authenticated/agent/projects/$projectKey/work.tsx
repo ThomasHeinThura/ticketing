@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Alert, AlertDescription, Button } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  DelayedSuspense,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { Filter, PanelsTopLeft, Rows3, Table2 } from "lucide-react";
 import type {
   KeyboardEvent as ReactKeyboardEvent,
@@ -571,6 +577,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   // A missing or out-of-reach Project is not a load failure: it gets the not-found denial
   // below instead of the Retry alert, since a retry cannot help.
   const isError = isWorkspaceError || isProjectsError || isWorkItemsError;
+  const boardModulePlaceholder = useDelayedPending(
+    Boolean(project && !isTabularLayout && !boardModuleReady),
+  );
 
   useEffect(() => {
     if (!project?.id) return;
@@ -1159,7 +1168,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           </Alert>
         ) : null}
         {isTabularLayout ? (
-          <Suspense fallback={<WorkItemListLoading />}>
+          <DelayedSuspense fallback={<WorkItemListLoading />}>
             <WorkItemsPanel
               layout={layout === "list" ? "list" : "table"}
               project={project}
@@ -1191,11 +1200,19 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onOpenItem={openSidePane}
               onCreateInState={openCreateDialogInState}
             />
-          </Suspense>
-        ) : project && !boardModuleReady ? (
-          <WorkItemListLoading />
+          </DelayedSuspense>
+        ) : !isError &&
+          project &&
+          (!boardModuleReady || boardModulePlaceholder) ? (
+          <div
+            style={{
+              visibility: boardModulePlaceholder ? "visible" : "hidden",
+            }}
+          >
+            <WorkItemListLoading />
+          </div>
         ) : project ? (
-          <Suspense fallback={<WorkItemListLoading />}>
+          <DelayedSuspense fallback={<WorkItemListLoading />}>
             <WorkItemBoardView
               group={boardGroup}
               customField={registeredCustomField}
@@ -1218,9 +1235,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                 boardGroup === "state" ? openCreateDialogInState : undefined
               }
             />
-          </Suspense>
+          </DelayedSuspense>
         ) : (
-          <Suspense fallback={<WorkItemListLoading />}>
+          <DelayedSuspense fallback={<WorkItemListLoading />}>
             <WorkItemsPanel
               layout={layout === "list" ? "list" : "table"}
               project={project}
@@ -1237,7 +1254,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
               onRetry={handleRetry}
             />
-          </Suspense>
+          </DelayedSuspense>
         )}
         {mountSidePane ? (
           <Suspense fallback={null}>

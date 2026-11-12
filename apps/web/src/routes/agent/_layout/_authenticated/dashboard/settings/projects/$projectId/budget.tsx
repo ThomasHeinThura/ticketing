@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -32,14 +33,17 @@ function RouteComponent() {
   const timeAccess = useSettingsAccess((permission) => permission.canLogTime());
   const failed = budgetAccess === "error" || timeAccess === "error";
   const checking = budgetAccess === "checking" || timeAccess === "checking";
+  const placeholderVisible = useDelayedPending(checking);
   return (
     <div className="max-w-4xl mx-auto">
       <PageTitle title={t("timeTracking:budget.title")} />
       <h1 className="sr-only">{t("timeTracking:budget.title")}</h1>
       {failed ? (
         <SettingsAccessError />
-      ) : checking ? (
-        <SettingsAccessChecking />
+      ) : checking ||
+        (placeholderVisible &&
+          (budgetAccess === "allowed" || timeAccess === "allowed")) ? (
+        <SettingsAccessChecking visible={placeholderVisible} />
       ) : budgetAccess === "denied" && timeAccess === "denied" ? (
         <SettingsAccessDenied />
       ) : (

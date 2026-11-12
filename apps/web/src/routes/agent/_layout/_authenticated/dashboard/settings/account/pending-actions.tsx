@@ -6,7 +6,14 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { Badge, Button, Card, CardContent, Skeleton } from "@taskdesk/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { pendingActionLabelKey } from "@/components/pending-action/pending-action-label";
@@ -43,6 +50,7 @@ function PendingActionsList() {
     onSuccess: async () =>
       queryClient.invalidateQueries({ queryKey: ["me", "pending-actions"] }),
   });
+  const placeholderVisible = useDelayedPending(pendingActions.isLoading);
   const page = pendingActions.data;
 
   return (
@@ -56,10 +64,12 @@ function PendingActionsList() {
           {t("pendingActions:copy.eeab44be9789")}
         </p>
       </header>
-      {pendingActions.isLoading ? (
+      {!pendingActions.isError &&
+      (pendingActions.isLoading || (placeholderVisible && page)) ? (
         <div
           className="space-y-3"
           role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           aria-label={t("pendingActions:copy.f6f50d54eb36")}
         >
           <Skeleton className="h-24 w-full" />

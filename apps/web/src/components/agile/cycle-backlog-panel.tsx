@@ -1,5 +1,12 @@
 import { useDraggable } from "@dnd-kit/core";
-import { Alert, AlertDescription, Badge, Button, Skeleton } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Badge,
+  Button,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { GripVertical, Plus } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -90,6 +97,7 @@ export function CycleBacklogPanel({
     dir: "asc",
     realtimeStatus: "connecting",
   });
+  const placeholderVisible = useDelayedPending(query.isLoading);
   const items = useMemo(
     () =>
       (query.data?.pages.flatMap((page) => page.items) ?? []).filter(
@@ -117,8 +125,11 @@ export function CycleBacklogPanel({
           ? t(kind === "cycle" ? "backlog.hint" : "backlog.moduleHint")
           : t("backlog.readOnly")}
       </p>
-      {query.isLoading ? (
-        <Skeleton className="h-20 w-full" />
+      {!query.isError && (query.isLoading || placeholderVisible) ? (
+        <Skeleton
+          className="h-20 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
       ) : query.isError ? (
         <Alert variant="error">
           <AlertDescription>{t("backlog.loadFailed")}</AlertDescription>

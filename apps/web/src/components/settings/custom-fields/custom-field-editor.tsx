@@ -26,6 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -726,6 +727,7 @@ export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
     sections.isLoading ||
     types.isLoading;
   const failed = fields.isError || sections.isError || types.isError;
+  const placeholderVisible = useDelayedPending(loading);
   const missing = !loading && !failed && !isNew && !field;
   const title = isNew
     ? t("customFields:editor.newTitle")
@@ -754,8 +756,12 @@ export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
             </AlertDescription>
           </Alert>
         ) : null}
-        {loading ? (
-          <div role="status" aria-label={t("customFields:editor.loading")}>
+        {!failed && (loading || (placeholderVisible && (isNew || field))) ? (
+          <div
+            role="status"
+            aria-label={t("customFields:editor.loading")}
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             <Skeleton className="h-72 w-full" />
           </div>
         ) : failed ? (

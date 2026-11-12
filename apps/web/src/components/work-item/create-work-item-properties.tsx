@@ -5,6 +5,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CalendarIcon, UserIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -61,6 +62,7 @@ export default function CreateWorkItemProperties(props: Props) {
     (person) => person.personId === assigneeId,
   );
   const defaultState = options.states.find((state) => state.isDefault);
+  const statePlaceholder = useDelayedPending(options.statesLoading);
   const selectedLabels = options.labels.filter((label) =>
     labelIds.includes(label.id),
   );
@@ -156,11 +158,19 @@ export default function CreateWorkItemProperties(props: Props) {
         <div
           className="flex items-center gap-1.5 px-2.5 py-1.5 bg-accent/50 text-foreground rounded-md text-xs font-medium border border-border"
           role="status"
+          style={{
+            visibility:
+              !options.statesError &&
+              (options.statesLoading || statePlaceholder) &&
+              !statePlaceholder
+                ? "hidden"
+                : "visible",
+          }}
           data-testid="create-work-item-default-state"
           aria-label={t("tasks:status.label")}
         >
           <div className="w-1.5 h-1.5 bg-foreground rounded-full" />
-          {defaultState?.name ??
+          {(!statePlaceholder ? defaultState?.name : undefined) ??
             t(
               options.statesError
                 ? "workItems:journey.transitionsError"

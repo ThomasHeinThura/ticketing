@@ -5,6 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CheckCircle2, Circle, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -31,6 +32,7 @@ type ColumnEditorProps = {
 export default function ColumnEditor({ projectId }: ColumnEditorProps) {
   const { t } = useTranslation();
   const { data: columns, isLoading } = useGetColumns(projectId);
+  const placeholderVisible = useDelayedPending(isLoading);
   const { mutateAsync: createColumn } = useCreateColumn();
   const { mutateAsync: updateColumn } = useUpdateColumn();
   const { mutateAsync: deleteColumn } = useDeleteColumn();
@@ -200,9 +202,12 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
     iconName.toLowerCase().includes(iconSearch.trim().toLowerCase()),
   );
 
-  if (isLoading) {
+  if (isLoading || placeholderVisible) {
     return (
-      <div className="text-sm text-muted-foreground">
+      <div
+        className="text-sm text-muted-foreground"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      >
         {t("settings:columnEditor.loading")}
       </div>
     );

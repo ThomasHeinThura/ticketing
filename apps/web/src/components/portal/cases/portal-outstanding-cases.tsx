@@ -10,6 +10,7 @@ import {
   Frame,
   FramePanel,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   type PortalCaseFilterPatch,
@@ -54,6 +55,7 @@ export function PortalOutstandingCases({
     outstandingCasesQuery(filters, project),
     { prefetched },
   );
+  const placeholderVisible = useDelayedPending(cases.isLoading);
   const listSearch = {
     ...(scope ? { scope } : {}),
     status,
@@ -100,8 +102,11 @@ export function PortalOutstandingCases({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : !cases.data ? (
-        <Skeleton className="h-40 w-full rounded-xl" />
+      ) : !cases.data || placeholderVisible ? (
+        <Skeleton
+          className="h-40 w-full rounded-xl"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
       ) : cases.data.cases.length === 0 ? (
         <Frame>
           <FramePanel className="p-8">

@@ -32,6 +32,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { type ReactElement, useId, useState } from "react";
@@ -605,6 +606,8 @@ export function AnnouncementsList() {
   const canManage = status.data?.canManageServices === true && !catalogueOff;
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const announcements = useAnnouncements(workspaceId, canManage);
+  const statusPlaceholder = useDelayedPending(status.isLoading || !workspace);
+  const listPlaceholder = useDelayedPending(announcements.isLoading);
   const [editing, setEditing] = useState<Announcement | "new" | null>(null);
   return (
     <>
@@ -622,8 +625,11 @@ export function AnnouncementsList() {
         }
       >
         <SectionNav active="announcements" />
-        {status.isLoading || !workspace ? (
-          <LoadingRows />
+        {!status.isError &&
+        (status.isLoading ||
+          !workspace ||
+          (statusPlaceholder && !catalogueOff)) ? (
+          <LoadingRows visible={statusPlaceholder} />
         ) : catalogueOff ? (
           <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : !canManage ? (
@@ -635,8 +641,9 @@ export function AnnouncementsList() {
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
-        ) : announcements.isLoading ? (
-          <LoadingRows />
+        ) : !announcements.isError &&
+          (announcements.isLoading || listPlaceholder) ? (
+          <LoadingRows visible={listPlaceholder} />
         ) : announcements.isError ? (
           <QueryFailure
             error={announcements.error}

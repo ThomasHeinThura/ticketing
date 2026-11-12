@@ -14,6 +14,7 @@ import {
   Radio,
   RadioGroup,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -76,6 +77,8 @@ export function ConnectStep({
     queryFn: () => getProjects({ workspaceId }),
     retry: false,
   });
+  const sourcesPlaceholder = useDelayedPending(sources.isPending);
+  const projectsPlaceholder = useDelayedPending(projects.isPending);
   const saved = (sources.data ?? []).filter(
     (source) => source.pluginId === pluginId,
   );
@@ -221,8 +224,13 @@ export function ConnectStep({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {sources.isPending ? (
-              <Skeleton className="h-10 w-full" />
+            {!sources.isError && (sources.isPending || sourcesPlaceholder) ? (
+              <Skeleton
+                className="h-10 w-full"
+                style={{
+                  visibility: sourcesPlaceholder ? "visible" : "hidden",
+                }}
+              />
             ) : saved.length > 0 ? (
               <div className="space-y-2">
                 <Label htmlFor="import-wizard-existing">
@@ -348,8 +356,14 @@ export function ConnectStep({
               <Label htmlFor="import-wizard-target-project">
                 {t("wizard.connect.targetProject")}
               </Label>
-              {projects.isPending ? (
-                <Skeleton className="h-9 w-full" />
+              {!projects.isError &&
+              (projects.isPending || projectsPlaceholder) ? (
+                <Skeleton
+                  className="h-9 w-full"
+                  style={{
+                    visibility: projectsPlaceholder ? "visible" : "hidden",
+                  }}
+                />
               ) : (
                 <PickerPopover
                   id="import-wizard-target-project"

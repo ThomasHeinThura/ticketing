@@ -15,6 +15,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -136,11 +137,17 @@ function TimeActivitiesSettingsContent() {
     onError: (error) => toast.error(message(error)),
   });
   const loading = workspaceLoading || activities.isLoading;
+  const placeholderVisible = useDelayedPending(loading);
   const disabled = activities.error instanceof TimeTrackingDisabledError;
   return (
     <TimeActivitiesSettingsFrame>
-      {loading ? (
-        <Skeleton className="h-32 w-full" role="status" />
+      {!activities.isError &&
+      (loading || (placeholderVisible && activities.data)) ? (
+        <Skeleton
+          className="h-32 w-full"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
       ) : disabled ? (
         <Alert variant="info">
           <AlertTitle>{t("timeTracking:timesheet.disabledTitle")}</AlertTitle>

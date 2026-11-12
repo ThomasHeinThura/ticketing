@@ -1,5 +1,11 @@
 import { Button } from "@taskdesk/ui";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type Task from "@/types/task";
 import TaskStatusPopover from "./task-status-popover";
@@ -21,7 +27,8 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canUpdateTasks: () => true }),
 }));
 
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
@@ -88,7 +95,9 @@ describe("TaskStatusPopover", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Status" }));
 
-    expect(await screen.findByText("common:empty.loading")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByText("common:empty.loading")).toBeVisible(),
+    );
   });
 
   it("shows error feedback when status options fail to load", async () => {

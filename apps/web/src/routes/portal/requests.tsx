@@ -24,6 +24,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowDown, ArrowUp, Download } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -102,6 +103,10 @@ function PortalRequestsPage() {
     getNextPageParam: (lastPage) => lastPage.page.nextCursor ?? undefined,
     enabled: backlogMode,
   });
+  const casesPlaceholder = useDelayedPending(!backlogMode && query.isLoading);
+  const backlogPlaceholder = useDelayedPending(
+    backlogMode && backlogQuery.isLoading,
+  );
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
   const [pendingFocusDirection, setPendingFocusDirection] = useState<
     -1 | 1 | null
@@ -299,8 +304,10 @@ function PortalRequestsPage() {
           </AlertDescription>
         </Alert>
       ) : backlogMode ? (
-        backlogQuery.isLoading ? (
-          <Card>
+        backlogQuery.isLoading || backlogPlaceholder ? (
+          <Card
+            style={{ visibility: backlogPlaceholder ? "visible" : "hidden" }}
+          >
             <CardContent className="flex flex-col gap-3 p-4">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
@@ -440,8 +447,11 @@ function PortalRequestsPage() {
             </div>
           </>
         )
-      ) : !query.data ? (
-        <Skeleton className="h-64 w-full rounded-xl" />
+      ) : !query.data || casesPlaceholder ? (
+        <Skeleton
+          className="h-64 w-full rounded-xl"
+          style={{ visibility: casesPlaceholder ? "visible" : "hidden" }}
+        />
       ) : cases.length === 0 ? (
         <Frame>
           <FramePanel className="p-8">

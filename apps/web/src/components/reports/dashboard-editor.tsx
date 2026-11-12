@@ -38,6 +38,7 @@ import {
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   ArrowLeftRight,
@@ -884,6 +885,9 @@ function DashboardEditorScreen({ search }: { search: DashboardSearch }) {
     list.find((entry) => entry.isDefault) ??
     list[0];
   const dashboard = useDashboard(workspaceId, chosen?.id ?? "");
+  const placeholderVisible = useDelayedPending(
+    dashboards.isLoading || !workspace || dashboard.isLoading,
+  );
   return (
     <>
       <PageTitle title={t("reports:editor.title")} />
@@ -904,8 +908,16 @@ function DashboardEditorScreen({ search }: { search: DashboardSearch }) {
             {t("reports:editor.description")}
           </p>
         </div>
-        {dashboards.isLoading || !workspace || dashboard.isLoading ? (
-          <Skeleton className="h-48 w-full" />
+        {!dashboards.isError &&
+        !dashboard.isError &&
+        (dashboards.isLoading ||
+          !workspace ||
+          dashboard.isLoading ||
+          placeholderVisible) ? (
+          <Skeleton
+            className="h-48 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
         ) : dashboards.isError ? (
           <ReportError error={dashboards.error} />
         ) : dashboard.isError || !dashboard.data ? (

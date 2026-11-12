@@ -21,6 +21,7 @@ import {
   TableRow,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronLeft, ChevronRight, Copy, Plus } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -87,10 +88,20 @@ export function Timesheet(props: Props) {
   // `GET /api/time-entries` needs `time_entry:create`: a role without it (reached by URL only, the
   // nav hides it) sees the permission notice and the timesheet never fires the 403s.
   const access = useSettingsAccess((permission) => permission.canLogTime());
-  if (access === "checking")
+  const accessPlaceholderVisible = useDelayedPending(access === "checking");
+  if (
+    access === "checking" ||
+    (access === "allowed" && accessPlaceholderVisible)
+  )
     return (
       <TimesheetFrame>
-        <TimesheetLoading />
+        <div
+          style={{
+            visibility: accessPlaceholderVisible ? "visible" : "hidden",
+          }}
+        >
+          <TimesheetLoading />
+        </div>
       </TimesheetFrame>
     );
   if (access === "error")
@@ -140,10 +151,16 @@ function TimesheetContent({ search, onSearchChange }: Props) {
   const timer = useTimer(workspaceId);
   const activities = useTimeActivities(workspaceId);
 
-  if (workspaceLoading || probe.isLoading || (start && entries.isLoading))
+  const pending = Boolean(
+    workspaceLoading || probe.isLoading || (start && entries.isLoading),
+  );
+  const placeholderVisible = useDelayedPending(pending);
+  if (!probe.error && !entries.error && (pending || placeholderVisible))
     return (
       <TimesheetFrame>
-        <TimesheetLoading />
+        <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+          <TimesheetLoading />
+        </div>
       </TimesheetFrame>
     );
   if (probe.error instanceof TimeTrackingDisabledError)

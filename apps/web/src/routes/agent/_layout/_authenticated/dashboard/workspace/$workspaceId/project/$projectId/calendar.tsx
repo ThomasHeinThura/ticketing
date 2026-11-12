@@ -3,7 +3,7 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { useIsMobile } from "@taskdesk/ui";
+import { useDelayedPending, useIsMobile } from "@taskdesk/ui";
 import { startOfMonth } from "date-fns";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -153,6 +153,7 @@ function RouteComponent() {
     isError,
     isEmpty: scheduledTasks.length === 0,
   });
+  const placeholderVisible = useDelayedPending(viewStatus === "loading");
 
   // `VW-25`: the week and day views are anchored on the URL's `date` (else today); the month
   // view keeps its own `month`. A week or day is one row of the same grid.
@@ -349,10 +350,13 @@ function RouteComponent() {
           }
         />
 
-        {viewStatus === "loading" || viewStatus === "error" ? (
+        {viewStatus === "loading" ||
+        viewStatus === "error" ||
+        placeholderVisible ? (
           <ScheduleViewState
             layout="calendar"
-            status={viewStatus}
+            status={viewStatus === "error" ? "error" : "loading"}
+            visible={viewStatus === "error" || placeholderVisible}
             isFiltered={isFiltered}
             onRetry={() => void refetch()}
           />

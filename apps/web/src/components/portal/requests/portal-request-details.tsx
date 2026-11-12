@@ -14,6 +14,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, Download } from "lucide-react";
 import { useEffect } from "react";
@@ -83,6 +84,7 @@ export function PortalRequestDetails({
     retry: (count, error) =>
       !(error instanceof HttpError && error.status === 404) && count < 2,
   });
+  const placeholderVisible = useDelayedPending(page.isLoading);
   const request = page.data;
   const files = useQuery({
     queryKey: [...queryKey, "files"],
@@ -154,8 +156,12 @@ export function PortalRequestDetails({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : !request ? (
-        <div className="flex flex-col gap-4" role="status">
+      ) : !request || placeholderVisible ? (
+        <div
+          className="flex flex-col gap-4"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <span className="sr-only">{t("common:empty.loading")}</span>
           <Skeleton className="h-8 w-2/3" />
           <Skeleton className="h-40 w-full" />
@@ -375,14 +381,19 @@ function Files({
   locale: string | undefined;
 }) {
   const { t } = usePortalTranslation("portal");
+  const placeholderVisible = useDelayedPending(loading);
   const ready = (files ?? []).filter((file) => file.state === "ready");
   return (
     <section className="flex flex-col gap-3" aria-labelledby="request-files">
       <h2 id="request-files" className="font-medium">
         {t("intake.attachments")}
       </h2>
-      {loading ? (
-        <p role="status" className="text-muted-foreground text-sm">
+      {!failed && (loading || placeholderVisible) ? (
+        <p
+          role="status"
+          className="text-muted-foreground text-sm"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           {t("common:empty.loading")}
         </p>
       ) : failed ? (

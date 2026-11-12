@@ -1,9 +1,13 @@
-import { Sheet, SheetContent } from "@taskdesk/ui";
+import {
+  DelayedSuspense,
+  motionDurationMs,
+  Sheet,
+  SheetContent,
+} from "@taskdesk/ui";
 import {
   type ComponentProps,
   lazy,
   type ReactNode,
-  Suspense,
   useEffect,
   useState,
 } from "react";
@@ -70,7 +74,7 @@ export function TaskDetailsSheetFrame({
       // Delay clearing to allow exit animation
       const timer = setTimeout(() => {
         setCurrentItemId(undefined);
-      }, 300);
+      }, motionDurationMs("slow"));
       return () => clearTimeout(timer);
     }
   }, [itemId]);
@@ -101,7 +105,7 @@ export default function TaskDetailsSheet({
   return (
     <TaskDetailsSheetFrame itemId={taskId} onClose={onClose}>
       {(visibleTaskId) => (
-        <Suspense fallback={<TaskDetailsSheetLoading />}>
+        <DelayedSuspense fallback={<TaskDetailsSheetLoading />}>
           <TaskDetailsSheetBody
             key={visibleTaskId}
             taskId={visibleTaskId}
@@ -109,7 +113,7 @@ export default function TaskDetailsSheet({
             workspaceId={workspaceId}
             onClose={onClose}
           />
-        </Suspense>
+        </DelayedSuspense>
       )}
     </TaskDetailsSheetFrame>
   );

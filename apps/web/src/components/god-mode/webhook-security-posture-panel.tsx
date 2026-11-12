@@ -26,6 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -55,7 +56,14 @@ export function WebhookSecurityPosturePanel() {
   });
   const entries = query.data?.pages.flatMap((page) => page.data) ?? [];
 
-  if (query.isPending) return <Skeleton className="h-72 w-full" />;
+  const placeholderVisible = useDelayedPending(query.isPending);
+  if (!query.isError && (query.isPending || (placeholderVisible && query.data)))
+    return (
+      <Skeleton
+        className="h-72 w-full"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (query.error instanceof HttpError && query.error.status === 403)
     return (
       <Alert variant="info">

@@ -13,6 +13,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -110,6 +111,7 @@ export default function SavedViewDetail({
     // A view that is missing or out of reach answers 403/404 and will not change on retry.
     retry: (count, error) => !isUnreadable(error) && count < 2,
   });
+  const viewPlaceholderVisible = useDelayedPending(viewQuery.isLoading);
   const view = viewQuery.data;
   const viewSettled = viewQuery.isSuccess || viewQuery.isError;
   const viewUnreadable = viewQuery.isError && isUnreadable(viewQuery.error);
@@ -485,7 +487,14 @@ export default function SavedViewDetail({
           ) : null}
         </div>
       </header>
-      {viewQuery.isLoading ? <p role="status">{t("loadingView")}</p> : null}
+      {!viewQuery.isError && (viewQuery.isLoading || viewPlaceholderVisible) ? (
+        <p
+          role="status"
+          style={{ visibility: viewPlaceholderVisible ? "visible" : "hidden" }}
+        >
+          {t("loadingView")}
+        </p>
+      ) : null}
       {viewQuery.isError && !isFallback ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-destructive">

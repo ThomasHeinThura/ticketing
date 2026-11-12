@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -77,6 +78,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 describe("KbFeatureGate", () => {
@@ -117,11 +119,14 @@ describe("KbFeatureGate", () => {
   });
 
   it("shows a loading state, not the off notice, while the workspace is pending", () => {
+    vi.useFakeTimers();
     mocks.workspace = { data: undefined, isLoading: true };
-    renderGate();
+    const { container } = renderGate();
+    expect(container.querySelector('[role="status"]')).not.toBeVisible();
+    act(() => vi.advanceTimersByTime(150));
     expect(
       screen.getByRole("status", { name: "kb:list.loading" }),
-    ).toBeTruthy();
+    ).toBeVisible();
     expect(screen.queryByTestId("feature-off-knowledge-base")).toBeNull();
     expect(mocks.resolved).not.toHaveBeenCalled();
   });

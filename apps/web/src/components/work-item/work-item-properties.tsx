@@ -20,6 +20,7 @@ import {
   PopoverTrigger,
   ShortcutNumber,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   CalendarClock,
@@ -209,6 +210,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     key: item.key,
     enabled: open || noteFor !== null,
   });
+  const placeholderVisible = useDelayedPending(open && transitions.isLoading);
   const triggerRef = useRef<HTMLButtonElement>(null);
   useAccessLostOnQueryError(transitions.error, onAccessLost);
   const refresh = useRefreshWorkItem(item);
@@ -320,6 +322,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       canMove &&
       !transition.isPending &&
       !transitions.isLoading &&
+      !placeholderVisible &&
       !transitions.isError,
     offers.map((offer) => ({
       onSelect: () => chooseOffer(offer),
@@ -366,8 +369,13 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
         <DropdownMenuTrigger render={trigger} />
         <DropdownMenuContent className="w-64" align="start">
           {error ? <InlineMessage>{error}</InlineMessage> : null}
-          {transitions.isLoading ? (
-            <p className="p-2 text-muted-foreground text-sm" role="status">
+          {!transitions.isError &&
+          (transitions.isLoading || placeholderVisible) ? (
+            <p
+              className="p-2 text-muted-foreground text-sm"
+              role="status"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
               {t("common:empty.loading")}
             </p>
           ) : transitions.isError ? (
@@ -586,6 +594,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     projectId: item.projectId,
     enabled: open,
   });
+  const placeholderVisible = useDelayedPending(open && people.isLoading);
   useAccessLostOnQueryError(people.error, onAccessLost);
   const refresh = useRefreshWorkItem(item);
   const assign = useMutation({
@@ -736,6 +745,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       canEdit &&
       !assign.isPending &&
       !people.isLoading &&
+      !placeholderVisible &&
       !people.isError,
     [
       { onSelect: () => choosePerson(null), disabled: !canUnassign },
@@ -807,8 +817,14 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 <ShortcutNumber number={1} />
               )}
             </Button>
-            {people.isLoading ? (
-              <p className="p-3 text-muted-foreground text-sm" role="status">
+            {!people.isError && (people.isLoading || placeholderVisible) ? (
+              <p
+                className="p-3 text-muted-foreground text-sm"
+                role="status"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              >
                 {t("common:empty.loading")}
               </p>
             ) : people.isError && !isWorkItemAccessLost(people.error) ? (
@@ -870,6 +886,7 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
     projectId: item.projectId,
     enabled: open && canEdit,
   });
+  const placeholderVisible = useDelayedPending(open && candidates.isLoading);
   useAccessLostOnQueryError(candidates.error, onAccessLost);
   const dispatching = useRef(false);
   const name = item.requesterId
@@ -981,8 +998,13 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
               <Check className="ml-auto h-4 w-4" />
             ) : null}
           </Button>
-          {candidates.isLoading ? (
-            <p className="p-3 text-muted-foreground text-sm" role="status">
+          {!candidates.isError &&
+          (candidates.isLoading || placeholderVisible) ? (
+            <p
+              className="p-3 text-muted-foreground text-sm"
+              role="status"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
               {t("common:empty.loading")}
             </p>
           ) : candidates.isError && !isWorkItemAccessLost(candidates.error) ? (

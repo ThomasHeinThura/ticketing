@@ -184,7 +184,7 @@ describe("reduced-motion block (#676)", () => {
     expect(indicator).not.toMatch(/translate:\s*none/);
   });
 
-  it("stops the switch thumb and keeps only the fade on the helper text", () => {
+  it("stops the switch thumb and makes helper text changes instant", () => {
     const thumb = declarationsFor(block, '[data-slot="switch-thumb"]');
     expect(thumb).toMatch(/transition:\s*none\s*!important/);
     expect(thumb).toMatch(/scale:\s*none\s*!important/);
@@ -205,8 +205,10 @@ describe("reduced-motion block (#676)", () => {
     expect(decl).toMatch(/--skeleton-highlight:\s*transparent\s*!important/);
   });
 
-  it("still keeps opacity feedback on popup slots", () => {
+  it("keeps popup opacity states but makes transitions instantaneous", () => {
     expect(block).toMatch(/transition-property:\s*opacity\s*!important/);
+    expect(block).toMatch(/transition-duration:\s*0s\s*!important/);
+    expect(block).toMatch(/transition-delay:\s*0s\s*!important/);
   });
 
   it("targets slot names the components really render", () => {

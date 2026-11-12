@@ -18,7 +18,7 @@ function Switch({ className, ...props }: SwitchProps) {
     >
       <SwitchPrimitive.Thumb
         className={cn(
-          "pointer-events-none block aspect-square h-full origin-left in-[[role=switch]:active,[data-slot=label]:active,[data-slot=field-label]:active]:not-data-disabled:scale-x-110 in-[[role=switch]:active,[data-slot=label]:active,[data-slot=field-label]:active]:rounded-[var(--thumb-size)/calc(var(--thumb-size)*1.1)] rounded-(--thumb-size) bg-background shadow-sm/5 will-change-transform [transition:translate_var(--duration-base)_var(--ease-spring),border-radius_var(--duration-fast),scale_.1s_.1s,transform-origin_var(--duration-fast)] data-checked:origin-[var(--thumb-size)_50%] data-checked:translate-x-[calc(var(--thumb-size)-4px)]",
+          "pointer-events-none block aspect-square h-full origin-left in-[[role=switch]:active,[data-slot=label]:active,[data-slot=field-label]:active]:not-data-disabled:scale-x-110 in-[[role=switch]:active,[data-slot=label]:active,[data-slot=field-label]:active]:rounded-[var(--thumb-size)/calc(var(--thumb-size)*1.1)] rounded-(--thumb-size) bg-background shadow-sm/5 will-change-transform [transition:translate_var(--duration-base)_var(--ease-spring),border-radius_var(--duration-fast),scale_var(--duration-fast)_var(--ease-out)_var(--duration-fast),transform-origin_var(--duration-fast)] data-checked:origin-[var(--thumb-size)_50%] data-checked:translate-x-[calc(var(--thumb-size)-4px)]",
         )}
         data-slot="switch-thumb"
       />

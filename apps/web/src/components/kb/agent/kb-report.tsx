@@ -12,6 +12,7 @@ import {
   Label,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { updateKbSettings } from "@/fetchers/kb";
@@ -42,7 +43,17 @@ export function KbReport({
       queryClient.invalidateQueries({ queryKey: kbKeys.settings(workspaceId) }),
     onError: (error) => toast.error(error.message),
   });
-  if (report.isLoading) return <Skeleton className="h-40 w-full" />;
+  const placeholderVisible = useDelayedPending(report.isLoading);
+  if (
+    !report.isError &&
+    (report.isLoading || (placeholderVisible && report.data))
+  )
+    return (
+      <Skeleton
+        className="h-40 w-full"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (report.isError || !report.data)
     return (
       <Alert variant="error">

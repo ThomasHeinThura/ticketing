@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -62,6 +63,7 @@ export function ConnectedAccountsPanel({
     queryFn: getIdentityLinks,
     retry: false,
   });
+  const placeholderVisible = useDelayedPending(links.isPending);
   const intent = useQuery({
     queryKey: ["identity-link-intent", intentId],
     queryFn: () => {
@@ -71,6 +73,9 @@ export function ConnectedAccountsPanel({
     enabled: Boolean(intentId),
     retry: false,
   });
+  const intentPlaceholder = useDelayedPending(
+    Boolean(intentId) && intent.isPending,
+  );
   const start = useMutation({
     mutationFn: startIdentityLink,
     onSuccess: ({ authorizationUrl }) => {
@@ -127,8 +132,13 @@ export function ConnectedAccountsPanel({
           </Alert>
         ) : null}
 
-        {links.isPending ? (
-          <p role="status">{t("auth:accountSecurity.identityLinks.loading")}</p>
+        {!links.isError && (links.isPending || placeholderVisible) ? (
+          <p
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
+            {t("auth:accountSecurity.identityLinks.loading")}
+          </p>
         ) : links.isError ? (
           <Alert variant="info">
             <AlertDescription>
@@ -215,8 +225,12 @@ export function ConnectedAccountsPanel({
             <DialogTitle>
               {t("auth:accountSecurity.identityLinks.confirmTitle")}
             </DialogTitle>
-            {intent.isPending ? (
-              <DialogDescription>
+            {!intent.isError &&
+            !intentFailed &&
+            (intent.isPending || (intentPlaceholder && intent.data)) ? (
+              <DialogDescription
+                style={{ visibility: intentPlaceholder ? "visible" : "hidden" }}
+              >
                 {t("auth:accountSecurity.identityLinks.loading")}
               </DialogDescription>
             ) : intent.isError || intentFailed ? (
@@ -240,7 +254,7 @@ export function ConnectedAccountsPanel({
               </DialogDescription>
             ) : null}
           </DialogHeader>
-          {intent.data ? (
+          {!intentPlaceholder && intent.data ? (
             <p className="text-sm text-muted-foreground">
               {t("auth:accountSecurity.identityLinks.linkPermissionsNote")}
             </p>
@@ -256,7 +270,12 @@ export function ConnectedAccountsPanel({
             </Button>
             <Button
               type="button"
-              disabled={!intent.data || intent.isPending || confirm.isPending}
+              disabled={
+                !intent.data ||
+                intent.isPending ||
+                intentPlaceholder ||
+                confirm.isPending
+              }
               onClick={() => {
                 setIntentFailed(false);
                 confirm.mutate();

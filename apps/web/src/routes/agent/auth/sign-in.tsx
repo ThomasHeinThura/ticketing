@@ -3,7 +3,12 @@ import {
   useNavigate,
   useSearch,
 } from "@tanstack/react-router";
-import { Alert, AlertDescription, Button } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { KeyRound } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -48,6 +53,14 @@ function SignIn() {
   const baseUrl = window.location.origin;
   const lastLoginMethod = authClient.getLastUsedLoginMethod();
   const { data: config, isLoading: isConfigLoading } = useGetConfig();
+  const configPending =
+    isConfigLoading ||
+    Boolean(
+      config?.customOAuthAutoLogin &&
+        config?.hasCustomOAuth &&
+        !autoLoginFailed,
+    );
+  const placeholderVisible = useDelayedPending(configPending);
   const autoLoginTriggered = useRef(false);
 
   const invitationId = search.invitationId;
@@ -180,10 +193,7 @@ function SignIn() {
     }
   }, [config, handleCustomOAuth, search.error]);
 
-  if (
-    isConfigLoading ||
-    (config?.customOAuthAutoLogin && config?.hasCustomOAuth && !autoLoginFailed)
-  ) {
+  if (configPending || (placeholderVisible && !autoLoginFailed)) {
     return (
       <>
         <PageTitle title={t("auth:signIn.pageTitle")} />
@@ -191,7 +201,11 @@ function SignIn() {
           title={t("auth:signIn.title")}
           subtitle={t("auth:signIn.subtitle")}
         >
-          <SignInFormSkeleton />
+          <div
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
+            <SignInFormSkeleton />
+          </div>
         </AuthLayout>
       </>
     );

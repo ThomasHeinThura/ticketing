@@ -13,6 +13,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useCallback, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
@@ -168,10 +169,20 @@ export function SettingsAccessDenied({
 }
 
 /** Placeholder while the capability check resolves, so neither the denial nor the queries flash. */
-export function SettingsAccessChecking({ className }: { className?: string }) {
+export function SettingsAccessChecking({
+  className,
+  visible = true,
+}: {
+  className?: string;
+  visible?: boolean;
+}) {
   const { t } = useTranslation();
   return (
-    <div role="status" aria-label={t("settings:accessDenied.checking")}>
+    <div
+      role="status"
+      aria-label={t("settings:accessDenied.checking")}
+      style={{ visibility: visible ? "visible" : "hidden" }}
+    >
       <Skeleton className={className ?? "h-32 w-full"} />
     </div>
   );
@@ -209,7 +220,9 @@ export function SettingsAccessGate({
   deniedTitle?: string;
   deniedDescription?: string;
 }) {
-  if (access === "checking") return <SettingsAccessChecking />;
+  const placeholderVisible = useDelayedPending(access === "checking");
+  if (access === "checking" || (access === "allowed" && placeholderVisible))
+    return <SettingsAccessChecking visible={placeholderVisible} />;
   if (access === "error") return <SettingsAccessError />;
   if (access === "denied")
     return (

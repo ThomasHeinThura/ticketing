@@ -4,7 +4,12 @@ import {
   useNavigate,
   useParams,
 } from "@tanstack/react-router";
-import { Alert, AlertDescription, Button } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import {
   AlertCircle,
   CheckCircle,
@@ -47,6 +52,7 @@ function AcceptInvitation() {
   } = useGetInvitationDetails(inviteId);
 
   const isLoading = isSessionLoading || isInvitationLoading;
+  const placeholderVisible = useDelayedPending(isLoading);
   const isSignedIn = !!session?.user;
 
   const handleAcceptInvitation = async () => {
@@ -104,12 +110,15 @@ function AcceptInvitation() {
     });
   };
 
-  if (isLoading) {
+  if (!invitationError && (isLoading || placeholderVisible)) {
     return (
       <>
         <PageTitle title={t("auth:invitation.pageTitleAccept")} />
         <AuthLayout title={t("auth:invitation.loadingTitle")}>
-          <div className="flex items-center justify-center py-8">
+          <div
+            className="flex items-center justify-center py-8"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         </AuthLayout>

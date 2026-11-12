@@ -10,6 +10,11 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  motionDurationMs,
+  motionEasing,
+  useReducedMotionPreference,
+} from "@taskdesk/ui";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import getWorkItemTransitions from "@/fetchers/work-item/get-work-item-transitions";
@@ -107,8 +112,6 @@ const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: { active: { opacity: "0.8" } },
   }),
-  duration: 300,
-  easing: "cubic-bezier(0.23, 1, 0.32, 1)",
 };
 
 function isCombinedWorkItemRow(item: WorkItemRow): item is CombinedWorkItemRow {
@@ -243,7 +246,18 @@ export default function useWorkItemDragDrop({
     useSensor(TouchSensor, TOUCH_SENSOR_OPTIONS[surface]),
     useSensor(KeyboardSensor, KEYBOARD_SENSOR_OPTIONS),
   );
-  const dropAnimation = DROP_ANIMATION;
+  const reduceMotion = useReducedMotionPreference();
+  const dropAnimation = useMemo(
+    () =>
+      reduceMotion
+        ? null
+        : {
+            ...DROP_ANIMATION,
+            duration: motionDurationMs("slow"),
+            easing: motionEasing("out"),
+          },
+    [reduceMotion],
+  );
   const [overStateId, setOverStateId] = useState<string | undefined>();
   const [notice, setNotice] = useState<Notice>();
   // Cards whose move the server has not confirmed yet, in the order they were dropped.

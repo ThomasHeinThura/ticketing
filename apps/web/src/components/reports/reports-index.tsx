@@ -13,6 +13,7 @@ import {
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { LayoutDashboard, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -52,6 +53,7 @@ function Kpi({
 }) {
   const { t } = useTranslation();
   const result = useReport(workspaceId, report, {});
+  const placeholderVisible = useDelayedPending(result.isLoading);
   const found = result.data?.metrics.find((entry) => entry.key === metric);
   return (
     <Link
@@ -66,8 +68,11 @@ function Kpi({
               defaultValue: found?.label ?? metric,
             })}
           </p>
-          {result.isLoading ? (
-            <Skeleton className="h-8 w-20" />
+          {!result.isError && (result.isLoading || placeholderVisible) ? (
+            <Skeleton
+              className="h-8 w-20"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
           ) : found?.value === null ? (
             // RP-1's sentence is body copy, not a figure, so the tile keeps its size.
             <p className="text-muted-foreground text-sm">
@@ -177,6 +182,10 @@ function ReportsIndexScreen({
     (view) => view.layout === "table" || view.layout === "chart",
   );
   const category = search.category;
+  const cataloguePlaceholder = useDelayedPending(
+    catalogue.isLoading || !workspace,
+  );
+  const viewsPlaceholder = useDelayedPending(views.isLoading);
   const categories = REPORT_CATEGORIES.filter((candidate) =>
     catalogue.data?.data.some((entry) => entry.category === candidate),
   );
@@ -209,8 +218,12 @@ function ReportsIndexScreen({
             ) : null}
           </div>
         </div>
-        {catalogue.isLoading || !workspace ? (
-          <Skeleton className="h-40 w-full" />
+        {!catalogue.isError &&
+        (catalogue.isLoading || !workspace || cataloguePlaceholder) ? (
+          <Skeleton
+            className="h-40 w-full"
+            style={{ visibility: cataloguePlaceholder ? "visible" : "hidden" }}
+          />
         ) : catalogue.isError || !catalogue.data ? (
           <ReportError error={catalogue.error} />
         ) : (
@@ -286,8 +299,13 @@ function ReportsIndexScreen({
                   {t("reports:index.savedDescription")}
                 </p>
               </div>
-              {views.isLoading ? (
-                <Skeleton className="h-16 w-full" />
+              {!views.isError && (views.isLoading || viewsPlaceholder) ? (
+                <Skeleton
+                  className="h-16 w-full"
+                  style={{
+                    visibility: viewsPlaceholder ? "visible" : "hidden",
+                  }}
+                />
               ) : saved.length === 0 ? (
                 <Alert variant="info">
                   <AlertDescription>

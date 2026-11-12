@@ -33,6 +33,7 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Archive, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
@@ -502,6 +503,7 @@ function WorkItemTemplatesPage() {
     isCheckingPermissions ||
     (canManage && (templates.isLoading || checklists.isLoading));
   const failed = templates.isError || checklists.isError;
+  const placeholderVisible = useDelayedPending(busy);
   const rows = showChecklists ? filteredChecklists : filteredTemplates;
   return (
     <>
@@ -527,8 +529,11 @@ function WorkItemTemplatesPage() {
             </Button>
           ) : null}
         </div>
-        {busy ? (
-          <Skeleton className="h-24 w-full" />
+        {!failed && (busy || (placeholderVisible && canManage)) ? (
+          <Skeleton
+            className="h-24 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
         ) : !canManage ? (
           <Alert>
             <AlertDescription>

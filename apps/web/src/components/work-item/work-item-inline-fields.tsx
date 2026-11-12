@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CalendarClock, Check, Pencil, X } from "lucide-react";
 import type { ReactNode } from "react";
@@ -213,6 +214,10 @@ export default function WorkItemInlineFields({
     projectId: item.projectId,
     enabled: assigneeOpen && canAssign,
   });
+  const transitionsPlaceholder = useDelayedPending(
+    stateOpen && transitions.isLoading,
+  );
+  const peoplePlaceholder = useDelayedPending(assigneeOpen && people.isLoading);
   const editingCustomField = customFieldColumns.find(
     (field) => field.key === editingCustomFieldKey,
   );
@@ -892,8 +897,15 @@ export default function WorkItemInlineFields({
               {t("workItems:properties.move")}
             </Button>
           </form>
-        ) : transitions.isLoading ? (
-          <p className="p-3 text-sm text-muted-foreground" role="status">
+        ) : !transitions.isError &&
+          (transitions.isLoading || transitionsPlaceholder) ? (
+          <p
+            className="p-3 text-sm text-muted-foreground"
+            role="status"
+            style={{
+              visibility: transitionsPlaceholder ? "visible" : "hidden",
+            }}
+          >
             {t("common:empty.loading")}
           </p>
         ) : transitions.isError ? (
@@ -1061,8 +1073,12 @@ export default function WorkItemInlineFields({
             <Check className="ml-auto h-4 w-4" />
           </Button>
         ) : null}
-        {people.isLoading ? (
-          <p className="p-3 text-sm text-muted-foreground" role="status">
+        {!people.isError && (people.isLoading || peoplePlaceholder) ? (
+          <p
+            className="p-3 text-sm text-muted-foreground"
+            role="status"
+            style={{ visibility: peoplePlaceholder ? "visible" : "hidden" }}
+          >
             {t("common:empty.loading")}
           </p>
         ) : people.isError ? (

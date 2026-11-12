@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -139,7 +140,17 @@ export function InstanceSettingsForm() {
     queryFn: getInstanceSettings,
     retry: false,
   });
-  if (query.isPending) return <Skeleton className="h-64 w-full" />;
+  const queryPlaceholderVisible = useDelayedPending(query.isPending);
+  if (
+    !query.isError &&
+    (query.isPending || (queryPlaceholderVisible && query.data))
+  )
+    return (
+      <Skeleton
+        className="h-64 w-full"
+        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (query.isError)
     return (
       <Alert variant="error">

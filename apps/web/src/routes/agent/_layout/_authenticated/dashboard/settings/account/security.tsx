@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Input,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -49,6 +50,7 @@ function AccountSecurity() {
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const placeholderVisible = useDelayedPending(!status && !error);
 
   const refresh = useCallback(async () => {
     const response = await fetch(getApiUrl("me/security/factors"), {
@@ -162,7 +164,14 @@ function AccountSecurity() {
             </AlertDescription>
           </Alert>
         ) : null}
-        {status?.enabled ? (
+        {!error && (!status || placeholderVisible) ? (
+          <p
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
+            {t("auth:accountSecurity.loading")}
+          </p>
+        ) : status?.enabled ? (
           <Card>
             <CardContent className="space-y-3">
               <h2 className="text-lg font-medium">
@@ -252,9 +261,7 @@ function AccountSecurity() {
               </Button>
             </CardContent>
           </Card>
-        ) : (
-          <p role="status">{t("auth:accountSecurity.loading")}</p>
-        )}
+        ) : null}
       </div>
     </>
   );

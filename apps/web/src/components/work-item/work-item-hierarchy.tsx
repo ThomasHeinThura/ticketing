@@ -7,6 +7,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect } from "react";
@@ -52,6 +53,9 @@ export default function WorkItemHierarchy({
   const state =
     parsed?.itemKey === workItemKey ? parsed : { itemKey: workItemKey };
   const currentQuery = useGetHierarchyChildren(workItemKey);
+  const currentPlaceholder = useDelayedPending(
+    !state.collapsed && currentQuery.isPending,
+  );
   const currentFatal =
     currentQuery.isError && !currentQuery.isFetchNextPageError;
   const first = currentFatal ? undefined : currentQuery.data?.pages[0];
@@ -163,8 +167,11 @@ export default function WorkItemHierarchy({
             {t("workItems:hierarchy.disclosureLimit")}
           </p>
         ) : null}
-        {currentQuery.isPending ? (
-          <Skeleton className="h-8 w-full" />
+        {!currentFatal && (currentQuery.isPending || currentPlaceholder) ? (
+          <Skeleton
+            className="h-8 w-full"
+            style={{ visibility: currentPlaceholder ? "visible" : "hidden" }}
+          />
         ) : currentFatal ? (
           <HierarchyError onRetry={() => void currentQuery.refetch()} />
         ) : treeMode && path[0] ? (
@@ -226,6 +233,9 @@ function HierarchyNode({
     !isCurrent && open && node.hasChildren,
   );
   const query = isCurrent ? currentQuery : otherQuery;
+  const childPlaceholder = useDelayedPending(
+    open && node.hasChildren && query.isPending,
+  );
   const fatalError = query.isError && !query.isFetchNextPageError;
   const data = fatalError ? undefined : query.data;
   const desiredPages = state.pages?.[node.key] ?? 1;
@@ -422,8 +432,11 @@ function HierarchyNode({
       )}
       {open && node.hasChildren ? (
         <div className={hideRow ? undefined : "ml-4"}>
-          {query.isPending ? (
-            <Skeleton className="h-8 w-full" />
+          {!fatalError && (query.isPending || childPlaceholder) ? (
+            <Skeleton
+              className="h-8 w-full"
+              style={{ visibility: childPlaceholder ? "visible" : "hidden" }}
+            />
           ) : fatalError ? (
             <HierarchyError onRetry={() => void query.refetch()} />
           ) : (

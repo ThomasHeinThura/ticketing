@@ -23,6 +23,7 @@ import {
   SelectValue,
   Switch,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -395,6 +396,7 @@ export function ReleaseDetailView({ releaseId }: { releaseId: string }) {
   const { data: workspace } = useActiveWorkspace();
   const status = useCatalogueStatus(workspace?.id ?? "");
   const release = useRelease(releaseId);
+  const placeholderVisible = useDelayedPending(release.isLoading);
   const canManage = status.data?.canManageReleases === true;
   const data = release.data;
   return (
@@ -433,8 +435,9 @@ export function ReleaseDetailView({ releaseId }: { releaseId: string }) {
             data ? <ReleaseStatusBadge status={data.status} /> : undefined
           }
         />
-        {release.isLoading ? (
-          <LoadingRows />
+        {!release.isError &&
+        (release.isLoading || (placeholderVisible && release.data)) ? (
+          <LoadingRows visible={placeholderVisible} />
         ) : release.isError || !data ? (
           <QueryFailure
             error={release.error}

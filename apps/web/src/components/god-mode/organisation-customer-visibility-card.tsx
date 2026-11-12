@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -38,7 +39,17 @@ export function OrganisationCustomerVisibilityCard({
   const { t } = useTranslation("identityConnections");
   const query = useOrganisationCustomerVisibility(organisationId);
 
-  if (query.isPending) return <Skeleton className="h-48 w-full" />;
+  const queryPlaceholderVisible = useDelayedPending(query.isPending);
+  if (
+    !query.isError &&
+    (query.isPending || (queryPlaceholderVisible && query.data))
+  )
+    return (
+      <Skeleton
+        className="h-48 w-full"
+        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (query.isError)
     return (
       <Card>

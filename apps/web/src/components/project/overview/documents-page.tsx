@@ -26,6 +26,7 @@ import {
   Skeleton,
   Switch,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   Ellipsis,
@@ -96,11 +97,17 @@ export function DocumentsPage({ projectKey }: { projectKey: string }) {
     onError: (error) => toast.error(failure(error)),
   });
 
-  if (isLoading || (projectId && query.isLoading))
+  const pending = isLoading || Boolean(projectId && query.isLoading);
+  const placeholderVisible = useDelayedPending(pending);
+  if (
+    !query.isError &&
+    (pending || (placeholderVisible && project && query.data))
+  )
     return (
       <div
         className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-4 md:p-6"
         role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("loading")}
       >
         <Skeleton className="h-8 w-48" />

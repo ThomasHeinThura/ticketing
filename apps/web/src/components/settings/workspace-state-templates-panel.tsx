@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -226,6 +227,8 @@ export function WorkspaceStateTemplatesPanel({
     }
   };
 
+  const pending = isCheckingPermissions || templatesQuery.isLoading;
+  const placeholderVisible = useDelayedPending(pending);
   if (!isCheckingPermissions && !canEdit) {
     return <SettingsAccessDenied />;
   }
@@ -234,11 +237,12 @@ export function WorkspaceStateTemplatesPanel({
     return <SettingsAccessError />;
   }
 
-  if (isCheckingPermissions || templatesQuery.isLoading) {
+  if (!templatesQuery.isError && (pending || (placeholderVisible && canEdit))) {
     return (
       <section
         className="space-y-3"
         aria-busy="true"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         data-testid="workspace-state-templates-loading"
       >
         <Skeleton className="h-4 w-48" />

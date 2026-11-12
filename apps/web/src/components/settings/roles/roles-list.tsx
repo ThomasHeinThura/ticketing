@@ -16,6 +16,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -35,6 +36,7 @@ export function RolesList() {
   const authority = useCallerRoleAuthority(workspace?.id);
   const [creating, setCreating] = useState(false);
   const loading = workspaceLoading || roles.isLoading;
+  const placeholderVisible = useDelayedPending(loading);
   const formatDate = (value: Date | string | null | undefined) =>
     value
       ? new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" }).format(
@@ -59,8 +61,9 @@ export function RolesList() {
             </Button>
           ) : null}
         </div>
-        {loading ? (
+        {!roles.isError && (loading || placeholderVisible) ? (
           <div
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             role="status"
             aria-label={t("roles:list.loading")}
             className="space-y-3"

@@ -20,6 +20,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -58,7 +59,17 @@ export function ImportRunDetailPanel({
 }) {
   const { t } = useTranslation("godModeImports");
   const engine = useEngineRun(runId);
-  if (engine.isPending) return <Skeleton className="h-80 w-full" />;
+  const enginePlaceholderVisible = useDelayedPending(engine.isPending);
+  if (
+    !engine.isError &&
+    (engine.isPending || (enginePlaceholderVisible && engine.data))
+  )
+    return (
+      <Skeleton
+        className="h-80 w-full"
+        style={{ visibility: enginePlaceholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (engine.data)
     return (
       <ImportWizard
@@ -115,11 +126,19 @@ function McpImportRunDetail({
     refetchInterval: run.data?.state === "running" ? 3000 : false,
     retry: false,
   });
+  const reportPlaceholder = useDelayedPending(report.isPending);
   useEffect(() => {
     if (run.data?.workspaceId) onWorkspaceResolved?.(run.data.workspaceId);
   }, [onWorkspaceResolved, run.data?.workspaceId]);
 
-  if (run.isPending) return <Skeleton className="h-80 w-full" />;
+  const runPlaceholderVisible = useDelayedPending(run.isPending);
+  if (!run.isError && (run.isPending || (runPlaceholderVisible && run.data)))
+    return (
+      <Skeleton
+        className="h-80 w-full"
+        style={{ visibility: runPlaceholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (run.error instanceof HttpError && run.error.status === 403)
     return (
       <Alert variant="info">
@@ -263,8 +282,11 @@ function McpImportRunDetail({
           <CardTitle className="text-base">{t("report")}</CardTitle>
         </CardHeader>
         <CardContent>
-          {report.isPending ? (
-            <Skeleton className="h-32 w-full" />
+          {!report.isError && (report.isPending || reportPlaceholder) ? (
+            <Skeleton
+              className="h-32 w-full"
+              style={{ visibility: reportPlaceholder ? "visible" : "hidden" }}
+            />
           ) : reportMissing ? (
             <Empty>
               <EmptyHeader>

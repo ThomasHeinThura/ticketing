@@ -3,6 +3,8 @@ import {
   Checkbox,
   ContextMenu,
   ContextMenuTrigger,
+  motionDurationMs,
+  motionEasingFunction,
 } from "@taskdesk/ui";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -52,7 +54,7 @@ export default function SubtaskRow({
 
   return (
     <motion.div
-      layout
+      layout={!reduceMotion}
       initial={
         reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0, scale: 0.98 }
       }
@@ -62,7 +64,15 @@ export default function SubtaskRow({
       exit={
         reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0, scale: 0.98 }
       }
-      transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
+      transition={
+        reduceMotion
+          ? { duration: 0 }
+          : {
+              type: "tween",
+              duration: motionDurationMs("slow") / 1000,
+              ease: motionEasingFunction("spring"),
+            }
+      }
     >
       <ContextMenu>
         <ContextMenuTrigger asChild>

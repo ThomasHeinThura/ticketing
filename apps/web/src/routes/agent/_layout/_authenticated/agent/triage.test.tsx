@@ -303,7 +303,7 @@ describe("intake triage route", () => {
     mocks.intakeOn = false;
     mocks.featuresLoading = true;
     renderTriage();
-    expect(screen.getByRole("status")).toHaveTextContent("loading");
+    expect(await screen.findByRole("status")).toHaveTextContent("loading");
     expect(screen.queryByTestId("feature-off-intake")).toBeNull();
     await act(async () => {});
     expect(mocks.getSubmissions).not.toHaveBeenCalled();

@@ -30,6 +30,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -257,6 +258,10 @@ export function CustomerInvitations({
   const [inviting, setInviting] = useState(false);
   const loading =
     workspaceLoading || isCheckingPermissions || organisations.isLoading;
+  const placeholderVisible = useDelayedPending(loading);
+  const invitationsPlaceholder = useDelayedPending(
+    Boolean(selected) && invitations.isLoading,
+  );
 
   return (
     <>
@@ -278,9 +283,11 @@ export function CustomerInvitations({
             </Button>
           ) : null}
         </div>
-        {loading ? (
+        {!organisations.isError &&
+        (loading || (placeholderVisible && canInvite)) ? (
           <div
             role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             aria-label={t("customerInvitations:loading")}
             className="space-y-3"
           >
@@ -349,8 +356,14 @@ export function CustomerInvitations({
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
-            ) : invitations.isLoading ? (
-              <Skeleton className="h-24 w-full" />
+            ) : !invitations.isError &&
+              (invitations.isLoading || invitationsPlaceholder) ? (
+              <Skeleton
+                className="h-24 w-full"
+                style={{
+                  visibility: invitationsPlaceholder ? "visible" : "hidden",
+                }}
+              />
             ) : invitations.isError ? (
               <Alert variant="error">
                 <AlertTitle>

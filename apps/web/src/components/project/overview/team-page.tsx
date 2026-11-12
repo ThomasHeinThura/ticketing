@@ -27,6 +27,7 @@ import {
   MenuPopup,
   MenuTrigger,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Ellipsis, Plus, UserMinus } from "lucide-react";
 import { useState } from "react";
@@ -94,11 +95,18 @@ export function TeamPage({ projectKey }: { projectKey: string }) {
     },
   });
 
-  if (isLoading || (projectId && stakeholders.isLoading))
+  const pending = isLoading || Boolean(projectId && stakeholders.isLoading);
+  const placeholderVisible = useDelayedPending(pending);
+  const rosterPlaceholder = useDelayedPending(roster.isLoading);
+  if (
+    !stakeholders.isError &&
+    (pending || (placeholderVisible && project && stakeholders.data))
+  )
     return (
       <div
         className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-4 md:p-6"
         role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("loading")}
       >
         <Skeleton className="h-8 w-48" />
@@ -254,8 +262,12 @@ export function TeamPage({ projectKey }: { projectKey: string }) {
           </Button>
         }
       >
-        {roster.isLoading ? (
-          <Skeleton className="h-16 w-full" />
+        {!roster.isError &&
+        (roster.isLoading || (rosterPlaceholder && roster.data)) ? (
+          <Skeleton
+            className="h-16 w-full"
+            style={{ visibility: rosterPlaceholder ? "visible" : "hidden" }}
+          />
         ) : roster.isError || !roster.data ? (
           <p className="text-muted-foreground text-sm">
             {t("team.rosterUnavailable")}

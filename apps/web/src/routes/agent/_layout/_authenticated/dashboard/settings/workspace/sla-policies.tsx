@@ -19,6 +19,7 @@ import {
   PageContainer,
   PageHeader,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -69,11 +70,14 @@ function SlaPoliciesRouteContent() {
     useWorkspacePermission(workspace?.id);
   const canManage = canManageServiceCalendars();
 
-  if (location.pathname.startsWith(`${routes.slaPolicies.path}/`)) {
+  const onChildRoute = location.pathname.startsWith(
+    `${routes.slaPolicies.path}/`,
+  );
+  const loading = isWorkspaceLoading || isLoading;
+  const placeholderVisible = useDelayedPending(!onChildRoute && loading);
+  if (onChildRoute) {
     return <Outlet />;
   }
-
-  const loading = isWorkspaceLoading || isLoading;
   const resetToFirstPage = () =>
     void navigate({
       to: routes.slaPolicies.path,
@@ -112,10 +116,11 @@ function SlaPoliciesRouteContent() {
           </Alert>
         ) : null}
 
-        {loading ? (
+        {!isError && (loading || placeholderVisible) ? (
           <div
             className="space-y-3"
             role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             aria-label={t("list.loading")}
           >
             <Skeleton className="h-16 w-full" />
@@ -175,7 +180,7 @@ function SlaPoliciesRouteContent() {
             </CardContent>
           </Card>
         )}
-        {!loading && !isError && policies ? (
+        {!loading && !placeholderVisible && !isError && policies ? (
           <nav
             aria-label={t("common:pagination.label")}
             className="flex items-center justify-between"

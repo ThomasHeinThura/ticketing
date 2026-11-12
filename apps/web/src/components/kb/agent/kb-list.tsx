@@ -29,6 +29,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -183,6 +184,7 @@ function ArticlesView({
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   });
+  const placeholderVisible = useDelayedPending(articles.isLoading);
   const total = articles.data?.total ?? 0;
   const lastPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
   return (
@@ -254,9 +256,10 @@ function ArticlesView({
           <Label htmlFor="kb-filter-overdue">{t("kb:list.overdueOnly")}</Label>
         </div>
       </div>
-      {articles.isLoading ? (
+      {!articles.isError && (articles.isLoading || placeholderVisible) ? (
         <div
           role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           aria-label={t("kb:list.loading")}
           className="space-y-3"
         >

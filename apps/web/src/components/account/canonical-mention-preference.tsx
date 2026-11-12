@@ -16,6 +16,7 @@ import {
   SelectValue,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -31,6 +32,7 @@ import useGetNotificationPreferences from "@/hooks/queries/notification-preferen
 export function CanonicalMentionPreference() {
   const { t } = useTranslation("notificationProvider");
   const preferences = useGetNotificationPreferences();
+  const placeholderVisible = useDelayedPending(preferences.isLoading);
   const handoff = useQuery({
     queryKey: ["notification-preferences", "email-link-handoff"],
     queryFn: getEmailLinkHandoff,
@@ -117,8 +119,14 @@ export function CanonicalMentionPreference() {
                 </AlertDescription>
               </Alert>
             )}
-            {preferences.isLoading ? (
-              <Skeleton className="h-12 w-full" />
+            {!preferences.isError &&
+            (preferences.isLoading || (placeholderVisible && preference)) ? (
+              <Skeleton
+                className="h-12 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
             ) : preferences.isError || !preference ? (
               <Alert variant="error">
                 <AlertDescription>{t("mention.unavailable")}</AlertDescription>
@@ -157,8 +165,15 @@ export function CanonicalMentionPreference() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {preferences.isLoading ? (
-              <Skeleton className="h-12 w-full" />
+            {!preferences.isError &&
+            (preferences.isLoading ||
+              (placeholderVisible && teamNotificationPreference)) ? (
+              <Skeleton
+                className="h-12 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
             ) : preferences.isError || !teamNotificationPreference ? (
               <Alert variant="error">
                 <AlertDescription>{t("mention.unavailable")}</AlertDescription>
@@ -188,8 +203,15 @@ export function CanonicalMentionPreference() {
             <CardDescription>{t("comment.description")}</CardDescription>
           </CardHeader>
           <CardContent>
-            {preferences.isLoading ? (
-              <Skeleton className="h-12 w-full" />
+            {!preferences.isError &&
+            (preferences.isLoading ||
+              (placeholderVisible && commentPreference)) ? (
+              <Skeleton
+                className="h-12 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
             ) : preferences.isError || !commentPreference ? (
               <Alert variant="error">
                 <AlertDescription>{t("mention.unavailable")}</AlertDescription>

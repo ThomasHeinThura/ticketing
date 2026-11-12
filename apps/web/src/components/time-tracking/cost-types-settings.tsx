@@ -21,6 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Plus } from "lucide-react";
 import { useState } from "react";
@@ -401,6 +402,7 @@ export function CostTypesSection({ workspaceId }: { workspaceId: string }) {
   const allowed = canManageRates() && !isCheckingPermissions;
   const costTypes = useCostTypes(workspaceId, allowed);
   const [editing, setEditing] = useState<CostType | null>(null);
+  const placeholderVisible = useDelayedPending(allowed && costTypes.isLoading);
   if (!allowed) return null;
   return (
     <section
@@ -416,8 +418,13 @@ export function CostTypesSection({ workspaceId }: { workspaceId: string }) {
           {t("timeTracking:costTypes.description")}
         </p>
       </div>
-      {costTypes.isLoading ? (
-        <Skeleton className="h-24 w-full" role="status" />
+      {!costTypes.isError &&
+      (costTypes.isLoading || (placeholderVisible && costTypes.data)) ? (
+        <Skeleton
+          className="h-24 w-full"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
       ) : costTypes.error instanceof TimeTrackingDisabledError ? (
         <Alert variant="info">
           <AlertTitle>{t("timeTracking:rates.disabledTitle")}</AlertTitle>

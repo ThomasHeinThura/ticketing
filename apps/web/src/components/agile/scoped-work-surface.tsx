@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { DelayedSuspense } from "@taskdesk/ui";
+import { lazy, useMemo, useState } from "react";
 import { ScopedMembershipContext } from "@/components/agile/scoped-membership-context";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemAgileScope } from "@/fetchers/work-item/get-work-items";
@@ -102,7 +103,7 @@ export function ScopedWorkSurface({
       : undefined;
   return (
     <ScopedMembershipContext.Provider value={membership}>
-      <Suspense fallback={<WorkItemListLoading />}>
+      <DelayedSuspense fallback={<WorkItemListLoading />}>
         {layout === "list" ? (
           <ScopedList
             project={project}
@@ -126,7 +127,7 @@ export function ScopedWorkSurface({
             }
           />
         )}
-      </Suspense>
+      </DelayedSuspense>
     </ScopedMembershipContext.Provider>
   );
 }

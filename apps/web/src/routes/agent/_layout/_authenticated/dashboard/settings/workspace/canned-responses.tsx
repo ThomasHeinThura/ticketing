@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -269,6 +270,7 @@ function CannedResponsesPage() {
   );
   const busy =
     !workspace || isCheckingPermissions || (canManage && library.isLoading);
+  const placeholderVisible = useDelayedPending(busy);
   return (
     <>
       <PageTitle title={t("settings:cannedResponses.title")} />
@@ -291,8 +293,11 @@ function CannedResponsesPage() {
             </Button>
           ) : null}
         </div>
-        {busy ? (
-          <Skeleton className="h-24 w-full" />
+        {!library.isError && (busy || (placeholderVisible && canManage)) ? (
+          <Skeleton
+            className="h-24 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
         ) : !canManage ? (
           <Alert>
             <AlertDescription>

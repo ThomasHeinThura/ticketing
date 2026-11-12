@@ -11,6 +11,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowRightLeft } from "lucide-react";
 import {
@@ -69,6 +70,9 @@ export default function TaskMovePopover({
     [destinationProjects, selectedProjectId],
   );
 
+  const placeholderVisible = useDelayedPending(
+    Boolean(selectedProjectId && isProjectLoading),
+  );
   const destinationColumns = destinationProject?.columns ?? [];
   const canKeepCurrentStatus = destinationColumns.some(
     (column) => column.id === currentStatus,
@@ -220,13 +224,20 @@ export default function TaskMovePopover({
             </Select>
           </div>
 
-          {selectedProjectId && isProjectLoading && (
-            <div className="flex items-center justify-center py-2">
-              <span className="text-xs text-muted-foreground">
-                {t("tasks:move.statusLabel")}…
-              </span>
-            </div>
-          )}
+          {selectedProjectId &&
+            !isProjectError &&
+            (isProjectLoading || placeholderVisible) && (
+              <div
+                className="flex items-center justify-center py-2"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              >
+                <span className="text-xs text-muted-foreground">
+                  {t("tasks:move.statusLabel")}…
+                </span>
+              </div>
+            )}
 
           {selectedProjectId && isProjectError && (
             <p className="text-xs text-destructive">{t("tasks:move.error")}</p>
@@ -234,6 +245,7 @@ export default function TaskMovePopover({
 
           {selectedProjectId &&
             !isProjectLoading &&
+            !placeholderVisible &&
             !isProjectError &&
             destinationColumns.length > 0 && (
               <div className="flex flex-col gap-1.5">

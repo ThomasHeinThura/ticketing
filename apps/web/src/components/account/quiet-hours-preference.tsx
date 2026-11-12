@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -40,6 +41,7 @@ function timeZones(current: string): string[] {
 export function QuietHoursPreference() {
   const { t } = useTranslation("notificationProvider");
   const preferences = useGetNotificationPreferences();
+  const placeholderVisible = useDelayedPending(preferences.isLoading);
   const quietHours = preferences.data?.quietHours ?? null;
   return (
     <Card>
@@ -48,8 +50,12 @@ export function QuietHoursPreference() {
         <CardDescription>{t("quietHours.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {preferences.isLoading ? (
-          <Skeleton className="h-12 w-full" />
+        {!preferences.isError &&
+        (preferences.isLoading || placeholderVisible) ? (
+          <Skeleton
+            className="h-12 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
         ) : preferences.isError ? (
           <Alert variant="error">
             <AlertDescription>{t("quietHours.unavailable")}</AlertDescription>

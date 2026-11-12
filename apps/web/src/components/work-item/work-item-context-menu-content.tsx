@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
   Button,
   ContextMenuItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -88,6 +89,7 @@ export default function WorkItemContextMenuContent(props: Props) {
     item.projectId === props.projectId &&
     item.workspaceId === props.workspaceId;
   const ready = scoped && detail.isFetchedAfterMount && !detail.isError;
+  const detailPlaceholder = useDelayedPending(!ready && !detail.isError);
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(
@@ -101,13 +103,19 @@ export default function WorkItemContextMenuContent(props: Props) {
       toast.error(t("common:error.description"));
     }
   };
-  if (!ready || !item)
+  if (!ready || !item || detailPlaceholder)
     return (
       <TaskContextMenuPresentation
         keyboardAnchor={props.keyboardAnchor}
         onCopyLink={() => void copyLink()}
         status={
-          <ContextMenuItem disabled>
+          <ContextMenuItem
+            disabled
+            style={{
+              visibility:
+                detail.isError || detailPlaceholder ? "visible" : "hidden",
+            }}
+          >
             {t(
               detail.isError
                 ? "workItems:properties.saveFailed"
@@ -192,6 +200,12 @@ function CanonicalMenuActions({
     offers.isFetchedAfterMount && !offers.isFetching && !offers.isError;
   const peopleReady =
     people.isFetchedAfterMount && !people.isFetching && !people.isError;
+  const offersPlaceholder = useDelayedPending(
+    open && !offersReady && !offers.isError,
+  );
+  const peoplePlaceholder = useDelayedPending(
+    open && !peopleReady && !people.isError,
+  );
   const deletion = useWorkItemDeletion(item, onAccessLost);
   useEffect(() => {
     if (deletion.failed) toast.error(t("workItems:deletion.requestFailed"));
@@ -397,22 +411,24 @@ function CanonicalMenuActions({
           canAct && permission.canTransitionTasks() && !offers.isError
             ? {
                 value: item.stateId,
-                options: (offersReady ? (offers.data ?? []) : []).map(
-                  (offer) => ({
-                    value: offer.transitionId,
-                    name: offer.available
-                      ? offer.toStateName
-                      : `${offer.toStateName} (${offer.blockedBy.map((reason) => t(workItemTransitionReasonKey(reason.reasonCode))).join(", ")})`,
-                    disabled: !offer.available,
-                  }),
-                ),
+                options: (offersReady && !offersPlaceholder
+                  ? (offers.data ?? [])
+                  : []
+                ).map((offer) => ({
+                  value: offer.transitionId,
+                  name: offer.available
+                    ? offer.toStateName
+                    : `${offer.toStateName} (${offer.blockedBy.map((reason) => t(workItemTransitionReasonKey(reason.reasonCode))).join(", ")})`,
+                  disabled: !offer.available,
+                })),
                 onChange: (transitionId) =>
                   void execute({ kind: "state", transitionId }),
-                emptyLabel: t(
-                  !offersReady
-                    ? "workItems:journey.loadingTransitions"
-                    : "workItems:journey.transitionsEmpty",
-                ),
+                emptyLabel:
+                  !offersReady || offersPlaceholder
+                    ? offersPlaceholder
+                      ? t("workItems:journey.loadingTransitions")
+                      : ""
+                    : t("workItems:journey.transitionsEmpty"),
               }
             : undefined
         }
@@ -429,20 +445,22 @@ function CanonicalMenuActions({
           canAssign && !people.isError
             ? {
                 value: item.assigneeId,
-                options: (peopleReady ? (people.data ?? []) : []).map(
-                  (person) => ({
-                    value: person.personId,
-                    label: person.name ?? t("workItems:journey.unnamedPerson"),
-                    name: person.name ?? "",
-                  }),
-                ),
+                options: (peopleReady && !peoplePlaceholder
+                  ? (people.data ?? [])
+                  : []
+                ).map((person) => ({
+                  value: person.personId,
+                  label: person.name ?? t("workItems:journey.unnamedPerson"),
+                  name: person.name ?? "",
+                })),
                 onChange: choosePerson,
                 canUnassign: Boolean(canUnassign),
-                emptyLabel: t(
-                  !peopleReady
-                    ? "workItems:journey.loadingPeople"
-                    : "workItems:journey.noPeople",
-                ),
+                emptyLabel:
+                  !peopleReady || peoplePlaceholder
+                    ? peoplePlaceholder
+                      ? t("workItems:journey.loadingPeople")
+                      : ""
+                    : t("workItems:journey.noPeople"),
               }
             : undefined
         }

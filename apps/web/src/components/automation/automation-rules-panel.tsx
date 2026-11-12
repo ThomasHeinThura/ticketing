@@ -19,6 +19,7 @@ import {
   Label,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { FlaskConical, History, Pencil, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -181,6 +182,7 @@ export function AutomationRulesPanel({
     queryKey,
     queryFn: () => listAutomations(scope),
   });
+  const placeholderVisible = useDelayedPending(query.isLoading);
   // The whole family, so a rule created or switched here also refreshes the other scope's list.
   const refresh = () =>
     cache.invalidateQueries({ queryKey: ["automations"], refetchType: "all" });
@@ -268,9 +270,10 @@ export function AutomationRulesPanel({
             <AlertDescription>{t("list.noRolesDescription")}</AlertDescription>
           </Alert>
         ) : null}
-        {query.isLoading ? (
+        {!query.isError && (query.isLoading || placeholderVisible) ? (
           <div
             role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             aria-label={t("list.loading")}
             className="space-y-3"
           >

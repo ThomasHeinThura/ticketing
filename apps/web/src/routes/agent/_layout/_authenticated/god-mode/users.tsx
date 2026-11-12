@@ -29,6 +29,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -86,6 +87,7 @@ function InstanceUsersPage() {
     ],
   );
   const directory = useInstanceUsers(filters);
+  const directoryPlaceholder = useDelayedPending(directory.isPending);
   const selected = useInstanceUser(search.user);
   const actions = useInstanceUserActions();
   const action = search.action;
@@ -365,9 +367,11 @@ function InstanceUsersPage() {
         />
       </section>
 
-      {directory.isPending ? (
+      {!directory.isError &&
+      (directory.isPending || (directoryPlaceholder && directory.data)) ? (
         <div
           role="status"
+          style={{ visibility: directoryPlaceholder ? "visible" : "hidden" }}
           aria-label={t("instanceUsers:copy.352046dda7cf")}
           className="space-y-3"
         >
@@ -590,9 +594,14 @@ function UserDetails({
   onAction: (action: GodModeUserAction | null) => void;
 }) {
   const { t } = useTranslation();
-  if (isLoading)
+  const placeholderVisible = useDelayedPending(isLoading);
+  if (!isError && (isLoading || (placeholderVisible && user)))
     return (
-      <Card role="status" aria-label={t("instanceUsers:copy.4135684d2d0a")}>
+      <Card
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        role="status"
+        aria-label={t("instanceUsers:copy.4135684d2d0a")}
+      >
         <CardContent className="space-y-3 p-5">
           <Skeleton className="h-6 w-2/3" />
           <Skeleton className="h-4 w-full" />

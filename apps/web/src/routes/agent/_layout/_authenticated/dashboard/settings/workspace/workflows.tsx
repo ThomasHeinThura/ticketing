@@ -27,6 +27,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -156,6 +157,7 @@ function WorkflowListView({
     queryFn: () => getWorkflows(workspaceId ?? ""),
     enabled: Boolean(workspaceId),
   });
+  const listPlaceholder = useDelayedPending(list.isLoading || !workspaceId);
   const [creating, setCreating] = useState(false);
   return (
     <>
@@ -188,10 +190,11 @@ function WorkflowListView({
           </AlertDescription>
         </Alert>
       ) : null}
-      {list.isLoading || !workspaceId ? (
+      {!list.isError && (list.isLoading || !workspaceId || listPlaceholder) ? (
         <div
           className="space-y-3"
           role="status"
+          style={{ visibility: listPlaceholder ? "visible" : "hidden" }}
           aria-label={t("settings:workflows.loading")}
         >
           <Skeleton className="h-10 w-full" />
@@ -405,6 +408,7 @@ function WorkflowDetailView({
     report: WorkflowValidation | undefined;
   } | null>(null);
   const workflow = detail.data;
+  const detailPlaceholder = useDelayedPending(detail.isLoading || !workflow);
   const latest = workflow?.versions.reduce<
     WorkflowDetail["versions"][number] | undefined
   >(
@@ -496,11 +500,14 @@ function WorkflowDetailView({
           </AlertDescription>
         </Alert>
       ) : null}
-      {detail.isLoading || !workflow ? (
+      {detail.isLoading ||
+      !workflow ||
+      (detailPlaceholder && !detail.isError) ? (
         detail.isError ? null : (
           <div
             className="space-y-3"
             role="status"
+            style={{ visibility: detailPlaceholder ? "visible" : "hidden" }}
             aria-label={t("settings:workflows.loading")}
           >
             <Skeleton className="h-10 w-full" />

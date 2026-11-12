@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Alert, AlertDescription, AlertTitle, Skeleton } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { EstimateSettings } from "@/components/agile/estimate-settings";
 import PageTitle from "@/components/page-title";
@@ -27,10 +33,13 @@ function RouteComponent() {
     workspaceId: workspace?.id ?? "",
   });
   const project = projects?.find((candidate) => candidate.id === projectId);
-  if (!workspace || isCheckingPermissions || isLoading)
+  const pending = !workspace || isCheckingPermissions || isLoading;
+  const placeholderVisible = useDelayedPending(pending);
+  if (pending || (placeholderVisible && project))
     return (
       <div
         className="max-w-4xl mx-auto"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         role="status"
         aria-label={t("common.loading")}
       >

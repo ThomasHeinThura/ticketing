@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import { Button, useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import TaskLayout from "@/components/common/task-layout";
 import PageTitle from "@/components/page-title";
@@ -30,8 +30,15 @@ function RouteComponent() {
     workspaceId,
   });
   const isLoading = isTaskLoading || isProjectLoading;
+  const placeholderVisible = useDelayedPending(isLoading);
 
-  if (!isLoading && task && project?.slug && task.number) {
+  if (
+    !isLoading &&
+    !placeholderVisible &&
+    task &&
+    project?.slug &&
+    task.number
+  ) {
     return (
       <Navigate
         to={
@@ -61,8 +68,11 @@ function RouteComponent() {
         }
         hideAppName
       />
-      {isLoading ? (
-        <TaskDetailsSkeleton />
+      {isLoading ||
+      (placeholderVisible && task && project?.slug && task.number) ? (
+        <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+          <TaskDetailsSkeleton />
+        </div>
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <h1 className="text-2xl font-bold">

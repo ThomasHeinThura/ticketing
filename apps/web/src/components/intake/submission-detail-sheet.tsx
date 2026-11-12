@@ -1,6 +1,6 @@
-import { Button, Skeleton } from "@taskdesk/ui";
+import { Button, DelayedSuspense, Skeleton } from "@taskdesk/ui";
 import { X } from "lucide-react";
-import { lazy, Suspense, useCallback, useRef } from "react";
+import { lazy, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TaskDetailsSheetFrame } from "@/components/task/task-details-sheet";
 
@@ -88,7 +88,7 @@ export function SubmissionDetailSheet({
       finalFocus={finalFocus}
     >
       {(visibleRef) => (
-        <Suspense
+        <DelayedSuspense
           fallback={
             <SubmissionDetailSheetLoading
               submissionRef={visibleRef}
@@ -103,7 +103,7 @@ export function SubmissionDetailSheet({
             onClose={onClose}
             onOpenWorkItem={onOpenWorkItem}
           />
-        </Suspense>
+        </DelayedSuspense>
       )}
     </TaskDetailsSheetFrame>
   );

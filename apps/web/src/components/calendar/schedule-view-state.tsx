@@ -44,6 +44,7 @@ type ScheduleViewStateProps = {
   onRetry: () => void;
   /** Sits above content that stays on screen instead of filling the view. */
   compact?: boolean;
+  visible?: boolean;
 };
 
 export default function ScheduleViewState({
@@ -52,6 +53,7 @@ export default function ScheduleViewState({
   isFiltered,
   onRetry,
   compact = false,
+  visible = true,
 }: ScheduleViewStateProps): JSX.Element {
   const { t } = useTranslation();
 
@@ -59,6 +61,7 @@ export default function ScheduleViewState({
     return (
       <div
         className="flex flex-col gap-2 p-4"
+        style={{ visibility: visible ? "visible" : "hidden" }}
         data-testid={`${layout}-loading`}
         aria-busy="true"
         aria-live="polite"

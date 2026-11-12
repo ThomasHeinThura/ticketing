@@ -117,13 +117,15 @@ describe("canonical Kaneo task sheet", () => {
     );
     expect(document.querySelector('[data-slot="sheet-backdrop"]')).toHaveClass(
       "backdrop-blur-sm",
-      "duration-200",
+      "duration-base",
     );
     expect(screen.getByTestId("canonical-delete-action")).toHaveTextContent(
       "delete",
     );
     expect(
-      screen.getByRole("link", { name: "workItems:sidePane.openFullPage" }),
+      await screen.findByRole("link", {
+        name: "workItems:sidePane.openFullPage",
+      }),
     ).toHaveAttribute("href", "/agent/work-items/HELP-1");
     expect(mocks.detail).toHaveBeenLastCalledWith(
       expect.objectContaining({

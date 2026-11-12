@@ -18,6 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   ArrowDown,
@@ -456,6 +457,7 @@ function WorkItemListPresentation({
   onColumnWidthCommit,
   onColumnWidthCancel,
 }: WorkItemListProps & ResizeProps) {
+  const placeholderVisible = useDelayedPending(Boolean(isLoading));
   const queryClient = useQueryClient();
   const router = useRouter();
   const { t } = useTranslation();
@@ -671,8 +673,12 @@ function WorkItemListPresentation({
     );
   }
 
-  if (isLoading) {
-    return <WorkItemListLoading />;
+  if (isLoading || placeholderVisible) {
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        <WorkItemListLoading />
+      </div>
+    );
   }
 
   if (!workItems || workItems.length === 0) {

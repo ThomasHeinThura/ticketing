@@ -23,6 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -93,6 +94,9 @@ function CreateProjectModal({
   const organisations = useCustomerOrganisations(
     { workspaceId: workspace?.id ?? "" },
     open && canBindOrganisation,
+  );
+  const organisationsPlaceholder = useDelayedPending(
+    open && canBindOrganisation && organisations.isPending,
   );
   const customerOrganisations = organisations.data ?? [];
   const selectedOrganisation = customerOrganisations.find(
@@ -309,7 +313,7 @@ function CreateProjectModal({
                     }
                     placeholder="PRO"
                     maxLength={8}
-                    className="w-20 h-8 text-center font-semibold text-sm bg-background border-border rounded-lg transition-colors duration-150"
+                    className="w-20 h-8 text-center font-semibold text-sm bg-background border-border rounded-lg transition-colors duration-fast"
                     required
                   />
                 </div>
@@ -347,10 +351,16 @@ function CreateProjectModal({
                 <Label htmlFor="project-organisation">
                   {t("common:modals.createProject.organisationLabel")}
                 </Label>
-                {organisations.isPending ? (
+                {!organisations.isError &&
+                (organisations.isPending || organisationsPlaceholder) ? (
                   <p
                     role="status"
                     className="text-xs text-muted-foreground"
+                    style={{
+                      visibility: organisationsPlaceholder
+                        ? "visible"
+                        : "hidden",
+                    }}
                     data-testid="project-organisation-loading"
                   >
                     {t("common:modals.createProject.organisationLoading")}

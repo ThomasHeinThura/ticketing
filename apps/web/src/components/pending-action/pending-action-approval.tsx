@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -349,7 +350,11 @@ export function PendingActionApproval({
     mutationFn: cancelOwnPendingAction,
   });
 
-  if (action.isLoading) {
+  const placeholderVisible = useDelayedPending(action.isLoading);
+  if (
+    !action.isError &&
+    (action.isLoading || (placeholderVisible && action.data))
+  ) {
     if (isDialog)
       return (
         <>
@@ -359,13 +364,19 @@ export function PendingActionApproval({
             </DialogTitle>
           </DialogHeader>
           <DialogPanel aria-busy="true">
-            <Skeleton className="h-32 w-full" />
+            <Skeleton
+              className="h-32 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
           </DialogPanel>
         </>
       );
     return (
       <div className="w-full p-5 lg:p-8" aria-busy="true">
-        <Skeleton className="h-48 w-full" />
+        <Skeleton
+          className="h-48 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
       </div>
     );
   }

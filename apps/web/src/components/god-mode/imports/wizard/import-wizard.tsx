@@ -13,6 +13,7 @@ import {
   TabsList,
   TabsPanel,
   TabsTab,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Check } from "lucide-react";
 import { useEffect } from "react";
@@ -66,7 +67,17 @@ export function ImportWizard({
     if (run?.workspaceId) onWorkspaceResolved?.(run.workspaceId);
   }, [onWorkspaceResolved, run?.workspaceId]);
 
-  if (query.isPending) return <Skeleton className="h-80 w-full" />;
+  const queryPlaceholderVisible = useDelayedPending(query.isPending);
+  if (
+    !query.isError &&
+    (query.isPending || (queryPlaceholderVisible && query.data))
+  )
+    return (
+      <Skeleton
+        className="h-80 w-full"
+        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+      />
+    );
   if (query.error instanceof HttpError && query.error.status === 403)
     return (
       <Alert variant="info">

@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
@@ -175,6 +176,7 @@ export function PagesList({ projectKey }: { projectKey: string }) {
     retry: (count, error) =>
       !(error instanceof HttpError && error.status < 500) && count < 2,
   });
+  const placeholderVisible = useDelayedPending(query.isLoading);
   const restore = useMutation({
     mutationFn: (id: string) => undeletePage(projectKey, id),
     onSuccess: async () => {
@@ -196,11 +198,12 @@ export function PagesList({ projectKey }: { projectKey: string }) {
     },
   });
 
-  if (query.isLoading)
+  if (!query.isError && (query.isLoading || placeholderVisible))
     return (
       <div
         className="mx-auto flex max-w-4xl flex-col gap-3 p-4"
         role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("common.loading")}
       >
         <Skeleton className="h-10 w-full" />

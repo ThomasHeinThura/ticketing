@@ -1,4 +1,10 @@
-import { Empty, EmptyHeader, EmptyTitle, Skeleton } from "@taskdesk/ui";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ProjectFeatureOff } from "@/components/agile/feature-off";
@@ -23,11 +29,15 @@ export function PagesFeatureGate({
   const { project, isLoading } = useProjectByKey(projectKey);
   const enabled = useProjectFeatureState(project?.id, "feature.pages");
 
-  if (isLoading || (project && enabled === undefined))
+  const pending = isLoading || Boolean(project && enabled === undefined);
+  const placeholderVisible = useDelayedPending(pending);
+
+  if (pending || (placeholderVisible && project && enabled))
     return (
       <div
         className="mx-auto flex max-w-4xl flex-col gap-3 p-4"
         role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("common.loading")}
       >
         <Skeleton className="h-10 w-full" />

@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { SidebarMenuItem } from "@taskdesk/ui";
+import { motionDurationMs, motionEasing, SidebarMenuItem } from "@taskdesk/ui";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -47,7 +47,10 @@ function SortableProjectItem({
       // replays the same move from a stale offset.
       animateLayoutChanges: () => false,
       // dnd-kit defaults to `ease`; this is the app's curve.
-      transition: { duration: 200, easing: "var(--ease-out)" },
+      transition: {
+        duration: motionDurationMs("base"),
+        easing: motionEasing("out"),
+      },
     });
 
   const style: CSSProperties = {

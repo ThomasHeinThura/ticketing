@@ -1,5 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Alert, AlertDescription, Button, Skeleton } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { CheckCircle2, Clock3, Inbox, TriangleAlert } from "lucide-react";
 import { PortalKpiCard } from "@/components/portal/portal-kpi-card";
 import { usePortalHome } from "@/hooks/queries/portal/use-portal-cases";
@@ -35,6 +41,7 @@ export function PortalHomeKpis({
 }) {
   const { t, i18n } = usePortalTranslation("portal");
   const home = usePortalHome(portalUserId, project, prefetched);
+  const placeholderVisible = useDelayedPending(home.isLoading);
   const figures = home.data;
 
   return (
@@ -52,8 +59,11 @@ export function PortalHomeKpis({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : !figures ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      ) : !figures || placeholderVisible ? (
+        <div
+          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           {[0, 1, 2, 3].map((index) => (
             <Skeleton key={index} className="h-22 w-full rounded-xl" />
           ))}

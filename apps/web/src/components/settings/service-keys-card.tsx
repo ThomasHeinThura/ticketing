@@ -31,6 +31,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Ban, ServerCog, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -173,6 +174,8 @@ export function ServiceKeysCard() {
       !(error instanceof HttpError && error.status === 403) && count < 2,
   });
 
+  const placeholderVisible = useDelayedPending(query.isLoading);
+
   const revoke = useMutation({
     mutationFn: (key: ApiKey) => revokeServiceKey(workspaceId, key.id),
     onSuccess: async () => {
@@ -231,8 +234,12 @@ export function ServiceKeysCard() {
         </Card>
         <Card className="!rounded-none">
           <CardPanel>
-            {query.isLoading ? (
-              <Frame>
+            {!query.isError && (query.isLoading || placeholderVisible) ? (
+              <Frame
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              >
                 <FramePanel className="p-8">
                   <p className="text-center text-sm text-muted-foreground">
                     {t("settings:serviceKeys.loading")}

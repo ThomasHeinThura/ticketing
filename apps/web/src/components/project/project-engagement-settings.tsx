@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -117,10 +118,13 @@ function ProjectEngagementSettings({
   const canEditHealth = canUpdateProjects();
   const canEditEngagement = canEditHealth && canManageProjectSettings();
 
-  if (isLoading || (isCheckingPermissions && !project)) {
+  const pending = isLoading || (isCheckingPermissions && !project);
+  const placeholderVisible = useDelayedPending(pending);
+  if (!isError && (pending || (placeholderVisible && project))) {
     return (
       <section
         aria-busy="true"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("settings:projectGeneral.engagement.title")}
         className="space-y-3"
         data-testid="project-engagement-loading"
@@ -525,17 +529,24 @@ function ProjectInheritanceSettings({
     workspaceId,
   ]);
 
-  if (!workspaceFeatures.isLoading && !slaOn) return null;
-  if (
+  const pendingInheritance =
     workspaceFeatures.isLoading ||
     query.isLoading ||
     slaQuery.isLoading ||
-    calendarQuery.isLoading
+    calendarQuery.isLoading;
+  const inheritancePlaceholder = useDelayedPending(pendingInheritance);
+  if (!workspaceFeatures.isLoading && !slaOn) return null;
+  if (
+    !query.isError &&
+    !slaQuery.isError &&
+    !calendarQuery.isError &&
+    (pendingInheritance || (inheritancePlaceholder && current))
   ) {
     return (
       <div
         className="space-y-2"
         aria-busy="true"
+        style={{ visibility: inheritancePlaceholder ? "visible" : "hidden" }}
         data-testid="project-inheritance-loading"
       >
         <Skeleton className="h-4 w-40" />

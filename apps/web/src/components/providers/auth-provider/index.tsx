@@ -1,3 +1,4 @@
+import { useDelayedPending } from "@taskdesk/ui";
 import {
   createContext,
   type PropsWithChildren,
@@ -32,6 +33,9 @@ function AuthProvider({ children }: PropsWithChildren) {
     hasLoadedOnce.current = true;
   }
 
+  const initialPending = isPending && !hasLoadedOnce.current;
+  const placeholderVisible = useDelayedPending(initialPending);
+
   // Tag transient Safari "Load failed" errors during the session fetch so
   // instrument.ts's beforeSend can drop them. Better Auth's useSession
   // uses nanostores rather than TanStack Query, so the query client's
@@ -42,8 +46,12 @@ function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [error]);
 
-  if (isPending && !hasLoadedOnce.current) {
-    return <LoadingSkeleton />;
+  if (!error && (initialPending || placeholderVisible)) {
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        <LoadingSkeleton />
+      </div>
+    );
   }
 
   return (

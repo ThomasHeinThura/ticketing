@@ -25,6 +25,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, ChevronRight, RefreshCw, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -120,7 +121,7 @@ function DeliveryCard({
             >
               <ChevronRight
                 aria-hidden="true"
-                className="transition-transform duration-200"
+                className="transition-transform duration-base"
               />
               {t("deliveries.inspect")}
             </CollapsibleTrigger>
@@ -186,6 +187,7 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
 
   const rows = query.data?.pages.flatMap((page) => page.data) ?? [];
   const loading = workspaceLoading || isCheckingPermissions || query.isLoading;
+  const placeholderVisible = useDelayedPending(loading);
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
@@ -212,9 +214,10 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
           <AlertTitle>{t("list.readOnlyTitle")}</AlertTitle>
           <AlertDescription>{t("list.readOnlyDescription")}</AlertDescription>
         </Alert>
-      ) : loading ? (
+      ) : !query.isError && (loading || (placeholderVisible && canManage)) ? (
         <div
           role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           aria-label={t("deliveries.loading")}
           className="space-y-3"
         >

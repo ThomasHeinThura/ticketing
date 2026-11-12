@@ -9,6 +9,7 @@ import {
   TabsList,
   TabsPanel,
   TabsTab,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
@@ -46,6 +47,7 @@ function OrganisationIdentityRoute() {
   const navigate = useNavigate({ from: Route.fullPath });
   const isAdmin = useInstanceAdminSignal();
   const query = useOrganisationIdentityConnection(id, isAdmin);
+  const placeholderVisible = useDelayedPending(isAdmin && query.isPending);
 
   const tab: IdentityConnectionTab = search.tab ?? "connection";
   const go = (next: IdentityConnectionEditorSearch) =>
@@ -85,9 +87,10 @@ function OrganisationIdentityRoute() {
 
         <OrganisationCustomerVisibilityCard organisationId={id} />
 
-        {query.isPending ? (
+        {!query.isError && (query.isPending || placeholderVisible) ? (
           <div
             aria-label={t("organisation.loading")}
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             className="space-y-3"
             role="status"
           >
@@ -128,7 +131,7 @@ function OrganisationIdentityRoute() {
           </Alert>
         ) : null}
 
-        {query.isSuccess && !connection ? (
+        {!placeholderVisible && query.isSuccess && !connection ? (
           <IdentityConnectionEditor
             connection={null}
             customerOrganisationId={id}
@@ -136,7 +139,7 @@ function OrganisationIdentityRoute() {
           />
         ) : null}
 
-        {connection ? (
+        {!placeholderVisible && connection ? (
           <Tabs
             onValueChange={(value) => {
               if (value === "scim") go({ tab: "scim" });

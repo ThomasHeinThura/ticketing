@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Skeleton } from "@taskdesk/ui";
+import { Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AutomationRulesPanel } from "@/components/automation/automation-rules-panel";
 import {
@@ -25,9 +25,19 @@ function WorkspaceAutomationsRoute() {
   const access = useSettingsAccess((permission) =>
     permission.canManageWorkspaceSettings(),
   );
-  if (!workspace || access === "checking")
+  const pending = !workspace || access === "checking";
+  const placeholderVisible = useDelayedPending(pending);
+  if (
+    (access !== "denied" && access !== "error" && pending) ||
+    (placeholderVisible && access === "allowed" && workspace)
+  )
     return (
-      <div className="p-6" role="status" aria-label={t("list.loading")}>
+      <div
+        className="p-6"
+        role="status"
+        aria-label={t("list.loading")}
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      >
         <Skeleton className="h-24 w-full" />
       </div>
     );
@@ -42,6 +52,7 @@ function WorkspaceAutomationsRoute() {
         )}
       </div>
     );
+  if (!workspace) return null;
   return (
     <div className="flex h-full w-full min-w-0 flex-col overflow-y-auto p-6">
       <AutomationRulesPanel

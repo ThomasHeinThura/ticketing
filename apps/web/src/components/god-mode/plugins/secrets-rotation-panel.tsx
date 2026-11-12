@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -38,6 +39,7 @@ export function SecretsRotationPanel() {
         ? 5_000
         : false,
   });
+  const placeholderVisible = useDelayedPending(query.isPending);
   const check = query.data?.checks.find(
     (row) => row.key === "secrets_encryption",
   );
@@ -50,8 +52,12 @@ export function SecretsRotationPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {query.isPending ? (
-          <Skeleton className="h-12 w-full" />
+        {!query.isError &&
+        (query.isPending || (placeholderVisible && check)) ? (
+          <Skeleton
+            className="h-12 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
         ) : query.isError || !check ? (
           <Alert variant="error">
             <AlertTitle>{t("unavailable")}</AlertTitle>

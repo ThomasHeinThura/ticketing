@@ -14,6 +14,7 @@ import {
   Label,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -58,7 +59,17 @@ export function FeatureFlagsPanel({ target }: { target: FeatureLevel }) {
     },
   });
 
-  if (query.isPending) return <Skeleton className="h-64 w-full" />;
+  const queryPlaceholderVisible = useDelayedPending(query.isPending);
+  if (
+    !query.isError &&
+    (query.isPending || (queryPlaceholderVisible && query.data))
+  )
+    return (
+      <Skeleton
+        className="h-64 w-full"
+        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+      />
+    );
   // The server decides who may read or change features (`workspace:manage_settings`, or
   // `project:manage_settings` at the project, including a project-only grant), so a refusal says
   // so instead of reading as a failed load.

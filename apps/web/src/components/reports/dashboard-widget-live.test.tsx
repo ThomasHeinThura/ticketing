@@ -34,7 +34,8 @@ vi.mock("@tanstack/react-router", () => ({
     <a href="/">{children}</a>
   ),
 }));
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
       options && typeof options.defaultValue === "string"

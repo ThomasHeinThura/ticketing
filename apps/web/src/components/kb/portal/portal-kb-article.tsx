@@ -13,6 +13,7 @@ import {
   CardTitle,
   Skeleton,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -130,9 +131,16 @@ export function PortalKbArticleView({
     queryFn: () => getPortalKbArticle(id),
     retry: false,
   });
-  if (article.isLoading)
+  const placeholderVisible = useDelayedPending(article.isLoading);
+  if (
+    !article.isError &&
+    (article.isLoading || (placeholderVisible && article.data))
+  )
     return (
-      <div className="mx-auto w-full max-w-3xl p-6">
+      <div
+        className="mx-auto w-full max-w-3xl p-6"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      >
         <Skeleton className="h-40 w-full" />
       </div>
     );

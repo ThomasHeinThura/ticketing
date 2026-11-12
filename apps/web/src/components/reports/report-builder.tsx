@@ -11,6 +11,7 @@ import {
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronLeft, Download, Save } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -225,6 +226,7 @@ function ReportBuilderScreen({ search }: { search: ReportBuilderSearch }) {
     chartType,
   };
   const preview = useCustomPreview(workspaceId, previewBody);
+  const placeholderVisible = useDelayedPending(preview.isLoading || !workspace);
   const catalogue = useReportCatalogue(workspaceId);
   const exporting = useExportAction(() =>
     exportCustomReport({ workspaceId, ...previewBody }),
@@ -422,8 +424,12 @@ function ReportBuilderScreen({ search }: { search: ReportBuilderSearch }) {
           </CardContent>
         </Card>
         <div className="space-y-4" aria-live="polite">
-          {preview.isLoading || !workspace ? (
-            <Skeleton className="h-48 w-full" />
+          {!preview.isError &&
+          (preview.isLoading || !workspace || placeholderVisible) ? (
+            <Skeleton
+              className="h-48 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
           ) : preview.isError || !preview.data ? (
             <ReportError error={preview.error} />
           ) : (

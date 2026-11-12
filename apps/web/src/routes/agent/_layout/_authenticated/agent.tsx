@@ -5,7 +5,7 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { Skeleton } from "@taskdesk/ui";
+import { Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
@@ -91,6 +91,9 @@ function AgentHome() {
     error: workspacesError,
     refetch: refetchWorkspaces,
   } = useGetWorkspaces();
+  const workspace = activeWorkspace ?? workspaces?.[0];
+  const pending = !workspace && (isLoading || isWorkspacesLoading);
+  const placeholderVisible = useDelayedPending(pending);
   const fallback = (
     <WorkspaceLayout title={t("navigation:sidebar.projects")}>
       <div className="flex flex-col gap-4 p-6">
@@ -101,9 +104,13 @@ function AgentHome() {
   );
   // No active workspace yet (activation still landing): show the first one. No workspace at
   // all: onboarding, as /dashboard does. Never bounce back to /dashboard, which would loop.
-  const workspace = activeWorkspace ?? workspaces?.[0];
+  if (!workspacesError && (pending || placeholderVisible))
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        {fallback}
+      </div>
+    );
   if (!workspace) {
-    if (isLoading || isWorkspacesLoading) return fallback;
     // Failed discovery is not evidence that this account has no workspace.
     if (workspacesError)
       return (

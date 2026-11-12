@@ -578,10 +578,19 @@ export {
   TooltipTrigger,
 } from "./components/tooltip";
 export { cn } from "./lib/cn";
+export { DelayedSuspense } from "./lib/delayed-suspense";
 export { springSettle } from "./lib/motion";
+export {
+  motionBezierOut,
+  motionDurationMs,
+  motionEasing,
+  motionEasingFunction,
+} from "./lib/motion-tokens";
+export { useDelayedPending } from "./lib/use-delayed-pending";
 export {
   type KeyboardPressProps,
   type UseKeyboardPressOptions,
   useKeyboardPress,
 } from "./lib/use-keyboard-press";
 export { useIsMobile } from "./lib/use-mobile";
+export { useReducedMotionPreference } from "./lib/use-reduced-motion";

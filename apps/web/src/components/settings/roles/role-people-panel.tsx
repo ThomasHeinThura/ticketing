@@ -34,6 +34,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -77,6 +78,7 @@ export function RolePeoplePanel({
   const queryClient = useQueryClient();
   const openPendingAction = useOpenPendingAction();
   const holders = useRoleHolders(workspaceId, role.id);
+  const placeholderVisible = useDelayedPending(holders.isLoading);
   const [selected, setSelected] = useState<string[]>([]);
   const [target, setTarget] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -147,8 +149,12 @@ export function RolePeoplePanel({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {holders.isLoading ? (
-            <div role="status" aria-label={t("roles:people.loading")}>
+          {!holders.isError && (holders.isLoading || placeholderVisible) ? (
+            <div
+              role="status"
+              aria-label={t("roles:people.loading")}
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
               <Skeleton className="h-24 w-full" />
             </div>
           ) : holders.isError ? (

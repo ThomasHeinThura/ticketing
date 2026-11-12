@@ -14,6 +14,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -69,6 +70,9 @@ export function DiscoverStep({
   });
   const job = run.job?.kind === "discover" ? run.job : null;
   const running = job?.status === "running";
+  const placeholderVisible = useDelayedPending(
+    !running && run.phase !== "created" && mapping.isPending,
+  );
   const doneAt = job?.status === "completed" ? job.updatedAt : null;
   useEffect(() => {
     if (!doneAt) return;
@@ -124,8 +128,13 @@ export function DiscoverStep({
         </Alert>
       ) : null}
 
-      {running ? null : mapping.isPending && run.phase !== "created" ? (
-        <Skeleton className="h-40 w-full" />
+      {running ? null : !mapping.isError &&
+        run.phase !== "created" &&
+        (mapping.isPending || placeholderVisible) ? (
+        <Skeleton
+          className="h-40 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
       ) : discovery ? (
         <>
           <Card>

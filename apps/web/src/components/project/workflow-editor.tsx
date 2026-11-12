@@ -4,6 +4,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
@@ -38,10 +39,14 @@ export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
   const { canManageProjectSettings, isCheckingPermissions } =
     useWorkspacePermission();
   const canEdit = !isCheckingPermissions && canManageProjectSettings();
+  const placeholderVisible = useDelayedPending(columnsLoading || rulesLoading);
 
-  if (columnsLoading || rulesLoading) {
+  if (columnsLoading || rulesLoading || placeholderVisible) {
     return (
-      <div className="text-sm text-muted-foreground">
+      <div
+        className="text-sm text-muted-foreground"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      >
         {t("settings:workflowEditor.loading")}
       </div>
     );

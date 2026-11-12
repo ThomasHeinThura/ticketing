@@ -2983,7 +2983,9 @@ and the clickable board/list task primitives.
 <a id="motion-reduced-motion"></a>
 ### Reduced motion
 
-kaneo's rule, adopted verbatim: **drop movement and container morphs, keep opacity**. A
+**12 November 2026, Thomas (D-H):** Reduced motion stops all animation and transitions, including opacity fades, and smooth scrolling. This reverses the earlier rule below that retained opacity fades. Controls, loading indicators, focus and state changes remain visible and immediate; drag overlays do not animate to their destination.
+
+Historical rule, superseded by D-H: **drop movement and container morphs, keep opacity**. A
 fade that disappears is a regression for the very users the preference serves; a slide or a
 re-flow that disappears is the point. kaneo does this with selectors, not by zeroing every
 duration:
@@ -3045,6 +3047,8 @@ the communicating.
 
 <a id="motion-loading"></a>
 ### Loading
+
+**12 November 2026, Thomas (D-H):** In-screen placeholders wait about 150 ms before appearing and, once shown, remain visible for at least 300 ms. Preserve known placeholder space and show errors immediately. The shared route-pending defaults use the same delay and minimum; route overrides are unchanged.
 
 Skeletons, not spinners, and skeletons that match the shape of what is coming — a table
 skeleton has rows, a card skeleton has a title bar and a body block. A centred spinner

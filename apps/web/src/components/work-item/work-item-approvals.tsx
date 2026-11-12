@@ -6,6 +6,7 @@ import {
   Button,
   Skeleton,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -69,6 +70,7 @@ function WorkItemApprovals({
   const isInstanceAdmin =
     (user as { role?: string | null } | null | undefined)?.role === "admin";
   const approvalsQuery = useGetWorkItemApprovals({ key: workItemKey });
+  const placeholderVisible = useDelayedPending(approvalsQuery.isLoading);
   const withdraw = useWithdrawApproval();
   // The approvals addressed to the viewer (`GET /me/approvals`) are the ones they may decide.
   const myApprovals = useGetMyApprovals();
@@ -175,9 +177,10 @@ function WorkItemApprovals({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : approvalsQuery.isLoading ? (
+      ) : approvalsQuery.isLoading || placeholderVisible ? (
         <div
           className="flex flex-col gap-2"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           data-testid="work-item-approvals-loading"
           aria-busy="true"
           aria-live="polite"

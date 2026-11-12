@@ -35,6 +35,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { EllipsisIcon, TrashIcon, TriangleAlert, UserPlus } from "lucide-react";
 import { useState } from "react";
@@ -87,10 +88,12 @@ function ProjectMembersSettings({ projectId }: Props) {
   const [inheritedNotice, setInheritedNotice] =
     useState<RosterMemberView | null>(null);
 
-  if (isLoading) {
+  const placeholderVisible = useDelayedPending(isLoading);
+  if (!isError && (isLoading || (placeholderVisible && data))) {
     return (
       <section
         aria-busy="true"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("settings:projectMembers.title")}
         className="space-y-3"
       >

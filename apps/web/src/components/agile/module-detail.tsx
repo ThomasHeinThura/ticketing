@@ -17,6 +17,7 @@ import {
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -123,6 +124,9 @@ export function ModuleDetailScreen({
     onError: () => toast.error(t("modules.deleteFailed")),
   });
 
+  const placeholderVisible = useDelayedPending(query.isLoading);
+  const projectPlaceholder = useDelayedPending(!project);
+
   if (query.error instanceof FeatureDisabledError)
     return (
       <ProjectFeatureOff
@@ -131,11 +135,12 @@ export function ModuleDetailScreen({
         projectKey={projectKey}
       />
     );
-  if (query.isLoading)
+  if (!query.isError && (query.isLoading || placeholderVisible))
     return (
       <div
         className="mx-auto flex max-w-5xl flex-col gap-3 p-4"
         role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("common.loading")}
       >
         <Skeleton className="h-10 w-full" />
@@ -270,7 +275,7 @@ export function ModuleDetailScreen({
               </ToggleGroup>
             </div>
             <DropSurface active={module.canEditItems}>
-              {project ? (
+              {project && !projectPlaceholder ? (
                 <ScopedWorkSurface
                   project={{ id: project.id, slug: project.slug }}
                   workspaceId={workspaceId}
@@ -279,7 +284,12 @@ export function ModuleDetailScreen({
                   canEditItems={module.canEditItems}
                 />
               ) : (
-                <Skeleton className="h-40 w-full" />
+                <Skeleton
+                  className="h-40 w-full"
+                  style={{
+                    visibility: projectPlaceholder ? "visible" : "hidden",
+                  }}
+                />
               )}
             </DropSurface>
           </section>

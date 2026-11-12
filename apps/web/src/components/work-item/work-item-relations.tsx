@@ -22,6 +22,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -113,6 +114,10 @@ export default function WorkItemRelations({
       last.page.hasMore ? (last.page.nextCursor ?? undefined) : undefined,
     enabled: pickerOpen,
   });
+  const relationsPlaceholder = useDelayedPending(relations.isPending);
+  const candidatesPlaceholder = useDelayedPending(
+    pickerOpen && candidates.isPending,
+  );
   const create = useMutation({
     mutationKey: ["relation-create", itemKey],
     mutationFn: (targetKey: string) =>
@@ -183,8 +188,11 @@ export default function WorkItemRelations({
           update({ ...state, picker: true });
         }}
       >
-        {relations.isPending ? (
-          <Skeleton className="h-8 w-full" />
+        {!relations.isError && (relations.isPending || relationsPlaceholder) ? (
+          <Skeleton
+            className="h-8 w-full"
+            style={{ visibility: relationsPlaceholder ? "visible" : "hidden" }}
+          />
         ) : relations.isError ? (
           <p role="alert" className="text-xs px-2 py-1">
             {t("workItems:relations.error")}{" "}
@@ -325,8 +333,14 @@ export default function WorkItemRelations({
               }
             />
             <CommandPanel>
-              {candidates.isPending ? (
-                <Skeleton className="h-8 w-full" />
+              {!candidateFatal &&
+              (candidates.isPending || candidatesPlaceholder) ? (
+                <Skeleton
+                  className="h-8 w-full"
+                  style={{
+                    visibility: candidatesPlaceholder ? "visible" : "hidden",
+                  }}
+                />
               ) : candidateFatal ? (
                 <p role="alert" className="text-xs px-2 py-1">
                   {t("workItems:relations.searchError")}{" "}

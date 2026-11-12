@@ -13,6 +13,7 @@ import {
   RadioGroup,
   RadioGroupItem,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -139,11 +140,16 @@ export function EstimateSettings({
     onError: () => toast.error(t("estimates.policy.failed")),
   });
 
+  const placeholderVisible = useDelayedPending(query.isLoading);
   if (query.error instanceof FeatureDisabledError)
     return <ProjectFeatureOff feature="estimates" projectKey={projectKey} />;
-  if (query.isLoading)
+  if (!query.isError && (query.isLoading || (placeholderVisible && estimate)))
     return (
-      <div role="status" aria-label={t("common.loading")}>
+      <div
+        role="status"
+        aria-label={t("common.loading")}
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      >
         <Skeleton className="h-32 w-full" />
       </div>
     );

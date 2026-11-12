@@ -1,4 +1,11 @@
-import { Button, ScrollArea, Tabs, TabsList, TabsTrigger } from "@taskdesk/ui";
+import {
+  Button,
+  ScrollArea,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { Bell, Mail, MailOpen } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -48,6 +55,7 @@ export default function NotificationInbox({
   const { mutate: markAsUnread } = useMarkNotificationAsUnread();
   const openNotification = useNotificationClick();
 
+  const placeholderVisible = useDelayedPending(isLoading);
   const unreadCount = notifications?.pages[0]?.unreadCount ?? 0;
   const visible = notifications?.pages.flatMap((page) => page.data) ?? [];
   const emptyKey = {
@@ -64,11 +72,14 @@ export default function NotificationInbox({
       ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [filter]);
 
-  if (isLoading)
+  if (!isError && (isLoading || placeholderVisible))
     return (
       <>
         <PageTitle title={t("navigation:sidebar.inbox")} />
-        <PageLoading frame="inbox" />
+        <h1 className="sr-only">{t("navigation:sidebar.inbox")}</h1>
+        <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+          <PageLoading frame="inbox" />
+        </div>
       </>
     );
 

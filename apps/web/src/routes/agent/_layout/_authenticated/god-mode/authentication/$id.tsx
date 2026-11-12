@@ -9,6 +9,7 @@ import {
   TabsList,
   TabsPanel,
   TabsTab,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
@@ -50,6 +51,9 @@ function IdentityConnectionEditorRoute() {
   const creating = id === "new";
   const isAdmin = useInstanceAdminSignal();
   const connections = useIdentityConnections(!creating && isAdmin);
+  const placeholderVisible = useDelayedPending(
+    isAdmin && !creating && connections.isPending,
+  );
 
   const tab: IdentityConnectionTab = search.tab ?? "connection";
   const go = (next: IdentityConnectionEditorSearch, replace = false) =>
@@ -106,9 +110,11 @@ function IdentityConnectionEditorRoute() {
           <BackLink />
         </div>
 
-        {connections.isPending ? (
+        {!connections.isError &&
+        (connections.isPending || placeholderVisible) ? (
           <div
             aria-label={t("detail.loading")}
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             className="space-y-3"
             role="status"
           >
@@ -143,7 +149,7 @@ function IdentityConnectionEditorRoute() {
           </Alert>
         ) : null}
 
-        {connections.isSuccess && !connection ? (
+        {!placeholderVisible && connections.isSuccess && !connection ? (
           <Alert variant="warning">
             <AlertTitle>{t("detail.notFoundTitle")}</AlertTitle>
             <AlertDescription>
