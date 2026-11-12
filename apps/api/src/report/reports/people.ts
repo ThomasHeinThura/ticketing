@@ -300,6 +300,7 @@ const utilisation: ReportDefinition = {
         JOIN team_member tm ON tm.team_id = t.id
         JOIN person pc ON pc.user_id = tm.user_id
         WHERE t.workspace_id = ${ctx.workspaceId} AND t.capacity_days_per_week IS NOT NULL
+          AND ${reachableTeam(ctx)}
         GROUP BY 1),
       listed AS (
         SELECT pc.id AS person_id
