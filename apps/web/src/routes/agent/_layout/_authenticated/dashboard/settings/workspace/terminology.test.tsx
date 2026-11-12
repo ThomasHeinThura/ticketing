@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BUILT_IN_ROLES, type BuiltInRoleKey } from "@taskdesk/permissions";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  allowed: false,
+  role: "viewer" as string,
   checking: false,
   editor: vi.fn(),
 }));
@@ -17,9 +18,15 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1" } }),
 }));
+// `/api/capabilities` reports `manageWorkspaceSettings` from the strict `workspace:manage_settings`,
+// the capability the terminology routes enforce, so a role holds the flag exactly when its
+// built-in capability list does.
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
-    canManageWorkspaceSettings: () => mocks.allowed,
+    canManageWorkspaceSettings: () =>
+      (
+        BUILT_IN_ROLES[mocks.role as BuiltInRoleKey].capabilities as string[]
+      ).includes("workspace:manage_settings"),
     isCheckingPermissions: mocks.checking,
   }),
 }));
@@ -54,7 +61,7 @@ function renderPage(failed = false) {
 }
 afterEach(() => {
   cleanup();
-  mocks.allowed = false;
+  mocks.role = "viewer";
   mocks.checking = false;
   mocks.editor.mockReset();
 });
@@ -78,9 +85,24 @@ describe("workspace terminology access", () => {
     expect(screen.getByTestId("settings-access-error")).toBeTruthy();
     expect(mocks.editor).not.toHaveBeenCalled();
   });
-  it("mounts the editor for a settings manager", () => {
-    mocks.allowed = true;
+  it.each(["lead", "member", "viewer"])(
+    "shows the no-access state to a %s, not a 403 error with Retry",
+    (role) => {
+      mocks.role = role;
+      renderPage();
+      expect(screen.getByTestId("settings-access-denied")).toBeTruthy();
+      expect(screen.queryByTestId("settings-access-error")).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "common:actions.retry" }),
+      ).toBeNull();
+      expect(screen.queryByTestId("editor")).toBeNull();
+      expect(mocks.editor).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["owner", "admin"])("mounts the editor for the %s role", (role) => {
+    mocks.role = role;
     renderPage();
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
     expect(mocks.editor).toHaveBeenCalledWith({
       target: { scope: "workspace", workspaceId: "ws-1" },
     });

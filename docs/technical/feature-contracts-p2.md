@@ -1155,6 +1155,7 @@ here, to avoid two specs each defining the same write path differently.
 | See the catalogue (portal) | `{ portal: 'customer', predicate: 'own_organisation' }` — [rbac.md](permissions.md) kind 3 |
 | Submit | `{ portal: 'customer', predicate: 'own_organisation' }` |
 | Create, edit, publish, unpublish, delete a request type | `request_type:manage` |
+| Open the agent Request Types authoring screen | `request_type:manage`, reported by `GET /api/capabilities` as `manageRequestTypes` (absent means denied). Without it (lead, member, viewer) a direct link shows the neutral no-access notice of the workspace settings screens and the screen sends no request; the settings navigation entry follows the same flag |
 | Assign a catalogue to an organisation | `instance:admin` — via God Mode, not this spec's API ([god-mode.md](feature-contracts-p4.md#god-mode)) |
 
 <a id="request-types-and-catalogue-screens"></a>
