@@ -405,6 +405,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Το όνομα χώρου εργασίας είναι υποχρεωτικό"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -3037,7 +3042,14 @@
 			"creating": "Γίνεται δημιουργία...",
 			"submit": "Δημιουργία χώρου εργασίας",
 			"success": "Ο χώρος εργασίας δημιουργήθηκε με επιτυχία",
-			"error": "Αποτυχία δημιουργίας χώρου εργασίας"
+			"error": "Αποτυχία δημιουργίας χώρου εργασίας",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {

@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import { auditRequestContext } from "../audit/request-context";
 import { runWithStepUp, stepUpTokenHeader } from "../auth/step-up-spend";
 import {
   apiRouter,
@@ -34,6 +35,7 @@ import { invalidateNativeAuthorization } from "../ws";
 import activateWorkspaceCtrl from "./controllers/activate-workspace";
 import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
+  WorkspaceOwnerNotEligibleError,
   WorkspaceSlugTakenError,
 } from "./controllers/create-workspace";
 import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
@@ -247,7 +249,7 @@ const createWorkspaceRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Create a workspace",
   description:
-    "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Native replacement for authClient.organization.create().",
+    "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Only a current instance administrator (checked against the database at request time, browser session only) may call this. The request names the workspace owner, an existing active staff user; the administrator becomes a member only by naming themselves. The creator and the named owner are recorded in the audit log.",
   middleware: [requireSessionOnly(), requireWorkspaceCreationAllowed] as const,
   request: {
     body: {
@@ -257,10 +259,12 @@ const createWorkspaceRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created workspace", workspaceSchema),
-    400: errorResponse("Invalid body, or the name was rejected"),
+    400: errorResponse(
+      "Invalid body, the name was rejected, or the named owner is not an existing, active, unsuspended staff user",
+    ),
     401: errorResponse("No credential at all"),
     403: errorResponse(
-      "An API key or impersonation session (session_required), or workspace creation is disabled on this instance",
+      "An API key or impersonation session (session_required), or the caller is not a current instance administrator",
     ),
     409: errorResponse("The requested slug is already taken"),
   },
@@ -1035,8 +1039,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         slug: body.slug,
         logo: body.logo,
         description: body.description,
-        ownerId: c.get("userId"),
+        ownerId: body.ownerUserId,
+        creatorId: c.get("userId"),
         sessionId: requireSessionId(c),
+        audit: auditRequestContext(c),
       });
       return c.json(created, 200);
     } catch (error) {
@@ -1044,6 +1050,9 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         throw new HTTPException(409, {
           message: "That workspace slug is already taken",
         });
+      }
+      if (error instanceof WorkspaceOwnerNotEligibleError) {
+        throw new HTTPException(400, { message: error.message });
       }
       throw error;
     }

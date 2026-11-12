@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   projectsPageModule: vi.fn(),
   preloadRoute: vi.fn().mockResolvedValue(undefined),
+  sessionRole: undefined as string | undefined,
   search: vi.fn((_params: { q: string }) => ({
     data: { results: [] as Array<Record<string, string>> },
   })),
@@ -49,7 +50,11 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
-    useSession: () => ({ data: undefined }),
+    useSession: () => ({
+      data: mocks.sessionRole
+        ? { user: { id: "u-1", role: mocks.sessionRole } }
+        : undefined,
+    }),
   },
 }));
 
@@ -277,5 +282,45 @@ describe("CommandPalette (#407)", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/dashboard/settings/workspace/members",
     });
+  });
+});
+
+describe("CommandPalette create-workspace command (D-A, 12 Nov 2026)", () => {
+  async function openPalette() {
+    render(
+      <KeyboardShortcutsProvider>
+        <CommandPaletteLauncher />
+      </KeyboardShortcutsProvider>,
+    );
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+      await vi.dynamicImportSettled();
+    });
+    expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
+  }
+
+  afterEach(() => {
+    mocks.sessionRole = undefined;
+  });
+
+  it("offers no create-workspace command to anyone but an instance admin", async () => {
+    mocks.sessionRole = "user";
+    await openPalette();
+
+    expect(
+      screen.getByText("navigation:commandPalette.lightTheme"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("navigation:commandPalette.createWorkspace"),
+    ).toBeNull();
+  });
+
+  it("offers the create-workspace command to an instance admin", async () => {
+    mocks.sessionRole = "admin";
+    await openPalette();
+
+    expect(
+      screen.getByText("navigation:commandPalette.createWorkspace"),
+    ).toBeInTheDocument();
   });
 });

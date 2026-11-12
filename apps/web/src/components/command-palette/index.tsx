@@ -51,9 +51,9 @@ import {
   type SearchResultItem,
 } from "@/components/search-command-menu/search-targets";
 import { shortcuts } from "@/constants/shortcuts";
-import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
 import { authClient } from "@/lib/auth-client";
 import { routes } from "@/lib/routes";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -115,11 +115,9 @@ export function CommandPalette({
   const navigate = useNavigate();
   const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
-  const { data: session } = authClient.useSession();
-  const { data: config } = useGetConfig();
-  const isAdmin = session?.user?.role === "admin";
-  const canCreateWorkspace =
-    isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
+  const canCreateWorkspace = useCanCreateWorkspace();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
@@ -136,13 +134,8 @@ export function CommandPalette({
   const handledRequest = useRef<number | null>(null);
   useEffect(() => {
     if (!request || handledRequest.current === request.id) return;
-    if (
-      request.intent === "create-workspace" &&
-      !canCreateWorkspace &&
-      config === undefined &&
-      !isAdmin
-    )
-      return;
+    // Wait for the signed-in role before deciding, so the request is not dropped while it loads.
+    if (request.intent === "create-workspace" && sessionPending) return;
     if (request.intent === "projects" && !workspace?.id) return;
     handledRequest.current = request.id;
     switch (request.intent) {
@@ -171,8 +164,7 @@ export function CommandPalette({
   }, [
     request,
     canCreateWorkspace,
-    config,
-    isAdmin,
+    sessionPending,
     workspace?.id,
     navigate,
     onRequestHandled,

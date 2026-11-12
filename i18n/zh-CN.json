@@ -405,6 +405,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "工作区名称不能为空"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -3026,7 +3031,14 @@
 			"creating": "创建中…",
 			"submit": "创建工作区",
 			"success": "工作区创建成功",
-			"error": "工作区创建失败"
+			"error": "工作区创建失败",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {

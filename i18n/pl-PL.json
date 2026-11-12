@@ -405,6 +405,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Nazwa obszaru roboczego jest wymagana"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -833,7 +838,14 @@
 			"creating": "Tworzenie...",
 			"submit": "Utwórz obszar roboczy",
 			"success": "Obszar roboczy został utworzony",
-			"error": "Nie udało się utworzyć obszaru roboczego"
+			"error": "Nie udało się utworzyć obszaru roboczego",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {

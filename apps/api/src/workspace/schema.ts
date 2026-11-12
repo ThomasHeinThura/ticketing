@@ -25,6 +25,10 @@ export const createWorkspaceBody = z.object({
     }),
   logo: z.string().max(2048).nullable().optional(),
   description: z.string().max(2000).nullable().optional(),
+  ownerUserId: z.string().min(1).openapi({
+    description:
+      "The existing, active, unsuspended staff user who becomes the workspace owner. The instance administrator creating the workspace becomes a member only by naming themselves.",
+  }),
 });
 
 export const updateWorkspaceBody = z

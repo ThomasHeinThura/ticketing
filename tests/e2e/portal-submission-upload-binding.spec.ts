@@ -131,12 +131,25 @@ async function setupStaff(page: Page, fixture: MfaCsrfAppFixture) {
   );
   await page.getByRole("button", { name: /^create account$/i }).click();
   expect((await signup).status()).toBe(200);
-  const workspace = await postWithCsrf(
-    page.context().request,
-    fixture.origin,
-    "/api/workspace",
-    { name: `Upload test ${randomUUID().slice(0, 8)}` },
+  const api = page.context().request;
+  // D-A: only an instance administrator creates a workspace, and the request names its owner.
+  // The signed-in user here is the bootstrap administrator, so they name themselves.
+  const sessionResponse = await api.get(
+    new URL("/api/auth/get-session", fixture.origin).toString(),
+    { headers: { Origin: fixture.origin } },
   );
+  expect(sessionResponse.status()).toBe(200);
+  const ownerUserId =
+    (
+      (await sessionResponse.json()) as {
+        user?: { id?: string };
+      } | null
+    )?.user?.id ?? "";
+  expect(ownerUserId).toBeTruthy();
+  const workspace = await postWithCsrf(api, fixture.origin, "/api/workspace", {
+    name: `Upload test ${randomUUID().slice(0, 8)}`,
+    ownerUserId,
+  });
   expect(workspace.status()).toBe(200);
   const { id: workspaceId } = (await workspace.json()) as { id: string };
   const project = await postWithCsrf(

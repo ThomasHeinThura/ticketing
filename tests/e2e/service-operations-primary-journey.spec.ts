@@ -165,12 +165,29 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     });
     await bodyAt(strangerSignup, 200);
 
+    // D-A: only an instance administrator creates a workspace, and the request names its owner.
+    // The signed-in user here is the bootstrap administrator, so they name themselves.
+    const sessionResponse = await admin.get(
+      new URL("/api/auth/get-session", origin).toString(),
+      { headers: { Origin: origin } },
+    );
+    expect(sessionResponse.status()).toBe(200);
+    const ownerUserId =
+      (
+        (await sessionResponse.json()) as {
+          user?: { id?: string };
+        } | null
+      )?.user?.id ?? "";
+    expect(ownerUserId).toBeTruthy();
     const workspaceResponse = await mutate(
       admin,
       origin,
       "POST",
       "/api/workspace",
-      { name: `Service Operations ${randomUUID().slice(0, 8)}` },
+      {
+        name: `Service Operations ${randomUUID().slice(0, 8)}`,
+        ownerUserId,
+      },
     );
     const workspace = await bodyAt(workspaceResponse, 200);
     const workspaceId = String(workspace.id);

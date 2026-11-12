@@ -1868,6 +1868,22 @@
 								}
 							},
 							"required": ["workspaceNameRequired"]
+						},
+						"noWorkspace": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"viewInvitations": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description", "viewInvitations"]
 						}
 					},
 					"required": [
@@ -1884,7 +1900,8 @@
 						"workspaceCreatedTitle",
 						"redirectingToWorkspace",
 						"toast",
-						"validation"
+						"validation",
+						"noWorkspace"
 					]
 				},
 				"profileSetup": {
@@ -12536,6 +12553,27 @@
 						},
 						"error": {
 							"type": "string"
+						},
+						"ownerLabel": {
+							"type": "string"
+						},
+						"ownerPlaceholder": {
+							"type": "string"
+						},
+						"ownerHelp": {
+							"type": "string"
+						},
+						"ownerEmpty": {
+							"type": "string"
+						},
+						"ownerError": {
+							"type": "string"
+						},
+						"ownerLoading": {
+							"type": "string"
+						},
+						"successHandedOver": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12550,7 +12588,14 @@
 						"creating",
 						"submit",
 						"success",
-						"error"
+						"error",
+						"ownerLabel",
+						"ownerPlaceholder",
+						"ownerHelp",
+						"ownerEmpty",
+						"ownerError",
+						"ownerLoading",
+						"successHandedOver"
 					]
 				}
 			},
