@@ -60,9 +60,14 @@ async function dragCard(page: Page, source: Locator, destination: Locator) {
     from.y + from.height / 2,
     { steps: 3 },
   );
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 4, {
     steps: 12,
   });
+  await expect(
+    page
+      .locator('[aria-live="assertive"]')
+      .filter({ hasText: "Moving card is over Destination last." }),
+  ).toHaveCount(1);
   await page.mouse.up();
 }
 
@@ -125,6 +130,28 @@ test("board drop stays in place through a real write and a refused move returns 
           if (!source || !destination || !forbidden)
             throw new Error("Default board states missing");
 
+          const types = await requestJson<Array<{ id: string; key: string }>>(
+            page,
+            `/api/workspace/${encodeURIComponent(workspaceId)}/work-item-types`,
+          );
+          const type = types.find((entry) => entry.key === "task");
+          if (!type) throw new Error("Task type missing");
+          const create = (title: string) =>
+            requestJson<Item>(
+              page,
+              `/api/projects/${encodeURIComponent(project.id)}/work-items`,
+              { method: "POST", data: { typeId: type.id, title } },
+            );
+          const anchor = await create("Backlog anchor");
+          await requestJson(
+            page,
+            `/api/work-items/${encodeURIComponent(anchor.key)}/transition`,
+            {
+              method: "POST",
+              data: { toStateTemplateId: forbidden.stateTemplateId },
+            },
+          );
+
           // Publish a real workflow that omits just To Do -> Backlog, leaving all other edges.
           const workflows = await requestJson<
             Array<{ id: string; activeVersionId: string }>
@@ -158,18 +185,6 @@ test("board drop stays in place through a real write and a refused move returns 
             { method: "POST", data: {} },
           );
 
-          const types = await requestJson<Array<{ id: string; key: string }>>(
-            page,
-            `/api/workspace/${encodeURIComponent(workspaceId)}/work-item-types`,
-          );
-          const type = types.find((entry) => entry.key === "task");
-          if (!type) throw new Error("Task type missing");
-          const create = (title: string) =>
-            requestJson<Item>(
-              page,
-              `/api/projects/${encodeURIComponent(project.id)}/work-items`,
-              { method: "POST", data: { typeId: type.id, title } },
-            );
           const first = await create("Destination first");
           const last = await create("Destination last");
           const moving = await create("Moving card");
@@ -185,6 +200,16 @@ test("board drop stays in place through a real write and a refused move returns 
               },
             );
           }
+          // Transitions do not promise distinct ranks in the destination: establish the
+          // two-card order through the real rank API before testing the middle slot.
+          await requestJson(
+            page,
+            `/api/work-items/${encodeURIComponent(last.key)}/rank`,
+            {
+              method: "POST",
+              data: { beforeId: first.id },
+            },
+          );
           const offers = await requestJson<
             Array<{ toStateId: string; available: boolean }>
           >(
@@ -196,7 +221,7 @@ test("board drop stays in place through a real write and a refused move returns 
           );
           await page.goto(
             new URL(
-              `/agent/projects/${encodeURIComponent(slug)}/work?layout=board`,
+              `/agent/projects/${encodeURIComponent(slug)}/work?layout=board&sort=position&dir=asc`,
               origin,
             ).toString(),
           );
@@ -296,7 +321,7 @@ test("board drop stays in place through a real write and a refused move returns 
           await expect(
             page
               .locator('[aria-live="assertive"]')
-              .filter({ hasText: "is over Backlog" }),
+              .filter({ hasText: "is over Backlog anchor" }),
           ).toHaveCount(1);
           await page.keyboard.press("Space");
           await expect(
