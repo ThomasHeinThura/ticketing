@@ -1058,12 +1058,15 @@ as the form itself.
   this value. See the `showIf` example in Data above. A hidden field's answer is never
   stored, and no response returns the answer of a hidden field or of a key the form version
   does not declare, including for older submissions (the stored answers are not rewritten;
-  the portal detail and the triage detail return the visible answers only). On a checkbox
+  the portal detail and the triage detail return the visible answers only, and the portal
+  case list and its CSV take a case's title and priority from a mapped field only while that
+  field is visible). A stored key the version does not declare never decides whether a field
+  is visible, even when a condition names it. On a checkbox
   controller the condition value `""` or `"false"` means unchecked and `"true"` means
   checked. A number answer given as text must be plain decimal digits (`-12`, `0.5`); other
   text, and any integer beyond `Number.MAX_SAFE_INTEGER`, is refused with `422`; the portal
-  form flags it before sending. A number condition written as text matches only under the
-  same rule.
+  form flags it before sending. A number condition written as text matches under the same
+  rule, with surrounding spaces in the stored condition ignored (the answer is never trimmed).
 - `RT-6` Publishing creates an immutable snapshot of the form schema, mapped work-item
   type, request-type SLA override and default assignee. Submissions record which version
   they used, so edits to the live request type cannot silently remap a queued submission.

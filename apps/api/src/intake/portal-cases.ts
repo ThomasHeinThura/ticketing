@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { type FormSchema, visibleSubmissionAnswers } from "@taskdesk/domain";
 import { resolveFeatureFlag } from "@taskdesk/permissions";
 import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
@@ -231,7 +232,7 @@ type CaseSourceContext = {
 
 /**
  * Every case the viewer may read, as one row shape. Columns: source, id, ref, title,
- * request_type_name, priority, customer_status, created_at, updated_at, closed_at, project_*,
+ * request_type_name, priority, title_from_form, priority_from_form, customer_status, created_at, updated_at, closed_at, project_*,
  * requester_id, customer_visibility, work_item_id.
  */
 function caseSourceSql(context: CaseSourceContext): SQL {
@@ -262,6 +263,10 @@ function caseSourceSql(context: CaseSourceContext): SQL {
         WHEN wi.id IS NOT NULL THEN wi.priority
         ELSE ${mappedFormValue("priority")}
       END AS priority,
+      -- Whether title and priority came from the stored answers (not the work item): the rows
+      -- {@link withVisibleMappedValues} must check against the form's visibility rules.
+      NULLIF(wi.title, '') IS NULL AS title_from_form,
+      wi.id IS NULL AS priority_from_form,
       ${customerStatusSql(sql`s.state`)} AS customer_status,
       s.created_at AS created_at,
       GREATEST(s.updated_at, wi.updated_at AT TIME ZONE 'UTC') AS updated_at,
@@ -313,6 +318,8 @@ function caseSourceSql(context: CaseSourceContext): SQL {
       wi.title AS title,
       wit.name AS request_type_name,
       wi.priority AS priority,
+      FALSE AS title_from_form,
+      FALSE AS priority_from_form,
       ${customerStatusSql(sql`NULL::text`)} AS customer_status,
       wi.created_at AT TIME ZONE 'UTC' AS created_at,
       wi.updated_at AT TIME ZONE 'UTC' AS updated_at,
@@ -530,6 +537,8 @@ type CaseRow = {
   title: string | null;
   request_type_name: string;
   priority: string | null;
+  title_from_form: boolean;
+  priority_from_form: boolean;
   customer_status: string;
   created_at: Date | string;
   updated_at: Date | string;
@@ -575,7 +584,8 @@ async function selectCases(
   const result = await db.execute<CaseRow>(sql`
     WITH cases AS (${source})
     SELECT
-      c.source, c.id, c.ref, c.title, c.request_type_name, c.priority, c.customer_status,
+      c.source, c.id, c.ref, c.title, c.request_type_name, c.priority,
+      c.title_from_form, c.priority_from_form, c.customer_status,
       c.created_at, c.updated_at, ${sortAt} AS sort_at, c.source || ':' || c.id AS case_key,
       c.project_key, c.project_name, c.requester_id, c.customer_visibility, c.work_item_id,
       CASE
@@ -590,7 +600,68 @@ async function selectCases(
     ORDER BY ${sortAt} ${direction}, case_key ${direction}
     LIMIT ${options.limit}
   `);
-  return result.rows;
+  return withVisibleMappedValues(result.rows);
+}
+
+/**
+ * A submission with no work item (or a blank work item title) takes its case title and priority
+ * from the stored answer of the form field mapped to them. That answer belongs to the case only
+ * while its field is visible for the stored answers on the submission's pinned version (RT-5): a
+ * legacy submission whose mapped field is hidden, or no longer declared, shows no title or
+ * priority rather than the stored answer. The list, its CSV and every other consumer of
+ * {@link selectCases} get this one result.
+ */
+async function withVisibleMappedValues(rows: CaseRow[]): Promise<CaseRow[]> {
+  const fromForm = rows.filter(
+    (row) =>
+      row.source === "submission" &&
+      (row.title_from_form || row.priority_from_form),
+  );
+  if (fromForm.length === 0) return rows;
+  const stored = await db
+    .select({
+      id: schema.submissionTable.id,
+      formData: schema.submissionTable.formData,
+      formSchema: schema.requestTypeVersionTable.formSchema,
+    })
+    .from(schema.submissionTable)
+    .innerJoin(
+      schema.requestTypeVersionTable,
+      eq(
+        schema.requestTypeVersionTable.id,
+        schema.submissionTable.requestTypeVersionId,
+      ),
+    )
+    .where(
+      inArray(
+        schema.submissionTable.id,
+        fromForm.map((row) => row.id),
+      ),
+    );
+  const byId = new Map(stored.map((entry) => [entry.id, entry]));
+  return rows.map((row) => {
+    if (!fromForm.includes(row)) return row;
+    const entry = byId.get(row.id);
+    // The row was readable a moment ago; if it is gone, show nothing from the form.
+    const rawFields = (entry?.formSchema as { fields?: unknown } | null)
+      ?.fields;
+    const form = {
+      fields: Array.isArray(rawFields) ? rawFields : [],
+    } as FormSchema;
+    const shown = entry ? visibleSubmissionAnswers(form, entry.formData) : {};
+    const isShown = (target: "title" | "priority") => {
+      const key = form.fields.find(
+        (field) => field.mapsTo?.field === target,
+      )?.key;
+      return key !== undefined && Object.hasOwn(shown, key);
+    };
+    return {
+      ...row,
+      title: row.title_from_form && !isShown("title") ? "" : row.title,
+      priority:
+        row.priority_from_form && !isShown("priority") ? null : row.priority,
+    };
+  });
 }
 
 async function countCases(

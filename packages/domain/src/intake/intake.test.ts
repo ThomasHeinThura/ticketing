@@ -30,6 +30,7 @@ import {
   validateSubmissionData,
   visibleFields,
   visibleSubmissionAnswers,
+  visibleSubmissionView,
 } from "./request-type.js";
 import {
   formatSubmissionReference,
@@ -1867,6 +1868,119 @@ describe("visibleSubmissionAnswers", () => {
   });
 });
 
+describe("visibleSubmissionView", () => {
+  // `ghost` is named by a condition but never declared (a version that skipped publish checks).
+  const ghostSchema = (op: "eq" | "neq" | "is_set", value?: string) =>
+    ({
+      fields: [
+        { key: "summary", type: "text", label: "Summary" },
+        {
+          key: "detail",
+          type: "text",
+          label: "Detail",
+          showIf: {
+            field_key: "ghost",
+            op,
+            ...(value === undefined ? {} : { value }),
+          },
+        },
+        { key: "upload", type: "file", label: "Upload" },
+      ],
+    }) as FormSchema;
+
+  it("derives the visible fields and the answers from one result", () => {
+    const schema: FormSchema = {
+      fields: [
+        { key: "gate", type: "checkbox", label: "Gate" },
+        {
+          key: "serial",
+          type: "text",
+          label: "Serial",
+          showIf: { field_key: "gate", op: "eq", value: true },
+        },
+        { key: "notes", type: "text", label: "Notes" },
+        { key: "upload", type: "file", label: "Upload" },
+      ],
+    };
+    const hidden = visibleSubmissionView(schema, {
+      gate: false,
+      serial: "smuggled",
+      notes: "kept",
+      legacy: "x",
+    });
+    expect(hidden.fields.map((f) => f.key)).toEqual([
+      "gate",
+      "notes",
+      "upload",
+    ]);
+    expect(hidden.answers).toEqual({ gate: false, notes: "kept" });
+    const shown = visibleSubmissionView(schema, { gate: true, serial: "SN-1" });
+    expect(shown.fields.map((f) => f.key)).toEqual([
+      "gate",
+      "serial",
+      "notes",
+      "upload",
+    ]);
+    expect(shown.answers).toEqual({ gate: true, serial: "SN-1" });
+    // Every answer belongs to a visible field.
+    for (const view of [hidden, shown])
+      for (const key of Object.keys(view.answers))
+        expect(view.fields.some((f) => f.key === key)).toBe(true);
+  });
+
+  it("does not let an undeclared stored key decide a field's visibility ('eq')", () => {
+    const schema = ghostSchema("eq", "yes");
+    const view = visibleSubmissionView(schema, {
+      summary: "x",
+      ghost: "yes",
+      detail: "smuggled",
+    });
+    expect(view.fields.map((f) => f.key)).toEqual(["summary", "upload"]);
+    expect(view.answers).toEqual({ summary: "x" });
+    expect(Object.hasOwn(view.answers, "ghost")).toBe(false);
+  });
+
+  it("does not let an undeclared stored key decide a field's visibility ('neq', 'is_set')", () => {
+    // `neq yes` with the key absent is true; the stored "yes" must not hide the field.
+    const neq = visibleSubmissionView(ghostSchema("neq", "yes"), {
+      summary: "x",
+      ghost: "yes",
+      detail: "kept",
+    });
+    expect(neq.answers).toEqual({ summary: "x", detail: "kept" });
+    // `is_set` with the key absent is false; a stored value must not show the field.
+    const isSet = visibleSubmissionView(ghostSchema("is_set"), {
+      summary: "x",
+      ghost: "anything",
+      detail: "smuggled",
+    });
+    expect(isSet.answers).toEqual({ summary: "x" });
+    expect(isSet.fields.map((f) => f.key)).toEqual(["summary", "upload"]);
+  });
+
+  it("resolves visibility for the empty answer set when the stored data is not an object", () => {
+    const schema = ghostSchema("neq", "yes");
+    for (const stored of [null, 7, "text", ["a"], undefined]) {
+      const view = visibleSubmissionView(schema, stored);
+      expect(view.answers).toEqual({});
+      expect(view.fields.map((f) => f.key)).toEqual([
+        "summary",
+        "detail",
+        "upload",
+      ]);
+    }
+  });
+
+  it("keeps a declared __proto__ answer and never re-targets the prototype", () => {
+    const view = visibleSubmissionView(
+      { fields: [{ key: "__proto__", type: "text", label: "Odd" }] },
+      JSON.parse('{"__proto__":"v","other":"x"}'),
+    );
+    expect(Object.hasOwn(view.answers, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(view.answers)).toBe(Object.prototype);
+  });
+});
+
 // --- Strict number conversion ---------------------------------------------------
 describe("number answers and number conditions accept only plain decimal strings", () => {
   const schema: FormSchema = {
@@ -1958,7 +2072,8 @@ describe("number answers and number conditions accept only plain decimal strings
     expect(eq("0.5", 0.5)).toBe(true);
     expect(eq("0x10", 16)).toBe(false);
     expect(eq("1e3", 1000)).toBe(false);
-    expect(eq(" 50 ", 50)).toBe(false);
+    // The condition's stored text may carry stray spaces; only the answer side is strict.
+    expect(eq(" 50 ", 50)).toBe(true);
     expect(eq("9007199254740993", 9007199254740992)).toBe(false);
     expect(
       isVisibilityConditionSatisfied(
@@ -1972,6 +2087,68 @@ describe("number answers and number conditions accept only plain decimal strings
         "0x10",
       ),
     ).toBe(false);
+  });
+
+  it("trims a number condition saved as text with spaces, never the answer", () => {
+    const wants = (condition: string, actual: number | string) =>
+      isVisibilityConditionSatisfied(
+        { field_key: "n", op: "eq", value: condition },
+        actual,
+      );
+    for (const condition of [" 16", "16 ", "\t16\n", " 16 "])
+      expect(wants(condition, 16)).toBe(true);
+    expect(wants(" 16", 17)).toBe(false);
+    expect(wants(" 0x10 ", 16)).toBe(false);
+    expect(wants(" 1e1 ", 10)).toBe(false);
+    expect(wants("   ", 0)).toBe(false);
+    // The answer side stays strict: text with spaces is not the number 16.
+    expect(
+      isVisibilityConditionSatisfied(
+        { field_key: "n", op: "eq", value: 16 },
+        "16 ",
+      ),
+    ).toBe(false);
+    // `in` and `neq` read the stored condition the same way.
+    expect(
+      isVisibilityConditionSatisfied(
+        { field_key: "n", op: "in", value: [" 15", "16 "] },
+        16,
+      ),
+    ).toBe(true);
+    expect(
+      isVisibilityConditionSatisfied(
+        { field_key: "n", op: "neq", value: " 16" },
+        16,
+      ),
+    ).toBe(false);
+  });
+
+  it("shows an answer whose condition was saved as spaced text on an old submission", () => {
+    const legacy: FormSchema = {
+      fields: [
+        { key: "seats", type: "number", label: "Seats" },
+        {
+          key: "license",
+          type: "text",
+          label: "License",
+          showIf: { field_key: "seats", op: "eq", value: " 16 " as never },
+        },
+      ],
+    };
+    expect(resolveFormVisibility(legacy, { seats: 16 }).get("license")).toBe(
+      true,
+    );
+    // A legacy numeric text answer is converted first, so it matches too.
+    expect(resolveFormVisibility(legacy, { seats: "16" }).get("license")).toBe(
+      true,
+    );
+    // Text with spaces as the ANSWER is not a number, so it is not 16.
+    expect(resolveFormVisibility(legacy, { seats: "16 " }).get("license")).toBe(
+      false,
+    );
+    expect(
+      visibleSubmissionAnswers(legacy, { seats: 16, license: "KEY-16" }),
+    ).toEqual({ seats: 16, license: "KEY-16" });
   });
 
   it("evaluates the schema's number condition on a converted legacy string only", () => {

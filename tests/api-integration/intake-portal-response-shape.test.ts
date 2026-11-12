@@ -497,6 +497,87 @@ describe("customer-facing intake responses expose only declared fields", () => {
     expect(shown.staff.submission.formData).toEqual(expected);
   });
 
+  it.each([
+    // `ghost` is named by the condition but the version never declares it: whatever is stored
+    // under it must not decide whether `detail` shows.
+    ["eq", { op: "eq", value: "yes" }, false],
+    ["neq", { op: "neq", value: "yes" }, true],
+  ])(
+    "an undeclared stored key named by a '%s' condition neither shows nor hides a field, and fields and answers agree",
+    async (_name, condition, detailShown) => {
+      const s = await seed();
+      await setForm(s.requestType.id, {
+        fields: [
+          { key: "summary", type: "text", label: "Summary", required: true },
+          {
+            key: "detail",
+            type: "text",
+            label: "Detail",
+            showIf: { field_key: "ghost", ...condition },
+          },
+          { key: "notes", type: "text", label: "Notes" },
+        ],
+      });
+      const ref = await submitForm(s, { summary: "Printer" });
+      const stored = {
+        summary: "Printer",
+        ghost: "yes",
+        detail: "stored detail",
+        notes: "kept note",
+      };
+      await db
+        .update(schema.submissionTable)
+        .set({ formData: stored })
+        .where(
+          eq(schema.submissionTable.number, Number(ref.replace("SUB-", ""))),
+        );
+
+      const portal = await portalRequest(
+        s.t,
+        s.customer,
+        `/api/portal/submissions/${ref}`,
+      );
+      expect(portal.status, await portal.clone().text()).toBe(200);
+      const portalBody = (await portal.json()) as {
+        submission: { formData: Record<string, unknown> };
+        version: { formSchema: { fields: Array<{ key: string }> } };
+      };
+      const staff = await staffRequest(
+        s.t,
+        s.t.requester,
+        `/api/submissions/${ref}`,
+      );
+      expect(staff.status, await staff.clone().text()).toBe(200);
+      const staffBody = (await staff.json()) as {
+        submission: { formData: Record<string, unknown> };
+      };
+
+      const answers = {
+        summary: "Printer",
+        ...(detailShown ? { detail: "stored detail" } : {}),
+        notes: "kept note",
+      };
+      const fieldKeys = portalBody.version.formSchema.fields.map(
+        (field) => field.key,
+      );
+      expect(fieldKeys).toEqual(
+        detailShown ? ["summary", "detail", "notes"] : ["summary", "notes"],
+      );
+      expect(portalBody.submission.formData).toEqual(answers);
+      expect(staffBody.submission.formData).toEqual(answers);
+      // The two never disagree: every returned answer belongs to a listed field.
+      for (const key of Object.keys(portalBody.submission.formData))
+        expect(fieldKeys).toContain(key);
+      // The undeclared key is never returned, and history is not rewritten.
+      for (const returned of [
+        portalBody.submission.formData,
+        staffBody.submission.formData,
+      ])
+        expect(Object.hasOwn(returned, "ghost")).toBe(false);
+      expect(await storedFormData(ref)).toEqual(stored);
+    },
+  );
+
   it("does not store a forged answer for a hidden text field or a key the form never declared", async () => {
     const s = await seed();
     await setForm(s.requestType.id, hardwareForm({ op: "eq", value: true }));

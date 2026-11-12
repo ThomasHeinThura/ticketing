@@ -12,6 +12,7 @@ import {
   validateSubmissionData,
   visibleFields,
   visibleSubmissionAnswers,
+  visibleSubmissionView,
 } from "@taskdesk/domain";
 import {
   type ResolvedIdentity,
@@ -1729,7 +1730,12 @@ export function portalReadablePredicate(viewer: PortalViewer) {
   );
 }
 
-export async function findSubmission(
+/**
+ * The submission, its request type, pinned version and thread exactly as stored. The stored
+ * answers are NOT projected here: callers that return a submission to a person go through
+ * {@link findSubmission} or project them themselves ({@link findPortalSubmission}).
+ */
+async function loadSubmission(
   ref: string,
   workspaceId?: string,
   requesterId?: string,
@@ -1933,16 +1939,16 @@ export async function findSubmission(
       left.createdAt.localeCompare(right.createdAt),
     );
   }
-  return { ...materializeSubmissionBundle(row), ref, messages };
+  return { row, ref, messages };
 }
 
-type PortalSubmissionSource = Omit<
-  Awaited<ReturnType<typeof findSubmission>>,
-  "submission" | "version"
-> & {
-  submission: typeof schema.submissionTable.$inferSelect;
-  version: typeof schema.requestTypeVersionTable.$inferSelect;
-};
+/** The submission bundle for a reader: the stored answers are projected to the visible ones. */
+export async function findSubmission(
+  ...args: Parameters<typeof loadSubmission>
+) {
+  const { row, ref, messages } = await loadSubmission(...args);
+  return { ...materializeSubmissionBundle(row), ref, messages };
+}
 
 /**
  * `CP-4`: how a message author appears to a customer. Staff who act publicly are named (the
@@ -2008,26 +2014,26 @@ export async function findPortalSubmission(
   viewerPersonId: string,
 ) {
   const viewer = await loadPortalViewer(viewerPersonId);
-  const row = await findSubmission(
+  const loaded = await loadSubmission(
     ref,
     undefined,
     undefined,
     undefined,
     viewer,
   );
-  const portalRow: PortalSubmissionSource = row;
+  const portalRow = {
+    ...loaded.row,
+    ref: loaded.ref,
+    messages: loaded.messages,
+  };
   const isRequester = portalRow.submission.requesterId === viewer.personId;
   const formSchema = portalRow.version.formSchema as FormSchema;
-  // The customer gets only the answers of fields this form shows for these answers, the same
-  // set as the `fields` list below; a hidden or undeclared stored key never leaves the server.
-  const answers = visibleSubmissionAnswers(
-    formSchema,
-    portalRow.submission.formData,
-  );
-  const fields = visibleFields(
-    formSchema,
-    answers as Record<string, FormValue>,
-  ).map((field) => ({
+  // One visibility result for the stored answers, as stored: the `fields` list and the
+  // `formData` below both come from it, so they cannot disagree, and a stored key the form never
+  // declared neither reaches the customer nor decides what the form shows.
+  const view = visibleSubmissionView(formSchema, portalRow.submission.formData);
+  const answers = view.answers;
+  const fields = view.fields.map((field) => ({
     key: field.key,
     type: field.type,
     label: field.label,

@@ -203,6 +203,7 @@ export function parseNumberAnswer(value: unknown): number | null {
   return null;
 }
 
+/** `a` is the answer given, `b` the condition's stored value: the two are not symmetric. */
 function valuesEqual(a: FormValue, b: FormValue): boolean {
   if (a === b) return true;
   if (typeof a === "string" && typeof b === "string") {
@@ -219,7 +220,9 @@ function valuesEqual(a: FormValue, b: FormValue): boolean {
     if (trimmed === "false") return b === false;
   }
   if (typeof a === "number" && typeof b === "string") {
-    const num = parseNumericString(b);
+    // `b` is the condition's stored value: older forms saved it as text with stray spaces
+    // (" 16"), which must still match the answer 16. Answers (`a`, below) stay strict.
+    const num = parseNumericString(b.trim());
     if (num !== null) return a === num;
   }
   if (typeof a === "string" && typeof b === "number") {
@@ -427,35 +430,69 @@ export function visibleFields(
   return schema.fields.filter((f) => visibility.get(f.key) ?? true);
 }
 
+/** What a reader may be shown of one submission: the form's visible fields and their answers. */
+export type VisibleSubmissionView = {
+  /** The fields the form version shows for these answers, in field order. */
+  readonly fields: readonly FormField[];
+  /** The stored answers of those fields (file fields never have one), values unchanged. */
+  readonly answers: Record<string, unknown>;
+};
+
 /**
- * The stored answers a reader may be shown: only keys of fields the form version declares
- * AND that are visible for these answers (RT-5), in the form's field order, with each stored
- * value unchanged. Hidden-field answers, keys the version never declared (a forged or legacy
- * key) and file fields (their files never sit in `form_data`, IQ-9) are left out. This is a
- * read-time projection for portal and triage responses; stored history is never rewritten.
+ * What a reader may be shown of a stored submission, from ONE visibility result (RT-5): the
+ * fields the form version shows, and the answers of those fields in the form's field order with
+ * each stored value unchanged. Only keys the version declares take part: an undeclared key (a
+ * forged or legacy key) is neither returned nor allowed to decide whether a field is visible,
+ * even when a condition names it. Hidden-field answers and file fields (their files never sit in
+ * `form_data`, IQ-9) are left out of `answers`. A read-time projection for portal and triage
+ * responses; stored history is never rewritten.
  */
-export function visibleSubmissionAnswers(
+export function visibleSubmissionView(
   schema: FormSchema,
   data: unknown,
-): Record<string, unknown> {
+): VisibleSubmissionView {
   const answers: Record<string, unknown> = {};
   if (data === null || typeof data !== "object" || Array.isArray(data)) {
-    return answers;
+    // No usable answers: visibility is still resolved for the empty answer set.
+    const visibility = resolveFormVisibility(schema, {});
+    return {
+      fields: schema.fields.filter((f) => visibility.get(f.key) ?? true),
+      answers,
+    };
   }
-  const visibility = resolveFormVisibility(schema, data);
-  for (const field of schema.fields) {
-    if (field.type === "file" || !(visibility.get(field.key) ?? true)) continue;
-    if (!Object.hasOwn(data, field.key)) continue;
+  const declared = new Set(schema.fields.map((field) => field.key));
+  const stored: Record<string, unknown> = {};
+  for (const key of Object.getOwnPropertyNames(data)) {
+    if (!declared.has(key)) continue;
     // `defineProperty`, not assignment: a field keyed `__proto__` is an own answer, and must
-    // not re-target the prototype of the returned object.
-    Object.defineProperty(answers, field.key, {
-      value: (data as Record<string, unknown>)[field.key],
+    // not re-target the prototype of the copy.
+    Object.defineProperty(stored, key, {
+      value: (data as Record<string, unknown>)[key],
       writable: true,
       enumerable: true,
       configurable: true,
     });
   }
-  return answers;
+  const visibility = resolveFormVisibility(schema, stored);
+  const fields = schema.fields.filter((f) => visibility.get(f.key) ?? true);
+  for (const field of fields) {
+    if (field.type === "file" || !Object.hasOwn(stored, field.key)) continue;
+    Object.defineProperty(answers, field.key, {
+      value: stored[field.key],
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return { fields, answers };
+}
+
+/** The visible stored answers alone: {@link visibleSubmissionView}'s `answers`. */
+export function visibleSubmissionAnswers(
+  schema: FormSchema,
+  data: unknown,
+): Record<string, unknown> {
+  return visibleSubmissionView(schema, data).answers;
 }
 
 /** A validation failure against submitted data. */
