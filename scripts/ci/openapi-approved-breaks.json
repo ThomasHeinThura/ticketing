@@ -526,5 +526,37 @@
 		"pr": 1128,
 		"reason": "The role property remains in the request alternatives; oasdiff reports it removed because the schema now uses anyOf to require role on creation and allow omission only on resend.",
 		"decision": "Coordinator-approved B-4 D-C clarification and PR #1128 independent review; invitation-body.test.ts covers both alternatives."
+	},
+	{
+		"operation": "POST /instance/notification-providers/email/test",
+		"rule": "new-required-request-property",
+		"fingerprint": "b735d575ce37",
+		"pr": 1126,
+		"reason": "The Test action now sends a real email to a recipient the administrator types, so `recipient` is required. The only client is the God Mode email settings screen, updated in the same PR.",
+		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
+	},
+	{
+		"operation": "POST /instance/notification-providers/email/test",
+		"rule": "response-body-one-of-added",
+		"fingerprint": "47dff6f6c6f0",
+		"pr": 1126,
+		"reason": "The Test response is now either a success result or a failure result with the SMTP reply code and a clear message, expressed as two alternatives.",
+		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
+	},
+	{
+		"operation": "POST /instance/notification-providers/email/test",
+		"rule": "response-body-type-changed",
+		"fingerprint": "d21999362760",
+		"pr": 1126,
+		"reason": "Same change as the oneOf entry: the 200 body became a union of the success and failure results.",
+		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
+	},
+	{
+		"operation": "POST /instance/notification-providers/email/test",
+		"rule": "response-required-property-removed",
+		"fingerprint": "2737783c3aff",
+		"pr": 1126,
+		"reason": "`verified` described a login-only check that no longer exists; the result now reports whether the test email was handed to the provider.",
+		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
 	}
 ]
