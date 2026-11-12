@@ -50,6 +50,7 @@ const base: PortalCase = {
   project: { key: "ACME", name: "Acme Support" },
   createdBy: { name: null, isYou: true },
   isRequester: true,
+  raisedBySupport: false,
   customerVisibility: "private",
   sla: null,
 };
@@ -93,7 +94,7 @@ describe("PortalCaseTable", () => {
       "Project",
       "Severity",
       "Status",
-      "Created by",
+      "Requester",
       "Assigned to",
       "Created",
     ]);
@@ -146,7 +147,7 @@ describe("PortalCaseTable", () => {
       Project: "@5xl:table-cell",
       Severity: "@2xl:table-cell",
       Status: "@2xl:table-cell",
-      "Created by": "@4xl:table-cell",
+      Requester: "@4xl:table-cell",
       "Assigned to": "@4xl:table-cell",
       Created: "@5xl:table-cell",
     });
@@ -204,29 +205,19 @@ describe("PortalCaseTable", () => {
     expect(within(withoutSla).queryByText(/due by/i)).toBeNull();
   });
 
-  it("says 'raised for you' only to the requester and names the requester to a colleague (D5, D6)", () => {
-    const direct: PortalCase = {
-      ...base,
-      ref: "HELP-4",
-      source: "direct",
-      createdBy: { name: null, isYou: true },
-      isRequester: true,
-    };
+  it("shows support only for staff-raised cases, including a changed requester", () => {
     render(
       <PortalCaseTable
         caption="Requests"
         cases={[
-          direct,
+          base,
+          { ...base, ref: "HELP-4", source: "direct", raisedBySupport: true },
           {
-            ...direct,
+            ...base,
             ref: "HELP-5",
+            source: "direct",
+            raisedBySupport: true,
             createdBy: { name: "Bob Colleague", isYou: false },
-            isRequester: false,
-          },
-          {
-            ...direct,
-            ref: "HELP-6",
-            createdBy: { name: null, isYou: false },
             isRequester: false,
           },
         ]}
@@ -235,18 +226,11 @@ describe("PortalCaseTable", () => {
     const rows = within(
       screen.getByRole("table", { name: "Requests" }),
     ).getAllByRole("row");
-    expect(
-      within(rows[1]).getByText("Raised by our team for you"),
-    ).toBeVisible();
-    expect(
-      within(rows[2]).getByText("Raised by our team for Bob Colleague"),
-    ).toBeVisible();
-    expect(
-      within(rows[2]).queryByText("Raised by our team for you"),
-    ).toBeNull();
-    expect(
-      within(rows[3]).getByText("Raised by our team for a colleague"),
-    ).toBeVisible();
+    expect(within(rows[1]).queryByText(/Raised by/)).toBeNull();
+    expect(within(rows[2]).getByText("Raised by: Support team")).toBeVisible();
+    expect(within(rows[3]).getByText("Raised by: Support team")).toBeVisible();
+    expect(within(rows[3]).getByText("Bob Colleague")).toBeVisible();
+    expect(screen.queryByText(/@/)).toBeNull();
   });
 
   it("rings a keyboard-focused case reference like the other portal controls", () => {

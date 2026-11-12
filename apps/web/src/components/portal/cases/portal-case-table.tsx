@@ -66,11 +66,11 @@ function formatTime(value: string, locale?: string) {
 
 /**
  * The customer's cases as Kaneo's framed table (WSO2-style columns): Updated, Details, Severity,
- * Status, Created by and Assigned to, which is always "Your team" (`CP-4`/`CP-5`). The service
+ * Status, Requester and Assigned to, which is always "Your team" (`CP-4`/`CP-5`). The service
  * target (`CP-6`) sits under the status badge, so it shows at every width. Columns follow the
  * width of the frame (container queries), not the viewport, because the portal sidebar takes part
  * of the screen: below 42rem only Details shows, carrying the severity, status, service target
- * and update time; Created by and Assigned to join at 56rem, Project and Created at 64rem. The
+ * and update time; Requester and Assigned to join at 56rem, Project and Created at 64rem. The
  * pages cap the frame at 69rem (`max-w-6xl` less padding), so no column waits on a wider step.
  * Every text column wraps instead of holding a fixed width, so the table's minimum width stays
  * inside the frame at each step with long names.
@@ -109,7 +109,7 @@ export function PortalCaseTable({
               {t("cases.columns.status")}
             </TableHead>
             <TableHead className="@4xl:table-cell hidden">
-              {t("cases.columns.createdBy")}
+              {t("cases.columns.requester")}
             </TableHead>
             <TableHead className="@4xl:table-cell hidden">
               {t("cases.columns.assignedTo")}
@@ -157,12 +157,18 @@ export function PortalCaseTable({
                   <span className="line-clamp-2 break-words text-foreground text-sm">
                     {item.title || item.requestTypeName}
                   </span>
-                  {item.source === "direct" ? (
+                  {item.raisedBySupport ? (
                     <span className="text-muted-foreground text-xs">
-                      {raisedByTeamLabel(item, t)}
+                      {t("cases.raisedBy")}: {t("cases.supportTeam")}
                     </span>
                   ) : null}
                   {/* Narrow frames: the hidden columns' key facts, under the title. */}
+                  <span className="@4xl:hidden text-muted-foreground text-xs">
+                    {t("cases.columns.requester")}:{" "}
+                    {item.createdBy.isYou
+                      ? t("request.author.you")
+                      : (item.createdBy.name ?? t("request.author.colleague"))}
+                  </span>
                   <span className="@2xl:hidden mt-1 flex flex-col gap-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <PortalCaseSeverity priority={item.priority} />
@@ -228,20 +234,6 @@ export function PortalCaseTable({
       </Table>
     </Frame>
   );
-}
-
-/**
- * Who a request the team raised (D6) was raised for: "for you" only for the requester; a
- * colleague reads the requester's name (D5), or "a colleague" when the name is withheld.
- */
-export function raisedByTeamLabel(
-  item: Pick<PortalCase, "isRequester" | "createdBy">,
-  t: ReturnType<typeof usePortalTranslation>["t"],
-) {
-  if (item.isRequester) return t("cases.raisedByTeam");
-  return item.createdBy.name
-    ? t("cases.raisedByTeamFor", { name: item.createdBy.name })
-    : t("cases.raisedByTeamForColleague");
 }
 
 export function PortalCaseSeverity({

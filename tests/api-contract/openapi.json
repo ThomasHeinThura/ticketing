@@ -58235,6 +58235,9 @@
                           "isRequester": {
                             "type": "boolean"
                           },
+                          "raisedBySupport": {
+                            "type": "boolean"
+                          },
                           "customerVisibility": {
                             "type": "string",
                             "enum": [
@@ -58292,6 +58295,7 @@
                           "project",
                           "createdBy",
                           "isRequester",
+                          "raisedBySupport",
                           "customerVisibility",
                           "sla"
                         ]
@@ -58822,6 +58826,9 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "customerVisibility": {
                       "type": "string",
                       "enum": [
@@ -58971,6 +58978,7 @@
                     "project",
                     "createdBy",
                     "isRequester",
+                    "raisedBySupport",
                     "customerVisibility",
                     "sla",
                     "description",
@@ -59522,6 +59530,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -59803,6 +59832,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -60120,6 +60151,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -60401,6 +60453,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -60523,6 +60577,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -60804,6 +60879,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -60942,6 +61019,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -61223,6 +61321,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",

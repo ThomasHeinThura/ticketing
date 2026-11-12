@@ -241,6 +241,8 @@ function PortalSubmissionContent() {
         sla?: unknown;
         /** Server-decided eligibility for the P3 customer actions (absent: not offered). */
         isRequester?: boolean;
+        createdBy?: { name: string | null; isYou: boolean };
+        raisedBySupport?: boolean;
         canEscalate?: boolean;
         canReopen?: boolean;
         canRate?: boolean;
@@ -576,6 +578,31 @@ function PortalSubmissionContent() {
             <CardPanel>
               <div className="flex flex-col gap-4">
                 <dl className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <dt>
+                      <CardDescription>
+                        {t("portal:cases.columns.requester")}
+                      </CardDescription>
+                    </dt>
+                    <dd className="text-sm">
+                      {record.createdBy?.isYou
+                        ? t("portal:request.author.you")
+                        : (record.createdBy?.name ??
+                          t("portal:request.author.colleague"))}
+                    </dd>
+                  </div>
+                  {record.raisedBySupport ? (
+                    <div className="flex flex-col gap-1">
+                      <dt>
+                        <CardDescription>
+                          {t("portal:cases.raisedBy")}
+                        </CardDescription>
+                      </dt>
+                      <dd className="text-sm">
+                        {t("portal:cases.supportTeam")}
+                      </dd>
+                    </div>
+                  ) : null}
                   <div className="flex flex-col gap-1">
                     <dt>
                       <CardDescription>

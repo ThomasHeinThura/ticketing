@@ -4271,6 +4271,8 @@
 			}
 		},
 		"cases": {
+			"raisedBy": "Raised by",
+			"supportTeam": "Support team",
 			"outstandingTitle": "Outstanding {{term_request_other}}",
 			"outstandingDescription": "Open {{term_request_other}} that are received, in progress, or waiting for you.",
 			"viewAll": "View all {{term_request_other}}",
@@ -4301,6 +4303,7 @@
 				"project": "Project",
 				"severity": "Severity",
 				"status": "Status",
+				"requester": "Requester",
 				"createdBy": "Created by",
 				"assignedTo": "Assigned to",
 				"created": "Created"
