@@ -53,15 +53,20 @@ import type { AutomationRow } from "./repository";
 
 type ClaimedRun = typeof automationRunTable.$inferSelect;
 
+let lastClaimedWorkspace = "";
+
 export async function claimNextAutomationEvent(): Promise<ClaimedRun[]> {
   return db.transaction(async (tx) => {
     const candidates = await tx.execute<{
       event_id: string | null;
       id: string;
+      workspace_id: string;
     }>(sql`
-      SELECT "event_id", "id" FROM "automation_run"
+      SELECT "event_id", "id", "workspace_id" FROM "automation_run"
       WHERE "state" = 'pending'
-      ORDER BY "triggered_at" ASC, "id" ASC
+      ORDER BY CASE WHEN "origin" = 'schedule' THEN 1 ELSE 0 END,
+        CASE WHEN "workspace_id" > ${lastClaimedWorkspace} THEN 0 ELSE 1 END,
+        "workspace_id", "triggered_at" ASC, "id" ASC
       LIMIT 25
     `);
     const seen = new Set<string>();
@@ -85,13 +90,16 @@ export async function claimNextAutomationEvent(): Promise<ClaimedRun[]> {
               ? eq(automationRunTable.eventId, candidate.event_id)
               : eq(automationRunTable.id, candidate.id),
             eq(automationRunTable.state, "pending"),
+            eq(automationRunTable.workspaceId, candidate.workspace_id),
           ),
         )
         .returning();
-      if (claimed.length > 0)
+      if (claimed.length > 0) {
+        lastClaimedWorkspace = candidate.workspace_id;
         return claimed.sort(
           (a, b) => a.position - b.position || a.id.localeCompare(b.id),
         );
+      }
     }
     return [];
   });
@@ -245,20 +253,30 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
     typeof envelope.payload.key === "string" ? envelope.payload.key : null;
   const loadItem = async () => {
     const item = key
-      ? (await loadWorkItemsByKey(rule.workspaceId, [key])).get(key)
+      ? (
+          await loadWorkItemsByKey(
+            rule.workspaceId,
+            [key],
+            db,
+            run.origin === "schedule",
+          )
+        ).get(key)
       : null;
     if (
       !item ||
-      !ruleCoversProject(rule, item.projectId) ||
-      (run.projectId && item.projectId !== run.projectId) ||
-      !(await automationsEnabled(rule.workspaceId, item.projectId))
+      (run.origin === "schedule" && !ruleCoversProject(rule, item.projectId)) ||
+      (run.origin === "schedule" &&
+        run.projectId &&
+        item.projectId !== run.projectId) ||
+      (run.origin === "schedule" &&
+        !(await automationsEnabled(rule.workspaceId, item.projectId)))
     )
       return null;
     return item;
   };
   const item = await loadItem();
   if (
-    (key && !item) ||
+    (run.origin === "schedule" && key && !item) ||
     (run.origin === "schedule" &&
       (rule.trigger !== "schedule" ||
         !run.eventId?.startsWith(`schedule:${rule.id}:${rule.version}:`)))
@@ -283,8 +301,8 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
   });
   if (!evaluation.matched) {
     await finishRun(run, {
-      state: "done",
-      matched: false,
+      state: run.origin === "schedule" ? "skipped" : "done",
+      matched: run.origin === "schedule" ? null : false,
       results: evaluation.results,
     });
     return { state: "done", matched: false, stopGroup: false };
@@ -311,7 +329,8 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
         },
         role: role as EffectiveRole,
         envelope,
-        loadItem,
+        loadItem:
+          run.origin === "schedule" ? async () => item ?? null : loadItem,
         instance: instanceUrl(),
       }),
     );
@@ -473,6 +492,7 @@ export async function purgeExpiredAutomationRuns(now: Date): Promise<number> {
         and(
           sql`${automationRunTable.triggeredAt} < ${cutoff}`,
           sql`${automationRunTable.state} <> 'pending'`,
+          sql`${automationRunTable.id} NOT LIKE 'schedule-progress:%'`,
           sql`${automationRunTable.state} <> 'running'`,
           sql`NOT ${scopedRowUnderOpenHold({
             workspaceId: sql`${automationRunTable.workspaceId}`,

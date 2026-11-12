@@ -313,7 +313,8 @@ export type DraftProblem =
   | "actionsRequired"
   | "actionValueRequired"
   | "conditionValueRequired"
-  | "roleRequired";
+  | "roleRequired"
+  | "actorRoleTriggerRequired";
 
 /** Client hints only; the API validates the rule and names each problem by path. */
 export function validateDraft(draft: RuleDraft): DraftProblem[] {
@@ -353,6 +354,11 @@ export function validateDraft(draft: RuleDraft): DraftProblem[] {
     )
   )
     problems.push("conditionValueRequired");
+  if (
+    draft.trigger !== "work_item.commented" &&
+    draft.conditions.some((c) => c.field === "actor_role")
+  )
+    problems.push("actorRoleTriggerRequired");
   return problems;
 }
 

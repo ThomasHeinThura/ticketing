@@ -401,6 +401,12 @@ export function nextScheduledAt(
   }
 }
 
+/** Live registration catalog, without the God Mode discovery fallback. */
+export function liveRegisteredJobCatalog(): readonly RegisteredJobStatus[] {
+  const names = new Set(registeredDefinitions.map((job) => job.name));
+  return registeredJobCatalog().filter((job) => names.has(job.name));
+}
+
 /** Exact job names and live schedule state registered in this process. */
 export function registeredJobCatalog(): readonly RegisteredJobStatus[] {
   const definitions =

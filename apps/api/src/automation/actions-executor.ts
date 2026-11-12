@@ -376,6 +376,8 @@ async function transitionItem(
 ): Promise<
   { ok: true; detail?: Record<string, unknown> } | { ok: false; error: string }
 > {
+  if (item.stateTemplateId === action.toStateTemplateId)
+    return { ok: true, detail: { reason: "no_change_needed" } };
   try {
     const result = await runAsAutomation(
       {
@@ -393,7 +395,11 @@ async function transitionItem(
           "automation",
           { toStateTemplateId: action.toStateTemplateId },
           undefined,
-          { roleId: ctx.role.id },
+          {
+            roleId: ctx.role.id,
+            expectedStateId: item.stateId,
+            expectedResolvedAt: item.facts.resolvedAt,
+          },
         ),
     );
     return { ok: true, detail: { stateId: result.stateId } };
@@ -431,7 +437,7 @@ async function callWebhook(
       ),
     )
     .limit(1);
-  if (!webhook || !webhook.active || webhook.disabledAt)
+  if (!webhook?.active || webhook.disabledAt)
     return failure(ACTION_ERRORS.referenceUnavailable);
   const projectId = item?.projectId ?? ctx.envelope.scope.projectId ?? null;
 
@@ -512,6 +518,11 @@ async function executeActionInner(
   if (action.type !== "call_webhook" && !item)
     return failure(ACTION_ERRORS.noWorkItem);
 
+  if (
+    action.type === "transition" &&
+    item?.stateTemplateId === action.toStateTemplateId
+  )
+    return { ok: true, detail: { reason: "no_change_needed" } };
   const projectId = item?.projectId ?? ctx.envelope.scope.projectId ?? null;
   if (
     item &&

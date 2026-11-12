@@ -14,7 +14,7 @@ import {
   registeredDeletionRequestSchema,
   requestRegisteredDeletion,
 } from "../pending-action/deletion-targets";
-import { registeredJobCatalog } from "../scheduler";
+import { liveRegisteredJobCatalog } from "../scheduler";
 import {
   listReachOf,
   requireReachFilteredList,
@@ -471,7 +471,7 @@ async function createRule(
       projectFilter: body.projectFilter ?? null,
     },
     {
-      scheduleAvailable: registeredJobCatalog().some(
+      scheduleAvailable: liveRegisteredJobCatalog().some(
         (job) => job.name === "automation-schedule" && job.enabled,
       ),
     },
@@ -579,7 +579,7 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
               : existing.projectFilter,
         },
         {
-          scheduleAvailable: registeredJobCatalog().some(
+          scheduleAvailable: liveRegisteredJobCatalog().some(
             (job) => job.name === "automation-schedule" && job.enabled,
           ),
         },
@@ -655,7 +655,7 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
         projectFilter: existing.projectFilter,
       },
       {
-        scheduleAvailable: registeredJobCatalog().some(
+        scheduleAvailable: liveRegisteredJobCatalog().some(
           (job) => job.name === "automation-schedule" && job.enabled,
         ),
       },

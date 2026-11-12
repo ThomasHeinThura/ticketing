@@ -78,7 +78,25 @@ export function validateRuleDefinition(
         cron.length > 0 && cron.length <= 100 && cron.split(/\s+/).length === 5;
       if (valid) {
         try {
-          new Cron(cron, { paused: true });
+          const parsed = new Cron(cron, { paused: true, timezone: "UTC" });
+          // Two complete eligible days cover all minute/hour pairs, including midnight.
+          const runs = parsed.nextRuns(2881, new Date("2024-01-01T00:00:00Z"));
+          parsed.stop();
+          if (
+            runs.some(
+              (run, i) =>
+                i > 0 &&
+                run.getTime() -
+                  (runs[i - 1]?.getTime() ?? Number.NEGATIVE_INFINITY) <
+                  300_000,
+            )
+          ) {
+            problems.push({
+              code: "invalid",
+              path: "scheduleCron",
+              message: "schedule_minimum_interval",
+            });
+          }
         } catch {
           valid = false;
         }

@@ -5503,6 +5503,8 @@
 				"roleRequired": "Choose the role this rule runs as.",
 				"actionsRequired": "Add at least one action.",
 				"actionValueRequired": "Choose a value for every action.",
+				"actorRoleTriggerRequired": "Customer author conditions require the comment trigger.",
+				"scheduleMinimumInterval": "Schedules must be at least five minutes apart.",
 				"conditionValueRequired": "Choose a value for every condition."
 			},
 			"schedule": "Schedule (UTC)",

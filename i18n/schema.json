@@ -22708,6 +22708,12 @@
 								"actionValueRequired": {
 									"type": "string"
 								},
+								"actorRoleTriggerRequired": {
+									"type": "string"
+								},
+								"scheduleMinimumInterval": {
+									"type": "string"
+								},
 								"conditionValueRequired": {
 									"type": "string"
 								}
@@ -22717,6 +22723,8 @@
 								"roleRequired",
 								"actionsRequired",
 								"actionValueRequired",
+								"actorRoleTriggerRequired",
+								"scheduleMinimumInterval",
 								"conditionValueRequired"
 							]
 						},

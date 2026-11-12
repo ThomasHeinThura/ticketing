@@ -530,12 +530,15 @@ export function AutomationEditorDialog({
     rule ? draftFromAutomation(rule) : emptyDraft(assignableRoles[0]?.id ?? ""),
   );
   const [touched, setTouched] = useState(false);
-  const [rosterProjectId, setRosterProjectId] = useState(scopeProjectId ?? "");
+  const [chosenRosterProjectId, setRosterProjectId] = useState(
+    scopeProjectId ?? "",
+  );
+  const projects = useGetProjects({ workspaceId });
+  const rosterProjectId = chosenRosterProjectId || projects.data?.[0]?.id || "";
 
   const states = useGetProjectStateTemplates(rosterProjectId || undefined);
   const types = useGetWorkItemTypes({ workspaceId });
   const labels = useGetLabelsByWorkspace(workspaceId);
-  const projects = useGetProjects({ workspaceId });
   const needsPeople = draft.actions.some(
     (action) => actionNeedsPerson(action.type) || action.type === "transition",
   );
@@ -564,10 +567,12 @@ export function AutomationEditorDialog({
     (label) => !("projectId" in label) || !label.projectId,
   );
   const lists: Lists = {
-    states: (states.data ?? []).map((state) => ({
-      value: state.id,
-      label: state.name,
-    })),
+    states: (states.data ?? [])
+      .filter((state) => state.inUse)
+      .map((state) => ({
+        value: state.id,
+        label: state.name,
+      })),
     types: (types.data ?? []).map((type) => ({
       value: type.key,
       label: type.name,
@@ -688,6 +693,16 @@ export function AutomationEditorDialog({
                   ariaLabel={t("editor.schedule")}
                   value={draft.scheduleCron}
                   options={[
+                    ...(!["*/5 * * * *", "0 * * * *", "0 0 * * *"].includes(
+                      draft.scheduleCron,
+                    )
+                      ? [
+                          {
+                            value: draft.scheduleCron,
+                            label: draft.scheduleCron,
+                          },
+                        ]
+                      : []),
                     {
                       value: "*/5 * * * *",
                       label: t("editor.everyFiveMinutes"),
@@ -729,6 +744,11 @@ export function AutomationEditorDialog({
                   }
                 />
               ))}
+              {touched && problems.includes("actorRoleTriggerRequired") ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {t("editor.problems.actorRoleTriggerRequired")}
+                </p>
+              ) : null}
               {touched && problems.includes("conditionValueRequired") ? (
                 <p className="text-xs text-destructive-foreground">
                   {t("editor.problems.conditionValueRequired")}
@@ -874,11 +894,15 @@ export function AutomationEditorDialog({
                   {apiProblems.length > 0 ? (
                     <ul className="list-disc ps-4">
                       {apiProblems.map((problem) => (
-                        <li key={`${problem.path}:${problem.message}`}>
+                        <li
+                          key={`${problem.path}:${problem.message === "schedule_minimum_interval" ? t("editor.problems.scheduleMinimumInterval") : problem.message}`}
+                        >
                           <span className="font-mono text-xs">
                             {problem.path}
                           </span>{" "}
-                          {problem.message}
+                          {problem.message === "schedule_minimum_interval"
+                            ? t("editor.problems.scheduleMinimumInterval")
+                            : problem.message}
                         </li>
                       ))}
                     </ul>

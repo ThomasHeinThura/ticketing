@@ -242,4 +242,12 @@ describe("service desk rule editing", () => {
   it("offers the supported customer value", () => {
     expect(conditionDefaults("actor_role").value).toBe("customer");
   });
+  it("rejects customer actor conditions on another trigger", () => {
+    const draft = draftFromAutomation({
+      ...rule,
+      trigger: "schedule",
+      conditions: [{ field: "actor_role", op: "eq", value: "customer" }],
+    });
+    expect(validateDraft(draft)).toContain("actorRoleTriggerRequired");
+  });
 });

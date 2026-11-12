@@ -2180,11 +2180,11 @@ automation-specific condition keys: `age` (integer minutes since `created_at` or
 only on `work_item.commented`; other role values remain refused).
 
 - `AM-14` Plan G-1 schedules evaluate project items through the ordinary action executor.
-  UTC minute windows are not replayed after downtime. Scans are bounded and continue from a
-  durable cursor; concurrent scans cannot enqueue a candidate twice for one sweep. Disabled
+  UTC schedules catch up once to the latest occurrence after downtime; intervals below five minutes are refused. Scans are bounded and continue from a
+  durable cursor stored in a stable metadata run; candidate rows must match and are capped at 50 pending/running per rule. Event runs take priority and workspace claims rotate within each lane. Unchanged evaluated facts for the same rule version are deduplicated in retained cursor metadata; concurrent scans cannot enqueue a candidate twice for one sweep. Disabled
   rules, disabled feature scopes, and archived/deleted projects/items never act. Run claims,
   effective-role checks, transition guards, audit attribution and loop suppression are shared
-  with event rules. Candidate version mismatch is skipped after a rule edit.
+  with event rules. Candidate version mismatch is skipped after a rule edit. Schedule availability uses this process's live registration catalog and enabled state; it does not attest that a separate jobs-role replica is healthy. Existing event rules retain their previous item-loading and missing-item outcomes.
 - `AM-15` `actor_role eq customer` requires a persisted public comment with actor type
   `person` whose author has `person.side = customer`. Staff, internal, API-key, system and
   automation comments fail. `age` basis `resolved_at` derives the latest transition activity

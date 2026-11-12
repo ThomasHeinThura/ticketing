@@ -81,15 +81,57 @@ describe("service desk automation vocabulary", () => {
         ),
       ).toBe(days === 3);
   });
-  it("checks only the current UTC minute without downtime catch-up", () => {
+  it("catches up once when the tick misses the exact minute", () => {
     expect(scheduleDue("0 * * * *", new Date("2026-11-12T12:00:32Z"))).toBe(
       true,
     );
     expect(scheduleDue("0 * * * *", new Date("2026-11-12T12:01:00Z"))).toBe(
-      false,
+      true,
     );
     expect(scheduleDue("*/5 * * * *", new Date("2026-11-12T12:05:00Z"))).toBe(
       true,
     );
   });
+  it("refuses frequent expressions and accepts the presets", () => {
+    for (const [scheduleCron, expected] of [
+      ["* * * * *", false],
+      ["1,4 * * * *", false],
+      ["*/5 * * * *", true],
+      ["0 * * * *", true],
+      ["0 0 * * *", true],
+    ] as const) {
+      expect(
+        validateRuleDefinition(
+          {
+            trigger: "schedule",
+            scheduleCron,
+            conditions: [],
+            actions: [{ type: "transition", toStateTemplateId: "closed" }],
+          },
+          { scheduleAvailable: true },
+        ).ok,
+      ).toBe(expected);
+    }
+  });
+  it.each([1, 2, 5])(
+    "250 daily rules remain due with %i minute ticks",
+    (cadence) => {
+      const last = Array<Date | undefined>(250).fill(undefined);
+      const counts = Array<number>(250).fill(0);
+      for (let tick = 0; tick < 9; tick++) {
+        const now = new Date(Date.UTC(2026, 10, 12, 0, 1 + tick * cadence));
+        for (
+          let i = (tick % 3) * 100;
+          i < Math.min(((tick % 3) + 1) * 100, 250);
+          i++
+        ) {
+          if (scheduleDue("0 0 * * *", now, last[i])) {
+            counts[i] = (counts[i] ?? 0) + 1;
+            last[i] = now;
+          }
+        }
+      }
+      expect(counts.every((c) => c === 1)).toBe(true);
+    },
+  );
 });

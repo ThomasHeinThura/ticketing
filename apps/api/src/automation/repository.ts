@@ -416,6 +416,7 @@ export async function listRuns(
     .where(
       and(
         eq(automationRunTable.automationId, automationId),
+        sql`${automationRunTable.id} <> ${`schedule-progress:${automationId}`}`,
         options.before
           ? lt(automationRunTable.triggeredAt, options.before)
           : undefined,
