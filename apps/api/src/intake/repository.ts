@@ -695,9 +695,10 @@ export async function portalIdentity(userId: string) {
 
 export async function portalCatalogue(
   organisationId: string,
-  query = "",
-  personId?: string,
+  query: string | undefined,
+  personId: string,
 ) {
+  const effectiveProjectId = sql`COALESCE(${schema.requestTypeVersionTable.defaultProjectId}, ${schema.requestTypeTable.defaultProjectId})`;
   const latestPublished = db
     .select({
       requestTypeId: schema.requestTypeVersionTable.requestTypeId,
@@ -745,6 +746,14 @@ export async function portalCatalogue(
         eq(schema.organisationRequestTypeTable.organisationId, organisationId),
         eq(schema.requestTypeTable.published, true),
         eq(schema.requestTypeTable.customerVisible, true),
+        or(
+          sql`${effectiveProjectId} IS NULL`,
+          customerProjectAccessExists(
+            personId,
+            organisationId,
+            effectiveProjectId,
+          ),
+        ),
       ),
     );
   const workspaceIds = [...new Set(rows.map((row) => row.workspaceId))];
@@ -791,40 +800,12 @@ export async function portalCatalogue(
   // D-D: project-bound request types require explicit per-person customer_project_access, while
   // organisation-level request types (defaultProjectId === null) remain available to the org.
   const portalScope = await customerPortalScope();
-  const grantedProjectIds =
-    personId !== undefined
-      ? new Set(
-          (
-            await db
-              .select({
-                projectId: schema.customerProjectAccessTable.projectId,
-              })
-              .from(schema.customerProjectAccessTable)
-              .innerJoin(
-                schema.projectTable,
-                eq(
-                  schema.projectTable.id,
-                  schema.customerProjectAccessTable.projectId,
-                ),
-              )
-              .where(
-                and(
-                  eq(schema.customerProjectAccessTable.personId, personId),
-                  eq(schema.projectTable.organisationId, organisationId),
-                  isNull(schema.projectTable.deletedAt),
-                ),
-              )
-          ).map((row) => row.projectId),
-        )
-      : null;
   const activeRows = rows.filter((row) => {
     if (!enabledWorkspaceIds.has(row.workspaceId)) return false;
     const targetProjectId =
       row.version.defaultProjectId ?? row.type.defaultProjectId ?? null;
     if (!customerPortalOnFor(portalScope, row.workspaceId, targetProjectId))
       return false;
-    if (grantedProjectIds !== null && targetProjectId !== null)
-      return grantedProjectIds.has(targetProjectId);
     return true;
   });
   const ordered = activeRows.sort(
@@ -860,7 +841,7 @@ export async function portalCatalogue(
     .filter(({ type }) =>
       `${type.name} ${type.description ?? ""} ${type.group}`
         .toLocaleLowerCase()
-        .includes(query.toLocaleLowerCase()),
+        .includes((query ?? "").toLocaleLowerCase()),
     )
     .sort(
       (a, b) =>

@@ -62,6 +62,9 @@ describe("customer immediate comment email", () => {
       .update(schema.projectTable)
       .set({ organisationId: actor.workspace.organisationId })
       .where(eq(schema.projectTable.id, project.id));
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: customerPerson.id, projectId: project.id });
     await grantWorkItemProjectAccess(actor.user.id, project.id);
     const type = requireRow(
       await db
@@ -291,6 +294,29 @@ describe("customer immediate comment email", () => {
       .from(schema.notificationTable)
       .where(eq(schema.notificationTable.userId, otherCustomerUser.id));
     expect(otherCustomerNotifications).toEqual([]);
+
+    await createComment(item.id, actor.workspace.id, actor.user.id, "person", {
+      visibility: "public",
+      body: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Queued before revoke" }],
+          },
+        ],
+      },
+    });
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(eq(schema.customerProjectAccessTable.personId, customerPerson.id));
+    await expect(
+      processNextNotificationDelivery(immediateNotificationRuntime(send)),
+    ).resolves.toMatchObject({ kind: "suppressed" });
+    expect(send).toHaveBeenCalledTimes(1);
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: customerPerson.id, projectId: project.id });
 
     const secondComment = await createComment(
       item.id,

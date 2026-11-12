@@ -143,6 +143,150 @@ describe("create (CP-20, CP-23)", () => {
       );
     expect(access).toEqual([{ projectId: project.id }]);
   });
+  it.each(["lost reach", "suspended", "demoted", "tampered"] as const)(
+    "skips invitation projects when the inviter is %s at acceptance",
+    async (scenario) => {
+      const [project] = await db
+        .select({ id: schema.projectTable.id })
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.organisationId, w.org.id));
+      if (!project) throw new Error("Invitation project missing");
+      const email = `${scenario.replace(" ", "-")}@example.test`;
+      const response = await w.call(w.owner.user, w.base(), {
+        method: "POST",
+        body: { email, projectIds: [project.id] },
+      });
+      expect(response.status).toBe(201);
+      const invitation = (await response.json()) as { id: string };
+      await runCustomerInvitationDeliveryJob();
+      const customer = await admittedCustomer(email);
+      const [inviter] = await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, w.owner.user.id));
+      if (!inviter) throw new Error("Inviter missing");
+      let tamperedId: string | undefined;
+      if (scenario === "lost reach") {
+        await db
+          .delete(schema.membershipTable)
+          .where(
+            and(
+              eq(schema.membershipTable.personId, inviter.id),
+              eq(schema.membershipTable.scope, "workspace"),
+              eq(schema.membershipTable.scopeId, w.workspaceId),
+            ),
+          );
+      } else if (scenario === "suspended") {
+        await db
+          .update(schema.personTable)
+          .set({ active: false })
+          .where(eq(schema.personTable.id, inviter.id));
+      } else if (scenario === "demoted") {
+        await db
+          .update(schema.workspaceUserTable)
+          .set({ role: "member" })
+          .where(
+            and(
+              eq(schema.workspaceUserTable.userId, w.owner.user.id),
+              eq(schema.workspaceUserTable.workspaceId, w.workspaceId),
+            ),
+          );
+      } else {
+        const { createProjectFixture } = await import("./helpers/fixtures");
+        const extra = await createProjectFixture({
+          workspaceId: w.workspaceId,
+        });
+        tamperedId = extra.project.id;
+        await db
+          .update(schema.projectTable)
+          .set({ organisationId: w.org.id })
+          .where(eq(schema.projectTable.id, tamperedId));
+        await db
+          .insert(schema.customerInvitationProjectTable)
+          .values({ invitationId: invitation.id, projectId: tamperedId });
+      }
+      expect(
+        (
+          await accept(
+            customer.user,
+            invitation.id,
+            credentialFor(email, invitation.id),
+          )
+        ).status,
+      ).toBe(200);
+      const access = await db
+        .select()
+        .from(schema.customerProjectAccessTable)
+        .where(
+          eq(
+            schema.customerProjectAccessTable.personId,
+            customer.personId as string,
+          ),
+        );
+      expect(access).toHaveLength(0);
+      const [audit] = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, invitation.id),
+            eq(schema.auditLogTable.action, "invitation.redeemed"),
+          ),
+        );
+      expect(audit?.after).toMatchObject({
+        grantedProjectIds: [],
+        skippedProjectIds: expect.arrayContaining([
+          project.id,
+          ...(tamperedId ? [tamperedId] : []),
+        ]),
+      });
+    },
+  );
+  it("refuses acceptance without the inviter person and creates no project grant", async () => {
+    const [project] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.organisationId, w.org.id));
+    if (!project) throw new Error("Invitation project missing");
+    const email = "missing-inviter@example.test";
+    const response = await w.call(w.owner.user, w.base(), {
+      method: "POST",
+      body: { email, projectIds: [project.id] },
+    });
+    expect(response.status).toBe(201);
+    const invitation = (await response.json()) as { id: string };
+    await runCustomerInvitationDeliveryJob();
+    const customer = await admittedCustomer(email);
+    const [inviter] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, w.owner.user.id));
+    if (!inviter) throw new Error("Inviter missing before deletion");
+    await db
+      .delete(schema.personTable)
+      .where(eq(schema.personTable.id, inviter.id));
+    const credential = credentialFor(email, invitation.id);
+    const refused = await accept(customer.user, invitation.id, credential);
+    const unknown = await accept(
+      customer.user,
+      "unknown-invitation",
+      credential,
+    );
+    expect(refused.status).toBe(404);
+    expect(await refused.text()).toBe(await unknown.text());
+    const access = await db
+      .select()
+      .from(schema.customerProjectAccessTable)
+      .where(
+        eq(
+          schema.customerProjectAccessTable.personId,
+          customer.personId as string,
+        ),
+      );
+    expect(access).toEqual([]);
+    expect((await w.rowOf(invitation.id))?.status).toBe("pending");
+  });
+
   it("stores a hash-only credential, mails the link with the credential in the fragment and never returns it", async () => {
     const response = await w.call(w.owner.user, w.base(), {
       method: "POST",

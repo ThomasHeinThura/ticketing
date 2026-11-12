@@ -5,14 +5,19 @@ import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { kbCategoryTable } from "../../apps/api/src/database/schema-p5-kb";
 import {
   announcementProjectTable,
   announcementTable,
+  releaseTable,
+  serviceLinkTable,
+  serviceTable,
 } from "../../apps/api/src/database/schema-p5-service";
 import {
   timeActivityTable,
   timeEntryTable,
 } from "../../apps/api/src/database/schema-p5-time";
+import { changeProjectCustomerAccess } from "../../apps/api/src/project/members/customer-access";
 import {
   addCustomer,
   PORTAL_HOST,
@@ -59,6 +64,319 @@ describe("per-person customer project reach", () => {
     expect(
       (await portalRequest(s.t, c, `/api/portal/submissions/${ref}`)).status,
     ).toBe(200);
+  });
+  it("paginates submissions within the four customer access scopes", async () => {
+    const s = await seedIntake("customer-pagination-matrix");
+    const b = await addCustomer(s.t);
+    const c = await addCustomer(s.t);
+    const foreign = await createCustomerPrincipal();
+    const { project: p2 } = await createProjectFixture({
+      workspaceId: s.t.workspaceId,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: s.customer.orgId })
+      .where(eq(schema.projectTable.id, p2.id));
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(eq(schema.customerProjectAccessTable.personId, b.person.id));
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(eq(schema.customerProjectAccessTable.personId, c.person.id));
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: b.person.id, projectId: p2.id });
+    const secondType = requireRow(
+      await db
+        .insert(schema.requestTypeTable)
+        .values({
+          workspaceId: s.t.workspaceId,
+          key: "b8-pagination-p2",
+          name: "P2 pagination",
+          group: "General",
+          workItemTypeId: s.t.type.id,
+          defaultProjectId: p2.id,
+          formSchema: TITLE_FORM,
+          published: true,
+          customerVisible: true,
+        })
+        .returning(),
+      "second type",
+    );
+    await db.insert(schema.requestTypeVersionTable).values({
+      workspaceId: s.t.workspaceId,
+      requestTypeId: secondType.id,
+      number: 1,
+      formSchema: TITLE_FORM,
+      workItemTypeId: s.t.type.id,
+      defaultProjectId: p2.id,
+    });
+    await db
+      .insert(schema.organisationRequestTypeTable)
+      .values({ organisationId: b.orgId, requestTypeId: secondType.id });
+    const refsA = [
+      await submitAs(s, s.customer, "A page one"),
+      await submitAs(s, s.customer, "A page two"),
+    ];
+    const refsB = [
+      await submitAs({ t: s.t, requestType: secondType }, b, "B page one"),
+      await submitAs({ t: s.t, requestType: secondType }, b, "B page two"),
+    ];
+    for (const [person, expected] of [
+      [s.customer, refsA],
+      [b, refsB],
+      [c, []],
+      [foreign, []],
+    ] as const) {
+      const firstResponse = await portalRequest(
+        s.t,
+        person,
+        "/api/portal/submissions?limit=1",
+      );
+      expect(firstResponse.status).toBe(200);
+      const first = (await firstResponse.json()) as {
+        submissions: { ref: string }[];
+        page: { nextCursor: string | null; hasMore: boolean };
+        meta: { total: number };
+      };
+      expect(first.meta.total).toBe(expected.length);
+      expect(first.submissions).toHaveLength(expected.length ? 1 : 0);
+      expect(first.page.hasMore).toBe(expected.length > 1);
+      const seen = first.submissions.map((row) => row.ref);
+      if (first.page.nextCursor) {
+        const secondResponse = await portalRequest(
+          s.t,
+          person,
+          `/api/portal/submissions?limit=1&cursor=${encodeURIComponent(first.page.nextCursor)}`,
+        );
+        expect(secondResponse.status).toBe(200);
+        const second = (await secondResponse.json()) as typeof first;
+        expect(second.meta.total).toBe(expected.length);
+        expect(second.page).toEqual({ hasMore: false, nextCursor: null });
+        seen.push(...second.submissions.map((row) => row.ref));
+      }
+      expect(seen.sort()).toEqual([...expected].sort());
+    }
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        eq(schema.customerProjectAccessTable.personId, s.customer.person.id),
+      );
+    const revoked = await portalRequest(
+      s.t,
+      s.customer,
+      "/api/portal/submissions?limit=1",
+    );
+    expect(await revoked.json()).toMatchObject({
+      submissions: [],
+      meta: { total: 0 },
+    });
+  });
+
+  it("scopes backlog listing and ranking to each customer's live project grants", async () => {
+    const s = await seedIntake("customer-backlog-matrix");
+    const b = await addCustomer(s.t);
+    const c = await addCustomer(s.t);
+    const foreign = await createCustomerPrincipal();
+    const { project: p2 } = await createProjectFixture({
+      workspaceId: s.t.workspaceId,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: s.customer.orgId })
+      .where(eq(schema.projectTable.id, p2.id));
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.projectId, s.t.project.id),
+          eq(schema.customerProjectAccessTable.personId, b.person.id),
+        ),
+      );
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.projectId, s.t.project.id),
+          eq(schema.customerProjectAccessTable.personId, c.person.id),
+        ),
+      );
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: b.person.id, projectId: p2.id });
+    const p2State = requireRow(
+      await db
+        .insert(schema.stateTable)
+        .values({ projectId: p2.id, stateTemplateId: s.t.backlog.id })
+        .returning(),
+      "backlog state",
+    );
+    const items = [];
+    for (const [person, project, stateId, label] of [
+      [s.customer, s.t.project, s.t.workItem.stateId, "P1"],
+      [b, p2, p2State.id, "P2"],
+    ] as const) {
+      const group = [];
+      for (const n of [1, 2]) {
+        const item = requireRow(
+          await db
+            .insert(schema.workItemTable)
+            .values({
+              workspaceId: s.t.workspaceId,
+              projectId: project.id,
+              typeId: s.t.type.id,
+              stateId,
+              title: `${label} backlog ${n}`,
+              number: 8000 + n,
+              key: `B8${label}-${8000 + n}`,
+              position: String(n),
+              requesterId: person.person.id,
+              customerVisibility: "organisation",
+            })
+            .returning(),
+          "backlog item",
+        );
+        await db.insert(schema.submissionTable).values({
+          organisationId: person.orgId,
+          requesterId: person.person.id,
+          requestTypeId: s.requestType.id,
+          requestTypeVersionId: s.version.id,
+          formData: {},
+          state: "accepted",
+          submittedAt: new Date(),
+          customerVisibility: "organisation",
+          workItemId: item.id,
+        });
+        group.push(item);
+      }
+      items.push(group);
+    }
+    const p1Items = items[0];
+    const p2Items = items[1];
+    if (!p1Items?.[0] || !p1Items[1] || !p2Items?.[0] || !p2Items[1])
+      throw new Error("Backlog fixtures missing");
+    for (const [person, own, denied] of [
+      [s.customer, p1Items, p2Items],
+      [b, p2Items, p1Items],
+      [c, [], p1Items],
+      [foreign, [], p1Items],
+    ] as const) {
+      const list = await portalRequest(
+        s.t,
+        person,
+        "/api/portal/requests/backlog",
+      );
+      expect(list.status).toBe(200);
+      const text = await list.text();
+      for (const item of own) expect(text).toContain(item.key);
+      for (const item of denied) {
+        expect(text).not.toContain(item.key);
+        const blocked = await portalRequest(
+          s.t,
+          person,
+          "/api/portal/requests/rank",
+          { method: "POST", body: { key: item.key, beforeId: "missing" } },
+        );
+        const missing = await portalRequest(
+          s.t,
+          person,
+          "/api/portal/requests/rank",
+          { method: "POST", body: { key: "UNKNOWN-B8", beforeId: "missing" } },
+        );
+        expect(blocked.status).toBe(404);
+        expect(await blocked.text()).toBe(await missing.text());
+      }
+    }
+    expect(
+      (
+        await portalRequest(s.t, s.customer, "/api/portal/requests/rank", {
+          method: "POST",
+          body: { key: p1Items[0].key, beforeId: p1Items[1].id },
+        })
+      ).status,
+    ).toBe(200);
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, s.customer.person.id),
+          eq(schema.customerProjectAccessTable.projectId, s.t.project.id),
+        ),
+      );
+    expect(
+      await (
+        await portalRequest(s.t, s.customer, "/api/portal/requests/backlog")
+      ).text(),
+    ).not.toContain(p1Items[0].key);
+    expect(
+      (
+        await portalRequest(s.t, s.customer, "/api/portal/requests/rank", {
+          method: "POST",
+          body: { key: p1Items[0].key, beforeId: p1Items[1].id },
+        })
+      ).status,
+    ).toBe(404);
+  });
+  it("serializes duplicate grants and grant-revoke races with one audit per change", async () => {
+    const s = await seedIntake("customer-project-race");
+    const person = await addCustomer(s.t);
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, person.person.id),
+          eq(schema.customerProjectAccessTable.projectId, s.t.project.id),
+        ),
+      );
+    const input = {
+      projectId: s.t.project.id,
+      workspaceId: s.t.workspaceId,
+      personId: person.person.id,
+      actorId: s.t.requester.user.id,
+      actorPersonId: s.t.requesterPerson.id,
+    };
+    await Promise.all([
+      changeProjectCustomerAccess({ ...input, granted: true }),
+      changeProjectCustomerAccess({ ...input, granted: true }),
+    ]);
+    const auditRows = () =>
+      db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, person.person.id),
+            eq(schema.auditLogTable.action, "membership.changed"),
+          ),
+        );
+    const first = await auditRows();
+    expect(first).toHaveLength(1);
+    expect(first[0]?.after).toMatchObject({
+      scope: "project",
+      scopeId: s.t.project.id,
+      granted: true,
+    });
+    await Promise.all([
+      changeProjectCustomerAccess({ ...input, granted: false }),
+      changeProjectCustomerAccess({ ...input, granted: true }),
+    ]);
+    const rows = await auditRows();
+    const access = await db
+      .select()
+      .from(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, person.person.id),
+          eq(schema.customerProjectAccessTable.projectId, s.t.project.id),
+        ),
+      );
+    expect([2, 3]).toContain(rows.length);
+    expect(access.length).toBe(rows.length === 3 ? 1 : 0);
+    expect(
+      rows.filter(
+        (row) => (row.after as { granted?: boolean }).granted === false,
+      ),
+    ).toHaveLength(1);
   });
   it("isolates same-organisation customers and changes reach on grant and revoke", async () => {
     const s = await seedIntake("customer-project-access");
@@ -130,6 +448,88 @@ describe("per-person customer project reach", () => {
       b,
       "Second engagement request",
     );
+
+    for (const [person, visible, hidden] of [
+      [s.customer, [s.requestType.key], [secondType.key]],
+      [b, [secondType.key], [s.requestType.key]],
+      [c, [], [s.requestType.key, secondType.key]],
+      [foreign, [], [s.requestType.key, secondType.key]],
+    ] as const) {
+      const catalogue = await portalRequest(
+        s.t,
+        person,
+        "/api/portal/catalogue",
+      );
+      expect(catalogue.status).toBe(200);
+      const body = await catalogue.text();
+      for (const key of visible) expect(body).toContain(key);
+      for (const key of hidden) {
+        expect(body).not.toContain(key);
+        const denied = await portalRequest(
+          s.t,
+          person,
+          `/api/portal/catalogue/${key}`,
+        );
+        const missing = await portalRequest(
+          s.t,
+          person,
+          "/api/portal/catalogue/unknown-b8-key",
+        );
+        expect(denied.status).toBe(404);
+        expect(await denied.text()).toBe(await missing.text());
+        expect(
+          (
+            await portalRequest(s.t, person, "/api/portal/submissions", {
+              method: "POST",
+              body: { key, formData: { summary: "Denied" } },
+            })
+          ).status,
+        ).toBe(404);
+      }
+    }
+
+    for (const [person, ownRef, deniedRefs] of [
+      [s.customer, ref, [ref2]],
+      [b, ref2, [ref]],
+      [c, null, [ref, ref2]],
+      [foreign, null, [ref, ref2]],
+    ] as const) {
+      const list = await portalRequest(
+        s.t,
+        person,
+        "/api/portal/submissions?limit=1",
+      );
+      expect(list.status).toBe(200);
+      expect(await list.json()).toMatchObject({
+        submissions: ownRef ? [{ ref: ownRef }] : [],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: ownRef ? 1 : 0 },
+      });
+      for (const deniedRef of deniedRefs) {
+        for (const [suffix, body] of [
+          ["/messages", { body: "Denied reply" }],
+          ["/withdraw", undefined],
+          ["/escalate-priority", { priority: "high" }],
+          ["/reopen", undefined],
+          ["/satisfaction", { rating: 5 }],
+        ] as const) {
+          const denied = await portalRequest(
+            s.t,
+            person,
+            `/api/portal/submissions/${deniedRef}${suffix}`,
+            { method: "POST", body },
+          );
+          const unknown = await portalRequest(
+            s.t,
+            person,
+            `/api/portal/submissions/SUB-999999${suffix}`,
+            { method: "POST", body },
+          );
+          expect(denied.status).toBe(404);
+          expect(await denied.text()).toBe(await unknown.text());
+        }
+      }
+    }
 
     const activity = requireRow(
       await db
@@ -397,7 +797,15 @@ describe("per-person customer project reach", () => {
       [s.customer, s.t.project, ref, "P1"],
       [b, p2, ref2, "P2"],
     ] as const) {
+      const category = requireRow(
+        await db
+          .insert(kbCategoryTable)
+          .values({ workspaceId: s.t.workspaceId, name: `${marker} category` })
+          .returning(),
+        "category",
+      );
       const article = await insertArticle(s.t.workspaceId, {
+        categoryId: category.id,
         title: `${marker} guide`,
         projectId: project.id,
         state: "published",
@@ -440,7 +848,44 @@ describe("per-person customer project reach", () => {
           .returning(),
         "notification",
       );
-      resources.push({ article, announcement, notification });
+      const serviceId = `b8-service-${marker}`;
+      const releaseId = `b8-release-${marker}`;
+      await db.insert(serviceTable).values({
+        id: serviceId,
+        workspaceId: s.t.workspaceId,
+        name: `${marker} service`,
+      });
+      await db.insert(serviceLinkTable).values({
+        workspaceId: s.t.workspaceId,
+        serviceId,
+        kind: "project",
+        projectId: project.id,
+      });
+      const publishedAt = new Date("2026-11-01T12:00:00Z");
+      await db.insert(releaseTable).values({
+        id: releaseId,
+        workspaceId: s.t.workspaceId,
+        name: `${marker} release`,
+        serviceId,
+        status: "released",
+        publishToPortal: true,
+        publishedAt,
+        portalSnapshot: {
+          version: 1,
+          name: `${marker} release`,
+          serviceName: `${marker} service`,
+          plannedDate: null,
+          notes: null,
+          publishedAt: publishedAt.toISOString(),
+        },
+      });
+      resources.push({
+        article,
+        announcement,
+        notification,
+        releaseId,
+        category,
+      });
     }
     for (const [person, own, other] of [
       [s.customer, resources[0], resources[1]],
@@ -456,6 +901,87 @@ describe("per-person customer project reach", () => {
         for (const row of resources)
           expect(kbText).not.toContain(row.article.id);
       if (other) expect(kbText).not.toContain(other.article.id);
+      const releases = await portalRequest(s.t, person, "/api/portal/releases");
+      expect(releases.status).toBe(200);
+      const releaseText = await releases.text();
+      for (const resource of resources) {
+        if (resource === own) expect(releaseText).toContain(resource.releaseId);
+        else expect(releaseText).not.toContain(resource.releaseId);
+        const detail = await portalRequest(
+          s.t,
+          person,
+          `/api/portal/releases/${resource.releaseId}`,
+        );
+        if (resource === own) expect(detail.status).toBe(200);
+        else {
+          const unknown = await portalRequest(
+            s.t,
+            person,
+            "/api/portal/releases/unknown-b8-release",
+          );
+          expect(detail.status).toBe(404);
+          expect(await detail.text()).toBe(await unknown.text());
+        }
+        if (resource !== own) {
+          for (const [url, body] of [
+            [
+              `/api/portal/kb/${resource.article.id}/feedback`,
+              { helpful: true },
+            ],
+            [
+              "/api/portal/kb/deflection",
+              { articleId: resource.article.id, query: "guide" },
+            ],
+          ] as const)
+            expect(
+              (await portalRequest(s.t, person, url, { method: "POST", body }))
+                .status,
+            ).toBe(404);
+        }
+      }
+      const categories = await portalRequest(
+        s.t,
+        person,
+        "/api/portal/kb/categories",
+      );
+      expect(categories.status).toBe(200);
+      const categoryText = await categories.text();
+      for (const resource of resources) {
+        if (resource === own)
+          expect(categoryText).toContain(resource.category.id);
+        else expect(categoryText).not.toContain(resource.category.id);
+      }
+      const suggestions = await portalRequest(
+        s.t,
+        person,
+        "/api/portal/kb/deflection?q=guide",
+      );
+      expect(suggestions.status).toBe(200);
+      const suggestionText = await suggestions.text();
+      for (const resource of resources)
+        if (resource !== own)
+          expect(suggestionText).not.toContain(resource.article.id);
+      if (own) {
+        expect(suggestionText).toContain(own.article.id);
+        expect(
+          (
+            await portalRequest(
+              s.t,
+              person,
+              `/api/portal/kb/${own.article.id}/feedback`,
+              { method: "POST", body: { helpful: true } },
+            )
+          ).status,
+        ).toBe(200);
+        expect(
+          (
+            await portalRequest(s.t, person, "/api/portal/kb/deflection", {
+              method: "POST",
+              body: { articleId: own.article.id, query: "guide" },
+            })
+          ).status,
+        ).toBe(200);
+      }
       const notices = await portalRequest(
         s.t,
         person,
@@ -480,6 +1006,48 @@ describe("per-person customer project reach", () => {
         for (const row of resources)
           expect(inboxText).not.toContain(row.notification.id);
       if (other) expect(inboxText).not.toContain(other.notification.id);
+      if (own) {
+        for (const state of ["read", "unread"]) {
+          expect(
+            (
+              await portalRequest(
+                s.t,
+                person,
+                `/api/portal/notification/${own.notification.id}/${state}`,
+                { method: "PATCH" },
+              )
+            ).status,
+          ).toBe(200);
+        }
+        expect(
+          (
+            await portalRequest(
+              s.t,
+              person,
+              "/api/portal/notification/read-all",
+              { method: "PATCH" },
+            )
+          ).status,
+        ).toBe(200);
+      }
+      if (other) {
+        for (const state of ["read", "unread"]) {
+          const denied = await portalRequest(
+            s.t,
+            person,
+            `/api/portal/notification/${other.notification.id}/${state}`,
+            { method: "PATCH" },
+          );
+          const unknown = await portalRequest(
+            s.t,
+            person,
+            `/api/portal/notification/unknown-b8-notification/${state}`,
+            { method: "PATCH" },
+          );
+          expect(denied.status).toBe(404);
+          expect(await denied.text()).toBe(await unknown.text());
+        }
+      }
       if (own) {
         expect(
           (await portalRequest(s.t, person, `/api/portal/kb/${own.article.id}`))
@@ -765,6 +1333,60 @@ describe("per-person customer project reach", () => {
             )
           ).status,
         ).toBe(404);
+        await db
+          .update(schema.notificationTable)
+          .set({ isRead: false })
+          .where(eq(schema.notificationTable.id, resource.notification.id));
+        expect(
+          (
+            await portalRequest(
+              s.t,
+              file.owner,
+              `/api/portal/kb/${resource.article.id}/feedback`,
+              { method: "POST", body: { helpful: true } },
+            )
+          ).status,
+        ).toBe(404);
+        expect(
+          (
+            await portalRequest(s.t, file.owner, "/api/portal/kb/deflection", {
+              method: "POST",
+              body: { articleId: resource.article.id, query: "guide" },
+            })
+          ).status,
+        ).toBe(404);
+        expect(
+          await (
+            await portalRequest(s.t, file.owner, "/api/portal/kb/categories")
+          ).text(),
+        ).not.toContain(resource.category.id);
+        for (const state of ["read", "unread"]) {
+          expect(
+            (
+              await portalRequest(
+                s.t,
+                file.owner,
+                `/api/portal/notification/${resource.notification.id}/${state}`,
+                { method: "PATCH" },
+              )
+            ).status,
+          ).toBe(404);
+        }
+        expect(
+          (
+            await portalRequest(
+              s.t,
+              file.owner,
+              "/api/portal/notification/read-all",
+              { method: "PATCH" },
+            )
+          ).status,
+        ).toBe(200);
+        const [stillUnread] = await db
+          .select({ isRead: schema.notificationTable.isRead })
+          .from(schema.notificationTable)
+          .where(eq(schema.notificationTable.id, resource.notification.id));
+        expect(stillUnread?.isRead).toBe(false);
         const inboxAfterRevoke = await portalRequest(
           s.t,
           file.owner,
@@ -938,6 +1560,20 @@ describe("per-person customer project reach", () => {
             })
           ).status,
         ).toBe(200);
+        const deniedComment = await portalRequest(
+          s.t,
+          owner,
+          `/api/portal/requests/${item.key}/comments`,
+          { method: "POST", body: { body: "revoked reply" } },
+        );
+        const missingComment = await portalRequest(
+          s.t,
+          owner,
+          "/api/portal/requests/UNKNOWN-999999/comments",
+          { method: "POST", body: { body: "revoked reply" } },
+        );
+        expect(deniedComment.status).toBe(404);
+        expect(await deniedComment.text()).toBe(await missingComment.text());
         expect((await signedGet()).status).toBe(404);
         expect((await portalRequest(s.t, owner, base)).status).toBe(404);
         const revokedHome = await portalRequest(s.t, owner, "/api/portal/home");
@@ -997,6 +1633,37 @@ describe("per-person customer project reach", () => {
     expect(
       (await portalRequest(s.t, s.customer, `/api/portal/submissions/${ref}`))
         .status,
+    ).toBe(404);
+    for (const [suffix, body] of [
+      ["/messages", { body: "revoked" }],
+      ["/withdraw", undefined],
+      ["/escalate-priority", { priority: "high" }],
+      ["/reopen", undefined],
+      ["/satisfaction", { rating: 5 }],
+    ] as const) {
+      const denied = await portalRequest(
+        s.t,
+        s.customer,
+        `/api/portal/submissions/${ref}${suffix}`,
+        { method: "POST", body },
+      );
+      const missing = await portalRequest(
+        s.t,
+        s.customer,
+        `/api/portal/submissions/SUB-999999${suffix}`,
+        { method: "POST", body },
+      );
+      expect(denied.status).toBe(404);
+      expect(await denied.text()).toBe(await missing.text());
+    }
+    expect(
+      (
+        await portalRequest(
+          s.t,
+          s.customer,
+          `/api/portal/releases/${resources[0]?.releaseId}`,
+        )
+      ).status,
     ).toBe(404);
     const afterRevoke = await portalRequest(
       s.t,

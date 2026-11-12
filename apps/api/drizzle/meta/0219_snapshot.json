@@ -5213,6 +5213,12 @@
 					"type": "text",
 					"primaryKey": false,
 					"notNull": false
+				},
+				"validated_project_ids": {
+					"name": "validated_project_ids",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": false
 				}
 			},
 			"indexes": {

@@ -420,6 +420,7 @@ export const invitationTable = pgTable(
       { onDelete: "cascade", onUpdate: "cascade" },
     ),
     credentialHash: text("credential_hash"),
+    validatedProjectIds: jsonb("validated_project_ids").$type<string[]>(),
     lastSentAt: timestamp("last_sent_at", { mode: "date", withTimezone: true }),
     acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
     acceptedPersonId: text("accepted_person_id").references(

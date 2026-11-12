@@ -1,3 +1,4 @@
+ALTER TABLE "invitation" ADD COLUMN "validated_project_ids" jsonb;--> statement-breakpoint
 CREATE TABLE "customer_invitation_project" (
 	"invitation_id" text NOT NULL,
 	"project_id" text NOT NULL,

@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { can, type ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
@@ -13,6 +13,8 @@ import {
   reportPlaceholderClaimAuditWriteFailure,
 } from "../identity/placeholder-claim";
 import { lockOrganisationIdentityDomainBindings } from "../instance/organisation-lifecycle";
+import { resolveIdentity } from "../permissions/resolve-identity";
+import { loadProjectAncestorIds } from "../project/hierarchy.repository";
 import {
   type CustomerInvitationDeliveryKeyring,
   customerInvitationDeliveryKeyring,
@@ -65,6 +67,10 @@ export type InviteActor = {
 };
 
 type Scope = { workspaceId: string; organisationId: string };
+
+function sameProjectSelection(left: string[], right: string[]): boolean {
+  return JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+}
 
 /**
  * Audit a refusal outside the failed transaction. Request metadata only: the entity id, the
@@ -343,6 +349,10 @@ export async function prepareCustomerInvitation(
           now,
         });
     if (!row) refuse(409, "The invitation could not be created");
+    await tx
+      .update(schema.invitationTable)
+      .set({ validatedProjectIds: [...projectIds].sort() })
+      .where(eq(schema.invitationTable.id, row.id));
     await tx
       .delete(schema.customerInvitationProjectTable)
       .where(eq(schema.customerInvitationProjectTable.invitationId, row.id));
@@ -660,38 +670,81 @@ async function acceptCustomerInvitationInTransaction(
     grantedByPersonId: inviter.id,
   });
   if (!grant.grantId || !grant.roleMatches) fail("person_conflict");
-  const invitationProjects = await tx
+  // Compare the selected rows to the immutable-at-issue snapshot before considering reach.
+  // Old invitations without a snapshot fail closed and still admit the customer.
+  const selected = await tx
     .select({ projectId: schema.customerInvitationProjectTable.projectId })
     .from(schema.customerInvitationProjectTable)
-    .innerJoin(
-      schema.projectTable,
-      eq(
-        schema.projectTable.id,
-        schema.customerInvitationProjectTable.projectId,
-      ),
+    .where(eq(schema.customerInvitationProjectTable.invitationId, row.id));
+  const selectedIds = selected.map(({ projectId }) => projectId);
+  const selectionValid =
+    Array.isArray(row.validatedProjectIds) &&
+    row.validatedProjectIds.every((id) => typeof id === "string") &&
+    sameProjectSelection(row.validatedProjectIds, selectedIds);
+  const identity = inviter?.active
+    ? await resolveIdentity(
+        { userId: row.inviterId, credential: "session" },
+        tx,
+      )
+    : null;
+  const authorised =
+    identity?.side === "staff" &&
+    identity.personId === inviter?.id &&
+    can(identity, "member:invite", "workspace", {
+      workspaceId: row.workspaceId,
+    });
+  const reachable =
+    selectionValid && authorised && identity && selectedIds.length
+      ? await tx
+          .select({ projectId: schema.projectTable.id })
+          .from(schema.projectTable)
+          .where(
+            and(
+              inArray(schema.projectTable.id, selectedIds),
+              eq(schema.projectTable.organisationId, organisationId),
+              eq(schema.projectTable.workspaceId, row.workspaceId),
+              isNull(schema.projectTable.deletedAt),
+              isNull(schema.projectTable.archivedAt),
+              currentProjectReachPredicate(
+                identity,
+                schema.projectTable.id,
+                schema.projectTable.workspaceId,
+                schema.projectTable.organisationId,
+                tx,
+              ),
+            ),
+          )
+          .for("share", { of: schema.projectTable })
+      : [];
+  const grantedProjectIds: string[] = [];
+  for (const { projectId } of reachable) {
+    if (
+      identity &&
+      can(identity, "project:manage_members", "project", {
+        projectId,
+        workspaceId: row.workspaceId,
+        ancestorProjectIds: await loadProjectAncestorIds(
+          tx,
+          row.workspaceId,
+          projectId,
+        ),
+      })
     )
-    .where(
-      and(
-        eq(schema.customerInvitationProjectTable.invitationId, row.id),
-        eq(schema.projectTable.organisationId, organisationId),
-        eq(schema.projectTable.workspaceId, row.workspaceId),
-        isNull(schema.projectTable.deletedAt),
-        isNull(schema.projectTable.archivedAt),
-      ),
-    )
-    .for("share", { of: schema.projectTable });
-  if (invitationProjects.length) {
-    await tx
+      grantedProjectIds.push(projectId);
+  }
+  if (grantedProjectIds.length && inviter) {
+    const inserted = await tx
       .insert(schema.customerProjectAccessTable)
       .values(
-        invitationProjects.map(({ projectId }) => ({
+        grantedProjectIds.map((projectId) => ({
           personId,
           projectId,
           grantedBy: inviter.id,
         })),
       )
-      .onConflictDoNothing();
-    for (const { projectId } of invitationProjects) {
+      .onConflictDoNothing()
+      .returning({ projectId: schema.customerProjectAccessTable.projectId });
+    for (const { projectId } of inserted) {
       await appendAuditLog(tx, {
         actorId: row.inviterId,
         actorType: "person",
@@ -710,6 +763,19 @@ async function acceptCustomerInvitationInTransaction(
       });
     }
   }
+  const granted = new Set(grantedProjectIds);
+  const skippedProjectIds = [
+    ...new Set([
+      ...selectedIds,
+      ...(Array.isArray(row.validatedProjectIds)
+        ? row.validatedProjectIds.filter(
+            (id): id is string => typeof id === "string",
+          )
+        : []),
+    ]),
+  ]
+    .filter((id) => !granted.has(id))
+    .sort();
   await projectMembershipKeys(tx, [
     { personId, scope: "organisation", scopeId: organisationId },
   ]);
@@ -755,8 +821,13 @@ async function acceptCustomerInvitationInTransaction(
     entityId: row.id,
     before: null,
     after: input.via
-      ? { scope: "customer", via: input.via }
-      : { scope: "customer" },
+      ? {
+          scope: "customer",
+          via: input.via,
+          grantedProjectIds,
+          skippedProjectIds,
+        }
+      : { scope: "customer", grantedProjectIds, skippedProjectIds },
   });
   return {
     accepted: { organisationId, personId },
