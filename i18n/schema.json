@@ -8218,6 +8218,9 @@
 						"loadErrorTitle",
 						"loadErrorDescription"
 					]
+				},
+				"openSettingsMenu": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -8266,7 +8269,8 @@
 				"workspaceProjectDefaults",
 				"workspaceStateTemplates",
 				"projectInheritance",
-				"accessDenied"
+				"accessDenied",
+				"openSettingsMenu"
 			]
 		},
 		"navigation": {
@@ -27988,6 +27992,195 @@
 						}
 					},
 					"required": ["reportOnly", "enforce"]
+				},
+				"observability": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"optional": {
+							"type": "string"
+						},
+						"allStaff": {
+							"type": "string"
+						},
+						"selectedRole": {
+							"type": "string"
+						},
+						"conflict": {
+							"type": "string"
+						},
+						"requestFailed": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"saveFailed": {
+							"type": "string"
+						},
+						"factorSaveFailed": {
+							"type": "string"
+						},
+						"rotateFailed": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"copyToken": {
+							"type": "string"
+						},
+						"tokenSaved": {
+							"type": "string"
+						},
+						"factorPolicy": {
+							"type": "string"
+						},
+						"factorHelp": {
+							"type": "string"
+						},
+						"requiredAudience": {
+							"type": "string"
+						},
+						"roleId": {
+							"type": "string"
+						},
+						"saveFactor": {
+							"type": "string"
+						},
+						"logLevels": {
+							"type": "string"
+						},
+						"defaultLevel": {
+							"type": "string"
+						},
+						"saveLevels": {
+							"type": "string"
+						},
+						"metricsToken": {
+							"type": "string"
+						},
+						"metricsHelp": {
+							"type": "string"
+						},
+						"configured": {
+							"type": "string"
+						},
+						"notConfigured": {
+							"type": "string"
+						},
+						"configuredRotated": {
+							"type": "string"
+						},
+						"notConfiguredRotated": {
+							"type": "string"
+						},
+						"freshFactorProof": {
+							"type": "string"
+						},
+						"factorProofType": {
+							"type": "string"
+						},
+						"verifyPassword": {
+							"type": "string"
+						},
+						"verifyFactor": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"modules": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"http": {
+									"type": "string"
+								},
+								"auth": {
+									"type": "string"
+								},
+								"database": {
+									"type": "string"
+								},
+								"jobs": {
+									"type": "string"
+								},
+								"audit": {
+									"type": "string"
+								},
+								"plugins": {
+									"type": "string"
+								},
+								"realtime": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"http",
+								"auth",
+								"database",
+								"jobs",
+								"audit",
+								"plugins",
+								"realtime"
+							]
+						},
+						"levels": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"error": {
+									"type": "string"
+								},
+								"warn": {
+									"type": "string"
+								},
+								"info": {
+									"type": "string"
+								},
+								"debug": {
+									"type": "string"
+								}
+							},
+							"required": ["error", "warn", "info", "debug"]
+						}
+					},
+					"required": [
+						"optional",
+						"allStaff",
+						"selectedRole",
+						"conflict",
+						"requestFailed",
+						"unavailable",
+						"saveFailed",
+						"factorSaveFailed",
+						"rotateFailed",
+						"description",
+						"copyToken",
+						"tokenSaved",
+						"factorPolicy",
+						"factorHelp",
+						"requiredAudience",
+						"roleId",
+						"saveFactor",
+						"logLevels",
+						"defaultLevel",
+						"saveLevels",
+						"metricsToken",
+						"metricsHelp",
+						"configured",
+						"notConfigured",
+						"configuredRotated",
+						"notConfiguredRotated",
+						"freshFactorProof",
+						"factorProofType",
+						"verifyPassword",
+						"verifyFactor",
+						"loading",
+						"modules",
+						"levels"
+					]
 				}
 			},
 			"required": [
@@ -28010,7 +28203,8 @@
 				"mcpRateLimit",
 				"invitationLimits",
 				"contentSecurityPolicy",
-				"cspModeOptions"
+				"cspModeOptions",
+				"observability"
 			]
 		},
 		"godModeHealth": {

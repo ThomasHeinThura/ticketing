@@ -2028,7 +2028,8 @@
 			"checking": "Checking your access",
 			"loadErrorTitle": "Could not check your access",
 			"loadErrorDescription": "Your permissions could not be loaded. Try again."
-		}
+		},
+		"openSettingsMenu": "Open settings menu"
 	},
 	"navigation": {
 		"projectViews": {
@@ -6234,7 +6235,55 @@
 			"title": "Invitation limits"
 		},
 		"localFactorEveryone": "Everyone (staff)",
-		"localFactorStaffOnlyHelp": "The local factor policy applies to staff only. Customers sign in to the portal without a local factor."
+		"localFactorStaffOnlyHelp": "The local factor policy applies to staff only. Customers sign in to the portal without a local factor.",
+		"observability": {
+			"optional": "Optional",
+			"allStaff": "All staff",
+			"selectedRole": "Selected role",
+			"conflict": "Settings changed in another session. Reload and retry.",
+			"requestFailed": "The request could not be completed.",
+			"unavailable": "Observability settings are unavailable.",
+			"saveFailed": "Settings could not be saved.",
+			"factorSaveFailed": "The factor policy could not be saved.",
+			"rotateFailed": "Token rotation could not be completed.",
+			"description": "Configure safe server log levels and the internal metrics scrape credential.",
+			"copyToken": "<strong>Copy this token now.</strong> It will not be shown again.",
+			"tokenSaved": "I saved the token",
+			"factorPolicy": "Local factor policy",
+			"factorHelp": "Require verified TOTP or one-use backup codes for the selected audience. Unsupported upstream MFA is not accepted as proof.",
+			"requiredAudience": "Required audience",
+			"roleId": "Role ID",
+			"saveFactor": "Save factor policy",
+			"logLevels": "Structured log levels",
+			"defaultLevel": "Default level",
+			"saveLevels": "Save log levels",
+			"metricsToken": "Metrics scrape token",
+			"metricsHelp": "The listener is internal to the service. The token is stored as a digest and is only returned once after rotation.",
+			"configured": "A token is configured.",
+			"notConfigured": "No token is configured.",
+			"configuredRotated": "A token is configured. Last rotated {{when}}.",
+			"notConfiguredRotated": "No token is configured. Last rotated {{when}}.",
+			"freshFactorProof": "Fresh factor proof",
+			"factorProofType": "Factor proof type",
+			"verifyPassword": "Verify password and rotate",
+			"verifyFactor": "Verify factor and rotate",
+			"loading": "Loading observability settings…",
+			"modules": {
+				"http": "http",
+				"auth": "auth",
+				"database": "database",
+				"jobs": "jobs",
+				"audit": "audit",
+				"plugins": "plugins",
+				"realtime": "realtime"
+			},
+			"levels": {
+				"error": "error",
+				"warn": "warn",
+				"info": "info",
+				"debug": "debug"
+			}
+		}
 	},
 	"customFields": {
 		"access": {

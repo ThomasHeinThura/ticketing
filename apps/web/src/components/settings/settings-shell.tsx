@@ -94,13 +94,13 @@ export function SettingsShell({
           {/* The banner landmark holds the back button and the area title (axe region). */}
           <header className="shrink-0">
             <div className="flex items-center">
-              <ActionTooltip label="Open settings menu">
+              <ActionTooltip label={t("settings:openSettingsMenu")}>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-sm"
                   className="shrink-0 lg:hidden"
-                  aria-label="Open settings menu"
+                  aria-label={t("settings:openSettingsMenu")}
                   onClick={() => setSettingsMenuOpen(true)}
                 >
                   <PanelLeftIcon className="size-4" />
