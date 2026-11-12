@@ -6197,6 +6197,7 @@ async function installAuthenticatedFixture(page: Page) {
     } else if (path.endsWith("/api/portal/requests")) {
       const visualCase = {
         source: "submission",
+        raisedBySupport: false,
         requestTypeName: "Access request",
         createdAt: "2026-09-15T00:00:00.000Z",
         updatedAt: "2026-09-16T09:30:00.000Z",
@@ -6226,6 +6227,7 @@ async function installAuthenticatedFixture(page: Page) {
             createdBy: { name: "Dana Customer", isYou: false },
             isRequester: false,
             customerVisibility: "organisation",
+            raisedBySupport: true,
           },
         ],
         page: { hasMore: false, nextCursor: null },
