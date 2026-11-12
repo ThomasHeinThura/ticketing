@@ -494,7 +494,12 @@ export {
 export { Skeleton } from "./components/skeleton";
 export { Slider, SliderValue } from "./components/slider";
 export { Spinner } from "./components/spinner";
-export { Switch } from "./components/switch";
+export { Switch, type SwitchProps } from "./components/switch";
+export {
+  SwitchField,
+  type SwitchFieldProps,
+  type SwitchHelper,
+} from "./components/switch-field";
 export {
   Table,
   TableBody,
@@ -555,4 +560,9 @@ export {
 } from "./components/tooltip";
 export { cn } from "./lib/cn";
 export { springSettle } from "./lib/motion";
+export {
+  type KeyboardPressProps,
+  type UseKeyboardPressOptions,
+  useKeyboardPress,
+} from "./lib/use-keyboard-press";
 export { useIsMobile } from "./lib/use-mobile";
