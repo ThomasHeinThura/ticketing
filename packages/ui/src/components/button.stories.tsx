@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Button } from "./button";
 import { SaveButton } from "./save-button";
 
@@ -41,6 +40,7 @@ export const SaveWorking: Story = {
     <SaveButton
       pending
       success={false}
+      feedbackState="working"
       savedLabel="Saved"
       workingLabel="Saving…"
     >
@@ -49,22 +49,19 @@ export const SaveWorking: Story = {
   ),
 };
 
-function SaveSuccessExample() {
-  const [success, setSuccess] = useState(false);
-  useEffect(() => setSuccess(true), []);
-  return (
+export const SaveDone: Story = {
+  render: () => (
     <SaveButton
       pending={false}
-      success={success}
+      success
+      feedbackState="done"
       savedLabel="Saved"
       workingLabel="Saving…"
     >
       Save changes
     </SaveButton>
-  );
-}
-
-export const SaveDone: Story = { render: () => <SaveSuccessExample /> };
+  ),
+};
 
 export const SaveWithIcon: Story = {
   render: () => (

@@ -14,6 +14,10 @@ async function installTimeSettings(page: Page) {
   await page.route("**/api/time-activities**", async (route) => {
     if (route.request().method() === "GET")
       return route.fulfill({ json: { data: [] } });
+    if (route.request().method() !== "POST")
+      throw new Error(
+        `Unexpected time activity method: ${route.request().method()}`,
+      );
     writes++;
     await pending;
     return route.fulfill({
@@ -55,6 +59,7 @@ for (const width of [375, 1200]) {
     const input = page.getByLabel("New activity");
     await input.fill("Research");
     const button = page.getByRole("button", { name: "Add activity" });
+    await expect(button).toHaveCount(1);
     const alignment = await button.evaluate((element) => {
       const icon = element.querySelector("svg");
       const text = Array.from(icon?.parentElement?.childNodes ?? []).find(
@@ -79,9 +84,13 @@ for (const width of [375, 1200]) {
     await expect(spinner).toBeVisible();
     await expect(spinner).toHaveCSS("animation-name", "none");
     await expect(input).toBeDisabled();
-    await page.keyboard.press("Enter");
-    expect(fixture.writes()).toBe(1);
+    await input.locator("xpath=ancestor::form").evaluate((form) => {
+      if (!(form instanceof HTMLFormElement)) throw new Error("Missing form");
+      form.requestSubmit();
+    });
     fixture.release();
+    await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
+    expect(fixture.writes()).toBe(1);
   });
 }
 
@@ -107,10 +116,15 @@ for (const motion of ["reduce", "no-preference"] as const) {
       await expect
         .poll(() => line.evaluate((node) => node.getAnimations()[0]?.playState))
         .toBe("paused");
+      const progress = () =>
+        line.evaluate((node) => Number(node.getAnimations()[0]?.currentTime));
+      const paused = await progress();
+      await expect.poll(progress).toBe(paused);
       await page.mouse.move(0, 0);
       await expect
         .poll(() => line.evaluate((node) => node.getAnimations()[0]?.playState))
         .toBe("running");
+      await expect.poll(progress).toBeGreaterThan(paused);
     }
   });
 }

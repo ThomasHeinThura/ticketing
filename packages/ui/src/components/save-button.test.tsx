@@ -18,6 +18,39 @@ afterEach(() => {
 });
 
 describe("SaveButton", () => {
+  it("keeps a requested static feedback frame across the normal timers", () => {
+    vi.useFakeTimers();
+    const { rerender } = render(
+      <SaveButton
+        pending
+        success={false}
+        feedbackState="working"
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>,
+    );
+    expect(document.querySelector("svg.animate-spin")).toBeInTheDocument();
+    act(() =>
+      vi.advanceTimersByTime(SAVE_FEEDBACK_DELAY_MS + SAVE_FEEDBACK_HOLD_MS),
+    );
+    expect(document.querySelector("svg.animate-spin")).toBeInTheDocument();
+    rerender(
+      <SaveButton
+        pending={false}
+        success
+        feedbackState="done"
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>,
+    );
+    expect(screen.getByRole("button", { name: "Saved" })).toBeVisible();
+    act(() => vi.advanceTimersByTime(SAVE_FEEDBACK_HOLD_MS * 2));
+    expect(screen.getByRole("button", { name: "Saved" })).toBeVisible();
+  });
   it("does not show stale success on a fresh mount, but can retain a parent completion", () => {
     vi.useFakeTimers();
     const { rerender } = render(

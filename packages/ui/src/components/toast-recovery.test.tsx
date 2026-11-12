@@ -88,6 +88,9 @@ describe("deferred notification recovery", () => {
       await vi.advanceTimersByTimeAsync(1);
     });
     expect(closed).toHaveBeenCalledTimes(3);
+    expect(screen.queryByText("First")).not.toBeInTheDocument();
+    expect(screen.queryByText("Second")).not.toBeInTheDocument();
+    expect(screen.queryByText("Third")).not.toBeInTheDocument();
   });
 
   it("does not flash a closed toast and shows updates made before load", async () => {
@@ -188,6 +191,34 @@ describe("deferred notification recovery", () => {
   });
 });
 
+it("resumes the remaining toast lifetime after hover", async () => {
+  const closed = vi.fn();
+  render(<toast.ToastProvider />);
+  act(() => {
+    toast.toastManager.add({
+      title: "Resume",
+      type: "success",
+      timeout: 4000,
+      onClose: closed,
+    });
+  });
+  await act(async () => resolve(contents));
+  fireEvent.focus(window, { relatedTarget: document.body });
+  const viewport = screen.getByRole("region", { name: "Notifications" });
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  fireEvent.mouseEnter(viewport);
+  await act(async () => vi.advanceTimersByTimeAsync(5000));
+  expect(closed).not.toHaveBeenCalled();
+  expect(screen.getByText("Resume")).toBeInTheDocument();
+  fireEvent.mouseLeave(viewport);
+  await act(async () => vi.advanceTimersByTimeAsync(2999));
+  expect(closed).not.toHaveBeenCalled();
+  expect(screen.getByText("Resume")).toBeInTheDocument();
+  await act(async () => vi.advanceTimersByTimeAsync(1));
+  expect(closed).toHaveBeenCalledOnce();
+  expect(screen.queryByText("Resume")).not.toBeInTheDocument();
+});
+
 it("pauses, resumes, restarts, persists and expires the real toast timer", async () => {
   const closed = vi.fn();
   render(<toast.ToastProvider />);
@@ -220,7 +251,10 @@ it("pauses, resumes, restarts, persists and expires the real toast timer", async
   expect(getComputedStyle(line() as HTMLElement).animationPlayState).not.toBe(
     "paused",
   );
+  const oldLine = line();
+  expect(oldLine).not.toBeNull();
   act(() => toast.toastManager.update(id, { timeout: 6000 }));
+  expect(line()).not.toBe(oldLine);
   expect(line()?.style.animationDuration).toBe("6000ms");
   await act(async () => vi.advanceTimersByTimeAsync(5999));
   expect(closed).not.toHaveBeenCalled();
@@ -234,6 +268,7 @@ it("pauses, resumes, restarts, persists and expires the real toast timer", async
   expect(closed).not.toHaveBeenCalled();
   await act(async () => vi.advanceTimersByTimeAsync(1));
   expect(closed).toHaveBeenCalledOnce();
+  expect(screen.queryByText("Counting")).not.toBeInTheDocument();
 });
 
 it("keeps the reduced-motion spinner and toast rules in the rendered production CSS", async () => {
