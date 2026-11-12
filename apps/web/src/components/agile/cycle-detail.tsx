@@ -50,7 +50,7 @@ import { BurndownChart } from "./burndown-chart";
 import { CompleteCycleDialog } from "./complete-cycle-dialog";
 import { BACKLOG_DRAG_PREFIX, CycleBacklogPanel } from "./cycle-backlog-panel";
 import { CycleFormDialog } from "./cycle-form-dialog";
-import { FeatureOff } from "./feature-off";
+import { ProjectFeatureOff } from "./feature-off";
 import { ScopeLoggedTime } from "./scope-logged-time";
 import { ScopedWorkSurface } from "./scoped-work-surface";
 
@@ -264,7 +264,7 @@ export function CycleDetailScreen({
   });
 
   if (cycleQuery.error instanceof FeatureDisabledError)
-    return <FeatureOff feature="cycles" />;
+    return <ProjectFeatureOff feature="cycles" projectKey={projectKey} />;
   if (cycleQuery.isLoading)
     return (
       <div

@@ -39,7 +39,7 @@ export function WorkspaceFeatureGate({
   return (
     <>
       <PageTitle title={title} />
-      <PageContainer className="h-full overflow-y-auto">
+      <PageContainer>
         <PageHeader title={title} description={description} />
         <FeatureOff
           feature={off}

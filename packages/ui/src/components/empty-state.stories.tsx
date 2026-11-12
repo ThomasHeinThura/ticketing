@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CheckCircleIcon } from "lucide-react";
 import type * as React from "react";
 import { Button } from "./button";
-import { EmptyState, FeatureOff } from "./empty-state";
+import { EmptyState, ErrorState, FeatureOff, NoAccess } from "./empty-state";
 
 /** A plain link element for the action's `render`; the button supplies its text. */
 function SettingsLink(props: React.ComponentProps<"a">) {
@@ -51,6 +51,27 @@ export const FeatureOffReadOnly: Story = {
     <FeatureOff
       title="Reports are off"
       description="A workspace admin can turn on Reports in the workspace feature settings."
+    />
+  ),
+};
+
+export const NoAccessWithBack: Story = {
+  render: () => (
+    <NoAccess
+      title="You don't have access"
+      description="Ask a workspace admin."
+      action={{ label: "Back", render: <SettingsLink href="#back" /> }}
+    />
+  ),
+};
+
+export const ErrorWithRetry: Story = {
+  render: () => (
+    <ErrorState
+      title="This did not load"
+      description="Check your connection and try again."
+      retryLabel="Retry"
+      onRetry={() => undefined}
     />
   ),
 };

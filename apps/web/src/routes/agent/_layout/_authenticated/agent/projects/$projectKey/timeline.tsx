@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Skeleton } from "@taskdesk/ui";
 import { useCallback } from "react";
-import { FeatureOff } from "@/components/agile/feature-off";
+import { ProjectFeatureOff } from "@/components/agile/feature-off";
 import ProjectNotFound from "@/components/project/project-not-found";
 import ProjectTimeline, {
   type ProjectTimelineSearch,
@@ -39,7 +39,7 @@ function RouteComponent() {
   if (!timelineOn)
     return (
       <div className="flex flex-1 items-center justify-center p-6">
-        <FeatureOff feature="timeline" />
+        <ProjectFeatureOff feature="timeline" projectKey={projectKey} />
       </div>
     );
   return (

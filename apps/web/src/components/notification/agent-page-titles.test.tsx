@@ -77,7 +77,8 @@ describe("agent page titles", () => {
     expect(document.title).toBe("Inbox · TaskDesk");
   });
 
-  // UX-1a (DS-01): both pages show their name as a visible page title, not only to screen readers.
+  // UX-1a (DS-01): the app shell's header bar carries the visible title on these two pages, so
+  // the page keeps one visually hidden level-1 heading and never a second large title.
   it.each([
     [
       "My work",
@@ -94,12 +95,12 @@ describe("agent page titles", () => {
       "Inbox",
       () => <NotificationInbox filter="all" onFilterChange={() => undefined} />,
     ],
-  ])("shows %s as the one visible page title", (name, Page) => {
+  ])("keeps %s as the one visually hidden page heading", (name, Page) => {
     render(<Page />);
     const headings = screen.getAllByRole("heading", { level: 1 });
     expect(headings).toHaveLength(1);
     expect(headings[0]).toHaveTextContent(name);
-    expect(headings[0]).not.toHaveClass("sr-only");
-    expect(headings[0]).toHaveAttribute("data-slot", "page-header-title");
+    expect(headings[0]).toHaveClass("sr-only");
+    expect(document.querySelector("[data-slot=page-header]")).toBeNull();
   });
 });

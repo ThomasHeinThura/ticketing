@@ -13,7 +13,6 @@ import {
   EmptyHeader,
   EmptyTitle,
   FeatureOff,
-  PageHeader,
 } from "@taskdesk/ui";
 import { Filter } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -165,16 +164,15 @@ function IntakeRoute() {
   const deniedByServer =
     queue.error instanceof HttpError && queue.error.status === 403;
   const canManageFeatures = permissions.canManageWorkspaceSettings();
-  const pageHeader = (
-    <PageHeader title={t("title")} description={t("description")} />
-  );
   if (workspace.data?.id && !intakeOn)
     return (
       <div className="flex h-full w-full min-w-0 flex-col">
         <PageTitle title={t("title")} />
+        <Layout.Header className="items-center justify-between">
+          <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
+        </Layout.Header>
         <Layout.Content className="overflow-y-auto">
           <div className="flex flex-col gap-3 px-4 py-3">
-            {pageHeader}
             {features.isLoading ? (
               <p role="status">{t("loading")}</p>
             ) : features.isError ? (
@@ -216,9 +214,11 @@ function IntakeRoute() {
     return (
       <div className="flex h-full w-full min-w-0 flex-col">
         <PageTitle title={t("title")} />
+        <Layout.Header className="items-center justify-between">
+          <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
+        </Layout.Header>
         <Layout.Content className="overflow-y-auto">
           <div className="flex flex-col gap-3 px-4 py-3">
-            {pageHeader}
             {permissions.isCheckingPermissions === true && !deniedByServer ? (
               <p role="status">{t("loading")}</p>
             ) : (
@@ -238,8 +238,8 @@ function IntakeRoute() {
   return (
     <div className="flex h-full w-full min-w-0 flex-col">
       <PageTitle title={t("title")} />
-      {/* The toolbar keeps its bar; the page title sits with the content below (UX-1a). */}
-      <Layout.Header className="items-center justify-end">
+      <Layout.Header className="items-center justify-between">
+        <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
         <div className="flex items-center gap-1">
           <TriageFilterMenu
             filters={filters}
@@ -291,7 +291,7 @@ function IntakeRoute() {
           className="flex min-w-0 flex-col gap-3 px-4 py-3"
           data-testid="triage-content"
         >
-          {pageHeader}
+          <p className="sr-only">{t("description")}</p>
           <TriageFilterChips
             filters={filters}
             requestTypes={requestTypeOptions}

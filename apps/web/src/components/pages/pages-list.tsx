@@ -28,7 +28,7 @@ import {
 import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FeatureOff } from "@/components/agile/feature-off";
+import { ProjectFeatureOff } from "@/components/agile/feature-off";
 import PageTitle from "@/components/page-title";
 import {
   createPage,
@@ -208,7 +208,7 @@ export function PagesList({ projectKey }: { projectKey: string }) {
       </div>
     );
   if (query.error instanceof PagesDisabledError)
-    return <FeatureOff feature="pages" />;
+    return <ProjectFeatureOff feature="pages" projectKey={projectKey} />;
   if (query.isError || !query.data)
     return (
       <div className="mx-auto max-w-4xl p-4">

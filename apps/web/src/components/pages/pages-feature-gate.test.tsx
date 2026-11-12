@@ -29,6 +29,10 @@ vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
 vi.mock("@/fetchers/agile", () => ({
   getResolvedFeatures: mocks.resolved,
 }));
+// The feature-off state's "Open feature settings" action is covered by feature-off.test.tsx.
+vi.mock("@/components/agile/use-can-manage-project-features", () => ({
+  useCanManageProjectFeatures: () => false,
+}));
 
 import { useQuery } from "@tanstack/react-query";
 import { PagesFeatureGate } from "./pages-feature-gate";

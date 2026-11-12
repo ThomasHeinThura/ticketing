@@ -35,7 +35,7 @@ import { type AgileDetailSearch, routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { formatCalendarDate, MODULE_STATE_VARIANT } from "./agile-format";
 import { BACKLOG_DRAG_PREFIX, CycleBacklogPanel } from "./cycle-backlog-panel";
-import { FeatureOff } from "./feature-off";
+import { ProjectFeatureOff } from "./feature-off";
 import { ModuleForecastText } from "./module-forecast";
 import { ModuleFormDialog } from "./module-form-dialog";
 import { ScopeLoggedTime } from "./scope-logged-time";
@@ -124,7 +124,7 @@ export function ModuleDetailScreen({
   });
 
   if (query.error instanceof FeatureDisabledError)
-    return <FeatureOff feature="modules" />;
+    return <ProjectFeatureOff feature="modules" projectKey={projectKey} />;
   if (query.isLoading)
     return (
       <div

@@ -34313,13 +34313,11 @@
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/release-detail.tsx::ReleaseDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::DependenciesCard::p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[1]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[2]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[3]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[1]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[2]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[3]::text-muted-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/settings/custom-fields/custom-field-editor.tsx::EditorForm::form[0]/p[0]::text-muted-foreground#0",
@@ -34509,7 +34507,6 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/features.tsx::WorkspaceFeatures::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -34524,7 +34521,6 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology.tsx::WorkspaceTerminology::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/work-item-templates.tsx::WorkItemTemplatesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx::WorkflowDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -39010,21 +39006,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/releases/$id.tsx:/_layout/_authenticated/agent/service-management/releases/$id",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/releases.tsx:/_layout/_authenticated/agent/service-management/releases",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/service-management/release-detail.tsx::ReleaseDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/service-management/release-detail.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services/$id.tsx:/_layout/_authenticated/agent/service-management/services/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -39047,7 +39028,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/service-detail.tsx"
 			},
@@ -39062,7 +39043,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[1]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/service-detail.tsx"
 			},
@@ -39077,7 +39058,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[2]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[2]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/service-detail.tsx"
 			},
@@ -39092,22 +39073,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[3]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/service-management/service-detail.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services/$id.tsx:/_layout/_authenticated/agent/service-management/services/$id",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/service-detail.tsx"
 			},
@@ -43229,22 +43195,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx:/_layout/_authenticated/dashboard/settings/workspace/calendars",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx:/_layout/_authenticated/dashboard/settings/workspace/canned-responses",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -43464,22 +43414,6 @@
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx:/_layout/_authenticated/dashboard/settings/workspace/sla-policies",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -44503,34 +44437,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/page-header.tsx::PageHeader::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/page-header.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:/_layout/_authenticated/agent/my-work",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/page-header.tsx::PageHeader::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/page-header.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.$key.tsx:/_layout/_authenticated/agent/reports_/$key",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -44615,6 +44521,21 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/releases/$id.tsx:/_layout/_authenticated/agent/service-management/releases/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/releases.tsx:/_layout/_authenticated/agent/service-management/releases",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/page-header.tsx::PageHeader::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/page-header.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -44629,7 +44550,8 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services/$id.tsx:/_layout/_authenticated/agent/service-management/services/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
@@ -46416,13 +46338,11 @@
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/release-detail.tsx::ReleaseDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::DependenciesCard::p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[1]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[2]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[3]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[1]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[2]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[3]::text-muted-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/settings/custom-fields/custom-field-editor.tsx::EditorForm::form[0]/p[0]::text-muted-foreground#0",
@@ -46612,7 +46532,6 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/features.tsx::WorkspaceFeatures::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -46627,7 +46546,6 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/div[0]/section[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology.tsx::WorkspaceTerminology::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/work-item-templates.tsx::WorkItemTemplatesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx::WorkflowDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -51114,21 +51032,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/releases/$id.tsx:/_layout/_authenticated/agent/service-management/releases/$id",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/releases.tsx:/_layout/_authenticated/agent/service-management/releases",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/service-management/release-detail.tsx::ReleaseDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/service-management/release-detail.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services/$id.tsx:/_layout/_authenticated/agent/service-management/services/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -51151,7 +51054,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/service-detail.tsx"
 			},
@@ -51166,7 +51069,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[1]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[1]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/service-detail.tsx"
 			},
@@ -51181,7 +51084,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[2]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[2]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/service-detail.tsx"
 			},
@@ -51196,22 +51099,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/dl[0]/dt[3]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/service-management/service-detail.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services/$id.tsx:/_layout/_authenticated/agent/service-management/services/$id",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[3]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/service-detail.tsx"
 			},
@@ -55333,22 +55221,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx:/_layout/_authenticated/dashboard/settings/workspace/calendars",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx:/_layout/_authenticated/dashboard/settings/workspace/canned-responses",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -55568,22 +55440,6 @@
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx:/_layout/_authenticated/dashboard/settings/workspace/sla-policies",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx::SlaPoliciesRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -56686,34 +56542,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/page-header.tsx::PageHeader::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/page-header.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:/_layout/_authenticated/agent/my-work",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/page-header.tsx::PageHeader::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/page-header.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/reports_.$key.tsx:/_layout/_authenticated/agent/reports_/$key",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -56798,6 +56626,21 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/releases/$id.tsx:/_layout/_authenticated/agent/service-management/releases/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/releases.tsx:/_layout/_authenticated/agent/service-management/releases",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/page-header.tsx::PageHeader::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/page-header.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -56812,7 +56655,8 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services/$id.tsx:/_layout/_authenticated/agent/service-management/services/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/services.tsx:/_layout/_authenticated/agent/service-management/services",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",

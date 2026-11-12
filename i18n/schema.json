@@ -987,6 +987,42 @@
 						}
 					},
 					"required": ["turnOn"]
+				},
+				"states": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"back": {
+							"type": "string"
+						},
+						"noAccess": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
+						},
+						"error": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
+						}
+					},
+					"required": ["back", "noAccess", "error"]
 				}
 			},
 			"required": [
@@ -1010,7 +1046,8 @@
 				"clearDate",
 				"retry",
 				"navigation",
-				"featureOff"
+				"featureOff",
+				"states"
 			]
 		},
 		"auth": {
@@ -28741,9 +28778,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"calendar": {
 							"type": "object",
@@ -28754,9 +28794,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"timeline": {
 							"type": "object",
@@ -28767,9 +28810,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"sla": {
 							"type": "object",
@@ -28796,9 +28842,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"openSettings": {
 							"type": "string"

@@ -19,6 +19,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChangeRisk, ServiceStatus } from "@/fetchers/service-management";
 import { isFeatureDisabled } from "@/hooks/queries/service-management";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 
@@ -69,7 +70,7 @@ export function PageFrame({
   children: ReactNode;
 }) {
   return (
-    <PageContainer className="h-full overflow-y-auto">
+    <PageContainer>
       <PageHeader title={title} description={description} actions={actions} />
       {children}
     </PageContainer>
@@ -86,7 +87,6 @@ export function LoadingRows() {
   );
 }
 
-/** A failed read: a disabled feature gets its own explanation, anything else offers a retry. */
 /**
  * The one "Service catalogue is off" state a catalogue page shows instead of its list: the shared
  * `FeatureOff` (UX-1a, SR-02), with "Turn on in Features" when the viewer can manage workspace
@@ -119,6 +119,13 @@ export function CatalogueOff({
   );
 }
 
+/** `CatalogueOff` for the current viewer: admins who can manage workspace settings get "Turn on". */
+function CatalogueOffForViewer() {
+  const { canManageWorkspaceSettings } = useWorkspacePermission();
+  return <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />;
+}
+
+/** A failed read: a disabled feature gets its own explanation, anything else offers a retry. */
 export function QueryFailure({
   error,
   onRetry,
@@ -139,7 +146,7 @@ export function QueryFailure({
         </EmptyHeader>
       </Empty>
     );
-  if (isFeatureDisabled(error)) return <CatalogueOff />;
+  if (isFeatureDisabled(error)) return <CatalogueOffForViewer />;
   return (
     <Alert variant="error">
       <AlertTitle>{t("common.loadErrorTitle")}</AlertTitle>

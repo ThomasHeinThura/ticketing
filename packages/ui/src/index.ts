@@ -269,10 +269,15 @@ export {
 } from "./components/empty";
 export {
   EmptyState,
+  type EmptyStateAction,
+  type EmptyStateActionsProps,
   type EmptyStateProps,
+  ErrorState,
+  type ErrorStateProps,
   FeatureOff,
-  type FeatureOffAction,
   type FeatureOffProps,
+  NoAccess,
+  type NoAccessProps,
 } from "./components/empty-state";
 export {
   ErrorBoundary,
@@ -401,6 +406,7 @@ export {
 } from "./components/number-field";
 export {
   PageContainer,
+  type PageContainerProps,
   PageHeader,
   type PageHeaderProps,
   pageContainerVariants,

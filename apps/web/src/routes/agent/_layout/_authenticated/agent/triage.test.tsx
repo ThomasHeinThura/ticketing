@@ -232,8 +232,9 @@ describe("intake triage route", () => {
     expect(mocks.queuePickerProps).toBeUndefined();
   });
 
-  // UX-1a (DS-01, SR-02): a visible page title on every branch, and the shared feature-off
-  // state offers the Features link only to someone who can switch Intake on.
+  // UX-1a (DS-01, SR-02): the title stays in Kaneo's header bar on every branch (no second
+  // large title in the content), and the shared feature-off state offers the Features link
+  // only to someone who can switch Intake on.
   it.each([
     ["the queue", () => undefined],
     [
@@ -248,16 +249,20 @@ describe("intake triage route", () => {
         mocks.canTriage = false;
       },
     ],
-  ])("shows the page title as the one h1 on %s", async (_label, arrange) => {
-    arrange();
-    renderTriage();
-    const headings = screen.getAllByRole("heading", { level: 1 });
-    expect(headings).toHaveLength(1);
-    expect(headings[0]).toHaveTextContent("title");
-    expect(headings[0]).not.toHaveClass("sr-only");
-    expect(screen.getByText("description")).not.toHaveClass("sr-only");
-    await act(async () => {});
-  });
+  ])(
+    "keeps the page title as the one h1 in the header bar on %s",
+    async (_label, arrange) => {
+      arrange();
+      const { container } = renderTriage();
+      const headings = screen.getAllByRole("heading", { level: 1 });
+      expect(headings).toHaveLength(1);
+      expect(headings[0]).toHaveTextContent("title");
+      expect(headings[0]).toHaveClass("px-2", "font-medium", "text-sm");
+      expect(headings[0].closest("header")).not.toBeNull();
+      expect(container.querySelector("[data-slot=page-header]")).toBeNull();
+      await act(async () => {});
+    },
+  );
 
   it("offers Turn on in Features with Intake off only to a settings manager", async () => {
     mocks.intakeOn = false;

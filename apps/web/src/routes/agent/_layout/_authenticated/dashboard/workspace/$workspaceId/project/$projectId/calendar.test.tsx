@@ -85,7 +85,7 @@ const viewFeature = vi.hoisted(() => ({
 // Locale files are regenerated from i18n/en-US.json by the coordinator; the state itself is
 // covered by FeatureOff's own keys.
 vi.mock("@/components/agile/feature-off", () => ({
-  FeatureOff: ({ feature }: { feature: string }) => (
+  ProjectIdFeatureOff: ({ feature }: { feature: string }) => (
     <div data-testid={`feature-off-${feature}`} />
   ),
 }));

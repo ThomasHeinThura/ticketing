@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { PlusIcon } from "lucide-react";
+import { ArrowLeftIcon, PlusIcon } from "lucide-react";
 import { Button } from "./button";
 import { PageContainer, PageHeader } from "./page-header";
 
@@ -14,7 +14,7 @@ type Story = StoryObj<typeof meta>;
 
 export const TitleOnly: Story = {
   render: (args) => (
-    <PageContainer>
+    <PageContainer scroll={false}>
       <PageHeader {...args} title="Inbox" />
     </PageContainer>
   ),
@@ -22,7 +22,7 @@ export const TitleOnly: Story = {
 
 export const WithDescriptionAndActions: Story = {
   render: (args) => (
-    <PageContainer>
+    <PageContainer scroll={false}>
       <PageHeader
         {...args}
         description="Every service your teams run, with its current status."
@@ -39,7 +39,7 @@ export const WithDescriptionAndActions: Story = {
 
 export const WithTabs: Story = {
   render: (args) => (
-    <PageContainer>
+    <PageContainer scroll={false}>
       <PageHeader
         {...args}
         tabs={
@@ -62,9 +62,29 @@ export const WithTabs: Story = {
   ),
 };
 
+export const WithBreadcrumbs: Story = {
+  render: (args) => (
+    <PageContainer scroll={false}>
+      <PageHeader
+        {...args}
+        headingLevel={2}
+        title="Release 1.4 checklist"
+        breadcrumbs={
+          <nav aria-label="Breadcrumb">
+            <Button size="xs" variant="ghost" render={<a href="#releases" />}>
+              <ArrowLeftIcon aria-hidden="true" />
+              Releases
+            </Button>
+          </nav>
+        }
+      />
+    </PageContainer>
+  ),
+};
+
 export const NarrowContainer: Story = {
   render: (args) => (
-    <PageContainer variant="narrow">
+    <PageContainer scroll={false} width="3xl">
       <PageHeader
         {...args}
         title="General"

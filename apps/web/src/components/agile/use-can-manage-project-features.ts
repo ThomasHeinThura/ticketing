@@ -19,3 +19,12 @@ export function useCanManageProjectFeatures(projectKey: string): boolean {
   );
   return Boolean(project) && permission.canManageProjectSettings();
 }
+
+/** The same check for a screen that already knows the project's id and workspace. */
+export function useCanManageProjectFeaturesById(
+  projectId: string,
+  workspaceId: string,
+): boolean {
+  const permission = useWorkspacePermission(workspaceId, projectId);
+  return permission.canManageProjectSettings();
+}

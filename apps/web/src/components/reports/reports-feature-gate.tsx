@@ -62,7 +62,7 @@ function ReportsOff({ title, loading }: { title: string; loading: boolean }) {
   return (
     <>
       <PageTitle title={title} />
-      <PageContainer className="h-full overflow-y-auto">
+      <PageContainer>
         <PageHeader title={title} />
         {loading ? (
           <Skeleton

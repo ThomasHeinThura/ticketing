@@ -44,7 +44,7 @@ vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
   },
 }));
 vi.mock("@/components/agile/feature-off", () => ({
-  FeatureOff: ({ feature }: { feature: string }) => (
+  ProjectFeatureOff: ({ feature }: { feature: string }) => (
     <div data-testid={`feature-off-${feature}`} />
   ),
 }));
