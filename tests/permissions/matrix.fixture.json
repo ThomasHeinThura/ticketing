@@ -21684,32 +21684,32 @@
 				"outOfReach": "allow"
 			},
 			"owner": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"admin": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"manager": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"lead": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"member": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"viewer": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"customer": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			}
 		},
 		"POST /api/workspace/{workspaceId}/activate": {

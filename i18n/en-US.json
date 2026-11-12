@@ -247,6 +247,20 @@
 		"retry": "Retry",
 		"navigation": {
 			"auditLog": "Audit log"
+		},
+		"featureOff": {
+			"turnOn": "Turn on in Features"
+		},
+		"states": {
+			"back": "Back",
+			"noAccess": {
+				"title": "You don't have access",
+				"description": "Ask a workspace admin."
+			},
+			"error": {
+				"title": "This could not be loaded",
+				"description": "Check your connection and try again."
+			}
 		}
 	},
 	"auth": {
@@ -379,6 +393,21 @@
 			"subtitle": "Instance administrators sign in with their password and authenticator code. Single sign-on is not available here.",
 			"passwordDisabled": "Password sign-in is turned off on this instance, so God Mode cannot be opened from this page. Ask the operator to enable local sign-in."
 		},
+		"changePassword": {
+			"title": "Change password",
+			"currentPassword": "Current password",
+			"newPassword": "New password",
+			"confirmPassword": "Confirm new password",
+			"revoke": "Sign out of other sessions",
+			"required": "Enter your current password.",
+			"tooLong": "Password must be at most 128 characters.",
+			"mismatch": "Passwords do not match.",
+			"wrongCurrent": "Your current password is incorrect.",
+			"failed": "Could not change your password. Please try again.",
+			"success": "Password changed.",
+			"submit": "Change password",
+			"saving": "Changing password…"
+		},
 		"accountSecurity": {
 			"pageTitle": "Account security",
 			"description": "Manage your authenticator factor and backup codes.",
@@ -471,6 +500,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Workspace name is required"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -3041,7 +3075,14 @@
 			"creating": "Creating...",
 			"submit": "Create workspace",
 			"success": "Workspace created successfully",
-			"error": "Failed to create workspace"
+			"error": "Failed to create workspace",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {
@@ -3562,6 +3603,8 @@
 			"transitionForbidden": "You don't have permission to change the state of {{term_work_item_other}}.",
 			"transitionBlocked": "{{key}} can't move there right now ({{reason}}). Open it to add what's missing.",
 			"transitionUnavailable": "{{key}} can't move to that state right now.",
+			"moveRefusedReturned": "Move refused. {{key}} is back in {{state}}.",
+			"moveCancelledReturned": "Move cancelled. {{key}} is back in {{state}}.",
 			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
 			"changeState": "Change state",
 			"changeStateFor": "Change state of {{key}}",
@@ -3579,6 +3622,7 @@
 				"invalid": "The {{term_work_item_other}} around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"forbidden": "You don't have permission to move {{key}}.",
 				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"network": "Couldn't confirm the move for {{key}}. Check your connection and refresh.",
 				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"groupUnassigned": "Unassigned",
@@ -3968,7 +4012,8 @@
 			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
-			"reject": "Reject"
+			"reject": "Reject",
+			"emptyDescription": "Approval requests from the support team appear here."
 		},
 		"unavailable": {
 			"title": "Customer portal unavailable",
@@ -4274,6 +4319,8 @@
 			}
 		},
 		"cases": {
+			"raisedBy": "Raised by",
+			"supportTeam": "Support team",
 			"outstandingTitle": "Outstanding {{term_request_other}}",
 			"outstandingDescription": "Open {{term_request_other}} that are received, in progress, or waiting for you.",
 			"viewAll": "View all {{term_request_other}}",
@@ -4304,6 +4351,7 @@
 				"project": "Project",
 				"severity": "Severity",
 				"status": "Status",
+				"requester": "Requester",
 				"createdBy": "Created by",
 				"assignedTo": "Assigned to",
 				"created": "Created"
@@ -4961,7 +5009,8 @@
 		"loadError": "The {{term_submission_other}} could not be loaded.",
 		"featureOff": {
 			"title": "Intake is off for this workspace",
-			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
+			"manageDescription": "Turn on Intake in the workspace feature settings. Existing {{term_submission_other}} come back when it is switched on."
 		}
 	},
 	"requestTypes": {
@@ -7073,32 +7122,40 @@
 		"featureOff": {
 			"cycles": {
 				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
+				"manageDescription": "Turn on {{term_cycle_other}} in this {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} come back when it is switched on."
 			},
 			"modules": {
 				"title": "{{term_module_other}} are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
+				"manageDescription": "Turn on {{term_module_other}} in this {{term_project_one}}'s feature settings. Existing {{term_module_other}} come back when it is switched on."
 			},
 			"estimates": {
 				"title": "Estimates are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Estimates in this {{term_project_one}}'s feature settings. Existing estimates come back when it is switched on."
 			},
 			"calendar": {
 				"title": "Calendar is off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"manageDescription": "Turn on Calendar in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"timeline": {
 				"title": "The timeline is off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"manageDescription": "Turn on the timeline in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"sla": {
 				"title": "SLAs are off for this workspace",
-				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on."
+				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Service levels in the workspace feature settings to use SLA policies and service calendars."
 			},
 			"pages": {
 				"title": "Pages are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on."
-			}
+				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Pages in this {{term_project_one}}'s feature settings. Existing pages come back when it is switched on."
+			},
+			"openSettings": "Open feature settings"
 		},
 		"cycles": {
 			"pageTitle": "{{term_cycle_other}}",
@@ -7615,7 +7672,8 @@
 		},
 		"disabled": {
 			"title": "{{term_service_one}} catalogue is off",
-			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches."
+			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature settings.",
+			"manageDescription": "Turn on the {{term_service_one}} catalogue in the workspace feature settings."
 		},
 		"common": {
 			"cancel": "Cancel",
@@ -9180,7 +9238,8 @@
 		"errors": {
 			"disabled": {
 				"title": "Reports are off",
-				"description": "An administrator can turn this feature on in the workspace feature settings."
+				"description": "An administrator can turn this feature on in the workspace feature settings.",
+				"manageDescription": "Turn on Reports in the workspace feature settings to see reports and dashboards."
 			},
 			"forbidden": {
 				"title": "Not available to you",

@@ -99,7 +99,7 @@ test("timesheet without log-time shows the permission notice, not Retry", async 
   await shot(page, "timesheet-denied");
 });
 
-test("service catalogue off: one off state, no create, search or tabs, no 409 request", async ({
+test("service catalogue off: one off state, no create or search, no 409 request", async ({
   page,
 }) => {
   await installPerformanceApiFixture(page);

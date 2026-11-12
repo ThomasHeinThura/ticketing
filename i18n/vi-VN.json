@@ -247,6 +247,20 @@
 		"retry": "Retry",
 		"navigation": {
 			"auditLog": "Audit log"
+		},
+		"featureOff": {
+			"turnOn": "Bật trong Tính năng"
+		},
+		"states": {
+			"back": "Back",
+			"noAccess": {
+				"title": "You don't have access",
+				"description": "Ask a workspace admin."
+			},
+			"error": {
+				"title": "This could not be loaded",
+				"description": "Check your connection and try again."
+			}
 		}
 	},
 	"auth": {
@@ -409,6 +423,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Cần có tên không gian làm việc"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -496,6 +515,21 @@
 			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
 			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
 			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
+		},
+		"changePassword": {
+			"confirmPassword": "Confirm new password",
+			"currentPassword": "Current password",
+			"failed": "Could not change your password. Please try again.",
+			"mismatch": "Passwords do not match.",
+			"newPassword": "New password",
+			"required": "Enter your current password.",
+			"revoke": "Sign out of other sessions",
+			"saving": "Changing password…",
+			"submit": "Change password",
+			"success": "Password changed.",
+			"title": "Change password",
+			"tooLong": "Password must be at most 128 characters.",
+			"wrongCurrent": "Your current password is incorrect."
 		}
 	},
 	"settings": {
@@ -3030,7 +3064,14 @@
 			"creating": "Đang tạo...",
 			"submit": "Tạo không gian làm việc",
 			"success": "Tạo không gian làm việc thành công",
-			"error": "Không thể tạo không gian làm việc"
+			"error": "Không thể tạo không gian làm việc",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {
@@ -3522,6 +3563,7 @@
 				"invalid": "The {{term_work_item_other}} around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"rejected": "{{key}} can't be moved right now because a rule blocks it. The board was refreshed.",
 				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"network": "Couldn't confirm the move for {{key}}. Check your connection and refresh.",
 				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"loadErrorDescription": "The board's states or {{term_work_item_other}} failed to load.",
@@ -3529,6 +3571,8 @@
 			"loadingMore": "Loading…",
 			"loadingTransitions": "Loading state changes…",
 			"loadMore": "Load more",
+			"moveRefusedReturned": "Move refused. {{key}} is back in {{state}}.",
+			"moveCancelledReturned": "Move cancelled. {{key}} is back in {{state}}.",
 			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
 			"moveDown": "Move down: {{key}} in {{state}}",
 			"moveDownShort": "Move down",
@@ -3954,7 +3998,8 @@
 			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
-			"reject": "Reject"
+			"reject": "Reject",
+			"emptyDescription": "Các yêu cầu phê duyệt từ nhóm hỗ trợ sẽ xuất hiện tại đây."
 		},
 		"unavailable": {
 			"title": "Cổng thông tin khách hàng không khả dụng",
@@ -4260,9 +4305,12 @@
 			"window": "{{start}} – {{end}}"
 		},
 		"cases": {
+			"raisedBy": "Raised by",
+			"supportTeam": "Support team",
 			"columns": {
 				"assignedTo": "Assigned to",
 				"created": "Created",
+				"requester": "Requester",
 				"createdBy": "Created by",
 				"details": "Details",
 				"project": "Project",
@@ -4942,7 +4990,8 @@
 		"noAccessTitle": "You cannot triage {{term_submission_other}}",
 		"featureOff": {
 			"title": "Intake is off for this workspace",
-			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
+			"manageDescription": "Bật Intake trong phần cài đặt tính năng của không gian làm việc. Các {{term_submission_other}} hiện có sẽ xuất hiện lại khi được bật."
 		}
 	},
 	"requestTypes": {
@@ -7184,32 +7233,40 @@
 		"featureOff": {
 			"cycles": {
 				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
-				"title": "{{term_cycle_other}} are off for this {{term_project_one}}"
+				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
+				"manageDescription": "Bật {{term_cycle_other}} trong phần cài đặt tính năng của {{term_project_one}} này. Các {{term_cycle_other}} hiện có sẽ xuất hiện lại khi được bật."
 			},
 			"estimates": {
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
-				"title": "Estimates are off for this {{term_project_one}}"
+				"title": "Estimates are off for this {{term_project_one}}",
+				"manageDescription": "Turn on Estimates in this {{term_project_one}}'s feature settings. Existing estimates come back when it is switched on."
 			},
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
-				"title": "{{term_module_other}} are off for this {{term_project_one}}"
+				"title": "{{term_module_other}} are off for this {{term_project_one}}",
+				"manageDescription": "Bật {{term_module_other}} trong phần cài đặt tính năng của {{term_project_one}} này. Các {{term_module_other}} hiện có sẽ xuất hiện lại khi được bật."
 			},
 			"calendar": {
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "Calendar is off for this {{term_project_one}}"
+				"title": "Calendar is off for this {{term_project_one}}",
+				"manageDescription": "Turn on Calendar in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"timeline": {
 				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "The timeline is off for this {{term_project_one}}"
+				"title": "The timeline is off for this {{term_project_one}}",
+				"manageDescription": "Turn on the timeline in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
-				"title": "SLAs are off for this workspace"
+				"title": "SLAs are off for this workspace",
+				"manageDescription": "Bật mức dịch vụ trong phần cài đặt tính năng của không gian làm việc để sử dụng chính sách SLA và lịch dịch vụ."
 			},
 			"pages": {
 				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
-				"title": "Pages are off for this {{term_project_one}}"
-			}
+				"title": "Pages are off for this {{term_project_one}}",
+				"manageDescription": "Turn on Pages in this {{term_project_one}}'s feature settings. Existing pages come back when it is switched on."
+			},
+			"openSettings": "Mở cài đặt tính năng"
 		},
 		"modules": {
 			"create": "Create {{term_module_one}}",
@@ -7649,7 +7706,8 @@
 		},
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
-			"title": "{{term_service_one}} catalogue is off"
+			"title": "{{term_service_one}} catalogue is off",
+			"manageDescription": "Bật danh mục {{term_service_one}} trong phần cài đặt tính năng của không gian làm việc."
 		},
 		"freezes": {
 			"affected_other": "{{count}} planned {{term_change_other}} now fall inside this freeze and cannot be approved without an override.",
@@ -8736,7 +8794,8 @@
 		"errors": {
 			"disabled": {
 				"description": "An administrator can turn this feature on in the workspace feature settings.",
-				"title": "Reports are off"
+				"title": "Reports are off",
+				"manageDescription": "Bật Báo cáo trong phần cài đặt tính năng của không gian làm việc để xem báo cáo và bảng điều khiển."
 			},
 			"failed": {
 				"description": "Try again in a moment.",

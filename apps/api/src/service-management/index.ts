@@ -195,7 +195,11 @@ const listServicesRoute = createRoute({
   operationId: "listServices",
   tags: ["Service management"],
   summary: "List services",
-  middleware: [workspaceAccess.fromQuery(), ...readProject] as const,
+  middleware: [
+    workspaceAccess.fromQuery(),
+    ...readProject,
+    requireReachFilteredList,
+  ] as const,
   request: { query: serviceListQuery },
   responses: {
     200: jsonResponse(
@@ -736,7 +740,13 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
     const { workspaceId, q } = c.req.valid("query");
     await requireServiceCatalogue(workspaceId);
     return c.json(
-      serviceListSchema.parse({ data: await listServices(workspaceId, q) }),
+      serviceListSchema.parse({
+        data: await listServices(
+          workspaceId,
+          await declaredReach(c, workspaceId),
+          q,
+        ),
+      }),
       200,
     );
   })

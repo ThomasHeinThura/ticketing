@@ -2,6 +2,10 @@
 
 Reach and authority are separate checks. Membership determines reachable resources; scoped roles supply capabilities. Authentication alone grants neither. Every route declares one policy. No provider claim grants instance administration or unrestricted reach.
 
+A team that owns a project grants its members reach to that project. No person may add themselves to a team, including through a personal API key; an otherwise authorised person can remove themselves.
+
+Project reordering returns and updates only projects the caller reaches. Unreachable, missing, and deleted project IDs receive the same 404; the positions of unreachable projects are not changed.
+
 ## Capabilities
 
 | Group | Capability | Implies | Description |
@@ -99,6 +103,8 @@ Reach and authority are separate checks. Membership determines reachable resourc
 | `customer` | 10 | Portal only. Off the ladder — see below | `work_item:read`, `comment:create`, `attachment:create`, `work_item:rank`, `work_item:escalate_priority`, `approval:decide`, `kb_article:read` — and nothing else, ever |
 
 `project-lead` is the project-scope counterpart of `lead` (rank 50). Project authority overrides workspace authority for that project; it does not grant workspace-wide authority. The customer role is outside the staff ladder and stays portal-bound. Self-assignment and customer exceptions require their declared row predicate, not a role-name shortcut.
+
+**Creating a workspace** is an instance action, not a workspace role capability (owner decision D-A, 12 November 2026). `POST /api/workspace` requires a current instance administrator, confirmed against the database on each request, through a browser session only; no workspace role, API key, MCP key or impersonation session qualifies. The request names the owner, who must be an existing active, unsuspended staff user and receives the normal owner membership and reach. The creating administrator is not made a member unless they name themselves. Creator and owner are written to the audit log. `DISABLE_WORKSPACE_CREATION` no longer changes this.
 
 Capability names persist in roles and credentials. Rename/removal requires a compatibility migration; adding a capability does not expand existing API-key ceilings. MCP uses ordinary capabilities intersected with the credential ceiling. Never add MCP-only capabilities.
 

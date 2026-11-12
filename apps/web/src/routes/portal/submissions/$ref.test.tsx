@@ -83,6 +83,8 @@ const PortalSubmission = (Route as unknown as { component: ComponentType })
   .component;
 
 const submission = {
+  createdBy: { name: null, isYou: true },
+  raisedBySupport: false,
   submission: {
     state: "new",
     formData: { title: "Password reset" },
@@ -128,6 +130,16 @@ describe("portal submission route", () => {
   afterEach(() => {
     cleanup();
     window.history.replaceState({}, "", "/submissions/SUB-7");
+  });
+
+  it("shows the requester and no support creator for a customer submission", async () => {
+    mocks.getSubmission.mockReset().mockResolvedValue(submission);
+    renderSubmission();
+    expect(
+      await screen.findByText("portal:cases.columns.requester"),
+    ).toBeVisible();
+    expect(screen.getByText("portal:request.author.you")).toBeVisible();
+    expect(screen.queryByText("portal:cases.raisedBy")).toBeNull();
   });
 
   it("keeps a failed primary read out of the loaded page and retries it", async () => {

@@ -27,7 +27,8 @@ export const factorStatusPolicies = {
     sessionOnly: true,
     personParam: {
       exempt: "no_person_parameter",
-      reason: "returns only the current session user's factor status",
+      reason:
+        "returns only the current agent or customer session user's factor and local-password status",
     },
   },
   "POST /api/me/step-up/challenges": {

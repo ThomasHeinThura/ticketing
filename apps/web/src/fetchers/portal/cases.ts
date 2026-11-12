@@ -22,6 +22,7 @@ export type PortalCase = {
   project: { key: string; name: string } | null;
   createdBy: { name: string | null; isYou: boolean };
   isRequester: boolean;
+  raisedBySupport: boolean;
   customerVisibility: "private" | "organisation";
   sla: PortalSla | null;
 };

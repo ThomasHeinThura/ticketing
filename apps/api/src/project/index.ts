@@ -27,6 +27,7 @@ import {
 } from "../utils/has-project-reach";
 import {
   listReachOf,
+  requireReachContext,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
 import { apiKeyScopeSatisfies } from "../utils/require-api-key-permission-scope";
@@ -359,10 +360,11 @@ const reorderProjectsRoute = createRoute({
   tags: ["Projects"],
   summary: "Reorder projects",
   description:
-    "Set the sidebar order of a workspace's projects. The given positions express relative order only -- the workspace is renumbered to 0..n-1.",
+    "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
   middleware: [
     workspaceAccess.fromQuery(),
     requireWorkspacePermission({ project: ["update"] }),
+    requireReachContext,
   ] as const,
   request: {
     query: workspaceIdQuery,
@@ -379,6 +381,7 @@ const reorderProjectsRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("A project is missing or out of reach"),
   },
 });
 
@@ -581,14 +584,7 @@ const restoreProjectRoute = createRoute({
   },
 });
 
-// ── Issue #25's bounded slice: milestones, prerequisites, stakeholders, document ───────
-// links (`docs/03-features/projects-and-engagements.md` § API). Project members,
-// ownership (parent_id/owner_team_id) and health are NOT part of this slice -- see the
-// PR description for the three tracked gaps that block them. Every route below shares
-// `project:update`'s enforcement (`requireWorkspacePermission({ project: ["update"] })`)
-// -- the spec's own permission table: "Manage stakeholders, milestones, prerequisites,
-// document links; set health | project:update" -- and `workspaceAccess.fromProject()`
-// against the same `{id}` path param the parent project routes already use.
+// Project-scoped writes retain the workspace and API-key gates as well as project reach.
 
 const listMilestonesRoute = createRoute({
   method: "get",
@@ -1197,7 +1193,12 @@ const project = apiRouter<
   .openapi(reorderProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     const { projects } = c.req.valid("json");
-    const reordered = await reorderProjectsCtrl(workspaceId, projects);
+    const reachable = await listReachOf(c).reachableProjectIds([workspaceId]);
+    const reordered = await reorderProjectsCtrl(
+      workspaceId,
+      projects,
+      reachable,
+    );
     return c.json(reordered, 200);
   })
   .openapi(updateProjectRoute, async (c) => {

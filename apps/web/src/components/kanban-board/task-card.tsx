@@ -7,6 +7,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
+  useKeyboardPress,
 } from "@taskdesk/ui";
 import { format } from "date-fns";
 import type { TFunction } from "i18next";
@@ -223,10 +224,18 @@ function TaskCard({
     }
   };
 
+  const keyboardPressProps = useKeyboardPress({
+    disabled: isDragging || (!workspaceId && !taskHref),
+    allowSpace: disableDragDrop,
+    shouldIgnoreEvent: (event) =>
+      isDeferredKeyboardSensorEvent(event.nativeEvent),
+  });
+
   const handleCardKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     // Native links/actions inside the card keep their own keyboard activation.
     if (e.target !== e.currentTarget) return;
     if (isDeferredKeyboardSensorEvent(e.nativeEvent)) return;
+    keyboardPressProps.onKeyDown(e);
     dragListeners?.onKeyDown?.(e);
     if (e.key === "Enter") {
       // Enter opens an idle card. While dnd-kit owns an active keyboard drag,
@@ -264,8 +273,16 @@ function TaskCard({
       ref={setNodeRef}
       style={style}
       {...dragListeners}
+      onPointerDown={(event) => {
+        keyboardPressProps.onPointerDown(event);
+        dragListeners?.onPointerDown?.(event);
+      }}
+      onPointerCancel={(event) => {
+        keyboardPressProps.onPointerCancel(event);
+        dragListeners?.onPointerCancel?.(event);
+      }}
       onClick={handleTaskCardClick}
-      className={`kanban-board-task-card group relative m-0 block w-full min-w-0 max-w-none gap-0 rounded-lg border bg-background p-3 shadow-xs/5 [contain:layout_style] transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.98] ${
+      className={`kanban-board-task-card group relative m-0 block w-full min-w-0 max-w-none gap-0 rounded-lg border bg-background p-3 shadow-xs/5 [contain:layout_style] transition-[background-color,border-color,box-shadow,scale] press-feedback [--press-scale:0.98] ${
         disableDragDrop ? "cursor-default" : "cursor-move"
       } ${
         isDragging
@@ -276,12 +293,16 @@ function TaskCard({
           ? "border-ring/40 data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50 shadow-sm ring-1 ring-inset ring-ring/30"
           : "border-border"
       } ${isFocused ? "ring-2 ring-inset ring-ring/50" : ""}`}
+      data-pressed={keyboardPressProps["data-pressed"]}
+      data-keyboard-press={keyboardPressProps["data-keyboard-press"]}
       data-task-dragging={isDragging ? "true" : undefined}
       data-task-selected={isSelected ? "true" : undefined}
       {...cardAttributes}
       tabIndex={0}
       aria-describedby={describedBy}
+      onBlur={keyboardPressProps.onBlur}
       onKeyDown={handleCardKeyDown}
+      onKeyUp={keyboardPressProps.onKeyUp}
     >
       <FieldsetLegend className="sr-only">
         {t("common:a11y.taskContainerLabel", {

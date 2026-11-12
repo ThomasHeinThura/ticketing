@@ -307,11 +307,21 @@ describe("ProjectsPage engagement kind (S5)", () => {
     const row = link.closest("tr");
     expect(row).not.toBeNull();
     if (!row) throw new Error("Project link has no row");
+    expect(row).toHaveClass("press-feedback", "[--press-scale:0.99]");
+    expect(row).toHaveAttribute("data-interactive", "");
+    expect(screen.getAllByRole("row")[0]).not.toHaveClass("press-feedback");
     fireEvent.click(row);
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/agent/projects/$projectKey",
       params: { projectKey: "BUILD" },
     });
+
+    cleanup();
+    mocks.projects = [deletedProject];
+    render(<ProjectsPage workspaceId="workspace-1" recoveryMode />);
+    expect(screen.getByText("Old project").closest("tr")).not.toHaveClass(
+      "press-feedback",
+    );
   });
 
   it("badges managed services and leaves delivery projects unbadged", () => {

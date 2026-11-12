@@ -132,7 +132,7 @@ export default function CreateWorkItemProperties(props: Props) {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="active:scale-100 data-pressed:scale-100"
+                  className="[--press-scale:1]"
                   disabled={disabled || !canUpdate}
                   aria-label={`${t("common:modals.createTask.labels")}: ${label.name}`}
                   onClick={() =>

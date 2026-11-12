@@ -199,8 +199,6 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
   // P5 service management, change management and releases.
   "GET /api/service-catalogue/status":
     "feature flag and the caller's own manage capabilities; no rows",
-  "GET /api/services":
-    "service definitions (name, category, owner team, status); links to projects are only on the detail route, which is reach-filtered. Incident and open-change counts are workspace-wide per-service aggregates (SVC-3), with no project or work item ids, names or titles",
   "GET /api/change-freezes":
     "freeze window definitions (name, reason, start, end); workspace configuration rows, not project rows",
   "GET /api/releases":

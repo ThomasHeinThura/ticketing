@@ -28,9 +28,6 @@ vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
 vi.mock("@/fetchers/workspace/activate-workspace", () => ({
   default: vi.fn(),
 }));
-vi.mock("@/hooks/queries/config/use-get-config", () => ({
-  default: () => ({ data: { disableWorkspaceCreation: true } }),
-}));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1", name: "Support" } }),
 }));
@@ -113,5 +110,23 @@ describe("WorkspaceSwitcher settings entries (L-03)", () => {
       to: routes.godModeHealth.path,
     });
     expect(routes.godModeHealth.path).toBe("/god-mode");
+  });
+});
+
+describe("WorkspaceSwitcher create-workspace entry (D-A, 12 Nov 2026)", () => {
+  it("offers no create-workspace action to anyone but an instance admin", async () => {
+    renderSwitcher();
+    await screen.findByRole("menuitem", { name: "Workspace settings" });
+    expect(
+      screen.queryByRole("menuitem", { name: "Add workspace" }),
+    ).toBeNull();
+  });
+
+  it("offers the create-workspace action to an instance admin", async () => {
+    mocks.role = "admin";
+    renderSwitcher();
+    expect(
+      await screen.findByRole("menuitem", { name: "Add workspace" }),
+    ).toBeVisible();
   });
 });

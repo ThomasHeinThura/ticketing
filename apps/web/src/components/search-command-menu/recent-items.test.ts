@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import globalSearch from "@/fetchers/search/global-search";
 import {
   clearRecentItems,
   MAX_RECENT_ITEMS,
   pushRecentItem,
   readRecentItems,
+  resolveRecentItems,
 } from "./recent-items";
+
+vi.mock("@/fetchers/search/global-search", () => ({ default: vi.fn() }));
 
 const item = (id: string) => ({
   type: "work_item" as const,
@@ -53,5 +57,36 @@ describe("palette recent items (SV-6)", () => {
       window.localStorage.getItem("taskdesk:palette-recent:w1"),
     ).toBeNull();
     expect(window.localStorage.getItem("unrelated")).toBe("keep");
+  });
+
+  it("shows only freshly authorized results and never cached titles", async () => {
+    pushRecentItem("u1", "w1", { ...item("a"), title: "A-1 old title" });
+    pushRecentItem("u1", "w1", { ...item("b"), title: "B-1 secret title" });
+    vi.mocked(globalSearch).mockImplementation(async ({ q }) => ({
+      results:
+        q === "A-1"
+          ? [
+              {
+                id: "a",
+                type: "work_item",
+                key: "A-1",
+                title: "New title",
+                createdAt: "2026-11-12T00:00:00Z",
+                relevanceScore: 1,
+              },
+            ]
+          : [],
+      totalCount: q === "A-1" ? 1 : 0,
+      searchQuery: q,
+    }));
+    expect(await resolveRecentItems("u1", "w1")).toEqual([
+      {
+        id: "a",
+        type: "work_item",
+        title: "A-1 New title",
+        description: undefined,
+        href: "/agent/work-items/A-1",
+      },
+    ]);
   });
 });

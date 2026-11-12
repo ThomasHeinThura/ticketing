@@ -265,6 +265,24 @@ describe("S4 native create: the NINE-effect contract (A2-P1..A2-P4)", () => {
     expect(envelope.payload?.workspaceName).toBe("Acme Inc");
     expect(envelope.payload?.ownerId).toBe(owner.user.id);
 
+    // D-A: the creation is also an audit row, in the same transaction, naming creator and owner.
+    // Here the owner created their own workspace as an instance administrator.
+    const auditRows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "workspace.created"),
+          eq(schema.auditLogTable.workspaceId, workspace.id),
+        ),
+      );
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0]?.actorId).toBe(owner.user.id);
+    expect(auditRows[0]?.after).toMatchObject({
+      createdBy: owner.user.id,
+      ownerUserId: owner.user.id,
+    });
+
     // (5)+(6) the default team and its team_member, in the SAME request.
     const teamRows = await db
       .select()

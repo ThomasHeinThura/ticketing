@@ -2606,13 +2606,15 @@ token for it.
 <a id="design-tokens-easing"></a>
 #### Easing
 
-kaneo defines **exactly two** easing curves, in the `@theme inline` block. There is no
-third curve and no spring in CSS:
+kaneo defines **exactly two** easing curves, in the `@theme inline` block:
 
 ```
 --ease-out:     cubic-bezier(0.23, 1, 0.32, 1)
 --ease-in-out:  cubic-bezier(0.77, 0, 0.175, 1)
 ```
+
+TaskDesk adds a third, `--ease-spring`, next to them (12 Nov 2026, Thomas; see
+[Motion tokens, spring and press feedback](#motion-d-h-2026-11-12)).
 
 See [Motion](#motion) for which interactions use which curve.
 
@@ -2732,9 +2734,10 @@ the same implementation slice. Colors and visual matching remain provisional unt
 <a id="design-tokens-motion"></a>
 #### Motion
 
-See [Motion](#motion) for the full rule. `--ease-spring` is **not valid CSS** —
-`spring(1, 100, 15, 0)` is Framer Motion notation — so it does not live in `motion.css`.
-It moves to `motion.ts` as a Framer Motion transition object instead:
+See [Motion](#motion) for the full rule. `--ease-spring` is a CSS `linear()` curve in `theme.css`
+(12 Nov 2026, Thomas; it reverses the earlier "not valid CSS" decision, because `linear()` can
+sample a damped spring). Framer Motion's drag-settle spring stays a transition object in
+`motion.ts`:
 
 ```ts
 export const springSettle = { type: "spring", stiffness: 100, damping: 15, mass: 1 };
@@ -2746,7 +2749,7 @@ export const springSettle = { type: "spring", stiffness: 100, damping: 15, mass:
 "leaving uses `ease-in`" rule is corrected there to use one of the two real curves.
 
 Reduced motion for `--duration-*` follows the same rule stated in the inherited section
-above — durations are not all collapsed to `--duration-instant`; movement and container
+above — durations are not all collapsed to zero; movement and container
 morphs drop, opacity feedback stays.
 
 <a id="design-tokens-contrast-g3"></a>
@@ -2911,17 +2914,22 @@ list entrance on every route change, which turns a 50 ms navigation into a 400 m
 ### Tokens
 
 ```css
---duration-instant:   0ms;
---duration-fast:    100ms;   /* hover, press, tooltip */
---duration-normal:  200ms;   /* dropdown, popover, toast */
+--duration-fast:    120ms;   /* press release, hover, tooltip */
+--duration-base:    200ms;   /* dropdown, popover, toast, switch thumb */
 --duration-slow:    300ms;   /* dialog, sheet, route */
 
 --ease-out:     cubic-bezier(0.23, 1, 0.32, 1);    /* things arriving — kaneo's value, verbatim */
 --ease-in-out:  cubic-bezier(0.77, 0, 0.175, 1);   /* things moving — kaneo's value, verbatim */
-/* kaneo defines exactly these two curves (apps/web/src/index.css). "Leaving" reverses
-   --ease-out through the transition rather than adding a third curve; the drag-settle spring
-   is a Framer Motion transition object in motion.ts, because spring() is not valid CSS. */
+--ease-spring:  linear(0, 0.044, 0.149, …, 1.015, …, 1);  /* damped spring, ~1.5% overshoot */
+/* kaneo defines exactly the first two curves (apps/web/src/index.css). "Leaving" reverses
+   --ease-out through the transition. --ease-spring is TaskDesk's (12 Nov 2026): zeta 0.8,
+   peak 1.015 at 67% of the duration. The drag-settle spring stays a Framer Motion
+   transition object in motion.ts. */
 ```
+
+All three durations and `--ease-spring` are declared in `theme.css`'s `@theme inline` block;
+Tailwind reads them as `duration-fast|base|slow` and `ease-spring`. Components never set a
+numeric `duration-150`-style value on the elements this rule covers.
 
 Arriving and leaving use `ease-out` — fast start, gentle finish. Moving uses
 `ease-in-out`. These are the two easing curves defined by the design system.
@@ -2932,7 +2940,9 @@ Arriving and leaving use `ease-out` — fast start, gentle finish. Moving uses
 | Interaction | Duration | Easing | Property |
 | --- | --- | --- | --- |
 | Hover | fast | out | background, border |
-| Press | fast | out | `scale(0.98)` |
+| Press | down 0 ms, release fast | out | `scale(0.97)` (`press-feedback`) |
+| Switch thumb | base | spring | translate |
+| Switch helper text | base | out | opacity, 4 px slide |
 | Tooltip | fast | out | opacity, 2 px lift |
 | Dropdown / popover | normal | out | opacity, `scale(0.96 → 1)` |
 | Dialog | slow | out | opacity, `scale(0.96 → 1)`, backdrop fade |
@@ -2944,6 +2954,22 @@ Arriving and leaving use `ease-out` — fast start, gentle finish. Moving uses
 | Route change | fast | out | opacity only |
 | Accordion | normal | in-out | height |
 | Skeleton → content | fast | out | opacity crossfade |
+
+<a id="motion-press-feedback"></a>
+**Press feedback.** One shared class, `press-feedback` (`motion.css`), carries the rule: the
+pressed style (`:active`, or `[data-pressed]` from a trigger or keyboard `Enter`/`Space` via
+`useKeyboardPress`) applies with a 0 ms transition, so it paints on the first frame; pointer
+release takes `--duration-fast`, while keyboard press keeps `--tw-duration` at 0 ms through
+release (`[data-keyboard-press]`) so keyboard activation never animates. It sets Tailwind's
+`--tw-duration` and `--tw-ease`, so each consumer keeps its own `transition-[...]` property
+list; a consumer must not add a `duration-*` or `ease-*` class (those write a literal and would
+beat it). `--press-scale` sets the pressed size (default 0.97): tabs, interactive `Card`s and
+board task cards use 0.98, sidebar items 0.985, interactive `TableRow`s and list task rows 0.99,
+and a button that must not move sets `[--press-scale:1]`. Disabled controls (`:disabled`,
+`[data-disabled]`, `[aria-disabled="true"]`) and active drags (`data-dragging`,
+`data-task-dragging="true"`) suppress the pressed scale. Used by Button (so every icon button),
+tabs, the sidebar menu buttons and actions, `Card` (`interactive`), `TableRow` (`interactive`),
+and the clickable board/list task primitives.
 
 <a id="motion-what-does-not-animate"></a>
 ### What does not animate
@@ -2977,7 +3003,11 @@ duration:
 The `!important` on `[data-kaneo-sortable]` is deliberate — dnd-kit sets inline transitions.
 (The earlier block here declared custom properties outside any selector, which is invalid
 CSS and did nothing; corrected 2026-09-06.)
-Framer Motion uses `useReducedMotion()` to switch to instant variants.
+Framer Motion uses `useReducedMotion()` to switch to instant variants. The 12 Nov 2026 additions
+follow the same rule: `press-feedback` consumers lose the pressed scale, the tab indicator snaps
+to the selected tab, the switch thumb snaps to its side with no spring or press stretch, the
+switch helper text keeps its fade and loses its slide, and the skeleton shimmer stops and drops
+its highlight band.
 
 Critically, **reduced motion removes the animation, not the affordance**. A dialog still
 appears; it simply appears without scaling. Nothing becomes unusable, and nothing becomes
@@ -2992,11 +3022,11 @@ The one place where motion is genuinely functional rather than decorative.
 
 - The dragged card lifts: `scale(1.02)` plus Tailwind's `shadow-md`, at `--duration-fast`.
 - The source position collapses; other cards reflow with `layoutId` at
-  `--duration-normal`.
+  `--duration-base`.
 - A drop indicator marks the insertion point — a 2 px accent line, no animation.
 - On drop, the card settles with the Framer Motion `springSettle` transition from
   `packages/ui/src/lib/motion.ts`.
-- On invalid drop, it returns to origin at `--duration-normal` with `--ease-in-out`, and a
+- On invalid drop, it returns to origin at `--duration-base` with `--ease-in-out`, and a
   toast explains why. Never a silent snap-back.
 
 Under reduced motion the card jumps without the spring, and the drop indicator does all
@@ -3599,6 +3629,36 @@ Thomas approved both changes on 5 November 2026:
 Neither approval constitutes a merge or deployment approval. Existing tenant,
 session, audit, encryption and secret-redaction boundaries remain required.
 
+<a id="motion-d-h-2026-11-12"></a>
+## Motion tokens, spring and press feedback — 12 November 2026
+
+Thomas decided on 12 November 2026 (owner decision D-H, "the UI must feel premium"): motion values live in `packages/ui` as three durations and one CSS spring, press feedback shows within one frame, and the switch gets the spring and a helper line. This reverses four recorded points:
+
+- "kaneo defines exactly two easing curves; no third curve and no spring in CSS" now has one addition, `--ease-spring`, a `linear()` curve. kaneo's two curves are unchanged.
+- "`--ease-spring` is not valid CSS and moves to `motion.ts`" is reversed: `linear()` is valid CSS and carries the spring. Framer Motion's drag-settle transition object is unchanged.
+- The duration tokens `--duration-instant 0`, `--duration-fast 100`, `--duration-normal 200` are replaced by `--duration-fast 120`, `--duration-base 200`, `--duration-slow 300`. The old names were never in `theme.css`, so no screen changes meaning.
+- The press row `scale(0.98)` becomes the shipped Button value, `scale(0.97)`, with a 0 ms press-down.
+
+`SwitchField` wraps `Switch` with `helper={{ checked, unchecked }}` while `Switch` stays the bare control, so plain `Switch` callers keep an unchanged DOM and do not enter helper contrast tracing. Both helper lines share one grid cell, so the reserved height is the taller line and the layout never jumps. The active line describes the switch (`aria-describedby`); the other is `inert`. Resting colours, sizes and spacing do not change; only the Storybook `Primitives/Skeleton Default` (`primitives-skeleton--default`) baseline is expected to change because Storybook runs with `reducedMotion: "reduce"` and reduced-motion skeletons drop `--skeleton-highlight` to `transparent`.
+
+## Workspace creation is for instance administrators — 12 November 2026
+
+Thomas decided on 12 November 2026 (D-A, final): only a current instance administrator creates a workspace, and the administrator hands it to a named owner. **This reverses open workspace creation**, where `DISABLE_WORKSPACE_CREATION` was the only restriction and, left unset, every signed-in staff account could create a workspace and become its owner with see-all reach.
+
+- **Who may create.** `POST /api/workspace` is the `instance:admin` capability at instance scope, browser session only. The administrator role is read from the database on every request (`requireCurrentInstanceAdmin`), never taken from the session. An API key, an MCP key and an impersonation session are refused.
+- **Who owns it.** The request names `ownerUserId`: an existing, active, unsuspended staff user. That person becomes the owner with the normal owner reach (membership, `sees_all`, default team). The creating administrator is a member only when they name themselves, which is also the first-run path: the first user is the instance administrator and creates the first workspace. A person with no account yet cannot be named, because the invite API never grants the owner role; an invitation-as-owner flow is not part of this decision.
+- **What is recorded.** The audit log gets a `workspace.created` row in the same transaction, with the creator as actor and `{createdBy, ownerUserId}` in `after`. The `workspace.created` event is attributed to the creator and still notifies the owner.
+- **Session selection.** The nine create effects now describe the named owner. The new workspace and team are selected in the creating session only when the creator is also the owner; otherwise the administrator's session is left alone.
+- **`DISABLE_WORKSPACE_CREATION`.** The name stays registered (`scripts/ci/env-baseline.json`) and the setting is still read, but it no longer widens or narrows who may create a workspace.
+- **Screens.** Only an instance administrator sees "create workspace" (workspace switcher, command palette, shortcut and its help row, `/dashboard/workspace/create`, onboarding). A signed-in person who belongs to no workspace sees "You are not a member of any workspace yet. Ask an administrator for an invitation." The create form has an owner picker over active staff users.
+- **Owner protection is unchanged.** The owner role cannot be changed through the role-update route by anyone, and the last owner cannot be removed or leave; both are covered by tests with a workspace administrator as the caller. The only way to change owners is the owner-only transfer.
+
+## Team project access — 12 November 2026 (Thomas)
+
+A team that owns a project grants its members project reach, without adding capabilities. Nobody may add themselves to a team, including through their personal API key; authorised self-removal remains allowed. This narrows TM-3's existing roster-edit authority for self-add.
+
+For staff project reach, an explicit report or time-summary target outside reach answers 404. This reverses RP-17's prior silent exclusion for a Tier 3 filter naming a project after reach is lost; `report:read_all` retains its workspace-wide report scope.
+
 ## Amazon SES setup and a real email test — 12 November 2026
 
 Thomas decided on 12 November 2026 (D-M) that God Mode sets up Amazon SES and that its Test button sends a real email. SES is used through its SMTP interface, so there is no new dependency.
@@ -3626,3 +3686,9 @@ Only obsolete workflow/delegation provenance may remain here; product clauses mu
 ### 12 Nov 2026 — Thomas: staff invitation roles (D-C)
 
 The inviter chooses the staff role. A `member:invite`-scoped read returns only assignable role keys, labels and ranks, without widening the roles administration read. Resend keeps the stored role when omitted, or replaces it when supplied, and rechecks the resender’s current authority; a new invitation requires a role.
+
+**D-K — 12 Nov 2026, Thomas.** Portal cases label the customer person as Requester. When the work item was created by an internal staff person and its current requester is a customer, show Raised by: Support team, including after a requester change; do not expose the staff member's name or email. Customer submissions show no Raised by. This reverses the prior Created by presentation of the requester under D5; requester visibility and reach remain unchanged.
+
+### 12 Nov 2026 — Thomas, D-G: signed-in password changes
+
+Agent and customer accounts can change their own local password in account settings. The portal host admits the change-password auth endpoint only for an admitted customer session; the existing current-password verification, rate limit and optional peer-session revocation remain in force. The caller's factor status includes whether a local password exists even when MFA is enabled; no credential material is exposed. This extends the portal host allowlist and introduces no new URL.

@@ -4,7 +4,8 @@ import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture"
 test("sidebar workspace creation opens on demand and resets after cancellation", async ({
   page,
 }) => {
-  await installPerformanceApiFixture(page);
+  // Only an instance administrator is offered "Add workspace" (D-A, 12 Nov 2026).
+  await installPerformanceApiFixture(page, { instanceAdmin: true });
   await page.goto("/agent/projects/WLP/work?layout=list");
   await expect(page.getByTestId("work-item-list-populated")).toBeVisible();
   const switcher = page.getByRole("button", {

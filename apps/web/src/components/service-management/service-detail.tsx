@@ -20,6 +20,8 @@ import {
   DialogTitle,
   Input,
   Label,
+  PageContainer,
+  PageHeader,
   Select,
   SelectContent,
   SelectItem,
@@ -1031,65 +1033,71 @@ export function ServiceDetailView({ serviceId }: { serviceId: string }) {
   return (
     <>
       <PageTitle title={data?.name ?? t("services.detail.pageTitle")} />
-      <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
-        <div className="space-y-2">
-          <Button
-            render={<Link to={routes.serviceManagementServices.path} />}
-            variant="ghost"
-            size="sm"
-          >
-            <ArrowLeft aria-hidden="true" />
-            {t("services.detail.allServices")}
-          </Button>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold">
-              {data?.name ?? t("services.detail.pageTitle")}
-            </h1>
-            {data ? <ServiceStatusBadge status={data.status} /> : null}
-            {data ? <Badge variant="outline">{data.supportLevel}</Badge> : null}
-            {data && canManage ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setEditing(true)}
-              >
-                <Pencil aria-hidden="true" />
-                {t("services.detail.edit.action")}
-              </Button>
-            ) : null}
-          </div>
-          {data ? (
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              {data.description || t("services.detail.noDescription")}
-            </p>
-          ) : null}
-          {data ? (
-            <dl className="grid max-w-2xl grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-              <dt className="text-muted-foreground">
-                {t("services.fields.ownerTeam")}
-              </dt>
-              <dd>{data.ownerTeamName ?? t("services.list.noOwner")}</dd>
-              <dt className="text-muted-foreground">
-                {t("services.fields.category")}
-              </dt>
-              <dd>{data.category ?? t("services.detail.none")}</dd>
-              <dt className="text-muted-foreground">
-                {t("services.fields.calendar")}
-              </dt>
-              <dd>{data.calendarName ?? t("services.fields.noCalendar")}</dd>
-              <dt className="text-muted-foreground">
-                {t("services.detail.counts")}
-              </dt>
-              <dd>
-                {t("services.list.incidents", { count: data.incidentCount })}
-                {" · "}
-                {t("services.list.openChanges", {
-                  count: data.openChangeCount,
-                })}
-              </dd>
-            </dl>
-          ) : null}
-        </div>
+      <PageContainer>
+        <PageHeader
+          breadcrumbs={
+            <Button
+              render={<Link to={routes.serviceManagementServices.path} />}
+              variant="ghost"
+              size="sm"
+            >
+              <ArrowLeft aria-hidden="true" />
+              {t("services.detail.allServices")}
+            </Button>
+          }
+          title={data?.name ?? t("services.detail.pageTitle")}
+          description={
+            data
+              ? data.description || t("services.detail.noDescription")
+              : undefined
+          }
+          actions={
+            data ? (
+              <>
+                <ServiceStatusBadge status={data.status} />
+                <Badge variant="outline">{data.supportLevel}</Badge>
+                {canManage ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Pencil aria-hidden="true" />
+                    {t("services.detail.edit.action")}
+                  </Button>
+                ) : null}
+              </>
+            ) : undefined
+          }
+          tabs={
+            data ? (
+              <dl className="grid max-w-2xl grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">
+                  {t("services.fields.ownerTeam")}
+                </dt>
+                <dd>{data.ownerTeamName ?? t("services.list.noOwner")}</dd>
+                <dt className="text-muted-foreground">
+                  {t("services.fields.category")}
+                </dt>
+                <dd>{data.category ?? t("services.detail.none")}</dd>
+                <dt className="text-muted-foreground">
+                  {t("services.fields.calendar")}
+                </dt>
+                <dd>{data.calendarName ?? t("services.fields.noCalendar")}</dd>
+                <dt className="text-muted-foreground">
+                  {t("services.detail.counts")}
+                </dt>
+                <dd>
+                  {t("services.list.incidents", { count: data.incidentCount })}
+                  {" · "}
+                  {t("services.list.openChanges", {
+                    count: data.openChangeCount,
+                  })}
+                </dd>
+              </dl>
+            ) : undefined
+          }
+        />
         {service.isLoading ? (
           <LoadingRows />
         ) : service.isError || !data ? (
@@ -1127,7 +1135,7 @@ export function ServiceDetailView({ serviceId }: { serviceId: string }) {
             ) : null}
           </>
         )}
-      </div>
+      </PageContainer>
     </>
   );
 }

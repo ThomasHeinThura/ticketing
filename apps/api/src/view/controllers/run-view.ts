@@ -259,8 +259,13 @@ export async function runSavedView(input: {
   impersonatedBy?: string | null;
   limit: number;
   cursor?: string;
+  assertQueryReach?: (row: {
+    workspaceId: string;
+    query: unknown;
+  }) => Promise<void>;
 }) {
   const view = await getView(input.id, input.personId, input.userId);
+  await input.assertQueryReach?.(view);
   return executeSavedViewQuery({
     userId: input.userId,
     apiKey: input.apiKey,
@@ -279,8 +284,13 @@ export async function countSavedView(input: {
   userId: string;
   apiKey?: ApiKey;
   impersonatedBy?: string | null;
+  assertQueryReach?: (row: {
+    workspaceId: string;
+    query: unknown;
+  }) => Promise<void>;
 }) {
   const view = await getView(input.id, input.personId, input.userId);
+  await input.assertQueryReach?.(view);
   const query = executableQuery(view.query);
   const projectScopeId = view.scope === "project" ? view.scopeId : undefined;
 

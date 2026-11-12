@@ -110,7 +110,10 @@ misconfigured away through the role editor.
   other. A portal case row names its requester to a reader in the same customer organisation
   (`createdBy.name`, the person's display name or user name) and marks the caller's own case
   with `createdBy.isYou`; a requester outside that organisation, or not a customer, is never
-  named (`name: null`). Staff are still named only where they act publicly.
+  named (`name: null`). D-K (12 Nov 2026) labels this value Requester; a case whose work item
+  was created by staff for a customer also shows Raised by: Support team. Customer submissions
+  show no Raised by. Requester changes do not change who created the item; staff identity and
+  email are not exposed by this field.
 - `CP-5` Terminology is customer-facing throughout: "request", not "work item";
   "In progress", not a state group name; "your team", not "assignee". The default English
   nouns are exactly the [terminology overlay](#pending-01-architectureadr0012-terminology-overlay)'s
@@ -236,7 +239,15 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   `/api/public/health/ready`. Those existing health handlers remain independent of which
   origin received the request. Once the two-instance identity boundary is configured, the
   portal host admits only its exact Better Auth sign-in/session/OIDC endpoints and the
-  registered `kind: portal` API policies. The agent API stays unreachable there. Pending
+  registered `kind: portal` API policies. As of D-G (Thomas, 12 Nov 2026), the portal also
+  admits `POST /api/auth/change-password` for an admitted customer session and
+  `GET /api/me/security/factors` for that session's own security status. The agent API stays
+  unreachable there. The current password is verified, the existing policy and rate limit apply,
+  peer sessions can be revoked, and successful password changes are audited without secrets.
+  Password change requires a fully admitted session after bootstrap and any required factor
+  enrollment. Rotation preserves the caller's validated identity-connection and workspace
+  provenance, deletes the original and peer sessions, and never transfers their session-bound
+  step-up proofs. The status includes local-password presence even with MFA enabled. Pending
   submission and work-item attachment objects are uploaded on the filesystem driver only by
   `PUT /api/storage/portal-attachment-upload`, using a link bound to the requesting customer
   (Thomas, 4 November 2026). The generic filesystem attachment PUT is refused on the portal
@@ -421,11 +432,11 @@ in your head — which is the point of not reusing the agent handlers.
   meta: { total } }`. A row is `ref`, `source` (`submission` or `direct`, see `CP-16`),
   `title`, `requestTypeName`, `priority`, `customerStatus`, `createdAt`, `updatedAt`,
   `project { key, name } | null`, `createdBy { name, isYou }` (D5, `CP-4`), `isRequester`,
-  `customerVisibility` and `sla { state, dueAt, metric } | null`. No row carries an assignee,
+  `raisedBySupport` (D-K), `customerVisibility` and `sla { state, dueAt, metric } | null`. No row carries an assignee,
   claimer, comment or internal field (`CP-3`, `CP-4`).
 - `GET /api/portal/requests/export.csv` takes the same filters (no `cursor` or `limit`) and
   streams the same rows in the same order as RFC 4180 CSV with formula-leading cells
-  neutralised: columns Reference, Title, Request type, Severity, Status, Project, Created by,
+  neutralised: columns Reference, Title, Request type, Severity, Status, Project, Requester, Raised by,
   Created, Updated. At most 5,000 rows; headers `x-export-total` and `x-export-truncated` say
   when the file was cut short. Served `no-store` as `requests.csv`.
 - `GET /api/portal/home` takes `project` and answers `actionRequired { total, cases,

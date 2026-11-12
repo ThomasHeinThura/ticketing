@@ -179,8 +179,23 @@ async function signUpStaff(page: Page, fixture: MfaCsrfAppFixture) {
 
 async function createStaffWorkspace(page: Page, origin: string) {
   const api = page.context().request;
+  // D-A: only an instance administrator creates a workspace, and the request names its owner.
+  // The signed-in user here is the bootstrap administrator, so they name themselves.
+  const sessionResponse = await api.get(
+    new URL("/api/auth/get-session", origin).toString(),
+    { headers: { Origin: origin } },
+  );
+  expect(sessionResponse.status()).toBe(200);
+  const ownerUserId =
+    (
+      (await sessionResponse.json()) as {
+        user?: { id?: string };
+      } | null
+    )?.user?.id ?? "";
+  expect(ownerUserId).toBeTruthy();
   const workspaceResponse = await postWithCsrf(api, origin, "/api/workspace", {
     name: `Portal projects ${randomUUID().slice(0, 8)}`,
+    ownerUserId,
   });
   expect(workspaceResponse.status()).toBe(200);
   const workspace = (await workspaceResponse.json()) as { id?: string };
