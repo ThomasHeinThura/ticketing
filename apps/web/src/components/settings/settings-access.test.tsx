@@ -4,13 +4,14 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -409,6 +410,109 @@ describe("settings access requiring a fresh capability on revisit", () => {
         await screen.findByTestId("settings-access-error"),
       ).toBeInTheDocument();
       expect(mounted).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    ["request types", "manageRequestTypes"],
+    ["terminology", "manageWorkspaceSettings"],
+  ] as const)(
+    "keeps %s mounted through later background refetches and still honours a revoked grant",
+    async (_name, flag) => {
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      client.setQueryData(["workspace-capabilities", "ws-1", "admin"], {
+        [flag]: true,
+      });
+      mocks.capabilitiesGet.mockResolvedValueOnce(
+        respond(200, { [flag]: true }),
+      );
+      const mounted = vi.fn();
+      const unmounted = vi.fn();
+      function Content() {
+        useEffect(() => {
+          mounted();
+          return () => unmounted();
+        }, []);
+        return <p>protected content</p>;
+      }
+      function Screen() {
+        const access = useSettingsAccess(
+          (permission) =>
+            flag === "manageRequestTypes"
+              ? permission.canManageRequestTypes()
+              : permission.canManageWorkspaceSettings(),
+          undefined,
+          { refreshOnMount: true },
+        );
+        return (
+          <SettingsAccessGate access={access}>
+            <Content />
+          </SettingsAccessGate>
+        );
+      }
+      render(
+        <QueryClientProvider client={client}>
+          <Screen />
+        </QueryClientProvider>,
+      );
+      expect(await screen.findByText("protected content")).toBeInTheDocument();
+      expect(mocks.capabilitiesGet).toHaveBeenCalledTimes(1);
+      expect(mounted).toHaveBeenCalledTimes(1);
+      const refetch = () =>
+        client.refetchQueries({ queryKey: ["workspace-capabilities", "ws-1"] });
+      const stillOpen = () => {
+        expect(screen.getByText("protected content")).toBeInTheDocument();
+        expect(
+          screen.queryByRole("status", {
+            name: "settings:accessDenied.checking",
+          }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId("settings-access-error")).toBeNull();
+        expect(unmounted).not.toHaveBeenCalled();
+      };
+
+      // A refetch in flight (reconnect, invalidation, Retry elsewhere).
+      let resolve!: (value: ReturnType<typeof respond>) => void;
+      mocks.capabilitiesGet.mockReturnValueOnce(
+        new Promise((done) => {
+          resolve = done;
+        }),
+      );
+      let pending!: Promise<void>;
+      act(() => {
+        pending = refetch();
+      });
+      await waitFor(() =>
+        expect(mocks.capabilitiesGet).toHaveBeenCalledTimes(2),
+      );
+      stillOpen();
+      await act(async () => {
+        resolve(respond(200, { [flag]: true }));
+        await pending;
+      });
+      stillOpen();
+
+      // A refetch that fails keeps the last answer.
+      mocks.capabilitiesGet.mockResolvedValueOnce(respond(503));
+      await act(async () => {
+        await refetch();
+      });
+      expect(mocks.capabilitiesGet).toHaveBeenCalledTimes(3);
+      stillOpen();
+
+      // A refetch that reports the grant revoked closes the screen.
+      mocks.capabilitiesGet.mockResolvedValueOnce(
+        respond(200, { [flag]: false }),
+      );
+      await act(async () => {
+        await refetch();
+      });
+      expect(
+        await screen.findByTestId("settings-access-denied"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("protected content")).toBeNull();
+      expect(mounted).toHaveBeenCalledTimes(1);
     },
   );
 });

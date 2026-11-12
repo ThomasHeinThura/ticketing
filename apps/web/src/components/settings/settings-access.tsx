@@ -54,13 +54,18 @@ export function useSettingsAccess(
     projectId,
   );
   if (!workspace?.id) return "checking";
-  // Sensitive settings can require a fresh check even when the shared cache has data.
-  if (
-    options?.refreshOnMount &&
-    (permission.isRefetchingPermissions || permission.isPermissionCheckPaused)
-  )
+  // Sensitive settings need a fresh check even when the shared cache has data, but only until
+  // the first fresh read after mount has settled: a later background refetch must not send an
+  // open editor back to "checking" and drop its unsaved draft.
+  if (permission.isPermissionRefreshPending) {
+    if (
+      permission.isPermissionError &&
+      !permission.isRefetchingPermissions &&
+      !permission.isPermissionCheckPaused
+    )
+      return "error";
     return "checking";
-  if (options?.refreshOnMount && permission.isPermissionError) return "error";
+  }
   if (permission.isCheckingPermissions)
     return checkFailed ? "error" : "checking";
   return allows(permission) ? "allowed" : "denied";
