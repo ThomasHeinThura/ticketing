@@ -93,7 +93,9 @@ test("timesheet without log-time shows the permission notice, not Retry", async 
   await installPerformanceApiFixture(page);
   const paths = recordApiPaths(page);
   await page.goto("/agent/timesheet");
-  await expect(page.getByText("You cannot log time")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "You don't have access", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: /retry/iu })).toHaveCount(0);
   expect(paths.filter((p) => p.startsWith("/api/time-"))).toEqual([]);
   await shot(page, "timesheet-denied");
@@ -296,7 +298,7 @@ test.describe("settings when the capability read fails", () => {
       1280,
       "settings-access-denied",
     ],
-    ["/agent/timesheet", "timesheet", 1280, "You cannot log time"],
+    ["/agent/timesheet", "timesheet", 1280, "settings-access-denied"],
     [
       "/dashboard/settings/workspace/states",
       "states",

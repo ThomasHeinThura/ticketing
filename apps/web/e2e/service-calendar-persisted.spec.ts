@@ -38,8 +38,8 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
 }, testInfo) => {
   test.setTimeout(90_000);
   page.setDefaultTimeout(8_000);
-  await withMfaCsrfApp(async ({ origin, email, password }) => {
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+  await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
+    await page.goto(setupUrl);
     await page.getByLabel("Full name").fill("Disposable Calendar Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);

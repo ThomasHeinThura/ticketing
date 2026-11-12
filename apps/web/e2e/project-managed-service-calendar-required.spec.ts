@@ -165,10 +165,11 @@ test("asks for a service calendar when none resolves, and creates with the chose
 }, testInfo) => {
   test.setTimeout(300_000);
   page.setDefaultTimeout(10_000);
-  await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, databaseUrl, setupUrl } = fixture;
     const at = (path: string) => new URL(path, origin).toString();
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(at("/auth/sign-up"));
+    await page.goto(setupUrl);
     await page.getByLabel("Full name").fill("Disposable Calendar Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);

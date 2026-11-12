@@ -49,10 +49,11 @@ async function createAdminWorkspace(
   origin: string,
   email: string,
   password: string,
+  setupUrl: string,
 ) {
   await test.step("Setup diagnostic: sign-up page navigation", async () => {
     console.info("Setup diagnostic begin: sign-up page navigation");
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+    await page.goto(setupUrl);
     console.info("Setup diagnostic completed: sign-up page navigation");
   });
   await test.step("Setup diagnostic: full-name field entry", async () => {
@@ -419,13 +420,15 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
 }, testInfo) => {
   test.setTimeout(240_000);
 
-  await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, databaseUrl, setupUrl } = fixture;
     await test.step("register and sign in through the actual UI", async () => {
       const provisioningUri = await createAdminWorkspace(
         page,
         origin,
         email,
         password,
+        setupUrl,
       );
       await signInThroughUi(page, origin, email, password, provisioningUri);
     });
@@ -1101,7 +1104,8 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 1280, height: 800 });
 
-  await withMfaCsrfApp(async ({ origin, email, password, fixtureDir }) => {
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, fixtureDir, setupUrl } = fixture;
     await test.step("CA19 phase: workspace setup and sign-in", async () => {
       console.info("CA19 phase begin: workspace setup and sign-in");
       const provisioningUri = await createAdminWorkspace(
@@ -1109,6 +1113,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         origin,
         email,
         password,
+        setupUrl,
       );
       await signInThroughUi(page, origin, email, password, provisioningUri);
       console.info("CA19 phase completed: workspace setup and sign-in");

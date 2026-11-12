@@ -154,11 +154,11 @@ test("S5 creates managed services from the catalogue and filters them by kind on
 }, testInfo) => {
   test.setTimeout(300_000);
   page.setDefaultTimeout(10_000);
-  await withMfaCsrfApp(async ({ origin, email, password }) => {
+  await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
     const at = (path: string) => new URL(path, origin).toString();
     await recordCreateProjectBodies(page);
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(at("/auth/sign-up"));
+    await page.goto(setupUrl);
     await page.getByLabel("Full name").fill("Disposable Service Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);

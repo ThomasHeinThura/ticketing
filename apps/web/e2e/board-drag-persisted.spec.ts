@@ -79,7 +79,7 @@ test("board drop stays in place through a real write and a refused move returns 
   const containers: string[] = [];
   try {
     await withMfaCsrfApp(
-      async ({ origin, email, password }) => {
+      async ({ origin, email, password, setupUrl }) => {
         const context = await browser.newContext({
           viewport: { width: 1920, height: 1000 },
           locale: "en-GB",
@@ -88,7 +88,7 @@ test("board drop stays in place through a real write and a refused move returns 
         });
         try {
           const page = await context.newPage();
-          await page.goto(new URL("/auth/sign-up", origin).toString());
+          await page.goto(setupUrl);
           await page.getByLabel("Full name").fill("Board Journey Admin");
           await page.getByLabel("Email").fill(email);
           await page

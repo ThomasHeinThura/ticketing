@@ -1680,7 +1680,7 @@ is itself keyboard-navigable.
 - Focus is never trapped outside a modal context.
 - Opening a dialog moves focus into it; closing returns focus to the trigger.
 - A destructive dialog focuses the *cancel* action, not the destructive one.
-- Route changes move focus to the page heading and announce it.
+- Route changes move focus to the page heading and announce it. Workspace settings retain their page heading while permission checks load or fail; a failed check shows Retry and makes no protected data read.
 
 **Board drag and drop must have a keyboard path.** dnd-kit provides one: focus a card,
 `Space` to lift, arrows to move, `Space` to drop, `Escape` to cancel — with live-region

@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, open, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, open, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -147,6 +147,8 @@ async function assertPostgreSqlLoopbackBinding(
 }
 
 export type MfaCsrfAppFixture = {
+  /** Private first-run link; never log or attach it. */
+  setupUrl: string;
   origin: string;
   email: string;
   password: string;
@@ -762,13 +764,26 @@ async function runMfaCsrfApp<T>(
         spawnChild: supervisor.spawn.bind(supervisor),
       });
       const apiEntrypointUrl = pathToFileURL(apiEntrypoint).href;
+      const setupTokenPath = resolve(evidenceDir, "setup-token");
       apiProcess = await spawnWithPrivateLogs(
         supervisor,
         process.execPath,
         [
           "--input-type=module",
           "-e",
-          `import { startServer } from ${JSON.stringify(apiEntrypointUrl)}; void startServer(Number(process.env.TASKDESK_PORT), { hostname: "127.0.0.1" });`,
+          `import { startServer } from ${JSON.stringify(apiEntrypointUrl)};
+          import { existsSync, writeFileSync } from "node:fs";
+          const log = console.log;
+          console.log = (...args) => {
+            if (typeof args[0] === "string" && args[0].startsWith("Setup token: "))
+              writeFileSync(${JSON.stringify(setupTokenPath)}, args[0].slice("Setup token: ".length), { mode: 0o600 });
+            log(...args);
+          };
+          await startServer(Number(process.env.TASKDESK_PORT), { hostname: "127.0.0.1" });
+          console.log = log;
+          // Seeded instances do not issue a setup token.
+          if (!existsSync(${JSON.stringify(setupTokenPath)}))
+            writeFileSync(${JSON.stringify(setupTokenPath)}, "", { mode: 0o600 });`,
         ],
         {
           ...bootstrapEnv,
@@ -781,7 +796,26 @@ async function runMfaCsrfApp<T>(
         evidenceDir,
       );
       await waitForHealth(apiProcess, origin);
+      // Startup listens before publishing the private token. Never expose it in
+      // assertion output, including the journeys that discard child logs.
+      const setupDeadline = Date.now() + 10_000;
+      while (!existsSync(setupTokenPath)) {
+        if (Date.now() > setupDeadline)
+          throw new Error("Disposable first-run setup token was not published");
+        await new Promise((done) => setTimeout(done, 50));
+      }
+      const setupUrl = new URL("/auth/sign-up", origin);
+      const setupToken = await readFile(setupTokenPath, "utf8");
+      setupUrl.searchParams.set("setupToken", setupToken);
+      await rm(setupTokenPath);
       return await run({
+        get setupUrl() {
+          if (!setupToken)
+            throw new Error(
+              "First-run signup is unavailable in a seeded fixture",
+            );
+          return setupUrl.toString();
+        },
         origin,
         email,
         password,

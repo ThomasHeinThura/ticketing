@@ -823,9 +823,9 @@ test("calendar creation supports keyboard input and read-only access", async ({
     0,
   );
   await page.getByRole("link", { name: "New regional cover" }).click();
-  await expect(
-    page.getByRole("button", { name: "Save changes" }),
-  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
+    0,
+  );
   await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Monday window 1 start", exact: true }),

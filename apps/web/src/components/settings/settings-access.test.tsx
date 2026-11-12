@@ -50,7 +50,10 @@ vi.mock("@/fetchers/project-settings-inheritance", () => ({
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 
 import { SettingsAccessGate, useSettingsAccess } from "./settings-access";
-import { WorkspaceStateTemplatesPanel } from "./workspace-state-templates-panel";
+import {
+  WorkspaceStateTemplatesPage,
+  WorkspaceStateTemplatesPanel,
+} from "./workspace-state-templates-panel";
 
 function respond(status: number, body: unknown = {}) {
   return {
@@ -515,4 +518,20 @@ describe("settings access requiring a fresh capability on revisit", () => {
       expect(mounted).toHaveBeenCalledTimes(1);
     },
   );
+});
+
+it("keeps the states page heading while permission loading fails", async () => {
+  mocks.capabilitiesGet.mockResolvedValue(respond(503));
+  renderWithClient(<WorkspaceStateTemplatesPage />);
+  expect(
+    await screen.findByTestId("settings-access-error"),
+  ).toBeInTheDocument();
+  expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+    "settings:workspaceStateTemplates.title",
+  );
+  expect(
+    screen.getByRole("button", { name: "common:actions.retry" }),
+  ).toBeEnabled();
+  expect(mocks.getStateTemplates).not.toHaveBeenCalled();
 });

@@ -144,8 +144,9 @@ test("Overview writes persist: milestone, prerequisite, stakeholder stand-down",
 }) => {
   test.setTimeout(180_000);
   page.setDefaultTimeout(10_000);
-  await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, databaseUrl, setupUrl } = fixture;
+    await page.goto(setupUrl);
     await page.getByLabel("Full name").fill(OWNER);
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);

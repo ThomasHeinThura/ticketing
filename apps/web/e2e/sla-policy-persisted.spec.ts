@@ -38,8 +38,8 @@ test("SLA policy publishes and reloads its persisted eight-goal snapshot", async
 }, testInfo) => {
   test.setTimeout(120_000);
   page.setDefaultTimeout(10_000);
-  await withMfaCsrfApp(async ({ origin, email, password }) => {
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+  await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
+    await page.goto(setupUrl);
     await page.getByLabel("Full name").fill("Disposable SLA Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);
