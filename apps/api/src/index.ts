@@ -2215,10 +2215,18 @@ export function createApp(
         c.get("session") as { impersonatedBy?: string | null } | null
       )?.impersonatedBy;
       const runRequest = () =>
-        eventContext.run({ initiatorId }, () =>
-          !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
-            ? deleteIdempotency(c, () => runNextWithPolicyShadow(c, next))
-            : runNextWithPolicyShadow(c, next),
+        eventContext.run(
+          {
+            initiatorId,
+            nativeInitiator:
+              windowId && userId && c.get("session") && !c.get("apiKey")
+                ? { userId, windowId }
+                : undefined,
+          },
+          () =>
+            !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
+              ? deleteIdempotency(c, () => runNextWithPolicyShadow(c, next))
+              : runNextWithPolicyShadow(c, next),
         );
       // GM-8: every audit row written by an impersonated request names the impersonator.
       return await (impersonatorId
@@ -2583,6 +2591,7 @@ export function createApp(
                 return null;
               }
             },
+            c.req.query("windowId"),
           );
         },
         onMessage(event, ws) {

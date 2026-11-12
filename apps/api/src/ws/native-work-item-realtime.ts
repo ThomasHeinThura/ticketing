@@ -32,6 +32,7 @@ type NativeCredential = {
 type NativeConnection = {
   ws: WSContext;
   credential: NativeCredential;
+  windowId?: string;
   reauthenticate: () => Promise<NativeCredential | null>;
   topics: Map<
     string,
@@ -169,6 +170,7 @@ export function addNativeConnection(
   ws: WSContext,
   credential: NativeCredential,
   reauthenticate: () => Promise<NativeCredential | null>,
+  windowId?: string,
 ) {
   const samePersonConnections = [...nativeConnections].filter(
     (connection) => connection.credential.userId === credential.userId,
@@ -180,6 +182,7 @@ export function addNativeConnection(
   const connection: NativeConnection = {
     ws,
     credential,
+    windowId,
     reauthenticate,
     topics: new Map(),
     frameTimes: [],
@@ -312,6 +315,14 @@ export function removeNativeConnection(connection: NativeConnection | null) {
 export function deliverNativeBroadcast(message: NativeBroadcastMessage) {
   const topics = new Set(message.topics);
   for (const connection of nativeConnections) {
+    if (
+      message.initiator &&
+      connection.windowId &&
+      !connection.credential.apiKeyId &&
+      connection.credential.userId === message.initiator.userId &&
+      connection.windowId === message.initiator.windowId
+    )
+      continue;
     for (const topic of topics) {
       const subscription = connection.topics.get(topic);
       if (!subscription || subscription.projectId !== message.projectId)

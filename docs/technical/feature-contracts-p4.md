@@ -1837,6 +1837,9 @@ durable delivery children make candidate creation and provider outcomes inspecta
 - `NO-14` Every notification deep-links to the exact thing — the comment, not the work
   item.
 - `NO-15` Mark one read, mark all read, and mark unread again.
+  The agent inbox and its unread badges show these changes immediately; a refused write rolls
+  back the pending change and displays a translated error. Realtime reads cannot replace a
+  pending optimistic state; after the write settles the server state is read again.
 - `NO-16` Arrives live over WebSocket. No polling.
 - `NO-17` Read notifications are purged after the instance's configured notification
   retention period (90 days by default; configurable in God Mode). The daily

@@ -144,7 +144,8 @@ describe("canonical Kaneo relations section", () => {
       },
     };
     mocks.create.mockResolvedValue({ id: "new" });
-    mount();
+    const { client } = mount();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
     const option = await screen.findByRole("option", {
       name: /PLAT-2\s*Linked work/,
     });
@@ -161,6 +162,20 @@ describe("canonical Kaneo relations section", () => {
         type: "blocked_by",
       }),
     );
+    await waitFor(() => {
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["work-items", "project-1"],
+      });
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["work-items", "project-peer"],
+      });
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["work-items", "detail", "OPS-1"],
+      });
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["work-items", "detail", "PLAT-2"],
+      });
+    });
   });
   it("picks the relation type from a Kaneo popover and keeps it in URL state", async () => {
     mocks.location.search = {

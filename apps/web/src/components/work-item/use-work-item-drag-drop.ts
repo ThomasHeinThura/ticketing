@@ -468,7 +468,7 @@ export default function useWorkItemDragDrop({
   }
 
   /** Reloads what a move can change and never throws; callers do not wait for it. */
-  function reload(key?: string): Promise<unknown> {
+  function reload(key?: string, itemProjectId?: string): Promise<unknown> {
     const swallow = () => undefined;
     if (key) {
       for (const scope of ["transitions", "detail"]) {
@@ -479,12 +479,17 @@ export default function useWorkItemDragDrop({
         ).catch(swallow);
       }
     }
+    if (itemProjectId && itemProjectId !== projectId) {
+      void queryClient
+        .invalidateQueries({ queryKey: ["work-items", itemProjectId] })
+        .catch(swallow);
+    }
     return Promise.resolve(
       queryClient.invalidateQueries({
         queryKey:
-          surface === "board"
-            ? ["work-items", projectId, combined ? "combined" : "board"]
-            : ["work-items", projectId],
+          key || surface !== "board"
+            ? ["work-items", projectId]
+            : ["work-items", projectId, combined ? "combined" : "board"],
       }),
     ).catch(swallow);
   }
@@ -523,7 +528,7 @@ export default function useWorkItemDragDrop({
         }
         if (stale()) {
           // The route changed under an in-flight write: refresh what it did, show nothing.
-          if (result.committed) void reload(item.key);
+          if (result.committed) void reload(item.key, item.projectId);
           return;
         }
         publish(result.notice);
@@ -542,7 +547,7 @@ export default function useWorkItemDragDrop({
             });
             return next;
           });
-          void reload(item.key);
+          void reload(item.key, item.projectId);
           return;
         }
         if (keyboardMove) rollbackFocus.current = item.id;

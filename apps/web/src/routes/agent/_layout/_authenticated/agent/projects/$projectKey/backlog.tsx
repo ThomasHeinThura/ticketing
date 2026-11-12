@@ -263,9 +263,12 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
     setRankingBusy(true);
     try {
       await rankWorkItem({ key: row.key, ...neighbours });
-      await queryClient.invalidateQueries({
-        queryKey: ["work-items", project.id],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["work-items", project.id] }),
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "detail", row.key],
+        }),
+      ]);
       setRankingNotice({
         kind: "status",
         text: t("workItems:board.rankSaved", {

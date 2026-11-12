@@ -7,6 +7,7 @@ vi.mock("../../../apps/api/src/instance/observability/runtime", () => ({
 
 import {
   addNativeConnection,
+  deliverNativeBroadcast,
   handleNativeAuthorizationInvalidation,
   handleNativeFrame,
   reauthorizeNativeConnection,
@@ -32,6 +33,79 @@ describe("native realtime session re-authorization", () => {
     for (const connection of connections.splice(0)) {
       removeNativeConnection(connection);
     }
+  });
+
+  it("excludes only the authenticated initiating window and never exposes its identity", () => {
+    const sockets = [
+      mockSocket(),
+      mockSocket(),
+      mockSocket(),
+      mockSocket(),
+      mockSocket(),
+      mockSocket(),
+    ];
+    const identities = [
+      ["person-1", "window-1"],
+      ["person-1", "window-2"],
+      ["person-2", "window-3"],
+      ["person-2", "window-1"],
+      ["person-1", undefined],
+      ["person-1", "window-1"],
+    ] as const;
+    for (const [index, [userId, windowId]] of identities.entries()) {
+      const socket = sockets[index];
+      if (!socket) throw new Error("missing test socket");
+      const connection = addNativeConnection(
+        socket.ws,
+        {
+          userId,
+          portal: "agent",
+          ...(index === 5 ? { apiKeyId: "key-1" } : {}),
+        },
+        async () => ({ userId, portal: "agent" }),
+        windowId,
+      );
+      if (!connection) throw new Error("connection limit unexpectedly reached");
+      connections.push(connection);
+      connection.topics.set("project:project-1", {
+        projectId: "project-1",
+        workspaceId: "workspace-1",
+        customerVisible: true,
+      });
+    }
+    const message = {
+      projectId: "project-1",
+      topics: ["project:project-1"],
+      eventId: "event-1",
+      eventType: "work_item.updated",
+      at: "2026-11-12T00:00:00Z",
+      key: "WI-1",
+      customerVisible: true,
+    };
+    deliverNativeBroadcast({
+      ...message,
+      initiator: { userId: "person-1", windowId: "window-1" },
+    });
+    expect(
+      sockets.map(
+        ({ ws }) =>
+          (ws as { send: ReturnType<typeof vi.fn> }).send.mock.calls.length,
+      ),
+    ).toEqual([0, 1, 1, 1, 1, 1]);
+    const secondSocket = sockets[1];
+    if (!secondSocket) throw new Error("missing test socket");
+    const payload = JSON.stringify(
+      (secondSocket.ws as { send: ReturnType<typeof vi.fn> }).send.mock.calls,
+    );
+    expect(payload).not.toContain("window-1");
+    expect(payload).not.toContain("person-1");
+    deliverNativeBroadcast(message);
+    expect(
+      sockets.map(
+        ({ ws }) =>
+          (ws as { send: ReturnType<typeof vi.fn> }).send.mock.calls.length,
+      ),
+    ).toEqual([1, 2, 2, 2, 2, 2]);
   });
 
   it("reauthenticates only the identity targeted by a control invalidation", async () => {

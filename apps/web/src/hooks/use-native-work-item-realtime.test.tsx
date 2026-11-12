@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   getWorkItems: vi.fn(),
   getWorkItem: vi.fn(),
   getActivity: vi.fn(),
+  updateWorkItem: vi.fn(),
   state: { listVersion: 1, detailVersion: 1, activityVersion: 1 },
 }));
 
@@ -37,13 +38,18 @@ vi.mock("@/fetchers/work-item/get-work-item", () => ({
 vi.mock("@/fetchers/activity/get-activites-by-task-id", () => ({
   default: mocks.getActivity,
 }));
+vi.mock("@/fetchers/work-item/update-work-item", () => ({
+  default: mocks.updateWorkItem,
+}));
 
 import WorkItemListRealtime from "@/components/work-item/work-item-list-realtime";
+import { useSaveWorkItemFields } from "@/components/work-item/work-item-save";
 import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
+import type { WorkItemDetailRow } from "@/types/work-item";
 
 class MockWebSocket {
   static OPEN = 1;
@@ -56,7 +62,7 @@ class MockWebSocket {
   onerror: (() => void) | null = null;
   onclose: (() => void) | null = null;
 
-  constructor(_url: string) {
+  constructor(public url: string) {
     MockWebSocket.instances.push(this);
   }
 
@@ -275,6 +281,55 @@ afterEach(() => {
 });
 
 describe("work-item list realtime composition", () => {
+  it("refreshes once after its save and again for a different person's event", async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    const detail = vi.fn(async () => ({ key: "WI-1", version: 1 }));
+    mocks.updateWorkItem.mockResolvedValue({});
+    const item = {
+      key: "WI-1",
+      version: 1,
+      projectId: "project-1",
+      workspaceId: "workspace-1",
+    } as WorkItemDetailRow;
+    const { result } = renderHook(
+      () => {
+        useQuery({
+          queryKey: ["work-items", "detail", "WI-1"],
+          queryFn: detail,
+        });
+        useNativeWorkItemRealtime(["project:project-1"]);
+        return useSaveWorkItemFields(item);
+      },
+      { wrapper: wrapperFor(client) },
+    );
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(1));
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected the native socket");
+    expect(socket.url).toContain("?windowId=");
+    act(() => socket.open());
+    act(() => socket.frame({ type: "subscribed", topic: "project:project-1" }));
+    await act(async () => {
+      await result.current.mutateAsync({ title: "changed" });
+    });
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(2));
+    // The server's origin test proves that it does not deliver this tab's own hint.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(detail).toHaveBeenCalledTimes(2);
+    act(() =>
+      socket.frame({
+        type: "work_item.updated",
+        topic: "project:project-1",
+        eventId: "other-person",
+        payload: { key: "WI-1" },
+      }),
+    );
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(3));
+  });
   it.each(["project-first", "item-first"] as const)(
     "invalidates all affected query keys for a duplicate event in %s topic order",
     async (topicOrder) => {
