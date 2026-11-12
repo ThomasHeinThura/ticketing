@@ -2,6 +2,8 @@
 
 Reach and authority are separate checks. Membership determines reachable resources; scoped roles supply capabilities. Authentication alone grants neither. Every route declares one policy. No provider claim grants instance administration or unrestricted reach.
 
+Project reordering returns and updates only projects the caller reaches. Unreachable, missing, and deleted project IDs receive the same 404; the positions of unreachable projects are not changed.
+
 ## Capabilities
 
 | Group | Capability | Implies | Description |

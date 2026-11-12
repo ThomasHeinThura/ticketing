@@ -11260,7 +11260,7 @@
           "Projects"
         ],
         "summary": "Reorder projects",
-        "description": "Set the sidebar order of a workspace's projects. The given positions express relative order only -- the workspace is renumbered to 0..n-1.",
+        "description": "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
         "parameters": [
           {
             "schema": {
@@ -11335,6 +11335,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A project is missing or out of reach",
             "content": {
               "text/plain": {
                 "schema": {

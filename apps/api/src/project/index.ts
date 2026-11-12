@@ -27,6 +27,7 @@ import {
 } from "../utils/has-project-reach";
 import {
   listReachOf,
+  requireReachContext,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
 import { apiKeyScopeSatisfies } from "../utils/require-api-key-permission-scope";
@@ -359,10 +360,11 @@ const reorderProjectsRoute = createRoute({
   tags: ["Projects"],
   summary: "Reorder projects",
   description:
-    "Set the sidebar order of a workspace's projects. The given positions express relative order only -- the workspace is renumbered to 0..n-1.",
+    "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
   middleware: [
     workspaceAccess.fromQuery(),
     requireWorkspacePermission({ project: ["update"] }),
+    requireReachContext,
   ] as const,
   request: {
     query: workspaceIdQuery,
@@ -379,6 +381,7 @@ const reorderProjectsRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("A project is missing or out of reach"),
   },
 });
 
@@ -1197,7 +1200,12 @@ const project = apiRouter<
   .openapi(reorderProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     const { projects } = c.req.valid("json");
-    const reordered = await reorderProjectsCtrl(workspaceId, projects);
+    const reachable = await listReachOf(c).reachableProjectIds([workspaceId]);
+    const reordered = await reorderProjectsCtrl(
+      workspaceId,
+      projects,
+      reachable,
+    );
     return c.json(reordered, 200);
   })
   .openapi(updateProjectRoute, async (c) => {

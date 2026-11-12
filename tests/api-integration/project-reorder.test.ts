@@ -97,7 +97,7 @@ describe("API integration: project reorder", () => {
       { id: foreign.id, position: 2 },
     ]);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(404);
 
     // The rejected batch must not have applied partially: the two legitimate
     // ids come before the foreign one, so a per-row loop would already have
