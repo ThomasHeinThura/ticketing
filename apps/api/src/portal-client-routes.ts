@@ -19,6 +19,9 @@ export const PORTAL_CLIENT_ROUTE_PATTERNS: readonly string[] = [
   "/announcements/$id",
   "/notifications",
   "/catalogue",
+  // Password recovery: the request page, and the reset page opened from the emailed link.
+  "/forgot-password",
+  "/reset-password",
   // CP-24: the accept-invitation page. The credential rides in the fragment, never the path.
   "/invite/$id",
   "/kb",
