@@ -3135,11 +3135,21 @@
 		"invitations": {
 			"pendingBadge": "En attente",
 			"expires": "Expire {{date}}",
+			"expiredOn": "Expired {{date}}",
 			"linkLabel": "Lien d'invitation",
 			"copyLink": "Copier le lien",
+			"copyingLink": "Copying…",
 			"linkCopied": "Lien d'invitation copié",
 			"copyFailed": "Impossible de copier automatiquement. Sélectionnez le lien et appuyez sur Ctrl+C.",
-			"expiredBadge": "expired"
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "Inviter un membre de l'équipe",
@@ -3172,6 +3182,10 @@
 			"cancelDialogTitle": "Annuler l'invitation ?",
 			"cancelDialogDescription": "Êtes-vous sûr de vouloir annuler l'invitation pour {{email}} ? Cette action ne peut pas être annulée.",
 			"removeMember": "Supprimer le membre",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "Annuler l'invitation",
 			"removeSuccess": "Membre de l'équipe supprimé avec succès",
 			"removeError": "Échec de la suppression du membre de l'équipe",
@@ -3180,7 +3194,8 @@
 			"roleUpdateSuccess": "Rôle mis à jour",
 			"roleUpdateError": "Échec de la mise à jour du rôle",
 			"ariaInvitationActions": "Actions de l'invitation",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -8736,6 +8751,8 @@
 			"title": "Accept your invitation"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
@@ -8752,6 +8769,15 @@
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation",
 			"title": "Invite to this organisation"
+		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
 		},
 		"denied": {
 			"description": "Inviting people needs the member:invite permission in this workspace.",
@@ -8779,8 +8805,17 @@
 		"title": "Customer invitations",
 		"toasts": {
 			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it.",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"sent": "Invitation sent"
+			"sent": "Invitation sent",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		}
 	},
 	"reports": {

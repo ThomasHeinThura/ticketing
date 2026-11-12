@@ -32,24 +32,31 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
 import PageTitle from "@/components/page-title";
 import {
   type CustomerInvitation,
   type CustomerInvitationStatus,
+  copyCustomerInvitationLink,
   createCustomerInvitation,
   listCustomerInvitations,
   listInvitableOrganisations,
   requestCustomerInvitationRevoke,
   resendCustomerInvitation,
+  type SentCustomerInvitation,
 } from "@/fetchers/customer-invitation";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { copyInvitationErrorKey } from "@/hooks/use-copy-invitation-link";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { formatDateTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+
+const COPIED_RESET_MS = 2000;
 
 export const customerOrganisationsKey = (workspaceId: string) =>
   ["customer-invitation-organisations", workspaceId] as const;
@@ -80,6 +87,8 @@ function InviteDialog({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
+  const [sentInvitation, setSentInvitation] =
+    useState<SentCustomerInvitation | null>(null);
   const mutation = useMutation({
     mutationFn: () =>
       createCustomerInvitation(workspaceId, organisationId, email),
@@ -87,9 +96,9 @@ function InviteDialog({
       await queryClient.invalidateQueries({
         queryKey: customerInvitationsKey(workspaceId, organisationId),
       });
-      if (sent.delivered) toast.success(t("customerInvitations:toasts.sent"));
-      else toast.error(t("customerInvitations:toasts.notDelivered"));
-      onClose();
+      if (sent.delivered) toast.success(t("customerInvitations:toasts.queued"));
+      else toast.error(t("customerInvitations:toasts.noEmailProvider"));
+      setSentInvitation(sent);
     },
   });
   const valid = /^\S+@\S+\.\S+$/.test(email.trim());
@@ -102,57 +111,130 @@ function InviteDialog({
     >
       <DialogContent closeLabel={t("common:actions.close")}>
         <DialogHeader>
-          <DialogTitle>{t("customerInvitations:create.title")}</DialogTitle>
-          <DialogDescription>
-            {t("customerInvitations:create.description")}
-          </DialogDescription>
+          <DialogTitle>
+            {sentInvitation
+              ? t("customerInvitations:resultCard.createdTitle")
+              : t("customerInvitations:create.title")}
+          </DialogTitle>
+          {sentInvitation ? null : (
+            <DialogDescription>
+              {t("customerInvitations:create.description")}
+            </DialogDescription>
+          )}
         </DialogHeader>
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (valid && !mutation.isPending) mutation.mutate();
-          }}
-        >
-          <div className="space-y-4 px-6">
-            <div className="space-y-2">
-              <Label htmlFor="customer-invitation-email">
-                {t("customerInvitations:create.email")}
-              </Label>
-              <Input
-                id="customer-invitation-email"
-                type="email"
-                autoFocus
-                required
-                maxLength={320}
-                value={email}
-                disabled={mutation.isPending}
-                onChange={(event) => setEmail(event.target.value)}
+        {sentInvitation ? (
+          <>
+            <div className="px-6">
+              <InvitationResultCard
+                kind="customer"
+                invitationId={sentInvitation.id}
+                workspaceId={workspaceId}
+                organisationId={organisationId}
+                email={sentInvitation.email}
+                delivered={sentInvitation.delivered}
+                expiresAt={sentInvitation.expiresAt}
               />
-              <p className="text-muted-foreground text-xs">
-                {t("customerInvitations:create.roleNote")}
-              </p>
             </div>
-            {mutation.error ? (
-              <Alert variant="error">
-                <AlertDescription>{mutation.error.message}</AlertDescription>
-              </Alert>
-            ) : null}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              type="button"
-              disabled={mutation.isPending}
-              onClick={onClose}
-            >
-              {t("common:actions.cancel")}
-            </Button>
-            <Button type="submit" disabled={mutation.isPending || !valid}>
-              {t("customerInvitations:create.submit")}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button onClick={onClose}>
+                {t("customerInvitations:resultCard.done")}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (valid && !mutation.isPending) mutation.mutate();
+            }}
+          >
+            <div className="space-y-4 px-6">
+              <div className="space-y-2">
+                <Label htmlFor="customer-invitation-email">
+                  {t("customerInvitations:create.email")}
+                </Label>
+                <Input
+                  id="customer-invitation-email"
+                  type="email"
+                  autoFocus
+                  required
+                  maxLength={320}
+                  value={email}
+                  disabled={mutation.isPending}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+                <p className="text-muted-foreground text-xs">
+                  {t("customerInvitations:create.roleNote")}
+                </p>
+              </div>
+              {mutation.error ? (
+                <Alert variant="error">
+                  <AlertDescription>{mutation.error.message}</AlertDescription>
+                </Alert>
+              ) : null}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                type="button"
+                disabled={mutation.isPending}
+                onClick={onClose}
+              >
+                {t("common:actions.cancel")}
+              </Button>
+              <Button type="submit" disabled={mutation.isPending || !valid}>
+                {t("customerInvitations:create.submit")}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ResendResultDialog({
+  invitation,
+  workspaceId,
+  organisationId,
+  onClose,
+}: {
+  invitation: SentCustomerInvitation;
+  workspaceId: string;
+  organisationId: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent closeLabel={t("common:actions.close")}>
+        <DialogHeader>
+          <DialogTitle>
+            {t("customerInvitations:resultCard.resentTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="px-6">
+          <InvitationResultCard
+            kind="customer"
+            invitationId={invitation.id}
+            workspaceId={workspaceId}
+            organisationId={organisationId}
+            email={invitation.email}
+            delivered={invitation.delivered}
+            expiresAt={invitation.expiresAt}
+          />
+        </div>
+        <DialogFooter>
+          <Button onClick={onClose}>
+            {t("customerInvitations:resultCard.done")}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -162,14 +244,43 @@ function InvitationRow({
   invitation,
   workspaceId,
   organisationId,
+  onResent,
 }: {
   invitation: CustomerInvitation;
   workspaceId: string;
   organisationId: string;
+  onResent: (sent: SentCustomerInvitation) => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const openPendingAction = useOpenPendingAction();
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  const copyLink = useMutation({
+    mutationFn: () =>
+      copyCustomerInvitationLink(workspaceId, organisationId, invitation.id),
+    onSuccess: async ({ link }) => {
+      const ok = await copyToClipboard(link);
+      if (!ok) {
+        toast.error(t("customerInvitations:toasts.copyFailed"));
+        return;
+      }
+      setCopied(true);
+      toast.success(t("customerInvitations:toasts.linkCopied"));
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), COPIED_RESET_MS);
+    },
+    onError: (error) =>
+      toast.error(t(copyInvitationErrorKey(error, "customerInvitations"))),
+  });
   const resend = useMutation({
     mutationFn: () =>
       resendCustomerInvitation(workspaceId, organisationId, invitation.id),
@@ -177,8 +288,10 @@ function InvitationRow({
       await queryClient.invalidateQueries({
         queryKey: customerInvitationsKey(workspaceId, organisationId),
       });
-      if (sent.delivered) toast.success(t("customerInvitations:toasts.resent"));
-      else toast.error(t("customerInvitations:toasts.notDelivered"));
+      if (sent.delivered)
+        toast.success(t("customerInvitations:toasts.resentQueued"));
+      else toast.error(t("customerInvitations:toasts.noEmailProvider"));
+      onResent(sent);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -187,8 +300,8 @@ function InvitationRow({
     onSuccess: (pending) => openPendingAction(pending),
     onError: (error) => toast.error(error.message),
   });
-  const open =
-    invitation.status === "pending" || invitation.status === "expired";
+  const isPending = invitation.status === "pending";
+  const open = isPending || invitation.status === "expired";
   return (
     <TableRow>
       <TableCell className="font-medium">{invitation.email}</TableCell>
@@ -204,6 +317,22 @@ function InvitationRow({
       <TableCell className="text-right">
         {open ? (
           <div className="flex justify-end gap-2">
+            {isPending ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={copyLink.isPending}
+                onClick={() => copyLink.mutate()}
+              >
+                <span aria-live="polite">
+                  {copyLink.isPending
+                    ? t("team:invitations.copyingLink")
+                    : copied
+                      ? t("customerInvitations:actions.copied")
+                      : t("customerInvitations:actions.copyLink")}
+                </span>
+              </Button>
+            ) : null}
             <Button
               size="sm"
               variant="outline"
@@ -229,8 +358,9 @@ function InvitationRow({
 
 /**
  * `docs/screens.md` "Workspace — customer invitations": invite an address into one customer
- * organisation (always the customer role), see every invitation with its status, resend a pending
- * one and request its revocation through the pending-action flow (CP-20, CP-22, CP-23).
+ * organisation (always the customer role), see every invitation with its status and expiry,
+ * copy a pending invitation's link, resend an open invitation, and request its revocation
+ * through the pending-action flow (CP-20, CP-22, CP-23).
  */
 export function CustomerInvitations({
   organisationId,
@@ -255,6 +385,8 @@ export function CustomerInvitations({
     enabled: Boolean(workspaceId) && Boolean(selected),
   });
   const [inviting, setInviting] = useState(false);
+  const [resentInvitation, setResentInvitation] =
+    useState<SentCustomerInvitation | null>(null);
   const loading =
     workspaceLoading || isCheckingPermissions || organisations.isLoading;
 
@@ -395,6 +527,7 @@ export function CustomerInvitations({
                       invitation={invitation}
                       workspaceId={workspaceId}
                       organisationId={selected.id}
+                      onResent={(sent) => setResentInvitation(sent)}
                     />
                   ))}
                 </TableBody>
@@ -417,6 +550,14 @@ export function CustomerInvitations({
           workspaceId={workspace.id}
           organisationId={selected.id}
           onClose={() => setInviting(false)}
+        />
+      ) : null}
+      {resentInvitation && workspace && selected ? (
+        <ResendResultDialog
+          invitation={resentInvitation}
+          workspaceId={workspace.id}
+          organisationId={selected.id}
+          onClose={() => setResentInvitation(null)}
         />
       ) : null}
     </>

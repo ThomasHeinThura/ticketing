@@ -1548,6 +1548,13 @@
 			"when": 1794465850849,
 			"tag": "0220_staff_self_registration",
 			"breakpoints": true
+		},
+		{
+			"idx": 221,
+			"version": "7",
+			"when": 1794469097064,
+			"tag": "0221_invitation_credential_generation",
+			"breakpoints": true
 		}
 	]
 }

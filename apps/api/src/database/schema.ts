@@ -412,14 +412,16 @@ export const invitationTable = pgTable(
     inviterId: text("inviter_id")
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
-    // CP-20..CP-26 (0153): `staff` (every pre-existing row) or `customer`. A customer row names one
-    // customer organisation and the `customer` role and carries a hash-only accept credential.
+    // CP-20..CP-26 (0153, 0221): `staff` (every pre-existing row) or `customer`. A customer row names one
+    // customer organisation and the `customer` role and carries a hash-only accept credential derived from
+    // `id` + `generation` under a dedicated HKDF sub-key (D-N); resending increments `generation`.
     scope: text("scope").default("staff").notNull(),
     organisationId: text("organisation_id").references(
       () => organisationTable.id,
       { onDelete: "cascade", onUpdate: "cascade" },
     ),
     credentialHash: text("credential_hash"),
+    generation: integer("generation").default(1).notNull(),
     lastSentAt: timestamp("last_sent_at", { mode: "date", withTimezone: true }),
     acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
     acceptedPersonId: text("accepted_person_id").references(
@@ -435,6 +437,7 @@ export const invitationTable = pgTable(
       "invitation_scope_allowed",
       sql.raw("scope IN ('staff', 'customer')"),
     ),
+    check("invitation_generation_positive", sql.raw("generation >= 1")),
     check(
       "invitation_scope_shape",
       sql.raw(

@@ -3124,11 +3124,21 @@
 		"invitations": {
 			"pendingBadge": "pending",
 			"expires": "Expires {{date}}",
+			"expiredOn": "Expired {{date}}",
 			"linkLabel": "Invitation link",
 			"copyLink": "Copy link",
+			"copyingLink": "Copying…",
 			"linkCopied": "Invitation link copied",
 			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
-			"expiredBadge": "expired"
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "Invite Team Member",
@@ -3162,6 +3172,10 @@
 			"cancelDialogTitle": "Cancel Invitation?",
 			"cancelDialogDescription": "Are you sure you want to cancel the invitation for {{email}}? This action cannot be undone.",
 			"removeMember": "Remove Member",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "Cancel Invitation",
 			"removeSuccess": "Team member removed successfully",
 			"removeError": "Failed to remove team member",
@@ -3169,7 +3183,8 @@
 			"cancelInviteError": "Failed to cancel invitation",
 			"roleUpdateSuccess": "Role updated",
 			"roleUpdateError": "Failed to update role",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -8985,20 +9000,40 @@
 			"expired": "Expired"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
 		"create": {
 			"title": "Invite to this organisation",
-			"description": "The person receives an email with a link to accept on the customer portal. The link works once and expires.",
+			"description": "The person receives an email with a link to accept on the customer portal, or you can copy the link and send it yourself. The link works once and expires.",
 			"email": "Email address",
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation"
 		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
+		},
 		"toasts": {
 			"sent": "Invitation sent",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it."
+			"notDelivered": "Email not sent — copy the link and send it yourself",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"accept": {
 			"title": "Accept your invitation",

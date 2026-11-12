@@ -87621,6 +87621,7 @@
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#1",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuItem[0]::text-muted-foreground#0",
@@ -87740,7 +87741,6 @@
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/task-start-date-popover.tsx::TaskStartDatePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
-			"apps/web/src/components/team/invite-team-member-modal.tsx::InviteTeamMemberModal::Dialog[0]/DialogPopup[0]/DialogPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/cost-entry-edit-dialog.tsx::CostEntryEditDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/time-entry-edit-dialog.tsx::TimeEntryEditDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/work-item-costs.tsx::WorkItemCosts::section[0]/p[0]::text-muted-foreground#0",
@@ -88801,6 +88801,50 @@
 				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:InviteDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:ResendResultDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/members-table.tsx:MembersTable",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -90249,18 +90293,6 @@
 				"id": "apps/web/src/components/task/task-start-date-popover.tsx::TaskStartDatePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/task/task-start-date-popover.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/p[0]",
-					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/team/invite-team-member-modal.tsx::InviteTeamMemberModal::Dialog[0]/DialogPopup[0]/DialogPanel[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/team/invite-team-member-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -92042,6 +92074,50 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:InviteDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:ResendResultDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/members-table.tsx:MembersTable",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx:BulkToolbarPresentation",
 					"CommandPanel->packages/ui/src/components/command.tsx:CommandPanel"
 				],
@@ -93157,6 +93233,7 @@
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/dl[0]/div[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#0",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#1",
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuItem[0]::text-muted-foreground#0",
@@ -93276,7 +93353,6 @@
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/Search[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/task-start-date-popover.tsx::TaskStartDatePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
-			"apps/web/src/components/team/invite-team-member-modal.tsx::InviteTeamMemberModal::Dialog[0]/DialogPopup[0]/DialogPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/cost-entry-edit-dialog.tsx::CostEntryEditDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/time-entry-edit-dialog.tsx::TimeEntryEditDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/work-item-costs.tsx::WorkItemCosts::section[0]/p[0]::text-muted-foreground#0",
@@ -94337,6 +94413,50 @@
 				"id": "apps/web/src/components/intake/submission-detail-sheet-body.tsx::SubmissionDetailSheetBody::div[0]/div[1]/div[0]/section[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/intake/submission-detail-sheet-body.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:InviteDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:ResendResultDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/members-table.tsx:MembersTable",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -95785,18 +95905,6 @@
 				"id": "apps/web/src/components/task/task-start-date-popover.tsx::TaskStartDatePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/task/task-start-date-popover.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
-					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/p[0]",
-					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/team/invite-team-member-modal.tsx::InviteTeamMemberModal::Dialog[0]/DialogPopup[0]/DialogPanel[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/team/invite-team-member-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -97581,6 +97689,50 @@
 					"apps/web/src/components/settings/api-key-created-modal.tsx:ApiKeyCreatedModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup",
 					"transparent-wrapper:light"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:InviteDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:ResendResultDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/members-table.tsx:MembersTable",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -109857,20 +110009,33 @@
 		"category": "non-text",
 		"minRatio": 3,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/kanban-board/task-card.tsx",
+		"usage": "apps/web/src/components/invitation/invitation-result-card.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "text-success-foreground",
 		"backgroundClass": {
 			"dark": "bg-popover"
 		},
-		"surfaceContext": "function-return-property",
+		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
+			"apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/div[0]/Button[0]/CheckIcon[0]::text-success-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardBody::GitPullRequest[0]::text-success-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-success-foreground#0",
 			"apps/web/src/components/settings/api-key-created-modal.tsx::ApiKeyCreatedModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/Button[0]/Check[0]::text-success-foreground#0",
 			"apps/web/src/components/team/invitation-link-field.tsx::InvitationLinkField::div[0]/Button[0]/CheckIcon[0]::text-success-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/invitation/invitation-result-card.tsx:InvitationResultCard",
+					"jsx:div[0]/div[0]/Button[0]/CheckIcon[0]",
+					"Button->packages/ui/src/components/button.tsx:Button>bg-popover"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/div[0]/Button[0]/CheckIcon[0]::text-success-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "non-text",
@@ -109929,20 +110094,33 @@
 		"category": "non-text",
 		"minRatio": 3,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/kanban-board/task-card.tsx",
+		"usage": "apps/web/src/components/invitation/invitation-result-card.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "text-success-foreground",
 		"backgroundClass": {
 			"light": "bg-popover"
 		},
-		"surfaceContext": "function-return-property",
+		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
+			"apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/div[0]/Button[0]/CheckIcon[0]::text-success-foreground#0",
 			"apps/web/src/components/kanban-board/task-card.tsx::TaskCardBody::GitPullRequest[0]::text-success-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-success-foreground#0",
 			"apps/web/src/components/settings/api-key-created-modal.tsx::ApiKeyCreatedModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/Button[0]/Check[0]::text-success-foreground#0",
 			"apps/web/src/components/team/invitation-link-field.tsx::InvitationLinkField::div[0]/Button[0]/CheckIcon[0]::text-success-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/invitation/invitation-result-card.tsx:InvitationResultCard",
+					"jsx:div[0]/div[0]/Button[0]/CheckIcon[0]",
+					"Button->packages/ui/src/components/button.tsx:Button>bg-popover"
+				],
+				"id": "apps/web/src/components/invitation/invitation-result-card.tsx::InvitationResultCard::div[0]/div[0]/Button[0]/CheckIcon[0]::text-success-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/invitation/invitation-result-card.tsx"
+			},
 			{
 				"backdropLayers": [],
 				"category": "non-text",
