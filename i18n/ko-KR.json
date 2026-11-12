@@ -135,6 +135,7 @@
 				"organisationError": "고객 조직을 불러오지 못했습니다.",
 				"organisationRetry": "다시 시도",
 				"organisationEmpty": "활성 고객 조직이 아직 없습니다. 이 프로젝트는 내부 프로젝트가 됩니다.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "없음 (내부 {{term_project_other}})",
 				"organisationHint": "선택 사항입니다. 지금 선택하며 프로젝트를 만든 후에는 변경할 수 없습니다.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

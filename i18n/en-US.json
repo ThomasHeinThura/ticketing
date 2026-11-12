@@ -160,6 +160,7 @@
 				"organisationError": "Could not load customer organisations.",
 				"organisationRetry": "Retry",
 				"organisationEmpty": "No active customer organisations yet. This {{term_project_one}} will be internal.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "None (internal {{term_project_one}})",
 				"organisationHint": "Optional. Chosen now: it cannot be changed after the {{term_project_one}} is created.",
 				"kindLabel": "Kind",

@@ -782,8 +782,7 @@ rebound, and existing projects are not backfilled. `GET /api/project/organisatio
 `project:create`) lists the organisations the create-project selector offers, each with
 `inheritedServiceCalendarId`: the calendar a new project for it inherits in the queried
 workspace (null when none resolves, so a managed service must name one; decision log
-4 November 2026). The list is
-instance-wide (customer organisations are not tied to a workspace), and both it and a create
+4 November 2026). Current instance admins using a non-impersonated browser session see all active customer organisations; other callers see only organisations served by a live project or a soft-deleted project still within its recovery window in that workspace. After permanent deletion or recovery-window expiry the link ends unless another qualifying project exists. A first link requires a current instance admin with a non-impersonated browser session and is audited; other attempts receive 403 `instance_admin_required_for_new_customer_organisation`, whether the unserved ID exists or not. Both the list and a create
 that carries an `organisationId` require the strict `project:create` capability, held by
 owner, admin and manager only; the legacy member permission does not suffice. Creating an
 internal project (no `organisationId`) keeps its existing check. Custom roles cannot bind until the capability migration (#7); the create-project

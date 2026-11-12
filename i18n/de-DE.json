@@ -135,6 +135,7 @@
 				"organisationError": "Kundenorganisationen konnten nicht geladen werden.",
 				"organisationRetry": "Erneut versuchen",
 				"organisationEmpty": "Noch keine aktiven Kundenorganisationen. Dieses {{term_project_one}} wird intern.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Keine (internes {{term_project_one}})",
 				"organisationHint": "Optional. Wird jetzt festgelegt und kann nach dem Erstellen des Projekts nicht mehr geändert werden.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

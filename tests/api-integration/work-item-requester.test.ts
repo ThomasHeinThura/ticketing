@@ -137,6 +137,14 @@ describe("work item requester (A-03)", () => {
     const s = await seed();
     expect(s.item.requesterId).toBeNull();
 
+    // A workspace cannot obtain requester candidates from another workspace's project.
+    mockAuthenticatedSession(s.contoso.requester.user);
+    const foreignCandidates = await s.contoso.app.request(
+      `/api/projects/${s.fabrikam.project.id}/requester-candidates`,
+    );
+    expect([403, 404]).toContain(foreignCandidates.status);
+    expect(await foreignCandidates.text()).not.toContain(s.frank.user.email);
+
     // The picker lists only the organisation's customers.
     mockAuthenticatedSession(s.contoso.requester.user);
     const candidates = await s.contoso.app.request(

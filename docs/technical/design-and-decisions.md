@@ -3695,3 +3695,7 @@ The inviter chooses the staff role. A `member:invite`-scoped read returns only a
 ### 12 Nov 2026 — Thomas, D-G: signed-in password changes
 
 Agent and customer accounts can change their own local password in account settings. The portal host admits the change-password auth endpoint only for an admitted customer session; the existing current-password verification, rate limit and optional peer-session revocation remain in force. The caller's factor status includes whether a local password exists even when MFA is enabled; no credential material is exposed. This extends the portal host allowlist and introduces no new URL.
+
+## Customer organisation reach — 12 November 2026, Thomas
+
+The audit finding extends D-A: only a current instance admin can extend a workspace’s customer reach. This reverses the instance-wide project organisation selector and unrestricted first binding described in the 13 October creation-binding decision. A live project or a soft-deleted project still within its recovery window establishes service; after permanent deletion or expiry of that window the link ends unless another qualifying project exists. Restoration within the recovery window therefore does not extend reach. Subsequent project creators may bind to a served customer; unserved IDs give non-admins the same refusal regardless of validity.

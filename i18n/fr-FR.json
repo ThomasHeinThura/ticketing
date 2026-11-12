@@ -135,6 +135,7 @@
 				"organisationError": "Impossible de charger les organisations clientes.",
 				"organisationRetry": "Réessayer",
 				"organisationEmpty": "Aucune organisation cliente active pour le moment. Ce {{term_project_one}} sera interne.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Aucune ({{term_project_one}} interne)",
 				"organisationHint": "Facultatif. Choisie maintenant, elle ne peut plus être modifiée après la création du {{term_project_one}}.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

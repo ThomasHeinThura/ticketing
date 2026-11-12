@@ -135,6 +135,7 @@
 				"organisationError": "Müşteri kuruluşları yüklenemedi.",
 				"organisationRetry": "Yeniden dene",
 				"organisationEmpty": "Henüz etkin müşteri kuruluşu yok. Bu {{term_project_one}} dahili olacak.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Yok (dahili {{term_project_one}})",
 				"organisationHint": "İsteğe bağlı. Şimdi seçilir ve {{term_project_one}} oluşturulduktan sonra değiştirilemez.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

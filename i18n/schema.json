@@ -630,6 +630,9 @@
 								"organisationEmpty": {
 									"type": "string"
 								},
+								"organisationLinkHint": {
+									"type": "string"
+								},
 								"organisationNone": {
 									"type": "string"
 								},
@@ -716,6 +719,7 @@
 								"organisationError",
 								"organisationRetry",
 								"organisationEmpty",
+								"organisationLinkHint",
 								"organisationNone",
 								"organisationHint",
 								"kindLabel",

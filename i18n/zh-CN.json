@@ -135,6 +135,7 @@
 				"organisationError": "无法加载客户组织。",
 				"organisationRetry": "重试",
 				"organisationEmpty": "暂无活跃的客户组织。此{{term_project_other}}将为内部{{term_project_other}}。",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "无（内部{{term_project_other}}）",
 				"organisationHint": "可选。现在选择，{{term_project_other}}创建后无法更改。",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

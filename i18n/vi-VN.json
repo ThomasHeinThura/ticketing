@@ -139,6 +139,7 @@
 				"organisationError": "Không thể tải các tổ chức khách hàng.",
 				"organisationRetry": "Thử lại",
 				"organisationEmpty": "Chưa có tổ chức khách hàng đang hoạt động. {{term_project_other}} này sẽ là {{term_project_other}} nội bộ.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Không có ({{term_project_other}} nội bộ)",
 				"organisationHint": "Tùy chọn. Được chọn ngay bây giờ và không thể thay đổi sau khi {{term_project_other}} được tạo.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
