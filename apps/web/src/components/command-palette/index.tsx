@@ -52,6 +52,7 @@ import {
   type SearchResultItem,
 } from "@/components/search-command-menu/search-targets";
 import WorkItemCreateDialogHost from "@/components/work-item/work-item-create-dialog-host";
+import { isWorkItemCreateDialogOpen } from "@/components/work-item/work-item-create-dialog-open";
 import { shortcuts } from "@/constants/shortcuts";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
@@ -98,6 +99,14 @@ export type CommandPaletteRequest = {
   intent: CommandPaletteIntent;
 };
 
+const EDITABLE_TARGET =
+  'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+
+/** The target is, or sits inside, something the person types text into. */
+function isEditableTarget(target: EventTarget | null) {
+  return target instanceof Element && target.closest(EDITABLE_TARGET) !== null;
+}
+
 export function CommandPalette({
   open,
   onOpenChange,
@@ -129,16 +138,25 @@ export function CommandPalette({
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
   // Create work item acts on the project the router is showing (`/agent/projects/{key}/...`);
-  // the work-item dialog has no project picker, so it is offered only inside a project.
+  // the work-item dialog has no project picker, so it is offered only inside a project. Outside
+  // one, neither the project nor the permission read is enabled: the palette adds no requests.
   const { projectKey } = useParams({ strict: false });
+  const inProject = Boolean(projectKey);
   const { project: routeProject, isLoading: isRouteProjectLoading } =
-    useProjectByKey(projectKey ?? "");
-  const createProject = projectKey ? routeProject : undefined;
+    useProjectByKey(projectKey ?? "", inProject);
+  const createProject = inProject ? routeProject : undefined;
   const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission(
     createProject?.workspaceId,
     createProject?.id,
+    { enabled: Boolean(createProject) },
   );
   const canCreateWorkItem = Boolean(createProject) && canCreateTasks();
+  // One create dialog at a time: the Overview and the work route mount their own, which this
+  // component cannot see, so the shortcut and the palette item check the shared open flag.
+  const openCreateWorkItem = useCallback(() => {
+    if (isWorkItemCreateDialogOpen()) return;
+    setIsCreateTaskOpen(true);
+  }, []);
   const [query, setQuery] = useState("");
   const searchTerm = query.trim();
   const searchEnabled = open && searchTerm.length >= 1;
@@ -182,7 +200,7 @@ export function CommandPalette({
         setIsCreateProjectOpen(true);
         break;
       case "create-task":
-        if (canCreateWorkItem) setIsCreateTaskOpen(true);
+        if (canCreateWorkItem) openCreateWorkItem();
         break;
       case "create-workspace":
         if (canCreateWorkspace) setIsCreateWorkspaceOpen(true);
@@ -200,6 +218,7 @@ export function CommandPalette({
     isRouteProjectLoading,
     isCheckingPermissions,
     canCreateWorkItem,
+    openCreateWorkItem,
   ]);
 
   useEffect(() => {
@@ -327,7 +346,7 @@ export function CommandPalette({
                   value: "create-task",
                   label: t("navigation:commandPalette.createTask"),
                   shortcut: `${shortcuts.task.prefix} ${shortcuts.task.create}`,
-                  onRun: () => setIsCreateTaskOpen(true),
+                  onRun: openCreateWorkItem,
                 },
               ]
             : []),
@@ -383,7 +402,14 @@ export function CommandPalette({
         ],
       },
     ],
-    [navigate, setTheme, t, canCreateWorkspace, canCreateWorkItem],
+    [
+      navigate,
+      setTheme,
+      t,
+      canCreateWorkspace,
+      canCreateWorkItem,
+      openCreateWorkItem,
+    ],
   );
 
   const paletteGroups = useMemo<PaletteGroup[]>(() => {
@@ -442,6 +468,13 @@ export function CommandPalette({
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // Typing in the palette's own search (or any editor) is text, never a shortcut, and
+      // it breaks a sequence already started on the way in.
+      if (isEditableTarget(event.target)) {
+        sequence = "";
+        clearTimeout(timeout);
+        return;
+      }
       if (
         event.metaKey ||
         event.ctrlKey ||

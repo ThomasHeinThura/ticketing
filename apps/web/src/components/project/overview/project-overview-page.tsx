@@ -348,17 +348,24 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
   });
   const project = (detail ?? listed) as ProjectDetail | undefined;
   const projectId = project?.id ?? "";
+  // Read for this project, not the workspace at large: the server intersects the work-item
+  // flags (create included) with the caller's effective role in this project, the same read the
+  // work page's Create button and the palette make.
   const {
     canUpdateProjects,
     canManageProjectSettings,
     canCreateTasks,
     canArchiveProjects,
-  } = useWorkspacePermission();
+    isCheckingPermissions,
+  } = useWorkspacePermission(listed?.workspaceId, listed?.id, {
+    enabled: Boolean(listed),
+  });
   const canUpdate = canUpdateProjects();
   // Archive needs the strict project:archive (A8-2); project update alone is not enough.
   const canArchive = canArchiveProjects();
   const canManage = canManageProjectSettings();
-  const canCreate = canCreateTasks();
+  // Not offered while this project's scoped check is still pending.
+  const canCreate = !isCheckingPermissions && canCreateTasks();
   const [editingSummary, setEditingSummary] = useState(false);
   const [creating, setCreating] = useState(false);
   // The dialog code is still loading after the click; the button shows it is working.

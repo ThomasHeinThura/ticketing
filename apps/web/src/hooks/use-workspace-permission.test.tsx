@@ -106,6 +106,24 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canDeleteLabels()).toBe(false);
   });
 
+  it("asks the server nothing and grants nothing when disabled", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ createTasks: true }),
+    });
+
+    const { result } = renderHook(
+      () =>
+        useWorkspacePermission("workspace-1", "project-1", { enabled: false }),
+      { wrapper: createWrapper() },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(capabilitiesGet).not.toHaveBeenCalled();
+    expect(result.current.isCheckingPermissions).toBe(false);
+    expect(result.current.canCreateTasks()).toBe(false);
+  });
+
   it("reads manageProjectSettings strictly, independent of the legacy project flags", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,

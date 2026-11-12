@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
+import { markWorkItemCreateDialogOpen } from "./work-item-create-dialog-open";
 import { loadWorkItemCreateDialogShell } from "./work-item-create-dialog-shell-loader";
 
 type CreateDialogShell = Awaited<
@@ -31,6 +32,8 @@ export default function WorkItemCreateDialogHost({
   const [Shell, setShell] = useState<CreateDialogShell>();
   const latest = useRef({ onClose, onReady, t });
   latest.current = { onClose, onReady, t };
+  // Counts as an open dialog from the click, not only once its code has loaded.
+  useEffect(() => markWorkItemCreateDialogOpen(), []);
 
   useEffect(() => {
     let cancelled = false;

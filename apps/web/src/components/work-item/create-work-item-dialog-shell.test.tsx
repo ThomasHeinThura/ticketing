@@ -9,6 +9,7 @@ import {
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CreateWorkItemDialogLoadError } from "./create-work-item-dialog";
+import { isWorkItemCreateDialogOpen } from "./work-item-create-dialog-open";
 import WorkItemCreateDialogShell from "./work-item-create-dialog-shell";
 
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
@@ -61,6 +62,21 @@ describe("CreateWorkItemDialog shared shell", () => {
 
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("counts as an open create dialog while it is mounted, for the create shortcut", () => {
+    const { unmount } = render(
+      <WorkItemCreateDialogShell
+        onClose={() => {}}
+        projectId="project-1"
+        workspaceId="workspace-1"
+        finalFocus={() => false}
+      />,
+    );
+    expect(isWorkItemCreateDialogOpen()).toBe(true);
+
+    unmount();
+    expect(isWorkItemCreateDialogOpen()).toBe(false);
   });
 
   it("offers page reload recovery when the lazy form fails", () => {

@@ -86,10 +86,15 @@ const EMPTY_CAPABILITIES = {
 export function useWorkspacePermission(
   targetWorkspaceId?: string,
   targetProjectId?: string,
+  /**
+   * `enabled: false` asks the server nothing and grants nothing (every `can*` is false and
+   * `isCheckingPermissions` is false), for a caller that only sometimes has something to check.
+   */
+  { enabled = true }: { enabled?: boolean } = {},
 ) {
   const { data: activeWorkspace } = useActiveWorkspace();
   const { data: activeMember, isLoading: isActiveMemberLoading } =
-    useGetActiveWorkspaceUser();
+    useGetActiveWorkspaceUser({ enabled });
   const isTargetScoped = targetWorkspaceId !== undefined;
   const workspaceId = targetWorkspaceId ?? activeWorkspace?.id;
   const activeRole = activeMember?.role as string | undefined;
@@ -132,9 +137,9 @@ export function useWorkspacePermission(
             ...(targetProjectId ? [targetProjectId] : []),
           ]
         : ["workspace-capabilities", workspaceId, role],
-    enabled: Boolean(
-      workspaceId && (isTargetScoped ? !awaitsActiveRead : role),
-    ),
+    enabled:
+      enabled &&
+      Boolean(workspaceId && (isTargetScoped ? !awaitsActiveRead : role)),
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<CapabilityMap> => {
       const response = await client.capabilities.$get({
@@ -209,6 +214,7 @@ export function useWorkspacePermission(
     // action UI during the initial render instead of flashing it on then
     // off when the server check resolves.
     isCheckingPermissions:
+      enabled &&
       Boolean(workspaceId && (isTargetScoped || role)) &&
       (isLoading || !capabilities),
     isRefetchingPermissions: isFetching,

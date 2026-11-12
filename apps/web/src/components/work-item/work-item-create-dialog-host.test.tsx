@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WorkItemCreateDialogHost from "./work-item-create-dialog-host";
+import { isWorkItemCreateDialogOpen } from "./work-item-create-dialog-open";
 
 const mocks = vi.hoisted(() => ({
   load: vi.fn(),
@@ -79,6 +80,23 @@ describe("WorkItemCreateDialogHost", () => {
     );
     expect(props.onReady).not.toHaveBeenCalled();
     expect(screen.queryByTestId("create-work-item-dialog")).toBeNull();
+  });
+
+  it("counts as an open create dialog from the click, even before its code has loaded", async () => {
+    let arrive: (module: { default: unknown }) => void = () => {};
+    mocks.load.mockReturnValue(
+      new Promise((resolve) => {
+        arrive = resolve;
+      }),
+    );
+    const { unmount } = renderHost();
+    expect(isWorkItemCreateDialogOpen()).toBe(true);
+
+    await act(async () => arrive({ default: ShellStub }));
+    expect(isWorkItemCreateDialogOpen()).toBe(true);
+
+    unmount();
+    expect(isWorkItemCreateDialogOpen()).toBe(false);
   });
 
   it("does nothing when it is closed before the code arrives", async () => {

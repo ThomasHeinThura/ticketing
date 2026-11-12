@@ -15,8 +15,10 @@ import {
   it,
   vi,
 } from "vitest";
+import { markWorkItemCreateDialogOpen } from "@/components/work-item/work-item-create-dialog-open";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import CommandPaletteLauncher from "./command-palette-launcher";
+import { CommandPalette } from "./index";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -93,8 +95,8 @@ vi.mock("@/store/user-preferences", () => ({
 
 vi.mock("@/components/search-command-menu", () => ({ default: () => null }));
 vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
-  default: (projectKey: string) => {
-    mocks.projectByKey(projectKey);
+  default: (projectKey: string, enabled?: boolean) => {
+    mocks.projectByKey(projectKey, enabled);
     return {
       project: mocks.routeProject,
       workspaceId: "w1",
@@ -103,8 +105,12 @@ vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
   },
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
-  useWorkspacePermission: (workspaceId?: string, projectId?: string) => {
-    mocks.permissionTarget(workspaceId, projectId);
+  useWorkspacePermission: (
+    workspaceId?: string,
+    projectId?: string,
+    options?: { enabled?: boolean },
+  ) => {
+    mocks.permissionTarget(workspaceId, projectId, options);
     return {
       canCreateTasks: () => mocks.canCreate,
       isCheckingPermissions: mocks.checkingPermissions,
@@ -428,8 +434,83 @@ describe("CommandPalette create work item (D-6)", () => {
     expect(dialog).toHaveAttribute("data-project-id", "p1");
     expect(dialog).toHaveAttribute("data-workspace-id", "w1");
     // The project is found from the route key, then checked for permission in that project.
-    expect(mocks.projectByKey).toHaveBeenCalledWith("HELP");
-    expect(mocks.permissionTarget).toHaveBeenCalledWith("w1", "p1");
+    expect(mocks.projectByKey).toHaveBeenCalledWith("HELP", true);
+    expect(mocks.permissionTarget).toHaveBeenCalledWith("w1", "p1", {
+      enabled: true,
+    });
+  });
+
+  it("reads no project and checks no permission outside a project", async () => {
+    renderLauncher();
+    await openPalette();
+
+    expect(mocks.projectByKey).toHaveBeenCalledWith("", false);
+    expect(mocks.projectByKey).not.toHaveBeenCalledWith(
+      expect.anything(),
+      true,
+    );
+    expect(mocks.permissionTarget).toHaveBeenCalledWith(undefined, undefined, {
+      enabled: false,
+    });
+    expect(mocks.permissionTarget).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { enabled: true },
+    );
+  });
+
+  it("checks no permission until the route's project is known", async () => {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProjectLoading = true;
+    renderLauncher();
+    await openPalette();
+
+    expect(mocks.projectByKey).toHaveBeenCalledWith("HELP", true);
+    expect(mocks.permissionTarget).toHaveBeenCalledWith(undefined, undefined, {
+      enabled: false,
+    });
+    expect(mocks.permissionTarget).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { enabled: true },
+    );
+  });
+
+  it("ignores the shortcut while another create dialog is already open, then works again", async () => {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    // A dialog the palette cannot see: the work route's, or the Overview's.
+    const release = markWorkItemCreateDialogOpen();
+    renderLauncher();
+    try {
+      await pressCreateWorkItemShortcut();
+      expect(
+        screen.queryByTestId("create-work-item-dialog-host"),
+      ).not.toBeInTheDocument();
+    } finally {
+      release();
+    }
+
+    await pressCreateWorkItemShortcut();
+    expect(
+      await screen.findByTestId("create-work-item-dialog-host"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not open a second dialog from the palette item while one is open", async () => {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    const release = markWorkItemCreateDialogOpen();
+    renderLauncher();
+    try {
+      await openPalette();
+      fireEvent.click(screen.getByText("navigation:commandPalette.createTask"));
+      expect(
+        screen.queryByTestId("create-work-item-dialog-host"),
+      ).not.toBeInTheDocument();
+    } finally {
+      release();
+    }
   });
 
   it("offers Create in the palette inside a project and opens the same dialog", async () => {
@@ -565,5 +646,91 @@ describe("CommandPalette create work item (D-6)", () => {
 
     await screen.findByTestId("create-work-item-dialog-host");
     expect(mocks.createFinalFocus?.()).toBe(origin);
+  });
+});
+
+// The palette has its own document keydown listener for the shortcuts it lists, separate from
+// the global provider's. It is rendered alone here so only that listener is under test.
+describe("CommandPalette typing guard (D-6)", () => {
+  const helpProject = { id: "p1", workspaceId: "w1", slug: "HELP" };
+
+  function renderOpenPalette(extra?: ReactNode) {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    const onOpenChange = vi.fn();
+    render(
+      <>
+        <CommandPalette
+          open
+          onOpenChange={onOpenChange}
+          request={null}
+          onRequestHandled={vi.fn()}
+          keepMounted={false}
+        />
+        {extra}
+      </>,
+    );
+    return { onOpenChange };
+  }
+
+  const pressKeys = (target: Element, ...keys: string[]) => {
+    for (const key of keys) fireEvent.keyDown(target, { key });
+  };
+
+  it("still runs a listed shortcut typed outside any text field (control)", async () => {
+    const { onOpenChange } = renderOpenPalette();
+
+    pressKeys(document.body, "t", "c");
+
+    expect(
+      await screen.findByTestId("create-work-item-dialog-host"),
+    ).toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("treats typing t c in the palette search as text: no dialog, palette open, query intact", () => {
+    const { onOpenChange } = renderOpenPalette();
+    const search = screen.getByLabelText(
+      "palette search query",
+    ) as HTMLInputElement;
+    search.focus();
+
+    pressKeys(search, "t", "c");
+    fireEvent.change(search, { target: { value: "tc" } });
+
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
+    expect(search.value).toBe("tc");
+  });
+
+  it("ignores keys typed inside an editable region, including its children", () => {
+    const { onOpenChange } = renderOpenPalette(
+      <div contentEditable="true">
+        <span data-testid="inside-editor">text</span>
+      </div>,
+    );
+
+    pressKeys(screen.getByTestId("inside-editor"), "t", "c");
+
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("drops a sequence started outside a text field once a key is typed into one", () => {
+    renderOpenPalette();
+    const search = screen.getByLabelText("palette search query");
+
+    pressKeys(document.body, "t");
+    pressKeys(search, "x");
+    pressKeys(document.body, "c");
+
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
   });
 });
