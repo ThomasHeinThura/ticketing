@@ -9633,3 +9633,127 @@ test("workspace settings time activities screen @visual", async ({ page }) => {
     },
   );
 });
+
+test("forgot-password screen @visual", async ({ page }) => {
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: path.endsWith("/api/auth/get-session") ? "null" : "{}",
+    });
+  });
+
+  await page.goto("/auth/forgot-password");
+  await expect(
+    page.getByText("Reset your password", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Send reset link" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("forgot-password.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("reset-password screen @visual", async ({ page }) => {
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: path.endsWith("/api/auth/get-session") ? "null" : "{}",
+    });
+  });
+
+  await page.goto("/auth/reset-password");
+  await expect(
+    page.getByText("Choose a new password", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "This link is invalid, expired, or already used. Request a new link.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Back to sign in" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("reset-password.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal forgot-password screen @visual", async ({ page }) => {
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: path.endsWith("/api/auth/get-session") ? "null" : "{}",
+    });
+  });
+  await page.goto("http://127.0.0.1:4179/forgot-password");
+  await expect(
+    page.getByRole("heading", { name: "Reset your password", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Send reset link" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-forgot-password.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("portal reset-password screen @visual", async ({ page }) => {
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: path.endsWith("/api/auth/get-session") ? "null" : "{}",
+    });
+  });
+  await page.goto("http://127.0.0.1:4179/reset-password");
+  await expect(
+    page.getByRole("heading", { name: "Choose a new password", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "This link is invalid, expired, or already used. Request a new link.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Back to sign in" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-reset-password.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
