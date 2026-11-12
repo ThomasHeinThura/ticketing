@@ -6,21 +6,24 @@ import getWorkspaces from "@/fetchers/workspace/get-workspaces";
 // ["workspaces"] key is deliberate: apps/web/src/routes/_layout/
 // _authenticated/dashboard/settings/workspace/general.tsx's delete-workspace
 // mutation already invalidates this exact key.
-function useGetWorkspaces() {
+function useGetWorkspaces(refetchOnMount = false) {
   const {
     data: workspaces,
     error,
     isPending,
+    isFetching,
     refetch,
   } = useQuery({
     queryKey: ["workspaces"],
     queryFn: getWorkspaces,
+    refetchOnMount,
   });
 
   return {
     data: workspaces,
     error,
     isLoading: isPending,
+    isFetching,
     isError: !!error,
     refetch,
   };

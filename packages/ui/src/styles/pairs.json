@@ -998,6 +998,7 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+			"packages/ui/src/components/combobox.tsx::ComboboxItem::ComboboxPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
 			"packages/ui/src/components/context-menu.tsx::ContextMenuCheckboxItem::ContextMenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
 			"packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
 			"packages/ui/src/components/context-menu.tsx::ContextMenuSubTrigger::ContextMenuPrimitive.SubmenuTrigger[0]::data-highlighted:text-accent-foreground#0",
@@ -1093,6 +1094,21 @@
 				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/autocomplete.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/combobox.tsx:ComboboxItem",
+					"jsx:ComboboxPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/workspace/workspace-owner-picker.tsx:WorkspaceOwnerPicker",
+					"jsx:Combobox[0]/ComboboxPopup[0]/ComboboxList[0]/ComboboxItem[0]",
+					"component-slot:packages/ui/src/components/combobox.tsx:ComboboxPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxItem::ComboboxPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
 			},
 			{
 				"backdropLayers": ["bg-popover"],
@@ -3886,6 +3902,7 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+			"packages/ui/src/components/combobox.tsx::ComboboxItem::ComboboxPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
 			"packages/ui/src/components/context-menu.tsx::ContextMenuCheckboxItem::ContextMenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
 			"packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
 			"packages/ui/src/components/context-menu.tsx::ContextMenuSubTrigger::ContextMenuPrimitive.SubmenuTrigger[0]::data-highlighted:text-accent-foreground#0",
@@ -3981,6 +3998,21 @@
 				"id": "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/autocomplete.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/combobox.tsx:ComboboxItem",
+					"jsx:ComboboxPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/workspace/workspace-owner-picker.tsx:WorkspaceOwnerPicker",
+					"jsx:Combobox[0]/ComboboxPopup[0]/ComboboxList[0]/ComboboxItem[0]",
+					"component-slot:packages/ui/src/components/combobox.tsx:ComboboxPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxItem::ComboboxPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
 			},
 			{
 				"backdropLayers": ["bg-popover"],
@@ -18569,6 +18601,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::div[0]/p[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/div[1]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/routes/agent/auth/check-email.tsx::CheckEmail::AuthLayout[0]/div[0]/div[0]/p[0]/Trans[0]/span[0]::text-foreground#0",
@@ -20208,6 +20241,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]>bg-background"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:/_layout/_authenticated/god-mode/users",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -21458,6 +21502,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::InstanceUsersPage::div[0]/p[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/invitations.tsx::InvitationsPage::div[0]/div[0]/div[0]/div[1]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/routes/agent/auth/check-email.tsx::CheckEmail::AuthLayout[0]/div[0]/div[0]/p[0]/Trans[0]/span[0]::text-foreground#0",
@@ -23098,6 +23143,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]>bg-background"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]::text-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx:/_layout/_authenticated/god-mode/users",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -24701,9 +24757,11 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]::text-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/legend[0]::text-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/label[0]::text-foreground#0",
+			"packages/ui/src/components/combobox.tsx::ComboboxInput::div[0]::text-foreground#0",
 			"packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
 		],
 		"occurrences": [
@@ -25050,6 +25108,18 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]::text-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -25078,6 +25148,28 @@
 				"id": "packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/label[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "packages/ui/src/components/capability-matrix.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/onboarding/onboarding-flow.tsx:renderWorkspaceStep",
+					"jsx:motion.div[0]/div[0]/Form[0]/form[0]/div[0]/div[0]/WorkspaceOwnerPicker[0]"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxInput::div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxInput::div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -25133,9 +25225,11 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[0]/label[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[1]/label[0]::text-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]::text-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/legend[0]::text-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/label[0]::text-foreground#0",
+			"packages/ui/src/components/combobox.tsx::ComboboxInput::div[0]::text-foreground#0",
 			"packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
 		],
 		"occurrences": [
@@ -25482,6 +25576,18 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/label[0]::text-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/service-calendar/calendar-details-card.tsx:CalendarDetailsCard",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -25510,6 +25616,28 @@
 				"id": "packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/label[0]::text-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "packages/ui/src/components/capability-matrix.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/onboarding/onboarding-flow.tsx:renderWorkspaceStep",
+					"jsx:motion.div[0]/div[0]/Form[0]/form[0]/div[0]/div[0]/WorkspaceOwnerPicker[0]"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxInput::div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxInput::div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -26509,6 +26637,7 @@
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
+			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/span[0]::text-foreground#0",
@@ -26834,6 +26963,18 @@
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
 				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-workspace-modal.tsx:CreateWorkspaceModal",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
 			},
@@ -27196,6 +27337,7 @@
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
+			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/span[0]::text-foreground#0",
@@ -27521,6 +27663,18 @@
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
 				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-workspace-modal.tsx:CreateWorkspaceModal",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[0]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
 			},
@@ -34074,6 +34228,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx::WorkflowDetailView::section[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx::WorkflowListView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/api-keys.tsx::GodModeApiKeysRoute::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/span[1]::text-muted-foreground#0",
@@ -43137,6 +43292,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]>bg-background"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/api-keys.tsx:/_layout/_authenticated/god-mode/api-keys",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -46019,6 +46185,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx::WorkflowDetailView::section[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx::WorkflowListView::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/api-keys.tsx::GodModeApiKeysRoute::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/audit.tsx::GodModeAuditRoute::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/span[1]::text-muted-foreground#0",
@@ -55083,6 +55250,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]>bg-background"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/api-keys.tsx:/_layout/_authenticated/god-mode/api-keys",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -58313,6 +58491,7 @@
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/Form[0]/form[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormLabel[0]::text-muted-foreground#0",
 			"apps/web/src/components/pages/page-detail.tsx::History::Card[0]/CardContent[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -58511,6 +58690,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx::RouteComponent::TaskLayout[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::div[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::div[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/index.tsx::CatalogueEditor::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -59996,6 +60176,17 @@
 					"jsx:motion.div[0]/div[0]/div[0]/p[0]>bg-card"
 				],
 				"id": "apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/onboarding/onboarding-flow.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/onboarding/onboarding-flow.tsx:OnboardingFlow",
+					"jsx:motion.div[0]/div[0]/Form[0]/form[0]/div[0]/div[0]/p[1]>bg-card"
+				],
+				"id": "apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/Form[0]/form[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/onboarding/onboarding-flow.tsx"
 			},
@@ -62491,6 +62682,18 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
 					"jsx:div[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -63095,6 +63298,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/onboarding/no-workspace-empty.tsx:NoWorkspaceEmpty",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -64037,6 +64251,7 @@
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/Form[0]/form[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormLabel[0]::text-muted-foreground#0",
 			"apps/web/src/components/pages/page-detail.tsx::History::Card[0]/CardContent[0]/ol[0]/li[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
@@ -64235,6 +64450,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx::RouteComponent::TaskLayout[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::div[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx::IdentityConnectionsRoute::div[0]/section[0]/Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/index.tsx::CatalogueEditor::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -65720,6 +65936,17 @@
 					"jsx:motion.div[0]/div[0]/div[0]/p[0]>bg-card"
 				],
 				"id": "apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/components/onboarding/onboarding-flow.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/onboarding/onboarding-flow.tsx:OnboardingFlow",
+					"jsx:motion.div[0]/div[0]/Form[0]/form[0]/div[0]/div[0]/p[1]>bg-card"
+				],
+				"id": "apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/Form[0]/form[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/onboarding/onboarding-flow.tsx"
 			},
@@ -68215,6 +68442,18 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx:RouteComponent",
+					"jsx:div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/form[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication.tsx:IdentityConnectionsRoute",
 					"jsx:div[0]/section[0]/Card[0]/CardContent[0]/div[0]/div[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -68879,6 +69118,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/onboarding/no-workspace-empty.tsx:NoWorkspaceEmpty",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
@@ -86913,6 +87163,7 @@
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
@@ -87057,6 +87308,8 @@
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
 			"packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
+			"packages/ui/src/components/combobox.tsx::ComboboxEmpty::ComboboxPrimitive.Empty[0]::text-muted-foreground#0",
+			"packages/ui/src/components/combobox.tsx::ComboboxStatus::ComboboxPrimitive.Status[0]::text-muted-foreground#0",
 			"packages/ui/src/components/command.tsx::CommandFooter::div[0]::text-muted-foreground#0",
 			"packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
 			"packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
@@ -89164,6 +89417,18 @@
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
 				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-workspace-modal.tsx:CreateWorkspaceModal",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[1]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
 			},
@@ -91298,6 +91563,30 @@
 				"id": "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/breadcrumb.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/workspace/workspace-owner-picker.tsx:WorkspaceOwnerPicker",
+					"jsx:Combobox[0]/ComboboxPopup[0]/ComboboxEmpty[0]",
+					"component-slot:packages/ui/src/components/combobox.tsx:ComboboxPopup.children"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxEmpty::ComboboxPrimitive.Empty[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/workspace/workspace-owner-picker.tsx:WorkspaceOwnerPicker",
+					"jsx:Combobox[0]/ComboboxPopup[0]/ComboboxStatus[0]",
+					"component-slot:packages/ui/src/components/combobox.tsx:ComboboxPopup.children"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxStatus::ComboboxPrimitive.Status[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -92410,6 +92699,7 @@
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/project-kind-fields.tsx::ProjectKindFields::div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
@@ -92554,6 +92844,8 @@
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
 			"packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
+			"packages/ui/src/components/combobox.tsx::ComboboxEmpty::ComboboxPrimitive.Empty[0]::text-muted-foreground#0",
+			"packages/ui/src/components/combobox.tsx::ComboboxStatus::ComboboxPrimitive.Status[0]::text-muted-foreground#0",
 			"packages/ui/src/components/command.tsx::CommandFooter::div[0]::text-muted-foreground#0",
 			"packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
 			"packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
@@ -94661,6 +94953,18 @@
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
 				],
 				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/shared/modals/create-workspace-modal.tsx:CreateWorkspaceModal",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[1]",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-workspace-modal.tsx"
 			},
@@ -96819,6 +97123,30 @@
 				"id": "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/breadcrumb.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/workspace/workspace-owner-picker.tsx:WorkspaceOwnerPicker",
+					"jsx:Combobox[0]/ComboboxPopup[0]/ComboboxEmpty[0]",
+					"component-slot:packages/ui/src/components/combobox.tsx:ComboboxPopup.children"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxEmpty::ComboboxPrimitive.Empty[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/workspace/workspace-owner-picker.tsx:WorkspaceOwnerPicker",
+					"jsx:Combobox[0]/ComboboxPopup[0]/ComboboxStatus[0]",
+					"component-slot:packages/ui/src/components/combobox.tsx:ComboboxPopup.children"
+				],
+				"id": "packages/ui/src/components/combobox.tsx::ComboboxStatus::ComboboxPrimitive.Status[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/combobox.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -105034,6 +105362,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/onboarding/no-workspace-empty.tsx:NoWorkspaceEmpty",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/pages/pages-list.tsx:PagesList",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -105895,6 +106234,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/onboarding/no-workspace-empty.tsx:NoWorkspaceEmpty",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",

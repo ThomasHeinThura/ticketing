@@ -3641,6 +3641,18 @@ Thomas decided on 12 November 2026 (owner decision D-H, "the UI must feel premiu
 
 `SwitchField` wraps `Switch` with `helper={{ checked, unchecked }}` while `Switch` stays the bare control, so plain `Switch` callers keep an unchanged DOM and do not enter helper contrast tracing. Both helper lines share one grid cell, so the reserved height is the taller line and the layout never jumps. The active line describes the switch (`aria-describedby`); the other is `inert`. Resting colours, sizes and spacing do not change; only the Storybook `Primitives/Skeleton Default` (`primitives-skeleton--default`) baseline is expected to change because Storybook runs with `reducedMotion: "reduce"` and reduced-motion skeletons drop `--skeleton-highlight` to `transparent`.
 
+## Workspace creation is for instance administrators — 12 November 2026
+
+Thomas decided on 12 November 2026 (D-A, final): only a current instance administrator creates a workspace, and the administrator hands it to a named owner. **This reverses open workspace creation**, where `DISABLE_WORKSPACE_CREATION` was the only restriction and, left unset, every signed-in staff account could create a workspace and become its owner with see-all reach.
+
+- **Who may create.** `POST /api/workspace` is the `instance:admin` capability at instance scope, browser session only. The administrator role is read from the database on every request (`requireCurrentInstanceAdmin`), never taken from the session. An API key, an MCP key and an impersonation session are refused.
+- **Who owns it.** The request names `ownerUserId`: an existing, active, unsuspended staff user. That person becomes the owner with the normal owner reach (membership, `sees_all`, default team). The creating administrator is a member only when they name themselves, which is also the first-run path: the first user is the instance administrator and creates the first workspace. A person with no account yet cannot be named, because the invite API never grants the owner role; an invitation-as-owner flow is not part of this decision.
+- **What is recorded.** The audit log gets a `workspace.created` row in the same transaction, with the creator as actor and `{createdBy, ownerUserId}` in `after`. The `workspace.created` event is attributed to the creator and still notifies the owner.
+- **Session selection.** The nine create effects now describe the named owner. The new workspace and team are selected in the creating session only when the creator is also the owner; otherwise the administrator's session is left alone.
+- **`DISABLE_WORKSPACE_CREATION`.** The name stays registered (`scripts/ci/env-baseline.json`) and the setting is still read, but it no longer widens or narrows who may create a workspace.
+- **Screens.** Only an instance administrator sees "create workspace" (workspace switcher, command palette, shortcut and its help row, `/dashboard/workspace/create`, onboarding). A signed-in person who belongs to no workspace sees "You are not a member of any workspace yet. Ask an administrator for an invitation." The create form has an owner picker over active staff users.
+- **Owner protection is unchanged.** The owner role cannot be changed through the role-update route by anyone, and the last owner cannot be removed or leave; both are covered by tests with a workspace administrator as the caller. The only way to change owners is the owner-only transfer.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.

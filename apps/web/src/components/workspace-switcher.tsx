@@ -19,9 +19,9 @@ import NotificationDropdown from "@/components/notification/notification-dropdow
 import { UserAvatar } from "@/components/user-avatar";
 import { shortcuts } from "@/constants/shortcuts";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
-import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
+import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
 import {
   getModifierKeyText,
   useRegisterShortcuts,
@@ -45,10 +45,9 @@ export function WorkspaceSwitcher() {
   useUserWebSocket();
   const { data: workspaces } = useGetWorkspaces();
   const { data: session } = authClient.useSession();
-  const { data: config } = useGetConfig();
   const isAdmin = session?.user?.role === "admin";
-  const canCreateWorkspace =
-    isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
+  // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
+  const canCreateWorkspace = useCanCreateWorkspace();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCreateWorkspaceModalOpen, setIsCreateWorkspaceModalOpen] =

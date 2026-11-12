@@ -327,8 +327,23 @@ async function createStaffWorkspace(
   phaseJournal: PhaseJournal,
 ): Promise<{ workspaceId: string; projectId: string; workItemTypeId: string }> {
   const api = page.context().request;
+  // D-A: only an instance administrator creates a workspace, and the request names its owner.
+  // The signed-in user here is the bootstrap administrator, so they name themselves.
+  const sessionResponse = await api.get(
+    new URL("/api/auth/get-session", origin).toString(),
+    { headers: { Origin: origin } },
+  );
+  expect(sessionResponse.status()).toBe(200);
+  const ownerUserId =
+    (
+      (await sessionResponse.json()) as {
+        user?: { id?: string };
+      } | null
+    )?.user?.id ?? "";
+  expect(ownerUserId).toBeTruthy();
   const workspaceResponse = await postWithCsrf(api, origin, "/api/workspace", {
     name: `Intake primary ${randomUUID().slice(0, 8)}`,
+    ownerUserId,
   });
   if (workspaceResponse.status() !== 200) {
     const body = await Promise.race([

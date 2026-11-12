@@ -409,6 +409,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Cần có tên không gian làm việc"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -3030,7 +3035,14 @@
 			"creating": "Đang tạo...",
 			"submit": "Tạo không gian làm việc",
 			"success": "Tạo không gian làm việc thành công",
-			"error": "Không thể tạo không gian làm việc"
+			"error": "Không thể tạo không gian làm việc",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {

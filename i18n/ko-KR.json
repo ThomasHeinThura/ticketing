@@ -409,6 +409,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "워크스페이스 이름은 필수입니다"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -3030,7 +3035,14 @@
 			"creating": "생성 중...",
 			"submit": "워크스페이스 만들기",
 			"success": "워크스페이스가 생성되었습니다",
-			"error": "워크스페이스 생성에 실패했습니다"
+			"error": "워크스페이스 생성에 실패했습니다",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {

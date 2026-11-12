@@ -409,6 +409,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Название рабочей области обязательно"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -3119,7 +3124,14 @@
 			"creating": "Создание...",
 			"submit": "Создать рабочую область",
 			"success": "Рабочая область успешно создана",
-			"error": "Не удалось создать рабочую область"
+			"error": "Не удалось создать рабочую область",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {

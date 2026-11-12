@@ -33380,7 +33380,7 @@
           "Workspaces"
         ],
         "summary": "Create a workspace",
-        "description": "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Native replacement for authClient.organization.create().",
+        "description": "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Only a current instance administrator (checked against the database at request time, browser session only) may call this. The request names the workspace owner, an existing active staff user; the administrator becomes a member only by naming themselves. The creator and the named owner are recorded in the audit log.",
         "requestBody": {
           "required": true,
           "content": {
@@ -33413,10 +33413,16 @@
                       "null"
                     ],
                     "maxLength": 2000
+                  },
+                  "ownerUserId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The existing, active, unsuspended staff user who becomes the workspace owner. The instance administrator creating the workspace becomes a member only by naming themselves."
                   }
                 },
                 "required": [
-                  "name"
+                  "name",
+                  "ownerUserId"
                 ]
               }
             }
@@ -33434,7 +33440,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or the name was rejected",
+            "description": "Invalid body, the name was rejected, or the named owner is not an existing, active, unsuspended staff user",
             "content": {
               "text/plain": {
                 "schema": {
@@ -33454,7 +33460,7 @@
             }
           },
           "403": {
-            "description": "An API key or impersonation session (session_required), or workspace creation is disabled on this instance",
+            "description": "An API key or impersonation session (session_required), or the caller is not a current instance administrator",
             "content": {
               "text/plain": {
                 "schema": {
