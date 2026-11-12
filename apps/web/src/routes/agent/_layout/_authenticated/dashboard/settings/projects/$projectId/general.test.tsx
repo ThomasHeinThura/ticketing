@@ -22,6 +22,8 @@ type Project = {
 
 const mocks = vi.hoisted(() => ({
   canUpdate: true,
+  checking: false,
+  back: vi.fn(),
   project: undefined as Project | undefined,
   projectLoading: false,
   projectError: null as unknown,
@@ -40,6 +42,10 @@ vi.mock("@tanstack/react-router", () => ({
     ...(options as Record<string, unknown>),
   }),
   useParams: () => ({ projectId: "p-1" }),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: mocks.back },
+    navigate: vi.fn(),
+  }),
   Link: ({ children, to }: { children?: ReactNode; to?: string }) => (
     <a href={to}>{children}</a>
   ),
@@ -91,6 +97,7 @@ vi.mock("@/hooks/use-open-pending-action", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canUpdateProjects: () => mocks.canUpdate,
+    isCheckingPermissions: mocks.checking,
     canDeleteProjects: () => false,
     canExportTasks: () => true,
   }),
@@ -143,6 +150,7 @@ function renderPage() {
 
 beforeEach(() => {
   mocks.canUpdate = true;
+  mocks.checking = false;
   mocks.project = {
     id: "p-1",
     workspaceId: "ws-1",
@@ -232,16 +240,42 @@ describe("project General settings load the project itself", () => {
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
-  it("renders SettingsAccessDenied instead of an editable empty form on 403, without saving on unmount", () => {
+  it("shows the shared no-access heading and Back action on 403, without saving on unmount", () => {
     mocks.project = undefined;
     mocks.projectError = new HttpError(403, "Forbidden");
     const { unmount } = renderPage();
-    expect(screen.getByTestId("settings-access-denied")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "states.noAccess.title" }),
+    ).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "states.back" }));
+    expect(mocks.back).toHaveBeenCalledOnce();
     expect(
       screen.queryByPlaceholderText(NAME_PLACEHOLDER),
     ).not.toBeInTheDocument();
     unmount();
     expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("waits for a pending capability check before showing a 403 denial", () => {
+    mocks.project = undefined;
+    mocks.projectError = new HttpError(403, "Forbidden");
+    mocks.checking = true;
+    const { rerender } = renderPage();
+    expect(
+      screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("settings-access-denied"),
+    ).not.toBeInTheDocument();
+    mocks.checking = false;
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <GeneralSettings />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "states.noAccess.title" }),
+    ).toHaveFocus();
   });
 
   it("renders ErrorDisplay with retry on transient server failure instead of an empty form", () => {

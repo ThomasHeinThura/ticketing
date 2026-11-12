@@ -27,6 +27,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { ActionTooltip } from "@/components/common/action-tooltip";
+import { NoAccessPage } from "@/components/common/page-states";
 import { ErrorDisplay } from "@/components/errors/error-display";
 import PageTitle from "@/components/page-title";
 import DefaultCommentVisibilitySetting from "@/components/project/default-comment-visibility-setting";
@@ -40,7 +41,7 @@ import ProjectPlanningSettings from "@/components/project/project-planning-setti
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
 import {
   isForbiddenError,
-  SettingsAccessDenied,
+  SettingsAccessChecking,
 } from "@/components/settings/settings-access";
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
@@ -170,8 +171,12 @@ function RouteComponent() {
   const { mutateAsync: deleteProject, isPending: isDeleting } =
     useDeleteProject();
   const deleteProjectButtonRef = useRef<HTMLButtonElement>(null);
-  const { canUpdateProjects, canDeleteProjects, canExportTasks } =
-    useWorkspacePermission();
+  const {
+    canUpdateProjects,
+    canDeleteProjects,
+    canExportTasks,
+    isCheckingPermissions,
+  } = useWorkspacePermission();
   const canEdit = Boolean(project) && canUpdateProjects();
   const canDelete = Boolean(project) && canDeleteProjects();
   const canExport = Boolean(project) && canExportTasks();
@@ -493,13 +498,10 @@ function RouteComponent() {
   }
 
   if (isProjectError && isForbiddenError(projectError)) {
-    return (
-      <>
-        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
-        <div className="max-w-4xl mx-auto">
-          <SettingsAccessDenied />
-        </div>
-      </>
+    return isCheckingPermissions ? (
+      <SettingsAccessChecking />
+    ) : (
+      <NoAccessPage />
     );
   }
 
