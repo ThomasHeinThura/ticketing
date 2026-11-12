@@ -3120,6 +3120,9 @@
 		"inviteModal": {
 			"title": "Invitar miembro al equipo",
 			"emailLabel": "Email",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "compi@company.com",
 			"sendInvitation": "Enviar invitación",
 			"success": "Invitación enviada correctamente",

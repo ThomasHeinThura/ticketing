@@ -3109,6 +3109,9 @@
 		"inviteModal": {
 			"title": "Покани член на тим",
 			"emailLabel": "Е-пошта",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "kolega@kompanija.com",
 			"sendInvitation": "Испрати покана",
 			"success": "Поканата е успешно испратена",

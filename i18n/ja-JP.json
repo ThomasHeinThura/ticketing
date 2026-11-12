@@ -3098,6 +3098,9 @@
 		"inviteModal": {
 			"title": "チームメンバーを招待",
 			"emailLabel": "メールアドレス",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
 			"sendInvitation": "招待を送信",
 			"success": "招待を送信しました",

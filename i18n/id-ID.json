@@ -3098,6 +3098,9 @@
 		"inviteModal": {
 			"title": "Undang Anggota Tim",
 			"emailLabel": "Email",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "rekan@perusahaan.com",
 			"sendInvitation": "Kirim Undangan",
 			"success": "Undangan berhasil dikirim",

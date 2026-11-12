@@ -3131,6 +3131,9 @@
 		"inviteModal": {
 			"title": "Запросити учасника команди",
 			"emailLabel": "Електронна пошта",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
 			"sendInvitation": "Надіслати запрошення",
 			"success": "Запрошення успішно надіслано",

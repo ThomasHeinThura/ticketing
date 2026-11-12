@@ -905,6 +905,9 @@
 		"inviteModal": {
 			"title": "Zaproś członka zespołu",
 			"emailLabel": "E-mail",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "wspolpracownik@firma.pl",
 			"sendInvitation": "Wyślij zaproszenie",
 			"success": "Zaproszenie zostało wysłane",

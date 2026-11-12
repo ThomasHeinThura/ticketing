@@ -47,9 +47,9 @@ import {
   projectSearchGroups,
   type SearchResultItem,
 } from "@/components/search-command-menu/search-targets";
+import { useRecentItems } from "@/components/search-command-menu/use-recent-items";
 import WorkItemCreateDialogHost from "@/components/work-item/work-item-create-dialog-host";
 import { isWorkItemCreateDialogOpen } from "@/components/work-item/work-item-create-dialog-open";
-import { useRecentItems } from "@/components/search-command-menu/use-recent-items";
 import { shortcuts } from "@/constants/shortcuts";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";

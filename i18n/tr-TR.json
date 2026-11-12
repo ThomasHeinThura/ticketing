@@ -3109,6 +3109,9 @@
 		"inviteModal": {
 			"title": "Ekip Üyesi Davet Et",
 			"emailLabel": "E-posta",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "arkadas@sirket.com",
 			"sendInvitation": "Davet Gönder",
 			"success": "Davet başarıyla gönderildi",

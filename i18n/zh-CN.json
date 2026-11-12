@@ -3098,6 +3098,9 @@
 		"inviteModal": {
 			"title": "邀请团队成员",
 			"emailLabel": "邮箱",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
 			"sendInvitation": "发送邀请",
 			"success": "邀请已成功发送",

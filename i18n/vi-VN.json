@@ -3098,6 +3098,9 @@
 		"inviteModal": {
 			"title": "Mời thành viên nhóm",
 			"emailLabel": "Email",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
 			"sendInvitation": "Gửi lời mời",
 			"success": "Gửi lời mời thành công",

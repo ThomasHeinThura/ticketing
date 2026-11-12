@@ -3109,6 +3109,9 @@
 		"inviteModal": {
 			"title": "Πρόσκληση μέλους ομάδας",
 			"emailLabel": "Email",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
 			"sendInvitation": "Αποστολή πρόσκλησης",
 			"success": "Η πρόσκληση στάλθηκε με επιτυχία",
