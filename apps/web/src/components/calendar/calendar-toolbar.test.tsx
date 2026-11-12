@@ -1,3 +1,4 @@
+import { Button } from "@taskdesk/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CalendarToolbar from "./calendar-toolbar";
@@ -28,6 +29,56 @@ function renderToolbar(view: "month" | "week" | "day", onViewChange = vi.fn()) {
 }
 
 describe("CalendarToolbar range (VW-25)", () => {
+  it("wraps the phone toolbar and preserves every action", () => {
+    const select = vi.fn();
+    const changeView = vi.fn();
+    const previous = vi.fn();
+    const next = vi.fn();
+    const today = vi.fn();
+    const { container } = render(
+      <div style={{ width: 390 }}>
+        <CalendarToolbar
+          visibleMonth={anchor}
+          onViewChange={changeView}
+          onPreviousMonth={previous}
+          onNextMonth={next}
+          onToday={today}
+          actions={<Button onClick={select}>Select items</Button>}
+        />
+      </div>,
+    );
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading.parentElement).toHaveClass(
+      "w-full",
+      "sm:w-auto",
+      "flex-wrap",
+    );
+    expect(heading.parentElement?.nextElementSibling).toHaveClass(
+      "w-full",
+      "sm:w-auto",
+      "flex-wrap",
+    );
+    expect(container.querySelectorAll("button")).toHaveLength(7);
+    fireEvent.click(screen.getByRole("button", { name: "Select items" }));
+    for (const mode of ["month", "week", "day"])
+      fireEvent.click(
+        screen.getByRole("button", { name: `tasks:calendar.view.${mode}` }),
+      );
+    fireEvent.click(
+      screen.getByRole("button", { name: "tasks:calendar.previousMonth" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "tasks:calendar.today" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "tasks:calendar.nextMonth" }),
+    );
+    expect(select).toHaveBeenCalledOnce();
+    expect(changeView).toHaveBeenCalledTimes(3);
+    expect(previous).toHaveBeenCalledOnce();
+    expect(today).toHaveBeenCalledOnce();
+    expect(next).toHaveBeenCalledOnce();
+  });
   it("marks the active range pressed and reports a change", () => {
     const onViewChange = renderToolbar("week");
     expect(
