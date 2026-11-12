@@ -8,7 +8,10 @@ import type {
   WorkItemSortDirection,
   WorkItemSortField,
 } from "@/lib/routes";
-import { sharePendingList } from "@/lib/work-item-pending";
+import {
+  confirmPendingWorkItemPage,
+  sharePendingList,
+} from "@/lib/work-item-pending";
 import {
   fetchWorkItemsListPage,
   usesWorkItemSearch,
@@ -75,8 +78,12 @@ function useGetWorkItems({
     queryKey: listQueryKey,
     structuralSharing: sharePendingList(queryClient),
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
-      fetchWorkItemsListPage(projectId as string, sort, dir, pageParam),
+    queryFn: async ({ pageParam, signal }) =>
+      confirmPendingWorkItemPage(
+        queryClient,
+        await fetchWorkItemsListPage(projectId as string, sort, dir, pageParam),
+        signal,
+      ),
     getNextPageParam: (last, _pages, _lastParam, pageParams) =>
       last.hasMore && last.nextCursor && !pageParams.includes(last.nextCursor)
         ? last.nextCursor
@@ -109,9 +116,9 @@ function useGetWorkItems({
     queryKey: searchQueryKey,
     structuralSharing: sharePendingList(queryClient),
     initialPageParam: undefined as string | undefined,
-    queryFn: async ({ pageParam }) => {
+    queryFn: async ({ pageParam, signal }) => {
       const searchWorkItems = await loadSearchWorkItems();
-      return searchWorkItems({
+      const page = await searchWorkItems({
         workspaceId: workspaceId as string,
         projectSlug: projectSlug as string,
         filter: structuredFilter ?? "",
@@ -121,6 +128,7 @@ function useGetWorkItems({
         columns,
         cursor: pageParam,
       });
+      return confirmPendingWorkItemPage(queryClient, page, signal);
     },
     getNextPageParam: (last) =>
       last.hasMore ? (last.nextCursor ?? undefined) : undefined,

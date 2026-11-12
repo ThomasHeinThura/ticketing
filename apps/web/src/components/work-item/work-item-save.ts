@@ -1,6 +1,5 @@
 import {
   type QueryClient,
-  type QueryKey,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -9,6 +8,8 @@ import updateWorkItem, {
 } from "@/fetchers/work-item/update-work-item";
 import {
   beginPendingWorkItem,
+  confirmedWorkItemFields,
+  confirmPendingWorkItem,
   endPendingWorkItem,
   pendingWorkItemFields,
 } from "@/lib/work-item-pending";
@@ -93,6 +94,7 @@ export function writeWorkItemResponse(
   const version = (response as { version?: unknown }).version;
   if (typeof version !== "number") return;
   raiseVersionFloor(queryClient, key, version);
+  confirmPendingWorkItem(queryClient, key, fields, version);
   queryClient.setQueryData<WorkItemDetailRow>(workItemDetailKey(key), (old) =>
     old
       ? parseWorkItemDetailRow({
@@ -177,23 +179,20 @@ export function useRefreshWorkItem(
 export type OptimisticWorkItemWrite = {
   fields: Partial<WorkItemDetail>;
   token: symbol;
-  /** The detail row's values for `fields` before the write. */
-  detail: Partial<WorkItemDetail> | null;
-  /** The cached list rows written, with their values for `fields` before the write. */
-  lists: Array<{ queryKey: QueryKey; previous: CachedRow }>;
 };
 
-function pickFields(row: object, fields: object): CachedRow {
-  return Object.fromEntries(
-    Object.keys(fields).map((name) => [name, (row as CachedRow)[name]]),
+/** Restore each unchanged optimistic field independently. */
+function rollbackFields(
+  row: CachedRow,
+  fields: CachedRow,
+  baseline: CachedRow,
+): CachedRow {
+  const restore = Object.fromEntries(
+    Object.entries(fields)
+      .filter(([name, value]) => isSameJson(row[name], value))
+      .map(([name]) => [name, baseline[name]]),
   );
-}
-
-/** True while the row still holds the optimistic values, i.e. no reload or event replaced them. */
-function stillHoldsFields(row: object, fields: object) {
-  return Object.entries(fields).every(([name, value]) =>
-    isSameJson((row as CachedRow)[name], value),
-  );
+  return { ...row, ...restore };
 }
 
 function mapItemRows(
@@ -220,11 +219,18 @@ function mapItemRows(
  */
 export async function writeOptimisticWorkItemFields(
   queryClient: QueryClient,
-  item: Pick<WorkItemDetailRow, "key" | "projectId">,
+  item: WorkItemDetailRow,
   fields: Partial<WorkItemDetail>,
 ): Promise<OptimisticWorkItemWrite> {
-  const token = beginPendingWorkItem(queryClient, item.key, fields);
   const detailKey = workItemDetailKey(item.key);
+  const current = queryClient.getQueryData<WorkItemDetailRow>(detailKey);
+  const token = beginPendingWorkItem(
+    queryClient,
+    item.key,
+    fields,
+    current ?? item,
+    current?.version ?? item.version,
+  );
   const lists = listQueriesShowing(queryClient, item).filter(
     ({ queryKey }) => queryKey[2] !== "board" && queryKey[2] !== "combined",
   );
@@ -234,29 +240,22 @@ export async function writeOptimisticWorkItemFields(
       queryClient.cancelQueries({ queryKey, exact: true }),
     ),
   ]);
-  const previous = queryClient.getQueryData<WorkItemDetailRow>(detailKey);
   queryClient.setQueryData<WorkItemDetailRow>(detailKey, (old) =>
     old ? parseWorkItemDetailRow({ ...old, ...fields } as WorkItemDetail) : old,
   );
-  const written: OptimisticWorkItemWrite["lists"] = [];
   for (const { queryKey } of lists) {
     const data = queryClient.getQueryData(queryKey);
     if (!isListData(data)) continue;
-    let before: CachedRow | undefined;
     queryClient.setQueryData(
       queryKey,
       mapItemRows(data, item.key, (row) => {
-        before ??= pickFields(row, fields);
         return { ...row, ...fields };
       }),
     );
-    if (before) written.push({ queryKey, previous: before });
   }
   return {
     fields,
     token,
-    detail: previous ? pickFields(previous, fields) : null,
-    lists: written,
   };
 }
 
@@ -267,32 +266,34 @@ export async function writeOptimisticWorkItemFields(
  */
 export function rollbackOptimisticWorkItemFields(
   queryClient: QueryClient,
-  item: Pick<WorkItemDetailRow, "key">,
+  item: Pick<WorkItemDetailRow, "key" | "projectId">,
   write: OptimisticWorkItemWrite,
 ) {
+  const baseline = confirmedWorkItemFields(queryClient, item.key);
   endPendingWorkItem(queryClient, item.key, write.token);
   const pending = pendingWorkItemFields(queryClient, item.key);
   const fields = Object.fromEntries(
     Object.entries(write.fields).filter(([name]) => !(name in pending)),
   );
-  const detail = write.detail && pickFields(write.detail, fields);
-  const lists = write.lists;
-  if (detail && Object.keys(fields).length) {
+  const lists = listQueriesShowing(queryClient, item).filter(
+    ({ queryKey }) => queryKey[2] !== "board" && queryKey[2] !== "combined",
+  );
+  if (Object.keys(fields).length) {
     queryClient.setQueryData<WorkItemDetailRow>(
       workItemDetailKey(item.key),
       (old) =>
-        old && stillHoldsFields(old, fields)
-          ? parseWorkItemDetailRow({ ...old, ...detail } as WorkItemDetail)
+        old
+          ? parseWorkItemDetailRow(
+              rollbackFields(old, fields, baseline) as WorkItemDetail,
+            )
           : old,
     );
   }
-  for (const { queryKey, previous } of lists) {
+  for (const { queryKey } of lists) {
     queryClient.setQueryData(queryKey, (data: unknown) =>
       Object.keys(fields).length && isListData(data)
         ? mapItemRows(data, item.key, (row) =>
-            stillHoldsFields(row, fields)
-              ? { ...row, ...pickFields(previous, fields) }
-              : row,
+            rollbackFields(row, fields, baseline),
           )
         : data,
     );

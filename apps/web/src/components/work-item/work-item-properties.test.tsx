@@ -9,12 +9,20 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
-import { sharePendingDetail, sharePendingList } from "@/lib/work-item-pending";
+import {
+  confirmPendingWorkItem,
+  confirmPendingWorkItemPage,
+  endPendingWorkItem,
+  pendingWorkItemFields,
+  sharePendingDetail,
+  sharePendingList,
+} from "@/lib/work-item-pending";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemProperties from "./work-item-properties";
 import {
   rollbackOptimisticWorkItemFields,
   writeOptimisticWorkItemFields,
+  writeWorkItemResponse,
 } from "./work-item-save";
 
 const mocks = vi.hoisted(() => ({
@@ -1387,7 +1395,12 @@ describe("optimistic state and assignee changes", () => {
     const { data } = useQuery<WorkItemDetailRow>({
       queryKey: detailKey,
       structuralSharing: sharePendingDetail(client, "HELP-7"),
-      queryFn: () => mocks.reload(),
+      queryFn: async ({ signal }) => {
+        const row = await mocks.reload();
+        if (!signal.aborted)
+          confirmPendingWorkItem(client, "HELP-7", row, row.version);
+        return row;
+      },
       staleTime: Number.POSITIVE_INFINITY,
     });
     return data ? (
@@ -1500,6 +1513,183 @@ describe("optimistic state and assignee changes", () => {
     ).toBe("Casey Ray");
     expect(listRow(client, projectList)?.assigneeName).toBe("Casey Ray");
     rollbackOptimisticWorkItemFields(client, liveRow(), second);
+    expect(
+      client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+    ).toBeNull();
+    expect(listRow(client, projectList)?.assigneeName).toBeNull();
+    expect(pendingWorkItemFields(client, "HELP-7")).toEqual({});
+  });
+
+  it.each([false, true])(
+    "single refused write returns to confirmed baseline (refetch=%s)",
+    async (refetch) => {
+      const client = renderLive(liveRow());
+      client.setQueryData(projectList, listData("HELP-7"));
+      const first = await writeOptimisticWorkItemFields(client, liveRow(), {
+        assigneeId: "person-1",
+        assigneeName: "Riley Fox",
+      });
+      if (refetch) {
+        mocks.reload.mockResolvedValue(liveRow());
+        await client.refetchQueries({ queryKey: detailKey });
+      }
+      rollbackOptimisticWorkItemFields(client, liveRow(), first);
+      expect(
+        client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+      ).toBeNull();
+      expect(listRow(client, projectList)?.assigneeName).toBeNull();
+      expect(pendingWorkItemFields(client, "HELP-7")).toEqual({});
+    },
+  );
+
+  it.each([false, true])(
+    "both refused writes return to confirmed baseline (refetch=%s)",
+    async (refetch) => {
+      const client = renderLive(liveRow());
+      client.setQueryData(projectList, listData("HELP-7"));
+      const first = await writeOptimisticWorkItemFields(client, liveRow(), {
+        assigneeId: "person-1",
+        assigneeName: "Riley Fox",
+      });
+      const second = await writeOptimisticWorkItemFields(client, liveRow(), {
+        assigneeId: "person-2",
+        assigneeName: "Casey Ray",
+      });
+      rollbackOptimisticWorkItemFields(client, liveRow(), first);
+      if (refetch) {
+        mocks.reload.mockResolvedValue(liveRow());
+        await client.refetchQueries({ queryKey: detailKey });
+      }
+      rollbackOptimisticWorkItemFields(client, liveRow(), second);
+      expect(
+        client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+      ).toBeNull();
+      expect(listRow(client, projectList)?.assigneeName).toBeNull();
+      expect(pendingWorkItemFields(client, "HELP-7")).toEqual({});
+    },
+  );
+
+  it.each([false, true])(
+    "a later successful write survives the earlier refusal (refetch=%s)",
+    async (refetch) => {
+      const client = renderLive(liveRow());
+      client.setQueryData(projectList, listData("HELP-7"));
+      const first = await writeOptimisticWorkItemFields(client, liveRow(), {
+        assigneeId: "person-1",
+        assigneeName: "Riley Fox",
+      });
+      const second = await writeOptimisticWorkItemFields(client, liveRow(), {
+        assigneeId: "person-2",
+        assigneeName: "Casey Ray",
+      });
+      rollbackOptimisticWorkItemFields(client, liveRow(), first);
+      if (refetch) {
+        mocks.reload.mockResolvedValue(liveRow());
+        await client.refetchQueries({ queryKey: detailKey });
+      }
+      writeWorkItemResponse(client, "HELP-7", { version: 5 }, second.fields);
+      endPendingWorkItem(client, "HELP-7", second.token);
+      expect(
+        client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+      ).toBe("Casey Ray");
+      expect(listRow(client, projectList)?.assigneeName).toBe("Casey Ray");
+      expect(pendingWorkItemFields(client, "HELP-7")).toEqual({});
+    },
+  );
+
+  it("uses a newer confirmed refetch as the rollback baseline", async () => {
+    const client = renderLive(liveRow());
+    client.setQueryData(projectList, listData("HELP-7"));
+    const first = await writeOptimisticWorkItemFields(client, liveRow(), {
+      assigneeId: "person-1",
+      assigneeName: "Riley Fox",
+    });
+    const second = await writeOptimisticWorkItemFields(client, liveRow(), {
+      assigneeId: "person-2",
+      assigneeName: "Casey Ray",
+    });
+    rollbackOptimisticWorkItemFields(client, liveRow(), first);
+    mocks.reload.mockResolvedValue(
+      liveRow({ assigneeId: "person-3", assigneeName: "Sam Lee", version: 5 }),
+    );
+    await client.refetchQueries({ queryKey: detailKey });
+    expect(
+      client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+    ).toBe("Casey Ray");
+    rollbackOptimisticWorkItemFields(client, liveRow(), second);
+    expect(
+      client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+    ).toBe("Sam Lee");
+    expect(listRow(client, projectList)?.assigneeName).toBe("Sam Lee");
+  });
+
+  it("restores a successful earlier write when the later one is refused, even after an older read", async () => {
+    const client = renderLive(liveRow());
+    client.setQueryData(projectList, listData("HELP-7"));
+    const first = await writeOptimisticWorkItemFields(client, liveRow(), {
+      assigneeId: "person-1",
+      assigneeName: "Riley Fox",
+    });
+    const second = await writeOptimisticWorkItemFields(client, liveRow(), {
+      assigneeId: "person-2",
+      assigneeName: "Casey Ray",
+    });
+    writeWorkItemResponse(client, "HELP-7", { version: 5 }, first.fields);
+    endPendingWorkItem(client, "HELP-7", first.token);
+    mocks.reload.mockResolvedValue(liveRow({ version: 4 }));
+    await client.refetchQueries({ queryKey: detailKey });
+    rollbackOptimisticWorkItemFields(client, liveRow(), second);
+    expect(
+      client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+    ).toBe("Riley Fox");
+    expect(listRow(client, projectList)?.assigneeName).toBe("Riley Fox");
+    expect(pendingWorkItemFields(client, "HELP-7")).toEqual({});
+  });
+
+  it("uses a newer confirmed list read for rollback and ignores cancelled reads", async () => {
+    const client = renderLive(liveRow());
+    client.setQueryData(projectList, listData("HELP-7"));
+    const write = await writeOptimisticWorkItemFields(client, liveRow(), {
+      assigneeId: "person-1",
+      assigneeName: "Riley Fox",
+    });
+    const cancelled = new AbortController();
+    cancelled.abort();
+    confirmPendingWorkItemPage(
+      client,
+      {
+        items: [
+          {
+            key: "HELP-7",
+            version: 6,
+            unavailableFields: [],
+            assigneeId: "person-x",
+            assigneeName: "Cancelled",
+          },
+        ],
+      },
+      cancelled.signal,
+    );
+    confirmPendingWorkItemPage(
+      client,
+      {
+        items: [
+          {
+            key: "HELP-7",
+            version: 5,
+            unavailableFields: [],
+            assigneeId: "person-3",
+            assigneeName: "Sam Lee",
+          },
+        ],
+      },
+      new AbortController().signal,
+    );
+    rollbackOptimisticWorkItemFields(client, liveRow(), write);
+    expect(
+      client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+    ).toBe("Sam Lee");
+    expect(listRow(client, projectList)?.assigneeName).toBe("Sam Lee");
   });
 
   it("shows the new state and closes the menu before the server answers", async () => {

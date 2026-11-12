@@ -11,7 +11,10 @@ import {
 } from "@/hooks/queries/work-item/work-items-list-query";
 import type { WorkItemWorkSearch } from "@/lib/routes";
 import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
-import { sharePendingList } from "@/lib/work-item-pending";
+import {
+  confirmPendingWorkItemPage,
+  sharePendingList,
+} from "@/lib/work-item-pending";
 
 /**
  * Starts the work list's reads from the route's `beforeLoad` (G11 work-list LCP): the main
@@ -94,12 +97,16 @@ export function prefetchWorkListData(
           queryKey: workItemsListQueryKey(project.id, search.sort, search.dir),
           structuralSharing: sharePendingList(queryClient),
           initialPageParam: undefined as string | undefined,
-          queryFn: ({ pageParam }) =>
-            fetchWorkItemsListPage(
-              project.id,
-              search.sort,
-              search.dir,
-              pageParam,
+          queryFn: async ({ pageParam, signal }) =>
+            confirmPendingWorkItemPage(
+              queryClient,
+              await fetchWorkItemsListPage(
+                project.id,
+                search.sort,
+                search.dir,
+                pageParam,
+              ),
+              signal,
             ),
         }),
       );

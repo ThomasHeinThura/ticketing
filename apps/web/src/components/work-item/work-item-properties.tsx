@@ -262,6 +262,9 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       });
       writeWorkItemResponse(queryClient, item.key, result, {
         stateName: input.toStateName,
+        ...(input.toStateCategory
+          ? { stateCategory: input.toStateCategory }
+          : {}),
         ...(result && typeof result === "object" && "stateId" in result
           ? { stateId: (result as { stateId: string }).stateId }
           : {}),

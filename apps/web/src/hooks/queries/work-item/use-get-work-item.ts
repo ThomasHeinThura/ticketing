@@ -8,7 +8,10 @@ import { useEffect } from "react";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
 import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
-import { sharePendingDetail } from "@/lib/work-item-pending";
+import {
+  confirmPendingWorkItem,
+  sharePendingDetail,
+} from "@/lib/work-item-pending";
 
 /**
  * How old a read of this item may be and still serve a mount without asking again: the read
@@ -72,6 +75,17 @@ function isReusableRefusal(
   );
 }
 
+async function readWorkItem(
+  queryClient: QueryClient,
+  key: string,
+  signal: AbortSignal,
+) {
+  const row = await getWorkItem(key);
+  if (!signal.aborted)
+    confirmPendingWorkItem(queryClient, key, row, row.version);
+  return row;
+}
+
 /**
  * Starts reading the item without waiting for it, so the read runs while the route's code loads
  * instead of after the screen mounts. A read made moments ago, or one in flight, is reused.
@@ -80,7 +94,7 @@ export function prefetchWorkItemDetail(queryClient: QueryClient, key: string) {
   void queryClient.prefetchQuery({
     queryKey: workItemDetailQueryKey(key),
     structuralSharing: sharePendingDetail(queryClient, key),
-    queryFn: () => getWorkItem(key),
+    queryFn: ({ signal }) => readWorkItem(queryClient, key, signal),
     staleTime: WORK_ITEM_READ_REUSE_MS,
   });
 }
@@ -94,7 +108,7 @@ function useGetWorkItem({ key }: { key: string | undefined }) {
   const query = useQuery({
     queryKey: workItemDetailQueryKey(key),
     structuralSharing: sharePendingDetail(queryClient, key),
-    queryFn: () => getWorkItem(key as string),
+    queryFn: ({ signal }) => readWorkItem(queryClient, key as string, signal),
     enabled: !!key,
     // The detail page and side pane re-read the item on mount (the app default is not to), so
     // opening an item never shows a cached copy that changed while no screen watched it. A read
