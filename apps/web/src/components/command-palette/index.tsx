@@ -41,11 +41,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  pushRecentItem,
-  type RecentItem,
-  readRecentItems,
-} from "@/components/search-command-menu/recent-items";
+import { pushRecentItem } from "@/components/search-command-menu/recent-items";
 import {
   type PaletteEntry,
   projectSearchGroups,
@@ -53,6 +49,7 @@ import {
 } from "@/components/search-command-menu/search-targets";
 import WorkItemCreateDialogHost from "@/components/work-item/work-item-create-dialog-host";
 import { isWorkItemCreateDialogOpen } from "@/components/work-item/work-item-create-dialog-open";
+import { useRecentItems } from "@/components/search-command-menu/use-recent-items";
 import { shortcuts } from "@/constants/shortcuts";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
@@ -251,13 +248,7 @@ export function CommandPalette({
     [onOpenChange],
   );
 
-  const recentItems = useMemo<RecentItem[]>(
-    () =>
-      open && workspace?.id && session?.user?.id
-        ? readRecentItems(session.user.id, workspace.id)
-        : [],
-    [open, workspace?.id, session?.user?.id],
-  );
+  const recentItems = useRecentItems(open, session?.user?.id, workspace?.id);
 
   const searchGroups = useMemo(
     () =>

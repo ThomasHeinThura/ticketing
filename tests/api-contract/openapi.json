@@ -11264,7 +11264,7 @@
           "Projects"
         ],
         "summary": "Reorder projects",
-        "description": "Set the sidebar order of a workspace's projects. The given positions express relative order only -- the workspace is renumbered to 0..n-1.",
+        "description": "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
         "parameters": [
           {
             "schema": {
@@ -11339,6 +11339,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A project is missing or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -20898,6 +20908,16 @@
           },
           "403": {
             "description": "Missing time_entry:create",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Scope not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -111249,7 +111269,7 @@
           "Teams"
         ],
         "summary": "Add a staff member to a team",
-        "description": "workspace:manage_settings, or a lead of this team. Customer-side people are refused (TM-2).",
+        "description": "workspace:manage_settings, or a lead of this team. Customer-side people and self-adds are refused (TM-2, TM-3).",
         "parameters": [
           {
             "schema": {
@@ -111327,7 +111347,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not permitted to edit this roster",
+            "description": "Not permitted to edit this roster, or team_self_add_forbidden",
             "content": {
               "text/plain": {
                 "schema": {
@@ -117983,7 +118003,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118308,7 +118328,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118538,7 +118558,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118759,6 +118779,16 @@
           },
           "403": {
             "description": "Not staff, or missing report:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -119033,7 +119063,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -120116,6 +120146,16 @@
               }
             }
           },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
             "description": "feature.reports is off",
             "content": {
@@ -120593,6 +120633,16 @@
           },
           "403": {
             "description": "Workspace dashboards need workspace:manage_settings",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Widget target not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -122268,7 +122318,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {

@@ -348,6 +348,48 @@ describe("project socket reach (#745)", () => {
     }
   });
 
+  it("B-5: member and viewer on A and lead on neither cannot subscribe to B", async () => {
+    const w = await world();
+    const { project: visible } = await createProjectFixture({
+      workspaceId: w.workspace.id,
+    });
+    for (const role of ["member", "viewer", "lead"]) {
+      const caller = await w.invite(role);
+      if (role !== "lead")
+        await grantProjectRead(caller.user.id, w.workspace.id, visible.id);
+      const headers = w.asSession(caller.cookie);
+      const hidden = await handshake(
+        url(w.node, `/api/ws/${w.project.id}`),
+        headers,
+      );
+      const missing = await handshake(
+        url(w.node, "/api/ws/project-does-not-exist"),
+        headers,
+      );
+      expect(hidden.status).toBe(401);
+      expect(hidden).toEqual(missing);
+      if (role !== "lead") {
+        const socket = await open(
+          url(w.node, `/api/ws/${visible.id}`),
+          headers,
+        );
+        const event = next(socket);
+        broadcastToProject(w.project.id, {
+          type: "work_item.updated",
+          projectId: w.project.id,
+          taskId: "hidden-b-event",
+        });
+        broadcastToProject(visible.id, {
+          type: "work_item.updated",
+          projectId: visible.id,
+          taskId: "visible-a-event",
+        });
+        expect(await event).toMatchObject({ taskId: "visible-a-event" });
+        socket.close();
+      }
+    }
+  });
+
   it("an out-of-reach member receives nothing: no socket exists to deliver to", async () => {
     const w = await world();
     const inReach = await w.invite("member");

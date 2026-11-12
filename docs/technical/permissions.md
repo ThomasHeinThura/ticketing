@@ -2,6 +2,10 @@
 
 Reach and authority are separate checks. Membership determines reachable resources; scoped roles supply capabilities. Authentication alone grants neither. Every route declares one policy. No provider claim grants instance administration or unrestricted reach.
 
+A team that owns a project grants its members reach to that project. No person may add themselves to a team, including through a personal API key; an otherwise authorised person can remove themselves.
+
+Project reordering returns and updates only projects the caller reaches. Unreachable, missing, and deleted project IDs receive the same 404; the positions of unreachable projects are not changed.
+
 ## Capabilities
 
 | Group | Capability | Implies | Description |
