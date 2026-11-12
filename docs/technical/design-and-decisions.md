@@ -3599,6 +3599,12 @@ Thomas approved both changes on 5 November 2026:
 Neither approval constitutes a merge or deployment approval. Existing tenant,
 session, audit, encryption and secret-redaction boundaries remain required.
 
+## Team project access — 12 November 2026 (Thomas)
+
+A team that owns a project grants its members project reach, without adding capabilities. Nobody may add themselves to a team, including through their personal API key; authorised self-removal remains allowed. This narrows TM-3's existing roster-edit authority for self-add.
+
+For staff project reach, an explicit report or time-summary target outside reach answers 404. This reverses RP-17's prior silent exclusion for a Tier 3 filter naming a project after reach is lost; `report:read_all` retains its workspace-wide report scope.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.

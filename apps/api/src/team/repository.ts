@@ -25,6 +25,15 @@ export type TeamRow = {
   createdAt: Date;
 };
 
+export async function isPersonForUser(personId: string, userId: string) {
+  const [person] = await db
+    .select({ id: personTable.id })
+    .from(personTable)
+    .where(and(eq(personTable.id, personId), eq(personTable.userId, userId)))
+    .limit(1);
+  return person !== undefined;
+}
+
 export type TeamMemberRow = {
   personId: string;
   userId: string;
@@ -378,6 +387,9 @@ export async function addMember(
         .from(personTable)
         .where(eq(personTable.id, input.personId))
         .limit(1);
+      if (person?.userId && person.userId === actor.userId) {
+        throw new HTTPException(403, { message: "team_self_add_forbidden" });
+      }
       let isWorkspaceMember = false;
       if (person?.userId) {
         const [member] = await tx

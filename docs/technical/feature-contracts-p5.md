@@ -204,7 +204,7 @@ system that models time as money cannot express unbilled effort.
 - `TC-6` A timer is offered — start, stop, and it survives a page reload — but manual entry
   is always available, because most people log time at the end of the day.
 - `TC-7` Entries roll up to the work item, its parent chain, its cycle, its module and its
-  project.
+  project. A summary explicitly targeting a missing or unreachable scope returns 404.
 
 <a id="time-and-cost-rates"></a>
 ### Rates
@@ -519,6 +519,10 @@ Carried from v1's set, which was well chosen, grouped by the question being aske
 - `RP-14` Personal dashboards are per user; workspace dashboards require
   `workspace:manage_settings`.
 - `RP-15` Widgets are resizable and draggable, and layout persists.
+- A widget that names an unreachable project, cycle or project-scoped saved view is omitted
+  from dashboard metadata and counts, and its data and export routes return 404. A dashboard
+  with omitted widgets cannot be edited until those widgets are reachable, preventing a save
+  from deleting hidden layout entries.
 - `RP-16` A sensible default dashboard exists so a new user sees something useful
   immediately rather than an empty grid with an "add widget" button.
 
@@ -534,7 +538,10 @@ Carried from v1's set, which was well chosen, grouped by the question being aske
 | See cost and rate data | `time_entry:manage_rates` |
 
 - `RP-17` Every report is filtered to the viewer's reach. Two people running the same
-  report legitimately see different numbers, and the scope line explains why.
+  report legitimately see different numbers, and the scope line explains why. An explicit
+  missing or unreachable project or cycle filter returns 404. `report:read_all` retains its
+  workspace-wide report scope. Stored export metadata and downloads are hidden when the
+  requester no longer reaches a covered project; missing coverage fails closed.
 - `RP-18` **Customers see no reports.** *(v1's `/reports/*` had no access control at all,
   so customers could read the entire SLA portfolio across every customer. This is the
   single worst defect it found, and it is why report routes get their own explicit
@@ -584,7 +591,7 @@ different `layout` and query shape.
 | Viewer loses reach mid-session | Numbers change on refresh. The scope line explains |
 | Two currencies | Grouped, never summed |
 | Tier 3 report grouped by a custom field later deleted | Report retained; the group renders "(deleted field)" rather than failing |
-| Tier 3 filter references a project the viewer loses reach to mid-session | Silently excluded on refresh, per `RP-17`, same as any other report |
+| Tier 3 filter references a project the viewer loses reach to mid-session | 404 on refresh, per `RP-17` |
 
 <a id="reports-and-dashboards-testing"></a>
 ### Testing
@@ -849,7 +856,9 @@ A named thing we operate on behalf of customers.
 - `SVC-2` A service links to documentation, to its projects and to its knowledge base
   articles.
 - `SVC-3` A work item may reference the service it affects. This is what makes "which
-  service generates the most incidents?" answerable.
+  service generates the most incidents?" answerable. Service incident and open-change
+  counts, and change-based blockers displayed in service detail, include only projects the
+  caller reaches. Deletion checks still consider all blockers in the workspace.
 - `SVC-4` A service has a status — operational, degraded, outage — set by a person, not
   computed. Computed status from open incidents is appealing and always wrong.
 - `SVC-5` Services may depend on other services, forming a graph used to show impact:

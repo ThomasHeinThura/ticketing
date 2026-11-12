@@ -20912,6 +20912,16 @@
               }
             }
           },
+          "404": {
+            "description": "Scope not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
             "description": "feature.time_tracking is off",
             "content": {
@@ -111030,7 +111040,7 @@
           "Teams"
         ],
         "summary": "Add a staff member to a team",
-        "description": "workspace:manage_settings, or a lead of this team. Customer-side people are refused (TM-2).",
+        "description": "workspace:manage_settings, or a lead of this team. Customer-side people and self-adds are refused (TM-2, TM-3).",
         "parameters": [
           {
             "schema": {
@@ -111108,7 +111118,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not permitted to edit this roster",
+            "description": "Not permitted to edit this roster, or team_self_add_forbidden",
             "content": {
               "text/plain": {
                 "schema": {
@@ -117764,7 +117774,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118089,7 +118099,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118319,7 +118329,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118540,6 +118550,16 @@
           },
           "403": {
             "description": "Not staff, or missing report:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118814,7 +118834,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -119897,6 +119917,16 @@
               }
             }
           },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
             "description": "feature.reports is off",
             "content": {
@@ -120374,6 +120404,16 @@
           },
           "403": {
             "description": "Workspace dashboards need workspace:manage_settings",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Widget target not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -122049,7 +122089,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
