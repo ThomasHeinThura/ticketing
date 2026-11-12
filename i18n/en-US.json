@@ -3562,6 +3562,8 @@
 			"transitionForbidden": "You don't have permission to change the state of {{term_work_item_other}}.",
 			"transitionBlocked": "{{key}} can't move there right now ({{reason}}). Open it to add what's missing.",
 			"transitionUnavailable": "{{key}} can't move to that state right now.",
+			"moveRefusedReturned": "Move refused. {{key}} is back in {{state}}.",
+			"moveCancelledReturned": "Move cancelled. {{key}} is back in {{state}}.",
 			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
 			"changeState": "Change state",
 			"changeStateFor": "Change state of {{key}}",
@@ -3579,6 +3581,7 @@
 				"invalid": "The {{term_work_item_other}} around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"forbidden": "You don't have permission to move {{key}}.",
 				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"network": "Couldn't confirm the move for {{key}}. Check your connection and refresh.",
 				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"groupUnassigned": "Unassigned",

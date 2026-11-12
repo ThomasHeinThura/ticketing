@@ -209,7 +209,7 @@ describe("WorkItemBoard render cost (G11)", () => {
     expect(probe.bodyRenders).toBe(0);
   });
 
-  it("re-renders no board card body while a move is saving", async () => {
+  it("re-renders at most the dropped card body while a move is saving", async () => {
     let finish!: (value: unknown) => void;
     rank.mockImplementation(
       () =>
@@ -239,7 +239,10 @@ describe("WorkItemBoard render cost (G11)", () => {
       await Promise.resolve();
     });
     expect(rank).toHaveBeenCalledTimes(1);
-    expect(probe.bodyRenders).toBe(0);
+    // Only the dropped card re-renders (it sits in its new slot and looks pending); the
+    // other 199 cards, which only shift position, keep their body.
+    expect(probe.bodyRenders).toBeLessThanOrEqual(1);
+    probe.bodyRenders = 0;
     await act(async () => {
       finish({});
       await drop;

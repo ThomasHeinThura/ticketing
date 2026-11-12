@@ -14641,6 +14641,12 @@
 						"transitionUnavailable": {
 							"type": "string"
 						},
+						"moveRefusedReturned": {
+							"type": "string"
+						},
+						"moveCancelledReturned": {
+							"type": "string"
+						},
 						"movedNotRanked": {
 							"type": "string"
 						},
@@ -14693,6 +14699,9 @@
 								"unknown": {
 									"type": "string"
 								},
+								"network": {
+									"type": "string"
+								},
 								"transitionInvalid": {
 									"type": "string"
 								}
@@ -14704,6 +14713,7 @@
 								"invalid",
 								"forbidden",
 								"unknown",
+								"network",
 								"transitionInvalid"
 							]
 						},
@@ -14779,6 +14789,8 @@
 						"transitionForbidden",
 						"transitionBlocked",
 						"transitionUnavailable",
+						"moveRefusedReturned",
+						"moveCancelledReturned",
 						"movedNotRanked",
 						"changeState",
 						"changeStateFor",
