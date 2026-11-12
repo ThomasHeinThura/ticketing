@@ -212,6 +212,10 @@
           "manageWorkspaceSettings": {
             "type": "boolean"
           },
+          "manageRequestTypes": {
+            "type": "boolean",
+            "description": "Strict request_type:manage; absent means denied."
+          },
           "transitionTasks": {
             "type": "boolean"
           },

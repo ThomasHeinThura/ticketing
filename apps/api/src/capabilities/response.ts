@@ -37,6 +37,9 @@ export const capabilitiesResponseSchema = z
       .optional()
       .openapi({ description: "Strict intake:triage; absent means denied." }),
     manageWorkspaceSettings: z.boolean(),
+    manageRequestTypes: z.boolean().optional().openapi({
+      description: "Strict request_type:manage; absent means denied.",
+    }),
     transitionTasks: z.boolean(),
     rankTasks: z.boolean(),
     exportTasks: z.boolean().optional(),

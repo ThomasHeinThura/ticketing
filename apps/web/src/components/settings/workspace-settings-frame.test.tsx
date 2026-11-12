@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceSettingsFrame } from "./workspace-settings-frame";
 
 const permissions = vi.hoisted(() => ({
+  requestTypes: false,
   settings: false,
   calendars: false,
   roles: false,
@@ -44,6 +45,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     role: "member",
     canManageWorkspaceSettings: () => permissions.settings,
     canManageServiceCalendars: () => permissions.calendars,
+    canManageRequestTypes: () => permissions.requestTypes,
     canManageRoles: () => permissions.roles,
     canManageWebhooks: () => permissions.webhooks,
     canManageCustomFields: () => permissions.fields,
@@ -58,6 +60,7 @@ afterEach(() => {
   workspaceFeatureState.sla = true;
   workspaceFeatureState.loading = false;
   Object.assign(permissions, {
+    requestTypes: false,
     settings: false,
     calendars: false,
     roles: false,
@@ -87,6 +90,7 @@ describe("WorkspaceSettingsFrame", () => {
 
   it("shows every configuration entry to someone who can manage settings", () => {
     permissions.settings = true;
+    permissions.requestTypes = true;
     permissions.calendars = true;
     permissions.roles = true;
     permissions.webhooks = true;
@@ -121,6 +125,7 @@ describe("WorkspaceSettingsFrame", () => {
     permissions.settings = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     let hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/request-types");
     expect(hrefs).not.toContain("/dashboard/settings/workspace/roles");
     expect(hrefs).not.toContain("/dashboard/settings/workspace/webhooks");
     expect(hrefs).not.toContain("/dashboard/settings/workspace/custom-fields");
@@ -148,6 +153,16 @@ describe("WorkspaceSettingsFrame", () => {
       "/dashboard/settings/workspace/customer-invitations",
     );
     expect(hrefs).not.toContain("/dashboard/settings/workspace/webhooks");
+  });
+
+  it("shows Request Types based on its own manage capability", () => {
+    permissions.requestTypes = true;
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("/dashboard/settings/workspace/request-types");
+    expect(hrefs).not.toContain("/dashboard/settings/workspace/terminology");
   });
 
   it("shows each P5 entry exactly to the holder of the capability its API enforces (R5-03)", () => {
@@ -186,6 +201,7 @@ describe("WorkspaceSettingsFrame", () => {
   });
 
   it("hides Service calendars and SLA policies while feature.sla is off or loading (P4R2-M1)", () => {
+    permissions.requestTypes = true;
     permissions.settings = true;
     permissions.calendars = true;
     workspaceFeatureState.sla = false;

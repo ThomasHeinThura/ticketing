@@ -117,7 +117,7 @@ export const CAPABILITIES = {
     group: "Workspace",
     implies: ["workspace:read"],
     description:
-      "Types, workflows, SLA policies, calendars, request types, custom fields, labels, estimates, automations, canned responses, workspace terminology",
+      "Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, workspace terminology",
   },
   /**
    * The fix for the hidden second authorization model (issue #6, S5 follow-up,

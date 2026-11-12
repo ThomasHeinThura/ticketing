@@ -45,6 +45,7 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
     role,
     canManageWorkspaceSettings,
     canManageServiceCalendars,
+    canManageRequestTypes,
     canManageRoles,
     canManageWebhooks,
     canManageCustomFields,
@@ -55,6 +56,7 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   const location = useLocation();
   const canSettings = canManageWorkspaceSettings();
   const canCalendars = canManageServiceCalendars();
+  const canRequestTypes = canManageRequestTypes();
   const canRoles = canManageRoles();
   const canWebhooks = canManageWebhooks();
   const canFields = canManageCustomFields();
@@ -68,8 +70,11 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
   // Every entry is shown only to people the server would let into it, using the capability the
   // API of that area enforces: `workspace:manage_roles`, `webhook:manage`, `custom_field:manage`,
   // `sla_policy:manage` (service calendars), `time_entry:manage_rates` (rates), `workflow:manage`
-  // (workflows and the CAB template) and otherwise `workspace:manage_settings`. A direct
-  // URL still reaches the page, which shows the API's access-denied error.
+  // (workflows and the CAB template), `request_type:manage` (request types) and otherwise
+  // `workspace:manage_settings`. A direct URL still reaches the page. Pages that check access
+  // first (`useSettingsAccess`: Request Types, Terminology, Workspace features, Automations) show
+  // the neutral no-access notice and send no request; the others show the API's access-denied
+  // error.
   const allMenuItems = [
     {
       title: t("settings:workspaceGeneral.title"),
@@ -129,7 +134,7 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("requestTypes:title"),
       url: "/dashboard/settings/workspace/request-types",
       icon: Inbox,
-      visible: canSettings,
+      visible: canRequestTypes,
     },
     {
       title: t("settings:workflows.title"),
