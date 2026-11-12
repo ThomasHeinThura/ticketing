@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { sendNativeWorkspaceInvitationEmail } from "../../utils/send-workspace-invitation-email";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../utils/workspace-invitation-limits";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
@@ -93,7 +94,7 @@ async function inviteWorkspaceMember(
   const email = input.email.trim().toLowerCase();
   const inviteeHash = createHash("sha256").update(email).digest("hex");
 
-  const invitation = await db.transaction(async (tx) => {
+  const { invitation, auditFailed } = await db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, input.workspaceId);
 
     const [existingMember] = await findExistingWorkspaceMemberByEmail(
@@ -148,7 +149,7 @@ async function inviteWorkspaceMember(
       if (!updated) {
         throw new Error("invitation update returned no row");
       }
-      await appendAuditLog(tx, {
+      const auditFailed = await appendAuditSavepoint(tx, {
         actorId: input.inviterId,
         actorType: "person",
         workspaceId: input.workspaceId,
@@ -158,7 +159,7 @@ async function inviteWorkspaceMember(
         before: { role: existingInvitation.role },
         after: { scope: "staff", inviteeHash, resend: true, role },
       });
-      return updated;
+      return { invitation: updated, auditFailed };
     }
 
     // This point is only reached when `existingInvitation` above was
@@ -206,7 +207,7 @@ async function inviteWorkspaceMember(
     if (!created) {
       throw new Error("invitation insert returned no row");
     }
-    await appendAuditLog(tx, {
+    const auditFailed = await appendAuditSavepoint(tx, {
       actorId: input.inviterId,
       actorType: "person",
       workspaceId: input.workspaceId,
@@ -216,8 +217,10 @@ async function inviteWorkspaceMember(
       before: null,
       after: { scope: "staff", inviteeHash, resend: false, role },
     });
-    return created;
+    return { invitation: created, auditFailed };
   });
+
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 
   const [workspace] = await findWorkspaceInvitationWorkspace(input.workspaceId);
   const [inviter] = await findWorkspaceInvitationInviter(input.inviterId);
