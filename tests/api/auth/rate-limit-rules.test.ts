@@ -15,6 +15,17 @@ describe("better-auth rate limit rules", () => {
     });
   });
 
+  it("limits password recovery by IP", () => {
+    expect(AUTH_RATE_LIMIT.customRules["/request-password-reset"]).toEqual({
+      window: 3600,
+      max: 5,
+    });
+    expect(AUTH_RATE_LIMIT.customRules["/reset-password"]).toEqual({
+      window: 3600,
+      max: 10,
+    });
+  });
+
   it("exempts only the session read", () => {
     const exempt = Object.entries(AUTH_RATE_LIMIT.customRules)
       .filter(([, rule]) => rule === false)

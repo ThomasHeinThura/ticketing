@@ -79,6 +79,12 @@ describe("staff sign-in page", () => {
       screen.queryByText("auth:signIn.toggleLink"),
     ).not.toBeInTheDocument();
   });
+  it("links to password recovery", () => {
+    render(<SignIn />);
+    expect(
+      screen.getByRole("link", { name: "auth:passwordRecovery.forgot" }),
+    ).toHaveAttribute("href", "/auth/forgot-password");
+  });
   it("shows the email-code form while staff email code is on and SMTP is configured", () => {
     render(<SignIn />);
     expect(

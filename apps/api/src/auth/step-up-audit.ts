@@ -32,7 +32,8 @@ export type StepUpOperation =
   | "audit_export"
   | "auth_local_methods_update"
   | "storage_config_save"
-  | "storage_config_test";
+  | "storage_config_test"
+  | "notification_provider_save";
 
 export type StepUpAuditAction =
   | "auth.step_up_issued"
@@ -77,6 +78,8 @@ export const STEP_UP_OPERATION_ROUTES: Record<StepUpOperation, string> = {
   auth_local_methods_update: "PUT /api/instance/auth/local-methods",
   storage_config_save: "PUT /api/instance/storage/s3-draft",
   storage_config_test: "POST /api/instance/storage/s3-draft/test",
+  notification_provider_save:
+    "PATCH /api/instance/notification-providers/email",
 };
 
 /**

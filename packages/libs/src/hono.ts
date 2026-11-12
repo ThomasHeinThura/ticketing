@@ -290,7 +290,8 @@ export function createApiFetch(
       ? { ...init, redirect: "error" as const }
       : init;
     const request = requestWithHeaders(input, requestInit, headers, "include");
-    if (!needsCsrf) return watchFactorEnrollment(await fetchImpl(request));
+    if (!needsCsrf)
+      return notifyServerError(watchFactorEnrollment(await fetchImpl(request)));
 
     // Keep the request body replayable for the single, narrowly-scoped retry.
     const retryBase = request.clone();
@@ -298,7 +299,7 @@ export function createApiFetch(
     const response = await fetchImpl(request);
     const failureMessage = await csrfFailureMessage(response);
     if (!failureMessage || !csrfFailureMessages.has(failureMessage)) {
-      return watchFactorEnrollment(response);
+      return notifyServerError(watchFactorEnrollment(response));
     }
 
     const retryHeaders = new Headers(retryBase.headers);
@@ -306,13 +307,119 @@ export function createApiFetch(
       "X-TaskDesk-CSRF",
       await readCsrfToken(fetchImpl, csrfEndpoint),
     );
-    return watchFactorEnrollment(
-      await fetchImpl(
-        requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
+    return notifyServerError(
+      watchFactorEnrollment(
+        await fetchImpl(
+          requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
+        ),
       ),
     );
   };
   return Object.assign(apiFetchImpl, { primeCsrfToken });
+}
+
+const MAX_REFERENCE_BODY_BYTES = 16 * 1024;
+const REFERENCE_READ_TIMEOUT_MS = 250;
+
+/** Best-effort event; preserve response identity and never wait for inspection. */
+export function notifyServerError(response: Response): Response {
+  if (response.status < 500 || typeof window === "undefined") return response;
+  try {
+    const targetWindow = window;
+    const status = response.status;
+    const header = response.headers.get("x-taskdesk-request-id");
+    const notify = (bodyId?: unknown) => {
+      const reference =
+        typeof bodyId === "string" && /^[0-9a-f]{32}$/.test(bodyId)
+          ? bodyId
+          : header;
+      const safeReference =
+        reference && /^[0-9a-f]{32}$/.test(reference) ? reference : null;
+      try {
+        targetWindow.dispatchEvent(
+          new CustomEvent("taskdesk:server-error", {
+            detail: { reference: safeReference, status },
+          }),
+        );
+      } catch {
+        /* Notification is best effort. */
+      }
+    };
+    const contentType = response.headers.get("content-type") ?? "";
+    const length = response.headers.get("content-length");
+    if (
+      !/^application\/(?:[a-z0-9.+-]*\+)?json(?:\s*;|\s*$)/i.test(
+        contentType,
+      ) ||
+      response.headers.has("transfer-encoding") ||
+      !length ||
+      !/^\d+$/.test(length) ||
+      Number(length) > MAX_REFERENCE_BODY_BYTES
+    ) {
+      notify();
+      return response;
+    }
+    try {
+      const reader = response.clone().body?.getReader();
+      if (!reader) {
+        notify();
+        return response;
+      }
+      void (async () => {
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let completed = false;
+        try {
+          const timeout = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error("reference inspection timeout")),
+              REFERENCE_READ_TIMEOUT_MS,
+            );
+          });
+          while (true) {
+            const part = await Promise.race([reader.read(), timeout]);
+            if (part.done) {
+              completed = true;
+              break;
+            }
+            size += part.value.byteLength;
+            if (size > MAX_REFERENCE_BODY_BYTES || size > Number(length))
+              throw new Error("reference body too large");
+            chunks.push(part.value);
+          }
+          const bytes = new Uint8Array(size);
+          let offset = 0;
+          for (const chunk of chunks) {
+            bytes.set(chunk, offset);
+            offset += chunk.byteLength;
+          }
+          const body: unknown = JSON.parse(new TextDecoder().decode(bytes));
+          notify(
+            body && typeof body === "object" && "requestId" in body
+              ? body.requestId
+              : undefined,
+          );
+        } catch {
+          notify();
+        } finally {
+          if (timer !== undefined) clearTimeout(timer);
+          if (!completed) {
+            try {
+              void reader.cancel().catch(() => {});
+            } catch {
+              /* Inspection cancellation is best effort. */
+            }
+          }
+        }
+      })();
+    } catch {
+      notify();
+    }
+  } catch {
+    /* Inspection never alters the caller's response. */
+  }
+  return response;
 }
 
 export const apiFetch = createApiFetch();

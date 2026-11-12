@@ -404,6 +404,13 @@ function SignIn() {
                 onSuccess={handleSignInSuccess}
               />
             ))}
+          <Button
+            variant="link"
+            render={<a href="/auth/forgot-password" />}
+            className="w-full"
+          >
+            {t("auth:passwordRecovery.forgot")}
+          </Button>
           {config?.disableRegistration ||
           config?.disablePasswordRegistration ? (
             <div className="text-center pt-4">

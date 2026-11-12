@@ -34,6 +34,20 @@ export async function resolveSmtpConfiguration(): Promise<SmtpConfiguration | nu
   // A configured resolver's null/error is authoritative. Never catch and fall back to env.
   return runtimeResolver ? runtimeResolver() : bootstrapSmtpConfiguration();
 }
+/**
+ * The server's own answer to a failed attempt, kept only in a sanitised form: the three-digit
+ * reply code, the failing command's fixed verb and the reply text with addresses, host names,
+ * IP addresses, key identifiers and long tokens removed. Free-form text is omitted entirely
+ * when authentication is configured, because replies may echo credential fragments. It is
+ * attached only when the caller asks for it (`includeReply`), which today is the God Mode test
+ * send; delivery paths never carry it.
+ */
+export type SmtpReply = {
+  code: number | null;
+  command: string | null;
+  text: string | null;
+};
+
 export class SmtpAttemptError extends Error {
   constructor(
     readonly kind:
@@ -44,6 +58,7 @@ export class SmtpAttemptError extends Error {
       | "rejected",
     readonly ambiguous = false,
     readonly diagnostic?: "authentication" | "connection" | "tls",
+    readonly reply?: SmtpReply,
   ) {
     super(`SMTP attempt ${kind}`);
   }
@@ -65,6 +80,8 @@ const SMTP_DIAGNOSTIC_BY_CODE: Readonly<Record<string, SmtpDiagnostic>> = {
   ETIMEDOUT: "connection",
   EPIPE: "connection",
   ESOCKET: "connection",
+  // nodemailer's STARTTLS upgrade failure: the underlying certificate error is not kept.
+  ETLS: "tls",
   CERT_HAS_EXPIRED: "tls",
   CERT_NOT_YET_VALID: "tls",
   CERT_REVOKED: "tls",
@@ -86,7 +103,10 @@ const SMTP_DIAGNOSTIC_BY_CODE: Readonly<Record<string, SmtpDiagnostic>> = {
   UNABLE_TO_VERIFY_LEAF_SIGNATURE: "tls",
 };
 
-/** Retain only a bounded category; provider replies and credentials never escape. */
+/**
+ * Retain only a bounded category here. The provider's reply text leaves this module only through
+ * `sanitiseSmtpReplyText`, and only when the caller asked for it (`includeReply`).
+ */
 function smtpDiagnostic(error: unknown): SmtpDiagnostic | undefined {
   const codes: string[] = [];
   let current: unknown = error;
@@ -106,6 +126,124 @@ function smtpDiagnostic(error: unknown): SmtpDiagnostic | undefined {
     return "tls";
   if (codes.some((code) => SMTP_DIAGNOSTIC_BY_CODE[code] === "connection"))
     return "connection";
+  return undefined;
+}
+
+const REPLY_TEXT_LIMIT = 200;
+const REMOVED = "[removed]";
+
+function stripControlCharacters(value: string): string {
+  let out = "";
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    out += code < 0x20 || code === 0x7f ? " " : char;
+  }
+  return out;
+}
+
+/**
+ * Makes a provider reply safe to show to an instance administrator. Removes, in this order: the
+ * configured credentials and addresses verbatim, e-mail addresses, IP addresses, host names, AWS
+ * key identifiers and long token-like runs; then drops the leading three-digit code, collapses
+ * whitespace and bounds the length. Enhanced status codes such as `5.7.8` are kept because they
+ * contain only digits. Returns null when nothing readable remains.
+ */
+export function sanitiseSmtpReplyText(
+  text: string,
+  redact: readonly (string | undefined | null)[] = [],
+): string | null {
+  // Reject, rather than truncate through a credential or address.
+  if (text.length > 2_000) return null;
+  let result = stripControlCharacters(text);
+  const secrets = redact
+    .filter((value): value is string => typeof value === "string")
+    .map(stripControlCharacters)
+    .filter((value) => value.length > 0)
+    .sort((left, right) => right.length - left.length);
+  for (const secret of secrets) result = result.split(secret).join(REMOVED);
+  result = result
+    .replace(/[^\s<>"'()@,;:]+@[^\s<>"'(),;]+/gu, REMOVED)
+    .replace(/\[[0-9a-fA-F:.]+\]/gu, REMOVED)
+    .replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b/gu, REMOVED)
+    .replace(
+      /(?<![\w:])(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{1,4}(?![\w:])/gu,
+      REMOVED,
+    )
+    .replace(
+      /(?<![\w:])(?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?::(?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,6})?(?![\w:])/gu,
+      REMOVED,
+    )
+    .replace(/\b(?:AKIA|ASIA|AIDA|AROA|ANPA)[A-Z0-9]{12,}\b/gu, REMOVED)
+    .replace(/[A-Za-z0-9+/_=-]{24,}/gu, REMOVED)
+    .replace(
+      /\b(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}\b/gu,
+      REMOVED,
+    )
+    .replace(/^\s*\d{3}[\s-]+/u, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+  if (!result) return null;
+  return result.length > REPLY_TEXT_LIMIT
+    ? `${result.slice(0, REPLY_TEXT_LIMIT - 1).trimEnd()}…`
+    : result;
+}
+
+/** The reply a nodemailer error carries (`responseCode`, `response`, `command`), sanitised. */
+function smtpReply(
+  error: unknown,
+  redact: readonly (string | undefined | null)[],
+  hasAuthentication: boolean,
+): SmtpReply | undefined {
+  let current: unknown = error;
+  const seen = new Set<object>();
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (typeof current !== "object" || current === null || seen.has(current))
+      return undefined;
+    seen.add(current);
+    const response =
+      "response" in current && typeof current.response === "string"
+        ? current.response
+        : null;
+    const numeric =
+      "responseCode" in current && typeof current.responseCode === "number"
+        ? current.responseCode
+        : null;
+    const code =
+      numeric !== null && Number.isInteger(numeric)
+        ? numeric
+        : response
+          ? Number(/^(\d{3})(?!\d)/u.exec(response.trim())?.[1] ?? Number.NaN)
+          : Number.NaN;
+    const command =
+      "command" in current &&
+      typeof current.command === "string" &&
+      [
+        "AUTH",
+        "AUTH PLAIN",
+        "AUTH LOGIN",
+        "AUTH XOAUTH2",
+        "STARTTLS",
+        "MAIL FROM",
+        "RCPT TO",
+        "DATA",
+      ].includes(current.command)
+        ? current.command
+        : null;
+    if (response !== null || Number.isInteger(code)) {
+      const validCode = Number.isInteger(code) && code >= 200 && code <= 599;
+      return {
+        code: validCode ? code : null,
+        command,
+        // A hostile server can echo any substring or encoding of an AUTH exchange. No
+        // pattern-based redactor can prove such fragments absent, so omit its free text.
+        text:
+          response && !hasAuthentication
+            ? sanitiseSmtpReplyText(response, redact)
+            : null,
+      };
+    }
+    current = "cause" in current ? current.cause : undefined;
+  }
   return undefined;
 }
 
@@ -168,7 +306,12 @@ type Message = {
 export async function executeSmtp(
   config: SmtpConfiguration,
   message: Message | null,
-  input: { signal?: AbortSignal; deadlineMs?: number } = {},
+  input: {
+    signal?: AbortSignal;
+    deadlineMs?: number;
+    /** Attach the sanitised server reply to a failure. Only the God Mode test send asks for it. */
+    includeReply?: boolean;
+  } = {},
 ): Promise<void> {
   if (
     [config.from, config.replyTo, message?.to, message?.subject].some(
@@ -295,8 +438,28 @@ export async function executeSmtp(
         error.timeoutType === "SOCKET_TIMEOUT")
     )
       throw new SmtpAttemptError("deadline", sending);
-    // Provider errors may embed credentials, addresses or full server replies. Never propagate those.
-    throw new SmtpAttemptError("failed", sending, smtpDiagnostic(error));
+    // Provider errors may embed credentials, addresses or full server replies. Only the bounded
+    // category propagates, plus a sanitised reply when the caller asked for one (`includeReply`).
+    const auth = config.options.auth;
+    throw new SmtpAttemptError(
+      "failed",
+      sending,
+      smtpDiagnostic(error),
+      input.includeReply
+        ? smtpReply(
+            error,
+            [
+              auth && "user" in auth ? auth.user : undefined,
+              auth && "pass" in auth ? auth.pass : undefined,
+              config.options.host,
+              config.from,
+              config.replyTo,
+              message?.to,
+            ],
+            Boolean(auth),
+          )
+        : undefined,
+    );
   } finally {
     clearTimeout(timer);
     input.signal?.removeEventListener("abort", abort);

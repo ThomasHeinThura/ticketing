@@ -55,6 +55,14 @@ It must also be genuinely good on a phone. That is where customers will use it.
 See [ADR 0004](#pending-01-architectureadr0004-two-portals-two-origins).
 
 <a id="customer-portal-screens"></a>
+### Password recovery (D-G, 12 Nov 2026)
+
+| Requirement | Contract |
+| --- | --- |
+| Request | Both sign-in hosts offer email recovery and return the same confirmation regardless of account or mail configuration. Requests have per-IP and per-address limits. |
+| Link | The link is valid for one hour, single-use and bound to the host and matching active staff or customer identity. Only an existing local password credential is eligible; SSO-only identities cannot gain one. Only a digest is stored. A newly issued link or a successful password change invalidates earlier links. |
+| Completion | The reset form enforces the local password policy; expired, used or malformed links show a generic invalid-link state. Completion revokes all sessions and records an audit row without secrets. Requests are audited without address or token. New reset links carry the token in the URL fragment, never in the document request; the reset page removes it before routing and sends no referrer. |
+
 ### Screens
 
 | Screen | Purpose |

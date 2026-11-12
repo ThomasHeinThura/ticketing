@@ -3659,6 +3659,19 @@ A team that owns a project grants its members project reach, without adding capa
 
 For staff project reach, an explicit report or time-summary target outside reach answers 404. This reverses RP-17's prior silent exclusion for a Tier 3 filter naming a project after reach is lost; `report:read_all` retains its workspace-wide report scope.
 
+## Amazon SES setup and a real email test — 12 November 2026
+
+Thomas decided on 12 November 2026 (D-M) that God Mode sets up Amazon SES and that its Test button sends a real email. SES is used through its SMTP interface, so there is no new dependency.
+
+- **Provider choice.** The email screen offers Custom SMTP or Amazon SES (the local Mailpit capture stays as it was). SES fixes the connection: the region decides the host `email-smtp.<region>.amazonaws.com`, the port is 587 and STARTTLS is required. The server derives and validates these from the region; the editor only shows them read-only. The credentials are the SES SMTP user name and password, not an AWS access key. Provider and region are stored in the provider's `config`.
+- **Test.** Test sends one fixed message to an address the administrator types (the signed-in administrator's by default) through the same transport and egress checks as every delivery, using the unsaved form values. It stays unelevated (it does not change settings and may record a test status), rate limited to 5 per administrator per minute and audited with the recipient's domain only. A delivery failure is an answer: a bounded category, the SMTP reply code, and the provider's text with e-mail addresses, host names, IP addresses, key identifiers and long tokens removed when no SMTP authentication is configured. For authenticated attempts the free-form reply is omitted because it may echo arbitrary credential fragments; the code and bounded category remain available. A saved password is used for Test only when the provider, region, host, port, TLS settings and username match the saved configuration; otherwise the administrator must supply a new password; to test a destination without credentials, save the cleared credentials first.
+- **Status.** The last result (verified or failed, when, and the code) is stored in the provider row's `config` as server-written `lastTest`, and shown under the title. It is recorded only when the test ran against the saved settings; saving changed settings or a new password resets it to "Not tested since change". Recording a result neither bumps the version nor writes a row.
+
+On 12 November 2026 the coordinator accepted omitting free-form text from authenticated SMTP test failures for PR #1126; Thomas's acceptance of this exception remains pending.
+- **Saving needs the second factor again.** Mail carries password-reset and invitation links, so saving the provider is an elevated action: PA-15 operation `notification_provider_save`, bound to the whole write including the password's keep, clear or keyed-digest-of-replacement intent (migration 0219 adds it to the operation CHECK).
+
+This reverses two earlier rules: (1) "`notify.email` is a non-auth provider and saving it is not elevated" (the policy exemption on `PATCH /api/instance/notification-providers/email`), and (2) "an SMTP test shows only the bounded safe outcome, never raw provider replies, and sends no mail" (operations runbook, `executeSmtp` comment): the reply now leaves the server in the sanitised form above, and only when the caller asks for it. Delivery paths still never carry provider text. This is not a merge or deployment approval.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.
@@ -3670,6 +3683,9 @@ Only obsolete workflow/delegation provenance may remain here; product clauses mu
 | 23 Oct | Customer invitations use a new hashed single-use credential and a scope discriminator on `invitation`; Pages reuse `project:read`/`project:update`; typed-domain route claims non-enumeration for accounts only (ADR 0014); invitation lifetime and rate limits are instance configuration | `CP-20`..`CP-29`, `PG-1`..`PG-8` | standing |
 | 27 Oct 2026 | The local-factor policy applies to staff only: customers are exempt in every mode (including `required_everyone`) and customer SSO sign-in never reaches the agent-only `/auth/two-factor` (a factor a customer enrolled voluntarily is still honoured on local sign-in); the God Mode label reads "Everyone (staff)" | `CP-19`, `P3-R1-04` | recommended option, Thomas standing rule |
 
+### 12 Nov 2026 — Thomas, D-G: password recovery by email
+
+Staff and customers may request local-password recovery from their own sign-in host. Recovery uses a one-hour, single-use link, a generic request response and existing mail configuration. A link is bound to its issuing portal; recovery requires an existing local password and the appropriate active person side. A completed reset revokes all sessions and records an audit event. SSO-only accounts cannot acquire a local password through recovery.
 ### 12 Nov 2026 — Thomas: staff invitation roles (D-C)
 
 The inviter chooses the staff role. A `member:invite`-scoped read returns only assignable role keys, labels and ranks, without widening the roles administration read. Resend keeps the stored role when omitted, or replaces it when supplied, and rechecks the resender’s current authority; a new invitation requires a role.
@@ -3687,3 +3703,11 @@ D-B reverses A-15 (31 Oct 2026) open sign-up. Staff self-registration is disable
 ### 12 Nov 2026 — Thomas, D-B: staff registration confirmation and provisioned identities
 
 Changing staff self-registration requires an enrolled second factor and a fresh TOTP or backup-code proof. Other sign-in method changes retain the existing PA-15 rules. With self-registration off, admission includes a live staff invitation, an identity provisioned by an administrator-configured connection under IP-19, or a claimable import placeholder under IP-30. These exemptions do not change IP-19 subject matching or IP-30 verified local proof and administrative confirmation.
+
+## Customer organisation reach — 12 November 2026, Thomas
+
+The audit finding extends D-A: only a current instance admin can extend a workspace’s customer reach. This reverses the instance-wide project organisation selector and unrestricted first binding described in the 13 October creation-binding decision. A live project or a soft-deleted project still within its recovery window establishes service; after permanent deletion or expiry of that window the link ends unless another qualifying project exists. Restoration within the recovery window therefore does not extend reach. Subsequent project creators may bind to a served customer; unserved IDs give non-admins the same refusal regardless of validity.
+
+## Workspace project visibility — 12 November 2026
+
+Thomas decided on 12 November 2026 (D-E): workspace owners, admins and managers see every project in their workspace. This replaces the earlier rule that required a separate `sees_all` grant for manager visibility. Other staff roles retain project, ancestor and owning-team reach. The separate decision that these three roles may join themselves is pending implementation; no self-join route is introduced by this change.

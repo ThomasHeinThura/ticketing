@@ -226,3 +226,25 @@ describe("God Mode imports fetchers", () => {
     });
   });
 });
+
+it("keeps an import reason from the real server error handler", async () => {
+  const { Hono } = await import("hono");
+  const { handleServerError } = await import(
+    "../../../../api/src/observability/server-error-handler"
+  );
+  const { ImportConnectError } = await import(
+    "../../../../api/src/imports/engine/connect-error"
+  );
+  const app = new Hono();
+  app.get("/test", () => {
+    throw new ImportConnectError("auth_failed");
+  });
+  app.onError((error, context) => handleServerError(error, context, () => {}));
+  mocks.apiFetch.mockImplementation(() => app.request("/test"));
+  const caught = await listImportSources("workspace-1").catch(
+    (error: unknown) => error,
+  );
+  const { ImportReasonError } = await import("./imports");
+  expect(caught).toBeInstanceOf(ImportReasonError);
+  expect(caught).toMatchObject({ status: 502, reason: "auth_failed" });
+});

@@ -1955,6 +1955,21 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"jsx:Card[0]/CardContent[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx:VisibilityForm",
 					"jsx:Card[0]/CardContent[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -4846,6 +4861,21 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
 					"jsx:form[0]/Card[1]/CardContent[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"jsx:Card[0]/CardContent[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -12713,6 +12743,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -13372,6 +13413,17 @@
 				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -14213,8 +14265,8 @@
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0"
 		],
 		"occurrences": [
 			{
@@ -14794,23 +14846,23 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -14866,8 +14918,8 @@
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0"
 		],
 		"occurrences": [
 			{
@@ -15447,23 +15499,23 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -20534,6 +20586,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx:VisibilityForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -23426,6 +23489,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/instance-settings-form.tsx:SettingsFields",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -30290,7 +30364,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=info]:text-info",
 		"backgroundClass": {
@@ -30298,31 +30372,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -30332,7 +30406,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=info]:text-info",
 		"backgroundClass": {
@@ -30340,31 +30414,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -33887,7 +33961,6 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
@@ -33952,6 +34025,7 @@
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::FactsPanel::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectInheritanceSettings::div[0]/Select[0]/SelectTrigger[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -36488,20 +36562,6 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
@@ -37639,6 +37699,20 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
 			},
@@ -44414,6 +44488,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx:VisibilityForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -45932,7 +46017,6 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
@@ -45997,6 +46081,7 @@
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::FactsPanel::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectInheritanceSettings::div[0]/Select[0]/SelectTrigger[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -48534,20 +48619,6 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
@@ -49685,6 +49756,20 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
 			},
@@ -56539,6 +56624,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx:VisibilityForm",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -58623,9 +58719,11 @@
 			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/notification-provider-test-result.tsx::TestStatusLine::p[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx::VisibilityForm::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/organisation-profile-editor.tsx::OrganisationProfileEditor::Card[0]/CardContent[0]/div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/organisation-profile-editor.tsx::OrganisationProfileEditor::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -58640,6 +58738,7 @@
 			"apps/web/src/components/god-mode/plugins/plugins-catalog.tsx::PluginsCatalog::div[0]/Card[0]/CardContent[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/plugins/plugins-catalog.tsx::PluginsCatalog::div[0]/Card[0]/CardContent[0]/div[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/plugins/schema-settings-form.tsx::SchemaSettingsForm::div[0]/fieldset[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/plugins/schema-settings-form.tsx::SchemaSettingsForm::div[0]/fieldset[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
@@ -59797,6 +59896,30 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"jsx:Card[0]/CardContent[0]/form[0]/div[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"jsx:Card[0]/CardContent[0]/form[0]/div[1]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"jsx:Card[0]/CardContent[0]/form[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
@@ -59821,12 +59944,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
-					"jsx:Card[0]/CardContent[0]/form[0]/p[1]",
-					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+					"Card->packages/ui/src/components/card.tsx:Card"
 				],
-				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[1]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+				"id": "apps/web/src/components/god-mode/notification-provider-test-result.tsx::TestStatusLine::p[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/notification-provider-test-result.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -59999,6 +60121,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/plugins/schema-settings-form.tsx::SchemaSettingsForm::div[0]/fieldset[0]/div[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/plugins/schema-settings-form.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"jsx:Card[0]/CardContent[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -60018,6 +60151,17 @@
 				"id": "apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/s3-draft-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -60049,6 +60193,17 @@
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
@@ -64361,9 +64516,11 @@
 			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::LocalSignInMethodsCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#2",
 			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx::MethodRow::li[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/notification-provider-test-result.tsx::TestStatusLine::p[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx::VisibilityForm::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/organisation-profile-editor.tsx::OrganisationProfileEditor::Card[0]/CardContent[0]/div[0]/div[0]/div[2]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/organisation-profile-editor.tsx::OrganisationProfileEditor::Card[0]/CardContent[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -64378,6 +64535,7 @@
 			"apps/web/src/components/god-mode/plugins/plugins-catalog.tsx::PluginsCatalog::div[0]/Card[0]/CardContent[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/plugins/plugins-catalog.tsx::PluginsCatalog::div[0]/Card[0]/CardContent[0]/div[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/plugins/schema-settings-form.tsx::SchemaSettingsForm::div[0]/fieldset[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/god-mode/plugins/schema-settings-form.tsx::SchemaSettingsForm::div[0]/fieldset[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
@@ -65535,6 +65693,30 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"jsx:Card[0]/CardContent[0]/form[0]/div[0]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"jsx:Card[0]/CardContent[0]/form[0]/div[1]/p[0]",
+					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+				],
+				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"jsx:Card[0]/CardContent[0]/form[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
@@ -65559,12 +65741,11 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
-					"jsx:Card[0]/CardContent[0]/form[0]/p[1]",
-					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
+					"Card->packages/ui/src/components/card.tsx:Card"
 				],
-				"id": "apps/web/src/components/god-mode/notification-provider-editor.tsx::ProviderForm::Card[0]/CardContent[0]/form[0]/p[1]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/god-mode/notification-provider-editor.tsx"
+				"id": "apps/web/src/components/god-mode/notification-provider-test-result.tsx::TestStatusLine::p[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/notification-provider-test-result.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -65737,6 +65918,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/plugins/schema-settings-form.tsx::SchemaSettingsForm::div[0]/fieldset[0]/div[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/plugins/schema-settings-form.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"jsx:Card[0]/CardContent[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
@@ -65756,6 +65948,17 @@
 				"id": "apps/web/src/components/god-mode/s3-draft-panel.tsx::S3DraftForm::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/god-mode/s3-draft-panel.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -65787,6 +65990,17 @@
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
 			},
@@ -73966,6 +74180,32 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/auth/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/identity-access-denied.tsx:IdentityAccessDenied",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:InstanceSettingsRoute",
@@ -74046,6 +74286,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-test-result.tsx:TestResultAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx:OrganisationCustomerVisibilityCard",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx:OrganisationCustomerVisibilityCard",
@@ -74088,6 +74341,19 @@
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -78994,6 +79260,32 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/auth/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/identity-access-denied.tsx:IdentityAccessDenied",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:InstanceSettingsRoute",
@@ -79074,6 +79366,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-test-result.tsx:TestResultAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx:OrganisationCustomerVisibilityCard",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/organisation-customer-visibility-card.tsx:OrganisationCustomerVisibilityCard",
@@ -79116,6 +79421,19 @@
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/plugins/secrets-rotation-panel.tsx:SecretsRotationPanel",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -83593,6 +83911,58 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ForgotPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/auth/forgot-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ForgotPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/forgot-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/auth/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/connected-accounts-panel.tsx:ConnectedAccountsPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/settings/connected-accounts-panel.tsx:ConnectedAccountsPanel",
@@ -85380,6 +85750,7 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
@@ -85398,6 +85769,18 @@
 					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
 				],
 				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project-list/projects-page.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:ProjectsPage",
+					"jsx:WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]",
+					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
+				],
+				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project-list/projects-page.tsx"
 			},
@@ -86296,6 +86679,7 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
@@ -86314,6 +86698,18 @@
 					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
 				],
 				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project-list/projects-page.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:ProjectsPage",
+					"jsx:WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]",
+					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
+				],
+				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project-list/projects-page.tsx"
 			},
@@ -87476,8 +87872,8 @@
 			"packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -92667,23 +93063,23 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -93012,8 +93408,8 @@
 			"packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98227,23 +98623,23 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -101189,6 +101585,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-test-result.tsx:TestResultAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
@@ -101439,6 +101848,19 @@
 					"apps/web/src/components/god-mode/imports/wizard/execute-progress.tsx:ExecuteStep",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/wizard/execute-progress.tsx:ExecuteStep",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-test-result.tsx:TestResultAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -102490,6 +102912,19 @@
 					"apps/web/src/components/god-mode/imports/wizard/reconcile-step.tsx:ReconcileStep",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/wizard/reconcile-step.tsx:ReconcileStep",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -103863,6 +104298,19 @@
 					"apps/web/src/components/god-mode/imports/wizard/reconcile-step.tsx:ReconcileStep",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/wizard/reconcile-step.tsx:ReconcileStep",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/notification-provider-editor.tsx:ProviderForm",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -104327,8 +104775,9 @@
 			"packages/ui/src/components/preview-card.tsx::PreviewCardPopup::PreviewCardPrimitive.Portal[0]/PreviewCardPrimitive.Positioner[0]/PreviewCardPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sheet.tsx::SheetPopup::SheetPortal[0]/SheetViewport[0]/SheetPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sidebar-shell.tsx::SkipToMainLink::a[0]::text-popover-foreground#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast.tsx::ToastTextFallback::div[0]/Card[0]::text-popover-foreground#0",
 			"packages/ui/src/components/tooltip.tsx::TooltipPopup::TooltipPrimitive.Portal[0]/TooltipPrimitive.Positioner[0]/TooltipPrimitive.Popup[0]::text-popover-foreground#0"
 		],
 		"occurrences": [
@@ -104424,21 +104873,32 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]::text-popover-foreground#0",
+				"surfaceContext": "same-element",
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/toast.tsx:ToastTextFallback",
+					"jsx:div[0]/Card[0]>bg-popover"
+				],
+				"id": "packages/ui/src/components/toast.tsx::ToastTextFallback::div[0]/Card[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "packages/ui/src/components/toast.tsx"
 			},
@@ -104477,8 +104937,9 @@
 			"packages/ui/src/components/preview-card.tsx::PreviewCardPopup::PreviewCardPrimitive.Portal[0]/PreviewCardPrimitive.Positioner[0]/PreviewCardPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sheet.tsx::SheetPopup::SheetPortal[0]/SheetViewport[0]/SheetPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sidebar-shell.tsx::SkipToMainLink::a[0]::text-popover-foreground#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast.tsx::ToastTextFallback::div[0]/Card[0]::text-popover-foreground#0",
 			"packages/ui/src/components/tooltip.tsx::TooltipPopup::TooltipPrimitive.Portal[0]/TooltipPrimitive.Positioner[0]/TooltipPrimitive.Popup[0]::text-popover-foreground#0"
 		],
 		"occurrences": [
@@ -104574,21 +105035,32 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]::text-popover-foreground#0",
+				"surfaceContext": "same-element",
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/toast.tsx:ToastTextFallback",
+					"jsx:div[0]/Card[0]>bg-popover"
+				],
+				"id": "packages/ui/src/components/toast.tsx::ToastTextFallback::div[0]/Card[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "packages/ui/src/components/toast.tsx"
 			},
@@ -109721,7 +110193,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=success]:text-success",
 		"backgroundClass": {
@@ -109729,31 +110201,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -109763,7 +110235,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=success]:text-success",
 		"backgroundClass": {
@@ -109771,31 +110243,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -112371,7 +112843,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=warning]:text-warning",
 		"backgroundClass": {
@@ -112379,31 +112851,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -112413,7 +112885,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=warning]:text-warning",
 		"backgroundClass": {
@@ -112421,31 +112893,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	}

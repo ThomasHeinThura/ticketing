@@ -12874,8 +12874,8 @@
 		},
 		"PATCH /api/instance/notification-providers/email": {
 			"instance_admin": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
 			},
 			"owner": {
 				"inReach": "403 forbidden",

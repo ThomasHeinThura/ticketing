@@ -111,6 +111,7 @@ import {
 import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
 import {
   beginObservedRequest,
+  logServerError,
   logTaskDesk,
   observeRequest,
   recordAuditWriteFailure,
@@ -160,6 +161,7 @@ import notificationPreferences from "./notification-preferences";
 import notificationProvider from "./notification-provider";
 import { installRuntimeSmtpResolver } from "./notification-provider/runtime";
 import oauth from "./oauth";
+import { handleServerError } from "./observability/server-error-handler";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import pages from "./pages";
 import pendingAction from "./pending-action";
@@ -449,6 +451,8 @@ function isApiRequestPath(path: string): boolean {
 const CUSTOMER_AUTH_ENDPOINTS = new Set([
   "GET /api/auth/get-session",
   "POST /api/auth/sign-out",
+  "POST /api/auth/request-password-reset",
+  "POST /api/auth/reset-password",
   "POST /api/auth/change-password",
   "GET /api/me/security/factors",
   "POST /api/auth/two-factor/verify-totp",
@@ -630,7 +634,8 @@ async function handleAuthRequest(
   const authRequest = buildAuthRequest(c, headers);
   if (
     c.req.method === "POST" &&
-    c.req.path === "/api/auth/two-factor/verify-totp"
+    (c.req.path === "/api/auth/two-factor/verify-totp" ||
+      c.req.path === "/api/auth/reset-password")
   ) {
     try {
       return await withTotpSessionEnrollment(() =>
@@ -1130,15 +1135,7 @@ export function createApp(
   declareCatchAllMiddleware(requestMetricsMiddleware);
   app.use("*", requestMetricsMiddleware);
 
-  app.onError((err, c) => {
-    if (err instanceof HTTPException) {
-      // expected errors (401/404/...) are not reported; real failures are
-      if (err.status >= 500) {
-      }
-      return err.getResponse();
-    }
-    return c.json({ message: "Internal Server Error" }, 500);
-  });
+  app.onError((err, c) => handleServerError(err, c, logServerError));
   const staticRoots = resolveStaticRoots({
     agent: options.staticRoot,
     portal: options.portalStaticRoot,

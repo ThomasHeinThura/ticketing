@@ -7,7 +7,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -26,6 +25,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { PageLoading } from "@/components/page-loading";
 import PageTitle from "@/components/page-title";
 import ProjectNotFound from "@/components/project/project-not-found";
 import {
@@ -34,12 +34,15 @@ import {
 } from "@/components/work-item/work-item-create-dialog-shell-loader";
 import rankWorkItem from "@/fetchers/work-item/rank-work-item";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
-import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
+import useGetBoardWorkItems, {
+  boardWorkItemsOptions,
+} from "@/hooks/queries/work-item/use-get-board-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
+import { resolveRouteProject } from "@/lib/route-project-prefetch";
 import {
   parseWorkItemListSearch,
   routes,
@@ -78,6 +81,29 @@ export const Route = createFileRoute(
 )({
   validateSearch: (raw) =>
     parseWorkItemListSearch(normalizeCanonicalWorkItemSelection(raw)),
+  loaderDeps: ({ search }) => ({ filter: search.filter }),
+  loader: ({ context, params, deps, cause }) => {
+    if (cause !== "enter") return;
+    void resolveRouteProject(
+      context.queryClient,
+      context.session,
+      params.projectKey,
+    )
+      .then((result) => {
+        if (!result) return;
+        const { project, workspaceId } = result;
+        void context.queryClient.prefetchInfiniteQuery(
+          boardWorkItemsOptions({
+            projectId: project.id,
+            projectSlug: project.slug,
+            workspaceId,
+            filter: deps.filter,
+            realtimeStatus: "connecting",
+          }),
+        );
+      })
+      .catch(() => {});
+  },
   component: BacklogRouteComponent,
 });
 
@@ -309,6 +335,18 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
       </>
     );
 
+  if (isLoading)
+    return (
+      <>
+        <PageTitle
+          title={t("navigation:projectList.backlog", {
+            defaultValue: "Backlog",
+          })}
+        />
+        <PageLoading frame="backlog" />
+      </>
+    );
+
   return (
     <>
       <PageTitle
@@ -435,17 +473,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
           </Suspense>
         ) : null}
 
-        {isLoading ? (
-          <div
-            className="flex flex-col gap-2"
-            data-testid="backlog-loading"
-            aria-busy="true"
-          >
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : isError ? (
+        {isError ? (
           <Alert variant="error" data-testid="backlog-error">
             <AlertTitle>{t("workItems:list.errorTitle")}</AlertTitle>
             <AlertDescription className="flex items-center justify-between gap-3">

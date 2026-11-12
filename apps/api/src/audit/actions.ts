@@ -26,6 +26,8 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "auth.sign_in_succeeded",
   "auth.sign_in_failed",
   "auth.sign_out",
+  "auth.password_reset_completed",
+  "auth.password_reset_requested",
   "auth.password_changed",
   "auth.session_revoked",
   // Second factor enrolled; reset by an administrator (with the verification note).
@@ -51,6 +53,7 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "membership.sees_all_granted",
   // `owner_team_id` or `parent_id` changed (rbac.md#reach).
   "project.reach_changed",
+  "project.customer_organisation_linked",
   "project.restored",
   // Overview (0213): the summary fields and lifecycle status; the contract and hour bank.
   "project.summary_updated",

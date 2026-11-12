@@ -20,11 +20,10 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `workspace/policy.ts` was written to avoid. `GET /api/project/{id}`, already classified
  * before this batch, sets that precedent.
  *
- * Project update, health, deletion, archive and milestone routes enforce their registered
- * project capability through the project-reach middleware, including the API-key scope.
- * Reorder enforces project:update at workspace scope and filters its project set by reach.
- * Sensitive fields on project update additionally require project:manage_settings.
- * Prerequisite, stakeholder and document-link writes enforce project:update the same way.
+ * Project writes retain their legacy workspace-role and literal API-key statement gates,
+ * in addition to project reach and the pre-existing project capability checks. Archive,
+ * unarchive and restore also require project:archive; update sensitive fields additionally
+ * require project:manage_settings. Reorder applies its workspace update gate and filters by reach.
  *
  * **Scope: the container that genuinely has an id at request time, per rbac.md's own
  * `work_item:create` example (`scope: 'project'` for a work item created inside a project, not
@@ -225,7 +224,7 @@ export const projectPolicies = {
 
   // Replace a project's own fields (name, icon, slug, description).
   // `workspaceAccess.fromProject()` reads the project row for its workspaceId, and
-  // the same middleware enforces the registered `project:update` capability.
+  // the reach middleware and legacy workspace `project:update` gate both apply.
   // CA-2: the body may also carry `defaultCommentVisibility`. That field alone has an extra
   // handler-level STRICT `project:manage_settings` check (+ API-key scope) after body
   // validation -- route middleware runs before validators, so it cannot be declared here.
@@ -249,7 +248,7 @@ export const projectPolicies = {
     reach: "required",
   },
 
-  // Soft-delete a project. The project reach middleware enforces `project:delete`.
+  // Soft-delete a project. Reach and the legacy workspace `project:delete` gate both apply.
   // P0 deletion audit: this route no longer deletes; it
   // records a durable pending action (202) that its requester approves in a current browser
   // session with the typed exact project name plus step-up (permissions.md "Deleting a ...
@@ -267,7 +266,7 @@ export const projectPolicies = {
   },
 
   // Archive a project: `project:archive` (A8-2), enforced by the project reach middleware against
-  // this declaration.
+  // this declaration, alongside the legacy workspace `project:update` gate.
   "PUT /api/project/{id}/archive": {
     capability: "project:archive",
     scope: "project",
@@ -296,7 +295,7 @@ export const projectPolicies = {
   // Reorder a workspace's projects. `workspaceAccess.fromQuery()` takes `workspaceId` off the
   // query string (no single project is addressed -- the body carries every id being
   // reordered, and `reorder-projects.ts` verifies each one belongs to the given workspace
-  // before writing anything), then `requireWorkspaceCapability("project:update")` runs.
+  // before writing anything), then `requireWorkspacePermission({ project: ["update"] })` runs.
   // There is no dedicated "reorder" capability in rbac.md's Projects group, so `project:update`
   // is both what is enforced and the closest target match.
   "PUT /api/project/reorder": {
@@ -306,7 +305,7 @@ export const projectPolicies = {
     reach: "required",
   },
 
-  // Project reach and the declared project capability are checked on project-scoped writes.
+  // Project-scoped writes retain reach, project authority and the legacy workspace gate.
   // Milestone, prerequisite, stakeholder and document-link writes include API-key scope.
   "GET /api/project/{id}/milestones": {
     capability: "project:read",

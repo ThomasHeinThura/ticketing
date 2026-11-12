@@ -1,5 +1,5 @@
 import type { ProjectReachFacts } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, exists, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -9,6 +9,7 @@ import {
   serviceCalendarTable,
   workspaceTable,
 } from "../database/schema";
+import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import {
   apiRouter,
   type BaseVariables,
@@ -33,6 +34,7 @@ import {
 import { apiKeyScopeSatisfies } from "../utils/require-api-key-permission-scope";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
+import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
 import { compositionWarnings } from "./composition";
@@ -99,6 +101,7 @@ import {
   PREREQUISITE_DELETION_ROUTE,
   PROJECT_DELETION_ROUTE,
 } from "./project-deletion-target";
+import { projectServesCustomer } from "./repository";
 import {
   customerOrganisationListSchema,
   documentLinkSchema,
@@ -136,6 +139,7 @@ import {
   updateStakeholderBody,
   workspaceIdQuery,
 } from "./schema";
+import { projectSeenOnlyViaWorkspaceRole } from "./see-all-only";
 
 async function assertProjectCalendar(
   workspaceId: string,
@@ -269,7 +273,7 @@ const createProjectRoute = createRoute({
     200: jsonResponse("The created project", projectSchema),
     400: errorResponse("Invalid body, or workspace ID could not be determined"),
     403: errorResponse(
-      "No workspace access, or missing project:create permission",
+      "No workspace access, missing project:create permission, or instance_admin_required_for_new_customer_organisation",
     ),
     422: errorResponse(
       "PR-9, same-workspace service calendar, or customer organisation validation failed",
@@ -287,13 +291,12 @@ const listCustomerOrganisationsRoute = createRoute({
   description:
     "Active, live customer organisations (never the internal one), for the create-project " +
     "selector, each with the service calendar a new project for it inherits in this " +
-    "workspace. Requires project:create in the workspace.",
+    "workspace. Instance admins see all; other callers see only organisations served by a live or recoverable project in this workspace. Requires project:create in the workspace.",
   middleware: [
     workspaceAccess.fromQuery(),
     // STRICT capability check, not the legacy `requireWorkspacePermission`: the legacy
     // statements give the default `member` role `project:create`, while the permission
-    // matrix (rbac.md) grants it to owner/admin/manager only. This list is instance-wide, so
-    // it must follow the matrix.
+    // matrix (rbac.md) grants it to owner/admin/manager only.
     requireWorkspaceCapability("project:create"),
   ] as const,
   request: { query: workspaceIdQuery },
@@ -362,7 +365,7 @@ const reorderProjectsRoute = createRoute({
     "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
   middleware: [
     workspaceAccess.fromQuery(),
-    requireWorkspaceCapability("project:update"),
+    requireWorkspacePermission({ project: ["update"] }),
     requireReachContext,
   ] as const,
   request: {
@@ -397,7 +400,11 @@ const updateProjectRoute = createRoute({
     "(PR-6, PR-10, AS-11) are optional and each needs project:manage_settings. " +
     "parentId is never accepted here: re-parenting is PATCH /api/projects/{id}/ownership.",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: projectParam,
@@ -450,7 +457,11 @@ const updateProjectHealthRoute = createRoute({
   tags: ["Projects"],
   summary: "Set project health",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: projectParam,
@@ -482,7 +493,11 @@ const deleteProjectRoute = createRoute({
     "browser session by typing the exact project name and completing step-up.",
   middleware: [
     requireSessionOnly(),
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["delete"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
@@ -510,6 +525,7 @@ const archiveProjectRoute = createRoute({
     "Hide a project from the default list without deleting it. Reversible with unarchive.",
   middleware: [
     workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
@@ -531,6 +547,7 @@ const unarchiveProjectRoute = createRoute({
   description: "Return an archived project to the default list.",
   middleware: [
     workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
@@ -555,6 +572,7 @@ const restoreProjectRoute = createRoute({
     "archive state is preserved.",
   middleware: [
     workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
@@ -568,7 +586,7 @@ const restoreProjectRoute = createRoute({
   },
 });
 
-// Project-scoped writes resolve reach and the registered capability, including API-key scope.
+// Project-scoped writes retain the workspace and API-key gates as well as project reach.
 
 const listMilestonesRoute = createRoute({
   method: "get",
@@ -595,7 +613,11 @@ const createMilestoneRoute = createRoute({
   tags: ["Projects"],
   summary: "Create a milestone",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: projectParam,
@@ -621,7 +643,11 @@ const updateMilestoneRoute = createRoute({
   description:
     "Partial update. `reached: true` marks it reached now; `reached: false` clears it.",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: milestoneParam,
@@ -645,7 +671,11 @@ const deleteMilestoneRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a milestone",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: milestoneParam },
   responses: {
@@ -689,7 +719,11 @@ const createPrerequisiteRoute = createRoute({
   tags: ["Projects"],
   summary: "Create a prerequisite",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: projectParam,
@@ -717,7 +751,11 @@ const updatePrerequisiteRoute = createRoute({
     "`PR-11`: there is no portal route onto this table, so ticking off is staff-only " +
     "structurally, not by an application-level check here.",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: prerequisiteParam,
@@ -741,7 +779,11 @@ const deletePrerequisiteRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a prerequisite",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: prerequisiteParam },
   responses: {
@@ -783,7 +825,11 @@ const addStakeholderRoute = createRoute({
   tags: ["Projects"],
   summary: "Add a stakeholder",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: projectParam,
@@ -807,7 +853,11 @@ const updateStakeholderRoute = createRoute({
   tags: ["Projects"],
   summary: "Update a stakeholder",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: stakeholderParam,
@@ -833,7 +883,11 @@ const standDownStakeholderRoute = createRoute({
   description:
     "PR-12: stood down, never deleted -- removed from counts and pickers, keeps history.",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: stakeholderParam },
   responses: {
@@ -877,7 +931,11 @@ const addDocumentLinkRoute = createRoute({
     "(contract, sow, design, handover or other) and an optional description. Customer " +
     "visibility is off by default. Audited as document_link.created.",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: projectParam,
@@ -904,7 +962,11 @@ const updateDocumentLinkRoute = createRoute({
     "Edits the title, address, type, description or customer visibility of one Documents " +
     "entry of this project. Audited as document_link.updated.",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: {
     params: documentLinkParam,
@@ -928,7 +990,11 @@ const deleteDocumentLinkRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a document link",
   middleware: [
-    workspaceAccess.fromProject("id", { requireProjectReach: true }),
+    workspaceAccess.fromProject("id", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: documentLinkParam },
   responses: {
@@ -953,6 +1019,14 @@ const project = apiRouter<
 >()
   .openapi(listCustomerOrganisationsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
+    const session = c.get("session") as {
+      impersonatedBy?: string | null;
+    } | null;
+    const instanceAdmin =
+      !!session &&
+      !c.get("apiKey") &&
+      !session.impersonatedBy &&
+      (await isCurrentInstanceAdmin(c.get("userId")));
     const [workspace] = await db
       .select({
         defaultServiceCalendarId: workspaceTable.defaultServiceCalendarId,
@@ -985,6 +1059,20 @@ const project = apiRouter<
           eq(organisationTable.active, true),
           eq(organisationTable.isInternal, false),
           isNull(organisationTable.deletedAt),
+          instanceAdmin
+            ? undefined
+            : exists(
+                db
+                  .select({ id: projectTable.id })
+                  .from(projectTable)
+                  .where(
+                    and(
+                      eq(projectTable.workspaceId, workspaceId),
+                      eq(projectTable.organisationId, organisationTable.id),
+                      projectServesCustomer(),
+                    ),
+                  ),
+              ),
         ),
       )
       .orderBy(organisationTable.name);
@@ -1045,7 +1133,24 @@ const project = apiRouter<
       includeDeleted === "true",
       readableProjectIds,
     );
-    return c.json(projects, 200);
+    const facts = new Map(
+      (await reach.projectFactsFor([workspaceId])).map((fact) => [
+        fact.id,
+        fact,
+      ]),
+    );
+    return c.json(
+      projects.map((project) => {
+        const fact = facts.get(project.id);
+        return {
+          ...project,
+          seenOnlyViaWorkspaceRole: fact
+            ? projectSeenOnlyViaWorkspaceRole(reach.identity, fact)
+            : false,
+        };
+      }),
+      200,
+    );
   })
   .openapi(createProjectRoute, async (c) => {
     const {
@@ -1073,6 +1178,10 @@ const project = apiRouter<
         },
         c.get("userId"),
         c.get("apiKey")?.id,
+        Boolean(c.get("session")) &&
+          !c.get("apiKey") &&
+          !(c.get("session") as { impersonatedBy?: string | null } | null)
+            ?.impersonatedBy,
       );
       return c.json(newProject, 200);
     } catch (error) {
