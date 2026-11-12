@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectNoA11yViolations } from "../test/a11y";
+import { mountCompiledMotionStyles } from "../test/compile-motion-css";
 import {
   Table,
   TableBody,
@@ -89,58 +90,91 @@ describe("Table", () => {
     expect(viewport()?.className).toContain("mask-r-from-");
   });
 
-  it("adds shared press feedback only to interactive rows and suppresses scale during drag", () => {
-    const onRowClick = vi.fn();
-    const { rerender } = render(
-      <Table>
-        <TableHeader>
-          <TableRow data-testid="header-row">
-            <TableHead>Name</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow data-testid="static-row">
-            <TableCell>Static</TableCell>
-          </TableRow>
-          <TableRow
-            interactive
-            data-testid="clickable-row"
-            onClick={onRowClick}
-          >
-            <TableCell>Clickable</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>,
-    );
-
-    const headerRow = screen.getByTestId("header-row");
-    const staticRow = screen.getByTestId("static-row");
-    const clickableRow = screen.getByTestId("clickable-row");
-
-    for (const row of [headerRow, staticRow]) {
-      expect(row).toHaveClass("transition-colors");
-      expect(row).not.toHaveClass("press-feedback", "cursor-pointer");
-      expect(row).not.toHaveAttribute("data-interactive");
-    }
-
-    expect(clickableRow).toHaveAttribute("data-interactive", "");
-    expect(clickableRow).toHaveClass(
+  it("adds shared pointer and keyboard press feedback only to interactive rows and suppresses scale when disabled or dragging", async () => {
+    const styles = await mountCompiledMotionStyles([
       "press-feedback",
       "[--press-scale:0.99]",
-      "cursor-pointer",
-    );
-    expect(clickableRow).not.toHaveClass("transition-colors");
+      "transition-[color,background-color,border-color,scale]",
+    ]);
 
-    fireEvent.click(clickableRow);
-    expect(onRowClick).toHaveBeenCalledTimes(1);
-
-    const style = document.createElement("style");
-    style.textContent = `
-      .press-feedback[data-pressed] { scale: var(--press-scale, 0.97); }
-      .press-feedback[data-dragging] { scale: none; }
-    `;
-    document.head.appendChild(style);
     try {
+      const onRowClick = vi.fn();
+      const { rerender } = render(
+        <Table>
+          <TableHeader>
+            <TableRow data-testid="header-row">
+              <TableHead>Name</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow data-testid="static-row">
+              <TableCell>Static</TableCell>
+            </TableRow>
+            <TableRow
+              interactive
+              tabIndex={0}
+              data-testid="clickable-row"
+              onClick={onRowClick}
+            >
+              <TableCell>Clickable</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>,
+      );
+
+      const headerRow = screen.getByTestId("header-row");
+      const staticRow = screen.getByTestId("static-row");
+      const clickableRow = screen.getByTestId("clickable-row");
+
+      for (const row of [headerRow, staticRow]) {
+        expect(row).toHaveClass("transition-colors");
+        expect(row).not.toHaveClass("press-feedback", "cursor-pointer");
+        expect(row).not.toHaveAttribute("data-interactive");
+        fireEvent.keyDown(row, { key: "Enter" });
+        fireEvent.keyDown(row, { key: " " });
+        expect(row).not.toHaveAttribute("data-pressed");
+      }
+
+      expect(clickableRow).toHaveAttribute("data-interactive", "");
+      expect(clickableRow).toHaveClass(
+        "press-feedback",
+        "[--press-scale:0.99]",
+        "cursor-pointer",
+      );
+      expect(clickableRow).not.toHaveClass("transition-colors");
+
+      fireEvent.click(clickableRow);
+      expect(onRowClick).toHaveBeenCalledTimes(1);
+
+      expect(getComputedStyle(clickableRow).scale).toBe("none");
+      expect(
+        getComputedStyle(clickableRow).getPropertyValue("--tw-duration").trim(),
+      ).toBe("var(--duration-fast)");
+      expect(
+        getComputedStyle(clickableRow).getPropertyValue("--press-scale").trim(),
+      ).toMatch(/^0?\.99$/);
+
+      fireEvent.keyDown(clickableRow, { key: "Enter" });
+      expect(clickableRow).toHaveAttribute("data-pressed", "");
+      expect(getComputedStyle(clickableRow).scale).toMatch(
+        /^var\(--press-scale,\s*0?\.97\)$/,
+      );
+      expect(
+        getComputedStyle(clickableRow).getPropertyValue("--tw-duration").trim(),
+      ).toMatch(/^0m?s$/);
+
+      fireEvent.keyUp(clickableRow, { key: "Enter" });
+      expect(clickableRow).not.toHaveAttribute("data-pressed");
+      expect(getComputedStyle(clickableRow).scale).toBe("none");
+      expect(
+        getComputedStyle(clickableRow).getPropertyValue("--tw-duration").trim(),
+      ).toMatch(/^0m?s$/);
+
+      fireEvent.keyDown(clickableRow, { key: " " });
+      expect(clickableRow).toHaveAttribute("data-pressed", "");
+      fireEvent.blur(clickableRow);
+      expect(clickableRow).not.toHaveAttribute("data-pressed");
+
       rerender(
         <Table>
           <TableBody>
@@ -159,8 +193,29 @@ describe("Table", () => {
       expect(getComputedStyle(screen.getByTestId("clickable-row")).scale).toBe(
         "none",
       );
+
+      rerender(
+        <Table>
+          <TableBody>
+            <TableRow
+              interactive
+              aria-disabled="true"
+              tabIndex={0}
+              data-testid="clickable-row"
+              onClick={onRowClick}
+            >
+              <TableCell>Clickable</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>,
+      );
+      const disabledRow = screen.getByTestId("clickable-row");
+      fireEvent.keyDown(disabledRow, { key: "Enter" });
+      fireEvent.keyDown(disabledRow, { key: " " });
+      expect(disabledRow).not.toHaveAttribute("data-pressed");
+      expect(getComputedStyle(disabledRow).scale).toBe("none");
     } finally {
-      style.remove();
+      styles.cleanup();
     }
   });
 });

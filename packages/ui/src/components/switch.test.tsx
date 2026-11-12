@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Switch } from "./switch";
+import { SwitchField } from "./switch-field";
 
 afterEach(() => {
   cleanup();
@@ -29,7 +30,7 @@ describe("Switch", () => {
     ).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("renders no wrapper and no helper without the helper prop", () => {
+  it("renders only the bare switch with no field wrapper or helper elements", () => {
     const { container } = render(<Switch aria-label="Enable notifications" />);
     expect(container.querySelector('[data-slot="switch-field"]')).toBeNull();
     expect(container.querySelector('[data-slot="switch-helper"]')).toBeNull();
@@ -46,11 +47,11 @@ describe("Switch", () => {
   });
 });
 
-describe("Switch helper text", () => {
+describe("SwitchField", () => {
   const helper = { checked: "God Mode is on", unchecked: "God Mode is off" };
 
   it("renders both lines in one grid cell so the height is reserved", () => {
-    render(<Switch aria-label="God Mode" helper={helper} />);
+    render(<SwitchField aria-label="God Mode" helper={helper} />);
     const lines = document.querySelectorAll('[data-slot="switch-helper-line"]');
     expect(lines).toHaveLength(2);
     expect(document.querySelector('[data-slot="switch-helper"]')).toHaveClass(
@@ -62,7 +63,7 @@ describe("Switch helper text", () => {
   });
 
   it("shows the unchecked line first and describes the switch with it", () => {
-    render(<Switch aria-label="God Mode" helper={helper} />);
+    render(<SwitchField aria-label="God Mode" helper={helper} />);
     const toggle = screen.getByRole("switch", { name: "God Mode" });
     const off = screen.getByText("God Mode is off");
     const on = screen.getByText("God Mode is on");
@@ -74,7 +75,7 @@ describe("Switch helper text", () => {
   });
 
   it("swaps the active line and the description when toggled (uncontrolled)", () => {
-    render(<Switch aria-label="God Mode" helper={helper} />);
+    render(<SwitchField aria-label="God Mode" helper={helper} />);
     const toggle = screen.getByRole("switch", { name: "God Mode" });
     fireEvent.click(toggle);
     const on = screen.getByText("God Mode is on");
@@ -87,7 +88,7 @@ describe("Switch helper text", () => {
   it("follows a controlled checked prop and still forwards onCheckedChange", () => {
     const onCheckedChange = vi.fn();
     const { rerender } = render(
-      <Switch
+      <SwitchField
         aria-label="God Mode"
         checked={false}
         helper={helper}
@@ -101,7 +102,7 @@ describe("Switch helper text", () => {
     // The parent refused the change, so the helper stays on the "off" line.
     expect(screen.getByText("God Mode is off")).toHaveAttribute("data-active");
     rerender(
-      <Switch
+      <SwitchField
         aria-label="God Mode"
         checked
         helper={helper}
@@ -115,7 +116,7 @@ describe("Switch helper text", () => {
     render(
       <>
         <span id="extra">Extra</span>
-        <Switch
+        <SwitchField
           aria-describedby="extra"
           aria-label="God Mode"
           defaultChecked
@@ -138,7 +139,7 @@ describe("Switch helper text", () => {
       },
     );
     render(
-      <Switch
+      <SwitchField
         aria-label="God Mode"
         helper={helper}
         onCheckedChange={onCheckedChange}
@@ -162,7 +163,7 @@ describe("Switch helper text", () => {
   });
 
   it("describes nothing when the active state has no helper text", () => {
-    render(<Switch aria-label="God Mode" helper={{ checked: "On" }} />);
+    render(<SwitchField aria-label="God Mode" helper={{ checked: "On" }} />);
     expect(screen.getByRole("switch")).not.toHaveAttribute("aria-describedby");
   });
 });

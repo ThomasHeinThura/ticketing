@@ -5,6 +5,7 @@ import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 import type * as React from "react";
 import { cn } from "../lib/cn";
+import { useKeyboardPress } from "../lib/use-keyboard-press";
 import { Spinner } from "./spinner";
 
 export const buttonVariants = cva(
@@ -65,6 +66,9 @@ export function Button({
   ...props
 }: ButtonProps): React.ReactElement {
   const isDisabled: boolean = Boolean(loading || disabledProp);
+  const keyboardPressProps = useKeyboardPress({
+    disabled: isDisabled,
+  });
   const typeValue: React.ButtonHTMLAttributes<HTMLButtonElement>["type"] =
     render ? undefined : "button";
 
@@ -90,7 +94,7 @@ export function Button({
 
   return useRender({
     defaultTagName: "button",
-    props: mergeProps<"button">(defaultProps, props),
+    props: mergeProps<"button">(defaultProps, props, keyboardPressProps),
     render,
   });
 }

@@ -58,6 +58,7 @@ vi.mock("@taskdesk/ui", async () => {
     Avatar,
     AvatarFallback,
     AvatarImage,
+    useKeyboardPress,
   } = await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -79,6 +80,7 @@ vi.mock("@taskdesk/ui", async () => {
     HoverCard: passthrough,
     HoverCardContent: passthrough,
     HoverCardTrigger: passthrough,
+    useKeyboardPress,
   };
 });
 
@@ -592,21 +594,88 @@ describe("canonical work-item card", () => {
     fireEvent.keyDown(card, { key: " " });
     expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith(task.id);
   });
-  it("preserves enabled legacy drag activators and uses shared press feedback without scaling during drag", () => {
+  it("preserves enabled legacy drag activators and uses shared pointer and keyboard press feedback without scaling during drag", () => {
     const card = renderTaskCard();
     if (!(card instanceof HTMLElement)) throw new Error("Expected card");
     expect(card).toHaveClass("press-feedback", "[--press-scale:0.98]");
     expect(card.className).not.toMatch(/(?:^|\s)(?:duration|ease)-/);
     expect(card).not.toHaveAttribute("data-task-dragging");
+    expect(card).not.toHaveAttribute("data-pressed");
+
+    // Enter on an idle sortable card activates instant keyboard press feedback and clears on keyup.
+    fireEvent.keyDown(card, { key: "Enter" });
+    expect(card).toHaveAttribute("data-pressed", "");
+    expect(card).toHaveAttribute("data-keyboard-press", "");
+    fireEvent.keyUp(card, { key: "Enter" });
+    expect(card).not.toHaveAttribute("data-pressed");
+    expect(card).toHaveAttribute("data-keyboard-press", "");
+
+    // Pointer press clears sticky keyboard mode, and Space on a sortable card is owned by dnd-kit.
     fireEvent.pointerDown(card);
+    expect(card).not.toHaveAttribute("data-keyboard-press");
     fireEvent.keyDown(card, { key: " " });
+    expect(card).not.toHaveAttribute("data-pressed");
     expect(mocks.dragStart).toHaveBeenCalledOnce();
-    expect(mocks.dragKeyDown).toHaveBeenCalledOnce();
+    expect(mocks.dragKeyDown).toHaveBeenCalledTimes(2);
+
+    // Non-draggable cards also show keyboard press feedback on Space and clear on blur/cancel.
+    cleanup();
+    render(
+      <TaskCard
+        task={task}
+        disableDragDrop
+        taskHref="/agent/work-items/PRJ-1"
+        projectSlug="PRJ"
+        taskIsCompleted={false}
+        displayPreferences={displayPreferences}
+        isSelected={false}
+        isFocused={false}
+        onOpenTask={mocks.openTask}
+        t={mockT}
+        onContextMenuTask={mocks.openContextMenu}
+      />,
+    );
+    const nonDraggableCard = screen
+      .getByRole("link", { name: "PRJ-1 Keyboard task" })
+      .closest("fieldset");
+    if (!(nonDraggableCard instanceof HTMLElement))
+      throw new Error("Expected non-draggable card");
+    fireEvent.keyDown(nonDraggableCard, { key: " " });
+    expect(nonDraggableCard).toHaveAttribute("data-pressed", "");
+    fireEvent.blur(nonDraggableCard);
+    expect(nonDraggableCard).not.toHaveAttribute("data-pressed");
+
+    // A card without workspaceId or taskHref cannot open and does not show press feedback.
+    cleanup();
+    render(
+      <TaskCard
+        task={task}
+        disableDragDrop
+        projectSlug="PRJ"
+        taskIsCompleted={false}
+        displayPreferences={displayPreferences}
+        isSelected={false}
+        isFocused={false}
+        onOpenTask={mocks.openTask}
+        t={mockT}
+        onContextMenuTask={mocks.openContextMenu}
+      />,
+    );
+    const inertCard = screen.getByText("Keyboard task").closest("fieldset");
+    if (!(inertCard instanceof HTMLElement))
+      throw new Error("Expected inert card");
+    fireEvent.keyDown(inertCard, { key: "Enter" });
+    fireEvent.keyDown(inertCard, { key: " " });
+    expect(inertCard).not.toHaveAttribute("data-pressed");
 
     cleanup();
     mocks.isDragging = true;
     const draggingCard = renderTaskCard();
+    if (!(draggingCard instanceof HTMLElement))
+      throw new Error("Expected dragging card");
     expect(draggingCard).toHaveAttribute("data-task-dragging", "true");
+    fireEvent.keyDown(draggingCard, { key: "Enter" });
+    expect(draggingCard).not.toHaveAttribute("data-pressed");
   });
 
   it("renders person assignment and delegates selection without touching the legacy task selection store", () => {

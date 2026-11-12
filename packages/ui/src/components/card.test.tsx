@@ -1,6 +1,7 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { expectNoA11yViolations } from "../test/a11y";
+import { mountCompiledMotionStyles } from "../test/compile-motion-css";
 import {
   Card,
   CardAction,
@@ -53,7 +54,7 @@ describe("Card", () => {
 
   it("leaves non-interactive cards unchanged even when rendered with a semantic tag", () => {
     const { container } = render(
-      <Card render={<article />}>
+      <Card render={<article />} tabIndex={0}>
         <CardContent>Static summary</CardContent>
       </Card>,
     );
@@ -62,29 +63,27 @@ describe("Card", () => {
     expect(card?.tagName).toBe("ARTICLE");
     expect(card).not.toHaveClass("press-feedback", "cursor-pointer");
     expect(card).not.toHaveAttribute("data-interactive");
+    if (card) {
+      fireEvent.keyDown(card, { key: "Enter" });
+      fireEvent.keyDown(card, { key: " " });
+      expect(card).not.toHaveAttribute("data-pressed");
+    }
   });
 
-  it("adds shared press feedback to explicitly interactive cards and suppresses press scale while dragging", async () => {
-    const style = document.createElement("style");
-    style.textContent = `
-      .press-feedback {
-        --tw-duration: 120ms;
-      }
-      .press-feedback[data-pressed] {
-        --tw-duration: 0ms;
-        scale: var(--press-scale, 0.97);
-      }
-      .press-feedback[data-dragging] {
-        scale: none;
-      }
-    `;
-    document.head.appendChild(style);
+  it("adds shared pointer and keyboard press feedback to interactive cards and suppresses scale when disabled or dragging", async () => {
+    const styles = await mountCompiledMotionStyles([
+      "press-feedback",
+      "[--press-scale:0.98]",
+      "transition-[color,background-color,border-color,box-shadow,scale]",
+    ]);
 
     try {
       const { baseElement, rerender } = render(
         <Card
           interactive
-          data-pressed=""
+          onKeyDown={(event) => {
+            if (event.key === " ") event.preventDefault();
+          }}
           render={<a href="/requests">Open requests</a>}
         />,
       );
@@ -97,8 +96,37 @@ describe("Card", () => {
         "[--press-scale:0.98]",
         "cursor-pointer",
       );
-      expect(getComputedStyle(link).scale).toBe("var(--press-scale, 0.97)");
+      expect(getComputedStyle(link).scale).toBe("none");
+      expect(
+        getComputedStyle(link).getPropertyValue("--tw-duration").trim(),
+      ).toBe("var(--duration-fast)");
+      expect(
+        getComputedStyle(link).getPropertyValue("--press-scale").trim(),
+      ).toMatch(/^0?\.98$/);
 
+      // Keyboard Enter and Space activate instant press feedback and release in 0 ms.
+      fireEvent.keyDown(link, { key: "Enter" });
+      expect(link).toHaveAttribute("data-pressed", "");
+      expect(getComputedStyle(link).scale).toMatch(
+        /^var\(--press-scale,\s*0?\.97\)$/,
+      );
+      expect(
+        getComputedStyle(link).getPropertyValue("--tw-duration").trim(),
+      ).toMatch(/^0m?s$/);
+
+      fireEvent.keyUp(link, { key: "Enter" });
+      expect(link).not.toHaveAttribute("data-pressed");
+      expect(getComputedStyle(link).scale).toBe("none");
+      expect(
+        getComputedStyle(link).getPropertyValue("--tw-duration").trim(),
+      ).toMatch(/^0m?s$/);
+
+      fireEvent.keyDown(link, { key: " " });
+      expect(link).toHaveAttribute("data-pressed", "");
+      fireEvent.blur(link);
+      expect(link).not.toHaveAttribute("data-pressed");
+
+      // Active drags suppress pressed scale against real compiled motion.css.
       rerender(
         <Card
           interactive
@@ -109,9 +137,22 @@ describe("Card", () => {
       );
       expect(getComputedStyle(link).scale).toBe("none");
 
+      // Disabled interactive cards ignore keyboard activation and never scale.
+      rerender(
+        <Card
+          interactive
+          aria-disabled="true"
+          render={<a href="/requests">Open requests</a>}
+        />,
+      );
+      fireEvent.keyDown(link, { key: "Enter" });
+      fireEvent.keyDown(link, { key: " " });
+      expect(link).not.toHaveAttribute("data-pressed");
+      expect(getComputedStyle(link).scale).toBe("none");
+
       await expectNoA11yViolations(baseElement);
     } finally {
-      style.remove();
+      styles.cleanup();
     }
   });
 });

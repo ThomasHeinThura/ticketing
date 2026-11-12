@@ -111,9 +111,15 @@ describe("press feedback utility (D-H rule 1)", () => {
     expect(down?.[1]).toMatch(/scale:\s*var\(--press-scale,\s*0\.97\)/);
   });
 
+  it("keeps keyboard press and release instantaneous (0 ms) per plan rule 8", () => {
+    const keyboard = /&\[data-keyboard-press\]\s*\{([^}]*)\}/.exec(utility);
+    expect(keyboard).not.toBeNull();
+    expect(keyboard?.[1]).toMatch(/--tw-duration:\s*0ms/);
+  });
+
   it("neutralizes pressed scale while disabled or actively dragging", () => {
     const guard =
-      /&:is\(:disabled,\s*\[data-disabled\],\s*\[data-dragging\],\s*\[data-task-dragging="true"\]\)\s*\{([^}]*)\}/.exec(
+      /&:is\(\s*:disabled,\s*\[data-disabled\],\s*\[aria-disabled="true"\],\s*\[data-dragging\],\s*\[data-task-dragging="true"\]\s*\)\s*\{([^}]*)\}/.exec(
         utility,
       );
     expect(guard).not.toBeNull();

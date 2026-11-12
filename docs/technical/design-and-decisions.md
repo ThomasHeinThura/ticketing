@@ -2957,16 +2957,19 @@ Arriving and leaving use `ease-out` — fast start, gentle finish. Moving uses
 
 <a id="motion-press-feedback"></a>
 **Press feedback.** One shared class, `press-feedback` (`motion.css`), carries the rule: the
-pressed style (`:active`, or `[data-pressed]` on a trigger) applies with a 0 ms transition, so
-it paints on the first frame, and releases over `--duration-fast`. It sets Tailwind's
+pressed style (`:active`, or `[data-pressed]` from a trigger or keyboard `Enter`/`Space` via
+`useKeyboardPress`) applies with a 0 ms transition, so it paints on the first frame; pointer
+release takes `--duration-fast`, while keyboard press keeps `--tw-duration` at 0 ms through
+release (`[data-keyboard-press]`) so keyboard activation never animates. It sets Tailwind's
 `--tw-duration` and `--tw-ease`, so each consumer keeps its own `transition-[...]` property
 list; a consumer must not add a `duration-*` or `ease-*` class (those write a literal and would
 beat it). `--press-scale` sets the pressed size (default 0.97): tabs, interactive `Card`s and
 board task cards use 0.98, sidebar items 0.985, interactive `TableRow`s and list task rows 0.99,
-and a button that must not move sets `[--press-scale:1]`. Disabled controls and active drags
-(`data-dragging`, `data-task-dragging="true"`) suppress the pressed scale. Used by Button (so
-every icon button), tabs, the sidebar menu buttons and actions, `Card` (`interactive`),
-`TableRow` (`interactive`), and the clickable board/list task primitives.
+and a button that must not move sets `[--press-scale:1]`. Disabled controls (`:disabled`,
+`[data-disabled]`, `[aria-disabled="true"]`) and active drags (`data-dragging`,
+`data-task-dragging="true"`) suppress the pressed scale. Used by Button (so every icon button),
+tabs, the sidebar menu buttons and actions, `Card` (`interactive`), `TableRow` (`interactive`),
+and the clickable board/list task primitives.
 
 <a id="motion-what-does-not-animate"></a>
 ### What does not animate
@@ -3636,7 +3639,7 @@ Thomas decided on 12 November 2026 (owner decision D-H, "the UI must feel premiu
 - The duration tokens `--duration-instant 0`, `--duration-fast 100`, `--duration-normal 200` are replaced by `--duration-fast 120`, `--duration-base 200`, `--duration-slow 300`. The old names were never in `theme.css`, so no screen changes meaning.
 - The press row `scale(0.98)` becomes the shipped Button value, `scale(0.97)`, with a 0 ms press-down.
 
-`Switch` takes an optional `helper={{ checked, unchecked }}`. Both lines share one grid cell, so the reserved height is the taller line and the layout never jumps. The active line describes the switch (`aria-describedby`); the other is `inert`. Without `helper` the DOM is unchanged. Colours, sizes and spacing do not change. No visual baseline is expected to change, because every new state is a press or a transition, not a resting look.
+`SwitchField` wraps `Switch` with `helper={{ checked, unchecked }}` while `Switch` stays the bare control, so plain `Switch` callers keep an unchanged DOM and do not enter helper contrast tracing. Both helper lines share one grid cell, so the reserved height is the taller line and the layout never jumps. The active line describes the switch (`aria-describedby`); the other is `inert`. Resting colours, sizes and spacing do not change; only the Storybook `Primitives/Skeleton Default` (`primitives-skeleton--default`) baseline is expected to change because Storybook runs with `reducedMotion: "reduce"` and reduced-motion skeletons drop `--skeleton-highlight` to `transparent`.
 
 ## Inactive historical references
 

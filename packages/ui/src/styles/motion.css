@@ -11,20 +11,31 @@
  */
 
 /* Press feedback (design-and-decisions.md#motion-press-feedback): the one shared press rule.
-   Down is instant (0 ms: the pressed style paints on the first frame); release takes
-   --duration-fast. It sets --tw-duration / --tw-ease, the variables Tailwind's `transition-*`
-   utilities read, so each consumer keeps its own `transition-[...]` property list and never
-   sets `duration-*` / `ease-*` itself (those write a literal and would beat these).
-   --press-scale is the pressed size; disabled controls and active drags never scale. */
+   Down is instant (0 ms: the pressed style paints on the first frame); pointer release takes
+   --duration-fast, while keyboard activation keeps --tw-duration at 0 ms through release so
+   keyboard actions never animate (plan section 6 rule 8). It sets --tw-duration / --tw-ease,
+   the variables Tailwind's `transition-*` utilities read, so each consumer keeps its own
+   `transition-[...]` property list and never sets `duration-*` / `ease-*` itself (those write
+   a literal and would beat these). --press-scale is the pressed size; disabled controls and
+   active drags never scale. */
 @utility press-feedback {
   --tw-duration: var(--duration-fast);
   --tw-ease: var(--ease-out);
+  &[data-keyboard-press] {
+    --tw-duration: 0ms;
+  }
   &:active,
   &[data-pressed] {
     --tw-duration: 0ms;
     scale: var(--press-scale, 0.97);
   }
-  &:is(:disabled, [data-disabled], [data-dragging], [data-task-dragging="true"]) {
+  &:is(
+      :disabled,
+      [data-disabled],
+      [aria-disabled="true"],
+      [data-dragging],
+      [data-task-dragging="true"]
+    ) {
     scale: none;
   }
 }

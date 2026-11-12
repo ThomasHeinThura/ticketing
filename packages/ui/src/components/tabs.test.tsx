@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { mountCompiledMotionStyles } from "../test/compile-motion-css";
 import { Tabs, TabsContent, TabsList, TabsTab } from "./tabs";
 
 const motionCss = readFileSync(
@@ -107,6 +108,63 @@ describe("Tabs", () => {
     } finally {
       style.remove();
       reducedStyle.remove();
+    }
+  });
+
+  it("shows instantaneous press feedback on Enter and Space for enabled tabs and ignores disabled tabs", async () => {
+    const styles = await mountCompiledMotionStyles([
+      "press-feedback",
+      "[--press-scale:0.98]",
+      "transition-[color,background-color,box-shadow,scale]",
+    ]);
+
+    try {
+      render(
+        <Tabs defaultValue="one">
+          <TabsList>
+            <TabsTab value="one">One</TabsTab>
+            <TabsTab value="two">Two</TabsTab>
+            <TabsTab value="three" disabled>
+              Three
+            </TabsTab>
+          </TabsList>
+          <TabsContent value="one">First panel</TabsContent>
+          <TabsContent value="two">Second panel</TabsContent>
+          <TabsContent value="three">Third panel</TabsContent>
+        </Tabs>,
+      );
+
+      const tabTwo = screen.getByRole("tab", { name: "Two" });
+      const disabledTab = screen.getByRole("tab", { name: "Three" });
+
+      fireEvent.keyDown(tabTwo, { key: "Enter" });
+      expect(tabTwo).toHaveAttribute("data-pressed", "");
+      expect(getComputedStyle(tabTwo).scale).toMatch(
+        /^var\(--press-scale,\s*0?\.97\)$/,
+      );
+      expect(
+        getComputedStyle(tabTwo).getPropertyValue("--tw-duration").trim(),
+      ).toMatch(/^0m?s$/);
+
+      fireEvent.keyUp(tabTwo, { key: "Enter" });
+      expect(tabTwo).not.toHaveAttribute("data-pressed");
+      expect(getComputedStyle(tabTwo).scale).toBe("none");
+      expect(
+        getComputedStyle(tabTwo).getPropertyValue("--tw-duration").trim(),
+      ).toMatch(/^0m?s$/);
+
+      fireEvent.keyDown(tabTwo, { key: " " });
+      expect(tabTwo).toHaveAttribute("data-pressed", "");
+      expect(tabTwo).toHaveAttribute("aria-selected", "true");
+      fireEvent.blur(tabTwo);
+      expect(tabTwo).not.toHaveAttribute("data-pressed");
+
+      fireEvent.keyDown(disabledTab, { key: "Enter" });
+      fireEvent.keyDown(disabledTab, { key: " " });
+      expect(disabledTab).not.toHaveAttribute("data-pressed");
+      expect(getComputedStyle(disabledTab).scale).toBe("none");
+    } finally {
+      styles.cleanup();
     }
   });
 });
