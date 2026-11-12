@@ -20,6 +20,7 @@ import { requireReachFilteredList } from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import getView from "../view/controllers/get-view";
+import { savedViewQueryFilter } from "../view/query-reach";
 import { auditReport } from "./audit";
 import { buildContext, cleanFilters } from "./context";
 import {
@@ -652,7 +653,8 @@ async function visibleWidgets<
   const reach = await callerReach(c, c.get("userId") as string);
   const projects = await reach.projectFactsFor([workspaceId]);
   const allowed = new Set(await reach.reachableProjectIds([workspaceId]));
-  if (await holds(c, "report:read_all")) {
+  const readAll = await holds(c, "report:read_all");
+  if (readAll) {
     for (const project of projects)
       if (!project.deleted) allowed.add(project.id);
   }
@@ -696,6 +698,10 @@ async function visibleWidgets<
     return false;
   };
   const result: T[] = [];
+  const visibleViewQuery =
+    readAll || !widgets.some((widget) => widget.savedViewId)
+      ? () => true
+      : await savedViewQueryFilter(reach, workspaceId);
   for (const widget of widgets) {
     const projectId = widget.filters?.projectId;
     if (typeof projectId === "string" && !allowed.has(projectId)) continue;
@@ -710,7 +716,8 @@ async function visibleWidgets<
         if (
           view.workspaceId !== workspaceId ||
           (view.scope === "project" && !allowed.has(view.scopeId)) ||
-          containsHidden(view.query)
+          containsHidden(view.query) ||
+          !visibleViewQuery(view.query)
         )
           continue;
       } catch (error) {

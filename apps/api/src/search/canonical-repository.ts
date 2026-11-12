@@ -493,6 +493,19 @@ export async function searchSavedViews(params: {
             : undefined,
         ),
         projectScopeInReach(params.reachableProjectIds),
+        sql`NOT EXISTS (
+          SELECT 1 FROM project hidden_project
+          WHERE hidden_project.workspace_id = ${params.workspaceId}
+            AND ${
+              params.reachableProjectIds.length
+                ? sql`hidden_project.id NOT IN (${sql.join(
+                    params.reachableProjectIds.map((id) => sql`${id}`),
+                    sql`, `,
+                  )})`
+                : sql`true`
+            }
+            AND jsonb_path_exists(${savedViewTable.query}, '$.** ? (@ == $id || @ == $slug)', jsonb_build_object('id', hidden_project.id, 'slug', hidden_project.slug))
+        )`,
         sql`lower(${savedViewTable.name}) LIKE ${contains}`,
       ),
     )

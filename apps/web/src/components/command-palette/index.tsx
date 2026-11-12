@@ -40,16 +40,13 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  pushRecentItem,
-  type RecentItem,
-  readRecentItems,
-} from "@/components/search-command-menu/recent-items";
+import { pushRecentItem } from "@/components/search-command-menu/recent-items";
 import {
   type PaletteEntry,
   projectSearchGroups,
   type SearchResultItem,
 } from "@/components/search-command-menu/search-targets";
+import { useRecentItems } from "@/components/search-command-menu/use-recent-items";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
@@ -222,13 +219,7 @@ export function CommandPalette({
     [onOpenChange],
   );
 
-  const recentItems = useMemo<RecentItem[]>(
-    () =>
-      open && workspace?.id && session?.user?.id
-        ? readRecentItems(session.user.id, workspace.id)
-        : [],
-    [open, workspace?.id, session?.user?.id],
-  );
+  const recentItems = useRecentItems(open, session?.user?.id, workspace?.id);
 
   const searchGroups = useMemo(
     () =>

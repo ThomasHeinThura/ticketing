@@ -6,6 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPersonalApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
 import {
+  automationTable,
+  workItemTemplateTable,
+} from "../../apps/api/src/database/schema";
+import {
   cycleTable,
   moduleTable,
 } from "../../apps/api/src/database/schema-p5-agile";
@@ -22,6 +26,7 @@ import {
   serviceTable,
 } from "../../apps/api/src/database/schema-p5-service";
 import {
+  budgetTable,
   timeActivityTable,
   timeEntryTable,
 } from "../../apps/api/src/database/schema-p5-time";
@@ -42,6 +47,7 @@ import {
   createItem,
   json,
   makeApiKey,
+  makeState,
   seedLegacy,
   setAmbientHeaders,
   setupWorld,
@@ -49,16 +55,1105 @@ import {
 import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 
 describe("B-5: staff project reach", () => {
+  let mixedStorageRoot: string | undefined;
   beforeEach(async () => {
     await resetTestDatabase();
   });
-  afterEach(() => {
+  afterEach(async () => {
     setAmbientHeaders({});
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
+    if (mixedStorageRoot)
+      await rm(mixedStorageRoot, { recursive: true, force: true });
+    mixedStorageRoot = undefined;
   });
 
   for (const role of ["member", "lead", "viewer"] as const) {
+    it(`${role} sees reachable data in mixed-project collections`, async () => {
+      mixedStorageRoot = await mkdtemp(
+        path.join(tmpdir(), "b5-review-upload-"),
+      );
+      vi.stubEnv("TASKDESK_STORAGE_FILESYSTEM_ROOT", mixedStorageRoot);
+      vi.stubEnv("TASKDESK_STORAGE_DRIVER", undefined);
+      const world = await setupWorld();
+      const { app } = createApp();
+      const visible = await createProjectFixture({
+        workspaceId: world.workspaceId,
+        name: "Visible mixed project",
+      });
+      const state = await makeState(
+        world.workspaceId,
+        visible.project.id,
+        "backlog",
+        true,
+      );
+      const automationRole = await grantProjectRole(
+        world.admin.user.id,
+        visible.project.id,
+        [
+          "project:read",
+          "work_item:read",
+          "work_item:update",
+          "attachment:create",
+          "budget:read",
+        ],
+      );
+      const hidden = await createItem(app, world, "Mixed hidden item");
+      const [allowed] = await db
+        .insert(schema.workItemTable)
+        .values({
+          workspaceId: world.workspaceId,
+          projectId: visible.project.id,
+          typeId: world.type.id,
+          stateId: state.state.id,
+          title: "Visible mixed item",
+          number: 1,
+          key: "VISIBLE-1",
+        })
+        .returning();
+      if (!allowed) throw new Error("visible item missing");
+      const [allowedSecond] = await db
+        .insert(schema.workItemTable)
+        .values({
+          workspaceId: world.workspaceId,
+          projectId: visible.project.id,
+          typeId: world.type.id,
+          stateId: state.state.id,
+          title: "Visible mixed second item",
+          number: 2,
+          key: "VISIBLE-2",
+        })
+        .returning();
+      if (!allowedSecond) throw new Error("second visible item missing");
+      mockAuthenticatedSession(world.admin.user);
+      const createdRelation = await json(
+        app,
+        "POST",
+        `/api/work-items/${hidden.key}/relations`,
+        { targetKey: allowed.key, type: "blocks" },
+      );
+      expect(createdRelation.status, await createdRelation.clone().text()).toBe(
+        200,
+      );
+      const presign = await json(
+        app,
+        "POST",
+        `/api/work-items/${allowed.key}/attachments/presign`,
+        { filename: "visible.png", contentType: "image/png", size: 12 },
+      );
+      expect(presign.status, await presign.clone().text()).toBe(200);
+      const upload = (await presign.json()) as {
+        attachmentId: string;
+        uploadUrl: string;
+        uploadHeaders: Record<string, string>;
+      };
+      const uploadResponse = await app.request(upload.uploadUrl, {
+        method: "PUT",
+        headers: upload.uploadHeaders,
+        body: Buffer.from([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
+        ]),
+      });
+      expect(uploadResponse.status).toBe(204);
+      const complete = await json(
+        app,
+        "POST",
+        `/api/attachments/${upload.attachmentId}/complete`,
+      );
+      expect(complete.status, await complete.clone().text()).toBe(200);
+      const relationEvents = await db.select().from(schema.outboxTable);
+      const visibleEvents = JSON.stringify(
+        relationEvents.filter((event) =>
+          JSON.stringify(event).includes(allowed.id),
+        ),
+      );
+      expect(visibleEvents).not.toContain(hidden.id);
+      expect(visibleEvents).not.toContain(hidden.key);
+      const caller = await addMember(world.workspaceId, role);
+      await setFeature(world.workspaceId, "feature.automations", true);
+      await db.insert(automationTable).values([
+        {
+          workspaceId: world.workspaceId,
+          projectId: visible.project.id,
+          name: "Visible mixed automation",
+          trigger: "work_item.created",
+          effectiveRoleId: automationRole.id,
+          createdBy: caller.personId,
+        },
+        {
+          workspaceId: world.workspaceId,
+          projectId: world.project.id,
+          name: "Hidden mixed automation",
+          trigger: "work_item.created",
+          effectiveRoleId: automationRole.id,
+          createdBy: caller.personId,
+        },
+      ]);
+      await db.insert(workItemTemplateTable).values({
+        workspaceId: world.workspaceId,
+        typeId: world.type.id,
+        name: "Workspace template",
+        title: "Workspace template title",
+      });
+      const labelRows = await db
+        .insert(schema.labelTable)
+        .values([
+          {
+            workspaceId: world.workspaceId,
+            projectId: visible.project.id,
+            name: "Visible mixed label",
+            color: "#111111",
+          },
+          {
+            workspaceId: world.workspaceId,
+            projectId: world.project.id,
+            name: "Hidden mixed label",
+            color: "#111111",
+          },
+        ])
+        .returning();
+      if (labelRows.length !== 2) throw new Error("labels missing");
+      await setAgileFlags(visible.project.id, { cycles: true, modules: true });
+      await setPagesFlag([visible.project.id], true);
+      await setTimeFlags(world.workspaceId);
+      await setFeature(world.workspaceId, "feature.cost_tracking", true);
+      await setFeature(world.workspaceId, "feature.reports", true);
+      await setServiceFlag(world.workspaceId, true);
+      const [mixedService] = await db
+        .insert(serviceTable)
+        .values({ workspaceId: world.workspaceId, name: "Mixed service" })
+        .returning();
+      if (!mixedService) throw new Error("service missing");
+      await db
+        .update(schema.workItemTypeTable)
+        .set({ key: "incident", isChange: true })
+        .where(eq(schema.workItemTypeTable.id, world.type.id));
+      for (const itemId of [allowed.id, hidden.id]) {
+        await db
+          .update(schema.workItemTable)
+          .set({ serviceId: mixedService.id })
+          .where(eq(schema.workItemTable.id, itemId));
+        await db.insert(changeDetailTable).values({
+          workspaceId: world.workspaceId,
+          workItemId: itemId,
+          windowStart: new Date("2030-01-10T09:00:00Z"),
+          windowEnd: new Date("2030-01-10T10:00:00Z"),
+        });
+      }
+      const [activity] = await db
+        .insert(timeActivityTable)
+        .values({ workspaceId: world.workspaceId, name: "Mixed activity" })
+        .returning();
+      if (!activity) throw new Error("activity missing");
+      let visibleCycleId = "";
+      let visibleModuleId = "";
+      let hiddenAttachmentId = "";
+      for (const [projectId, itemId, name] of [
+        [visible.project.id, allowed.id, "Visible mixed"],
+        [world.project.id, hidden.id, "Hidden mixed"],
+      ] as const) {
+        await db.insert(budgetTable).values({
+          workspaceId: world.workspaceId,
+          projectId,
+          name: `${name} budget`,
+          plannedAmountMinor: 10000,
+          currency: "USD",
+          periodStart: "2026-01-01",
+          periodEnd: "2026-12-31",
+        });
+        await db.insert(schema.projectContractTable).values({
+          projectId,
+          startDate: "2026-01-01",
+          endDate: "2026-12-31",
+          contractedMinutes: 900,
+          coverage: "9x5",
+        });
+        await db.insert(timeEntryTable).values({
+          workspaceId: world.workspaceId,
+          projectId,
+          workItemId: itemId,
+          personId: caller.personId,
+          date: "2026-11-01",
+          minutes: 37,
+          activityId: activity.id,
+          billable: true,
+          description: `${name} time`,
+        });
+        await db.insert(projectPageTable).values({
+          workspaceId: world.workspaceId,
+          projectId,
+          title: `${name} page`,
+          body: { type: "doc", content: [] },
+        });
+        const [cycleRow] = await db
+          .insert(cycleTable)
+          .values({
+            workspaceId: world.workspaceId,
+            projectId,
+            name: `${name} cycle`,
+            startDate: "2030-01-01",
+            endDate: "2030-01-31",
+          })
+          .returning();
+        const [moduleRow] = await db
+          .insert(moduleTable)
+          .values({
+            workspaceId: world.workspaceId,
+            projectId,
+            name: `${name} module`,
+          })
+          .returning();
+        if (projectId === visible.project.id) {
+          visibleCycleId = cycleRow?.id ?? "";
+          visibleModuleId = moduleRow?.id ?? "";
+        }
+        await db.insert(schema.milestoneTable).values({
+          projectId,
+          name: `${name} milestone`,
+          date: new Date("2030-01-01"),
+        });
+        await db.insert(schema.documentLinkTable).values({
+          projectId,
+          title: `${name} document`,
+          url: "https://example.invalid/document",
+        });
+        const [attachmentRow] = await db
+          .insert(schema.attachmentTable)
+          .values({
+            workspaceId: world.workspaceId,
+            workItemId: itemId,
+            objectKey: `mixed/${itemId}`,
+            filename: `${name}.pdf`,
+            mimeType: "application/pdf",
+            size: 12,
+            state: "ready",
+          })
+          .returning();
+        if (projectId === world.project.id)
+          hiddenAttachmentId = attachmentRow?.id ?? "";
+        await db.insert(schema.notificationTable).values({
+          userId: caller.user.id,
+          personId: caller.personId,
+          type: "work_item_transitioned",
+          kind: "work_item.transitioned",
+          resourceType: "work_item",
+          resourceId: itemId,
+          eventData: { kind: "work_item.transitioned" },
+          title: `${name} notification`,
+          body: name,
+          isRead: false,
+        });
+      }
+      await db.insert(schema.notificationTable).values({
+        userId: caller.user.id,
+        personId: caller.personId,
+        type: "work_item_transitioned",
+        kind: "work_item.transitioned",
+        resourceType: "work_item",
+        resourceId: allowedSecond.id,
+        eventData: { kind: "work_item.transitioned" },
+        title: "Visible mixed second notification",
+        body: "Visible mixed",
+        isRead: false,
+      });
+      const [mixedView] = await db
+        .insert(schema.savedViewTable)
+        .values({
+          workspaceId: world.workspaceId,
+          createdBy: caller.personId,
+          name: "Mixed workspace view",
+          scope: "workspace",
+          scopeId: world.workspaceId,
+          visibility: "workspace",
+          layout: "list",
+          query: { entity: "work_item" },
+        })
+        .returning();
+      if (!mixedView) throw new Error("view missing");
+      const [hiddenFilterView] = await db
+        .insert(schema.savedViewTable)
+        .values({
+          workspaceId: world.workspaceId,
+          createdBy: caller.personId,
+          name: "Hidden filter view",
+          scope: "workspace",
+          scopeId: world.workspaceId,
+          visibility: "workspace",
+          layout: "list",
+          query: {
+            entity: "work_item",
+            filter: { field: "project", op: "eq", value: world.project.slug },
+          },
+        })
+        .returning();
+      if (!hiddenFilterView) throw new Error("hidden filter view missing");
+      const [mixedDashboard] = await db
+        .insert(dashboardTable)
+        .values({
+          workspaceId: world.workspaceId,
+          name: "Mixed dashboard",
+          scope: "workspace",
+        })
+        .returning();
+      if (!mixedDashboard) throw new Error("dashboard missing");
+      const [allowedWidget, hiddenWidget, hiddenViewWidget] = await db
+        .insert(dashboardWidgetTable)
+        .values([
+          {
+            dashboardId: mixedDashboard.id,
+            reportKey: "work_mix",
+            filters: { projectId: visible.project.id },
+          },
+          {
+            dashboardId: mixedDashboard.id,
+            reportKey: "work_mix",
+            filters: { projectId: world.project.id },
+            x: 6,
+          },
+          {
+            dashboardId: mixedDashboard.id,
+            savedViewId: hiddenFilterView.id,
+            y: 4,
+          },
+        ])
+        .returning();
+      if (!allowedWidget || !hiddenWidget || !hiddenViewWidget)
+        throw new Error("widgets missing");
+      mockAuthenticatedSession(world.admin.user);
+      expect(
+        (await json(app, "GET", `/api/views/${hiddenFilterView.id}`)).status,
+      ).toBe(200);
+      const ownerViewSearch = await json(
+        app,
+        "GET",
+        `/api/search?workspaceId=${world.workspaceId}&q=Hidden%20filter&type=views`,
+      );
+      expect(
+        ((await ownerViewSearch.json()) as { totalCount: number }).totalCount,
+      ).toBe(1);
+      if (role !== "lead")
+        await grantProjectRole(caller.user.id, visible.project.id, [
+          "project:read",
+          "work_item:read",
+          ...(role === "member" ? ["work_item:update" as const] : []),
+        ]);
+      mockAuthenticatedSession(caller.user);
+      const sidebar = await json(
+        app,
+        "GET",
+        `/api/project?workspaceId=${world.workspaceId}`,
+      );
+      expect(sidebar.status).toBe(200);
+      const sidebarRows = (await sidebar.json()) as Array<{
+        id: string;
+        statistics: { totalTasks: number };
+      }>;
+      expect(sidebarRows.map((row) => row.id)).toEqual(
+        role === "lead" ? [] : [visible.project.id],
+      );
+      if (role !== "lead")
+        expect(sidebarRows[0]?.statistics.totalTasks).toBe(2);
+      const labels = await json(
+        app,
+        "GET",
+        `/api/label/workspace/${world.workspaceId}`,
+      );
+      expect(labels.status).toBe(200);
+      const labelsText = await labels.text();
+      expect(labelsText).not.toContain("Hidden mixed label");
+      expect(labelsText).not.toContain("Visible mixed label");
+      const hiddenCatalogue = await json(
+        app,
+        "GET",
+        `/api/label/project/${world.project.id}/catalogue`,
+      );
+      expect(hiddenCatalogue.status).toBe(404);
+      const allowedCatalogue = await json(
+        app,
+        "GET",
+        `/api/label/project/${visible.project.id}/catalogue`,
+      );
+      expect(allowedCatalogue.status).toBe(role === "lead" ? 404 : 200);
+      if (role !== "lead")
+        expect(await allowedCatalogue.text()).toContain("Visible mixed label");
+      expect(
+        (
+          await json(
+            app,
+            "GET",
+            `/api/projects/${world.project.slug}/automations`,
+          )
+        ).status,
+      ).toBe(404);
+      const deniedAutomation = await json(
+        app,
+        "POST",
+        `/api/projects/${world.project.slug}/automations`,
+        {
+          name: "Denied",
+          trigger: "work_item.created",
+          conditions: [],
+          actions: [{ type: "set_priority", priority: "high" }],
+          effectiveRoleId: automationRole.id,
+        },
+      );
+      expect(deniedAutomation.status).toBe(404);
+      expect(
+        (
+          await json(
+            app,
+            "POST",
+            `/api/attachments/${hiddenAttachmentId}/complete`,
+          )
+        ).status,
+      ).toBe(404);
+      const allowedAutomations = await json(
+        app,
+        "GET",
+        `/api/projects/${visible.project.slug}/automations`,
+      );
+      expect(allowedAutomations.status).toBe(role === "lead" ? 404 : 200);
+      if (role !== "lead") {
+        const automationText = await allowedAutomations.text();
+        expect(automationText).toContain("Visible mixed automation");
+        expect(automationText).not.toContain("Hidden mixed automation");
+      }
+      const templates = await json(
+        app,
+        "GET",
+        `/api/workspace/${world.workspaceId}/work-item-templates`,
+      );
+      expect(templates.status).toBe(200);
+      expect(await templates.text()).toContain("Workspace template");
+      const relation = await json(
+        app,
+        "GET",
+        `/api/work-items/${allowed.key}/relations`,
+      );
+      if (role === "lead") expect(relation.status).toBe(404);
+      else {
+        expect(relation.status).toBe(200);
+        // RH-4 intentionally exposes the hidden peer count; the owner decision is pending.
+        expect(await relation.json()).toEqual({ data: [], hiddenCount: 1 });
+      }
+      const search = await json(app, "POST", "/api/work-items/search", {
+        workspaceId: world.workspaceId,
+        query: { entity: "work_item" },
+      });
+      expect(search.status).toBe(200);
+      const searchBody = (await search.json()) as {
+        data: unknown[];
+        meta: { total: number };
+      };
+      expect(searchBody.meta.total).toBe(role === "lead" ? 0 : 2);
+      expect(JSON.stringify(searchBody)).not.toContain(hidden.key);
+      expect(JSON.stringify(searchBody)).not.toContain(hidden.id);
+      expect(JSON.stringify(searchBody)).not.toContain(world.project.id);
+      expect(JSON.stringify(searchBody)).not.toContain("Mixed hidden item");
+      expect(JSON.stringify(searchBody).includes(allowed.key)).toBe(
+        role !== "lead",
+      );
+      if (role !== "lead") {
+        const row = (
+          searchBody.data as Array<{ key: string; blockedByOpenCount?: number }>
+        ).find((item) => item.key === allowed.key);
+        // RH-17 currently counts the hidden open blocker; its disclosure needs an owner decision.
+        expect(row?.blockedByOpenCount).toBe(1);
+      }
+      const count = await json(app, "GET", `/api/views/${mixedView.id}/count`);
+      expect(count.status).toBe(200);
+      expect(await count.json()).toEqual({ count: role === "lead" ? 0 : 2 });
+      const viewRun = await json(
+        app,
+        "POST",
+        `/api/views/${mixedView.id}/run?limit=1`,
+      );
+      expect(viewRun.status).toBe(200);
+      const viewText = await viewRun.text();
+      expect(viewText).not.toContain(hidden.key);
+      expect(
+        (JSON.parse(viewText) as { meta: { total: number }; data: unknown[] })
+          .meta.total,
+      ).toBe(role === "lead" ? 0 : 2);
+      expect((JSON.parse(viewText) as { data: unknown[] }).data).toHaveLength(
+        role === "lead" ? 0 : 1,
+      );
+      const views = await json(
+        app,
+        "GET",
+        `/api/views?workspaceId=${world.workspaceId}`,
+      );
+      expect(views.status).toBe(200);
+      const viewsText = await views.text();
+      expect(viewsText).not.toContain(world.project.id);
+      expect(viewsText).not.toContain(world.project.slug);
+      const hiddenFilteredView = await json(
+        app,
+        "GET",
+        `/api/views/${hiddenFilterView.id}`,
+      );
+      expect(hiddenFilteredView.status).toBe(404);
+      for (const [method, suffix] of [
+        ["GET", "count"],
+        ["POST", "run"],
+        ["POST", "pin"],
+      ] as const) {
+        expect(
+          (
+            await json(
+              app,
+              method,
+              `/api/views/${hiddenFilterView.id}/${suffix}`,
+            )
+          ).status,
+        ).toBe(404);
+      }
+      const hiddenViewSearch = await json(
+        app,
+        "GET",
+        `/api/search?workspaceId=${world.workspaceId}&q=Hidden%20filter&type=views`,
+      );
+      expect(hiddenViewSearch.status).toBe(200);
+      expect(
+        ((await hiddenViewSearch.json()) as { totalCount: number }).totalCount,
+      ).toBe(0);
+      const dashboards = await json(
+        app,
+        "GET",
+        `/api/dashboards?workspaceId=${world.workspaceId}`,
+      );
+      expect(dashboards.status).toBe(200);
+      const dashboardRows = (await dashboards.json()) as {
+        data: Array<{ id: string; widgetCount: number }>;
+      };
+      expect(
+        dashboardRows.data.find((row) => row.id === mixedDashboard.id)
+          ?.widgetCount,
+      ).toBe(role === "lead" ? 0 : 1);
+      const dashboard = await json(
+        app,
+        "GET",
+        `/api/dashboards/${mixedDashboard.id}`,
+      );
+      expect(dashboard.status).toBe(200);
+      const dashboardText = await dashboard.text();
+      expect(dashboardText).not.toContain(hiddenWidget.id);
+      expect(dashboardText).not.toContain(hiddenViewWidget.id);
+      expect(dashboardText.includes(allowedWidget.id)).toBe(role !== "lead");
+      const widgetExport = await json(
+        app,
+        "POST",
+        `/api/dashboards/${mixedDashboard.id}/widgets/${hiddenWidget.id}/export`,
+      );
+      expect(widgetExport.status).toBe(role === "lead" ? 404 : 403);
+      const hiddenViewData = await json(
+        app,
+        "GET",
+        `/api/dashboards/${mixedDashboard.id}/widgets/${hiddenViewWidget.id}/data`,
+      );
+      expect(hiddenViewData.status).toBe(404);
+      const palette = await json(
+        app,
+        "GET",
+        `/api/search?workspaceId=${world.workspaceId}&q=mixed&type=all&limit=20`,
+      );
+      expect(palette.status).toBe(200);
+      const paletteText = await palette.text();
+      expect(paletteText).not.toContain(hidden.key);
+      expect(paletteText.includes(allowed.key)).toBe(role !== "lead");
+      const changeCalendar = await json(
+        app,
+        "GET",
+        `/api/changes/calendar?workspaceId=${world.workspaceId}&from=2030-01-01T00%3A00%3A00Z&to=2030-02-01T00%3A00%3A00Z`,
+      );
+      expect(changeCalendar.status).toBe(200);
+      const calendarText = await changeCalendar.text();
+      expect(calendarText).not.toContain(hidden.key);
+      expect(calendarText.includes(allowed.key)).toBe(role !== "lead");
+      const services = await json(
+        app,
+        "GET",
+        `/api/services?workspaceId=${world.workspaceId}`,
+      );
+      expect(services.status).toBe(200);
+      const serviceBody = (await services.json()) as {
+        data: Array<{
+          id: string;
+          incidentCount: number;
+          openChangeCount: number;
+        }>;
+      };
+      expect(
+        serviceBody.data.find((entry) => entry.id === mixedService.id),
+      ).toMatchObject({
+        incidentCount: role === "lead" ? 0 : 1,
+        openChangeCount: role === "lead" ? 0 : 1,
+      });
+      const combined = await json(
+        app,
+        "POST",
+        `/api/projects/${visible.project.id}/work-items/combined`,
+        {
+          limit: 1,
+          query: {
+            entity: "work_item",
+            sort: [{ field: "position", order: "asc" }],
+          },
+        },
+      );
+      expect(combined.status).toBe(role === "lead" ? 404 : 200);
+      const combinedText = await combined.text();
+      expect(combinedText).not.toContain(hidden.key);
+      if (role !== "lead") {
+        const first = JSON.parse(combinedText) as {
+          data: Array<{ key: string }>;
+          meta: { total: number };
+          page: { hasMore: boolean; nextCursor: string | null };
+        };
+        expect(first.meta.total).toBe(2);
+        expect(first.page.hasMore).toBe(true);
+        expect(first.page.nextCursor).toBeTruthy();
+        const next = await json(
+          app,
+          "POST",
+          `/api/projects/${visible.project.id}/work-items/combined`,
+          {
+            limit: 1,
+            cursor: first.page.nextCursor,
+            query: {
+              entity: "work_item",
+              sort: [{ field: "position", order: "asc" }],
+            },
+          },
+        );
+        expect(next.status).toBe(200);
+        const second = (await next.json()) as {
+          data: Array<{ key: string }>;
+          meta: { total: number };
+          page: { hasMore: boolean };
+        };
+        expect(second.meta.total).toBe(2);
+        expect(second.page.hasMore).toBe(false);
+        expect(
+          [...first.data, ...second.data].map((item) => item.key).sort(),
+        ).toEqual([allowed.key, allowedSecond.key].sort());
+      }
+      const detail = await json(
+        app,
+        "GET",
+        `/api/project/${visible.project.id}`,
+      );
+      expect(detail.status).toBe(role === "lead" ? 404 : 200);
+      const itemDetail = await json(
+        app,
+        "GET",
+        `/api/work-items/${allowed.key}`,
+      );
+      expect(itemDetail.status).toBe(role === "lead" ? 404 : 200);
+      const candidates = await json(
+        app,
+        "GET",
+        `/api/work-items/${allowed.key}/relation-candidates?q=Visible`,
+      );
+      expect(candidates.status).toBe(
+        role === "lead" ? 404 : role === "viewer" ? 403 : 200,
+      );
+      const candidateText = await candidates.text();
+      expect(candidateText).not.toContain(hidden.key);
+      expect(candidateText.includes(allowedSecond.key)).toBe(role === "member");
+      for (const suffix of [
+        "children",
+        "tree",
+        "labels",
+        "activity",
+        "relations",
+        "relation-candidates?q=Mixed",
+        "comments/mention-candidates?q=Mixed",
+        "sla",
+      ]) {
+        const denied = await json(
+          app,
+          "GET",
+          `/api/work-items/${hidden.key}/${suffix}`,
+        );
+        expect(denied.status, suffix).toBe(404);
+      }
+      for (const suffix of ["children", "tree", "labels", "activity"]) {
+        const allowedRead = await json(
+          app,
+          "GET",
+          `/api/work-items/${allowed.key}/${suffix}`,
+        );
+        expect(allowedRead.status, suffix).toBe(role === "lead" ? 404 : 200);
+        const allowedText = await allowedRead.text();
+        expect(allowedText).not.toContain(hidden.key);
+        expect(allowedText).not.toContain(hidden.id);
+        expect(allowedText).not.toContain("Mixed hidden item");
+      }
+      for (const [suffix, payload] of [
+        ["watch", undefined],
+        [
+          "attachments/presign",
+          { filename: "test.png", contentType: "image/png", size: 10 },
+        ],
+      ] as const) {
+        const denied = await json(
+          app,
+          "POST",
+          `/api/work-items/${hidden.key}/${suffix}`,
+          payload,
+        );
+        expect(denied.status, suffix).toBe(404);
+      }
+      const hiddenBeforeMutations = await db
+        .select()
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, hidden.id));
+      for (const [path, body, headers] of [
+        [`/api/work-items/${hidden.key}/rank`, { beforeId: allowed.id }, {}],
+        [
+          `/api/work-items/${hidden.key}/parent`,
+          { parentKey: allowed.key },
+          { "if-match": '"1"' },
+        ],
+        [
+          `/api/v2/work-items/${hidden.key}/move`,
+          { targetProjectId: visible.project.id, moveChildren: false },
+          { "if-match": '"1"' },
+        ],
+      ] as const) {
+        expect(
+          (await json(app, "POST", path, body, headers)).status,
+          path,
+        ).toBe(404);
+      }
+      expect(
+        await db
+          .select()
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.id, hidden.id)),
+      ).toEqual(hiddenBeforeMutations);
+      const allowedBeforeMove = await db
+        .select()
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, allowed.id));
+      const move = await json(
+        app,
+        "POST",
+        `/api/v2/work-items/${allowed.key}/move`,
+        { targetProjectId: world.project.id, moveChildren: false },
+        { "if-match": '"1"' },
+      );
+      expect([403, 404]).toContain(move.status);
+      expect(
+        await db
+          .select()
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.id, allowed.id)),
+      ).toEqual(allowedBeforeMove);
+      for (const path of [
+        `/api/projects/${visible.project.id}/work-items`,
+        `/api/projects/${visible.project.id}/work-items/combined`,
+        `/api/projects/${visible.project.id}/pages`,
+        `/api/project/${visible.project.id}/document-links`,
+        `/api/project/${visible.project.id}/milestones`,
+        `/api/projects/${visible.project.slug}/cycles`,
+        `/api/projects/${visible.project.slug}/modules`,
+        `/api/work-items/${allowed.key}/attachments`,
+      ]) {
+        const response = await json(app, "GET", path);
+        expect(response.status, path).toBe(role === "lead" ? 404 : 200);
+        const text = await response.text();
+        expect(text).not.toContain("Hidden mixed");
+        if (role !== "lead") expect(text, path).toContain("Visible mixed");
+      }
+      const inbox = await json(app, "GET", "/api/notification/inbox");
+      expect(inbox.status).toBe(200);
+      const inboxBody = (await inbox.json()) as { unreadCount: number };
+      expect(inboxBody.unreadCount).toBe(role === "lead" ? 0 : 2);
+      expect(JSON.stringify(inboxBody)).not.toContain("Hidden mixed");
+      expect(JSON.stringify(inboxBody).includes("Visible mixed")).toBe(
+        role !== "lead",
+      );
+      const inboxPage = await json(
+        app,
+        "GET",
+        "/api/notification/inbox?limit=1",
+      );
+      expect(inboxPage.status).toBe(200);
+      const pageOne = (await inboxPage.json()) as {
+        data: Array<{ id: string }>;
+        unreadCount: number;
+        hasMore: boolean;
+        nextCursor: string | null;
+      };
+      expect(pageOne.unreadCount).toBe(role === "lead" ? 0 : 2);
+      if (role !== "lead") {
+        expect(pageOne.data).toHaveLength(1);
+        expect(pageOne.hasMore).toBe(true);
+        expect(pageOne.nextCursor).toBeTruthy();
+        const pageTwoResponse = await json(
+          app,
+          "GET",
+          `/api/notification/inbox?limit=1&cursor=${encodeURIComponent(pageOne.nextCursor as string)}`,
+        );
+        expect(pageTwoResponse.status).toBe(200);
+        const pageTwo = (await pageTwoResponse.json()) as {
+          data: Array<{ id: string }>;
+          unreadCount: number;
+          hasMore: boolean;
+        };
+        expect(pageTwo.unreadCount).toBe(2);
+        expect(pageTwo.data).toHaveLength(1);
+        expect(pageTwo.data[0]?.id).not.toBe(pageOne.data[0]?.id);
+        expect(pageTwo.hasMore).toBe(false);
+        expect(JSON.stringify(pageTwo)).not.toContain("Hidden mixed");
+      }
+      const entries = await json(
+        app,
+        "GET",
+        `/api/time-entries?workspaceId=${world.workspaceId}`,
+      );
+      expect(entries.status).toBe(role === "viewer" ? 403 : 200);
+      const entriesText = await entries.text();
+      expect(entriesText).not.toContain("Hidden mixed");
+      if (role === "member") expect(entriesText).toContain("Visible mixed");
+      const contract = await json(
+        app,
+        "GET",
+        `/api/project/${visible.project.id}/contract`,
+      );
+      expect(contract.status).toBe(role === "lead" ? 404 : 200);
+      if (role !== "lead")
+        expect((await contract.json()) as object).toMatchObject({
+          hourBank: { usedMinutes: 37, remainingMinutes: 863 },
+        });
+      const summary = await json(
+        app,
+        "GET",
+        `/api/time-entries/summary?workspaceId=${world.workspaceId}&projectId=${visible.project.id}`,
+      );
+      expect(summary.status).toBe(
+        role === "viewer" ? 403 : role === "lead" ? 404 : 200,
+      );
+      if (role === "member")
+        expect(await summary.json()).toMatchObject({ totalMinutes: 37 });
+      expect(
+        (await json(app, "GET", `/api/projects/${world.project.id}/budget`))
+          .status,
+      ).toBe(404);
+      const timer = await json(
+        app,
+        "GET",
+        `/api/time-entries/timer?workspaceId=${world.workspaceId}`,
+      );
+      expect(timer.status).toBe(role === "viewer" ? 403 : 200);
+      expect(await timer.text()).not.toContain(hidden.id);
+      const timerStart = await json(
+        app,
+        "POST",
+        "/api/time-entries/timer/start",
+        { workspaceId: world.workspaceId, workItemId: hidden.id },
+      );
+      expect(timerStart.status).toBe(role === "viewer" ? 403 : 404);
+      if (role === "member") {
+        const startVisible = await json(
+          app,
+          "POST",
+          "/api/time-entries/timer/start",
+          { workspaceId: world.workspaceId, workItemId: allowed.id },
+        );
+        expect(startVisible.status, await startVisible.clone().text()).toBe(
+          200,
+        );
+        const activeTimer = await json(
+          app,
+          "GET",
+          `/api/time-entries/timer?workspaceId=${world.workspaceId}`,
+        );
+        expect(await activeTimer.text()).toContain(allowed.id);
+      }
+      const exported = await json(app, "POST", "/api/work-items/export", {
+        workspaceId: world.workspaceId,
+        query: { entity: "work_item", columns: ["key", "title"] },
+      });
+      expect(exported.status).toBe(role === "lead" ? 200 : 403);
+      expect(await exported.text()).not.toContain(hidden.key);
+      mockAuthenticatedSession(world.admin.user);
+      const ownerBudget = await json(
+        app,
+        "GET",
+        `/api/projects/${visible.project.id}/budget`,
+      );
+      expect(ownerBudget.status).toBe(200);
+      expect(await ownerBudget.text()).toContain("Visible mixed budget");
+      const ownerExport = await json(app, "POST", "/api/work-items/export", {
+        workspaceId: world.workspaceId,
+        query: { entity: "work_item", columns: ["key", "title"] },
+      });
+      expect(ownerExport.status).toBe(200);
+      const ownerCsv = await ownerExport.text();
+      expect(ownerCsv).toContain(allowed.key);
+      expect(ownerCsv).toContain(hidden.key);
+      mockAuthenticatedSession(caller.user);
+      const before = await db
+        .select()
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, hidden.id));
+      for (const [kind, target] of [
+        ["cycles", visibleCycleId],
+        ["modules", visibleModuleId],
+      ] as const) {
+        const assignment = await json(
+          app,
+          "POST",
+          `/api/${kind}/${target}/work-items`,
+          { workItemKeys: [allowed.key, hidden.key] },
+        );
+        expect(assignment.status).toBe(
+          role === "lead" ? 404 : role === "viewer" ? 403 : 200,
+        );
+        if (assignment.status === 200) {
+          const payload = await assignment.text();
+          expect(payload).toContain(allowed.key);
+          expect(payload).toContain(hidden.key);
+        }
+      }
+      const bulk = await json(app, "POST", "/api/work-items/bulk", {
+        workspaceId: world.workspaceId,
+        workItemKeys: [allowed.key, hidden.key],
+        operation: "set_due_date",
+        dueDate: "2030-01-01T00:00:00Z",
+      });
+      expect([200, 403]).toContain(bulk.status);
+      if (bulk.status === 200) {
+        const result = (await bulk.json()) as { succeeded: string[] };
+        expect(result.succeeded).not.toContain(hidden.key);
+        expect(result.succeeded.includes(allowed.key)).toBe(role === "member");
+      }
+      expect(
+        await db
+          .select()
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.id, hidden.id)),
+      ).toEqual(before);
+      const personalKey = await createPersonalApiKey(
+        { userId: caller.user.id },
+        {
+          name: "mixed reach",
+          isMcp: false,
+          capabilities: [
+            "workspace:read",
+            "project:read",
+            "work_item:read",
+            "saved_view:read",
+          ],
+        },
+      );
+      mockAnonymousSession();
+      setAmbientHeaders({ "x-api-key": personalKey.key });
+      const keyedA = await json(app, "GET", `/api/work-items/${allowed.key}`);
+      expect(keyedA.status).toBe(role === "lead" ? 404 : 200);
+      expect(
+        (await json(app, "GET", `/api/work-items/${hidden.key}`)).status,
+      ).toBe(404);
+      const keyedViews = await json(
+        app,
+        "GET",
+        `/api/views?workspaceId=${world.workspaceId}`,
+      );
+      expect(keyedViews.status).toBe(200);
+      const keyedText = await keyedViews.text();
+      expect(keyedText).toContain(mixedView.id);
+      expect(keyedText).not.toContain(hiddenFilterView.id);
+      await db
+        .insert(schema.instanceFeatureFlagTable)
+        .values({ featureKey: "feature.mcp", enabled: true })
+        .onConflictDoUpdate({
+          target: schema.instanceFeatureFlagTable.featureKey,
+          set: { enabled: true },
+        });
+      const mcpKey = await createPersonalApiKey(
+        { userId: caller.user.id },
+        {
+          name: "mixed mcp",
+          isMcp: true,
+          capabilities: ["workspace:read", "project:read", "work_item:read"],
+        },
+      );
+      const handlers = new Map<
+        string,
+        (
+          args: Record<string, unknown>,
+        ) => Promise<{ isError?: boolean; content: unknown[] }>
+      >();
+      const server = {
+        registerTool(
+          name: string,
+          _config: unknown,
+          handler: (
+            args: Record<string, unknown>,
+          ) => Promise<{ isError?: boolean; content: unknown[] }>,
+        ) {
+          handlers.set(name, handler);
+        },
+      };
+      const client = new TaskDeskClient({
+        baseUrl: "http://localhost:1337",
+        auth: {
+          usingApiKey: true,
+          getAccessToken: async () => mcpKey.key,
+        } as never,
+      });
+      vi.spyOn(client, "reportToolInvocation").mockResolvedValue();
+      vi.stubGlobal(
+        "fetch",
+        async (input: string | URL, init?: RequestInit) => {
+          const url = new URL(String(input));
+          return app.request(`${url.pathname}${url.search}`, init);
+        },
+      );
+      registerTools(server as never, { client });
+      const mcpItem = handlers.get("get_work_item");
+      const mcpSearch = handlers.get("search_work_items");
+      if (!mcpItem || !mcpSearch) throw new Error("MCP handlers missing");
+      expect((await mcpItem({ key: hidden.key })).isError).toBe(true);
+      expect((await mcpItem({ key: allowed.key })).isError === true).toBe(
+        role === "lead",
+      );
+      const mcpResults = await mcpSearch({ workspaceId: world.workspaceId });
+      expect(JSON.stringify(mcpResults)).not.toContain(hidden.key);
+      expect(JSON.stringify(mcpResults).includes(allowed.key)).toBe(
+        role !== "lead",
+      );
+      vi.unstubAllGlobals();
+      setAmbientHeaders({});
+      mockAuthenticatedSession(caller.user);
+      if (role !== "lead") {
+        const recentUrl = `/api/search?workspaceId=${world.workspaceId}&q=${encodeURIComponent(allowed.key)}&type=work_items&limit=50`;
+        const reachableRecent = await json(app, "GET", recentUrl);
+        expect(
+          JSON.stringify(
+            ((await reachableRecent.json()) as { results: unknown[] }).results,
+          ),
+        ).toContain(allowed.key);
+        await db
+          .delete(schema.membershipTable)
+          .where(
+            and(
+              eq(schema.membershipTable.personId, caller.personId),
+              eq(schema.membershipTable.scope, "project"),
+              eq(schema.membershipTable.scopeId, visible.project.id),
+            ),
+          );
+        const revokedRecent = await json(app, "GET", recentUrl);
+        expect(revokedRecent.status).toBe(200);
+        expect(
+          ((await revokedRecent.json()) as { results: unknown[] }).results,
+        ).toEqual([]);
+      }
+    });
     it(`${role} cannot read the other managed service or its item`, async () => {
       const world = await setupWorld();
       const { app } = createApp();

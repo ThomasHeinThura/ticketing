@@ -30,6 +30,10 @@ import pinView from "./controllers/pin-view";
 import { countSavedView, runSavedView } from "./controllers/run-view";
 import updateView from "./controllers/update-view";
 import {
+  requireSavedViewQueryReach,
+  savedViewQueryFilter,
+} from "./query-reach";
+import {
   findSavedViewById,
   listShareableViewTeamsForWorkspace,
 } from "./repository";
@@ -168,6 +172,7 @@ const getViewRoute = createRoute({
   summary: "Get saved view",
   middleware: [
     workspaceAccess.fromSavedView(),
+    requireSavedViewQueryReach,
     requireWorkspaceCapability("saved_view:read"),
   ] as const,
   request: { params: savedViewIdParam },
@@ -192,6 +197,7 @@ const updateViewRoute = createRoute({
     "membership in the target team. Paired intake queue views must be edited through their queue.",
   middleware: [
     workspaceAccess.fromSavedView(),
+    requireSavedViewQueryReach,
     requireSavedViewEditAccess(),
   ] as const,
   request: {
@@ -222,7 +228,10 @@ const pinViewRoute = createRoute({
   tags: ["Views"],
   summary: "Toggle pinning a saved view",
   description: "SV-20. Toggles: pinning an already-pinned view unpins it.",
-  middleware: [workspaceAccess.fromSavedView()] as const,
+  middleware: [
+    workspaceAccess.fromSavedView(),
+    requireSavedViewQueryReach,
+  ] as const,
   request: { params: savedViewIdParam },
   responses: {
     200: jsonResponse(
@@ -243,6 +252,7 @@ const runViewRoute = createRoute({
     "Executes the stored query for its entity with current work-item reach or intake triage capability.",
   middleware: [
     workspaceAccess.fromSavedView(),
+    requireSavedViewQueryReach,
     requireWorkspaceCapability("saved_view:read"),
   ] as const,
   request: { params: savedViewIdParam, query: runViewQuery },
@@ -266,6 +276,7 @@ const countViewRoute = createRoute({
     "The count uses current work-item reach or intake triage capability. When Valkey is configured, an authorized count may be cached for up to 30 seconds.",
   middleware: [
     workspaceAccess.fromSavedView(),
+    requireSavedViewQueryReach,
     requireWorkspaceCapability("saved_view:read"),
   ] as const,
   request: { params: savedViewIdParam },
@@ -289,6 +300,7 @@ const deleteViewRoute = createRoute({
     "Creates a pending action and returns 202. The saved view remains available until the requester approves it in a browser session (pending-actions.md PA-1..PA-6).",
   middleware: [
     workspaceAccess.fromSavedView(),
+    requireSavedViewQueryReach,
     requireSavedViewEditAccess(),
   ] as const,
   request: { params: savedViewIdParam },
@@ -324,14 +336,19 @@ const view = apiRouter()
   .openapi(listViewsRoute, async (c) => {
     const { workspaceId } = c.req.valid("query");
     const personId = await resolveCallerPersonId(c.get("userId"));
+    const reach = listReachOf(c);
     const response: z.infer<typeof reachableSavedViewListSchema> =
       await listViews(
         workspaceId,
         personId,
         c.get("userId"),
-        await listReachOf(c).reachableProjectIds([workspaceId]),
+        await reach.reachableProjectIds([workspaceId]),
       );
-    return c.json(response, 200);
+    const visible = await savedViewQueryFilter(reach, workspaceId);
+    return c.json(
+      response.filter((row) => visible(row.query)),
+      200,
+    );
   })
   .openapi(createViewRoute, async (c) => {
     const body = c.req.valid("json");

@@ -1900,7 +1900,7 @@ project — `visibility`, `shared_with_team_id`, `name`, `query`, `layout`), `us
 - `SV-4` Typing a work item key jumps straight to it.
 - `SV-5` Results appear within 100 ms for typical queries. This is a hard requirement — a
   slow palette stops being used, and then the navigation depth becomes a real problem.
-- `SV-6` Recent items appear before any query is typed.
+- `SV-6` Recent items appear before any query is typed. Stored palette recents are rechecked through search on opening; only current, reachable search results and their current titles are shown. If a recent cannot be revalidated it is omitted.
 
 <a id="search-and-saved-views-search-backend"></a>
 ### Search backend
@@ -1978,6 +1978,8 @@ search validator, current viewer reach, and field permissions as direct work-ite
   it by id (get, update, delete request, pin, run, count) answers exactly like a missing view
   (404), before any capability gate, and writes nothing. Creating a view with a project scope
   needs reach to that project; an unreachable project gets the same 400 as a missing one.
+  A workspace-scoped view whose stored query names an unreachable project is likewise omitted
+  from lists and search, and its id routes return 404, because its query exposes that project.
   Workspace-scoped views are unaffected.
 - `SV-21` Duplicating a view is one click, which is how most views actually get made.
 

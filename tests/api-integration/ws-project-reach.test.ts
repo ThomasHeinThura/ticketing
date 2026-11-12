@@ -373,6 +373,18 @@ describe("project socket reach (#745)", () => {
           url(w.node, `/api/ws/${visible.id}`),
           headers,
         );
+        const event = next(socket);
+        broadcastToProject(w.project.id, {
+          type: "work_item.updated",
+          projectId: w.project.id,
+          taskId: "hidden-b-event",
+        });
+        broadcastToProject(visible.id, {
+          type: "work_item.updated",
+          projectId: visible.id,
+          taskId: "visible-a-event",
+        });
+        expect(await event).toMatchObject({ taskId: "visible-a-event" });
         socket.close();
       }
     }
