@@ -166,6 +166,7 @@ describe("useGetWorkItems: structured filter (SV-11)", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mocks.getWorkItems).toHaveBeenCalledWith("proj-a", "title", "desc", {
       cursor: undefined,
+      signal: expect.any(AbortSignal),
     });
     expect(mocks.searchWorkItems).not.toHaveBeenCalled();
   });
@@ -195,6 +196,7 @@ describe("useGetWorkItems: structured filter (SV-11)", () => {
       sorts: [{ field: "priority", order: "desc" }],
       columns: ["key", "state"],
       cursor: undefined,
+      signal: expect.any(AbortSignal),
     });
     expect(mocks.getWorkItems).not.toHaveBeenCalled();
   });
@@ -254,6 +256,7 @@ describe("useGetWorkItems: structured filter (SV-11)", () => {
       sorts: [{ field: "key", order: "asc" }],
       columns: ["key", "cf.constructor"],
       cursor: undefined,
+      signal: expect.any(AbortSignal),
     });
     await result.current.fetchNextPage();
     await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
@@ -477,6 +480,7 @@ describe("canonical unfiltered cursor traversal", () => {
     );
     expect(mocks.getWorkItems).toHaveBeenLastCalledWith("p", "title", "desc", {
       cursor: "next",
+      signal: expect.any(AbortSignal),
     });
     expect(result.current.data?.hasPartialFailure).toBe(true);
     expect(result.current.hasNextPage).toBe(false);
@@ -506,6 +510,7 @@ describe("canonical unfiltered cursor traversal", () => {
     await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
     expect(mocks.getWorkItems).toHaveBeenLastCalledWith("p", "title", "asc", {
       cursor: undefined,
+      signal: expect.any(AbortSignal),
     });
     expect(result.current.data?.items.map((item) => item.id)).toEqual([
       "b",
@@ -530,7 +535,10 @@ describe("canonical unfiltered cursor traversal", () => {
     await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
     expect(
       mocks.getWorkItems.mock.calls.slice(1).map((call) => call[3]),
-    ).toEqual([{ cursor: "next" }, { cursor: "next" }]);
+    ).toEqual([
+      { cursor: "next", signal: expect.any(AbortSignal) },
+      { cursor: "next", signal: expect.any(AbortSignal) },
+    ]);
   });
   it.each([403, 404])(
     "hides cached rows after a fresh %s next-page denial",

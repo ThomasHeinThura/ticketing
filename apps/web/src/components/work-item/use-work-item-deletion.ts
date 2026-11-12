@@ -5,7 +5,7 @@ import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
-import { workItemMutationScope } from "./work-item-save";
+import { workItemMutationKey, workItemMutationScope } from "./work-item-save";
 
 /**
  * Shared pending-action request; no caller can turn a request into direct deletion. The
@@ -24,6 +24,8 @@ export function useWorkItemDeletion(
     () => setFailed(false),
   );
   const mutation = useMutation({
+    mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
     mutationFn: requestWorkItemDeletion,
   });

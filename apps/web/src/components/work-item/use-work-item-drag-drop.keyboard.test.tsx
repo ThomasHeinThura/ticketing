@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   children: vi.fn(),
 }));
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: () => {} },
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/fetchers/work-item/rank-work-item", () => ({

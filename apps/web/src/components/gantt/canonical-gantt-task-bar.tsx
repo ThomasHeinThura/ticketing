@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import { GanttTaskBar } from "@/components/gantt/gantt-task-bar";
 import {
   currentWorkItemVersion,
+  settleWorkItemMutation,
+  useRefreshWorkItem,
+  workItemMutationKey,
   workItemMutationScope,
   writeWorkItemResponse,
 } from "@/components/work-item/work-item-save";
@@ -21,7 +24,14 @@ export function CanonicalGanttTaskBar(
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const permission = useWorkspacePermission(workspaceId, task.projectId);
+  const refresh = useRefreshWorkItem({
+    key: task.id,
+    projectId: task.projectId,
+    workspaceId,
+  });
   const save = useMutation({
+    mutationKey: workItemMutationKey(task.id),
+    meta: { workItemProjectId: task.projectId },
     scope: workItemMutationScope(task.id),
     mutationFn: async ({ start, end }: { start: Date; end: Date }) => {
       const updated = await updateWorkItem({
@@ -38,19 +48,8 @@ export function CanonicalGanttTaskBar(
         dueDate: updated.dueDate,
       });
     },
-    onSettled: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["work-items", task.projectId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["work-items", "detail", task.id],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["work-items", "activity", task.id],
-        }),
-      ]);
-    },
+    onSettled: () =>
+      settleWorkItemMutation(queryClient, task.id, refresh, { broad: true }),
   });
   return (
     <GanttTaskBar

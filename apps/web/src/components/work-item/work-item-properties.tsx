@@ -206,13 +206,16 @@ function UnavailableRow({
 
 type TransitionInput = {
   toStateTemplateId: string;
+  toStateId: string;
   toStateName: string;
   toStateCategory?: WorkItemDetailRow["stateCategory"];
   note?: string;
+  snapshot?: OptimisticWorkItemSnapshot;
 };
 
 function transitionFields(input: TransitionInput) {
   return {
+    stateId: input.toStateId,
     stateName: input.toStateName,
     ...(input.toStateCategory ? { stateCategory: input.toStateCategory } : {}),
   };
@@ -236,9 +239,17 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   const offers = transitions.data ?? [];
   const transition = useMutation({
     mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
-    onMutate: (input: TransitionInput) =>
-      applyOptimisticWorkItemFields(queryClient, item, transitionFields(input)),
+    onMutate: (input: TransitionInput) => {
+      const snapshot = applyOptimisticWorkItemFields(
+        queryClient,
+        item,
+        transitionFields(input),
+      );
+      input.snapshot = snapshot;
+      return snapshot;
+    },
     mutationFn: async (input: TransitionInput) => {
       const result = await transitionWorkItem({
         key: item.key,
@@ -257,6 +268,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
             : {}),
         },
         expected,
+        input.snapshot,
       );
       return result;
     },
@@ -322,6 +334,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       setOpen(false);
       transition.mutate({
         toStateTemplateId: offer.toStateTemplateId,
+        toStateId: offer.toStateId,
         toStateName: offer.toStateName,
         toStateCategory: offer.toStateCategory,
       });
@@ -459,6 +472,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
                 setNote("");
                 transition.mutate({
                   toStateTemplateId: noteOffer.toStateTemplateId,
+                  toStateId: noteOffer.toStateId,
                   toStateName: noteOffer.toStateName,
                   toStateCategory: noteOffer.toStateCategory,
                   note: trimmed,
@@ -627,6 +641,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   const refresh = useRefreshWorkItem(item, { narrow: true });
   const assign = useMutation({
     mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
     onMutate: (variables: AssignInput) => {
       const snapshot = applyOptimisticWorkItemFields(
@@ -652,7 +667,14 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               expectedCurrentAssigneeId: expectedHolder,
             });
       const fields = assigneeFields(person);
-      writeWorkItemResponse(queryClient, item.key, result, fields, fields);
+      writeWorkItemResponse(
+        queryClient,
+        item.key,
+        result,
+        fields,
+        fields,
+        variables.snapshot,
+      );
       return result;
     },
     onSuccess: (_result, { person }) => {

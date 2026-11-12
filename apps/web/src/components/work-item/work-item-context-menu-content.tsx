@@ -48,8 +48,10 @@ import { useWorkItemDeletion } from "./use-work-item-deletion";
 import {
   cachedWorkItem,
   currentWorkItemVersion,
+  settleWorkItemMutation,
   useRefreshWorkItem,
   workItemDetailKey,
+  workItemMutationKey,
   workItemMutationScope,
   writeWorkItemResponse,
 } from "./work-item-save";
@@ -197,7 +199,11 @@ function CanonicalMenuActions({
     if (deletion.failed) toast.error(t("workItems:deletion.requestFailed"));
   }, [deletion.failed, t]);
   const mutation = useMutation({
+    mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
+    onSettled: () =>
+      settleWorkItemMutation(client, item.key, refresh, { broad: true }),
     mutationFn: async (command: Command) => {
       const current = cachedWorkItem(client, item);
       if (
@@ -228,7 +234,15 @@ function CanonicalMenuActions({
           key: item.key,
           toStateTemplateId: available.toStateTemplateId,
         });
-        writeWorkItemResponse(client, item.key, response, {});
+        writeWorkItemResponse(client, item.key, response, {
+          stateName: available.toStateName,
+          ...(available.toStateCategory
+            ? { stateCategory: available.toStateCategory }
+            : {}),
+          ...(response && typeof response === "object" && "stateId" in response
+            ? { stateId: (response as { stateId: string }).stateId }
+            : {}),
+        });
       } else if (command.kind === "assign") {
         const response =
           command.personId === null
@@ -244,6 +258,8 @@ function CanonicalMenuActions({
         writeWorkItemResponse(client, item.key, response, {
           assigneeId: command.personId,
           assigneeName: person?.name ?? null,
+          assigneeActive: person ? true : null,
+          assigneeOnProject: person ? true : null,
         });
       } else {
         await archiveWorkItem({
@@ -337,12 +353,6 @@ function CanonicalMenuActions({
         );
     } finally {
       busy.current = false;
-      try {
-        await refresh();
-      } catch {
-        if (lifecycle.isCurrent(intent))
-          toast.error(t("common:error.description"));
-      }
     }
   }
   function choosePerson(personId: string) {

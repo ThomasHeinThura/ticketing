@@ -23,7 +23,9 @@ import type { WorkItemDetailRow } from "@/types/work-item";
 import { useWorkItemFeedback } from "./work-item-feedback";
 import {
   currentWorkItemVersion,
+  settleWorkItemMutation,
   useRefreshWorkItem,
+  workItemMutationKey,
   workItemMutationScope,
   writeWorkItemResponse,
 } from "./work-item-save";
@@ -75,6 +77,8 @@ export default function WorkItemParentControl({
       onAccessLost();
   }, [hierarchy.error, onAccessLost]);
   const mutation = useMutation({
+    mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
     mutationFn: (parentKey: string | null) =>
       setWorkItemParent({
@@ -89,21 +93,19 @@ export default function WorkItemParentControl({
       clearConflict();
       announce(t("workItems:parent.saved"));
       setOpen(false);
-      await Promise.all([
-        refresh(),
-        client.invalidateQueries({ queryKey: ["work-items", "hierarchy"] }),
-      ]);
+      await client.invalidateQueries({ queryKey: ["work-items", "hierarchy"] });
     },
+    onSettled: () =>
+      settleWorkItemMutation(client, item.key, refresh, { broad: true }),
     onError: (failure) => {
       if (failure instanceof WorkItemVersionConflictError) {
         reportConflict();
         setError(t("workItems:parent.conflict"));
-        void refresh();
       } else if (failure instanceof HttpError && failure.status === 404) {
         // Either end may have disappeared; check the subject rather than hiding
         // a still-reachable item because the proposed parent was removed.
         setError(t("workItems:parent.unavailable"));
-        void Promise.all([refresh(), hierarchy.refetch(), candidate.refetch()]);
+        void Promise.all([hierarchy.refetch(), candidate.refetch()]);
       } else {
         setError(
           failure instanceof HttpError

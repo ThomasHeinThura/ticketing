@@ -21,7 +21,12 @@ import { toast } from "@/lib/toast";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import { PropertyRadioMenu } from "./property-radio-menu";
 import { propertyTriggerProps } from "./work-item-property-row";
-import { useRefreshWorkItem, workItemMutationScope } from "./work-item-save";
+import {
+  settleWorkItemMutation,
+  useRefreshWorkItem,
+  workItemMutationKey,
+  workItemMutationScope,
+} from "./work-item-save";
 
 type Option = { id: string; label: string };
 
@@ -109,14 +114,17 @@ function EstimateRow({ item, compact }: RowProps) {
       !(error instanceof FeatureDisabledError) && count < 2,
   });
   const save = useMutation({
+    mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
     mutationFn: (pointId: string | null) =>
       setWorkItemEstimate(item.key, pointId),
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: ["agile"] });
-      await refresh();
     },
     onError: () => toast.error(t("properties.agile.saveFailed")),
+    onSettled: () =>
+      settleWorkItemMutation(cache, item.key, refresh, { broad: true }),
   });
   if (!scale.data?.system) return null;
   const rollup = current.data?.rollup;
@@ -170,13 +178,16 @@ function CycleRow({ item, compact }: RowProps) {
   });
   const currentId = agileFieldsOf(item).cycleId;
   const save = useMutation({
+    mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
     mutationFn: (cycleId: string | null) => setWorkItemCycle(item.key, cycleId),
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: ["agile"] });
-      await refresh();
     },
     onError: () => toast.error(t("properties.agile.saveFailed")),
+    onSettled: () =>
+      settleWorkItemMutation(cache, item.key, refresh, { broad: true }),
   });
   const list = cycles.data?.data ?? [];
   const current = list.find((cycle) => cycle.id === currentId);
@@ -215,14 +226,17 @@ function ModuleRow({ item, compact }: RowProps) {
   });
   const currentId = agileFieldsOf(item).moduleId;
   const save = useMutation({
+    mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
     mutationFn: (moduleId: string | null) =>
       setWorkItemModule(item.key, moduleId),
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: ["agile"] });
-      await refresh();
     },
     onError: () => toast.error(t("properties.agile.saveFailed")),
+    onSettled: () =>
+      settleWorkItemMutation(cache, item.key, refresh, { broad: true }),
   });
   const list = modules.data?.data ?? [];
   const current = list.find((module) => module.id === currentId);

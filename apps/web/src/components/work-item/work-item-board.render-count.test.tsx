@@ -65,7 +65,10 @@ vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
 vi.mock("react-i18next", () => {
   probe.t = (key: string, options?: object) =>
     translate(key, options as Record<string, unknown>);
-  return { useTranslation: () => ({ t: probe.t }) };
+  return {
+    useTranslation: () => ({ t: probe.t }),
+    initReactI18next: { type: "3rdParty", init: () => {} },
+  };
 });
 
 const states = ["s-1", "s-2", "s-3", "s-4"].map((id, index) => ({

@@ -63,7 +63,9 @@ import {
 } from "./open-children-warning";
 import {
   currentWorkItemVersion,
-  workItemDetailKey,
+  settleWorkItemMutation,
+  useRefreshWorkItem,
+  workItemMutationKey,
   workItemMutationScope,
   writeWorkItemResponse,
 } from "./work-item-save";
@@ -131,6 +133,7 @@ export default function WorkItemInlineFields({
 }: Props) {
   const { t } = useTranslation();
   const client = useQueryClient();
+  const refresh = useRefreshWorkItem(item);
   const permission = useWorkspacePermission(item.workspaceId, item.projectId);
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
   const mutable =
@@ -227,6 +230,8 @@ export default function WorkItemInlineFields({
   const childrenGuard = useOpenChildrenGuard();
 
   const mutation = useMutation({
+    mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
     mutationFn: async (command: Command) => {
       if (command.kind === "state") {
@@ -237,6 +242,9 @@ export default function WorkItemInlineFields({
         });
         writeWorkItemResponse(client, item.key, response, {
           stateName: command.offer.toStateName,
+          ...(command.offer.toStateCategory
+            ? { stateCategory: command.offer.toStateCategory }
+            : {}),
           ...(response && typeof response === "object" && "stateId" in response
             ? { stateId: (response as { stateId: string }).stateId }
             : {}),
@@ -294,6 +302,8 @@ export default function WorkItemInlineFields({
       writeWorkItemResponse(client, item.key, response, {
         assigneeId: command.person?.personId ?? null,
         assigneeName: command.person?.name ?? null,
+        assigneeActive: command.person ? true : null,
+        assigneeOnProject: command.person ? true : null,
       });
     },
     onSuccess: async () => {
@@ -309,16 +319,6 @@ export default function WorkItemInlineFields({
       setNoteFor(null);
       setNote("");
       setConfirmation(undefined);
-      await Promise.all([
-        client.invalidateQueries({ queryKey: ["work-items", item.projectId] }),
-        client.invalidateQueries({ queryKey: workItemDetailKey(item.key) }),
-        client.invalidateQueries({
-          queryKey: ["work-items", "transitions", item.key],
-        }),
-        client.invalidateQueries({
-          queryKey: ["work-items", "activity", item.key],
-        }),
-      ]);
       toast.success(t("workItems:journey.editSaved"));
     },
     onError: (mutationError, command) => {
@@ -330,9 +330,6 @@ export default function WorkItemInlineFields({
         setTitleEditing(false);
         setEditingCustomFieldKey(null);
         setCustomFieldDraft(null);
-        void client.invalidateQueries({
-          queryKey: ["work-items", item.projectId],
-        });
         return;
       }
       const message =
@@ -359,20 +356,11 @@ export default function WorkItemInlineFields({
           setEditingCustomFieldKey(null);
           setCustomFieldDraft(null);
         }
-        void client
-          .invalidateQueries({ queryKey: ["work-items", item.projectId] })
-          .then(() =>
-            client.invalidateQueries({
-              queryKey: workItemDetailKey(item.key),
-            }),
-          );
       }
-      void client.invalidateQueries({
-        queryKey: ["work-items", item.projectId],
-      });
     },
     onSettled: () => {
       dispatching.current = false;
+      settleWorkItemMutation(client, item.key, refresh, { broad: true });
     },
   });
 

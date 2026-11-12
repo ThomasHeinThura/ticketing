@@ -13272,6 +13272,9 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
+				"listChanged": {
+					"type": "string"
+				},
 				"relations": {
 					"type": "object",
 					"additionalProperties": false,
@@ -16308,6 +16311,7 @@
 				}
 			},
 			"required": [
+				"listChanged",
 				"relations",
 				"parent",
 				"hierarchy",

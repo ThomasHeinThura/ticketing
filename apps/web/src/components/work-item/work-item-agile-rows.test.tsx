@@ -1,4 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useMutation,
+} from "@tanstack/react-query";
+import { Button } from "@taskdesk/ui";
 import {
   cleanup,
   fireEvent,
@@ -9,6 +14,11 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemAgileRows from "./work-item-agile-rows";
+import {
+  settleWorkItemMutation,
+  workItemMutationKey,
+  workItemMutationScope,
+} from "./work-item-save";
 
 const mocks = vi.hoisted(() => ({
   canUpdate: true,
@@ -44,10 +54,6 @@ vi.mock("@/fetchers/agile", () => ({
   setWorkItemEstimate: vi.fn(),
   setWorkItemModule: vi.fn(),
 }));
-vi.mock("./work-item-save", () => ({
-  useRefreshWorkItem: () => vi.fn(),
-  workItemMutationScope: (key: string) => ({ id: `work-item:${key}` }),
-}));
 vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn() } }));
 
 const item = {
@@ -75,6 +81,96 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("WorkItemAgileRows", () => {
+  it("settles a state refusal and queued agile save once after the row unmounts", async () => {
+    let rejectState!: (error: Error) => void;
+    let resolveCycle!: () => void;
+    const state = new Promise<void>((_resolve, reject) => {
+      rejectState = reject;
+    });
+    const cycle = new Promise<void>((resolve) => {
+      resolveCycle = resolve;
+    });
+    mocks.setCycle.mockReturnValue(cycle);
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    function Harness() {
+      const mutation = useMutation({
+        mutationKey: workItemMutationKey(item.key),
+        scope: workItemMutationScope(item.key),
+        mutationFn: () => state,
+        onSettled: () =>
+          settleWorkItemMutation(client, item.key, () =>
+            client.invalidateQueries({ queryKey: ["detail-refresh"] }),
+          ),
+      });
+      return (
+        <>
+          <Button type="button" onClick={() => mutation.mutate()}>
+            state
+          </Button>
+          <WorkItemAgileRows item={item} compact={false} />
+        </>
+      );
+    }
+    const view = render(
+      <QueryClientProvider client={client}>
+        <Harness />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText("state"));
+    fireEvent.click(await screen.findByRole("button", { name: /Sprint 1/ }));
+    fireEvent.click(
+      await screen.findByRole("menuitemradio", { name: "Sprint 2" }),
+    );
+    view.unmount();
+    rejectState(new Error("refused"));
+    await waitFor(() => expect(mocks.setCycle).toHaveBeenCalledTimes(1));
+    expect(invalidate).not.toHaveBeenCalled();
+    resolveCycle();
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    await waitFor(() =>
+      expect(
+        invalidate.mock.calls.filter(
+          ([arg]) => arg?.queryKey?.[0] === "work-items",
+        ),
+      ).toHaveLength(5),
+    );
+  });
+
+  it("does not delay another item's refresh while one item remains pending", async () => {
+    const client = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+    let resolveFirst!: () => void;
+    const first = new Promise<void>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const firstRefresh = vi.fn();
+    const secondRefresh = vi.fn();
+    const create = (key: string, request: Promise<void>, refresh: () => void) =>
+      client
+        .getMutationCache()
+        .build(client, {
+          mutationKey: workItemMutationKey(key),
+          scope: workItemMutationScope(key),
+          mutationFn: () => request,
+          onSettled: () => settleWorkItemMutation(client, key, refresh),
+        })
+        .execute(undefined);
+    const running = create("HELP-7", first, firstRefresh);
+    await create("HELP-8", Promise.resolve(), secondRefresh);
+    expect(secondRefresh).toHaveBeenCalledTimes(1);
+    expect(firstRefresh).not.toHaveBeenCalled();
+    resolveFirst();
+    await running;
+    expect(firstRefresh).toHaveBeenCalledTimes(1);
+  });
+
   it("offers the cycles as a radio menu that moves with the arrow keys", async () => {
     renderRows();
     const trigger = await screen.findByRole("button", { name: /Sprint 1/ });

@@ -33,30 +33,79 @@ export function isWorkItemMutating(queryClient: QueryClient, key: string) {
   return queryClient.isMutating({ mutationKey: workItemMutationKey(key) }) > 0;
 }
 
+/** Skip outage probes while a project has a pending item write: cached rows may be optimistic. */
+export function isWorkItemProjectMutating(
+  queryClient: QueryClient,
+  projectId: string,
+) {
+  return queryClient
+    .getMutationCache()
+    .findAll({ status: "pending" })
+    .some((mutation) => {
+      const key = mutation.options.mutationKey;
+      if (
+        key?.[0] !== "work-items" ||
+        key[1] !== "mutate" ||
+        typeof key[2] !== "string"
+      )
+        return false;
+      return (
+        mutation.options.meta?.workItemProjectId === projectId ||
+        queryClient.getQueryData<WorkItemDetailRow>(workItemDetailKey(key[2]))
+          ?.projectId === projectId
+      );
+    });
+}
+
 /**
  * Runs `refresh` once this mutation finishes dispatching its terminal state, and only when
  * no other mutation for the same item is still pending or queued. `options.onSettled` runs
  * right before TanStack Query transitions `status` out of `"pending"`, so `MutationCache`
- * is observed for that exact transition before checking `queryClient.isMutating`.
+ * is observed for that exact transition before checking the shared mutation scope.
+ * A mixed queue retains the broadest requested refresh and registers only one listener.
  */
+const pendingRefreshes = new WeakMap<
+  QueryClient,
+  Map<string, { refresh: () => unknown; broad: boolean }>
+>();
+
 export function settleWorkItemMutation(
   queryClient: QueryClient,
   key: string,
   refresh: () => unknown,
-  { waitUntilIdle = false }: { waitUntilIdle?: boolean } = {},
+  { broad = false }: { broad?: boolean } = {},
 ) {
-  const mutationKey = workItemMutationKey(key);
+  let pending = pendingRefreshes.get(queryClient);
+  if (!pending) {
+    pending = new Map();
+    pendingRefreshes.set(queryClient, pending);
+  }
+  const existing = pending.get(key);
+  if (existing) {
+    if (broad && !existing.broad) {
+      existing.refresh = refresh;
+      existing.broad = true;
+    }
+    return;
+  }
+  const entry = { refresh, broad };
+  pending.set(key, entry);
+  const scopeId = workItemMutationScope(key).id;
   const unsubscribe = queryClient.getMutationCache().subscribe((event) => {
     if (
-      event.type === "updated" &&
-      (event.action.type === "success" || event.action.type === "error") &&
-      event.mutation.options.mutationKey?.[0] === mutationKey[0] &&
-      event.mutation.options.mutationKey?.[1] === mutationKey[1] &&
-      event.mutation.options.mutationKey?.[2] === mutationKey[2]
-    ) {
-      const idle = queryClient.isMutating({ mutationKey }) === 0;
-      if (idle || !waitUntilIdle) unsubscribe();
-      if (idle) void refresh();
+      event.type !== "updated" ||
+      event.mutation.options.scope?.id !== scopeId ||
+      (event.action.type !== "success" && event.action.type !== "error")
+    )
+      return;
+    const busy = queryClient
+      .getMutationCache()
+      .findAll({ status: "pending" })
+      .some((mutation) => mutation.options.scope?.id === scopeId);
+    if (!busy) {
+      unsubscribe();
+      pending.delete(key);
+      void entry.refresh();
     }
   });
 }
@@ -235,21 +284,54 @@ export function writeWorkItemResponse(
   response: unknown,
   fields: Partial<WorkItemDetail>,
   expectedOptimistic?: Partial<WorkItemDetail>,
+  snapshot?: OptimisticWorkItemSnapshot,
 ) {
   if (!response || typeof response !== "object") return;
   const version = (response as { version?: unknown }).version;
   if (typeof version !== "number") return;
   raiseVersionFloor(queryClient, key, version);
+  let applicableFields = fields;
+  if (!snapshot && !expectedOptimistic) {
+    const queued = queryClient
+      .getMutationCache()
+      .findAll({
+        mutationKey: workItemMutationKey(key),
+        status: "pending",
+      })
+      .map((mutation) => mutation.state.context)
+      .filter(isOptimisticSnapshot);
+    const applicable = { ...fields } as CachedRow;
+    for (const field of Object.keys(applicable)) {
+      const next = queued.find((entry) => field in entry.optimistic);
+      if (!next) continue;
+      (next.previous as CachedRow)[field] = applicable[field];
+      delete applicable[field];
+    }
+    applicableFields = applicable as Partial<WorkItemDetail>;
+  }
+  if (snapshot) {
+    const next = laterOptimisticWrites(queryClient, key, snapshot)[0];
+    if (
+      next &&
+      matchesOptimistic(next.previous as CachedRow, snapshot.optimistic)
+    ) {
+      for (const field of Object.keys(snapshot.optimistic)) {
+        if (field in fields)
+          (next.previous as CachedRow)[field] = (fields as CachedRow)[field];
+      }
+    }
+  }
   const canApply = (row: CachedRow) =>
-    !expectedOptimistic ||
-    Object.entries(expectedOptimistic).every(([field, written]) =>
-      isSameJson(row[field], written),
-    );
+    (!snapshot || !hasLaterOptimisticWrite(queryClient, key, snapshot)) &&
+    (!expectedOptimistic ||
+      Object.entries(expectedOptimistic).every(([field, written]) =>
+        isSameJson(row[field], written),
+      ));
   queryClient.setQueryData<WorkItemDetailRow>(workItemDetailKey(key), (old) => {
     if (!old) return old;
     const nextVersion = Math.max(old.version, version);
     const patch = canApply(old as unknown as CachedRow)
-      ? { ...fields, version: nextVersion }
+      ? { ...applicableFields, version: nextVersion }
       : { version: nextVersion };
     return mergeDetailFields(old, patch);
   });
@@ -262,7 +344,7 @@ export function writeWorkItemResponse(
                 ? Math.max(row.version, version)
                 : version;
             return canApply(row)
-              ? { ...row, ...fields, version: nextVersion }
+              ? { ...row, ...applicableFields, version: nextVersion }
               : { ...row, version: nextVersion };
           })
         : data,
@@ -278,7 +360,7 @@ export function writeWorkItemResponse(
  * is refreshed by the realtime event, or the next poll), and the labels are left alone.
  */
 export function useRefreshWorkItem(
-  item: WorkItemDetailRow,
+  item: Pick<WorkItemDetailRow, "key" | "projectId" | "workspaceId">,
   { narrow = false }: { narrow?: boolean } = {},
 ) {
   const queryClient = useQueryClient();
@@ -361,6 +443,35 @@ export function applyOptimisticWorkItemFields(
   return { optimistic, previous };
 }
 
+function laterOptimisticWrites(
+  queryClient: QueryClient,
+  key: string,
+  snapshot: OptimisticWorkItemSnapshot,
+) {
+  const mutations = queryClient.getMutationCache().findAll({
+    mutationKey: workItemMutationKey(key),
+    status: "pending",
+  });
+  const index = mutations.findIndex(
+    (mutation) => mutation.state.context === snapshot,
+  );
+  if (index < 0) return [];
+  const fields = Object.keys(snapshot.optimistic);
+  return mutations
+    .slice(index + 1)
+    .map((mutation) => mutation.state.context)
+    .filter(isOptimisticSnapshot)
+    .filter((later) => fields.some((field) => field in later.optimistic));
+}
+
+function hasLaterOptimisticWrite(
+  queryClient: QueryClient,
+  key: string,
+  snapshot: OptimisticWorkItemSnapshot,
+) {
+  return laterOptimisticWrites(queryClient, key, snapshot).length > 0;
+}
+
 function matchesOptimistic(
   row: CachedRow,
   optimistic: Partial<WorkItemDetail>,
@@ -393,21 +504,16 @@ export function rollbackOptimisticWorkItemFields(
   item: Pick<WorkItemDetailRow, "key" | "projectId">,
   snapshot: OptimisticWorkItemSnapshot,
 ) {
-  for (const pending of queryClient.getMutationCache().findAll({
-    mutationKey: workItemMutationKey(item.key),
-    status: "pending",
-  })) {
-    const queued = pending.state.context;
-    if (!isOptimisticSnapshot(queued) || queued === snapshot) continue;
+  const later = laterOptimisticWrites(queryClient, item.key, snapshot);
+  const queued = later[0];
+  if (queued) {
     const queuedPrev = queued.previous as CachedRow;
-    if (
-      Object.keys(snapshot.optimistic).every((field) => field in queuedPrev) &&
-      matchesOptimistic(queuedPrev, snapshot.optimistic)
-    ) {
+    if (matchesOptimistic(queuedPrev, snapshot.optimistic)) {
       for (const field of Object.keys(snapshot.optimistic)) {
         queuedPrev[field] = (snapshot.previous as CachedRow)[field];
       }
     }
+    return;
   }
   queryClient.setQueryData<WorkItemDetailRow>(
     workItemDetailKey(item.key),
@@ -462,6 +568,8 @@ export function useSaveWorkItemFields(
   const queryClient = useQueryClient();
   const refresh = useRefreshWorkItem(item);
   return useMutation({
+    mutationKey: workItemMutationKey(item.key),
+    meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
     mutationFn: async (fields: WorkItemFieldChange) => {
       const updated = await updateWorkItem({
@@ -482,18 +590,12 @@ export function useSaveWorkItemFields(
       writeWorkItemResponse(queryClient, item.key, updated, merged);
       return updated;
     },
-    onSuccess: () => {
-      onSuccess?.();
-      if (!isWorkItemMutating(queryClient, item.key)) {
-        void refresh();
-      } else {
-        settleWorkItemMutation(queryClient, item.key, refresh, {
-          waitUntilIdle: true,
-        });
-      }
-    },
+    onSuccess: () => onSuccess?.(),
     onError,
-    onSettled: (_data, _error, fields) => onSettled?.(fields),
+    onSettled: (_data, _error, fields) => {
+      onSettled?.(fields);
+      settleWorkItemMutation(queryClient, item.key, refresh, { broad: true });
+    },
   });
 }
 

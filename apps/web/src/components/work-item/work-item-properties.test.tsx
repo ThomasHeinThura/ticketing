@@ -1,5 +1,16 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useMutation,
+} from "@tanstack/react-query";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
@@ -9,6 +20,12 @@ import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import { WorkItemTransitionBlockedError } from "@/lib/work-item-transition-reasons";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemProperties from "./work-item-properties";
+import {
+  useSaveWorkItemFields,
+  workItemMutationKey,
+  workItemMutationScope,
+  writeWorkItemResponse,
+} from "./work-item-save";
 
 const mocks = vi.hoisted(() => ({
   labels: vi.fn(),
@@ -1751,6 +1768,95 @@ describe("optimistic state and assignee changes", () => {
     },
   );
 
+  it("preserves the newest state in an A/B/A burst when the first A is refused offline", async () => {
+    const first = deferred();
+    const second = deferred();
+    const third = deferred();
+    mocks.transition
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+      .mockReturnValueOnce(third.promise);
+    mocks.getWorkItem.mockRejectedValue(new TypeError("offline"));
+    mocks.getWorkItems.mockRejectedValue(new TypeError("offline"));
+    mocks.transitions = [offer("In progress"), offer("Review")];
+    const client = renderLive();
+    await chooseState(/In progress/);
+    await chooseState(/Review/);
+    await chooseState(/In progress/);
+    first.reject(new HttpError(403, "denied"));
+    await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(2));
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)?.stateName).toBe(
+      "In progress",
+    );
+    second.resolve({ key: "HELP-7", stateId: "state-review", version: 5 });
+    await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(3));
+    third.resolve({ key: "HELP-7", stateId: "state-in-progress", version: 6 });
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)?.stateName).toBe(
+      "In progress",
+    );
+    expect(listRow(client)?.stateName).toBe("In progress");
+  });
+
+  it("preserves the newest assignee in an A/B/A burst when the first A is refused offline", async () => {
+    const first = deferred();
+    const second = deferred();
+    const third = deferred();
+    mocks.assign
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+      .mockReturnValueOnce(third.promise);
+    mocks.getWorkItem.mockRejectedValue(new TypeError("offline"));
+    mocks.getWorkItems.mockRejectedValue(new TypeError("offline"));
+    mocks.people = [
+      { personId: "person-1", name: "Riley Fox" },
+      { personId: "person-2", name: "Casey Ray" },
+    ];
+    const client = renderLive();
+    await chooseAssignee(/Riley Fox/);
+    await chooseAssignee(/Casey Ray/, true);
+    await chooseAssignee(/Riley Fox/, true);
+    first.reject(new HttpError(403, "denied"));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledTimes(2));
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeId).toBe(
+      "person-1",
+    );
+    second.resolve({ key: "HELP-7", version: 5 });
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledTimes(3));
+    third.resolve({ key: "HELP-7", version: 6 });
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeId).toBe(
+      "person-1",
+    );
+    expect(listRow(client)?.assigneeId).toBe("person-1");
+  });
+
+  it("restores the confirmed state id in detail and list after the next state is refused offline", async () => {
+    const first = deferred();
+    const second = deferred();
+    mocks.transition
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    mocks.getWorkItem.mockRejectedValue(new TypeError("offline"));
+    mocks.getWorkItems.mockRejectedValue(new TypeError("offline"));
+    mocks.transitions = [offer("In progress"), offer("Review")];
+    const client = renderLive();
+    await chooseState(/In progress/);
+    await chooseState(/Review/);
+    first.resolve({ key: "HELP-7", stateId: "state-in-progress", version: 5 });
+    await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(2));
+    second.reject(new HttpError(403, "denied"));
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+      stateId: "state-in-progress",
+      stateName: "In progress",
+    });
+    expect(listRow(client)).toMatchObject({
+      stateId: "state-in-progress",
+      stateName: "In progress",
+    });
+  });
+
   it.each([
     ["first-refused-second-succeeds", "Review", "started"],
     ["first-succeeds-second-refused", "In progress", "started"],
@@ -2129,6 +2235,103 @@ describe("optimistic state and assignee changes", () => {
     expect(invalidate).not.toHaveBeenCalledWith({
       queryKey: ["work-items", "sla"],
     });
+  });
+
+  it("keeps a queued detail state when an earlier scoped writer returns the same fields", async () => {
+    const earlier = deferred();
+    const state = deferred();
+    mocks.transition.mockReturnValue(state.promise);
+    mocks.getWorkItem.mockRejectedValue(new TypeError("offline"));
+    mocks.getWorkItems.mockRejectedValue(new TypeError("offline"));
+    mocks.transitions = [offer("Review")];
+    const client = renderLive();
+    const hook = renderHook(
+      () =>
+        useMutation({
+          mutationKey: workItemMutationKey("HELP-7"),
+          scope: workItemMutationScope("HELP-7"),
+          mutationFn: async () => {
+            const response = await earlier.promise;
+            writeWorkItemResponse(client, "HELP-7", response, {
+              stateId: "state-first",
+              stateName: "In progress",
+              stateCategory: "started",
+            });
+          },
+        }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        ),
+      },
+    );
+    act(() => hook.result.current.mutate());
+    await chooseState(/Review/);
+    earlier.resolve({ version: 5 });
+    await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+      stateId: "state-Review",
+      stateName: "Review",
+    });
+    state.reject(new HttpError(403, "denied"));
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+      stateId: "state-first",
+      stateName: "In progress",
+    });
+    expect(listRow(client)).toMatchObject({
+      stateId: "state-first",
+      stateName: "In progress",
+    });
+  });
+
+  it("waits for a queued priority save before one refresh even after unmount", async () => {
+    const state = deferred();
+    const priority = deferred();
+    mocks.transition.mockReturnValue(state.promise);
+    mocks.update.mockReturnValue(priority.promise);
+    mocks.transitions = [offer("In progress")];
+    const client = renderLive();
+    const hook = renderHook(() => useSaveWorkItemFields(liveRow()), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    });
+    await chooseState(/In progress/);
+    act(() => hook.result.current.mutate({ priority: "low" }));
+    hook.unmount();
+    state.resolve({ key: "HELP-7", stateId: "state-In progress", version: 5 });
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1));
+    expect(mocks.getWorkItem).not.toHaveBeenCalled();
+    priority.resolve({ key: "HELP-7", priority: "low", version: 6 });
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    await waitFor(() => expect(mocks.getWorkItem).toHaveBeenCalledTimes(1));
+  });
+
+  it("waits for a refused state after a priority save before one refresh", async () => {
+    const priority = deferred();
+    const state = deferred();
+    mocks.update.mockReturnValue(priority.promise);
+    mocks.transition.mockReturnValue(state.promise);
+    mocks.getWorkItem.mockRejectedValue(new TypeError("offline"));
+    mocks.getWorkItems.mockRejectedValue(new TypeError("offline"));
+    mocks.transitions = [offer("In progress")];
+    const client = renderLive();
+    const hook = renderHook(() => useSaveWorkItemFields(liveRow()), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    });
+    act(() => hook.result.current.mutate({ priority: "low" }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1));
+    await chooseState(/In progress/);
+    priority.resolve({ key: "HELP-7", priority: "low", version: 5 });
+    await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
+    expect(mocks.getWorkItem).not.toHaveBeenCalled();
+    state.reject(new HttpError(403, "denied"));
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    await waitFor(() => expect(mocks.getWorkItem).toHaveBeenCalledTimes(1));
+    expect(mocks.getWorkItems).toHaveBeenCalledTimes(1);
   });
 
   it("fires exactly one settle refetch after a burst of queued changes", async () => {

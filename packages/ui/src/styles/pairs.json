@@ -83295,6 +83295,23 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/work-item/work-list-changed-notice.tsx:WorkListChangedNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/backlog.tsx:ProjectBacklogRoute",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/backlog.tsx:/_layout/_authenticated/agent/projects/$projectKey/backlog",
