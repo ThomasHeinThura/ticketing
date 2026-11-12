@@ -81,10 +81,12 @@ import WorkItemImportOrigin from "./work-item-import-origin";
 import WorkItemParentControl from "./work-item-parent-control";
 import { propertyTriggerProps } from "./work-item-property-row";
 import {
+  rollbackOptimisticWorkItemFields,
   useRefreshWorkItem,
   useSaveWorkItemFields,
   workItemDetailKey,
   workItemMutationScope,
+  writeOptimisticWorkItemFields,
   writeWorkItemResponse,
 } from "./work-item-save";
 import UnavailableField from "./work-item-unavailable-field";
@@ -196,6 +198,33 @@ function UnavailableRow({
   );
 }
 
+/** One chosen state change: what the server needs, and what the screen shows meanwhile. */
+type TransitionInput = {
+  toStateTemplateId: string;
+  toStateName: string;
+  toStateId?: string;
+  toStateCategory?: string;
+  note?: string;
+};
+
+function transitionInput(
+  offer: {
+    toStateTemplateId: string;
+    toStateName: string;
+    toStateId?: string;
+    toStateCategory?: string;
+  },
+  note?: string,
+): TransitionInput {
+  return {
+    toStateTemplateId: offer.toStateTemplateId,
+    toStateName: offer.toStateName,
+    toStateId: offer.toStateId,
+    toStateCategory: offer.toStateCategory,
+    note,
+  };
+}
+
 function StateControl({ item, compact, onAccessLost }: ControlProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -203,7 +232,6 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   const [open, setOpen] = useState(false);
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [error, setError] = useState("");
   // The note step needs the chosen offer after the menu has closed.
   const transitions = useGetWorkItemTransitions({
     key: item.key,
@@ -211,15 +239,21 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   });
   const triggerRef = useRef<HTMLButtonElement>(null);
   useAccessLostOnQueryError(transitions.error, onAccessLost);
-  const refresh = useRefreshWorkItem(item);
+  const refresh = useRefreshWorkItem(item, { narrow: true });
   const offers = transitions.data ?? [];
   const transition = useMutation({
     scope: workItemMutationScope(item.key),
-    mutationFn: async (input: {
-      toStateTemplateId: string;
-      note?: string;
-      toStateName: string;
-    }) => {
+    // D-1: the chosen state shows at once; the server still runs every rule, and a refusal
+    // puts the old state back (see `onError`).
+    onMutate: (input: TransitionInput) =>
+      writeOptimisticWorkItemFields(queryClient, item, {
+        stateName: input.toStateName,
+        ...(input.toStateId ? { stateId: input.toStateId } : {}),
+        ...(input.toStateCategory
+          ? { stateCategory: input.toStateCategory }
+          : {}),
+      }),
+    mutationFn: async (input: TransitionInput) => {
       const result = await transitionWorkItem({
         key: item.key,
         toStateTemplateId: input.toStateTemplateId,
@@ -233,34 +267,28 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       });
       return result;
     },
-    onSuccess: async (_result, input) => {
-      setOpen(false);
-      setNoteFor(null);
-      setNote("");
-      setError("");
+    onSuccess: (_result, input) => {
       announce(
         t("workItems:journey.transitionDone", { state: input.toStateName }),
       );
-      await refresh();
+      void refresh();
     },
-    onError: async (mutationError) => {
+    onError: (mutationError, _input, optimistic) => {
+      if (optimistic)
+        rollbackOptimisticWorkItemFields(queryClient, item, optimistic);
       if (isWorkItemAccessLost(mutationError)) {
         onAccessLost();
         return;
       }
-      // Back to the offers, which show the error and the server's current moves.
-      setNoteFor(null);
-      setNote("");
-      setOpen(true);
-      setError(
+      toast.error(
         mutationError instanceof HttpError && mutationError.status === 409
           ? t("workItems:journey.transitionConflict")
           : mutationError instanceof HttpError && mutationError.status === 422
             ? t("workItems:journey.transitionUnavailable")
             : t("workItems:journey.saveError"),
       );
-      // The offers may have changed under us; show the server's current ones.
-      await refresh();
+      // The offers may have changed under us, and the server's value wins over the cache.
+      void refresh();
     },
   });
   const { canTransitionTasks } = useWorkspacePermission(
@@ -282,7 +310,6 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       (!offer.available && !onlyNote)
     )
       return;
-    setError("");
     // `RH-10`/`WI-18`: closing a parent that still has open children asks first (and never
     // closes the children). Not asked again for the note step: the move is already chosen.
     const proceed = () => {
@@ -293,18 +320,14 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
         setNoteFor(offer.transitionId);
         return;
       }
+      // The menu closes at once; the chosen state shows while the server decides.
+      setOpen(false);
       dispatching.current = true;
-      transition.mutate(
-        {
-          toStateTemplateId: offer.toStateTemplateId,
-          toStateName: offer.toStateName,
+      transition.mutate(transitionInput(offer), {
+        onSettled: () => {
+          dispatching.current = false;
         },
-        {
-          onSettled: () => {
-            dispatching.current = false;
-          },
-        },
-      );
+      });
     };
     void childrenGuard.guard({
       key: item.key,
@@ -354,18 +377,11 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   return (
     <>
       {/* The moves are menu items (arrow keys, typeahead, Escape, focus back to the
-          trigger). A move stays open until the server answers, as Kaneo's popover did. */}
-      <DropdownMenu
-        open={open}
-        modal={false}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) setError("");
-        }}
-      >
+          trigger). A chosen move closes the menu at once and shows its state; a refusal
+          comes back as a toast. */}
+      <DropdownMenu open={open} modal={false} onOpenChange={setOpen}>
         <DropdownMenuTrigger render={trigger} />
         <DropdownMenuContent className="w-64" align="start">
-          {error ? <InlineMessage>{error}</InlineMessage> : null}
           {transitions.isLoading ? (
             <p className="p-2 text-muted-foreground text-sm" role="status">
               {t("common:empty.loading")}
@@ -435,11 +451,13 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
               className="flex flex-col gap-2 p-2"
               onSubmit={(event) => {
                 event.preventDefault();
-                transition.mutate({
-                  toStateTemplateId: noteOffer.toStateTemplateId,
-                  toStateName: noteOffer.toStateName,
-                  note: note.trim() || undefined,
-                });
+                const input = transitionInput(
+                  noteOffer,
+                  note.trim() || undefined,
+                );
+                setNoteFor(null);
+                setNote("");
+                transition.mutate(input);
               }}
             >
               <p className="font-medium text-sm">{noteOffer.toStateName}</p>
@@ -568,6 +586,22 @@ function PriorityControl({ item, compact, onAccessLost }: ControlProps) {
   );
 }
 
+type ChosenAssignee = { personId: string; name: string | null } | null;
+
+/** One assignment: who is chosen (`null` clears it) and the holder the screen showed. */
+type AssignInput = { person: ChosenAssignee; holder: string | null };
+
+/** The assignee fields a change writes. The picker only offers active people on the project
+ * roster (AS-5), so a chosen person is active and on the project. */
+function assigneeFields(person: ChosenAssignee) {
+  return {
+    assigneeId: person?.personId ?? null,
+    assigneeName: person?.name ?? null,
+    assigneeActive: person ? true : null,
+    assigneeOnProject: person ? true : null,
+  };
+}
+
 function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -575,7 +609,6 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   const [open, setOpen] = useState(false);
   // `AS-3`: taking work already held by someone else needs an explicit second step.
   const [confirmFor, setConfirmFor] = useState<string | null>(null);
-  const [error, setError] = useState("");
   // A confirmation was for the holder the screen showed; if the holder moves, it lapses.
   const [seenHolder, setSeenHolder] = useState(item.assigneeId);
   if (seenHolder !== item.assigneeId) {
@@ -587,16 +620,14 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     enabled: open,
   });
   useAccessLostOnQueryError(people.error, onAccessLost);
-  const refresh = useRefreshWorkItem(item);
+  const refresh = useRefreshWorkItem(item, { narrow: true });
   const assign = useMutation({
     scope: workItemMutationScope(item.key),
-    mutationFn: async ({
-      person,
-      holder,
-    }: {
-      person: { personId: string; name: string | null } | null;
-      holder: string | null;
-    }) => {
+    // D-1: the chosen person shows at once; the server still checks the holder
+    // (`expectedCurrentAssigneeId`), and a refusal puts the old assignee back.
+    onMutate: ({ person }: AssignInput) =>
+      writeOptimisticWorkItemFields(queryClient, item, assigneeFields(person)),
+    mutationFn: async ({ person, holder }: AssignInput) => {
       const result =
         person === null
           ? await unassignWorkItem(item.key, holder)
@@ -605,19 +636,15 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               assigneeId: person.personId,
               expectedCurrentAssigneeId: holder,
             });
-      writeWorkItemResponse(queryClient, item.key, result, {
-        assigneeId: person?.personId ?? null,
-        assigneeName: person?.name ?? null,
-        // The picker only offers active people on the project roster (AS-5).
-        assigneeActive: person ? true : null,
-        assigneeOnProject: person ? true : null,
-      });
+      writeWorkItemResponse(
+        queryClient,
+        item.key,
+        result,
+        assigneeFields(person),
+      );
       return result;
     },
-    onSuccess: async (_result, { person }) => {
-      setOpen(false);
-      setConfirmFor(null);
-      setError("");
+    onSuccess: (_result, { person }) => {
       announce(
         person === null
           ? t("workItems:journey.unassignDone")
@@ -625,24 +652,24 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               name: person.name ?? t("workItems:journey.unnamedPerson"),
             }),
       );
-      await refresh();
+      void refresh();
     },
-    onError: async (mutationError, { person }) => {
-      setConfirmFor(null);
+    onError: (mutationError, { person }, optimistic) => {
+      if (optimistic)
+        rollbackOptimisticWorkItemFields(queryClient, item, optimistic);
       if (isWorkItemAccessLost(mutationError)) {
         onAccessLost();
         return;
       }
-      setError(
+      toast.error(
         mutationError instanceof HttpError && mutationError.status === 409
           ? t("workItems:journey.assignmentConflict")
           : person === null
             ? t("workItems:journey.unassignmentError")
             : t("workItems:journey.assignmentError"),
       );
-      await queryClient.invalidateQueries({
-        queryKey: workItemDetailKey(item.key),
-      });
+      // The server's assignee wins over the cache.
+      void refresh();
     },
   });
   const { canUpdateTasks, canAssignTasks } = useWorkspacePermission(
@@ -692,9 +719,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
         list.some((person) => person.personId === item.assigneeId)));
   const confirmPerson = list.find((person) => person.personId === confirmFor);
   const dispatching = useRef(false);
-  const dispatchAssignment = (
-    person: { personId: string; name: string | null } | null,
-  ) => {
+  const dispatchAssignment = (person: ChosenAssignee) => {
     if (
       !canEdit ||
       assign.isPending ||
@@ -702,6 +727,9 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       (person === null && !canUnassign)
     )
       return;
+    // The picker closes at once; the chosen person shows while the server decides.
+    setOpen(false);
+    setConfirmFor(null);
     dispatching.current = true;
     assign.mutate(
       { person, holder: item.assigneeId },
@@ -721,7 +749,6 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       (person === null && !canUnassign)
     )
       return;
-    setError("");
     if (person && item.assigneeId && item.assigneeId !== person.personId) {
       setConfirmFor(person.personId);
       return;
@@ -752,15 +779,11 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) {
-          setConfirmFor(null);
-          setError("");
-        }
+        if (!next) setConfirmFor(null);
       }}
     >
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
-        {error ? <InlineMessage>{error}</InlineMessage> : null}
         {confirmPerson ? (
           <div className="flex flex-col gap-2 p-2" role="alert">
             <p className="font-medium text-sm">

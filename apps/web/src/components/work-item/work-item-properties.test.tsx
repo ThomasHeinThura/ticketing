@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   unassign: vi.fn(),
   children: vi.fn(),
   toastError: vi.fn(),
+  /** The detail read the optimistic-change tests refetch through. */
+  reload: vi.fn(),
   canUpdate: true,
   canAssign: true,
   canTransition: true,
@@ -137,6 +143,7 @@ beforeEach(() => {
     mocks.unassign,
     mocks.children,
     mocks.toastError,
+    mocks.reload,
   ]) {
     fn.mockReset();
   }
@@ -517,9 +524,11 @@ describe("WorkItemProperties", () => {
     fireEvent.click(
       await screen.findByRole("menuitem", { name: /In progress/ }),
     );
-    expect(
-      await screen.findByText("workItems:journey.transitionUnavailable"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "workItems:journey.transitionUnavailable",
+      ),
+    );
   });
 
   it("disables an unavailable transition even when it gives no reason", async () => {
@@ -1302,4 +1311,410 @@ it("P6-R1-04: flags a stale source link and never links a non-http(s) URL", () =
   expect(origin).toHaveAttribute("data-stale", "true");
   expect(origin).toHaveTextContent("workItems:properties.importedFromStale");
   expect(screen.queryByRole("link", { name: /openSource/ })).toBeNull();
+});
+
+// D-1: a chosen state or assignee shows at once and goes back if the server refuses.
+describe("optimistic state and assignee changes", () => {
+  const detailKey = ["work-items", "detail", "HELP-7"] as const;
+  const projectList = ["work-items", "p1", "list", "position", "asc"] as const;
+
+  function deferred<T = unknown>() {
+    let resolve!: (value: T) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  }
+
+  function liveRow(overrides: Partial<WorkItemDetailRow> = {}) {
+    return item({
+      number: 7,
+      stateId: "state-todo",
+      ...overrides,
+    } as Partial<WorkItemDetailRow>);
+  }
+
+  function offer(name: string) {
+    return {
+      transitionId: `t-${name}`,
+      toStateTemplateId: `tpl-${name}`,
+      toStateId: `state-${name}`,
+      toStateName: name,
+      toStateCategory: "started",
+      notePolicy: "none",
+      available: true,
+      blockedBy: [],
+    };
+  }
+
+  function listData(...keys: string[]) {
+    return {
+      pageParams: [undefined],
+      pages: [
+        {
+          hasMore: false,
+          hasPartialFailure: false,
+          items: keys.map((key) => ({
+            id: `id-${key}`,
+            key,
+            stateId: "state-todo",
+            stateName: "To do",
+            stateCategory: "unstarted",
+            assigneeId: null,
+            assigneeName: null,
+          })),
+        },
+      ],
+    };
+  }
+
+  function listRow(client: QueryClient, queryKey: readonly unknown[]) {
+    const data = client.getQueryData<ReturnType<typeof listData>>(queryKey);
+    return data?.pages[0]?.items.find((row) => row.key === "HELP-7");
+  }
+
+  /** The detail the screen reads from the cache, as the work-item page does. */
+  function Live({ onAccessLost }: { onAccessLost: () => void }) {
+    const { data } = useQuery<WorkItemDetailRow>({
+      queryKey: detailKey,
+      queryFn: () => mocks.reload(),
+      staleTime: Number.POSITIVE_INFINITY,
+    });
+    return data ? (
+      <WorkItemProperties item={data} onAccessLost={onAccessLost} />
+    ) : null;
+  }
+
+  function renderLive(seed: WorkItemDetailRow, onAccessLost = vi.fn()) {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    client.setQueryData(detailKey, seed);
+    render(
+      <QueryClientProvider client={client}>
+        <Live onAccessLost={onAccessLost} />
+      </QueryClientProvider>,
+    );
+    return client;
+  }
+
+  async function chooseState(name: RegExp) {
+    fireEvent.click(screen.getByTestId("work-item-state-control"));
+    fireEvent.click(await screen.findByRole("menuitem", { name }));
+  }
+
+  it("shows the new state and closes the menu before the server answers", async () => {
+    const server = deferred();
+    mocks.transition.mockReturnValue(server.promise);
+    mocks.reload.mockReturnValue(new Promise(() => {}));
+    mocks.transitions = [offer("In progress")];
+    const client = renderLive(liveRow());
+    client.setQueryData(projectList, listData("HELP-7", "HELP-8"));
+    await chooseState(/In progress/);
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+        "In progress",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(mocks.transition).toHaveBeenCalledTimes(1);
+    // The server has not confirmed: the version is still the one it last reported.
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+      stateId: "state-In progress",
+      stateCategory: "started",
+      version: 4,
+    });
+    expect(listRow(client, projectList)).toMatchObject({
+      stateName: "In progress",
+      stateId: "state-In progress",
+    });
+    server.resolve({ key: "HELP-7", version: 5 });
+  });
+
+  it("does not hold the change open while the reloads run", async () => {
+    mocks.transition.mockResolvedValue({
+      key: "HELP-7",
+      version: 5,
+      stateId: "state-In progress",
+    });
+    const reload = deferred<WorkItemDetailRow>();
+    mocks.reload.mockReturnValue(reload.promise);
+    mocks.transitions = [offer("In progress")];
+    const client = renderLive(liveRow());
+    await chooseState(/In progress/);
+    await waitFor(() => expect(mocks.reload).toHaveBeenCalled());
+    // The refetch is still pending, yet the change has finished and the value shows.
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+      "In progress",
+    );
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByTestId("work-item-status")).toHaveTextContent(
+      "workItems:journey.transitionDone",
+    );
+    reload.resolve(liveRow({ stateName: "In progress", version: 5 }));
+  });
+
+  it.each([
+    [409, "workItems:journey.transitionConflict", "Review"],
+    [403, "workItems:journey.saveError", "To do"],
+    [422, "workItems:journey.transitionUnavailable", "To do"],
+  ])(
+    "puts the state back on a %i, explains it in a toast and shows the server's value",
+    async (status, message, serverState) => {
+      const server = deferred();
+      mocks.transition.mockReturnValue(server.promise);
+      mocks.reload.mockResolvedValue(
+        liveRow({ stateName: serverState, version: 6 }),
+      );
+      mocks.transitions = [offer("In progress")];
+      const client = renderLive(liveRow());
+      client.setQueryData(projectList, listData("HELP-7"));
+      await chooseState(/In progress/);
+      await waitFor(() =>
+        expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+          "In progress",
+        ),
+      );
+      server.reject(new HttpError(status, "refused"));
+      await waitFor(() =>
+        expect(mocks.toastError).toHaveBeenCalledWith(message),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+          serverState,
+        ),
+      );
+      expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+        stateId: "state-todo",
+      });
+      expect(listRow(client, projectList)).toMatchObject({
+        stateName: "To do",
+        stateId: "state-todo",
+      });
+      expect(screen.queryByRole("menu")).toBeNull();
+    },
+  );
+
+  it("treats a 404 on a state change as access lost, without a toast", async () => {
+    mocks.transition.mockRejectedValue(new HttpError(404, "gone"));
+    mocks.reload.mockResolvedValue(liveRow());
+    mocks.transitions = [offer("In progress")];
+    const onAccessLost = vi.fn();
+    renderLive(liveRow(), onAccessLost);
+    await chooseState(/In progress/);
+    await waitFor(() => expect(onAccessLost).toHaveBeenCalledTimes(1));
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+      "To do",
+    );
+  });
+
+  it("leaves a note step to the server: the note popover closes, a refusal is a toast", async () => {
+    const server = deferred();
+    mocks.transition.mockReturnValue(server.promise);
+    mocks.reload.mockResolvedValue(liveRow());
+    mocks.transitions = [{ ...offer("Review"), notePolicy: "required" }];
+    renderLive(liveRow());
+    await chooseState(/Review/);
+    fireEvent.change(
+      await screen.findByLabelText("workItems:properties.transitionNote"),
+      { target: { value: "Ready for review" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:properties.move" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+        "Review",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText("workItems:properties.transitionNote"),
+      ).toBeNull(),
+    );
+    expect(mocks.transition).toHaveBeenCalledWith({
+      key: "HELP-7",
+      toStateTemplateId: "tpl-Review",
+      note: "Ready for review",
+    });
+    server.reject(new HttpError(422, "note refused"));
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "workItems:journey.transitionUnavailable",
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+        "To do",
+      ),
+    );
+  });
+
+  it("reloads only the item, its activity, its SLA and the lists that show it on a state change", async () => {
+    mocks.transition.mockResolvedValue({ key: "HELP-7", version: 5 });
+    mocks.reload.mockReturnValue(new Promise(() => {}));
+    mocks.transitions = [offer("In progress")];
+    const client = renderLive(liveRow());
+    const showsItem = projectList;
+    const withoutItem = ["work-items", "p1", "list", "title", "asc"] as const;
+    const otherSla = ["work-items", "sla", "HELP-9"] as const;
+    const labels = ["labels", "w1", "work-items", "HELP-7"] as const;
+    client.setQueryData(showsItem, listData("HELP-7", "HELP-8"));
+    client.setQueryData(withoutItem, listData("HELP-8"));
+    client.setQueryData(otherSla, { state: "ok" });
+    client.setQueryData(labels, []);
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    await chooseState(/In progress/);
+    await waitFor(() =>
+      expect(client.getQueryState(showsItem)?.isInvalidated).toBe(true),
+    );
+    expect(client.getQueryState(detailKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(withoutItem)?.isInvalidated).toBe(false);
+    expect(client.getQueryState(otherSla)?.isInvalidated).toBe(false);
+    expect(client.getQueryState(labels)?.isInvalidated).toBe(false);
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: ["work-items", "p1"],
+    });
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: ["work-items", "sla"],
+    });
+  });
+
+  it("shows the new assignee and closes the picker before the server answers", async () => {
+    const server = deferred();
+    mocks.assign.mockReturnValue(server.promise);
+    mocks.reload.mockReturnValue(new Promise(() => {}));
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const client = renderLive(liveRow());
+    client.setQueryData(projectList, listData("HELP-7"));
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-assignee-control"),
+      ).toHaveTextContent("Casey Ray"),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "workItems:detail.unassigned" }),
+      ).toBeNull(),
+    );
+    expect(mocks.assign).toHaveBeenCalledWith({
+      key: "HELP-7",
+      assigneeId: "person-2",
+      expectedCurrentAssigneeId: null,
+    });
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+      assigneeId: "person-2",
+      assigneeName: "Casey Ray",
+      version: 4,
+    });
+    expect(listRow(client, projectList)).toMatchObject({
+      assigneeId: "person-2",
+      assigneeName: "Casey Ray",
+    });
+    server.resolve({ key: "HELP-7", version: 5 });
+  });
+
+  it("shows an unassigned item at once and does not hold the picker for the reloads", async () => {
+    mocks.unassign.mockResolvedValue({ key: "HELP-7", version: 5 });
+    const reload = deferred<WorkItemDetailRow>();
+    mocks.reload.mockReturnValue(reload.promise);
+    mocks.people = [{ personId: "person-1", name: "Riley Fox" }];
+    const client = renderLive(
+      liveRow({ assigneeId: "person-1", assigneeName: "Riley Fox" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Riley Fox/ }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "workItems:detail.unassigned",
+      }),
+    );
+    await waitFor(() => expect(mocks.reload).toHaveBeenCalled());
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "workItems:detail.unassigned",
+    );
+    expect(mocks.unassign).toHaveBeenCalledWith("HELP-7", "person-1");
+    reload.resolve(liveRow({ version: 5 }));
+  });
+
+  it.each([
+    [409, "workItems:journey.assignmentConflict"],
+    [403, "workItems:journey.assignmentError"],
+  ])(
+    "puts the assignee back on a %i and explains it in a toast",
+    async (status, message) => {
+      const server = deferred();
+      mocks.assign.mockReturnValue(server.promise);
+      mocks.reload.mockResolvedValue(liveRow());
+      mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+      const client = renderLive(liveRow());
+      client.setQueryData(projectList, listData("HELP-7"));
+      fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+      fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("work-item-assignee-control"),
+        ).toHaveTextContent("Casey Ray"),
+      );
+      server.reject(new HttpError(status, "refused"));
+      await waitFor(() =>
+        expect(mocks.toastError).toHaveBeenCalledWith(message),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("work-item-assignee-control"),
+        ).toHaveTextContent("workItems:detail.unassigned"),
+      );
+      expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+        assigneeId: null,
+        assigneeName: null,
+      });
+      expect(listRow(client, projectList)).toMatchObject({
+        assigneeId: null,
+        assigneeName: null,
+      });
+    },
+  );
+
+  it("keeps a newer server value when a change is refused after the cache moved on", async () => {
+    const server = deferred();
+    mocks.assign.mockReturnValue(server.promise);
+    mocks.reload.mockResolvedValue(
+      liveRow({ assigneeId: "person-3", assigneeName: "Sam Lee", version: 6 }),
+    );
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const client = renderLive(liveRow());
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-assignee-control"),
+      ).toHaveTextContent("Casey Ray"),
+    );
+    // A realtime refetch lands with someone else's assignment before the refusal.
+    client.setQueryData(
+      detailKey,
+      liveRow({ assigneeId: "person-3", assigneeName: "Sam Lee", version: 6 }),
+    );
+    server.reject(new HttpError(409, "holder changed"));
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "workItems:journey.assignmentConflict",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-assignee-control"),
+      ).toHaveTextContent("Sam Lee"),
+    );
+  });
 });

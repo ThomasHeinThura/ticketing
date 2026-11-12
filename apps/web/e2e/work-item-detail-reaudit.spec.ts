@@ -480,3 +480,86 @@ test("Escape in a create-dialog picker closes only the picker and keeps the draf
   await expect(title).toHaveValue("Draft kept across Escape");
   await expect(priority).toBeFocused();
 });
+
+/** D-1: one available move, "Review", for the status menu. */
+async function reviewMoveFixture(page: Page) {
+  await page.route(`**/api/work-items/${WORK_ITEM_KEY}/transitions`, (route) =>
+    route.fulfill({
+      json: [
+        {
+          transitionId: "transition-review",
+          toStateTemplateId: "template-review",
+          toStateName: "Review",
+          toStateId: "state-review",
+          toStateCategory: "started",
+          notePolicy: "none",
+          noteVisibility: "internal",
+          requiresApproval: false,
+          requiresCab: false,
+          isReopen: false,
+          available: true,
+          blockedBy: [],
+        },
+      ],
+    }),
+  );
+}
+
+test("a chosen state shows and its menu closes before the server answers", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await detailFixture(page);
+  await reviewMoveFixture(page);
+  let answer: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    answer = resolve;
+  });
+  await page.route(
+    `**/api/work-items/${WORK_ITEM_KEY}/transition`,
+    async (route) => {
+      await held;
+      await route.fulfill({
+        json: {
+          key: WORK_ITEM_KEY,
+          stateId: "state-review",
+          assigneeId: null,
+          resolvedAt: null,
+          version: 2,
+        },
+      });
+    },
+  );
+  await page.goto(`/agent/work-items/${WORK_ITEM_KEY}`);
+  const trigger = page.getByTestId("work-item-state-control");
+  await expect(trigger).toHaveText("Backlog");
+  try {
+    await trigger.click();
+    await page.getByRole("menuitem", { name: /Review/ }).click();
+    // The POST is still held: the new state is already shown and the menu is already gone.
+    await expect(trigger).toHaveText("Review");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  } finally {
+    answer();
+  }
+});
+
+test("a refused state change puts the old state back and says why in a toast", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await detailFixture(page);
+  await reviewMoveFixture(page);
+  await page.route(`**/api/work-items/${WORK_ITEM_KEY}/transition`, (route) =>
+    route.fulfill({ status: 409, json: { error: "state changed" } }),
+  );
+  await page.goto(`/agent/work-items/${WORK_ITEM_KEY}`);
+  const trigger = page.getByTestId("work-item-state-control");
+  await expect(trigger).toHaveText("Backlog");
+  await trigger.click();
+  await page.getByRole("menuitem", { name: /Review/ }).click();
+  await expect(page.getByText(/changed state in the meantime/)).toBeVisible();
+  await expect(trigger).toHaveText("Backlog");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+});

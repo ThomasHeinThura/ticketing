@@ -1,5 +1,6 @@
 import {
   type QueryClient,
+  type QueryKey,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -98,8 +99,47 @@ export function writeWorkItemResponse(
   );
 }
 
-/** The item's queries a change must refresh (detail, activity, transitions, lists). */
-export function useRefreshWorkItem(item: WorkItemDetailRow) {
+type CachedRow = Record<string, unknown>;
+type ListData = { pages: Array<{ items: CachedRow[] }> };
+
+/** A cached list read (`useInfiniteQuery` pages of `{ items }`); the project's other reads
+ * (schedule, hierarchy) have another shape and never match. */
+function isListData(data: unknown): data is ListData {
+  const pages = (data as { pages?: unknown } | undefined)?.pages;
+  return (
+    Array.isArray(pages) &&
+    pages.every((page) =>
+      Array.isArray((page as { items?: unknown } | null)?.items),
+    )
+  );
+}
+
+/** The project's cached list reads that currently hold the item. */
+function listQueriesShowing(
+  queryClient: QueryClient,
+  item: Pick<WorkItemDetailRow, "key" | "projectId">,
+) {
+  return queryClient.getQueryCache().findAll({
+    queryKey: ["work-items", item.projectId],
+    predicate: ({ state }) =>
+      isListData(state.data) &&
+      state.data.pages.some((page) =>
+        page.items.some((row) => row.key === item.key),
+      ),
+  });
+}
+
+/**
+ * The item's queries a change must refresh (detail, activity, transitions, SLA, lists).
+ *
+ * `narrow` is for a change that only moves this item's own state or assignee: the
+ * project's lists are then refreshed only where they show the item (a list that gains it
+ * is refreshed by the realtime event, or the next poll), and the labels are left alone.
+ */
+export function useRefreshWorkItem(
+  item: WorkItemDetailRow,
+  { narrow = false }: { narrow?: boolean } = {},
+) {
   const queryClient = useQueryClient();
   return () =>
     Promise.all([
@@ -111,13 +151,136 @@ export function useRefreshWorkItem(item: WorkItemDetailRow) {
         queryKey: ["work-items", "transitions", item.key],
       }),
       queryClient.invalidateQueries({
-        queryKey: ["work-items", item.projectId],
+        queryKey: ["work-items", "sla", item.key],
       }),
-      queryClient.invalidateQueries({
-        queryKey: ["labels", item.workspaceId, "work-items", item.key],
-      }),
-      queryClient.invalidateQueries({ queryKey: ["work-items", "sla"] }),
+      ...(narrow
+        ? listQueriesShowing(queryClient, item).map(({ queryKey }) =>
+            queryClient.invalidateQueries({ queryKey, exact: true }),
+          )
+        : [
+            queryClient.invalidateQueries({
+              queryKey: ["work-items", item.projectId],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["labels", item.workspaceId, "work-items", item.key],
+            }),
+          ]),
     ]);
+}
+
+/** What `writeOptimisticWorkItemFields` changed, so a refusal can put exactly that back. */
+export type OptimisticWorkItemWrite = {
+  fields: Partial<WorkItemDetail>;
+  /** The detail row's values for `fields` before the write. */
+  detail: Partial<WorkItemDetail> | null;
+  /** The cached list rows written, with their values for `fields` before the write. */
+  lists: Array<{ queryKey: QueryKey; previous: CachedRow }>;
+};
+
+function pickFields(row: object, fields: object): CachedRow {
+  return Object.fromEntries(
+    Object.keys(fields).map((name) => [name, (row as CachedRow)[name]]),
+  );
+}
+
+/** True while the row still holds the optimistic values, i.e. no reload or event replaced them. */
+function stillHoldsFields(row: object, fields: object) {
+  return Object.entries(fields).every(([name, value]) =>
+    isSameJson((row as CachedRow)[name], value),
+  );
+}
+
+function mapItemRows(
+  data: ListData,
+  key: string,
+  update: (row: CachedRow) => CachedRow,
+): ListData {
+  return {
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      items: page.items.map((row) => (row.key === key ? update(row) : row)),
+    })),
+  };
+}
+
+/**
+ * Shows a chosen value at once (`onMutate` of the state and assignee changes). In-flight
+ * reads of the item are cancelled first so a stale answer cannot land over the new value;
+ * the value is written into the detail row and into the project's cached lists that hold
+ * the item (the board groups cards itself and is left to its own drag-and-drop code).
+ * The server still decides: its answer replaces this on success, and
+ * `rollbackOptimisticWorkItemFields` undoes it on refusal.
+ */
+export async function writeOptimisticWorkItemFields(
+  queryClient: QueryClient,
+  item: Pick<WorkItemDetailRow, "key" | "projectId">,
+  fields: Partial<WorkItemDetail>,
+): Promise<OptimisticWorkItemWrite> {
+  const detailKey = workItemDetailKey(item.key);
+  const lists = listQueriesShowing(queryClient, item).filter(
+    ({ queryKey }) => queryKey[2] !== "board" && queryKey[2] !== "combined",
+  );
+  await Promise.all([
+    queryClient.cancelQueries({ queryKey: detailKey }),
+    ...lists.map(({ queryKey }) =>
+      queryClient.cancelQueries({ queryKey, exact: true }),
+    ),
+  ]);
+  const previous = queryClient.getQueryData<WorkItemDetailRow>(detailKey);
+  queryClient.setQueryData<WorkItemDetailRow>(detailKey, (old) =>
+    old ? parseWorkItemDetailRow({ ...old, ...fields } as WorkItemDetail) : old,
+  );
+  const written: OptimisticWorkItemWrite["lists"] = [];
+  for (const { queryKey } of lists) {
+    const data = queryClient.getQueryData(queryKey);
+    if (!isListData(data)) continue;
+    let before: CachedRow | undefined;
+    queryClient.setQueryData(
+      queryKey,
+      mapItemRows(data, item.key, (row) => {
+        before ??= pickFields(row, fields);
+        return { ...row, ...fields };
+      }),
+    );
+    if (before) written.push({ queryKey, previous: before });
+  }
+  return {
+    fields,
+    detail: previous ? pickFields(previous, fields) : null,
+    lists: written,
+  };
+}
+
+/**
+ * Undoes `writeOptimisticWorkItemFields` after the server refused the change. Only the
+ * fields that were written go back, and only where they still hold the optimistic value:
+ * a reload or realtime event that already brought the server's value is never overwritten.
+ */
+export function rollbackOptimisticWorkItemFields(
+  queryClient: QueryClient,
+  item: Pick<WorkItemDetailRow, "key">,
+  write: OptimisticWorkItemWrite,
+) {
+  const { fields, detail, lists } = write;
+  if (detail) {
+    queryClient.setQueryData<WorkItemDetailRow>(
+      workItemDetailKey(item.key),
+      (old) =>
+        old && stillHoldsFields(old, fields)
+          ? parseWorkItemDetailRow({ ...old, ...detail } as WorkItemDetail)
+          : old,
+    );
+  }
+  for (const { queryKey, previous } of lists) {
+    queryClient.setQueryData(queryKey, (data: unknown) =>
+      isListData(data)
+        ? mapItemRows(data, item.key, (row) =>
+            stillHoldsFields(row, fields) ? { ...row, ...previous } : row,
+          )
+        : data,
+    );
+  }
 }
 
 const PATCH_FIELDS = [
