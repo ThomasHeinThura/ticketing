@@ -37,3 +37,11 @@ export const customerOrganisationListSchema = z
 export const acceptedCustomerInvitationSchema = z
   .object({ accepted: z.literal(true) })
   .openapi("AcceptedCustomerInvitation");
+
+/** Returned only by the explicit agent-host copy endpoint (`Cache-Control: no-store`). */
+export const customerInvitationCopiedLinkSchema = z
+  .object({
+    link: z.string(),
+    expiresAt: z.string(),
+  })
+  .openapi("CustomerInvitationCopiedLink");

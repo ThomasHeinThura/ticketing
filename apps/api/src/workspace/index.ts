@@ -1,3 +1,4 @@
+import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { runWithStepUp, stepUpTokenHeader } from "../auth/step-up-spend";
 import {
@@ -17,6 +18,9 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { checkWorkspaceName } from "../utils/check-workspace-name";
+import { requireAgentBrowserSession } from "../utils/require-agent-browser-session";
+import { requireCopyInvitationLinkRateLimit } from "../utils/require-copy-link-rate-limit";
+import { requireInvitationCopyAccess } from "../utils/require-invitation-copy-access";
 import { requireInviteAbuseGate } from "../utils/require-invite-abuse-gate";
 import { requireInviteRateLimit } from "../utils/require-invite-rate-limit";
 import { requireWorkspaceCreationAllowed } from "../utils/require-session";
@@ -33,6 +37,7 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { invalidateNativeAuthorization } from "../ws";
 import activateWorkspaceCtrl from "./controllers/activate-workspace";
 import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
+import copyWorkspaceInvitationLinkCtrl from "./controllers/copy-workspace-invitation-link";
 import createWorkspaceCtrl, {
   WorkspaceSlugTakenError,
 } from "./controllers/create-workspace";
@@ -70,12 +75,13 @@ import {
 } from "./controllers/workspace-role-errors";
 import {
   activatedWorkspaceSchema,
+  invitedWorkspaceMemberSchema,
   leftWorkspaceSchema,
   removedWorkspaceMemberSchema,
   transferredWorkspaceOwnershipSchema,
   workspaceDetailSchema,
+  workspaceInvitationCopiedLinkSchema,
   workspaceInvitationListSchema,
-  workspaceInvitationSchema,
   workspaceMemberListSchema,
   workspaceMemberRoleSchema,
   workspaceMemberSchema,
@@ -113,6 +119,7 @@ import {
   updateWorkspaceMemberRoleBody,
   updateWorkspaceRoleBody,
   workspaceIdParam,
+  workspaceInvitationIdParam,
   workspaceMemberIdParam,
   workspaceRoleParam,
 } from "./schema";
@@ -589,6 +596,11 @@ const transferWorkspaceOwnershipRoute = createRoute({
 // moves off the plugin (`apps/api/src/auth.ts`'s `rateLimit.customRules`
 // and cloud disposable-email/anonymous gate). See those two middleware
 // modules' own doc comments.
+async function noStoreHeader(c: Context, next: Next) {
+  c.header("Cache-Control", "no-store");
+  await next();
+}
+
 const inviteWorkspaceMemberRoute = createRoute({
   method: "post",
   operationId: "inviteWorkspaceMember",
@@ -596,7 +608,7 @@ const inviteWorkspaceMemberRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Invite a user to a workspace",
   description:
-    "Invite a user, by email, into a workspace. Native replacement for authClient.organization.inviteMember(). Sends the invitation email on success.",
+    "Invite a user, by email, into a workspace. Native replacement for authClient.organization.inviteMember(). Reports `delivered: boolean` indicating whether the email was handed to the configured mail provider.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -616,7 +628,7 @@ const inviteWorkspaceMemberRoute = createRoute({
   responses: {
     200: jsonResponse(
       "The created (or resent) invitation",
-      workspaceInvitationSchema,
+      invitedWorkspaceMemberSchema,
     ),
     400: errorResponse(
       "Invalid body, an unknown role, or the role was 'owner'",
@@ -629,6 +641,37 @@ const inviteWorkspaceMemberRoute = createRoute({
       "The target email is already a member, or already has a pending invitation and resend was not set",
     ),
     429: errorResponse("Too many invitations from this client recently"),
+  },
+});
+
+const copyWorkspaceInvitationLinkRoute = createRoute({
+  method: "post",
+  operationId: "copyWorkspaceInvitationLink",
+  path: "/{workspaceId}/invitations/{invitationId}/copy-link",
+  tags: ["Workspaces"],
+  summary: "Copy the accept link for a pending workspace invitation",
+  description:
+    "Agent-host browser session only (never an API key, MCP key or impersonation session). Allowed for the invitation's inviter or a holder of `member:invite` in the workspace. Only pending, unexpired invitations may be copied; copying never extends expiry, sets `Cache-Control: no-store`, is rate-limited per actor and records `invitation.link_copied` in the audit log.",
+  middleware: [
+    noStoreHeader,
+    requireAgentBrowserSession(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireInvitationCopyAccess({ scope: "staff", idParam: "invitationId" }),
+    requireCopyInvitationLinkRateLimit(),
+  ] as const,
+  request: {
+    params: workspaceInvitationIdParam,
+  },
+  responses: {
+    200: jsonResponse(
+      "The workspace invitation accept link",
+      workspaceInvitationCopiedLinkSchema,
+    ),
+    401: errorResponse("Unauthorized"),
+    403: errorResponse("Browser session and invite capability required"),
+    404: errorResponse("Invitation not found"),
+    409: errorResponse("Invitation is expired, revoked or already accepted"),
+    429: errorResponse("Too many copy requests"),
   },
 });
 
@@ -1285,6 +1328,16 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       throw error;
     }
+  })
+  .openapi(copyWorkspaceInvitationLinkRoute, async (c) => {
+    const { workspaceId, invitationId } = c.req.valid("param");
+    c.header("Cache-Control", "no-store");
+    const copied = await copyWorkspaceInvitationLinkCtrl({
+      workspaceId,
+      invitationId,
+      actorUserId: c.get("userId"),
+    });
+    return c.json(copied, 200);
   })
   .openapi(listWorkspaceRolesRoute, async (c) =>
     c.json(await listRoles(c.get("workspaceId")), 200),

@@ -41,6 +41,7 @@ export type InvitedWorkspaceMember = {
   expiresAt: Date;
   createdAt: Date;
   inviterId: string;
+  delivered: boolean;
 };
 
 /**
@@ -199,7 +200,7 @@ async function inviteWorkspaceMember(
   const [workspace] = await findWorkspaceInvitationWorkspace(input.workspaceId);
   const [inviter] = await findWorkspaceInvitationInviter(input.inviterId);
 
-  await sendNativeWorkspaceInvitationEmail({
+  const delivered = await sendNativeWorkspaceInvitationEmail({
     invitationId: invitation.id,
     email: invitation.email,
     workspaceName: workspace?.name ?? "",
@@ -207,7 +208,7 @@ async function inviteWorkspaceMember(
     inviterEmail: inviter?.email ?? "",
   });
 
-  return invitation;
+  return { ...invitation, delivered };
 }
 
 export default inviteWorkspaceMember;

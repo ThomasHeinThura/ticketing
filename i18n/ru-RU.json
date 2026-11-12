@@ -3133,10 +3133,16 @@
 		"invitations": {
 			"linkLabel": "Ссылка для приглашения",
 			"copyLink": "Скопировать ссылку",
+			"copyingLink": "Copying…",
 			"linkCopied": "Ссылка для приглашения скопирована",
 			"copyFailed": "Не удалось скопировать автоматически. Выделите ссылку и нажмите Ctrl+C.",
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
 			"pendingBadge": "ожидает",
 			"expires": "Истекает {{date}}",
+			"expiredOn": "Expired {{date}}",
 			"expiredBadge": "expired"
 		},
 		"inviteModal": {
@@ -3167,6 +3173,10 @@
 			"cancelDialogTitle": "Отменить приглашение?",
 			"cancelDialogDescription": "Вы уверены, что хотите отменить приглашение для {{email}}? Это действие нельзя отменить.",
 			"removeMember": "Удалить участника",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "Отменить приглашение",
 			"removeSuccess": "Участник команды успешно удалён",
 			"removeError": "Не удалось удалить участника команды",
@@ -8432,6 +8442,8 @@
 			"title": "Accept your invitation"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
@@ -8448,6 +8460,15 @@
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation",
 			"title": "Invite to this organisation"
+		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailSent": "Email sent",
+			"emailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
 		},
 		"denied": {
 			"description": "Inviting people needs the member:invite permission in this workspace.",
@@ -8475,6 +8496,8 @@
 		"title": "Customer invitations",
 		"toasts": {
 			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it.",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
 			"resent": "Invitation sent again. The previous link no longer works.",
 			"sent": "Invitation sent"
 		}

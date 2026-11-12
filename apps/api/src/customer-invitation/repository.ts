@@ -373,11 +373,13 @@ export async function readInvitationRuntimeSettings(executor: Executor) {
 export async function insertCustomerInvitation(
   executor: Executor,
   values: {
+    id: string;
     workspaceId: string;
     organisationId: string;
     email: string;
     inviterId: string;
     credentialHash: string | null;
+    generation?: number;
     expiresAt: Date;
     now: Date;
   },
@@ -385,6 +387,7 @@ export async function insertCustomerInvitation(
   const [row] = await executor
     .insert(invitation)
     .values({
+      id: values.id,
       workspaceId: values.workspaceId,
       organisationId: values.organisationId,
       email: values.email,
@@ -393,6 +396,7 @@ export async function insertCustomerInvitation(
       status: "pending",
       inviterId: values.inviterId,
       credentialHash: values.credentialHash,
+      generation: values.generation ?? 1,
       expiresAt: values.expiresAt,
       lastSentAt: values.now,
     })
@@ -466,12 +470,14 @@ export async function lockCustomerInvitation(
   return row;
 }
 
-/** Resend: a fresh credential replaces the old hash, expiry moves out, the send time is recorded. */
+/** Resend: increments `generation`, replaces the old hash, moves expiry out and records send time. */
 export async function rotateCredential(
   executor: Executor,
   id: string,
   values: {
     credentialHash: string | null;
+    expectedGeneration: number;
+    nextGeneration: number;
     expiresAt: Date;
     now: Date;
     /** An expired row renewed at create: it counts as a new create toward the CP-26 limits. */
@@ -482,6 +488,7 @@ export async function rotateCredential(
     .update(invitation)
     .set({
       credentialHash: values.credentialHash,
+      generation: values.nextGeneration,
       expiresAt: values.expiresAt,
       lastSentAt: values.now,
       ...(values.renewedBy
@@ -493,6 +500,7 @@ export async function rotateCredential(
         eq(invitation.id, id),
         eq(invitation.scope, "customer"),
         eq(invitation.status, "pending"),
+        eq(invitation.generation, values.expectedGeneration),
       ),
     )
     .returning();

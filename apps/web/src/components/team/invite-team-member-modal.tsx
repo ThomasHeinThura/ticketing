@@ -21,11 +21,11 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
+import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
 import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-workspace-user";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { toast } from "@/lib/toast";
-import InvitationLinkField from "./invitation-link-field";
 
 type Props = {
   open: boolean;
@@ -49,6 +49,8 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
   const [createdInvitation, setCreatedInvitation] = useState<{
     id: string;
     email: string;
+    expiresAt: string;
+    delivered: boolean;
   } | null>(null);
 
   const form = useForm<TeamMemberFormValues>({
@@ -75,18 +77,25 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
         email,
         workspaceId,
         role: "member",
-      }); // TODO: role and email
+      });
       await queryClient.refetchQueries({
         queryKey: ["workspace-users", workspaceId],
       });
 
-      toast.success(t("team:inviteModal.success"));
+      if (invitation?.delivered !== false) {
+        toast.success(t("team:inviteModal.success"));
+      }
 
-      // The link is the only delivery channel when SMTP is unconfigured, so the
-      // modal stays open on it instead of closing. If the API ever stops
-      // returning an id, fall back to the previous close-on-success behaviour.
       if (invitation?.id) {
-        setCreatedInvitation({ id: invitation.id, email });
+        setCreatedInvitation({
+          id: invitation.id,
+          email,
+          expiresAt:
+            typeof invitation.expiresAt === "string"
+              ? invitation.expiresAt
+              : "",
+          delivered: Boolean(invitation.delivered),
+        });
         form.reset();
         return;
       }
@@ -132,12 +141,14 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
         {createdInvitation ? (
           <>
             <DialogPanel className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {t("team:inviteModal.shareLinkDescription", {
-                  email: createdInvitation.email,
-                })}
-              </p>
-              <InvitationLinkField invitationId={createdInvitation.id} />
+              <InvitationResultCard
+                kind="staff"
+                invitationId={createdInvitation.id}
+                workspaceId={workspaceId}
+                email={createdInvitation.email}
+                delivered={createdInvitation.delivered}
+                expiresAt={createdInvitation.expiresAt}
+              />
             </DialogPanel>
             <DialogFooter>
               <Button size="sm" onClick={resetAndCloseModal}>

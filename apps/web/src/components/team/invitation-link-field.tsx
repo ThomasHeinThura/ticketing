@@ -7,12 +7,13 @@ import { buildInvitationLink } from "@/lib/invitation-link";
 
 type Props = {
   invitationId: string;
+  workspaceId?: string;
 };
 
-function InvitationLinkField({ invitationId }: Props) {
+function InvitationLinkField({ invitationId, workspaceId }: Props) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
-  const { copy, copied } = useCopyInvitationLink();
+  const { copy, copied } = useCopyInvitationLink(workspaceId);
 
   return (
     <div className="flex items-center gap-2">
@@ -32,16 +33,18 @@ function InvitationLinkField({ invitationId }: Props) {
         onClick={() => copy(invitationId, inputRef.current)}
       >
         {copied ? (
-          <>
-            <CheckIcon className="size-3 text-success-foreground" />
-            {t("team:invitations.linkCopied")}
-          </>
+          <CheckIcon
+            className="size-3 text-success-foreground"
+            aria-hidden="true"
+          />
         ) : (
-          <>
-            <CopyIcon className="size-3" />
-            {t("team:invitations.copyLink")}
-          </>
+          <CopyIcon className="size-3" aria-hidden="true" />
         )}
+        <span aria-live="polite">
+          {copied
+            ? t("team:invitations.linkCopied")
+            : t("team:invitations.copyLink")}
+        </span>
       </Button>
     </div>
   );

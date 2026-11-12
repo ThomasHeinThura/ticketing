@@ -34,11 +34,28 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/lib/format", () => ({
   formatDateMedium: () => "Sep 1, 2026",
+  formatDateTime: () => "Sep 1, 2026, 12:00 AM",
 }));
 
-const { cancelInvitation, openPendingAction } = vi.hoisted(() => ({
+const {
+  cancelInvitation,
+  openPendingAction,
+  copyWorkspaceInvitationLink,
+  inviteWorkspaceMember,
+} = vi.hoisted(() => ({
   cancelInvitation: vi.fn(),
   openPendingAction: vi.fn(),
+  copyWorkspaceInvitationLink: vi.fn(),
+  inviteWorkspaceMember: vi.fn(),
+}));
+
+vi.mock("@/fetchers/workspace/copy-workspace-invitation-link", () => ({
+  copyWorkspaceInvitationLink: (...args: unknown[]) =>
+    copyWorkspaceInvitationLink(...args),
+}));
+
+vi.mock("@/fetchers/workspace/invite-workspace-member", () => ({
+  default: (...args: unknown[]) => inviteWorkspaceMember(...args),
 }));
 
 vi.mock("@/hooks/mutations/workspace-user/use-cancel-invitation", () => ({
@@ -84,6 +101,10 @@ vi.mock("../providers/auth-provider/hooks/use-auth", () => ({
 
 beforeEach(() => {
   canInviteUsers.mockReturnValue(true);
+  copyWorkspaceInvitationLink.mockResolvedValue({
+    link: `${window.location.origin}/invitation/accept/invite-1`,
+    expiresAt: "2026-09-03T00:00:00.000Z",
+  });
 });
 
 afterEach(() => {
@@ -159,7 +180,7 @@ describe("MembersTable remove member", () => {
 });
 
 describe("MembersTable pending invitation row menu", () => {
-  it("copies the invitation link for that invitation when 'Copy link' is clicked", async () => {
+  it("copies the invitation link for that invitation and records the copy-link audit call when 'Copy link' is clicked", async () => {
     copyToClipboard.mockResolvedValue(true);
 
     render(
@@ -185,9 +206,59 @@ describe("MembersTable pending invitation row menu", () => {
     expect(copyToClipboard).toHaveBeenCalledWith(
       `${window.location.origin}/invitation/accept/invite-1`,
     );
+    expect(copyWorkspaceInvitationLink).toHaveBeenCalledWith(
+      "workspace-1",
+      "invite-1",
+    );
     await waitFor(() =>
       expect(success).toHaveBeenCalledWith("team:invitations.linkCopied"),
     );
+  });
+
+  it("resends a pending staff invitation and shows the result card when email was not delivered", async () => {
+    inviteWorkspaceMember.mockResolvedValue({
+      id: "invite-1",
+      email: "invitee@example.com",
+      role: "member",
+      status: "pending",
+      expiresAt: "2026-11-15T00:00:00.000Z",
+      delivered: false,
+    });
+
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[pendingInvitation]}
+        users={[] as WorkspaceUser[]}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "team:membersTable.ariaInvitationActions",
+      }),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("menuitem", {
+        name: "team:membersTable.resendInvitation",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(inviteWorkspaceMember).toHaveBeenCalledWith({
+        workspaceId: "workspace-1",
+        email: "invitee@example.com",
+        role: "member",
+        resend: true,
+      }),
+    );
+    expect(
+      await screen.findByText("team:membersTable.resendDialogTitle"),
+    ).toBeVisible();
+    expect(
+      screen.getByText("team:invitations.resultEmailNotSent"),
+    ).toBeVisible();
   });
 
   it("requests the cancellation directly and opens the in-place approval as the only confirmation", async () => {

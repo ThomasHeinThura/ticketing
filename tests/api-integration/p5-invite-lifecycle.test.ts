@@ -1133,3 +1133,309 @@ describe("accept transaction creates the customer identity (CP-24)", () => {
     ).toHaveLength(0);
   });
 });
+
+describe("copy link (CP-23, D-N)", () => {
+  it("returns the exact same link that was emailed, works when email is unconfigured, sets Cache-Control: no-store, never extends expiry, and audits without secret or email", async () => {
+    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
+      "../../apps/api/src/utils/require-copy-link-rate-limit"
+    );
+    resetCopyInvitationLinkRateLimitBuckets();
+
+    const sent = await w.invite("copy-same@example.test");
+    const beforeRow = await w.rowOf(sent.id);
+    const originalExpiresAt = beforeRow?.expiresAt.toISOString();
+
+    const copyResponse = await w.call(
+      w.owner.user,
+      `${w.base()}/${sent.id}/copy-link`,
+      { method: "POST" },
+    );
+    expect(copyResponse.status).toBe(200);
+    expect(copyResponse.headers.get("Cache-Control")).toBe("no-store");
+    const copied = (await copyResponse.json()) as {
+      link: string;
+      expiresAt: string;
+    };
+    expect(copied).toEqual({
+      link: `http://portal.localhost:5174/invite/${sent.id}#t=${sent.credential}`,
+      expiresAt: originalExpiresAt,
+    });
+    expect((await w.rowOf(sent.id))?.expiresAt.toISOString()).toBe(
+      originalExpiresAt,
+    );
+
+    const audits = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "invitation.link_copied"));
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      actorId: w.owner.user.id,
+      workspaceId: w.workspaceId,
+      organisationId: w.org.id,
+      entityType: "invitation",
+      entityId: sent.id,
+      after: { scope: "customer" },
+    });
+    expect(text(audits)).not.toContain(sent.credential);
+    expect(text(audits)).not.toContain("copy-same@example.test");
+
+    // Works even when no email provider is configured: customer can accept via the copied link.
+    emailMock.configured = false;
+    const noEmailCreate = await w.json<{
+      id: string;
+      delivered: boolean;
+      expiresAt: string;
+    }>(
+      await w.call(w.owner.user, w.base(), {
+        method: "POST",
+        body: { email: "no-smtp@example.test" },
+      }),
+      201,
+    );
+    expect(noEmailCreate.delivered).toBe(false);
+    const noEmailCopied = await w.json<{ link: string; expiresAt: string }>(
+      await w.call(w.owner.user, `${w.base()}/${noEmailCreate.id}/copy-link`, {
+        method: "POST",
+      }),
+    );
+    const tokenMatch = /#t=(.+)$/.exec(noEmailCopied.link);
+    expect(tokenMatch?.[1]).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const customer = await admittedCustomer("no-smtp@example.test");
+    expect(
+      (await accept(customer.user, noEmailCreate.id, tokenMatch?.[1] ?? ""))
+        .status,
+    ).toBe(200);
+  });
+
+  it("rotates the copied link on resend and invalidates the previous link", async () => {
+    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
+      "../../apps/api/src/utils/require-copy-link-rate-limit"
+    );
+    resetCopyInvitationLinkRateLimitBuckets();
+
+    const sent = await w.invite("copy-rotate@example.test");
+    const firstCopy = await w.json<{ link: string }>(
+      await w.call(w.owner.user, `${w.base()}/${sent.id}/copy-link`, {
+        method: "POST",
+      }),
+    );
+    expect(firstCopy.link).toContain(`#t=${sent.credential}`);
+
+    await db
+      .update(schema.invitationTable)
+      .set({ lastSentAt: new Date(Date.now() - 5 * 60_000) })
+      .where(eq(schema.invitationTable.id, sent.id));
+
+    const resendRes = await w.call(
+      w.owner.user,
+      `${w.base()}/${sent.id}/resend`,
+      { method: "POST" },
+    );
+    expect(resendRes.status).toBe(200);
+    await runCustomerInvitationDeliveryJob();
+
+    const secondCopy = await w.json<{ link: string }>(
+      await w.call(w.owner.user, `${w.base()}/${sent.id}/copy-link`, {
+        method: "POST",
+      }),
+    );
+    expect(secondCopy.link).not.toBe(firstCopy.link);
+    const freshCredential = credentialFor("copy-rotate@example.test", sent.id);
+    expect(secondCopy.link).toBe(
+      `http://portal.localhost:5174/invite/${sent.id}#t=${freshCredential}`,
+    );
+
+    const customer = await admittedCustomer("copy-rotate@example.test");
+    expect((await accept(customer.user, sent.id, sent.credential)).status).toBe(
+      404,
+    );
+    expect((await accept(customer.user, sent.id, freshCredential)).status).toBe(
+      200,
+    );
+  });
+
+  it("allows the original inviter even after losing member:invite, and refuses unrelated members, API keys, impersonation, portal sessions, and expired/revoked rows", async () => {
+    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
+      "../../apps/api/src/utils/require-copy-link-rate-limit"
+    );
+    const { mockAuthenticatedSession } = await import("./helpers/auth");
+    const { addMember, makeApiKey } = await import("./helpers/reach-world");
+    const { grantProjectRole } = await import("./helpers/fixtures");
+    resetCopyInvitationLinkRateLimitBuckets();
+
+    const [orgProject] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.organisationId, w.org.id));
+
+    const lead = await addMember(w.workspaceId, "lead");
+    await grantProjectRole(lead.user.id, orgProject?.id as string, [
+      "project:read",
+    ]);
+    const created = await w.json<{ id: string }>(
+      await w.call(lead.user, w.base(), {
+        method: "POST",
+        body: { email: "inviter-owned@example.test" },
+      }),
+      201,
+    );
+
+    // Strip member:invite from lead role so lead is ONLY the row's inviter with workspace:read + project reach.
+    const [leadRole] = await db
+      .select({
+        id: schema.roleTable.id,
+        capabilities: schema.roleTable.capabilities,
+      })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.scope, "workspace"),
+          eq(schema.roleTable.workspaceId, w.workspaceId),
+          eq(schema.roleTable.key, "lead"),
+        ),
+      );
+    if (!leadRole) throw new Error("expected lead role");
+    await db
+      .update(schema.roleTable)
+      .set({
+        capabilities: (leadRole.capabilities as string[]).filter(
+          (cap) => cap !== "member:invite",
+        ),
+      })
+      .where(eq(schema.roleTable.id, leadRole.id));
+
+    // Original inviter still succeeds!
+    const inviterCopy = await w.call(
+      lead.user,
+      `${w.base()}/${created.id}/copy-link`,
+      { method: "POST" },
+    );
+    expect(inviterCopy.status).toBe(200);
+
+    // Unrelated workspace member without member:invite is refused 403.
+    const unrelatedCopy = await w.call(
+      w.member.user,
+      `${w.base()}/${created.id}/copy-link`,
+      { method: "POST" },
+    );
+    expect(unrelatedCopy.status).toBe(403);
+
+    // API key is refused 403.
+    const rawKey = await makeApiKey(w.owner.user.id, null);
+    const apiKeyCopy = await w.app.request(
+      `${w.base()}/${created.id}/copy-link`,
+      {
+        method: "POST",
+        headers: { "x-api-key": rawKey, "content-type": "application/json" },
+      },
+    );
+    expect(apiKeyCopy.status).toBe(403);
+
+    // Impersonation session is refused 403.
+    mockAuthenticatedSession(w.owner.user, { impersonatedBy: "admin-actor" });
+    const impersonatedCopy = await w.app.request(
+      `${w.base()}/${created.id}/copy-link`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      },
+    );
+    expect(impersonatedCopy.status).toBe(403);
+
+    // Portal host/session is refused (403/404).
+    const portalCopy = await w.portal(
+      w.owner.user,
+      `${w.base()}/${created.id}/copy-link`,
+      { method: "POST" },
+    );
+    expect([403, 404]).toContain(portalCopy.status);
+
+    // Expired row is refused 409.
+    await db
+      .update(schema.invitationTable)
+      .set({ expiresAt: new Date(Date.now() - 1_000) })
+      .where(eq(schema.invitationTable.id, created.id));
+    expect(
+      (
+        await w.call(w.owner.user, `${w.base()}/${created.id}/copy-link`, {
+          method: "POST",
+        })
+      ).status,
+    ).toBe(409);
+
+    // Revoked row is refused 409.
+    await db
+      .update(schema.invitationTable)
+      .set({
+        status: "canceled",
+        credentialHash: null,
+        expiresAt: new Date(Date.now() + 3_600_000),
+      })
+      .where(eq(schema.invitationTable.id, created.id));
+    expect(
+      (
+        await w.call(w.owner.user, `${w.base()}/${created.id}/copy-link`, {
+          method: "POST",
+        })
+      ).status,
+    ).toBe(409);
+  });
+
+  it("reports delivered=false on staff create/resend when email is unconfigured and writes invitation.link_copied on staff copy", async () => {
+    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
+      "../../apps/api/src/utils/require-copy-link-rate-limit"
+    );
+    resetCopyInvitationLinkRateLimitBuckets();
+    emailMock.configured = false;
+
+    const staffCreated = await w.json<{
+      id: string;
+      email: string;
+      delivered: boolean;
+      expiresAt: string;
+    }>(
+      await w.call(
+        w.owner.user,
+        `/api/workspace/${w.workspaceId}/invitations`,
+        {
+          method: "POST",
+          body: { email: "staff-copy@example.test", role: "member" },
+        },
+      ),
+    );
+    expect(staffCreated.delivered).toBe(false);
+
+    const copyRes = await w.call(
+      w.owner.user,
+      `/api/workspace/${w.workspaceId}/invitations/${staffCreated.id}/copy-link`,
+      { method: "POST" },
+    );
+    expect(copyRes.status).toBe(200);
+    expect(copyRes.headers.get("Cache-Control")).toBe("no-store");
+    const copied = (await copyRes.json()) as {
+      link: string;
+      expiresAt: string;
+    };
+    expect(copied.link).toContain(`/invitation/accept/${staffCreated.id}`);
+
+    const audits = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "invitation.link_copied"),
+          eq(schema.auditLogTable.entityId, staffCreated.id),
+        ),
+      );
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      actorId: w.owner.user.id,
+      workspaceId: w.workspaceId,
+      entityType: "invitation",
+      entityId: staffCreated.id,
+      after: { scope: "staff" },
+    });
+    expect(text(audits)).not.toContain("staff-copy@example.test");
+  });
+});

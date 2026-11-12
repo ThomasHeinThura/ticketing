@@ -82,6 +82,11 @@ export const inviteWorkspaceMemberBody = z.object({
   resend: z.boolean().optional(),
 });
 
+export const workspaceInvitationIdParam = z.object({
+  workspaceId: z.string(),
+  invitationId: z.string(),
+});
+
 // S7 -- native role list/write routes (issue #6, retrofit plan §3, S7 row).
 
 // Update/delete key on the role's opaque `id`, not its name -- a role name may
