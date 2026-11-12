@@ -450,6 +450,7 @@ export {
   RadioGroup,
   RadioGroupItem,
 } from "./components/radio-group";
+export { SaveButton } from "./components/save-button";
 export { ScrollArea, ScrollBar } from "./components/scroll-area";
 export {
   Select,

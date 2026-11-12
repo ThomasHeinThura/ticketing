@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, Checkbox, Input } from "@taskdesk/ui";
+import { Card, CardContent, Checkbox, Input, SaveButton } from "@taskdesk/ui";
 import { type FormEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { localPasswordSchema } from "@/lib/password-schema";
@@ -28,6 +28,7 @@ export function ChangePasswordCard({
     null,
   );
   const [pending, setPending] = useState(false);
+  const [saved, setSaved] = useState(false);
   const currentRef = useRef<HTMLInputElement>(null);
   const newRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
@@ -43,6 +44,8 @@ export function ChangePasswordCard({
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
+    setSaved(false);
     if (!currentPassword)
       return fail("currentPassword", t("auth:changePassword.required"));
     const result = localPasswordSchema(
@@ -67,6 +70,7 @@ export function ChangePasswordCard({
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setSaved(true);
       toast.success(t("auth:changePassword.success"));
     } catch (err) {
       if (err instanceof Error && err.message === "INVALID_PASSWORD") {
@@ -154,11 +158,14 @@ export function ChangePasswordCard({
               {t("auth:changePassword.revoke")}
             </label>
           </div>
-          <Button type="submit" disabled={pending}>
-            {pending
-              ? t("auth:changePassword.saving")
-              : t("auth:changePassword.submit")}
-          </Button>
+          <SaveButton
+            type="submit"
+            pending={pending}
+            success={saved}
+            savedLabel={t("common:actions.saved")}
+          >
+            {t("auth:changePassword.submit")}
+          </SaveButton>
         </form>
       </CardContent>
     </Card>

@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -238,6 +239,7 @@ function MentionEmailForm({
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
+        if (mutation.isPending) return;
         mutation.mutate(
           { enabled, digest },
           {
@@ -310,15 +312,19 @@ function MentionEmailForm({
           {notice}
         </p>
       )}
-      <Button
+      <SaveButton
         type="submit"
+        pending={mutation.isPending}
+        success={mutation.isSuccess}
+        savedLabel={t("common:actions.saved")}
         disabled={
-          mutation.isPending ||
-          (enabled === preference.enabled && digest === preference.digest)
+          !mutation.isPending &&
+          enabled === preference.enabled &&
+          digest === preference.digest
         }
       >
         {t(`${kind}.save`)}
-      </Button>
+      </SaveButton>
     </form>
   );
 }

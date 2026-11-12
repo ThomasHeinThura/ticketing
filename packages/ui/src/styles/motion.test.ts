@@ -80,6 +80,10 @@ describe("motion tokens (D-H)", () => {
     }
   });
 
+  it("keeps progress proportional to the remaining time", () => {
+    expect(themeToken("--ease-progress")).toBe("linear");
+  });
+
   it("declares --ease-spring as a linear() spring with about 1.5% overshoot", () => {
     const value = themeToken("--ease-spring");
     const body = /^linear\((.*)\)$/.exec(value)?.[1];

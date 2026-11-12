@@ -169,6 +169,9 @@
 						"save": {
 							"type": "string"
 						},
+						"saved": {
+							"type": "string"
+						},
 						"previous": {
 							"type": "string"
 						},
@@ -195,6 +198,7 @@
 						"markRead",
 						"markUnread",
 						"save",
+						"saved",
 						"previous",
 						"next",
 						"refresh"

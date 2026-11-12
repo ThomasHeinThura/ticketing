@@ -13,6 +13,7 @@ import {
   CardTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -677,13 +678,17 @@ function EditorForm({
 
       <div className="flex flex-wrap items-center gap-2">
         {canManage ? (
-          <Button type="submit" disabled={disabled || !valid}>
-            {save.isPending
-              ? t("customFields:editor.saving")
-              : isNew
-                ? t("customFields:editor.create")
-                : t("customFields:editor.save")}
-          </Button>
+          <SaveButton
+            type="submit"
+            disabled={!canManage || !valid}
+            pending={save.isPending}
+            success={!isNew && save.isSuccess}
+            savedLabel={t("common:actions.saved")}
+          >
+            {isNew
+              ? t("customFields:editor.create")
+              : t("customFields:editor.save")}
+          </SaveButton>
         ) : null}
         {!isNew && canManage ? (
           <Button

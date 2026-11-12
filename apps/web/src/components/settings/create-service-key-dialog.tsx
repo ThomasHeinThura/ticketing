@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  SaveButton,
   ScrollArea,
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import {
 import { describeCapability } from "@/components/settings/roles/capability-model";
 import { createServiceKey } from "@/fetchers/service-keys";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
 export const serviceKeysKey = (workspaceId: string) =>
@@ -102,6 +104,7 @@ export function CreateServiceKeyDialog({
       await queryClient.invalidateQueries({
         queryKey: serviceKeysKey(workspaceId),
       });
+      toast.success(t("common:actions.saved"));
       onCreated(created);
       onClose();
     },
@@ -263,14 +266,15 @@ export function CreateServiceKeyDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button
+            <SaveButton
               type="submit"
-              disabled={mutation.isPending || !nameValid || !stepUp.canRun}
+              disabled={!mutation.isPending && (!nameValid || !stepUp.canRun)}
+              pending={mutation.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
             >
-              {mutation.isPending
-                ? t("settings:serviceKeys.create.creating")
-                : t("settings:serviceKeys.create.submit")}
-            </Button>
+              {t("settings:serviceKeys.create.submit")}
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
+  SaveButton,
   Skeleton,
   Switch,
 } from "@taskdesk/ui";
@@ -402,13 +403,16 @@ function SaveDialog({
           >
             {t("signInMethods.cancel")}
           </Button>
-          <Button
-            disabled={stepUp.busy || !stepUp.canRun}
+          <SaveButton
+            disabled={!stepUp.busy && !stepUp.canRun}
+            pending={stepUp.busy}
+            success={false}
+            savedLabel={t("common:actions.saved")}
             onClick={() => void submit()}
             type="button"
           >
-            {stepUp.busy ? t("common.saving") : t("signInMethods.confirm")}
-          </Button>
+            {t("signInMethods.confirm")}
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

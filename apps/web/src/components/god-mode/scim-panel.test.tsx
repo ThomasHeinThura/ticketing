@@ -23,7 +23,7 @@ vi.mock("react-i18next", async () => {
   return {
     useTranslation: (namespace: string) => ({
       t: (key: string, options?: Record<string, unknown>) =>
-        translate(`${namespace}:${key}`, options),
+        translate(key.includes(":") ? key : `${namespace}:${key}`, options),
       i18n: { language: "en-US" },
     }),
   };

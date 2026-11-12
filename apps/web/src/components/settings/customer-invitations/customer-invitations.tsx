@@ -18,6 +18,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -148,9 +149,15 @@ function InviteDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={mutation.isPending || !valid}>
+            <SaveButton
+              type="submit"
+              disabled={!valid && !mutation.isPending}
+              pending={mutation.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+            >
               {t("customerInvitations:create.submit")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>

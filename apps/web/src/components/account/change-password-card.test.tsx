@@ -128,5 +128,29 @@ for (const surface of ["agent", "portal"]) {
       ).toHaveValue("");
       expect(toastSuccess).toHaveBeenCalledWith("auth:changePassword.success");
     });
+    it("keeps focus during a pending save, ignores repeated submits, and shows success", async () => {
+      let resolveSave: (value: unknown) => void = () => {};
+      setup();
+      change.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSave = resolve;
+          }),
+      );
+      fill("old-password", "valid-password", "valid-password");
+      const button = screen.getByRole("button", {
+        name: "auth:changePassword.submit",
+      });
+      button.focus();
+      fireEvent.click(button);
+      expect(button).toHaveFocus();
+      expect(button).toHaveAttribute("aria-busy", "true");
+      fireEvent.click(button);
+      expect(change).toHaveBeenCalledTimes(1);
+      resolveSave({});
+      expect(
+        await screen.findByRole("button", { name: "common:actions.saved" }),
+      ).toBe(button);
+    });
   });
 }

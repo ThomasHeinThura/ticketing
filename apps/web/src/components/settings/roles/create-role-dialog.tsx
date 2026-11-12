@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -32,6 +33,7 @@ import {
 } from "@/hooks/queries/workspace/use-workspace-roles";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { routes } from "@/lib/routes";
+import { toast } from "@/lib/toast";
 
 const NOTHING = "__nothing__";
 
@@ -93,6 +95,7 @@ export function CreateRoleDialog({
       await queryClient.invalidateQueries({
         queryKey: workspaceRolesKey(workspaceId),
       });
+      toast.success(t("common:actions.saved"));
       onClose();
       void navigate({
         to: routes.workspaceRoleDetail.path,
@@ -224,17 +227,18 @@ export function CreateRoleDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button
+            <SaveButton
               type="submit"
               disabled={
-                mutation.isPending ||
-                !name.trim() ||
-                !rankValid ||
-                !stepUp.canRun
+                !mutation.isPending &&
+                (!name.trim() || !rankValid || !stepUp.canRun)
               }
+              pending={mutation.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
             >
               {t("roles:create.submit")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>

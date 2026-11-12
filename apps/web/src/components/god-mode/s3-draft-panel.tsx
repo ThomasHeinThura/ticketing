@@ -12,6 +12,7 @@ import {
   CardTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -109,6 +110,7 @@ function S3DraftForm({
 }) {
   const { t } = useTranslation("godModeStorage");
   const step = useStepUpAction();
+  const [savingDraft, setSavingDraft] = useState(false);
   const [base, setBase] = useState(initial);
   const [config, setConfig] = useState<S3DraftConfig>(
     initial.config ?? emptyConfig,
@@ -197,29 +199,35 @@ function S3DraftForm({
     return request;
   }
   async function run(operation: "storage_config_save" | "storage_config_test") {
+    if (step.busy) return;
+    if (operation === "storage_config_save") setSavingDraft(true);
     setNotice(false);
     setProbe(null);
-    const request = snapshot();
-    const result = await step.run<S3DraftResponse | S3DraftProbe>(
-      { operation, ...request },
-      (token) =>
-        operation === "storage_config_save"
-          ? saveS3Draft(request, token)
-          : testS3Draft(request, token),
-    );
-    if (result.ok) {
-      // Entered credentials never outlive the attempt that used them.
-      setAccess("");
-      setSecret("");
-      if (operation === "storage_config_save") {
-        const saved = result.value as S3DraftResponse;
-        setBase(saved);
-        setConfig(saved.config ?? emptyConfig);
-        setNumberDrafts({});
-        setAccessMode("keep");
-        setSecretMode("keep");
-        setNotice(true);
-      } else setProbe(result.value as S3DraftProbe);
+    try {
+      const request = snapshot();
+      const result = await step.run<S3DraftResponse | S3DraftProbe>(
+        { operation, ...request },
+        (token) =>
+          operation === "storage_config_save"
+            ? saveS3Draft(request, token)
+            : testS3Draft(request, token),
+      );
+      if (result.ok) {
+        // Entered credentials never outlive the attempt that used them.
+        setAccess("");
+        setSecret("");
+        if (operation === "storage_config_save") {
+          const saved = result.value as S3DraftResponse;
+          setBase(saved);
+          setConfig(saved.config ?? emptyConfig);
+          setNumberDrafts({});
+          setAccessMode("keep");
+          setSecretMode("keep");
+          setNotice(true);
+        } else setProbe(result.value as S3DraftProbe);
+      }
+    } finally {
+      if (operation === "storage_config_save") setSavingDraft(false);
     }
   }
   // A version conflict requires an explicit reload; do not send another stale write.
@@ -475,13 +483,18 @@ function S3DraftForm({
           </Alert>
         )}
         <div className="flex flex-wrap gap-3">
-          <Button
+          <SaveButton
             type="button"
-            disabled={editingDisabled || conflict || !credentialsValid}
+            disabled={
+              !savingDraft && (editingDisabled || conflict || !credentialsValid)
+            }
+            pending={savingDraft}
+            success={notice}
+            savedLabel={t("common:actions.saved")}
             onClick={() => void run("storage_config_save")}
           >
             {t("draft.save")}
-          </Button>
+          </SaveButton>
           <Button
             type="button"
             variant="outline"

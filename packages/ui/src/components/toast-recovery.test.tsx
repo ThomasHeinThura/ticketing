@@ -1,4 +1,10 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const control = vi.hoisted(() => ({ load: vi.fn(), warm: vi.fn() }));
@@ -146,6 +152,32 @@ describe("deferred notification recovery", () => {
     ).toBeInTheDocument();
     expect(control.load).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId("page")).toBe(page);
+  });
+
+  it("stacks and dismisses text fallbacks while preserving them during a slow retry", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<toast.ToastProvider limit={2} />);
+    act(() => {
+      toast.toastManager.add({ title: "Older", timeout: 0 });
+      toast.toastManager.add({ title: "Latest", timeout: 0 });
+    });
+    await act(async () => {
+      reject(new Error("offline"));
+    });
+    await flush();
+    const card = screen.getByText("Latest").closest('[data-slot="card"]');
+    expect(card?.parentElement).toHaveClass("flex-col", "gap-2");
+    expect(screen.getByText("Latest")).toHaveClass("font-normal", "text-sm");
+    fireEvent.click(screen.getByRole("button", { name: "Older" }));
+    expect(screen.queryByText("Older")).not.toBeInTheDocument();
+    control.load.mockReturnValue(new Promise(() => {}));
+    act(() => {
+      toast.toastManager.add({ title: "Retry", timeout: 0 });
+    });
+    await flush();
+    expect(screen.getByText("Latest")).toBeInTheDocument();
+    expect(screen.getByText("Retry")).toBeInTheDocument();
+    expect(control.load).toHaveBeenCalledTimes(2);
   });
 
   it("requests warm-up in the provider effect without importing contents during render", () => {

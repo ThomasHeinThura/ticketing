@@ -24,6 +24,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Skeleton,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
@@ -35,6 +36,7 @@ import { teamsKey, useTeams } from "@/hooks/queries/team/use-teams";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { routes } from "@/lib/routes";
+import { toast } from "@/lib/toast";
 
 function CreateTeamDialog({
   workspaceId,
@@ -56,6 +58,7 @@ function CreateTeamDialog({
       }),
     onSuccess: async (team) => {
       await queryClient.invalidateQueries({ queryKey: teamsKey(workspaceId) });
+      toast.success(t("common:actions.saved"));
       onClose();
       void navigate({
         to: routes.workspaceTeamDetail.path,
@@ -134,12 +137,15 @@ function CreateTeamDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button
+            <SaveButton
               type="submit"
-              disabled={mutation.isPending || !name.trim() || !capacityValid}
+              disabled={!mutation.isPending && (!name.trim() || !capacityValid)}
+              pending={mutation.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
             >
               {t("teams:create.submit")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>

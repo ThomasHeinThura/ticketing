@@ -12,6 +12,7 @@ import {
   Checkbox,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -128,12 +129,18 @@ export function OrganisationProfileEditor({
   requestTypeOptions,
   onSaved,
   onReload,
+  completed = false,
+  onSaveStart,
+  onSaveComplete,
 }: {
   organisation: OrganisationProfile | null;
   projectDefaultOptions: OrganisationProjectDefaultOptions[];
   requestTypeOptions: OrganisationCatalogueItem[];
   onSaved: (profile: OrganisationProfile) => Promise<void>;
   onReload: () => Promise<void>;
+  completed?: boolean;
+  onSaveStart?: () => void;
+  onSaveComplete?: () => void;
 }) {
   const { t } = useTranslation("godModeOrganisations");
   const [base, setBase] = useState(() => initialDraft(organisation));
@@ -272,6 +279,7 @@ export function OrganisationProfileEditor({
 
   async function submit() {
     if (busy || !changed) return;
+    onSaveStart?.();
     setError(null);
     setNotice(null);
     if (
@@ -316,8 +324,10 @@ export function OrganisationProfileEditor({
         toast.success(t("initialInvitationQueued"));
       } else {
         setNotice(t(organisation ? "profileSaved" : "organisationCreated"));
+        if (!organisation) toast.success(t("common:actions.saved"));
       }
       await onSaved(saved);
+      if (organisation) onSaveComplete?.();
     } catch (cause) {
       setError(
         t(
@@ -760,17 +770,19 @@ export function OrganisationProfileEditor({
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              disabled={busy || (organisation !== null && !changed)}
+            <SaveButton
+              disabled={
+                !save.isPending &&
+                (status.isPending || (organisation !== null && !changed))
+              }
+              pending={save.isPending}
+              success={completed}
+              savedLabel={t("common:actions.saved")}
               onClick={() => void submit()}
               type="button"
             >
-              {busy
-                ? t("profileSaving")
-                : organisation
-                  ? t("profileSave")
-                  : t("createOrganisation")}
-            </Button>
+              {organisation ? t("profileSave") : t("createOrganisation")}
+            </SaveButton>
             {organisation ? (
               <Button
                 disabled={busy}

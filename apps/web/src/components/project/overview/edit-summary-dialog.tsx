@@ -11,6 +11,7 @@ import {
   DialogPanel,
   DialogTitle,
   Label,
+  SaveButton,
   Textarea,
 } from "@taskdesk/ui";
 import { useState } from "react";
@@ -140,15 +141,18 @@ export function EditSummaryDialog({
           <Button variant="ghost" disabled={save.isPending} onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            disabled={!dirty || save.isPending}
+          <SaveButton
+            disabled={!dirty && !save.isPending}
+            pending={save.isPending}
+            success={false}
+            savedLabel={t("common:actions.saved")}
             onClick={() => {
               setProblem(null);
               save.mutate();
             }}
           >
             {t("editSummary.save")}
-          </Button>
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

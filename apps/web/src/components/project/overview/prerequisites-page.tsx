@@ -24,6 +24,7 @@ import {
   MenuItem,
   MenuPopup,
   MenuTrigger,
+  SaveButton,
   Skeleton,
   Switch,
 } from "@taskdesk/ui";
@@ -406,15 +407,18 @@ function PrerequisiteDialog({
           <Button variant="ghost" disabled={save.isPending} onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            disabled={!title.trim() || save.isPending}
+          <SaveButton
+            disabled={!title.trim() && !save.isPending}
+            pending={save.isPending}
+            success={false}
+            savedLabel={t("common:actions.saved")}
             onClick={() => {
               setProblem(null);
               save.mutate();
             }}
           >
             {t("prerequisites.add")}
-          </Button>
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

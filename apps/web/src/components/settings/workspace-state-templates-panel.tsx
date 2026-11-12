@@ -4,6 +4,7 @@ import {
   AlertDescription,
   Button,
   Input,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -72,6 +73,9 @@ export function WorkspaceStateTemplatesPanel({
   const [newGroup, setNewGroup] =
     useState<WorkspaceStateTemplate["group"]>("backlog");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [created, setCreated] = useState(false);
   const [creating, setCreating] = useState(false);
   const [failure, setFailure] = useState<
     "stale" | "forbidden" | "generic" | null
@@ -168,6 +172,8 @@ export function WorkspaceStateTemplatesPanel({
     const changed = draft.name !== item.name || draft.group !== item.group;
     if (!changed) return;
     setSavingId(item.id);
+    setSavingTemplate(true);
+    setSavedId(null);
     setFailure(null);
     try {
       await patchWorkspaceStateTemplate(workspaceId, item.id, {
@@ -177,10 +183,12 @@ export function WorkspaceStateTemplatesPanel({
       });
       const refreshed = await templatesQuery.refetch();
       if (refreshed.data) await replaceData(refreshed.data);
+      setSavedId(item.id);
     } catch (error) {
       handleError(error);
     } finally {
       setSavingId(null);
+      setSavingTemplate(false);
     }
   };
   const toggleEnabled = async (item: WorkspaceStateTemplate) => {
@@ -206,6 +214,7 @@ export function WorkspaceStateTemplatesPanel({
     const current = templatesQuery.data;
     if (!current || !canEdit || creating) return;
     setCreating(true);
+    setCreated(false);
     setFailure(null);
     try {
       await createWorkspaceStateTemplate(workspaceId, {
@@ -219,6 +228,7 @@ export function WorkspaceStateTemplatesPanel({
       setNewKey("");
       setNewName("");
       setNewGroup("backlog");
+      setCreated(true);
     } catch (error) {
       handleError(error);
     } finally {
@@ -367,17 +377,23 @@ export function WorkspaceStateTemplatesPanel({
                 </SelectContent>
               </Select>
               {canEdit && (
-                <Button
+                <SaveButton
                   type="button"
                   size="sm"
                   variant="outline"
                   disabled={
-                    !dirty || savingId === item.id || isCheckingPermissions
+                    (!dirty && !(savingTemplate && savingId === item.id)) ||
+                    isCheckingPermissions ||
+                    (savingId !== null &&
+                      !(savingTemplate && savingId === item.id))
                   }
+                  pending={savingTemplate && savingId === item.id}
+                  success={savedId === item.id}
+                  savedLabel={t("common:actions.saved")}
                   onClick={() => void saveTemplate(item)}
                 >
                   {t("settings:workspaceStateTemplates.save")}
-                </Button>
+                </SaveButton>
               )}
               <span className="text-xs text-muted-foreground">
                 {item.enabled
@@ -458,19 +474,21 @@ export function WorkspaceStateTemplatesPanel({
               ))}
             </SelectContent>
           </Select>
-          <Button
+          <SaveButton
             type="button"
             size="sm"
             disabled={
-              !newKey.trim() ||
-              !newName.trim() ||
-              creating ||
+              (!newKey.trim() && !creating) ||
+              (!newName.trim() && !creating) ||
               isCheckingPermissions
             }
+            pending={creating}
+            success={created}
+            savedLabel={t("common:actions.saved")}
             onClick={() => void createTemplate()}
           >
             {t("settings:workspaceStateTemplates.create")}
-          </Button>
+          </SaveButton>
         </div>
       )}
       {failure && (

@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -270,11 +271,15 @@ function PreferenceCard({
             {t("portal:account.notifications.saved")}
           </p>
         ) : null}
-        <Button
+        <SaveButton
           type="button"
+          pending={mutation.isPending}
+          success={mutation.isSuccess}
+          savedLabel={t("common:actions.saved")}
           disabled={
-            mutation.isPending ||
-            (enabled === preference.enabled && digest === preference.digest)
+            !mutation.isPending &&
+            enabled === preference.enabled &&
+            digest === preference.digest
           }
           onClick={() =>
             mutation.mutate(
@@ -295,7 +300,7 @@ function PreferenceCard({
           }
         >
           {t("portal:account.notifications.save")}
-        </Button>
+        </SaveButton>
       </CardContent>
     </Card>
   );

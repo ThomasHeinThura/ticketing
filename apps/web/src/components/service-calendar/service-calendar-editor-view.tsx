@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
   AlertTitle,
   Button,
+  SaveButton,
   Skeleton,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw } from "lucide-react";
@@ -111,11 +112,13 @@ export function ServiceCalendarEditorView({
               {isNew ? t("editor.newTitle") : calendar?.name}
             </h1>
           </div>
-          <Button
+          <SaveButton
             type="submit"
             form="service-calendar-form"
+            pending={saving}
+            success={!isNew && state.saveSucceeded}
+            savedLabel={t("common:actions.saved")}
             disabled={
-              saving ||
               (state.calendarConflict !== null &&
                 state.conflictRefreshState !== "ready") ||
               !state.workspace ||
@@ -123,12 +126,8 @@ export function ServiceCalendarEditorView({
               state.isCheckingPermissions
             }
           >
-            {saving
-              ? t("editor.saving")
-              : isNew
-                ? t("editor.create")
-                : t("editor.save")}
-          </Button>
+            {isNew ? t("editor.create") : t("editor.save")}
+          </SaveButton>
         </div>
 
         {state.retroactiveImpact > 0 ? (

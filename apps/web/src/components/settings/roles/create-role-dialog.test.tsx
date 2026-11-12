@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   prove: vi.fn(),
   navigate: vi.fn(),
+  toastSuccess: vi.fn(),
   factorStatus: {
     enabled: false,
     required: false,
@@ -33,6 +34,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
+vi.mock("@/lib/toast", () => ({ toast: { success: mocks.toastSuccess } }));
 vi.mock("@/fetchers/god-mode/identity-step-up", () => ({
   proveIdentityOperation: (...args: unknown[]) => mocks.prove(...args),
 }));
@@ -59,6 +61,7 @@ beforeEach(() => {
   mocks.create.mockReset().mockResolvedValue({ id: "role-new" });
   mocks.prove.mockReset().mockResolvedValue("step-up-token");
   mocks.navigate.mockReset();
+  mocks.toastSuccess.mockReset();
 });
 afterEach(cleanup);
 
@@ -103,6 +106,9 @@ describe("CreateRoleDialog", () => {
       "ws-1",
       expect.objectContaining({ role: "Auditors" }),
       "step-up-token",
+    );
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith("Saved"),
     );
   });
 

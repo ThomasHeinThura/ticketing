@@ -27,3 +27,21 @@ export const Default: Story = {
     </ToastProvider>
   ),
 };
+
+export const SuccessProgress: Story = {
+  render: () => (
+    <ToastProvider>
+      <Button
+        onClick={() =>
+          toastManager.add({
+            title: "Changes saved",
+            type: "success",
+            timeout: 10000,
+          })
+        }
+      >
+        Show success progress
+      </Button>
+    </ToastProvider>
+  ),
+};

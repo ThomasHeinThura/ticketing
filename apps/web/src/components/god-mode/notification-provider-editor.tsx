@@ -9,9 +9,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  SaveButton,
   Skeleton,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type EmailProvider,
@@ -60,6 +61,12 @@ function isEmailSettingsForm(
 
 export function NotificationProviderEditor() {
   const { t } = useTranslation("notificationProvider");
+  const [completed, setCompleted] = useState(false);
+  useEffect(() => {
+    if (!completed) return;
+    const timer = setTimeout(() => setCompleted(false), 1200);
+    return () => clearTimeout(timer);
+  }, [completed]);
   const query = useQuery({ queryKey, queryFn: getEmailProvider, retry: false });
   const pluginQuery = useQuery({
     queryKey: ["god-mode", "plugins"],
@@ -104,6 +111,9 @@ export function NotificationProviderEditor() {
       provider={query.data}
       settingsForm={plugin.settingsForm}
       localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
+      completed={completed}
+      onStart={() => setCompleted(false)}
+      onSaved={() => setCompleted(true)}
     />
   );
 }
@@ -111,10 +121,16 @@ function ProviderForm({
   provider,
   settingsForm,
   localMailpitCaptureAvailable,
+  completed,
+  onStart,
+  onSaved,
 }: {
   provider: EmailProvider;
   settingsForm: Extract<SupportedPlugin["settingsForm"], { available: true }>;
   localMailpitCaptureAvailable: boolean;
+  completed: boolean;
+  onStart: () => void;
+  onSaved: () => void;
 }) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
@@ -227,6 +243,7 @@ function ProviderForm({
   }
   async function submit(testOnly: boolean) {
     if (busy) return;
+    if (!testOnly) onStart();
     const intent = lifecycle.capture();
     setError(null);
     setNotice(null);
@@ -245,6 +262,7 @@ function ProviderForm({
           ...(requireConfig ? { config } : {}),
           ...secret,
         });
+        if (lifecycle.isCurrent(intent)) onSaved();
         await queryClient.invalidateQueries({ queryKey });
         if (lifecycle.isCurrent(intent)) {
           setPassword("");
@@ -332,9 +350,17 @@ function ProviderForm({
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={busy || captureUnavailable}>
+            <SaveButton
+              type="submit"
+              disabled={
+                !save.isPending && (verify.isPending || captureUnavailable)
+              }
+              pending={save.isPending}
+              success={completed}
+              savedLabel={t("common:actions.saved")}
+            >
               {t("save")}
-            </Button>
+            </SaveButton>
             <Button
               type="button"
               variant="outline"

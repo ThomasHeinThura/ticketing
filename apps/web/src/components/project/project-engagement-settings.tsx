@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -102,6 +103,7 @@ function ProjectEngagementSettings({
     typeof toEngagementValues
   > | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+  const [engagementSaved, setEngagementSaved] = useState(false);
   const [saveFailure, setSaveFailure] = useState<EngagementSaveFailure | null>(
     null,
   );
@@ -200,6 +202,7 @@ function ProjectEngagementSettings({
 
   const handleSave = async () => {
     setSaveFailure(null);
+    setEngagementSaved(false);
     if (hasEngagementErrors(validateEngagement(values))) {
       setShowErrors(true);
       return;
@@ -216,6 +219,7 @@ function ProjectEngagementSettings({
       await invalidateProject();
       setDraft(null);
       setShowErrors(false);
+      setEngagementSaved(true);
       toast.success(t("settings:projectGeneral.engagement.saved"));
     } catch (error) {
       const failure = failureOf(error);
@@ -414,16 +418,17 @@ function ProjectEngagementSettings({
 
       {canEditEngagement && (
         <div className="flex items-center gap-2">
-          <Button
+          <SaveButton
             type="button"
             size="sm"
-            disabled={!dirty || isSaving}
+            disabled={!dirty && !isSaving}
+            pending={isSaving}
+            success={engagementSaved}
+            savedLabel={t("common:actions.saved")}
             onClick={() => void handleSave()}
           >
-            {isSaving
-              ? t("settings:projectGeneral.engagement.saving")
-              : t("settings:projectGeneral.engagement.save")}
-          </Button>
+            {t("settings:projectGeneral.engagement.save")}
+          </SaveButton>
           {dirty && !isSaving && (
             <Button
               type="button"
@@ -485,6 +490,7 @@ function ProjectInheritanceSettings({
   const [calendarChoice, setCalendarChoice] = useState(INHERIT);
   const [baseVersions, setBaseVersions] = useState("");
   const [saving, setSaving] = useState(false);
+  const [inheritanceSaved, setInheritanceSaved] = useState(false);
   const [failure, setFailure] = useState<
     "stale" | "forbidden" | "generic" | null
   >(null);
@@ -621,6 +627,7 @@ function ProjectInheritanceSettings({
   const save = async () => {
     if (!isDirty || saving || !canEdit) return;
     setSaving(true);
+    setInheritanceSaved(false);
     setFailure(null);
     try {
       const result = await patchProjectSettingsInheritance(projectId, {
@@ -665,6 +672,7 @@ function ProjectInheritanceSettings({
       setBaseVersions(
         `${projectId}:${result.projectVersion}:${result.workspaceVersion}`,
       );
+      setInheritanceSaved(true);
     } catch (error) {
       setFailure(
         error instanceof WorkspaceSettingsError && error.status === 409
@@ -789,16 +797,17 @@ function ProjectInheritanceSettings({
         </Alert>
       )}
       {canEdit && (
-        <Button
+        <SaveButton
           type="button"
           size="sm"
-          disabled={!isDirty || saving}
+          disabled={!isDirty && !saving}
+          pending={saving}
+          success={inheritanceSaved}
+          savedLabel={t("common:actions.saved")}
           onClick={() => void save()}
         >
-          {saving
-            ? t("settings:projectInheritance.saving")
-            : t("settings:projectInheritance.save")}
-        </Button>
+          {t("settings:projectInheritance.save")}
+        </SaveButton>
       )}
     </div>
   );
