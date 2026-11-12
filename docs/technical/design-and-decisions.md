@@ -3683,6 +3683,9 @@ Only obsolete workflow/delegation provenance may remain here; product clauses mu
 | 23 Oct | Customer invitations use a new hashed single-use credential and a scope discriminator on `invitation`; Pages reuse `project:read`/`project:update`; typed-domain route claims non-enumeration for accounts only (ADR 0014); invitation lifetime and rate limits are instance configuration | `CP-20`..`CP-29`, `PG-1`..`PG-8` | standing |
 | 27 Oct 2026 | The local-factor policy applies to staff only: customers are exempt in every mode (including `required_everyone`) and customer SSO sign-in never reaches the agent-only `/auth/two-factor` (a factor a customer enrolled voluntarily is still honoured on local sign-in); the God Mode label reads "Everyone (staff)" | `CP-19`, `P3-R1-04` | recommended option, Thomas standing rule |
 
+### 12 Nov 2026 — Thomas, D-G: password recovery by email
+
+Staff and customers may request local-password recovery from their own sign-in host. Recovery uses a one-hour, single-use link, a generic request response and existing mail configuration. A link is bound to its issuing portal; recovery requires an existing local password and the appropriate active person side. A completed reset revokes all sessions and records an audit event. SSO-only accounts cannot acquire a local password through recovery.
 ### 12 Nov 2026 — Thomas: staff invitation roles (D-C)
 
 The inviter chooses the staff role. A `member:invite`-scoped read returns only assignable role keys, labels and ranks, without widening the roles administration read. Resend keeps the stored role when omitted, or replaces it when supplied, and rechecks the resender’s current authority; a new invitation requires a role.

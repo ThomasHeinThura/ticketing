@@ -32,6 +32,9 @@ async function authFetch<T>(
   const response = await fetch(`${getPortalAuthBaseURL()}/api/auth${path}`, {
     method: init.method ?? "GET",
     credentials: "include",
+    ...(path === "/reset-password"
+      ? { referrerPolicy: "no-referrer" as const }
+      : {}),
     headers: init.body ? { "content-type": "application/json" } : undefined,
     body: init.body ? JSON.stringify(init.body) : undefined,
   });

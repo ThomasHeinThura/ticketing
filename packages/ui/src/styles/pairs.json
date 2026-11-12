@@ -74180,6 +74180,32 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/auth/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/identity-access-denied.tsx:IdentityAccessDenied",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:InstanceSettingsRoute",
@@ -79221,6 +79247,32 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/auth/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/identity-access-denied.tsx:IdentityAccessDenied",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:InstanceSettingsRoute",
@@ -83823,6 +83875,58 @@
 					"apps/web/src/components/account/canonical-mention-preference.tsx:CanonicalMentionPreference",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/account/canonical-mention-preference.tsx:CanonicalMentionPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ForgotPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/auth/forgot-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ForgotPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/forgot-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/auth/reset-password.tsx:Page",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/auth/password-recovery.tsx:ResetPassword",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/portal/reset-password.tsx:Page",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",

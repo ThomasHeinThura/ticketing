@@ -13,6 +13,8 @@ export const AUTH_RATE_LIMIT = {
   window: 10,
   max: 100,
   customRules: {
+    "/request-password-reset": { window: 3600, max: 5 },
+    "/reset-password": { window: 3600, max: 10 },
     "/sign-up/email": { window: 60, max: 3 },
     "/get-session": false,
   },

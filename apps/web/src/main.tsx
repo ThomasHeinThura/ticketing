@@ -18,6 +18,7 @@ import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { followAgentSession } from "./lib/agent-session";
 import { AppI18nProvider } from "./lib/i18n/provider";
 import { initializeNotificationPreferenceHandoff } from "./lib/notification-preference-handoff";
+import { capturePasswordResetToken } from "./lib/password-reset-token";
 import { createRouterParseSearch } from "./lib/project-board-search";
 import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
 import { routeTree } from "./routeTree.agent.gen";
@@ -41,6 +42,7 @@ function AgentNotFoundPage() {
 
 // Strip signed email fragments synchronously, then finish the bounded cookie
 // handoff before any router or authentication redirect can run.
+capturePasswordResetToken();
 void initializeNotificationPreferenceHandoff().then(
   bootstrapApplication,
   () => {},

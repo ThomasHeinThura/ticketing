@@ -1997,6 +1997,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | --- | --- |
 | `terminology.changed` | An instance or workspace runtime noun override is saved or removed. Record actor, scope/workspace, audience, term key, locale and non-secret before/after forms; no domain event or automation trigger. |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
+| `auth.password_reset_requested` · `auth.password_reset_completed` | Password recovery request and completion; never record the address, link, token or password |
 | `auth.password_changed` | The signed-in user changes their local password; no credentials are recorded |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
 | `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |

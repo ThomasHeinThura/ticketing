@@ -451,6 +451,8 @@ function isApiRequestPath(path: string): boolean {
 const CUSTOMER_AUTH_ENDPOINTS = new Set([
   "GET /api/auth/get-session",
   "POST /api/auth/sign-out",
+  "POST /api/auth/request-password-reset",
+  "POST /api/auth/reset-password",
   "POST /api/auth/change-password",
   "GET /api/me/security/factors",
   "POST /api/auth/two-factor/verify-totp",
@@ -632,7 +634,8 @@ async function handleAuthRequest(
   const authRequest = buildAuthRequest(c, headers);
   if (
     c.req.method === "POST" &&
-    c.req.path === "/api/auth/two-factor/verify-totp"
+    (c.req.path === "/api/auth/two-factor/verify-totp" ||
+      c.req.path === "/api/auth/reset-password")
   ) {
     try {
       return await withTotpSessionEnrollment(() =>
