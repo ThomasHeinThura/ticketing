@@ -159,7 +159,11 @@ describe("cross-scope: a wrong-kind or unresolved scope is refused for every cap
       credential: "session",
       memberships: [],
       teamIds: [],
-      reach: { kind: "organisation", ids: [ORGANISATION_ID] },
+      reach: {
+        kind: "organisation",
+        ids: [ORGANISATION_ID],
+        projectIds: [PROJECT_ID],
+      },
       authority: [
         {
           roleKey: "customer",

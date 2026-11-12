@@ -93,12 +93,23 @@ export function createCustomerInvitation(
   workspaceId: string,
   organisationId: string,
   email: string,
+  projectIds: string[] = [],
 ) {
   return request<SentCustomerInvitation>(
     orgBase(workspaceId, organisationId),
-    { method: "POST", body: { email } },
+    { method: "POST", body: { email, projectIds } },
     "Failed to send the invitation",
   );
+}
+
+export async function listCustomerInvitationProjects(
+  workspaceId: string,
+  organisationId: string,
+) {
+  const result = await request<{ projects: { id: string; name: string }[] }>(
+    `/workspace/${encodeURIComponent(workspaceId)}/organisations/${encodeURIComponent(organisationId)}/invitation-projects`,
+  );
+  return result.projects;
 }
 
 export function resendCustomerInvitation(

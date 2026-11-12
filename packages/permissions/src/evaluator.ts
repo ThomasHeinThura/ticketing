@@ -425,11 +425,13 @@ export function reaches(
     case "all":
       return true;
 
-    // 6. A customer whose organisation is the project's customer. And never anything else.
+    // 6. A customer whose organisation is the project's customer AND who holds explicit project
+    //    access to it (owner decision D-D, CP-1). Never anything else.
     case "organisation":
       return (
         project.organisationId !== null &&
-        identity.reach.ids.includes(project.organisationId)
+        identity.reach.ids.includes(project.organisationId) &&
+        identity.reach.projectIds.includes(project.projectId)
       );
 
     case "membership":

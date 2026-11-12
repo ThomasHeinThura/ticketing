@@ -1,12 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
-import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { can, type ResolvedIdentity } from "@taskdesk/permissions";
+import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { getConfiguredCustomerOrigin } from "../auth";
 import db, { schema } from "../database";
 import type { Executor, Transaction } from "../database/executor";
+import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
 import { currentEncryptionKeyId } from "../identity/client-secret";
 import { projectMembershipKeys } from "../identity/membership-projection";
 import {
@@ -14,6 +15,8 @@ import {
   reportPlaceholderClaimAuditWriteFailure,
 } from "../identity/placeholder-claim";
 import { lockOrganisationIdentityDomainBindings } from "../instance/organisation-lifecycle";
+import { resolveIdentity } from "../permissions/resolve-identity";
+import { loadProjectAncestorIds } from "../project/hierarchy.repository";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import {
   type CustomerInvitationDeliveryKeyring,
@@ -69,6 +72,10 @@ export type InviteActor = {
 };
 
 type Scope = { workspaceId: string; organisationId: string };
+
+function sameProjectSelection(left: string[], right: string[]): boolean {
+  return JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+}
 
 /**
  * Audit a refusal outside the failed transaction. Request metadata only: the entity id, the
@@ -168,7 +175,9 @@ export async function assertCreateBodyIsCustomerOnly(
   actor: InviteActor,
   scope: Scope,
 ) {
-  const extra = Object.keys(body).filter((key) => key !== "email");
+  const extra = Object.keys(body).filter(
+    (key) => key !== "email" && key !== "projectIds",
+  );
   const roleOk = !("role" in body) || isAssignableCustomerRole(body.role);
   if (
     extra.length === 0 ||
@@ -191,6 +200,7 @@ export async function createCustomerInvitation(
     identity: ResolvedIdentity;
     scope: Scope;
     email: string;
+    projectIds?: string[];
   },
   options: { deliveryKeyring?: CustomerInvitationDeliveryKeyring } = {},
 ) {
@@ -230,6 +240,7 @@ export async function prepareCustomerInvitation(
     identity: ResolvedIdentity;
     scope: Scope;
     email: string;
+    projectIds?: string[];
   },
   options: { deliveryKeyring?: CustomerInvitationDeliveryKeyring } = {},
 ): Promise<PreparedCustomerInvitation> {
@@ -247,6 +258,32 @@ export async function prepareCustomerInvitation(
       input.identity,
     );
     if (!organisation) refuse(404, "Organisation not found");
+
+    const projectIds = [...new Set(input.projectIds ?? [])];
+    if (projectIds.length) {
+      const projects = await tx
+        .select({ id: schema.projectTable.id })
+        .from(schema.projectTable)
+        .where(
+          and(
+            inArray(schema.projectTable.id, projectIds),
+            eq(schema.projectTable.workspaceId, input.scope.workspaceId),
+            eq(schema.projectTable.organisationId, organisation.id),
+            isNull(schema.projectTable.deletedAt),
+            isNull(schema.projectTable.archivedAt),
+            currentProjectReachPredicate(
+              input.identity,
+              schema.projectTable.id,
+              schema.projectTable.workspaceId,
+              schema.projectTable.organisationId,
+              tx,
+            ),
+          ),
+        )
+        .for("share", { of: schema.projectTable });
+      if (projects.length !== projectIds.length)
+        refuse(404, "Project not found");
+    }
 
     // Both quota dimensions are serialized in a stable order. Counts happen only after these
     // locks, so concurrent creates for different addresses cannot exceed either configured cap.
@@ -327,6 +364,19 @@ export async function prepareCustomerInvitation(
           now,
         });
     if (!row) refuse(409, "The invitation could not be created");
+    await tx
+      .update(schema.invitationTable)
+      .set({ validatedProjectIds: [...projectIds].sort() })
+      .where(eq(schema.invitationTable.id, row.id));
+    await tx
+      .delete(schema.customerInvitationProjectTable)
+      .where(eq(schema.customerInvitationProjectTable.invitationId, row.id));
+    if (projectIds.length)
+      await tx
+        .insert(schema.customerInvitationProjectTable)
+        .values(
+          projectIds.map((projectId) => ({ invitationId: row.id, projectId })),
+        );
     if (existing)
       supersededDeliveries = await suppressActiveInvitationDeliveries(
         tx,
@@ -716,6 +766,112 @@ async function acceptCustomerInvitationInTransaction(
     grantedByPersonId: inviter.id,
   });
   if (!grant.grantId || !grant.roleMatches) fail("person_conflict");
+  // Compare the selected rows to the immutable-at-issue snapshot before considering reach.
+  // Old invitations without a snapshot fail closed and still admit the customer.
+  const selected = await tx
+    .select({ projectId: schema.customerInvitationProjectTable.projectId })
+    .from(schema.customerInvitationProjectTable)
+    .where(eq(schema.customerInvitationProjectTable.invitationId, row.id));
+  const selectedIds = selected.map(({ projectId }) => projectId);
+  const selectionValid =
+    Array.isArray(row.validatedProjectIds) &&
+    row.validatedProjectIds.every((id) => typeof id === "string") &&
+    sameProjectSelection(row.validatedProjectIds, selectedIds);
+  const identity = inviter?.active
+    ? await resolveIdentity(
+        { userId: row.inviterId, credential: "session" },
+        tx,
+      )
+    : null;
+  const authorised =
+    identity?.side === "staff" &&
+    identity.personId === inviter?.id &&
+    can(identity, "member:invite", "workspace", {
+      workspaceId: row.workspaceId,
+    });
+  const reachable =
+    selectionValid && authorised && identity && selectedIds.length
+      ? await tx
+          .select({ projectId: schema.projectTable.id })
+          .from(schema.projectTable)
+          .where(
+            and(
+              inArray(schema.projectTable.id, selectedIds),
+              eq(schema.projectTable.organisationId, organisationId),
+              eq(schema.projectTable.workspaceId, row.workspaceId),
+              isNull(schema.projectTable.deletedAt),
+              isNull(schema.projectTable.archivedAt),
+              currentProjectReachPredicate(
+                identity,
+                schema.projectTable.id,
+                schema.projectTable.workspaceId,
+                schema.projectTable.organisationId,
+                tx,
+              ),
+            ),
+          )
+          .for("share", { of: schema.projectTable })
+      : [];
+  const grantedProjectIds: string[] = [];
+  for (const { projectId } of reachable) {
+    if (
+      identity &&
+      can(identity, "project:manage_members", "project", {
+        projectId,
+        workspaceId: row.workspaceId,
+        ancestorProjectIds: await loadProjectAncestorIds(
+          tx,
+          row.workspaceId,
+          projectId,
+        ),
+      })
+    )
+      grantedProjectIds.push(projectId);
+  }
+  if (grantedProjectIds.length && inviter) {
+    const inserted = await tx
+      .insert(schema.customerProjectAccessTable)
+      .values(
+        grantedProjectIds.map((projectId) => ({
+          personId,
+          projectId,
+          grantedBy: inviter.id,
+        })),
+      )
+      .onConflictDoNothing()
+      .returning({ projectId: schema.customerProjectAccessTable.projectId });
+    for (const { projectId } of inserted) {
+      await appendAuditLog(tx, {
+        actorId: row.inviterId,
+        actorType: "person",
+        workspaceId: row.workspaceId,
+        organisationId,
+        action: "membership.changed",
+        entityType: "membership",
+        entityId: personId,
+        before: null,
+        after: {
+          source: "customer_invitation",
+          scope: "project",
+          scopeId: projectId,
+          granted: true,
+        },
+      });
+    }
+  }
+  const granted = new Set(grantedProjectIds);
+  const skippedProjectIds = [
+    ...new Set([
+      ...selectedIds,
+      ...(Array.isArray(row.validatedProjectIds)
+        ? row.validatedProjectIds.filter(
+            (id): id is string => typeof id === "string",
+          )
+        : []),
+    ]),
+  ]
+    .filter((id) => !granted.has(id))
+    .sort();
   await projectMembershipKeys(tx, [
     { personId, scope: "organisation", scopeId: organisationId },
   ]);
@@ -761,8 +917,13 @@ async function acceptCustomerInvitationInTransaction(
     entityId: row.id,
     before: null,
     after: input.via
-      ? { scope: "customer", via: input.via }
-      : { scope: "customer" },
+      ? {
+          scope: "customer",
+          via: input.via,
+          grantedProjectIds,
+          skippedProjectIds,
+        }
+      : { scope: "customer", grantedProjectIds, skippedProjectIds },
   });
   return {
     accepted: { organisationId, personId },

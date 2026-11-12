@@ -4852,6 +4852,21 @@
 						},
 						"statesDescription": {
 							"type": "string"
+						},
+						"columnsTitle": {
+							"type": "string"
+						},
+						"columnsDescription": {
+							"type": "string"
+						},
+						"automationTitle": {
+							"type": "string"
+						},
+						"automationDescription": {
+							"type": "string"
+						},
+						"columnsNote": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -4859,7 +4874,12 @@
 						"title",
 						"subtitle",
 						"statesTitle",
-						"statesDescription"
+						"statesDescription",
+						"columnsTitle",
+						"columnsDescription",
+						"automationTitle",
+						"automationDescription",
+						"columnsNote"
 					]
 				},
 				"projectMembers": {
@@ -12713,6 +12733,9 @@
 						},
 						"unavailableDescription": {
 							"type": "string"
+						},
+						"backToDashboard": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12735,7 +12758,8 @@
 						"scopeWorkItems",
 						"scopeProjects",
 						"unavailableTitle",
-						"unavailableDescription"
+						"unavailableDescription",
+						"backToDashboard"
 					]
 				},
 				"create": {
@@ -27466,6 +27490,39 @@
 				},
 				"testDestinationPasswordRequired": {
 					"type": "string"
+				},
+				"test": {
+					"type": "string"
+				},
+				"testHelp": {
+					"type": "string"
+				},
+				"verified": {
+					"type": "string"
+				},
+				"diagnostics": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"smtp_authentication_failed": {
+							"type": "string"
+						},
+						"smtp_connection_failed": {
+							"type": "string"
+						},
+						"smtp_tls_failed": {
+							"type": "string"
+						},
+						"smtp_timeout": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"smtp_authentication_failed",
+						"smtp_connection_failed",
+						"smtp_tls_failed",
+						"smtp_timeout"
+					]
 				}
 			},
 			"required": [
@@ -27509,7 +27566,11 @@
 				"failure",
 				"failureSes",
 				"credentialsRequired",
-				"testDestinationPasswordRequired"
+				"testDestinationPasswordRequired",
+				"test",
+				"testHelp",
+				"verified",
+				"diagnostics"
 			]
 		},
 		"featureFlags": {
@@ -37100,9 +37161,39 @@
 						},
 						"submit": {
 							"type": "string"
+						},
+						"projectsTitle": {
+							"type": "string"
+						},
+						"projectsLoadError": {
+							"type": "string"
+						},
+						"accessTitle": {
+							"type": "string"
+						},
+						"accessError": {
+							"type": "string"
+						},
+						"grantAccess": {
+							"type": "string"
+						},
+						"revokeAccess": {
+							"type": "string"
 						}
 					},
-					"required": ["title", "description", "email", "roleNote", "submit"]
+					"required": [
+						"title",
+						"description",
+						"email",
+						"roleNote",
+						"submit",
+						"projectsTitle",
+						"projectsLoadError",
+						"accessTitle",
+						"accessError",
+						"grantAccess",
+						"revokeAccess"
+					]
 				},
 				"resultCard": {
 					"type": "object",

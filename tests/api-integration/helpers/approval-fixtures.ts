@@ -516,6 +516,12 @@ export async function addCustomer(t: Tenant) {
     .returning();
   if (!user || !person) throw new Error("customer fixture missing");
   await grantCustomerOrganisationMembership(orgId, person.id);
+  // Most existing tenant fixtures exercise the tenant project. Reach remains ineffective
+  // until that project is bound to this person's organisation.
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: person.id, projectId: t.project.id })
+    .onConflictDoNothing();
   return { user, person, orgId };
 }
 

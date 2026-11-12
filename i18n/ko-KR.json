@@ -1061,7 +1061,12 @@
 			"title": "워크플로",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States"
+			"statesTitle": "States",
+			"columnsTitle": "컬럼",
+			"columnsDescription": "보드에 표시되는 컬럼을 관리합니다. 드래그하여 순서를 바꿉니다. 완료된 작업을 나타내는 단계의 경우 \"완료 컬럼\"을 켜세요.",
+			"automationTitle": "자동화 규칙",
+			"automationDescription": "연동 이벤트를 컬럼에 매핑합니다. 이벤트가 발생하면 연결된 작업이 지정된 컬럼으로 이동합니다.",
+			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_other}} 선택",
@@ -3075,7 +3080,8 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable"
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "대시보드로 돌아가기"
 		},
 		"create": {
 			"pageTitle": "워크스페이스 만들기",
@@ -6026,6 +6032,15 @@
 			"replyWithCode": "Server reply {{code}}: {{text}}",
 			"sending": "Sending…",
 			"sent": "Test email accepted by the mail server. Check the inbox of the address above."
+		},
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"verified": "Connection verified. No email was sent.",
+		"diagnostics": {
+			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
+			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
+			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings.",
+			"smtp_timeout": "The SMTP server did not respond before the connection deadline."
 		}
 	},
 	"featureFlags": {
@@ -8658,7 +8673,13 @@
 			"email": "Email address",
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation",
-			"title": "Invite to this organisation"
+			"title": "Invite to this organisation",
+			"projectsTitle": "Projects (optional)",
+			"projectsLoadError": "Could not load projects. Try again.",
+			"accessTitle": "Customer access",
+			"accessError": "Could not load or update customer access.",
+			"grantAccess": "Grant access",
+			"revokeAccess": "Remove access"
 		},
 		"resultCard": {
 			"createdTitle": "Invitation ready",

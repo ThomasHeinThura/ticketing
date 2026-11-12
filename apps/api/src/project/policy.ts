@@ -78,6 +78,36 @@ export const projectPolicies = {
   // project:manage_members (an authority-granting capability, but permissions.md's elevated
   // table has no row for roster writes, so each is declared `elevated: false` with that
   // reason, like the ownership route). Writes are bounded in the handler by the caller's own role rank.
+  "GET /api/projects/{projectId}/customers": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason:
+      "read-only list of customer access; writes nothing",
+  },
+  "PUT /api/projects/{projectId}/customers/{personId}": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason:
+      "customer access grants are audited as membership.changed",
+  },
+  "DELETE /api/projects/{projectId}/customers/{personId}": {
+    capability: "project:manage_members",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason:
+      "customer access revocations are audited as membership.changed",
+  },
   "GET /api/projects/{projectId}/members": {
     capability: "project:read",
     scope: "project",

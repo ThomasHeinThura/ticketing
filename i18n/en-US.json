@@ -1227,7 +1227,12 @@
 			"title": "Workflow",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesTitle": "States",
-			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template."
+			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
+			"columnsTitle": "Columns",
+			"columnsDescription": "Manage the columns that appear on your board. Drag to reorder. Turn on \"Done column\" for stages that represent completed work.",
+			"automationTitle": "Automation Rules",
+			"automationDescription": "Map integration events to columns. When an event occurs, the linked {{term_work_item_one}} moves to the specified column.",
+			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectMembers": {
 			"pageTitle": "{{term_project_one}} Members",
@@ -3086,7 +3091,8 @@
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"scopeProjects": "{{term_project_other}}",
 			"unavailableTitle": "Workspace unavailable",
-			"unavailableDescription": "This workspace does not exist or your account does not have access to it."
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"backToDashboard": "Back to Dashboard"
 		},
 		"create": {
 			"pageTitle": "Create Workspace",
@@ -6660,7 +6666,16 @@
 			"starttls_required": "Amazon SES requires a STARTTLS connection (530). Keep “Require TLS before authentication” on and use port 587."
 		},
 		"credentialsRequired": "Enter the password for the new provider. A saved password is not reused when the provider changes.",
-		"testDestinationPasswordRequired": "Enter the SMTP password again to test changed connection settings, or save cleared credentials before testing without authentication."
+		"testDestinationPasswordRequired": "Enter the SMTP password again to test changed connection settings, or save cleared credentials before testing without authentication.",
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"verified": "Connection verified. No email was sent.",
+		"diagnostics": {
+			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
+			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
+			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings.",
+			"smtp_timeout": "The SMTP server did not respond before the connection deadline."
+		}
 	},
 	"featureFlags": {
 		"unavailable": "Feature switches are unavailable",
@@ -9011,7 +9026,13 @@
 			"description": "The person receives an email with a link to accept on the customer portal, or you can copy the link and send it yourself. The link works once and expires.",
 			"email": "Email address",
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
-			"submit": "Send invitation"
+			"submit": "Send invitation",
+			"projectsTitle": "Projects (optional)",
+			"projectsLoadError": "Could not load projects. Try again.",
+			"accessTitle": "Customer access",
+			"accessError": "Could not load or update customer access.",
+			"grantAccess": "Grant access",
+			"revokeAccess": "Remove access"
 		},
 		"resultCard": {
 			"createdTitle": "Invitation ready",

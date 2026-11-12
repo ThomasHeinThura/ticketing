@@ -48,6 +48,9 @@ beforeEach(async () => {
     .update(schema.projectTable)
     .set({ organisationId: w.customerB.orgId })
     .where(eq(schema.projectTable.id, w.projectB.id));
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: w.customerB.person.id, projectId: w.projectB.id });
   // The owner reaches every project of the workspace, as owners do after the sees-all migration.
   const [owner] = await db
     .select({ id: schema.personTable.id })
@@ -814,6 +817,23 @@ describe("project reach", () => {
 });
 
 describe("drafts and the time window", () => {
+  it("hides a project-targeted announcement immediately when its project access is revoked", async () => {
+    const published = await createPublished({
+      audience: "projects",
+      projectIds: [w.projectA.id],
+    });
+    expect(await portalIds(w.customerA)).toContain(published.id);
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, w.customerA.person.id),
+          eq(schema.customerProjectAccessTable.projectId, w.projectA.id),
+        ),
+      );
+    expect(await portalIds(w.customerA)).not.toContain(published.id);
+    expect(await portalDetailStatus(w.customerA, published.id)).toBe(404);
+  });
   it("hides drafts, future and expired announcements and filters by severity", async () => {
     const draft = (await (await create({})).json()) as Announcement;
     const future = await createPublished({

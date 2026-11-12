@@ -1,14 +1,19 @@
+import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
+import { projectTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
+import { requireReachFilteredList } from "../utils/reach-filtered-list";
 import { requireAgentBrowserSession } from "../utils/require-agent-browser-session";
 import { requireCopyInvitationLinkRateLimit } from "../utils/require-copy-link-rate-limit";
 import { requireInvitationCopyAccess } from "../utils/require-invitation-copy-access";
@@ -125,6 +130,26 @@ const listRoute = createRoute({
   },
 });
 
+const listProjectsRoute = createRoute({
+  method: "get",
+  path: "/workspace/{workspaceId}/organisations/{organisationId}/invitation-projects",
+  operationId: "listCustomerInvitationProjects",
+  tags: ["Customer invitations"],
+  summary: "List projects available for a customer invitation",
+  middleware: [...manage, requireReachFilteredList] as const,
+  request: { params: organisationParam },
+  responses: {
+    200: jsonResponse(
+      "Projects",
+      z.object({
+        projects: z.array(z.object({ id: z.string(), name: z.string() })),
+      }),
+    ),
+    403: errorResponse("Forbidden"),
+    404: errorResponse("Organisation not found"),
+  },
+});
+
 const createRouteDef = createRoute({
   method: "post",
   path: "/workspace/{workspaceId}/organisations/{organisationId}/invitations",
@@ -220,6 +245,37 @@ const acceptRoute = createRoute({
 });
 
 const customerInvitation = apiRouter<Vars>()
+  .openapi(listProjectsRoute, async (c) => {
+    const { workspaceId, organisationId } = c.req.valid("param");
+    const identity = await callerIdentity(c);
+    if (
+      !(await findInvitableOrganisation(
+        db,
+        workspaceId,
+        organisationId,
+        identity,
+      ))
+    )
+      throw new HTTPException(404, { message: "Organisation not found" });
+    const projects = await db
+      .select({ id: projectTable.id, name: projectTable.name })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.workspaceId, workspaceId),
+          eq(projectTable.organisationId, organisationId),
+          isNull(projectTable.deletedAt),
+          isNull(projectTable.archivedAt),
+          currentProjectReachPredicate(
+            identity,
+            projectTable.id,
+            projectTable.workspaceId,
+            projectTable.organisationId,
+          ),
+        ),
+      );
+    return c.json({ projects }, 200);
+  })
   .openapi(listOrganisationsRoute, async (c) =>
     c.json(
       {
@@ -266,6 +322,7 @@ const customerInvitation = apiRouter<Vars>()
       identity: await callerIdentity(c),
       scope,
       email: body.email,
+      projectIds: body.projectIds,
     });
     return c.json(created, 201);
   })

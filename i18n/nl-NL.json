@@ -950,7 +950,12 @@
 			"title": "Workflow",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States"
+			"statesTitle": "States",
+			"columnsTitle": "Kolommen",
+			"columnsDescription": "Beheer de kolommen op je bord. Sleep om de volgorde te wijzigen. Schakel \"Gereed-kolom\" in voor stadia die voltooid werk vertegenwoordigen.",
+			"automationTitle": "Automatiseringsregels",
+			"automationDescription": "Koppel integratie-gebeurtenissen aan kolommen. Bij een gebeurtenis verplaatst de {{term_work_item_one}} automatisch naar de gekozen kolom.",
+			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_one}} selecteren",
@@ -3086,7 +3091,8 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable"
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "Terug naar dashboard"
 		},
 		"create": {
 			"pageTitle": "Werkruimte maken",
@@ -6047,6 +6053,15 @@
 			"replyWithCode": "Server reply {{code}}: {{text}}",
 			"sending": "Sending…",
 			"sent": "Test email accepted by the mail server. Check the inbox of the address above."
+		},
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"verified": "Connection verified. No email was sent.",
+		"diagnostics": {
+			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
+			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
+			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings.",
+			"smtp_timeout": "The SMTP server did not respond before the connection deadline."
 		}
 	},
 	"featureFlags": {
@@ -8709,7 +8724,13 @@
 			"email": "Email address",
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation",
-			"title": "Invite to this organisation"
+			"title": "Invite to this organisation",
+			"projectsTitle": "Projects (optional)",
+			"projectsLoadError": "Could not load projects. Try again.",
+			"accessTitle": "Customer access",
+			"accessError": "Could not load or update customer access.",
+			"grantAccess": "Grant access",
+			"revokeAccess": "Remove access"
 		},
 		"resultCard": {
 			"createdTitle": "Invitation ready",

@@ -51,6 +51,7 @@ import useGetProjectMembers from "@/hooks/queries/project-member/use-get-project
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getInitials } from "@/lib/get-initials";
 import { toast } from "@/lib/toast";
+import { CustomerProjectAccess } from "./customer-project-access";
 import {
   assignableRoles,
   isAuthorityReplacingWorkspaceRole,
@@ -164,6 +165,7 @@ function ProjectMembersSettings({ projectId }: Props) {
 
   return (
     <section className="space-y-4" data-testid="project-members">
+      <CustomerProjectAccess projectId={projectId} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h2 className="text-md font-medium">

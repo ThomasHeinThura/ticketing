@@ -35,9 +35,11 @@ import {
 } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import type { Executor } from "../database/executor";
 import {
   currentProjectReachPredicate,
   currentWorkspaceReachPredicate,
+  customerProjectAccessExists,
 } from "../database/repositories/identity-scope.repository";
 import {
   type DbTransaction,
@@ -691,7 +693,12 @@ export async function portalIdentity(userId: string) {
   return row;
 }
 
-export async function portalCatalogue(organisationId: string, query = "") {
+export async function portalCatalogue(
+  organisationId: string,
+  query: string | undefined,
+  personId: string,
+) {
+  const effectiveProjectId = sql`COALESCE(${schema.requestTypeVersionTable.defaultProjectId}, ${schema.requestTypeTable.defaultProjectId})`;
   const latestPublished = db
     .select({
       requestTypeId: schema.requestTypeVersionTable.requestTypeId,
@@ -739,6 +746,14 @@ export async function portalCatalogue(organisationId: string, query = "") {
         eq(schema.organisationRequestTypeTable.organisationId, organisationId),
         eq(schema.requestTypeTable.published, true),
         eq(schema.requestTypeTable.customerVisible, true),
+        or(
+          sql`${effectiveProjectId} IS NULL`,
+          customerProjectAccessExists(
+            personId,
+            organisationId,
+            effectiveProjectId,
+          ),
+        ),
       ),
     );
   const workspaceIds = [...new Set(rows.map((row) => row.workspaceId))];
@@ -782,12 +797,17 @@ export async function portalCatalogue(organisationId: string, query = "") {
     ),
   );
   // P4R2-M2: request types of a workspace with the customer portal off are not offered.
+  // D-D: project-bound request types require explicit per-person customer_project_access, while
+  // organisation-level request types (defaultProjectId === null) remain available to the org.
   const portalScope = await customerPortalScope();
-  const activeRows = rows.filter(
-    (row) =>
-      enabledWorkspaceIds.has(row.workspaceId) &&
-      customerPortalOnFor(portalScope, row.workspaceId),
-  );
+  const activeRows = rows.filter((row) => {
+    if (!enabledWorkspaceIds.has(row.workspaceId)) return false;
+    const targetProjectId =
+      row.version.defaultProjectId ?? row.type.defaultProjectId ?? null;
+    if (!customerPortalOnFor(portalScope, row.workspaceId, targetProjectId))
+      return false;
+    return true;
+  });
   const ordered = activeRows.sort(
     (a, b) =>
       a.type.position - b.type.position || a.type.id.localeCompare(b.type.id),
@@ -821,7 +841,7 @@ export async function portalCatalogue(organisationId: string, query = "") {
     .filter(({ type }) =>
       `${type.name} ${type.description ?? ""} ${type.group}`
         .toLocaleLowerCase()
-        .includes(query.toLocaleLowerCase()),
+        .includes((query ?? "").toLocaleLowerCase()),
     )
     .sort(
       (a, b) =>
@@ -844,7 +864,11 @@ export async function createSubmission(input: {
   customerVisibility?: "private" | "organisation";
 }) {
   const identity = await portalIdentity(input.userId);
-  const rows = await portalCatalogue(identity.organisationId);
+  const rows = await portalCatalogue(
+    identity.organisationId,
+    "",
+    identity.personId,
+  );
   const selected = rows.find((row) => row.type.key === input.key);
   if (!selected)
     throw new HTTPException(404, { message: "Request type not found" });
@@ -900,6 +924,32 @@ export async function createSubmission(input: {
         message: "Request type changed; reload the catalogue",
       });
     const version = currentType.version;
+    const targetProjectId =
+      version.defaultProjectId ?? currentType.type.defaultProjectId ?? null;
+    if (targetProjectId !== null) {
+      const [granted] = await tx
+        .select({ projectId: schema.customerProjectAccessTable.projectId })
+        .from(schema.customerProjectAccessTable)
+        .innerJoin(
+          schema.projectTable,
+          eq(
+            schema.projectTable.id,
+            schema.customerProjectAccessTable.projectId,
+          ),
+        )
+        .where(
+          and(
+            eq(schema.customerProjectAccessTable.personId, identity.personId),
+            eq(schema.customerProjectAccessTable.projectId, targetProjectId),
+            eq(schema.projectTable.organisationId, identity.organisationId),
+            isNull(schema.projectTable.deletedAt),
+          ),
+        )
+        .for("share", { of: schema.customerProjectAccessTable })
+        .limit(1);
+      if (!granted)
+        throw new HTTPException(404, { message: "Request type not found" });
+    }
     await requireAutoAcceptProject(tx, {
       autoAccept: version.autoAccept,
       workspaceId: selected.workspaceId,
@@ -1700,15 +1750,69 @@ export async function loadPortalViewer(
 }
 
 /**
- * `CP-16` read visibility, always inside the viewer's own organisation: the requester, a
- * participant explicitly added to the submission (`request_participant`), or any customer of the
- * same organisation when the submission's `customer_visibility` is `organisation`. A `private`
- * submission is invisible to every other colleague, and another organisation's customer never
- * matches (the organisation equality is part of every branch). A miss is the constant 404.
+ * D-D (Thomas, 12 Nov 2026): a submission's effective project is its converted/linked work item's
+ * project when present, otherwise its request type version's or request type's default project.
+ * Organisation-level submissions with no default project remain visible to the customer org; any
+ * submission tied to a project requires current `customer_project_access` (even for the requester
+ * or an added participant: removing project access strictly removes access to that project's cases).
+ */
+export function portalSubmissionProjectPredicateForActor(
+  personId: string,
+  executor: Executor = db,
+) {
+  const effectiveProjectId = sql`(COALESCE(
+    (SELECT wi_eff.project_id FROM work_item wi_eff WHERE wi_eff.id = ${schema.submissionTable.workItemId}),
+    (SELECT rtv_eff.default_project_id FROM request_type_version rtv_eff WHERE rtv_eff.id = ${schema.submissionTable.requestTypeVersionId}),
+    (SELECT rt_eff.default_project_id FROM request_type rt_eff WHERE rt_eff.id = ${schema.submissionTable.requestTypeId})
+  ))`;
+  return or(
+    sql`${effectiveProjectId} IS NULL`,
+    customerProjectAccessExists(
+      personId,
+      schema.submissionTable.organisationId,
+      effectiveProjectId,
+      executor,
+    ),
+  );
+}
+
+export function portalSubmissionProjectPredicate(
+  viewer: PortalViewer,
+  executor: Executor = db,
+) {
+  return portalSubmissionProjectPredicateForActor(viewer.personId, executor);
+}
+
+export async function hasPortalSubmissionProjectAccess(
+  submissionId: string,
+  viewer: PortalViewer,
+  executor: Executor = db,
+): Promise<boolean> {
+  const [row] = await executor
+    .select({ id: schema.submissionTable.id })
+    .from(schema.submissionTable)
+    .where(
+      and(
+        eq(schema.submissionTable.id, submissionId),
+        eq(schema.submissionTable.organisationId, viewer.organisationId),
+        portalSubmissionProjectPredicate(viewer, executor),
+      ),
+    )
+    .limit(1);
+  return row !== undefined;
+}
+
+/**
+ * `CP-16` read visibility, always inside the viewer's own organisation AND granted project access:
+ * the requester, a participant explicitly added to the submission (`request_participant`), or any
+ * customer of the same organisation when the submission's `customer_visibility` is `organisation`.
+ * A `private` submission is invisible to every other colleague, and another organisation's
+ * customer never matches. A miss is the constant 404.
  */
 export function portalReadablePredicate(viewer: PortalViewer) {
   return and(
     eq(schema.submissionTable.organisationId, viewer.organisationId),
+    portalSubmissionProjectPredicate(viewer),
     or(
       eq(schema.submissionTable.requesterId, viewer.personId),
       eq(schema.submissionTable.customerVisibility, "organisation"),
@@ -2885,6 +2989,9 @@ async function postSubmissionMessageInTransaction(
           ...(input.requesterId
             ? [eq(schema.submissionTable.requesterId, input.requesterId)]
             : []),
+          ...(input.actorType === "customer"
+            ? [portalSubmissionProjectPredicateForActor(input.actorId, tx)]
+            : []),
         ),
       )
       .for("update", { of: schema.submissionTable })
@@ -3116,6 +3223,7 @@ export async function withdrawSubmission(ref: string, requesterId: string) {
         and(
           eq(schema.submissionTable.number, number),
           eq(schema.submissionTable.requesterId, requesterId),
+          portalSubmissionProjectPredicateForActor(requesterId, tx),
         ),
       )
       .for("update", { of: schema.submissionTable })

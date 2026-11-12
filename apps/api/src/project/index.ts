@@ -78,6 +78,10 @@ import {
   resolveRosterActor,
 } from "./members/actor";
 import {
+  changeProjectCustomerAccess,
+  listProjectCustomers,
+} from "./members/customer-access";
+import {
   addProjectMemberBody,
   projectMemberCandidateSchema,
   projectMemberParam,
@@ -1695,6 +1699,58 @@ const updateProjectOwnershipRoute = createRoute({
   },
 });
 
+const listProjectCustomersRoute = createRoute({
+  method: "get",
+  operationId: "listProjectCustomers",
+  path: "/{projectId}/customers",
+  tags: ["Projects"],
+  summary: "List customer project access",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse(
+      "Customers",
+      z.array(
+        z.object({
+          personId: z.string(),
+          name: z.string().nullable(),
+          hasAccess: z.boolean(),
+        }),
+      ),
+    ),
+    403: errorResponse("Forbidden"),
+    404: errorResponse("Project not found"),
+  },
+});
+
+const grantProjectCustomerRoute = createRoute({
+  method: "put",
+  operationId: "grantProjectCustomerAccess",
+  path: "/{projectId}/customers/{personId}",
+  tags: ["Projects"],
+  summary: "Grant customer project access",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: projectMemberParam },
+  responses: {
+    200: jsonResponse("Access", z.object({ granted: z.boolean() })),
+    403: errorResponse("Forbidden"),
+    404: errorResponse("Project or customer not found"),
+  },
+});
+
+const revokeProjectCustomerRoute = createRoute({
+  ...grantProjectCustomerRoute,
+  method: "delete",
+  operationId: "revokeProjectCustomerAccess",
+  summary: "Revoke customer project access",
+});
+
 const listProjectMembersRoute = createRoute({
   method: "get",
   operationId: "listProjectMembers",
@@ -1908,6 +1964,41 @@ export const projectStates = apiRouter<
     const scope = { projectId, workspaceId: c.get("workspaceId") };
     const actor = await resolveRosterActor(c, scope);
     return c.json(await addProjectMember(scope, body, actor), 200);
+  })
+  .openapi(listProjectCustomersRoute, async (c) =>
+    c.json(await listProjectCustomers(c.req.valid("param").projectId), 200),
+  )
+  .openapi(grantProjectCustomerRoute, async (c) => {
+    const { projectId, personId } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const actor = await resolveRosterActor(c, { projectId, workspaceId });
+    return c.json(
+      await changeProjectCustomerAccess({
+        projectId,
+        personId,
+        workspaceId,
+        actorId: actor.actorId,
+        actorPersonId: actor.personId,
+        granted: true,
+      }),
+      200,
+    );
+  })
+  .openapi(revokeProjectCustomerRoute, async (c) => {
+    const { projectId, personId } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const actor = await resolveRosterActor(c, { projectId, workspaceId });
+    return c.json(
+      await changeProjectCustomerAccess({
+        projectId,
+        personId,
+        workspaceId,
+        actorId: actor.actorId,
+        actorPersonId: actor.personId,
+        granted: false,
+      }),
+      200,
+    );
   })
   .openapi(updateProjectMemberRoute, async (c) => {
     const { projectId, personId } = c.req.valid("param");
