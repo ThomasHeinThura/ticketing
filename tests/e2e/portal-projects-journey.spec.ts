@@ -5,9 +5,11 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { fillSensitive, privateRequest } from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
+  totpForUri,
   withMfaCsrfApp,
 } from "./helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "./helpers/project-key";
@@ -136,11 +138,46 @@ async function postWithCsrf(
 async function signUpStaff(page: Page, fixture: MfaCsrfAppFixture) {
   await page.goto(new URL("/auth/sign-up", fixture.origin).toString());
   await page.getByLabel("Full name").fill("Portal projects administrator");
-  await page.getByLabel("Email").fill(fixture.email);
-  await page.locator('input[name="password"]').fill(fixture.password);
+  await fillSensitive(page.getByLabel("Email"), fixture.email);
+  await fillSensitive(page.locator('input[name="password"]'), fixture.password);
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-up/email");
   await page.getByRole("button", { name: /^create account$/i }).click();
   expect((await responsePromise).status()).toBe(200);
+  await expect(page).toHaveURL(
+    /\/dashboard\/settings\/account\/security\?enrollmentRequired=true$/,
+    { timeout: 30_000 },
+  );
+  const protectedRequest = () =>
+    privateRequest(() =>
+      page
+        .context()
+        .request.get(
+          new URL("/api/instance/users", fixture.origin).toString(),
+          {
+            headers: { Origin: fixture.origin },
+          },
+        ),
+    );
+  const denied = await protectedRequest();
+  expect(denied.status()).toBe(403);
+  expect((await denied.text()).trim()).toBe("mfa_enrollment_required");
+
+  await fillSensitive(page.locator("#factor-password"), fixture.password);
+  const enable = apiResponse(page, "POST", "/api/auth/two-factor/enable");
+  await page.getByRole("button", { name: "Set up authenticator" }).click();
+  const enabled = await enable;
+  expect(enabled.status()).toBe(200);
+  const { totpURI } = (await enabled.json()) as { totpURI: string };
+  await fillSensitive(page.locator("#enrollment-code"), totpForUri(totpURI));
+  const verification = apiResponse(
+    page,
+    "POST",
+    "/api/auth/two-factor/verify-totp",
+  );
+  await page.getByRole("button", { name: "Verify and enable" }).click();
+  expect((await verification).status()).toBe(200);
+  expect((await protectedRequest()).status()).toBe(200);
+  await page.getByRole("button", { name: "I saved these codes" }).click();
 }
 
 async function createStaffWorkspace(page: Page, origin: string) {

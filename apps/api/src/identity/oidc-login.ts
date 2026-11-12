@@ -18,6 +18,7 @@ import { setSessionCookie } from "better-auth/cookies";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { appendAuditLog } from "../audit/audit-writer";
+import { getSetupCompletionMarker } from "../auth/repository";
 import {
   customerInvitationContinuationCookieName,
   readCustomerInvitationContinuationContext,
@@ -971,6 +972,19 @@ export function identityOidcPlugin(
   };
 }
 
+async function requireInitializedOidcUserCreation(
+  tx: DbTransaction,
+): Promise<void> {
+  // The OIDC path writes user rows directly, outside Better Auth's user-create
+  // hook. A completion marker is monotonic, so checking it in this same
+  // transaction immediately before insertion safely rejects both zero-user
+  // bootstrap and the pending first administrator without a new lock.
+  const [setting] = await getSetupCompletionMarker(tx);
+  if (setting?.setupCompletedAt == null) {
+    throw new APIError("UNAUTHORIZED", { message: "Identity sign-in failed" });
+  }
+}
+
 async function signInAdmittedIdentity(input: {
   ctx: GenericEndpointContext;
   portal: "agent" | "customer";
@@ -1231,6 +1245,7 @@ async function signInAdmittedIdentity(input: {
             createdAt: now,
             updatedAt: now,
           };
+          await requireInitializedOidcUserCreation(tx);
           await tx.insert(schema.userTable).values(linkedUser);
           userId = linkedUser.id;
           await tx.insert(schema.accountTable).values({
@@ -1338,6 +1353,7 @@ async function signInAdmittedIdentity(input: {
           createdAt: now,
           updatedAt: now,
         };
+        await requireInitializedOidcUserCreation(tx);
         await tx.insert(schema.userTable).values(user);
         userId = user.id;
         if (invitedCustomer && input.invitationContext) {

@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import {
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import { TerminologyEditor } from "@/components/settings/terminology-editor";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
@@ -11,7 +15,11 @@ export const Route = createFileRoute(
 function WorkspaceTerminology() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
-  if (!workspace) return null;
+  const access = useSettingsAccess(
+    (permission) => permission.canManageWorkspaceSettings(),
+    undefined,
+    { refreshOnMount: true },
+  );
   return (
     <>
       <PageTitle
@@ -29,9 +37,13 @@ function WorkspaceTerminology() {
             })}
           </p>
         </div>
-        <TerminologyEditor
-          target={{ scope: "workspace", workspaceId: workspace.id }}
-        />
+        <SettingsAccessGate access={access}>
+          {workspace ? (
+            <TerminologyEditor
+              target={{ scope: "workspace", workspaceId: workspace.id }}
+            />
+          ) : null}
+        </SettingsAccessGate>
       </div>
     </>
   );

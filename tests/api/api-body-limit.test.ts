@@ -67,14 +67,9 @@ describe("issue #704: app-wide /api body limit in createApp()", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
-  it("cuts off an oversize chunked /api/auth/* body when Better Auth reads it", async () => {
+  it("cuts off an oversize chunked signup before database access or Better Auth", async () => {
     const { app, query, handler } = setup();
     vi.spyOn(auth.api, "getSession").mockResolvedValue(null);
-    // Like Better Auth, the mocked handler reads the JSON body.
-    handler.mockImplementation(async (request: Request) => {
-      await request.json();
-      return new Response("null", { status: 200 });
-    });
     const response = await app.request("/api/auth/sign-up/email", {
       method: "POST",
       headers: { host: "localhost:5173", "content-type": "application/json" },
@@ -84,8 +79,51 @@ describe("issue #704: app-wide /api body limit in createApp()", () => {
     expect(response.status).toBe(413);
     expect(await response.text()).toBe("Payload too large");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).not.toHaveBeenCalled();
     expect(query).not.toHaveBeenCalled();
+  });
+
+  it("passes a valid chunked signup body to Better Auth intact", async () => {
+    const { app, query, handler } = setup();
+    vi.spyOn(auth.api, "getSession").mockResolvedValue(null);
+    query.mockResolvedValue({ rows: [[new Date()]] } as never);
+    let received = "";
+    handler.mockImplementation(async (request: Request) => {
+      received = await request.text();
+      return new Response("null", { status: 200 });
+    });
+    const payload = JSON.stringify({
+      email: "signup@example.test",
+      password: "p".repeat(60 * 1024),
+    });
+    const bytes = new TextEncoder().encode(payload);
+    let offset = 0;
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (offset >= bytes.byteLength) return controller.close();
+          const next = Math.min(offset + 4096, bytes.byteLength);
+          controller.enqueue(bytes.subarray(offset, next));
+          offset = next;
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const response = await app.request(
+      new Request("http://localhost/api/auth/sign-up/email", {
+        method: "POST",
+        headers: {
+          host: "localhost:5173",
+          "content-type": "application/json",
+        },
+        body,
+        duplex: "half",
+      } as RequestInit),
+    );
+    expect(response.status).toBe(200);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(received).toBe(payload);
+    expect(query).toHaveBeenCalled();
   });
 
   it("never reads a chunked body to an authenticated route without a session (401, 0 bytes pulled)", async () => {

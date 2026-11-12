@@ -107,6 +107,19 @@
 					},
 					"required": ["search", "noResults"]
 				},
+				"boolean": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"true": {
+							"type": "string"
+						},
+						"false": {
+							"type": "string"
+						}
+					},
+					"required": ["true", "false"]
+				},
 				"actions": {
 					"type": "object",
 					"additionalProperties": false,
@@ -983,6 +996,7 @@
 				"appName",
 				"audit",
 				"picker",
+				"boolean",
 				"actions",
 				"a11y",
 				"sidebar",
@@ -16373,6 +16387,9 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"invalidNumber": {
+							"type": "string"
+						},
 						"catalogueTitle": {
 							"type": "string"
 						},
@@ -16504,6 +16521,7 @@
 						}
 					},
 					"required": [
+						"invalidNumber",
 						"catalogueTitle",
 						"catalogueDescription",
 						"loadError",
@@ -20731,6 +20749,12 @@
 				"priorityMapping": {
 					"type": "string"
 				},
+				"priorityValueMapping": {
+					"type": "string"
+				},
+				"choosePriority": {
+					"type": "string"
+				},
 				"showWhen": {
 					"type": "string"
 				},
@@ -20744,6 +20768,9 @@
 					"type": "string"
 				},
 				"remove": {
+					"type": "string"
+				},
+				"removeField": {
 					"type": "string"
 				},
 				"moveUp": {
@@ -20838,6 +20865,24 @@
 				},
 				"catalogueOrder": {
 					"type": "string"
+				},
+				"newQuestion": {
+					"type": "string"
+				},
+				"defaultGroup": {
+					"type": "string"
+				},
+				"defaultSummary": {
+					"type": "string"
+				},
+				"requiredFileInvalid": {
+					"type": "string"
+				},
+				"requiredFileUnavailable": {
+					"type": "string"
+				},
+				"priorityMappingInvalid": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -20875,11 +20920,14 @@
 				"titleMapping",
 				"descriptionMapping",
 				"priorityMapping",
+				"priorityValueMapping",
+				"choosePriority",
 				"showWhen",
 				"always",
 				"equals",
 				"multiple",
 				"remove",
+				"removeField",
 				"moveUp",
 				"moveDown",
 				"preview",
@@ -20910,7 +20958,13 @@
 				"groupOrderSaved",
 				"saveGroupOrder",
 				"savingGroupOrder",
-				"catalogueOrder"
+				"catalogueOrder",
+				"newQuestion",
+				"defaultGroup",
+				"defaultSummary",
+				"requiredFileInvalid",
+				"requiredFileUnavailable",
+				"priorityMappingInvalid"
 			]
 		},
 		"slaPolicies": {

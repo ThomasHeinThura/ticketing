@@ -110,20 +110,22 @@ function AccountSecurity() {
             {t("auth:accountSecurity.description")}
           </p>
         </header>
-        <ConnectedAccountsPanel
-          intentId={identityLinkIntent}
-          onClearIntent={() =>
-            void navigate({
-              to: routes.accountSecurity.path,
-              search: parseAccountSecuritySearch({
-                ...search,
-                identityLinkIntent: undefined,
-              }),
-              replace: true,
-            })
-          }
-        />
-        {enrollmentRequired && !status?.enabled ? (
+        {status && (!status.required || status.enabled) ? (
+          <ConnectedAccountsPanel
+            intentId={identityLinkIntent}
+            onClearIntent={() =>
+              void navigate({
+                to: routes.accountSecurity.path,
+                search: parseAccountSecuritySearch({
+                  ...search,
+                  identityLinkIntent: undefined,
+                }),
+                replace: true,
+              })
+            }
+          />
+        ) : null}
+        {(enrollmentRequired || status?.required) && !status?.enabled ? (
           <Alert>
             <AlertDescription>
               {t("auth:accountSecurity.required")}
@@ -196,7 +198,7 @@ function AccountSecurity() {
               </form>
             </CardContent>
           </Card>
-        ) : status?.policyMode === "off" ? (
+        ) : status?.policyMode === "off" && !status.required ? (
           <p className="text-sm text-muted-foreground">
             {t("auth:accountSecurity.enrollmentDisabled")}
           </p>

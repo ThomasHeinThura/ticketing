@@ -3,6 +3,7 @@ import {
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -30,10 +31,11 @@ async function createAdminWorkspace(
   await page.getByRole("button", { name: "Create account" }).click();
   const signUpResponse = await signUpResponsePromise;
   expect(signUpResponse.status()).toBe(200);
-  await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
+  const factor = await enrollFirstAdmin(page, origin, password);
   await page.getByLabel("Workspace name").fill("Disposable MFA Workspace");
   await page.getByRole("button", { name: "Create workspace" }).click();
   await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+  return factor;
 }
 
 async function selectOptionThroughControlledPopup(
@@ -71,52 +73,10 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       ),
     ).toBe("287082");
     await withMfaCsrfApp(async ({ origin, email, password }) => {
-      await test.step("MFA: create disposable admin workspace", () =>
-        createAdminWorkspace(page, origin, email, password));
-      const securityPage = new URL(
-        "/dashboard/settings/account/security",
-        origin,
-      ).toString();
-      await page.goto(securityPage);
-      await page.locator("#factor-password").fill(password);
-      const enableResponsePromise = page.waitForResponse(
-        (response) =>
-          response.url().endsWith("/api/auth/two-factor/enable") &&
-          response.request().method() === "POST",
-      );
-      await page.getByRole("button", { name: "Set up authenticator" }).click();
-      const enableResponse = await enableResponsePromise;
-      expect(enableResponse.ok()).toBe(true);
-      const enrollment = (await enableResponse.json()) as {
-        totpURI?: string;
-        backupCodes?: string[];
-      };
-      expect(
-        Boolean(enrollment.totpURI && enrollment.backupCodes?.length),
-      ).toBe(true);
-      const provisioningUri = enrollment.totpURI ?? "";
-      const backupCode = enrollment.backupCodes?.[0] ?? "";
-
-      const cookiesBeforeEnrollment = await page.context().cookies();
-      const sessionBeforeEnrollment = cookiesBeforeEnrollment.find(
-        (cookie) => cookie.name === "__Host-tdk_agent_session",
-      )?.value;
-      const verifyEnrollmentPromise = page.waitForResponse(
-        (response) =>
-          response.url().endsWith("/api/auth/two-factor/verify-totp") &&
-          response.request().method() === "POST",
-      );
-      await page.locator("#enrollment-code").fill(totpForUri(provisioningUri));
-      await page.getByRole("button", { name: "Verify and enable" }).click();
-      const verifyEnrollmentResponse = await verifyEnrollmentPromise;
-      expect(verifyEnrollmentResponse.ok()).toBe(true);
-      const cookiesAfterEnrollment = await page.context().cookies();
-      const sessionAfterEnrollment = cookiesAfterEnrollment.find(
-        (cookie) => cookie.name === "__Host-tdk_agent_session",
-      )?.value;
-      expect(Boolean(sessionBeforeEnrollment)).toBe(true);
-      expect(Boolean(sessionAfterEnrollment)).toBe(true);
-      expect(sessionBeforeEnrollment !== sessionAfterEnrollment).toBe(true);
+      const { provisioningUri, backupCodes } =
+        await test.step("MFA: enroll and create disposable admin workspace", () =>
+          createAdminWorkspace(page, origin, email, password));
+      const backupCode = backupCodes[0] ?? "";
       const factorStatusResponse = await page.request.get(
         new URL("/api/me/security/factors", origin).toString(),
         { headers: { Origin: origin } },

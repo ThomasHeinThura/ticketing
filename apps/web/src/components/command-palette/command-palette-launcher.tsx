@@ -47,6 +47,14 @@ type IdleWindow = Window & {
   cancelIdleCallback?: (handle: number) => void;
 };
 
+/** The focused control a shortcut was used from, so a dialog it opens can hand focus back to it. */
+function currentFocusOrigin(): HTMLElement | null {
+  const active = document.activeElement;
+  return active instanceof HTMLElement && active !== document.body
+    ? active
+    : null;
+}
+
 /** Small eager shortcut boundary; the command UI and its queries load on intent. */
 export default function CommandPaletteLauncher() {
   const [requested, setRequested] = useState(false);
@@ -54,6 +62,10 @@ export default function CommandPaletteLauncher() {
   const [request, setRequest] = useState<CommandPaletteRequest | null>(null);
   const [keepMounted, setKeepMounted] = useState(false);
   const requestedRef = useRef(false);
+  // Read in the shortcut's own key handler, before the palette or a dialog moves focus.
+  const focusOriginRef = useRef<HTMLElement | null>(null);
+  const openRef = useRef(false);
+  openRef.current = open;
   const idleMountRef = useRef<number | undefined>(undefined);
 
   const cancelIdleMount = useCallback(() => {
@@ -65,6 +77,8 @@ export default function CommandPaletteLauncher() {
 
   const dispatch = useCallback(
     (intent: CommandPaletteIntent) => {
+      // With the palette open, the origin is what had focus before it opened.
+      if (!openRef.current) focusOriginRef.current = currentFocusOrigin();
       cancelIdleMount();
       requestedRef.current = true;
       setRequested(true);
@@ -73,6 +87,7 @@ export default function CommandPaletteLauncher() {
     [cancelIdleMount],
   );
   const togglePalette = useCallback(() => {
+    if (!openRef.current) focusOriginRef.current = currentFocusOrigin();
     cancelIdleMount();
     requestedRef.current = true;
     setRequested(true);
@@ -205,6 +220,7 @@ export default function CommandPaletteLauncher() {
         request={request}
         onRequestHandled={onRequestHandled}
         keepMounted={keepMounted}
+        focusOriginRef={focusOriginRef}
       />
     </Suspense>
   );

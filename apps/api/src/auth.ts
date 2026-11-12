@@ -30,9 +30,9 @@ import {
 } from "./auth/portal-sign-in-refusal";
 import { AUTH_RATE_LIMIT } from "./auth/rate-limit-rules";
 import {
-  completeFirstUserSetup,
   countAuthUsers,
   countAuthUsersForExecutor,
+  finalizeVerifiedFirstUserSetup,
   getAuthUserLocale,
   getCustomerPortalIdentityRow,
   getFirstUserWorkspaceMembership,
@@ -40,7 +40,7 @@ import {
   getSetupCompletionMarker,
   getStoredAuthPluginConfigRows,
   hasCustomerSidePerson,
-  lockFirstUserPromotion,
+  isPendingFirstAdministrator,
   promoteFirstAuthUser,
   updateSessionActiveOrganizationId,
   updateSessionPortal,
@@ -81,12 +81,14 @@ import {
   afterTotpEnrollmentCommit,
   createCredentialAwareDrizzleAdapter,
   currentAccountDeletionTransaction,
+  currentFirstUserAdmissionTransaction,
   currentTotpEnrollmentTransaction,
   noteTotpEnrollmentMutationAuditFailure,
   revokeTotpPeerSessions,
   runOrAfterTotpEnrollmentCommit,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
+  withFirstUserAdmissionTransaction,
   withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
 import { hasCanonicalCustomerMembership } from "./permissions/customer-membership";
@@ -225,6 +227,15 @@ function withExplicitServerCredentialMutations<T extends object>(
               if (apiMethod === "verifyTOTP") {
                 return withTotpSessionEnrollment(() =>
                   Reflect.apply(targetMethod, thisArgument, args),
+                );
+              }
+              if (apiMethod === "signUpEmail") {
+                return isSetupCompleted().then((completed) =>
+                  completed
+                    ? Reflect.apply(targetMethod, thisArgument, args)
+                    : withFirstUserAdmissionTransaction(() =>
+                        Reflect.apply(targetMethod, thisArgument, args),
+                      ),
                 );
               }
               const mutation = explicitServerCredentialMutation(
@@ -761,6 +772,14 @@ function createAuth(
             }
 
             if (portal === "customer") {
+              // Customer invitation and provider creation are available only
+              // after the local first administrator finishes verified setup.
+              // This runs before any invite or OTP path can create a user.
+              if (!(await isSetupCompleted())) {
+                throw new APIError("FORBIDDEN", {
+                  message: "Customer accounts must be invited or provisioned.",
+                });
+              }
               const creationPath =
                 ctx?.path === "/sign-up/email" ||
                 ctx?.path === "/magic-link/verify" ||
@@ -806,8 +825,13 @@ function createAuth(
             //     set up, which must never re-open this window.
             // `instance_setting.setup_completed_at` is the durable marker that
             // tells them apart; it is never cleared by deleting user rows.
-            const [userCountRow] = await countAuthUsers();
+            const admissionTx = currentFirstUserAdmissionTransaction();
+            const [userCountRow] = await countAuthUsersForExecutor(
+              admissionTx ?? db,
+            );
             const existingUserCount = userCountRow?.value ?? 0;
+            const [setup] = await getSetupCompletionMarker(admissionTx ?? db);
+            const setupCompleted = setup?.setupCompletedAt != null;
 
             // Computed once, up front, so the SAME call with the SAME
             // arguments is what decides every refusal message below --
@@ -819,7 +843,7 @@ function createAuth(
                 ctx?.headers?.get("x-invitation-id"),
             );
 
-            if (existingUserCount === 0 && !(await isSetupCompleted())) {
+            if (existingUserCount === 0 && !setupCompleted) {
               // This is the one-time bootstrap. It is allowed through even
               // when DISABLE_REGISTRATION / DISABLE_PASSWORD_REGISTRATION are
               // set -- but ONLY on proof of authorization: the operator's
@@ -827,12 +851,20 @@ function createAuth(
               // container log (auth-and-identity.md § Break-glass). There is
               // no other bypass; an unauthorized zero-user signup is refused
               // below exactly like any other signup would be.
-              if (isBootstrapAdminEmail(user.email)) {
+              if (
+                ctx?.path === "/sign-up/email" &&
+                admissionTx &&
+                isBootstrapAdminEmail(user.email)
+              ) {
                 return;
               }
 
               const presentedToken = ctx?.headers?.get(SETUP_TOKEN_HEADER);
-              if (await verifyAndConsumeSetupToken(presentedToken)) {
+              if (
+                ctx?.path === "/sign-up/email" &&
+                admissionTx &&
+                (await verifyAndConsumeSetupToken(presentedToken, admissionTx))
+              ) {
                 return;
               }
 
@@ -877,6 +909,21 @@ function createAuth(
               });
             }
 
+            if (!setupCompleted) {
+              // A first user exists but TOTP is not yet verified. Neither a
+              // second password signup nor provider auto-creation may land.
+              const pendingRefusal = await checkRegistrationAllowed(
+                user.email,
+                invitationId,
+                { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+              );
+              throw new APIError("FORBIDDEN", {
+                message: pendingRefusal.allowed
+                  ? "Registration is currently disabled. Please use a valid invitation link to create an account."
+                  : pendingRefusal.reason,
+              });
+            }
+
             const result = await checkRegistrationAllowed(
               user.email,
               invitationId,
@@ -901,47 +948,22 @@ function createAuth(
 
             if (portal === "customer") return;
 
-            // Promote the first user to instance admin atomically.
-            //
-            // A previous version of this code checked the user count in
-            // the `before` hook and returned `role: "admin"`, but the
-            // count and the eventual INSERT happened in separate
-            // transactions, so two concurrent first-signups could both
-            // see count=0 and both become admins (qodo bot #5).
-            //
-            // We now run the check + promote inside a single transaction
-            // guarded by a Postgres advisory lock. Whichever transaction
-            // wins the lock first promotes its user; any concurrent
-            // transaction then sees totalUserCount > 1 and skips.
-            //
-            // Note: we count total users (not admins) so that upgrading
-            // an existing instance (where every existing user has
-            // role=NULL from the new column) doesn't promote the next
-            // signup to admin (qodo bot #4).
-            //
-            // #18: also re-check `setup_completed_at` INSIDE the lock. Without
-            // this, deleting every admin from an already-set-up instance would
-            // let the next signup silently re-trigger admin auto-promotion --
-            // exactly the durable-marker guarantee this column exists for.
-            await db.transaction(async (tx) => {
-              await lockFirstUserPromotion(tx);
-
-              const totalRows = await countAuthUsersForExecutor(tx);
-              const totalUserCount = totalRows[0]?.value ?? 0;
-
-              const [setting] = await getSetupCompletionMarker(tx);
-              const setupAlreadyCompleted = setting?.setupCompletedAt != null;
-
-              // This hook runs after the user row is inserted, so the
-              // just-created user is included in the count. If they are
-              // the only row in the table, and the instance has never
-              // completed setup, this is the fresh-instance bootstrap and
-              // they get promoted to admin.
-              if (totalUserCount === 1 && !setupAlreadyCompleted) {
-                await promoteFirstAuthUser(tx, user.id);
-                await completeFirstUserSetup(tx);
+            // The local signup handler owns the promotion lock and transaction.
+            // The credential check, user/account insertion and grant share that
+            // transaction; a losing signup cannot commit an ordinary user.
+            // Completion waits for verified TOTP in the separate enrollment
+            // transaction.
+            const admissionTx = currentFirstUserAdmissionTransaction();
+            if (admissionTx) {
+              const [users] = await countAuthUsersForExecutor(admissionTx);
+              const [setting] = await getSetupCompletionMarker(admissionTx);
+              if (
+                (users?.value ?? 0) === 1 &&
+                setting?.setupCompletedAt == null
+              ) {
+                await promoteFirstAuthUser(admissionTx, user.id);
               }
-            });
+            }
 
             // #315 S7 / #324: boot seeding alone misses local users who register
             // after startup. The current local password-signup path creates ordinary
@@ -949,7 +971,7 @@ function createAuth(
             // callbacks: their portal and organisation must come from a configured
             // identity connection, which owns that provisioning decision.
             if (context?.path === "/sign-up/email") {
-              await ensureStaffPersonForUser(user.id);
+              await ensureStaffPersonForUser(user.id, admissionTx ?? undefined);
             }
           },
         },
@@ -974,7 +996,10 @@ function createAuth(
 
         if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
           const state = await loadLocalFactorState(ctx.context.session.user.id);
-          if (state.policy.mode === "off") {
+          if (
+            state.policy.mode === "off" &&
+            !(await isPendingFirstAdministrator(ctx.context.session.user.id))
+          ) {
             throw new APIError("FORBIDDEN", {
               message:
                 "Local factor enrollment is disabled by instance policy.",
@@ -1116,8 +1141,11 @@ function createAuth(
         const previousSession = ctx.context.session;
         const completedEnrollment =
           ctx.path === "/two-factor/verify-totp" &&
-          previousSession?.user.twoFactorEnabled !== true &&
-          newSession?.user.twoFactorEnabled === true;
+          previousSession != null &&
+          newSession != null &&
+          previousSession.user.id === newSession.user.id &&
+          previousSession.user.twoFactorEnabled !== true &&
+          newSession.user.twoFactorEnabled === true;
         if (completedEnrollment && newSession) {
           // Better Auth replaces the session used to verify enrollment. Revoke any
           // verified factor gates every device. The shared transaction locks the
@@ -1127,6 +1155,7 @@ function createAuth(
             newSession.user.id,
             newSession.session.id,
           );
+          await finalizeVerifiedFirstUserSetup(tx, newSession.user.id);
           afterTotpEnrollmentCommit(() =>
             invalidateNativeAuthorization({ userId: newSession.user.id }),
           );

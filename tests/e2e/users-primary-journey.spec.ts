@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { APIRequestContext, APIResponse } from "@playwright/test";
 import type { Client as PgClient } from "pg";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { privateRequest } from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -179,26 +180,64 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     const signupBody = await statusText(firstSignup, 200);
     expect(signupBody).not.toContain("password");
 
-    const customer = await runCustomerSeeder(fixture);
-
-    const enrollment = await postWithCsrf(
-      admin,
-      origin,
-      "/api/auth/two-factor/enable",
-      { password, issuer: "TaskDesk" },
+    const enrollment = await privateRequest(() =>
+      admin.post(new URL("/api/auth/two-factor/enable", origin).toString(), {
+        data: { password, issuer: "TaskDesk" },
+        headers: { Origin: origin },
+      }),
     );
     const enrollmentBody = JSON.parse(await statusText(enrollment, 200)) as {
       totpURI: string;
       backupCodes: string[];
     };
     expect(enrollmentBody.backupCodes.length).toBeGreaterThan(0);
-    const verifyEnrollment = await postWithCsrf(
-      admin,
-      origin,
-      "/api/auth/two-factor/verify-totp",
-      { code: totpForUri(enrollmentBody.totpURI) },
+    const verifyEnrollment = await privateRequest(() =>
+      admin.post(
+        new URL("/api/auth/two-factor/verify-totp", origin).toString(),
+        {
+          data: { code: totpForUri(enrollmentBody.totpURI) },
+          headers: { Origin: origin },
+        },
+      ),
     );
     await statusText(verifyEnrollment, 200);
+
+    const featureResponse = await admin.get(
+      new URL("/api/instance/features", origin).toString(),
+      { headers: { Origin: origin } },
+    );
+    const { features } = JSON.parse(await statusText(featureResponse, 200)) as {
+      features: Array<{ key: string; version: number }>;
+    };
+    const portalFeature = features.find(
+      ({ key }) => key === "feature.customer_portal",
+    );
+    expect(portalFeature).toBeDefined();
+    const csrfResponse = await admin.get(
+      new URL("/api/me/csrf-token", origin).toString(),
+      { headers: { Origin: origin } },
+    );
+    const { token: csrfToken } = JSON.parse(
+      await statusText(csrfResponse, 200),
+    ) as { token: string };
+    const enabledPortal = await admin.patch(
+      new URL("/api/instance/features", origin).toString(),
+      {
+        data: {
+          changes: [
+            {
+              key: "feature.customer_portal",
+              enabled: true,
+              expectedVersion: portalFeature?.version,
+            },
+          ],
+        },
+        headers: { Origin: origin, "x-taskdesk-csrf": csrfToken },
+      },
+    );
+    await statusText(enabledPortal, 200);
+
+    const customer = await runCustomerSeeder(fixture);
 
     const directoryResponse = await admin.get(
       new URL("/api/instance/users", origin).toString(),

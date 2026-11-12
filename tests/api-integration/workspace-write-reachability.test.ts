@@ -33,7 +33,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
+import {
+  ensureNotFirstSignup,
+  signUpInstanceAdmin,
+  signUpUser,
+} from "./helpers/organization-http";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   createWorkspaceNative,
@@ -260,6 +264,7 @@ describe("S4 create is for a current instance administrator only (A2-P23)", () =
   it("A2-P23c first run: the first user is the instance admin and can create the first workspace by naming themselves, which also selects it in their session", async () => {
     const { app } = createApp();
     const firstAdmin = await signUpInstanceAdmin(app);
+    await ensureNotFirstSignup();
 
     const created = await postCreateWorkspace(app, firstAdmin.cookie, {
       name: "First Workspace",
@@ -329,6 +334,7 @@ describe("S4 create is for a current instance administrator only (A2-P23)", () =
   it("A2-P23e an instance admin may create whatever DISABLE_WORKSPACE_CREATION says: the variable no longer changes who may create", async () => {
     const { app } = createApp();
     const instanceAdmin = await signUpInstanceAdmin(app);
+    await ensureNotFirstSignup();
 
     for (const flag of [undefined, "false", "true"] as const) {
       vi.stubEnv("DISABLE_WORKSPACE_CREATION", flag);
@@ -344,6 +350,7 @@ describe("S4 create is for a current instance administrator only (A2-P23)", () =
   it("A2-P23f refuses an API key even when the key belongs to an instance admin", async () => {
     const { app } = createApp();
     const instanceAdmin = await signUpInstanceAdmin(app);
+    await ensureNotFirstSignup();
     const apiKey = await issueApiKey(instanceAdmin.user.id);
 
     const refused = await app.request("/api/workspace", {
@@ -362,6 +369,7 @@ describe("S4 create is for a current instance administrator only (A2-P23)", () =
   it("A2-P23g reads the administrator role fresh from the database: an admin demoted since signing in is refused at once", async () => {
     const { app } = createApp();
     const instanceAdmin = await signUpInstanceAdmin(app);
+    await ensureNotFirstSignup();
     await db
       .update(schema.userTable)
       .set({ role: "user" })

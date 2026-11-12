@@ -353,7 +353,9 @@ async function stepUp(
 beforeEach(async () => {
   vi.restoreAllMocks();
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", setupCompletedAt: new Date() });
   process.env.TASKDESK_ENCRYPTION_KEY = ENCRYPTION_KEY;
   delete process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
 });

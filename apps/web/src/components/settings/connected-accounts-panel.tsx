@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
+  AlertAction,
   AlertDescription,
   Badge,
   Button,
@@ -133,6 +134,17 @@ export function ConnectedAccountsPanel({
             <AlertDescription>
               {t("auth:accountSecurity.identityLinks.loadError")}
             </AlertDescription>
+            <AlertAction>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={links.isFetching}
+                aria-busy={links.isFetching}
+                onClick={() => void links.refetch()}
+              >
+                {t("common:actions.tryAgain")}
+              </Button>
+            </AlertAction>
           </Alert>
         ) : links.data === null ? (
           <Alert variant="info">

@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -191,6 +192,7 @@ async function seedIntakeFixture(
   fixture: FixtureProcess,
   input: Record<string, unknown>,
   name: string,
+  script = "tests/e2e/scripts/seed-intake-primary.ts",
 ) {
   const inputPath = resolve(fixture.fixtureDir, `${name}-input.json`);
   const outputPath = resolve(fixture.fixtureDir, `${name}-output.json`);
@@ -201,7 +203,7 @@ async function seedIntakeFixture(
     [
       "--tsconfig",
       resolve(repoRoot, "apps/api/tsconfig.tests.json"),
-      resolve(repoRoot, "tests/e2e/scripts/seed-intake-primary.ts"),
+      resolve(repoRoot, script),
       inputPath,
       outputPath,
     ],
@@ -322,6 +324,7 @@ async function writePageDiagnostics(
 async function createStaffWorkspace(
   page: Page,
   origin: string,
+  phaseJournal: PhaseJournal,
 ): Promise<{ workspaceId: string; projectId: string; workItemTypeId: string }> {
   const api = page.context().request;
   // D-A: only an instance administrator creates a workspace, and the request names its owner.
@@ -342,7 +345,32 @@ async function createStaffWorkspace(
     name: `Intake primary ${randomUUID().slice(0, 8)}`,
     ownerUserId,
   });
-  expect(workspaceResponse.status()).toBe(200);
+  if (workspaceResponse.status() !== 200) {
+    const body = await Promise.race([
+      workspaceResponse.text().catch(() => ""),
+      new Promise<string>((resolveTimeout) =>
+        setTimeout(() => resolveTimeout(""), 3_000),
+      ),
+    ]);
+    const knownGuards = [
+      "session_required",
+      "mfa_enrollment_required",
+      "csrf_origin_invalid",
+      "csrf_token_missing",
+      "csrf_token_mismatch",
+      "csrf_token_invalid",
+      "workspace_creation_disabled",
+    ];
+    const guard = knownGuards.find((code) => body.includes(code)) ?? "unknown";
+    journal(phaseJournal, {
+      kind: "workspace-create-refused",
+      status: workspaceResponse.status(),
+      guard,
+    });
+    throw new Error(
+      `Workspace creation failed: status ${workspaceResponse.status()}, guard ${guard}.`,
+    );
+  }
   const workspace = (await workspaceResponse.json()) as { id?: string };
   expect(workspace.id).toBeTruthy();
   const workspaceId = workspace.id ?? "";
@@ -427,11 +455,14 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     await runPhase(phaseJournal, "staff-sign-up", () =>
       signUpStaff(staffPage, fixture.origin, fixture),
     );
+    await runPhase(phaseJournal, "staff-factor-enrollment", () =>
+      completePendingFirstAdminInBrowser(staffPage, fixture),
+    );
 
     const support = await runPhase(
       phaseJournal,
       "staff-workspace-and-project",
-      () => createStaffWorkspace(staffPage, fixture.origin),
+      () => createStaffWorkspace(staffPage, fixture.origin, phaseJournal),
     );
     const seeded = await runPhase(
       phaseJournal,
@@ -605,16 +636,126 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       phaseJournal,
       "customer-submit-request",
       async () => {
-        const submissionResponsePromise = apiResponse(
-          customerPage,
-          "POST",
-          "/api/portal/submissions",
-        );
-        await customerPage.getByLabel("Summary").fill("Need account access");
-        await customerPage
-          .getByRole("button", { name: "Submit request", exact: true })
-          .click();
-        const submissionResponse = await submissionResponsePromise;
+        let postSeen = false;
+        const consoleCounts: Record<string, number> = {};
+        const onRequest = (request: import("@playwright/test").Request) => {
+          const url = new URL(request.url());
+          if (
+            url.origin === portalOrigin.origin &&
+            url.pathname === "/api/portal/submissions" &&
+            request.method() === "POST"
+          )
+            postSeen = true;
+        };
+        const onConsole = (
+          message: import("@playwright/test").ConsoleMessage,
+        ) => {
+          const category =
+            message.type() === "error"
+              ? "error"
+              : message.type() === "warning"
+                ? "warning"
+                : "other";
+          consoleCounts[category] = (consoleCounts[category] ?? 0) + 1;
+        };
+        customerPage.on("request", onRequest);
+        customerPage.on("console", onConsole);
+        const submissionResponsePromise = customerPage
+          .waitForResponse(
+            (response) => {
+              const url = new URL(response.url());
+              return (
+                url.origin === portalOrigin.origin &&
+                url.pathname === "/api/portal/submissions" &&
+                response.request().method() === "POST"
+              );
+            },
+            { timeout: 15_000 },
+          )
+          .then(
+            (response) => ({ response }),
+            () => ({ response: null }),
+          );
+        let submissionResponse: Response;
+        let submitStage = "fill";
+        try {
+          await customerPage
+            .getByLabel("Summary")
+            .fill("Need account access", { timeout: 10_000 });
+          submitStage = "click";
+          await customerPage
+            .getByRole("button", { name: /^submit request$/i })
+            .click({ timeout: 10_000 });
+          submitStage = "response";
+          const result = await submissionResponsePromise;
+          if (!result.response) throw new Error("Submission response missing");
+          submissionResponse = result.response;
+        } catch {
+          const state = await Promise.race([
+            customerPage
+              .evaluate(() => ({
+                forms: document.querySelectorAll("form").length,
+                alerts: document.querySelectorAll('[role="alert"]').length,
+                invalid: document.querySelectorAll('[aria-invalid="true"]')
+                  .length,
+                controls: Array.from(
+                  document.querySelectorAll("input, textarea, select, button"),
+                ).map((element) => {
+                  const control = element as
+                    | HTMLInputElement
+                    | HTMLTextAreaElement
+                    | HTMLSelectElement
+                    | HTMLButtonElement;
+                  return {
+                    tag: control.tagName,
+                    type: control.type,
+                    disabled: control.disabled,
+                    invalid: control.getAttribute("aria-invalid") === "true",
+                    hasValue:
+                      control instanceof HTMLButtonElement
+                        ? undefined
+                        : Boolean(control.value),
+                    valid: control.validity.valid,
+                  };
+                }),
+              }))
+              .catch(() => ({ unavailable: true })),
+            new Promise<{ unavailable: boolean }>((resolveTimeout) =>
+              setTimeout(() => resolveTimeout({ unavailable: true }), 5_000),
+            ),
+          ]);
+          journal(phaseJournal, {
+            kind: "submit-diagnostics",
+            submitStage,
+            postSeen,
+            consoleCounts,
+            state,
+          });
+          try {
+            const screenshot = await customerPage.screenshot({
+              timeout: 5_000,
+            });
+            writeFileSync(
+              resolve(
+                fixture.fixtureDir,
+                "intake-primary-submit-diagnostics.png",
+              ),
+              screenshot,
+              { mode: 0o600 },
+            );
+          } catch {
+            journal(phaseJournal, {
+              kind: "submit-diagnostics-screenshot",
+              state: "unavailable",
+            });
+          }
+          throw new Error(
+            "Customer submission did not complete; private diagnostics recorded.",
+          );
+        } finally {
+          customerPage.off("request", onRequest);
+          customerPage.off("console", onConsole);
+        }
         expect(submissionResponse.status()).toBe(200);
         const result = (await submissionResponse.json()) as { ref?: string };
         expect(result.ref).toMatch(/^SUB-[1-9]\d*$/);
@@ -667,11 +808,17 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         expect(presignResponse.status()).toBe(200);
         const storagePutResponse = await storagePutPromise;
         expect(storagePutResponse.ok()).toBeTruthy();
-        await expect(
-          customerPage.getByText(/evidence\.png.*ready/i),
-        ).toBeVisible();
         // Completion is started by the UI after the real signed PUT. Do not log its URL or body.
         expect((await completePromise).status()).toBe(200);
+        const attachment = customerPage.getByRole("listitem").filter({
+          has: customerPage.getByText("evidence.png", { exact: true }),
+        });
+        await expect(
+          attachment.getByText("evidence.png", { exact: true }),
+        ).toBeVisible();
+        await expect(
+          attachment.getByRole("button", { name: "Download", exact: true }),
+        ).toBeEnabled();
       },
     );
 
@@ -686,7 +833,9 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         name: new RegExp(`Submission ${ref}`),
       });
       await expect(
-        submissionDetail.getByText("Need account access"),
+        submissionDetail
+          .getByText("Need account access", { exact: true })
+          .first(),
       ).toBeVisible();
       await expect(submissionDetail.getByText(/evidence\.png/i)).toBeVisible();
     });
@@ -729,7 +878,10 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       expect(accepted.workItem?.workspaceId).toBe(seeded.workspaceId);
       expect(accepted.workItem?.projectId).toBe(seeded.projectId);
       await expect(
-        staffPage.getByText("accepted", { exact: true }),
+        staffPage
+          .getByRole("dialog", { name: new RegExp(`Submission ${ref}`) })
+          .getByTestId("submission-detail-sheet")
+          .getByText("Accepted", { exact: true }),
       ).toBeVisible();
     });
     await runPhase(phaseJournal, "accepted-triage-screenshot", () =>
@@ -742,9 +894,15 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       await customerPage.reload();
       await expect(customerPage).toHaveURL(submissionUrl);
       await expect(customerPage.getByText("Need account access")).toBeVisible();
+      const attachment = customerPage.getByRole("listitem").filter({
+        has: customerPage.getByText("evidence.png", { exact: true }),
+      });
       await expect(
-        customerPage.getByText(/evidence\.png.*ready/i),
+        attachment.getByText("evidence.png", { exact: true }),
       ).toBeVisible();
+      await expect(
+        attachment.getByRole("button", { name: "Download", exact: true }),
+      ).toBeEnabled();
     });
 
     await customerContext.close();
@@ -901,6 +1059,12 @@ test("portal intake is authored, submitted, claimed and accepted through the rea
         setup,
         { phase: "instance" },
         "intake-primary-instance",
+      );
+      await seedIntakeFixture(
+        setup,
+        { phase: "instance" },
+        "intake-primary-portal-flag",
+        "tests/e2e/scripts/seed-portal-projects.ts",
       );
     },
   });
