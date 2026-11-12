@@ -1,6 +1,6 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Navigate, useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Form,
@@ -18,12 +18,14 @@ import { useForm } from "react-hook-form";
 import { Trans, useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import { Logo } from "@/components/common/logo";
+import { ErrorDisplay } from "@/components/errors/error-display";
 import { NoWorkspaceEmpty } from "@/components/onboarding/no-workspace-empty";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { WorkspaceOwnerPicker } from "@/components/workspace/workspace-owner-picker";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
@@ -53,6 +55,13 @@ export function OnboardingFlow() {
   const queryClient = useQueryClient();
   const { mutateAsync: createWorkspace, isPending } = useCreateWorkspace();
   const { user, isLoading } = useAuth();
+  const {
+    data: workspaces,
+    isLoading: workspacesLoading,
+    isFetching: workspacesFetching,
+    error: workspacesError,
+    refetch,
+  } = useGetWorkspaces(true);
   // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
   const canCreateWorkspace = useCanCreateWorkspace();
   const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
@@ -262,6 +271,13 @@ export function OnboardingFlow() {
             {step === "workspace" && renderWorkspaceStep()}
             {step === "success" && renderSuccessStep()}
           </AnimatePresence>
+        ) : workspacesLoading || workspacesFetching ? null : workspacesError ? (
+          <ErrorDisplay
+            error={workspacesError}
+            onRetry={() => void refetch()}
+          />
+        ) : workspaces?.length ? (
+          <Navigate to="/agent" replace />
         ) : (
           <NoWorkspaceEmpty />
         )}

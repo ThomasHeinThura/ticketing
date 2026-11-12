@@ -5,7 +5,6 @@ import { appendAuditLog } from "../../audit/audit-writer";
 import type { AuditRequestContext } from "../../audit/request-context";
 import db, { schema } from "../../database";
 import type { DomainEventEnvelope } from "../../events/outbox";
-import { isCurrentlySuspended } from "../../instance/users/directory";
 import { enqueueNotificationEvent } from "../../notification/fanout";
 import { resolveWorkspaceCreatedRecipient } from "../../notification/recipient-resolvers";
 import { ensureProjectLeadRole } from "../../project/project-creator-grant";
@@ -161,7 +160,6 @@ async function createWorkspace(input: CreateWorkspaceInput) {
         const [ownerCandidate] = await tx
           .select({
             banned: schema.userTable.banned,
-            banExpires: schema.userTable.banExpires,
           })
           .from(schema.userTable)
           .innerJoin(
@@ -174,14 +172,7 @@ async function createWorkspace(input: CreateWorkspaceInput) {
           )
           .where(eq(schema.userTable.id, input.ownerId))
           .limit(1);
-        if (
-          !ownerCandidate ||
-          isCurrentlySuspended(
-            ownerCandidate.banned,
-            ownerCandidate.banExpires,
-            now,
-          )
-        ) {
+        if (!ownerCandidate || ownerCandidate.banned === true) {
           throw new WorkspaceOwnerNotEligibleError();
         }
 

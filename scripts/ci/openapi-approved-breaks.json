@@ -502,5 +502,13 @@
 		"pr": 1103,
 		"reason": "The object key now comes from the attachment row after live reach; no storage key is exposed in a portal link, including prefixed S3 keys.",
 		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+	},
+	{
+		"operation": "POST /workspace",
+		"rule": "new-required-request-property",
+		"fingerprint": "9a85b12561c7",
+		"pr": 1122,
+		"reason": "Workspace creation requires the instance administrator to name an existing active staff owner using ownerUserId.",
+		"decision": "Thomas, owner decision D-A, 12 Nov 2026"
 	}
 ]

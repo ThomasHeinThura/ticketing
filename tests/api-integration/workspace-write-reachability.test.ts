@@ -287,6 +287,7 @@ describe("S4 create is for a current instance administrator only (A2-P23)", () =
     const instanceAdmin = await signUpInstanceAdmin(app);
     const deactivated = await signUpUser(app);
     const suspended = await signUpUser(app);
+    const expiredBan = await signUpUser(app);
     await db
       .update(schema.personTable)
       .set({ active: false })
@@ -296,6 +297,11 @@ describe("S4 create is for a current instance administrator only (A2-P23)", () =
       .set({ banned: true })
       .where(eq(schema.userTable.id, suspended.user.id));
 
+    await db
+      .update(schema.userTable)
+      .set({ banned: true, banExpires: new Date(0) })
+      .where(eq(schema.userTable.id, expiredBan.user.id));
+
     const bodies = [
       { label: "no owner at all", body: {} },
       { label: "an unknown user", body: { ownerUserId: "no-such-user" } },
@@ -304,6 +310,10 @@ describe("S4 create is for a current instance administrator only (A2-P23)", () =
         body: { ownerUserId: deactivated.user.id },
       },
       { label: "a suspended user", body: { ownerUserId: suspended.user.id } },
+      {
+        label: "a user with an expired ban still set",
+        body: { ownerUserId: expiredBan.user.id },
+      },
     ];
     for (const { label, body } of bodies) {
       const refused = await postCreateWorkspace(app, instanceAdmin.cookie, {
