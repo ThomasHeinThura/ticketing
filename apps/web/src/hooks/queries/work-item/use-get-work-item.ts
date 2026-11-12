@@ -8,6 +8,7 @@ import {
 import { useEffect } from "react";
 import {
   isWorkItemMutating,
+  rememberWorkItemRead,
   workItemMutationKey,
 } from "@/components/work-item/work-item-save";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
@@ -37,7 +38,14 @@ async function readWorkItemDetail(queryClient: QueryClient, key: string) {
     workItemDetailQueryKey(key),
   );
   if (cached) {
-    if (isWorkItemMutating(queryClient, key)) return cached;
+    if (isWorkItemMutating(queryClient, key)) {
+      if (incoming) rememberWorkItemRead(queryClient, key, incoming);
+      return (
+        queryClient.getQueryData<WorkItemDetailRow>(
+          workItemDetailQueryKey(key),
+        ) ?? cached
+      );
+    }
     if (
       typeof cached.version === "number" &&
       typeof incoming?.version === "number" &&

@@ -2073,6 +2073,144 @@ describe("optimistic state and assignee changes", () => {
     });
   });
 
+  it.each(["detail", "list"] as const)(
+    "restores a newer %s read after an assignee refusal and failed repair",
+    async (source) => {
+      const write = deferred();
+      mocks.assign.mockReturnValue(write.promise);
+      mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+      const client = renderLive();
+      await chooseAssignee(/Casey Ray/);
+      await waitFor(() => expect(mocks.assign).toHaveBeenCalledTimes(1));
+
+      const newer = liveRow({
+        version: 5,
+        assigneeId: "person-3",
+        assigneeName: "Sam Lee",
+        assigneeActive: true,
+        assigneeOnProject: true,
+      });
+      if (source === "detail") {
+        mocks.getWorkItem.mockResolvedValueOnce(newer);
+        await client.refetchQueries({ queryKey: detailKey, exact: true });
+      } else {
+        mocks.getWorkItems.mockResolvedValueOnce(listData(newer).pages[0]);
+        await client.refetchQueries({ queryKey: projectList, exact: true });
+      }
+      expect(
+        screen.getByTestId("work-item-assignee-control"),
+      ).toHaveTextContent("Casey Ray");
+      mocks.getWorkItem.mockRejectedValue(new TypeError("offline"));
+      mocks.getWorkItems.mockRejectedValue(new TypeError("offline"));
+      write.reject(new HttpError(409, "conflict"));
+      await waitFor(() => expect(client.isMutating()).toBe(0));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("work-item-assignee-control"),
+        ).toHaveTextContent("Sam Lee"),
+      );
+      expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+        version: 5,
+        assigneeId: "person-3",
+        assigneeName: "Sam Lee",
+      });
+      expect(listRow(client)).toMatchObject({
+        version: 5,
+        assigneeId: "person-3",
+        assigneeName: "Sam Lee",
+      });
+    },
+  );
+
+  it.each(["detail", "list"] as const)(
+    "restores a newer %s state read after a refusal and failed repair",
+    async (source) => {
+      const write = deferred();
+      mocks.transition.mockReturnValue(write.promise);
+      mocks.transitions = [offer("In progress")];
+      const client = renderLive();
+      await chooseState(/In progress/);
+      await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
+      const newer = liveRow({
+        version: 5,
+        stateId: "state-review",
+        stateName: "Review",
+        stateCategory: "started",
+      });
+      if (source === "detail") {
+        mocks.getWorkItem.mockResolvedValueOnce(newer);
+        await client.refetchQueries({ queryKey: detailKey, exact: true });
+      } else {
+        const page = listData(newer).pages[0];
+        page.items[0].stateId = newer.stateId;
+        mocks.getWorkItems.mockResolvedValueOnce(page);
+        await client.refetchQueries({ queryKey: projectList, exact: true });
+      }
+      expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+        "In progress",
+      );
+      mocks.getWorkItem.mockRejectedValue(new TypeError("offline"));
+      mocks.getWorkItems.mockRejectedValue(new TypeError("offline"));
+      write.reject(new HttpError(409, "conflict"));
+      await waitFor(() => expect(client.isMutating()).toBe(0));
+      await waitFor(() =>
+        expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+          "Review",
+        ),
+      );
+      expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+        version: 5,
+        stateId: "state-review",
+        stateName: "Review",
+      });
+      expect(listRow(client)).toMatchObject({
+        version: 5,
+        stateId: "state-review",
+        stateName: "Review",
+      });
+    },
+  );
+
+  it("keeps a newer read through a stale success and a queued refusal", async () => {
+    const first = deferred();
+    const second = deferred();
+    mocks.assign
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    mocks.people = [
+      { personId: "person-1", name: "Riley Fox" },
+      { personId: "person-2", name: "Casey Ray" },
+    ];
+    const client = renderLive();
+    await chooseAssignee(/Riley Fox/);
+    await chooseAssignee(/Casey Ray/, true);
+    const newer = liveRow({
+      version: 6,
+      assigneeId: "person-3",
+      assigneeName: "Sam Lee",
+      assigneeActive: true,
+      assigneeOnProject: true,
+    });
+    mocks.getWorkItem.mockResolvedValueOnce(newer);
+    await client.refetchQueries({ queryKey: detailKey, exact: true });
+    mocks.getWorkItem.mockRejectedValue(new TypeError("offline"));
+    mocks.getWorkItems.mockRejectedValue(new TypeError("offline"));
+    first.resolve({ key: "HELP-7", version: 5 });
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Casey Ray",
+    );
+    second.reject(new HttpError(409, "conflict"));
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Sam Lee",
+    );
+    expect(listRow(client)).toMatchObject({
+      version: 6,
+      assigneeName: "Sam Lee",
+    });
+  });
+
   it("prevents an older detail or list read arriving late from overwriting a newer optimistic or confirmed value", async () => {
     const stateWrite = deferred();
     mocks.transition.mockReturnValue(stateWrite.promise);

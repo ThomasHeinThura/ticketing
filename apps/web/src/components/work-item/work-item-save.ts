@@ -258,7 +258,12 @@ export function mergeWorkItemListPage(
       const prev = prevByKey.get(row.key);
       if (!prev) return row;
       if (isWorkItemMutating(queryClient, row.key)) {
-        return prev as unknown as typeof row;
+        rememberWorkItemRead(queryClient, row.key, row);
+        const version = Math.max(
+          typeof prev.version === "number" ? prev.version : 0,
+          row.version,
+        );
+        return { ...prev, version } as unknown as typeof row;
       }
       if (
         typeof prev.version === "number" &&
@@ -289,6 +294,14 @@ export function writeWorkItemResponse(
   if (!response || typeof response !== "object") return;
   const version = (response as { version?: unknown }).version;
   if (typeof version !== "number") return;
+  const cached = queryClient.getQueryData<WorkItemDetailRow>(
+    workItemDetailKey(key),
+  );
+  if (cached && version < cached.version) {
+    if (snapshot)
+      rollbackOptimisticWorkItemFields(queryClient, cached, snapshot);
+    return;
+  }
   raiseVersionFloor(queryClient, key, version);
   let applicableFields = fields;
   if (!snapshot && !expectedOptimistic) {
@@ -395,6 +408,7 @@ export function useRefreshWorkItem(
 export type OptimisticWorkItemSnapshot = {
   optimistic: Partial<WorkItemDetail>;
   previous: Partial<WorkItemDetail>;
+  readVersions?: Record<string, number>;
 };
 
 function isOptimisticSnapshot(
@@ -406,6 +420,58 @@ function isOptimisticSnapshot(
     "optimistic" in (value as object) &&
     "previous" in (value as object)
   );
+}
+
+/** Keep the newest received server values behind the pending optimistic fields. */
+export function rememberWorkItemRead(
+  queryClient: QueryClient,
+  key: string,
+  incoming: object,
+) {
+  const row = incoming as CachedRow;
+  if (typeof row.version !== "number") return;
+  const version = row.version;
+  const cached = queryClient.getQueryData<WorkItemDetailRow>(
+    workItemDetailKey(key),
+  );
+  if (
+    version <
+    Math.max(cached?.version ?? 0, versionFloor(queryClient, key) ?? 0)
+  )
+    return;
+  const seen = new Set<string>();
+  const snapshots = queryClient
+    .getMutationCache()
+    .findAll({ mutationKey: workItemMutationKey(key), status: "pending" })
+    .map((mutation) => mutation.state.context)
+    .filter(isOptimisticSnapshot);
+  for (const snapshot of snapshots) {
+    for (const field of Object.keys(snapshot.optimistic)) {
+      if (seen.has(field)) continue;
+      seen.add(field);
+      if (!(field in row) || version <= (snapshot.readVersions?.[field] ?? -1))
+        continue;
+      (snapshot.previous as CachedRow)[field] = row[field];
+      snapshot.readVersions ??= {};
+      snapshot.readVersions[field] = version;
+    }
+  }
+  queryClient.setQueryData<WorkItemDetailRow>(workItemDetailKey(key), (old) =>
+    old ? { ...old, version: Math.max(old.version, version) } : old,
+  );
+  for (const { queryKey } of editableListQueriesWithKey(queryClient, key)) {
+    queryClient.setQueryData(queryKey, (data: unknown) =>
+      isListData(data)
+        ? mapItemRows(data, key, (old) => ({
+            ...old,
+            version: Math.max(
+              typeof old.version === "number" ? old.version : 0,
+              version,
+            ),
+          }))
+        : data,
+    );
+  }
 }
 
 /**
@@ -504,17 +570,7 @@ export function rollbackOptimisticWorkItemFields(
   item: Pick<WorkItemDetailRow, "key" | "projectId">,
   snapshot: OptimisticWorkItemSnapshot,
 ) {
-  const later = laterOptimisticWrites(queryClient, item.key, snapshot);
-  const queued = later[0];
-  if (queued) {
-    const queuedPrev = queued.previous as CachedRow;
-    if (matchesOptimistic(queuedPrev, snapshot.optimistic)) {
-      for (const field of Object.keys(snapshot.optimistic)) {
-        queuedPrev[field] = (snapshot.previous as CachedRow)[field];
-      }
-    }
-    return;
-  }
+  if (rebaseLaterSnapshot(queryClient, item.key, snapshot)) return;
   queryClient.setQueryData<WorkItemDetailRow>(
     workItemDetailKey(item.key),
     (old) => {
@@ -535,6 +591,28 @@ export function rollbackOptimisticWorkItemFields(
         : data,
     );
   }
+}
+
+function rebaseLaterSnapshot(
+  queryClient: QueryClient,
+  key: string,
+  snapshot: OptimisticWorkItemSnapshot,
+) {
+  const queued = laterOptimisticWrites(queryClient, key, snapshot)[0];
+  if (queued) {
+    const queuedPrev = queued.previous as CachedRow;
+    if (matchesOptimistic(queuedPrev, snapshot.optimistic)) {
+      for (const field of Object.keys(snapshot.optimistic)) {
+        queuedPrev[field] = (snapshot.previous as CachedRow)[field];
+        if (snapshot.readVersions?.[field] !== undefined) {
+          queued.readVersions ??= {};
+          queued.readVersions[field] = snapshot.readVersions[field];
+        }
+      }
+    }
+    return true;
+  }
+  return false;
 }
 
 const PATCH_FIELDS = [
