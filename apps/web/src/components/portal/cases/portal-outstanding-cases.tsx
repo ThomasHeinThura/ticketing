@@ -28,6 +28,20 @@ import {
 const ROWS = 10;
 const OUTSTANDING = PORTAL_OUTSTANDING_STATUSES.join(",");
 
+export function outstandingCasesQuery(
+  filters: Pick<PortalHomeSearch, "scope" | "status" | "priority">,
+  project?: string,
+) {
+  const { scope, priority } = filters;
+  return {
+    scope: scope ?? "mine",
+    status: filters.status ?? OUTSTANDING,
+    ...(priority ? { priority } : {}),
+    ...(project ? { project } : {}),
+    limit: ROWS,
+  } as const;
+}
+
 /**
  * The dashboard's outstanding cases (S4b): My/All, Status and Severity filters kept in the URL,
  * the first rows of `GET /api/portal/requests` and a link to the full list with the same
@@ -39,22 +53,22 @@ export function PortalOutstandingCases({
   filters,
   project,
   onChange,
+  prefetched = false,
 }: {
   portalUserId: string;
   filters: Pick<PortalHomeSearch, "scope" | "status" | "priority">;
   project?: string;
   onChange: (patch: PortalCaseFilterPatch) => void;
+  prefetched?: boolean;
 }) {
   const { t } = usePortalTranslation("portal");
   const { scope, priority } = filters;
   const status = filters.status ?? OUTSTANDING;
-  const cases = usePortalCases(portalUserId, {
-    scope: scope ?? "mine",
-    status,
-    ...(priority ? { priority } : {}),
-    ...(project ? { project } : {}),
-    limit: ROWS,
-  });
+  const cases = usePortalCases(
+    portalUserId,
+    outstandingCasesQuery(filters, project),
+    { prefetched },
+  );
   const listSearch = {
     ...(scope ? { scope } : {}),
     status,

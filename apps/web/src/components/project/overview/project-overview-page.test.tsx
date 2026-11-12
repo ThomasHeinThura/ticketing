@@ -498,6 +498,21 @@ describe("ProjectOverviewPage", () => {
     });
   });
 
+  it("reuses the route's completed overview read on mount", async () => {
+    const client = appQueryClient();
+    const { projectOverviewOptions } = await import(
+      "@/hooks/queries/project/project-overview-options"
+    );
+    await client.prefetchQuery(projectOverviewOptions("p1"));
+    render(
+      <QueryClientProvider client={client}>
+        <ProjectOverviewPage projectKey="HELP" prefetched />
+      </QueryClientProvider>,
+    );
+    await screen.findByTestId("project-overview-header-line");
+    expect(mocks.getProjectOverview).toHaveBeenCalledTimes(1);
+  });
+
   it("offers New item without Archive to a member who may only create", async () => {
     mocks.canUpdate = false;
     mocks.canManage = false;

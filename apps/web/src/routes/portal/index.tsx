@@ -1,11 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
 import type { PortalCaseFilterPatch } from "@/components/portal/cases/portal-case-filters";
-import { PortalOutstandingCases } from "@/components/portal/cases/portal-outstanding-cases";
+import {
+  outstandingCasesQuery,
+  PortalOutstandingCases,
+} from "@/components/portal/cases/portal-outstanding-cases";
 import { PortalHomeKpis } from "@/components/portal/portal-home-kpis";
 import { PortalOrientation } from "@/components/portal/portal-orientation";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { PortalProjectsCards } from "@/components/portal/projects/portal-projects-cards";
+import { portalProjectsOptions } from "@/hooks/queries/portal/portal-projects-options";
+import {
+  portalCasesOptions,
+  portalHomeOptions,
+} from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
   type PortalHomeSearch,
@@ -13,10 +21,35 @@ import {
   portalProjectSearchMiddlewares,
   routes,
 } from "@/lib/routes";
+import queryClient from "@/query-client";
 
 export const Route = createFileRoute("/")({
   validateSearch: parsePortalHomeSearch,
   search: { middlewares: portalProjectSearchMiddlewares },
+  loaderDeps: ({ search }) => ({
+    project: search.project,
+    scope: search.scope,
+    status: search.status,
+    priority: search.priority,
+  }),
+  loader: ({ context, deps, cause }) => {
+    const { portalUserId, portalState } = context as unknown as {
+      portalUserId?: string;
+      portalState?: unknown;
+    };
+    if (cause === "enter" && portalUserId && !portalState) {
+      void queryClient.prefetchQuery(
+        portalHomeOptions(portalUserId, deps.project),
+      );
+      void queryClient.prefetchQuery(portalProjectsOptions());
+      void queryClient.prefetchQuery(
+        portalCasesOptions(
+          portalUserId,
+          outstandingCasesQuery(deps, deps.project),
+        ),
+      );
+    }
+  },
   component: PortalHome,
 });
 
@@ -53,12 +86,14 @@ function PortalHome() {
       </header>
       <PortalOrientation portalUserId={portalUserId} />
       <PortalHomeKpis
+        prefetched
         portalUserId={portalUserId}
         project={project}
         label={t("home.dashboardTitle")}
       />
-      <PortalProjectsCards projectKey={project} />
+      <PortalProjectsCards projectKey={project} prefetched />
       <PortalOutstandingCases
+        prefetched
         portalUserId={portalUserId}
         filters={search}
         project={project}

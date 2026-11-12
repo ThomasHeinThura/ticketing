@@ -16,25 +16,47 @@ import { portalProjectKeys } from "@/fetchers/portal/projects";
  * opt in (as `useGetMyApprovals` does): returning to `/` or `/requests` always fetches current
  * figures and statuses, while the cached data paints first.
  */
-export function usePortalHome(portalUserId: string, project?: string) {
-  return useQuery({
+export function portalHomeOptions(portalUserId: string, project?: string) {
+  return {
     queryKey: ["portal", portalUserId, "home", project ?? null],
     queryFn: () => getPortalHome(project),
-    refetchOnMount: "always",
+  };
+}
+
+export function usePortalHome(
+  portalUserId: string,
+  project?: string,
+  prefetched = false,
+) {
+  return useQuery({
+    ...portalHomeOptions(portalUserId, project),
+    refetchOnMount: prefetched ? false : "always",
   });
+}
+
+export function portalCasesOptions(
+  portalUserId: string,
+  query: PortalCaseQuery,
+) {
+  return {
+    queryKey: ["portal", portalUserId, "cases", query],
+    queryFn: () => getPortalCases(query),
+  };
 }
 
 export function usePortalCases(
   portalUserId: string,
   query: PortalCaseQuery,
-  { enabled = true }: { enabled?: boolean } = {},
+  {
+    enabled = true,
+    prefetched = false,
+  }: { enabled?: boolean; prefetched?: boolean } = {},
 ) {
   return useQuery({
-    queryKey: ["portal", portalUserId, "cases", query],
-    queryFn: () => getPortalCases(query),
+    ...portalCasesOptions(portalUserId, query),
     enabled,
     placeholderData: keepPreviousData,
-    refetchOnMount: "always",
+    refetchOnMount: prefetched ? false : "always",
   });
 }
 

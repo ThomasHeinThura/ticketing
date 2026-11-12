@@ -25,14 +25,16 @@ export function PortalHomeKpis({
   portalUserId,
   project,
   label,
+  prefetched = false,
 }: {
   portalUserId: string;
   project?: string;
   /** The section's accessible name. */
   label: string;
+  prefetched?: boolean;
 }) {
   const { t, i18n } = usePortalTranslation("portal");
-  const home = usePortalHome(portalUserId, project);
+  const home = usePortalHome(portalUserId, project, prefetched);
   const figures = home.data;
 
   return (

@@ -3,6 +3,13 @@ import getProject from "@/fetchers/project/get-project";
 
 type ProjectData = Awaited<ReturnType<typeof getProject>>;
 
+export function projectOptions(id: string, workspaceId: string) {
+  return {
+    queryFn: () => getProject({ id, workspaceId }),
+    queryKey: ["projects", workspaceId, id],
+  };
+}
+
 function useGetProject<TSelected = ProjectData>(
   {
     id,
@@ -14,8 +21,7 @@ function useGetProject<TSelected = ProjectData>(
   select?: (project: ProjectData) => TSelected,
 ) {
   return useQuery({
-    queryFn: () => getProject({ id, workspaceId }),
-    queryKey: ["projects", workspaceId, id],
+    ...projectOptions(id, workspaceId),
     enabled: !!id && !!workspaceId,
     select,
   });
