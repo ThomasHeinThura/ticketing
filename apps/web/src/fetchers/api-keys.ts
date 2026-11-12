@@ -1,22 +1,33 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 import type {
   ApiKey,
   CreateApiKeyClientRequest,
   CreateApiKeyResponse,
 } from "@/types/api-key";
 
-async function ensureOk(response: Response, message: string) {
+async function ensureOk(
+  response: Response,
+  message: string,
+  fallbackKey?: string,
+) {
   if (response.ok) return;
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, message, fallbackKey);
   // 400/403 carry the API's reason (an unknown capability, a missing browser session).
-  throw new HttpError(
-    response.status,
+  const detail =
     response.status === 400 || response.status === 403
       ? await readErrorDetail(response, message)
-      : message,
-  );
+      : message;
+  throw new HttpError(response.status, detail, undefined, {
+    fallbackKey: detail === message ? fallbackKey : undefined,
+  });
 }
 
 export async function getMyApiKeys(): Promise<ApiKey[]> {
@@ -37,7 +48,11 @@ export async function createMyApiKey(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  await ensureOk(response, "Failed to create API key");
+  await ensureOk(
+    response,
+    "Failed to create API key",
+    "settings:apiKey.createDialog.failedCreate",
+  );
   return (await response.json()) as CreateApiKeyResponse;
 }
 
@@ -46,7 +61,11 @@ export async function revokeMyApiKey(id: string): Promise<ApiKey> {
     getApiUrl(`/me/api-keys/${encodeURIComponent(id)}/revoke`),
     { method: "POST", credentials: "include" },
   );
-  await ensureOk(response, "Failed to revoke API key");
+  await ensureOk(
+    response,
+    "Failed to revoke API key",
+    "settings:apiKey.table.toastRevokeError",
+  );
   return (await response.json()) as ApiKey;
 }
 
@@ -58,5 +77,9 @@ export async function requestDeleteMyApiKey(
     getApiUrl(`/me/api-keys/${encodeURIComponent(id)}`),
     { method: "DELETE", credentials: "include" },
   );
-  return readPendingDeletion(response, "Unable to request API key deletion");
+  return readPendingDeletion(
+    response,
+    "Unable to request API key deletion",
+    "settings:apiKey.table.toastDeleteError",
+  );
 }

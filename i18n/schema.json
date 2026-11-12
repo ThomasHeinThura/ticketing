@@ -7843,6 +7843,9 @@
 								},
 								"creating": {
 									"type": "string"
+								},
+								"failed": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -7857,7 +7860,8 @@
 								"frozenDescription",
 								"readIncluded",
 								"submit",
-								"creating"
+								"creating",
+								"failed"
 							]
 						},
 						"ownershipTransferred": {
@@ -8429,6 +8433,9 @@
 						"loadErrorTitle",
 						"loadErrorDescription"
 					]
+				},
+				"openSettingsMenu": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -8477,7 +8484,8 @@
 				"workspaceProjectDefaults",
 				"workspaceStateTemplates",
 				"projectInheritance",
-				"accessDenied"
+				"accessDenied",
+				"openSettingsMenu"
 			]
 		},
 		"navigation": {
@@ -22134,6 +22142,19 @@
 						}
 					},
 					"required": ["title", "description", "action", "requested", "failed"]
+				},
+				"clientErrors": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"update": {
+							"type": "string"
+						},
+						"test": {
+							"type": "string"
+						}
+					},
+					"required": ["update", "test"]
 				}
 			},
 			"required": [
@@ -22148,7 +22169,8 @@
 				"deliveries",
 				"validation",
 				"stepUp",
-				"delete"
+				"delete",
+				"clientErrors"
 			]
 		},
 		"automations": {
@@ -24012,6 +24034,16 @@
 						"deleteRequested",
 						"deleteError"
 					]
+				},
+				"clientErrors": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"importHolidays": {
+							"type": "string"
+						}
+					},
+					"required": ["importHolidays"]
 				}
 			},
 			"required": [
@@ -24024,7 +24056,8 @@
 				"window",
 				"holidays",
 				"import",
-				"usage"
+				"usage",
+				"clientErrors"
 			]
 		},
 		"teams": {
@@ -28290,6 +28323,195 @@
 						}
 					},
 					"required": ["reportOnly", "enforce"]
+				},
+				"observability": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"optional": {
+							"type": "string"
+						},
+						"allStaff": {
+							"type": "string"
+						},
+						"selectedRole": {
+							"type": "string"
+						},
+						"conflict": {
+							"type": "string"
+						},
+						"requestFailed": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"saveFailed": {
+							"type": "string"
+						},
+						"factorSaveFailed": {
+							"type": "string"
+						},
+						"rotateFailed": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"copyToken": {
+							"type": "string"
+						},
+						"tokenSaved": {
+							"type": "string"
+						},
+						"factorPolicy": {
+							"type": "string"
+						},
+						"factorHelp": {
+							"type": "string"
+						},
+						"requiredAudience": {
+							"type": "string"
+						},
+						"roleId": {
+							"type": "string"
+						},
+						"saveFactor": {
+							"type": "string"
+						},
+						"logLevels": {
+							"type": "string"
+						},
+						"defaultLevel": {
+							"type": "string"
+						},
+						"saveLevels": {
+							"type": "string"
+						},
+						"metricsToken": {
+							"type": "string"
+						},
+						"metricsHelp": {
+							"type": "string"
+						},
+						"configured": {
+							"type": "string"
+						},
+						"notConfigured": {
+							"type": "string"
+						},
+						"configuredRotated": {
+							"type": "string"
+						},
+						"notConfiguredRotated": {
+							"type": "string"
+						},
+						"freshFactorProof": {
+							"type": "string"
+						},
+						"factorProofType": {
+							"type": "string"
+						},
+						"verifyPassword": {
+							"type": "string"
+						},
+						"verifyFactor": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"modules": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"http": {
+									"type": "string"
+								},
+								"auth": {
+									"type": "string"
+								},
+								"database": {
+									"type": "string"
+								},
+								"jobs": {
+									"type": "string"
+								},
+								"audit": {
+									"type": "string"
+								},
+								"plugins": {
+									"type": "string"
+								},
+								"realtime": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"http",
+								"auth",
+								"database",
+								"jobs",
+								"audit",
+								"plugins",
+								"realtime"
+							]
+						},
+						"levels": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"error": {
+									"type": "string"
+								},
+								"warn": {
+									"type": "string"
+								},
+								"info": {
+									"type": "string"
+								},
+								"debug": {
+									"type": "string"
+								}
+							},
+							"required": ["error", "warn", "info", "debug"]
+						}
+					},
+					"required": [
+						"optional",
+						"allStaff",
+						"selectedRole",
+						"conflict",
+						"requestFailed",
+						"unavailable",
+						"saveFailed",
+						"factorSaveFailed",
+						"rotateFailed",
+						"description",
+						"copyToken",
+						"tokenSaved",
+						"factorPolicy",
+						"factorHelp",
+						"requiredAudience",
+						"roleId",
+						"saveFactor",
+						"logLevels",
+						"defaultLevel",
+						"saveLevels",
+						"metricsToken",
+						"metricsHelp",
+						"configured",
+						"notConfigured",
+						"configuredRotated",
+						"notConfiguredRotated",
+						"freshFactorProof",
+						"factorProofType",
+						"verifyPassword",
+						"verifyFactor",
+						"loading",
+						"modules",
+						"levels"
+					]
 				}
 			},
 			"required": [
@@ -28312,7 +28534,8 @@
 				"mcpRateLimit",
 				"invitationLimits",
 				"contentSecurityPolicy",
-				"cspModeOptions"
+				"cspModeOptions",
+				"observability"
 			]
 		},
 		"godModeHealth": {
@@ -28660,9 +28883,18 @@
 						},
 						"title": {
 							"type": "string"
+						},
+						"failed": {
+							"type": "string"
 						}
 					},
-					"required": ["action", "blockedTitle", "description", "title"]
+					"required": [
+						"action",
+						"blockedTitle",
+						"description",
+						"title",
+						"failed"
+					]
 				},
 				"detail": {
 					"type": "object",
@@ -29091,6 +29323,9 @@
 						},
 						"confirmDescription_other": {
 							"type": "string"
+						},
+						"moveFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -29110,7 +29345,8 @@
 						"selectPerson",
 						"status",
 						"suspended",
-						"title"
+						"title",
+						"moveFailed"
 					]
 				},
 				"preview": {
@@ -29295,6 +29531,680 @@
 						}
 					},
 					"required": ["failedTitle"]
+				},
+				"capabilityCatalog": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"groups": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"labels_fields": {
+									"type": "string"
+								},
+								"service_desk": {
+									"type": "string"
+								},
+								"time_cost": {
+									"type": "string"
+								},
+								"knowledge": {
+									"type": "string"
+								},
+								"integrations": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"labels_fields",
+								"service_desk",
+								"time_cost",
+								"knowledge",
+								"integrations"
+							]
+						},
+						"labels": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"workspace__read": {
+									"type": "string"
+								},
+								"workspace__update": {
+									"type": "string"
+								},
+								"workspace__delete": {
+									"type": "string"
+								},
+								"workspace__manage_members": {
+									"type": "string"
+								},
+								"workspace__manage_roles": {
+									"type": "string"
+								},
+								"workspace__manage_settings": {
+									"type": "string"
+								},
+								"workspace__transfer_ownership": {
+									"type": "string"
+								},
+								"project__create": {
+									"type": "string"
+								},
+								"project__read": {
+									"type": "string"
+								},
+								"project__update": {
+									"type": "string"
+								},
+								"project__manage_members": {
+									"type": "string"
+								},
+								"project__manage_settings": {
+									"type": "string"
+								},
+								"project__archive": {
+									"type": "string"
+								},
+								"project__delete": {
+									"type": "string"
+								},
+								"work_item__read": {
+									"type": "string"
+								},
+								"work_item__create": {
+									"type": "string"
+								},
+								"work_item__update": {
+									"type": "string"
+								},
+								"work_item__delete": {
+									"type": "string"
+								},
+								"work_item__assign": {
+									"type": "string"
+								},
+								"work_item__transition": {
+									"type": "string"
+								},
+								"work_item__rank": {
+									"type": "string"
+								},
+								"work_item__set_priority": {
+									"type": "string"
+								},
+								"work_item__escalate_priority": {
+									"type": "string"
+								},
+								"work_item__export": {
+									"type": "string"
+								},
+								"comment__create": {
+									"type": "string"
+								},
+								"comment__create_internal": {
+									"type": "string"
+								},
+								"comment__update_own": {
+									"type": "string"
+								},
+								"comment__delete_own": {
+									"type": "string"
+								},
+								"comment__update_any": {
+									"type": "string"
+								},
+								"comment__delete_any": {
+									"type": "string"
+								},
+								"attachment__create": {
+									"type": "string"
+								},
+								"attachment__delete_own": {
+									"type": "string"
+								},
+								"attachment__delete_any": {
+									"type": "string"
+								},
+								"label__manage": {
+									"type": "string"
+								},
+								"custom_field__manage": {
+									"type": "string"
+								},
+								"saved_view__read": {
+									"type": "string"
+								},
+								"saved_view__create": {
+									"type": "string"
+								},
+								"saved_view__share": {
+									"type": "string"
+								},
+								"sla_policy__read": {
+									"type": "string"
+								},
+								"sla_policy__manage": {
+									"type": "string"
+								},
+								"workflow__read": {
+									"type": "string"
+								},
+								"workflow__manage": {
+									"type": "string"
+								},
+								"request_type__read": {
+									"type": "string"
+								},
+								"request_type__manage": {
+									"type": "string"
+								},
+								"intake__triage": {
+									"type": "string"
+								},
+								"approval__request": {
+									"type": "string"
+								},
+								"approval__request_cab": {
+									"type": "string"
+								},
+								"approval__decide": {
+									"type": "string"
+								},
+								"approval__decide_cab": {
+									"type": "string"
+								},
+								"time_entry__create": {
+									"type": "string"
+								},
+								"time_entry__update_own": {
+									"type": "string"
+								},
+								"time_entry__delete_own": {
+									"type": "string"
+								},
+								"time_entry__read_any": {
+									"type": "string"
+								},
+								"time_entry__update_any": {
+									"type": "string"
+								},
+								"time_entry__delete_any": {
+									"type": "string"
+								},
+								"time_entry__log_backdated": {
+									"type": "string"
+								},
+								"time_entry__manage_rates": {
+									"type": "string"
+								},
+								"budget__read": {
+									"type": "string"
+								},
+								"budget__manage": {
+									"type": "string"
+								},
+								"report__read": {
+									"type": "string"
+								},
+								"report__read_all": {
+									"type": "string"
+								},
+								"report__export": {
+									"type": "string"
+								},
+								"kb_article__read": {
+									"type": "string"
+								},
+								"kb_article__write": {
+									"type": "string"
+								},
+								"kb_article__publish": {
+									"type": "string"
+								},
+								"service__read": {
+									"type": "string"
+								},
+								"service__manage": {
+									"type": "string"
+								},
+								"change__manage": {
+									"type": "string"
+								},
+								"release__manage": {
+									"type": "string"
+								},
+								"member__invite": {
+									"type": "string"
+								},
+								"member__remove": {
+									"type": "string"
+								},
+								"api_key__manage": {
+									"type": "string"
+								},
+								"webhook__manage": {
+									"type": "string"
+								},
+								"automation__manage": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"workspace__read",
+								"workspace__update",
+								"workspace__delete",
+								"workspace__manage_members",
+								"workspace__manage_roles",
+								"workspace__manage_settings",
+								"workspace__transfer_ownership",
+								"project__create",
+								"project__read",
+								"project__update",
+								"project__manage_members",
+								"project__manage_settings",
+								"project__archive",
+								"project__delete",
+								"work_item__read",
+								"work_item__create",
+								"work_item__update",
+								"work_item__delete",
+								"work_item__assign",
+								"work_item__transition",
+								"work_item__rank",
+								"work_item__set_priority",
+								"work_item__escalate_priority",
+								"work_item__export",
+								"comment__create",
+								"comment__create_internal",
+								"comment__update_own",
+								"comment__delete_own",
+								"comment__update_any",
+								"comment__delete_any",
+								"attachment__create",
+								"attachment__delete_own",
+								"attachment__delete_any",
+								"label__manage",
+								"custom_field__manage",
+								"saved_view__read",
+								"saved_view__create",
+								"saved_view__share",
+								"sla_policy__read",
+								"sla_policy__manage",
+								"workflow__read",
+								"workflow__manage",
+								"request_type__read",
+								"request_type__manage",
+								"intake__triage",
+								"approval__request",
+								"approval__request_cab",
+								"approval__decide",
+								"approval__decide_cab",
+								"time_entry__create",
+								"time_entry__update_own",
+								"time_entry__delete_own",
+								"time_entry__read_any",
+								"time_entry__update_any",
+								"time_entry__delete_any",
+								"time_entry__log_backdated",
+								"time_entry__manage_rates",
+								"budget__read",
+								"budget__manage",
+								"report__read",
+								"report__read_all",
+								"report__export",
+								"kb_article__read",
+								"kb_article__write",
+								"kb_article__publish",
+								"service__read",
+								"service__manage",
+								"change__manage",
+								"release__manage",
+								"member__invite",
+								"member__remove",
+								"api_key__manage",
+								"webhook__manage",
+								"automation__manage"
+							]
+						},
+						"descriptions": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"workspace__read": {
+									"type": "string"
+								},
+								"workspace__update": {
+									"type": "string"
+								},
+								"workspace__delete": {
+									"type": "string"
+								},
+								"workspace__manage_members": {
+									"type": "string"
+								},
+								"workspace__manage_roles": {
+									"type": "string"
+								},
+								"workspace__manage_settings": {
+									"type": "string"
+								},
+								"workspace__transfer_ownership": {
+									"type": "string"
+								},
+								"project__create": {
+									"type": "string"
+								},
+								"project__read": {
+									"type": "string"
+								},
+								"project__update": {
+									"type": "string"
+								},
+								"project__manage_members": {
+									"type": "string"
+								},
+								"project__manage_settings": {
+									"type": "string"
+								},
+								"project__archive": {
+									"type": "string"
+								},
+								"project__delete": {
+									"type": "string"
+								},
+								"work_item__read": {
+									"type": "string"
+								},
+								"work_item__create": {
+									"type": "string"
+								},
+								"work_item__update": {
+									"type": "string"
+								},
+								"work_item__assign": {
+									"type": "string"
+								},
+								"work_item__transition": {
+									"type": "string"
+								},
+								"work_item__rank": {
+									"type": "string"
+								},
+								"work_item__set_priority": {
+									"type": "string"
+								},
+								"work_item__escalate_priority": {
+									"type": "string"
+								},
+								"work_item__export": {
+									"type": "string"
+								},
+								"comment__create": {
+									"type": "string"
+								},
+								"comment__create_internal": {
+									"type": "string"
+								},
+								"comment__update_own": {
+									"type": "string"
+								},
+								"comment__delete_own": {
+									"type": "string"
+								},
+								"comment__update_any": {
+									"type": "string"
+								},
+								"comment__delete_any": {
+									"type": "string"
+								},
+								"attachment__create": {
+									"type": "string"
+								},
+								"attachment__delete_own": {
+									"type": "string"
+								},
+								"attachment__delete_any": {
+									"type": "string"
+								},
+								"label__manage": {
+									"type": "string"
+								},
+								"custom_field__manage": {
+									"type": "string"
+								},
+								"saved_view__read": {
+									"type": "string"
+								},
+								"saved_view__create": {
+									"type": "string"
+								},
+								"saved_view__share": {
+									"type": "string"
+								},
+								"sla_policy__read": {
+									"type": "string"
+								},
+								"sla_policy__manage": {
+									"type": "string"
+								},
+								"workflow__read": {
+									"type": "string"
+								},
+								"workflow__manage": {
+									"type": "string"
+								},
+								"request_type__read": {
+									"type": "string"
+								},
+								"request_type__manage": {
+									"type": "string"
+								},
+								"intake__triage": {
+									"type": "string"
+								},
+								"approval__request": {
+									"type": "string"
+								},
+								"approval__request_cab": {
+									"type": "string"
+								},
+								"approval__decide": {
+									"type": "string"
+								},
+								"approval__decide_cab": {
+									"type": "string"
+								},
+								"time_entry__create": {
+									"type": "string"
+								},
+								"time_entry__update_own": {
+									"type": "string"
+								},
+								"time_entry__delete_own": {
+									"type": "string"
+								},
+								"time_entry__read_any": {
+									"type": "string"
+								},
+								"time_entry__update_any": {
+									"type": "string"
+								},
+								"time_entry__delete_any": {
+									"type": "string"
+								},
+								"time_entry__log_backdated": {
+									"type": "string"
+								},
+								"time_entry__manage_rates": {
+									"type": "string"
+								},
+								"budget__read": {
+									"type": "string"
+								},
+								"budget__manage": {
+									"type": "string"
+								},
+								"report__read": {
+									"type": "string"
+								},
+								"report__read_all": {
+									"type": "string"
+								},
+								"report__export": {
+									"type": "string"
+								},
+								"kb_article__read": {
+									"type": "string"
+								},
+								"kb_article__write": {
+									"type": "string"
+								},
+								"kb_article__publish": {
+									"type": "string"
+								},
+								"service__read": {
+									"type": "string"
+								},
+								"service__manage": {
+									"type": "string"
+								},
+								"change__manage": {
+									"type": "string"
+								},
+								"release__manage": {
+									"type": "string"
+								},
+								"member__invite": {
+									"type": "string"
+								},
+								"member__remove": {
+									"type": "string"
+								},
+								"webhook__manage": {
+									"type": "string"
+								},
+								"automation__manage": {
+									"type": "string"
+								},
+								"instance__admin": {
+									"type": "string"
+								},
+								"instance__read_audit": {
+									"type": "string"
+								},
+								"instance__manage_plugins": {
+									"type": "string"
+								},
+								"instance__manage_jobs": {
+									"type": "string"
+								},
+								"instance__manage_terminology": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"workspace__read",
+								"workspace__update",
+								"workspace__delete",
+								"workspace__manage_members",
+								"workspace__manage_roles",
+								"workspace__manage_settings",
+								"workspace__transfer_ownership",
+								"project__create",
+								"project__read",
+								"project__update",
+								"project__manage_members",
+								"project__manage_settings",
+								"project__archive",
+								"project__delete",
+								"work_item__read",
+								"work_item__create",
+								"work_item__update",
+								"work_item__assign",
+								"work_item__transition",
+								"work_item__rank",
+								"work_item__set_priority",
+								"work_item__escalate_priority",
+								"work_item__export",
+								"comment__create",
+								"comment__create_internal",
+								"comment__update_own",
+								"comment__delete_own",
+								"comment__update_any",
+								"comment__delete_any",
+								"attachment__create",
+								"attachment__delete_own",
+								"attachment__delete_any",
+								"label__manage",
+								"custom_field__manage",
+								"saved_view__read",
+								"saved_view__create",
+								"saved_view__share",
+								"sla_policy__read",
+								"sla_policy__manage",
+								"workflow__read",
+								"workflow__manage",
+								"request_type__read",
+								"request_type__manage",
+								"intake__triage",
+								"approval__request",
+								"approval__request_cab",
+								"approval__decide",
+								"approval__decide_cab",
+								"time_entry__create",
+								"time_entry__update_own",
+								"time_entry__delete_own",
+								"time_entry__read_any",
+								"time_entry__update_any",
+								"time_entry__delete_any",
+								"time_entry__log_backdated",
+								"time_entry__manage_rates",
+								"budget__read",
+								"budget__manage",
+								"report__read",
+								"report__read_all",
+								"report__export",
+								"kb_article__read",
+								"kb_article__write",
+								"kb_article__publish",
+								"service__read",
+								"service__manage",
+								"change__manage",
+								"release__manage",
+								"member__invite",
+								"member__remove",
+								"webhook__manage",
+								"automation__manage",
+								"instance__admin",
+								"instance__read_audit",
+								"instance__manage_plugins",
+								"instance__manage_jobs",
+								"instance__manage_terminology"
+							]
+						}
+					},
+					"required": ["groups", "labels", "descriptions"]
+				},
+				"clientErrors": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"create": {
+							"type": "string"
+						},
+						"previewImpact": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"unexpectedDryRun": {
+							"type": "string"
+						}
+					},
+					"required": ["create", "previewImpact", "save", "unexpectedDryRun"]
 				}
 			},
 			"required": [
@@ -29315,7 +30225,9 @@
 				"save",
 				"summary",
 				"tabs",
-				"stepUp"
+				"stepUp",
+				"capabilityCatalog",
+				"clientErrors"
 			]
 		},
 		"agile": {
