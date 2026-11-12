@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { dayOf, num, OPEN, selectRows, timeFrom, tstz } from "../context";
 import { minutesToHours } from "../logic";
+import { reachableTeam } from "../team-reach";
 import type { DrillItem, ReportContext, ReportDefinition, Row } from "../types";
 import { burndownCycle } from "./agile";
 import { itemsOf, timeItemsOf } from "./shared";
@@ -60,7 +61,7 @@ function costEntryFilters(ctx: ReportContext) {
           SELECT 1 FROM team_member tm
           JOIN team t ON t.id = tm.team_id AND t.workspace_id = ${ctx.workspaceId}
           JOIN person tp ON tp.user_id = tm.user_id
-          WHERE tm.team_id = ${teamId} AND tp.id = ce.person_id)`
+          WHERE tm.team_id = ${teamId} AND tp.id = ce.person_id AND ${reachableTeam(ctx)})`
       : sql`true`
   }
     AND ${
@@ -161,13 +162,10 @@ const capacity: ExtraDrill = {
   items: (ctx, handle, limit) =>
     timeItemsOf(
       ctx,
-      sql`${timeDates(ctx)} AND ${
-        handle === null
-          ? sql`true`
-          : sql`EXISTS (SELECT 1 FROM team_member tm
-              JOIN team tt ON tt.id = tm.team_id AND tt.workspace_id = ${ctx.workspaceId}
-              WHERE tm.user_id = pe.user_id AND tt.name = ${handle})`
-      }`,
+      sql`${timeDates(ctx)} AND EXISTS (SELECT 1 FROM team_member tm
+        JOIN team tt ON tt.id = tm.team_id AND tt.workspace_id = ${ctx.workspaceId}
+        WHERE tm.user_id = pe.user_id AND ${reachableTeam(ctx, sql`tt`)}
+          AND ${handle === null ? sql`true` : sql`tt.name = ${handle}`})`,
       sql``,
       limit,
     ),

@@ -41,6 +41,7 @@ import {
 } from "../../apps/api/src/report/snapshot.repository";
 import { runMetricsSnapshot } from "../../apps/api/src/scheduler/report-jobs";
 import { resetTestDatabase } from "./helpers/database";
+import { grantProjectRole } from "./helpers/fixtures";
 import { makeTeam, workItemWorld } from "./helpers/p4-closeout";
 import { insertArticle } from "./helpers/p5-kb";
 import {
@@ -1197,6 +1198,10 @@ describe("closed periods read from snapshots (RP-9)", () => {
   it("does not count another workspace's items from the snapshots", async () => {
     await seed();
     await strangerCompletedItem(4);
+    await grantProjectRole(w.stranger.user.id, w.strangerProject.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     const now = new Date();
     await runMetricsSnapshot(now);
     const stranger = await run(w.stranger.user, "throughput", {

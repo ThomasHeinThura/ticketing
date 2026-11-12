@@ -3711,3 +3711,7 @@ The audit finding extends D-A: only a current instance admin can extend a worksp
 ## Workspace project visibility — 12 November 2026
 
 Thomas decided on 12 November 2026 (D-E): workspace owners, admins and managers see every project in their workspace. This replaces the earlier rule that required a separate `sees_all` grant for manager visibility. Other staff roles retain project, ancestor and owning-team reach. The separate decision that these three roles may join themselves is pending implementation; no self-join route is introduced by this change.
+
+### 12 Nov 2026 — Thomas: report project reach (D-E)
+
+Reports, dashboards and exports use the reader’s project reach, including when they hold `report:read_all`. Owner, admin and manager reach all workspace projects under D-E; other roles reach only their projects. This reverses the workspace-wide `report:read_all` scope recorded in the earlier staff project reach decision.

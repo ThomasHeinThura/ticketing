@@ -53,8 +53,7 @@ export async function callerCaps(
   c: Context,
   projectId?: string,
 ): Promise<ReportCaps> {
-  const [readAll, showRates, readAnyTime] = await Promise.all([
-    holds(c, "report:read_all"),
+  const [showRates, readAnyTime] = await Promise.all([
     (async () =>
       (await canSeeRates(c, projectId)) &&
       (await projectOverridesAllowRates(
@@ -64,7 +63,7 @@ export async function callerCaps(
       )))(),
     holds(c, "time_entry:read_any"),
   ]);
-  return { readAll, showRates, readAnyTime };
+  return { readAll: false, showRates, readAnyTime };
 }
 
 /**

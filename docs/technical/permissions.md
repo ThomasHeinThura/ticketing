@@ -75,7 +75,7 @@ Project reordering returns and updates only projects the caller reaches. Unreach
 | | `budget:read` | | See budgets |
 | | `budget:manage` | `budget:read` | Create and edit budgets |
 | **Reports** | `report:read` | | Reports for your reach |
-| | `report:read_all` | `report:read` | Reports across all projects |
+| | `report:read_all` | `report:read` | Reports across all projects the person can reach; this capability does not grant project reach |
 | | `report:export` | `report:read` | Export a report |
 | **Knowledge** | `kb_article:read` | | Read articles |
 | | `kb_article:write` | `kb_article:read` | Draft and edit articles |
