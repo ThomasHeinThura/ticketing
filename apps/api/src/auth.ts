@@ -3,7 +3,11 @@ import { apiKey } from "@better-auth/api-key";
 import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import {
+  APIError,
+  createAuthMiddleware,
+  getAuthoritativeSessionFromCtx,
+} from "better-auth/api";
 import { deleteSessionCookie } from "better-auth/cookies";
 import {
   admin as adminPlugin,
@@ -15,6 +19,7 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
+import { and, eq, gt } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { authConfigurationVersion } from "./auth/configuration-version";
 import {
@@ -61,12 +66,16 @@ import {
   readInviteSignUpBody,
   verifyInviteSignUp,
 } from "./customer-invitation/signup";
-import db from "./database";
+import db, { schema } from "./database";
 import {
   bindTwoFactorOidcSession,
   identityOidcPlugin,
   OIDC_PENDING_SESSION_COOKIE,
 } from "./identity/oidc-login";
+import {
+  lockOidcConnection,
+  lockOidcExternalIdentity,
+} from "./identity/repository";
 import {
   logTaskDesk,
   recordAuthReload,
@@ -82,9 +91,11 @@ import {
   createCredentialAwareDrizzleAdapter,
   currentAccountDeletionTransaction,
   currentTotpEnrollmentTransaction,
+  getPasswordSessionSource,
   noteTotpEnrollmentMutationAuditFailure,
   revokeTotpPeerSessions,
   runOrAfterTotpEnrollmentCommit,
+  setPasswordSessionSource,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
   withTotpSessionEnrollment,
@@ -93,6 +104,7 @@ import { hasCanonicalCustomerMembership } from "./permissions/customer-membershi
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
+import { dbNowUtc } from "./utils/db-time";
 import { getDefaultCookieAttributes } from "./utils/get-default-cookie-attributes";
 import { getGithubSsoOAuthCredentials } from "./utils/github-sso-env";
 import { consumeAnonymousInvitationRateLimit } from "./utils/invitation-anonymous-rate-limit";
@@ -972,6 +984,78 @@ function createAuth(
           throw new APIError("NOT_FOUND", { message: "Not found" });
         }
 
+        if (ctx.path === "/change-password") {
+          const current = await getAuthoritativeSessionFromCtx(ctx);
+          if (
+            !current?.session ||
+            current.session.portal !== portal ||
+            (current.session as { impersonatedBy?: string | null })
+              .impersonatedBy
+          ) {
+            throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
+          }
+          if (
+            (portal === "customer" &&
+              !(await hasCustomerPortalIdentity(current.user.id))) ||
+            (portal === "agent" &&
+              (await hasCustomerSidePerson(current.user.id)))
+          ) {
+            throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
+          }
+          const factor = await loadLocalFactorState(current.user.id);
+          if (
+            !(await isSetupCompleted()) ||
+            (factor.required && !factor.enabled)
+          ) {
+            throw new APIError("FORBIDDEN", {
+              message: "mfa_enrollment_required",
+            });
+          }
+          if (ctx.body?.revokeOtherSessions === true) {
+            const tx = currentTotpEnrollmentTransaction();
+            const [source] = await tx
+              .select()
+              .from(schema.sessionTable)
+              .where(
+                and(
+                  eq(schema.sessionTable.id, current.session.id),
+                  eq(schema.sessionTable.userId, current.user.id),
+                  eq(schema.sessionTable.portal, portal),
+                  gt(schema.sessionTable.expiresAt, dbNowUtc()),
+                ),
+              )
+              .limit(1);
+            if (!source || source.impersonatedBy)
+              throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
+            if (source.identityConnectionId) {
+              const [connection] = await lockOidcConnection(
+                tx,
+                source.identityConnectionId,
+              );
+              const [identity] = await lockOidcExternalIdentity(
+                tx,
+                source.identityConnectionId,
+                current.user.id,
+              );
+              if (
+                !connection?.enabled ||
+                connection.portalScope !== portal ||
+                !identity
+              ) {
+                throw new APIError("FORBIDDEN", { message: "Unauthorized" });
+              }
+            }
+            setPasswordSessionSource({
+              id: source.id,
+              userId: source.userId,
+              portal,
+              identityConnectionId: source.identityConnectionId,
+              activeOrganizationId: source.activeOrganizationId,
+              activeTeamId: source.activeTeamId,
+            });
+          }
+        }
+
         if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
           const state = await loadLocalFactorState(ctx.context.session.user.id);
           if (state.policy.mode === "off") {
@@ -1283,10 +1367,27 @@ function createAuth(
           ctx.path === "/sign-in/email" ||
           ctx.path === "/sign-in/username" ||
           ctx.path === "/sign-in/phone-number";
+        const passwordSource =
+          ctx.path === "/change-password"
+            ? getPasswordSessionSource()
+            : undefined;
+        const passwordReplacement = Boolean(
+          passwordSource &&
+            previousSession?.session.id === passwordSource.id &&
+            previousSession.user.id === passwordSource.userId &&
+            newSession.user.id === passwordSource.userId &&
+            passwordSource.portal === portal,
+        );
+        if (ctx.path === "/change-password" && !passwordReplacement) {
+          throw new APIError("INTERNAL_SERVER_ERROR", {
+            message: "Session replacement failed",
+          });
+        }
         if (
           newSession.user.twoFactorEnabled &&
           !factorVerifiedEndpoint &&
-          !passwordSignInPath
+          !passwordSignInPath &&
+          !passwordReplacement
         ) {
           // The plugin's built-in sign-in gate covers password sign-in. Other
           // credential flows may not establish that challenge; refuse their
@@ -1321,8 +1422,31 @@ function createAuth(
             });
           }
         }
-        const sessionWriter = totpTransaction ?? db;
+        const sessionWriter = passwordReplacement
+          ? currentTotpEnrollmentTransaction()
+          : (totpTransaction ?? db);
         await updateSessionPortal(sessionWriter, newSession.session.id, portal);
+        if (passwordReplacement && passwordSource) {
+          const [updated] = await sessionWriter
+            .update(schema.sessionTable)
+            .set({
+              identityConnectionId: passwordSource.identityConnectionId,
+              activeOrganizationId: passwordSource.activeOrganizationId,
+              activeTeamId: passwordSource.activeTeamId,
+            })
+            .where(
+              and(
+                eq(schema.sessionTable.id, newSession.session.id),
+                eq(schema.sessionTable.userId, passwordSource.userId),
+                eq(schema.sessionTable.portal, portal),
+              ),
+            )
+            .returning({ id: schema.sessionTable.id });
+          if (!updated)
+            throw new APIError("INTERNAL_SERVER_ERROR", {
+              message: "Session replacement failed",
+            });
+        }
 
         if (factorVerifiedEndpoint) {
           const factorCookie = ctx.context.createAuthCookie("two_factor");

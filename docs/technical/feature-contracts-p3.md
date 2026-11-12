@@ -241,7 +241,10 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   `GET /api/me/security/factors` for that session's own security status. The agent API stays
   unreachable there. The current password is verified, the existing policy and rate limit apply,
   peer sessions can be revoked, and successful password changes are audited without secrets.
-  The status includes local-password presence even with MFA enabled. Pending
+  Password change requires a fully admitted session after bootstrap and any required factor
+  enrollment. Rotation preserves the caller's validated identity-connection and workspace
+  provenance, deletes the original and peer sessions, and never transfers their session-bound
+  step-up proofs. The status includes local-password presence even with MFA enabled. Pending
   submission and work-item attachment objects are uploaded on the filesystem driver only by
   `PUT /api/storage/portal-attachment-upload`, using a link bound to the requesting customer
   (Thomas, 4 November 2026). The generic filesystem attachment PUT is refused on the portal
