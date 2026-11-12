@@ -52,6 +52,7 @@ import {
 import { allowsStaffInvitationByEmail } from "./auth/staff-registration-path";
 import {
   establishVerifiedLocalStaffPerson,
+  StaffInvitationRequiredError,
   verifiedLocalEmailClaimMethod,
 } from "./auth/verified-placeholder-claim";
 import { readCustomerInvitationContinuationContext } from "./customer-invitation/continuation-context";
@@ -72,6 +73,7 @@ import {
   identityOidcPlugin,
   OIDC_PENDING_SESSION_COOKIE,
 } from "./identity/oidc-login";
+import { hasPotentialStaffImportClaim } from "./identity/placeholder-claim";
 import {
   logTaskDesk,
   recordAuthReload,
@@ -907,9 +909,15 @@ function createAuth(
               },
             );
             if (!result.allowed) {
-              throw new APIError("FORBIDDEN", {
-                message: result.reason,
-              });
+              const localProof =
+                ctx?.path === "/sign-in/email-otp" ||
+                ctx?.path === "/magic-link/verify";
+              if (
+                !localProof ||
+                !(await hasPotentialStaffImportClaim(user.email))
+              ) {
+                throw new APIError("FORBIDDEN", { message: result.reason });
+              }
             }
           },
           after: async (user, context) => {
@@ -1339,14 +1347,17 @@ function createAuth(
               verifiedEmail: newSession.user.email,
               method: verifiedClaimMethod,
             });
-          } catch {
+          } catch (error) {
             await ctx.context.internalAdapter.deleteSession(
               newSession.session.token,
             );
             deleteSessionCookie(ctx, true);
             ctx.context.setNewSession(null);
             throw new APIError("FORBIDDEN", {
-              message: "Sign-in is unavailable for this account.",
+              message:
+                error instanceof StaffInvitationRequiredError
+                  ? "Accounts are by invitation. Ask your administrator for an invitation."
+                  : "Sign-in is unavailable for this account.",
             });
           }
         }

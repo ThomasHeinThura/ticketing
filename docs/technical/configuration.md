@@ -88,4 +88,4 @@ The maintained source SHA-256 for `install.sh` is `088bd56959c79068ac9d97cc3e4f6
 
 ### Staff registration
 
-The instance setting `staff_self_registration_enabled` defaults to false. God Mode controls it through the elevated sign-in methods save; `DISABLE_REGISTRATION=true` forces staff self-registration off regardless of the stored value, while valid staff invitations remain usable. `DISABLE_PASSWORD_REGISTRATION=true` independently disables password registration. The customer portal remains invitation-only.
+The instance setting `staff_self_registration_enabled` defaults to false. God Mode controls it through the elevated sign-in methods save; `DISABLE_REGISTRATION=true` forces staff self-registration off regardless of the stored value, while valid staff invitations remain usable. `DISABLE_PASSWORD_REGISTRATION=true` independently disables password registration. Changing the staff self-registration setting requires an enrolled second factor and a fresh TOTP or backup-code proof; other sign-in method changes retain their existing PA-15 rules. The customer portal remains invitation-only.

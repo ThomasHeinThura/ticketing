@@ -59,6 +59,12 @@ const apiRequire = createRequire(
 const bcrypt = apiRequire("bcryptjs") as {
   hash(value: string, rounds: number): Promise<string>;
 };
+const { base32 } = apiRequire("@better-auth/utils/base32") as {
+  base32: { decode(value: string): Uint8Array };
+};
+const { createOTP } = apiRequire("@better-auth/utils/otp") as {
+  createOTP(secret: string): { totp(): Promise<string> };
+};
 const PASSWORD = "auth-local-methods-password";
 const PATH = "/api/instance/auth/local-methods";
 const PLUGIN_IDS = ["auth.password", "auth.magic-link", "auth.email-otp"];
@@ -588,7 +594,86 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
     };
     const refused = await putMethods(app, cookie, requested);
     expect(refused.status).toBe(403);
-    const response = await putWithProof(app, cookie, requested);
+    expect(await refused.text()).toContain("Enroll a second factor");
+    const passwordProof = await mintStepUpToken(
+      app,
+      cookie,
+      "auth_local_methods_update",
+      requested,
+      PASSWORD,
+    );
+    expect(passwordProof).not.toBeNull();
+    const passwordOnly = await putMethods(app, cookie, requested, {
+      [STEP_UP_TOKEN_HEADER]: passwordProof as string,
+    });
+    expect(passwordOnly.status).toBe(403);
+    expect(await passwordOnly.text()).toContain("Enroll a second factor");
+    const enabled = await app.request("/api/auth/two-factor/enable", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({ password: PASSWORD, issuer: "TaskDesk" }),
+    });
+    expect(enabled.status).toBe(200);
+    const { totpURI } = (await enabled.json()) as { totpURI: string };
+    const secret = new URL(totpURI).searchParams.get("secret");
+    if (!secret) throw new Error("missing TOTP secret");
+    const rawSecret = Buffer.from(base32.decode(secret)).toString("utf8");
+    const enrolled = await app.request("/api/auth/two-factor/verify-totp", {
+      method: "POST",
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "x-forwarded-for": nextClientIp(),
+      },
+      body: JSON.stringify({ code: await createOTP(rawSecret).totp() }),
+    });
+    expect(enrolled.status).toBe(200);
+    const enrolledCookie = enrolled.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    if (!enrolledCookie) throw new Error("missing enrolled session");
+    const challenge = await csrfRequest(
+      app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: enrolledCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "auth_local_methods_update",
+          ...requested,
+        }),
+      },
+      enrolledCookie,
+    );
+    expect(challenge.status).toBe(200);
+    const binding = (await challenge.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const proof = await csrfRequest(
+      app,
+      "/api/me/step-up",
+      {
+        method: "POST",
+        headers: { cookie: enrolledCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "auth_local_methods_update",
+          ...requested,
+          ...binding,
+          method: "totp",
+          code: await createOTP(rawSecret).totp(),
+        }),
+      },
+      enrolledCookie,
+    );
+    expect(proof.status, await proof.clone().text()).toBe(200);
+    const { token } = (await proof.json()) as { token: string };
+    const response = await putMethods(app, enrolledCookie, requested, {
+      [STEP_UP_TOKEN_HEADER]: token,
+    });
     expect(response.status, await response.clone().text()).toBe(200);
     const stored = await db
       .select({

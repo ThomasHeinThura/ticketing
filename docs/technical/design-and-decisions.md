@@ -3614,3 +3614,8 @@ Only obsolete workflow/delegation provenance may remain here; product clauses mu
 ### 12 Nov 2026 — Thomas, D-B: invitation-only accounts
 
 D-B reverses A-15 (31 Oct 2026) open sign-up. Staff self-registration is disabled by default and may be enabled by an instance administrator with step-up; the customer portal remains invitation-only.
+
+
+### 12 Nov 2026 — Thomas, D-B: staff registration confirmation and provisioned identities
+
+Changing staff self-registration requires an enrolled second factor and a fresh TOTP or backup-code proof. Other sign-in method changes retain the existing PA-15 rules. With self-registration off, admission includes a live staff invitation, an identity provisioned by an administrator-configured connection under IP-19, or a claimable import placeholder under IP-30. These exemptions do not change IP-19 subject matching or IP-30 verified local proof and administrative confirmation.

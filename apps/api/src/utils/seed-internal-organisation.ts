@@ -1,5 +1,5 @@
-import type db from "../database";
-import type { schema } from "../database";
+import { eq, sql } from "drizzle-orm";
+import db, { schema } from "../database";
 import { executorOrDefault } from "../database/executor";
 import { isUniqueViolation } from "./is-unique-violation";
 import {
@@ -140,53 +140,44 @@ export async function ensureStaffPersonForUser(
  */
 export async function seedInternalOrganisationAndStaffPersons() {
   try {
-    const internalOrganisation = await ensureInternalOrganisation();
-
-    const users = await listAllUserIds();
-
-    if (users.length === 0) {
-      return;
-    }
-
-    const existingPersons = await listUserIdsWithPerson();
-
-    const existingUserIds = new Set(
-      existingPersons
-        .map((person) => person.userId)
-        .filter((userId): userId is string => userId !== null),
-    );
-
-    const now = new Date();
-    const rows: Array<typeof schema.personTable.$inferInsert> = [];
-
-    for (const user of users) {
-      if (existingUserIds.has(user.id)) {
-        continue;
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext('taskdesk:auth-local-methods'), 0)`,
+      );
+      const [setting] = await tx
+        .select({
+          enabled: schema.instanceSettingTable.staffSelfRegistrationEnabled,
+        })
+        .from(schema.instanceSettingTable)
+        .where(eq(schema.instanceSettingTable.id, "singleton"))
+        .limit(1);
+      const internalOrganisation = await ensureInternalOrganisation(tx);
+      const users = await listAllUserIds(tx);
+      const people = await listUserIdsWithPerson(tx);
+      const known = new Set(people.map((person) => person.userId));
+      const missing = users.filter((user) => !known.has(user.id));
+      if (
+        process.env.DISABLE_REGISTRATION === "true" ||
+        setting?.enabled !== true
+      ) {
+        console.log(
+          `Staff backfill skipped: ${missing.length} users have no person.`,
+        );
+        return;
       }
-
-      rows.push({
+      if (!missing.length) return;
+      const now = new Date();
+      const rows = missing.map((user) => ({
         userId: user.id,
         organisationId: internalOrganisation.id,
-        side: "staff",
+        side: "staff" as const,
         createdAt: now,
         updatedAt: now,
-      });
-    }
-
-    if (rows.length === 0) {
-      return;
-    }
-
-    // Postgres' bind protocol caps parameters at 65535 per query, so insert in chunks
-    // (mirrors seed-default-workspace-roles.ts's BATCH_SIZE reasoning).
-    const BATCH_SIZE = 1000;
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      await insertStaffPersonBatch(rows.slice(i, i + BATCH_SIZE));
-    }
-
-    console.log(
-      `✅ Seeded ${rows.length} person row(s) for existing user(s) in the internal organisation.`,
-    );
+      }));
+      for (let i = 0; i < rows.length; i += 1000)
+        await insertStaffPersonBatch(rows.slice(i, i + 1000), tx);
+      console.log(`Seeded ${rows.length} staff person(s).`);
+    });
   } catch (error) {
     console.error("❌ Failed to seed internal organisation/persons:", error);
     throw error;

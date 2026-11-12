@@ -162,3 +162,6 @@ Tenant reach, API-key ceilings, self/owner predicates, agent/customer separation
 
 
 The session-only instance-admin `PUT /api/instance/auth/local-methods` uses the `auth_local_methods_update` step-up proof for changes to staff self-registration and records its old and new values in the audit log.
+
+
+D-B (Thomas, 12 Nov 2026): changing staff self-registration requires an enrolled local second factor and a fresh TOTP or backup-code proof at consumption. Other changes to sign-in methods retain their existing PA-15 proof rules.

@@ -78872,7 +78872,7 @@
           "Instance"
         ],
         "summary": "Set the local sign-in methods of the staff and customer portals",
-        "description": "Current instance administrators only, elevated and session-only (PA-15 operation `auth_local_methods_update`, bound to all six method flags, the staff registration setting and the read revision). Staff password sign-in can never be disabled (R5), and email-code sign-in cannot be enabled while the environment switches it off: either request is refused with 422 before any proof is spent. The write stores one row per method and portal, retires any other stored row for these methods, audits the changed keys only and reloads authentication on every replica.",
+        "description": "Current instance administrators only, elevated and session-only (PA-15 operation `auth_local_methods_update`, bound to all six method flags, the staff registration setting and the read revision). Changes to staff self-registration require an enrolled second factor and a fresh TOTP or backup-code proof; other saves keep the standard PA-15 rules. Staff password sign-in can never be disabled (R5), and email-code sign-in cannot be enabled while the environment switches it off: either request is refused with 422 before any proof is spent. The write stores one row per method and portal, retires any other stored row for these methods, audits the changed keys only and reloads authentication on every replica.",
         "parameters": [
           {
             "schema": {

@@ -25145,6 +25145,9 @@
 						},
 						"factor_required": {
 							"type": "string"
+						},
+						"enroll_factor": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -25158,7 +25161,8 @@
 						"rate_limited",
 						"unavailable",
 						"unknown",
-						"factor_required"
+						"factor_required",
+						"enroll_factor"
 					]
 				},
 				"editor": {

@@ -6069,7 +6069,8 @@
 			"rate_limited": "Too many verification attempts. Wait a few minutes and try again.",
 			"unavailable": "The identity service is temporarily unavailable. Nothing was changed; try again.",
 			"unknown": "The request could not be completed. Nothing was changed.",
-			"factor_required": "Enter the selected verification factor to confirm this change."
+			"factor_required": "Enter the selected verification factor to confirm this change.",
+			"enroll_factor": "Enroll a second factor before changing staff self-registration."
 		},
 		"editor": {
 			"addTitle": "Add Entra connection",

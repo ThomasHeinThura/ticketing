@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { IdentityAdminError } from "@/fetchers/god-mode/identity-admin-error";
 import type { LocalAuthMethods } from "@/fetchers/god-mode/local-auth-methods";
 import { translate } from "@/test/en-translation";
 
@@ -73,6 +74,9 @@ const stored: LocalAuthMethods = {
 };
 
 beforeEach(() => {
+  mocks.factorStatus.enabled = false;
+  mocks.factorStatus.required = false;
+  mocks.factorStatus.availableMethods = ["password"];
   mocks.get.mockReset().mockResolvedValue(stored);
   mocks.update.mockReset();
   mocks.prove.mockReset().mockResolvedValue("step-up-token");
@@ -95,6 +99,8 @@ function renderCard() {
 
 describe("LocalSignInMethodsCard", () => {
   it("binds the registration switch to the step-up proof and shows the portal state", async () => {
+    mocks.factorStatus.enabled = true;
+    mocks.factorStatus.availableMethods = ["totp"];
     mocks.update.mockResolvedValue({
       ...stored,
       staffSelfRegistrationEnabled: true,
@@ -111,8 +117,8 @@ describe("LocalSignInMethodsCard", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Save sign-in methods" }),
     );
-    fireEvent.change(await screen.findByLabelText("Password"), {
-      target: { value: "correct horse" },
+    fireEvent.change(await screen.findByLabelText("Authenticator code"), {
+      target: { value: "123456" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() =>
@@ -121,13 +127,42 @@ describe("LocalSignInMethodsCard", () => {
           operation: "auth_local_methods_update",
           staffSelfRegistrationEnabled: true,
         }),
-        expect.anything(),
+        { method: "totp", secret: "123456" },
       ),
     );
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({ staffSelfRegistrationEnabled: true }),
       "step-up-token",
     );
+  });
+
+  it("tells an admin without a factor to enroll one", async () => {
+    mocks.update.mockRejectedValue(
+      new IdentityAdminError(
+        403,
+        "failed",
+        "Enroll a second factor before changing staff self-registration.",
+        null,
+      ),
+    );
+    renderCard();
+    fireEvent.click(
+      await screen.findByRole("switch", {
+        name: "Allow staff self-registration",
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save sign-in methods" }),
+    );
+    fireEvent.change(await screen.findByLabelText("Password"), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(
+      await screen.findByText(
+        "Enroll a second factor before changing staff self-registration.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("locks staff password on and starts with nothing to save", async () => {

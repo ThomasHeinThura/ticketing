@@ -1201,18 +1201,17 @@ async function signInAdmittedIdentity(input: {
       let acceptedDeliveries: string[] = [];
       const invitedCustomer =
         portal === "customer" && input.invitationContext !== undefined;
-      if (portal === "agent" && !userId && !staffSelfRegistrationEnabled()) {
-        const verifiedEmail =
-          claims.email_verified === true &&
-          typeof claims.email === "string" &&
-          claims.email.toLowerCase() === identity.address.toLowerCase();
-        const invitation =
-          verifiedEmail &&
-          (await findPendingInvitation({
-            email: identity.address,
-            now,
-            executor: tx,
-          }));
+      if (
+        portal === "agent" &&
+        !userId &&
+        !staffSelfRegistrationEnabled() &&
+        existing?.provisionedVia !== "scim"
+      ) {
+        const invitation = await findPendingInvitation({
+          email: identity.address,
+          now,
+          executor: tx,
+        });
         if (!invitation)
           throw new APIError("UNAUTHORIZED", {
             message: "Identity sign-in failed",
