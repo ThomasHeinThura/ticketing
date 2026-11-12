@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
+import { createId } from "@paralleldrive/cuid2";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
+import { getConfiguredCustomerOrigin } from "../auth";
 import db, { schema } from "../database";
 import type { Executor, Transaction } from "../database/executor";
 import { currentEncryptionKeyId } from "../identity/client-secret";
@@ -12,6 +14,7 @@ import {
   reportPlaceholderClaimAuditWriteFailure,
 } from "../identity/placeholder-claim";
 import { lockOrganisationIdentityDomainBindings } from "../instance/organisation-lifecycle";
+import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import {
   type CustomerInvitationDeliveryKeyring,
   customerInvitationDeliveryKeyring,
@@ -26,11 +29,13 @@ import {
   suppressActiveInvitationDeliveries,
 } from "./delivery/repository";
 import {
+  buildAcceptLink,
   credentialMatches,
+  deriveCustomerInvitationCredential,
   hashCredential,
   isAssignableCustomerRole,
-  newCredential,
   normaliseInviteeEmail,
+  resolveCustomerInvitationCredentialForCopy,
 } from "./logic";
 import { isEmailProviderConfigured } from "./mailer";
 import {
@@ -217,7 +222,7 @@ export type PreparedCustomerInvitation = {
   rollback: () => void;
 };
 
-/** Prepare the existing CP23 invitation write inside a caller-owned transaction. */
+/** Prepare the CP-23 invitation write inside a caller-owned transaction. */
 export async function prepareCustomerInvitation(
   tx: Transaction,
   input: {
@@ -230,7 +235,6 @@ export async function prepareCustomerInvitation(
 ): Promise<PreparedCustomerInvitation> {
   const keyring = options.deliveryKeyring ?? customerInvitationDeliveryKeyring;
   const email = normaliseInviteeEmail(input.email);
-  const issued = newCredential();
   let deliveryKey: DeliveryKey | null = null;
   let deliveryAdmission: DeliveryCapacityReservation | null = null;
   let deliveryExpiresAt: Date | null = null;
@@ -293,21 +297,32 @@ export async function prepareCustomerInvitation(
       deliveryAdmission = null;
     }
 
+    const targetId = existing ? existing.id : createId();
+    const targetGeneration = existing ? existing.generation + 1 : 1;
+    const issued = deriveCustomerInvitationCredential(
+      targetId,
+      targetGeneration,
+    );
+
     // An expired pending row for the same address is renewed in place (the partial unique index
     // allows one pending row per address); a fresh row is inserted otherwise.
     const row = existing
       ? await rotateCredential(tx, existing.id, {
           credentialHash: inert ? null : issued.hash,
+          expectedGeneration: existing.generation,
+          nextGeneration: targetGeneration,
           expiresAt,
           now,
           renewedBy: input.actor.userId,
         })
       : await insertCustomerInvitation(tx, {
+          id: targetId,
           workspaceId: input.scope.workspaceId,
           organisationId: organisation.id,
           email,
           inviterId: input.actor.userId,
           credentialHash: inert ? null : issued.hash,
+          generation: targetGeneration,
           expiresAt,
           now,
         });
@@ -382,7 +397,6 @@ export async function resendCustomerInvitation(
   options: { deliveryKeyring?: CustomerInvitationDeliveryKeyring } = {},
 ) {
   const keyring = options.deliveryKeyring ?? customerInvitationDeliveryKeyring;
-  const issued = newCredential();
   let deliveryKey: DeliveryKey | null = null;
   let deliveryAdmission: DeliveryCapacityReservation | null = null;
   let deliveryExpiresAt: Date | null = null;
@@ -435,8 +449,12 @@ export async function resendCustomerInvitation(
         deliveryAdmission.release();
         deliveryAdmission = null;
       }
+      const nextGeneration = row.generation + 1;
+      const issued = deriveCustomerInvitationCredential(row.id, nextGeneration);
       const updated = await rotateCredential(tx, row.id, {
         credentialHash: inert ? null : issued.hash,
+        expectedGeneration: row.generation,
+        nextGeneration,
         expiresAt,
         now,
       });
@@ -472,7 +490,85 @@ export async function resendCustomerInvitation(
   activateCustomerInvitationDeliveryKey(deliveryKey, keyring);
   destroyCustomerInvitationDeliveryKeys(supersededDeliveries, keyring);
   const delivered = await isEmailProviderConfigured();
-  return { ...toView(result.updated, result.now), delivered };
+  return {
+    ...toView(result.updated, result.now),
+    delivered,
+  };
+}
+
+/**
+ * Reconstructs the active accept link for a pending, unexpired customer invitation (owner decision
+ * D-N, contract CP-23). Requires `member:invite` in the workspace and reach to the organisation at
+ * request time; never mutates `expiresAt`, `generation` or `lastSentAt`, and writes an
+ * `invitation.link_copied` audit row naming the actor, invitation id and organisation — never the
+ * secret or the invitee email address.
+ */
+export async function copyCustomerInvitationLink(input: {
+  actor: InviteActor;
+  identity: ResolvedIdentity;
+  scope: Scope;
+  invitationId: string;
+}): Promise<{ link: string; expiresAt: string }> {
+  return db.transaction(async (tx) => {
+    await assertCallerHasCapability(
+      input.scope.workspaceId,
+      input.actor.userId,
+      "member:invite",
+      { kind: "session" },
+      tx,
+    );
+    const organisation = await findInvitableOrganisation(
+      tx,
+      input.scope.workspaceId,
+      input.scope.organisationId,
+      input.identity,
+    );
+    if (!organisation) refuse(404, "Invitation not found");
+    assertInvitationDeliveryKeyAvailable();
+
+    const row = await lockCustomerInvitation(
+      tx,
+      input.scope.workspaceId,
+      input.scope.organisationId,
+      input.invitationId,
+    );
+    if (!row) {
+      refuse(404, "Invitation not found");
+    }
+
+    const now = new Date();
+    if (row.status !== "pending" || row.expiresAt.getTime() <= now.getTime()) {
+      refuse(409, "Only a pending, unexpired invitation link can be copied");
+    }
+
+    const credential = resolveCustomerInvitationCredentialForCopy({
+      invitationId: row.id,
+      generation: row.generation,
+      storedHash: row.credentialHash,
+    });
+    if (!credential) {
+      refuse(409, "Invitation link is unavailable; resend to issue a new link");
+    }
+
+    await appendAuditLog(tx, {
+      actorId: input.actor.userId,
+      actorType: input.actor.actorType,
+      apiKeyId: input.actor.apiKeyId,
+      workspaceId: input.scope.workspaceId,
+      organisationId: organisation.id,
+      action: "invitation.link_copied",
+      entityType: "invitation",
+      entityId: row.id,
+      before: null,
+      after: { scope: "customer" },
+    });
+
+    const portalOrigin = getConfiguredCustomerOrigin();
+    return {
+      link: buildAcceptLink(portalOrigin, row.id, credential),
+      expiresAt: row.expiresAt.toISOString(),
+    };
+  });
 }
 
 class AcceptRefused extends Error {

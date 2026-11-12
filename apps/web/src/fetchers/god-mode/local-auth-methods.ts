@@ -14,12 +14,17 @@ export type LocalAuthMethodsByPortal = {
   customer: LocalAuthMethodSet;
 };
 
-export type LocalAuthMethodsRequest = LocalAuthMethodsByPortal & {
+export type LocalAuthConfiguration = LocalAuthMethodsByPortal & {
+  staffSelfRegistrationEnabled: boolean;
+};
+
+export type LocalAuthMethodsRequest = LocalAuthConfiguration & {
   /** The `revision` the switches were read at; a newer save answers 409. */
   expectedRevision: string;
 };
 
-export type LocalAuthMethods = LocalAuthMethodsByPortal & {
+export type LocalAuthMethods = LocalAuthConfiguration & {
+  staffRegistrationDisabledByEnvironment: boolean;
   /** Opaque revision of the stored rows. */
   revision: string;
   /** Whether an email provider is enabled; magic links and email codes need one. */
@@ -40,7 +45,7 @@ export async function getLocalAuthMethods(): Promise<LocalAuthMethods> {
 }
 
 /**
- * Elevated: the single-use token is bound to the exact six flags in `request`, so the same object
+ * Elevated: the single-use token is bound to the exact method and registration flags in `request`, so the same object
  * is sent to the step-up challenge, the proof and this write.
  */
 export async function updateLocalAuthMethods(

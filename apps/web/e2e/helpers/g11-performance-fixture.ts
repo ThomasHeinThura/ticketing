@@ -1464,16 +1464,14 @@ export async function installPerformanceApiFixture(
           metrics.paletteNavigationStart === 0
         ) {
           metrics.paletteNavigationStart = performance.now();
+          const destinationSelector =
+            '[data-testid="workspace-projects-route-pending"], [data-testid="workspace-projects-loading"], [data-testid="g13-projects-content"]';
           const recordDestinationPaint = () => {
             const destinationReady =
-              location.pathname.replace(/\/+$/, "") ===
-                "/dashboard/workspace/ws-g11" &&
+              location.pathname.replace(/\/+$/, "") === "/agent" &&
               Boolean(
-                document
-                  .querySelector(
-                    '[data-testid="workspace-projects-route-pending"]',
-                  )
-                  ?.getClientRects().length,
+                document.querySelector(destinationSelector)?.getClientRects()
+                  .length,
               );
             if (!destinationReady) {
               requestAnimationFrame(recordDestinationPaint);
@@ -1482,13 +1480,10 @@ export async function installPerformanceApiFixture(
             requestAnimationFrame(() =>
               requestAnimationFrame(() => {
                 const stillReady =
-                  location.pathname.replace(/\/+$/, "") ===
-                    "/dashboard/workspace/ws-g11" &&
+                  location.pathname.replace(/\/+$/, "") === "/agent" &&
                   Boolean(
                     document
-                      .querySelector(
-                        '[data-testid="workspace-projects-route-pending"]',
-                      )
+                      .querySelector(destinationSelector)
                       ?.getClientRects().length,
                   );
                 if (stillReady)

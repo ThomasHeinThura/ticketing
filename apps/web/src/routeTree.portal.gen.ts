@@ -14,12 +14,14 @@ import { Route as AccountRouteImport } from './routes/portal/account'
 import { Route as AnnouncementsRouteImport } from './routes/portal/announcements'
 import { Route as ApprovalsRouteImport } from './routes/portal/approvals'
 import { Route as CatalogueRouteImport } from './routes/portal/catalogue'
+import { Route as ForgotPasswordRouteImport } from './routes/portal/forgot-password'
 import { Route as KbRouteImport } from './routes/portal/kb'
 import { Route as KnowledgeBaseRouteImport } from './routes/portal/knowledge-base'
 import { Route as NotificationsRouteImport } from './routes/portal/notifications'
 import { Route as ProjectsRouteImport } from './routes/portal/projects'
 import { Route as ReleasesRouteImport } from './routes/portal/releases'
 import { Route as RequestsRouteImport } from './routes/portal/requests'
+import { Route as ResetPasswordRouteImport } from './routes/portal/reset-password'
 import { Route as SettingsRouteImport } from './routes/portal/settings'
 import { Route as SignInRouteImport } from './routes/portal/sign-in'
 import { Route as AnnouncementsIdRouteImport } from './routes/portal/announcements_.$id'
@@ -57,6 +59,11 @@ const CatalogueRoute = CatalogueRouteImport.update({
   path: '/catalogue',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KbRoute = KbRouteImport.update({
   id: '/kb',
   path: '/kb',
@@ -85,6 +92,11 @@ const ReleasesRoute = ReleasesRouteImport.update({
 const RequestsRoute = RequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -149,12 +161,14 @@ export interface FileRoutesByFullPath {
   '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kb': typeof KbRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
   '/notifications': typeof NotificationsRoute
   '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/announcements/$id': typeof AnnouncementsIdRoute
@@ -173,12 +187,14 @@ export interface FileRoutesByTo {
   '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kb': typeof KbRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
   '/notifications': typeof NotificationsRoute
   '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/announcements/$id': typeof AnnouncementsIdRoute
@@ -198,12 +214,14 @@ export interface FileRoutesById {
   '/announcements': typeof AnnouncementsRoute
   '/approvals': typeof ApprovalsRoute
   '/catalogue': typeof CatalogueRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/kb': typeof KbRoute
   '/knowledge-base': typeof KnowledgeBaseRoute
   '/notifications': typeof NotificationsRoute
   '/projects': typeof ProjectsRoute
   '/releases': typeof ReleasesRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sign-in': typeof SignInRoute
   '/announcements_/$id': typeof AnnouncementsIdRoute
@@ -224,12 +242,14 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/approvals'
     | '/catalogue'
+    | '/forgot-password'
     | '/kb'
     | '/knowledge-base'
     | '/notifications'
     | '/projects'
     | '/releases'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/sign-in'
     | '/announcements/$id'
@@ -248,12 +268,14 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/approvals'
     | '/catalogue'
+    | '/forgot-password'
     | '/kb'
     | '/knowledge-base'
     | '/notifications'
     | '/projects'
     | '/releases'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/sign-in'
     | '/announcements/$id'
@@ -272,12 +294,14 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/approvals'
     | '/catalogue'
+    | '/forgot-password'
     | '/kb'
     | '/knowledge-base'
     | '/notifications'
     | '/projects'
     | '/releases'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/sign-in'
     | '/announcements_/$id'
@@ -297,12 +321,14 @@ export interface RootRouteChildren {
   AnnouncementsRoute: typeof AnnouncementsRoute
   ApprovalsRoute: typeof ApprovalsRoute
   CatalogueRoute: typeof CatalogueRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   KbRoute: typeof KbRoute
   KnowledgeBaseRoute: typeof KnowledgeBaseRoute
   NotificationsRoute: typeof NotificationsRoute
   ProjectsRoute: typeof ProjectsRoute
   ReleasesRoute: typeof ReleasesRoute
   RequestsRoute: typeof RequestsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   SignInRoute: typeof SignInRoute
   AnnouncementsIdRoute: typeof AnnouncementsIdRoute
@@ -353,6 +379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kb': {
       id: '/kb'
       path: '/kb'
@@ -393,6 +426,13 @@ declare module '@tanstack/react-router' {
       path: '/requests'
       fullPath: '/requests'
       preLoaderRoute: typeof RequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -481,12 +521,14 @@ const rootRouteChildren: RootRouteChildren = {
   AnnouncementsRoute: AnnouncementsRoute,
   ApprovalsRoute: ApprovalsRoute,
   CatalogueRoute: CatalogueRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   KbRoute: KbRoute,
   KnowledgeBaseRoute: KnowledgeBaseRoute,
   NotificationsRoute: NotificationsRoute,
   ProjectsRoute: ProjectsRoute,
   ReleasesRoute: ReleasesRoute,
   RequestsRoute: RequestsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   SignInRoute: SignInRoute,
   AnnouncementsIdRoute: AnnouncementsIdRoute,

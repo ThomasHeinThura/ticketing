@@ -6,7 +6,7 @@ export type ReportOrganisation = { id: string; name: string };
 
 /**
  * RP-7's organisation filter choices: the customer organisations of the projects the caller's
- * report reach covers (`report:read` reach, or the whole workspace with `report:read_all`), never
+ * project reach covers, never
  * the internal organisation and never one reached only through another workspace. Organisations
  * are instance-wide, so they are only ever read through this workspace's projects.
  */

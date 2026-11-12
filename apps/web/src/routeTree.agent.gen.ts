@@ -15,6 +15,8 @@ import { Route as AuthRouteImport } from './routes/agent/auth'
 import { Route as LayoutAuthenticatedRouteImport } from './routes/agent/_layout/_authenticated'
 import { Route as AgentSignInRouteImport } from './routes/agent/agent/sign-in'
 import { Route as AuthCheckEmailRouteImport } from './routes/agent/auth/check-email'
+import { Route as AuthForgotPasswordRouteImport } from './routes/agent/auth/forgot-password'
+import { Route as AuthResetPasswordRouteImport } from './routes/agent/auth/reset-password'
 import { Route as AuthSignInRouteImport } from './routes/agent/auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/agent/auth/sign-up'
 import { Route as AuthTwoFactorRouteImport } from './routes/agent/auth/two-factor'
@@ -81,6 +83,7 @@ import { Route as LayoutAuthenticatedGodModeImportsIdRouteImport } from './route
 import { Route as LayoutAuthenticatedGodModeOrganisationsIndexRouteImport } from './routes/agent/_layout/_authenticated/god-mode/organisations/index'
 import { Route as LayoutAuthenticatedAgentKbIdEditRouteImport } from './routes/agent/_layout/_authenticated/agent/kb_.$id_.edit'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/backlog'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyCalendarRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/calendar'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyCyclesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/documents'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyModulesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules'
@@ -186,6 +189,16 @@ const AgentSignInRoute = AgentSignInRouteImport.update({
 const AuthCheckEmailRoute = AuthCheckEmailRouteImport.update({
   id: '/check-email',
   path: '/check-email',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthSignInRoute = AuthSignInRouteImport.update({
@@ -576,6 +589,12 @@ const LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute =
   LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport.update({
     id: '/backlog',
     path: '/backlog',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyCalendarRouteImport.update({
+    id: '/calendar',
+    path: '/calendar',
     getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
   } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute =
@@ -1122,6 +1141,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/two-factor': typeof AuthTwoFactorRoute
@@ -1188,6 +1209,7 @@ export interface FileRoutesByFullPath {
   '/god-mode/organisations/': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
   '/agent/kb/$id/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/agent/projects/$projectKey/calendar': typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute
   '/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
   '/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
@@ -1272,6 +1294,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/two-factor': typeof AuthTwoFactorRoute
@@ -1332,6 +1356,7 @@ export interface FileRoutesByTo {
   '/god-mode/organisations': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
   '/agent/kb/$id/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/agent/projects/$projectKey/calendar': typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute
   '/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
   '/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
@@ -1419,6 +1444,8 @@ export interface FileRoutesById {
   '/_layout/_authenticated': typeof LayoutAuthenticatedRouteWithChildren
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/two-factor': typeof AuthTwoFactorRoute
@@ -1485,6 +1512,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/god-mode/organisations/': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
   '/_layout/_authenticated/agent/kb_/$id_/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/_layout/_authenticated/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/calendar': typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute
   '/_layout/_authenticated/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
   '/_layout/_authenticated/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/_layout/_authenticated/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
@@ -1571,6 +1599,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/agent/sign-in'
     | '/auth/check-email'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/auth/two-factor'
@@ -1637,6 +1667,7 @@ export interface FileRouteTypes {
     | '/god-mode/organisations/'
     | '/agent/kb/$id/edit'
     | '/agent/projects/$projectKey/backlog'
+    | '/agent/projects/$projectKey/calendar'
     | '/agent/projects/$projectKey/cycles'
     | '/agent/projects/$projectKey/documents'
     | '/agent/projects/$projectKey/modules'
@@ -1721,6 +1752,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/agent/sign-in'
     | '/auth/check-email'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/auth/two-factor'
@@ -1781,6 +1814,7 @@ export interface FileRouteTypes {
     | '/god-mode/organisations'
     | '/agent/kb/$id/edit'
     | '/agent/projects/$projectKey/backlog'
+    | '/agent/projects/$projectKey/calendar'
     | '/agent/projects/$projectKey/cycles'
     | '/agent/projects/$projectKey/documents'
     | '/agent/projects/$projectKey/modules'
@@ -1867,6 +1901,8 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated'
     | '/agent/sign-in'
     | '/auth/check-email'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/auth/two-factor'
@@ -1933,6 +1969,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/god-mode/organisations/'
     | '/_layout/_authenticated/agent/kb_/$id_/edit'
     | '/_layout/_authenticated/agent/projects/$projectKey/backlog'
+    | '/_layout/_authenticated/agent/projects/$projectKey/calendar'
     | '/_layout/_authenticated/agent/projects/$projectKey/cycles'
     | '/_layout/_authenticated/agent/projects/$projectKey/documents'
     | '/_layout/_authenticated/agent/projects/$projectKey/modules'
@@ -2065,6 +2102,20 @@ declare module '@tanstack/react-router' {
       path: '/check-email'
       fullPath: '/auth/check-email'
       preLoaderRoute: typeof AuthCheckEmailRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
     '/auth/sign-in': {
@@ -2527,6 +2578,13 @@ declare module '@tanstack/react-router' {
       path: '/backlog'
       fullPath: '/agent/projects/$projectKey/backlog'
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/calendar': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/calendar'
+      path: '/calendar'
+      fullPath: '/agent/projects/$projectKey/calendar'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
     }
     '/_layout/_authenticated/agent/projects/$projectKey/cycles': {
@@ -3130,6 +3188,7 @@ const LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren =
 
 interface LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren {
   LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute
   LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
   LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
@@ -3148,6 +3207,8 @@ const LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren: LayoutAuthenticat
   {
     LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute:
@@ -3769,6 +3830,8 @@ const LayoutRouteWithChildren =
 
 interface AuthRouteChildren {
   AuthCheckEmailRoute: typeof AuthCheckEmailRoute
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
   AuthTwoFactorRoute: typeof AuthTwoFactorRoute
@@ -3777,6 +3840,8 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCheckEmailRoute: AuthCheckEmailRoute,
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
   AuthTwoFactorRoute: AuthTwoFactorRoute,

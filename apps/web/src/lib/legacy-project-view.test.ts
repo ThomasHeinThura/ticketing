@@ -3,7 +3,29 @@ import {
   isAuthorizedLegacyProject,
   legacyTaskHref,
   translateLegacyProjectView,
+  withLocationSuffix,
 } from "./legacy-project-view";
+
+describe("withLocationSuffix", () => {
+  it("normalizes searchStr and hash whether or not leading delimiters are present", () => {
+    expect(withLocationSuffix("/agent", {})).toBe("/agent");
+    expect(withLocationSuffix("/agent", { searchStr: "?", hash: "#" })).toBe(
+      "/agent",
+    );
+    expect(
+      withLocationSuffix("/agent/search", {
+        searchStr: "?q=reset&scope=tasks",
+        hash: "results",
+      }),
+    ).toBe("/agent/search?q=reset&scope=tasks#results");
+    expect(
+      withLocationSuffix("/agent/projects/RM/calendar", {
+        searchStr: "month=2026-10",
+        hash: "#today",
+      }),
+    ).toBe("/agent/projects/RM/calendar?month=2026-10#today");
+  });
+});
 
 describe("legacy project compatibility", () => {
   it("requires the actual returned ID and workspace", () => {

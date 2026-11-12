@@ -1,4 +1,7 @@
 import { toastManager } from "@taskdesk/ui";
+import { copyErrorReference } from "@/lib/copy-error-reference";
+import { HttpError } from "@/lib/http-error";
+import { i18n } from "@/lib/i18n";
 
 type ToastVariant = "success" | "error" | "info" | "warning";
 
@@ -9,6 +12,7 @@ type ToastAction = {
 
 type ToastOptions = {
   description?: string;
+  error?: unknown;
   action?: ToastAction;
   cancel?: ToastAction;
 };
@@ -45,7 +49,32 @@ type ToastId = string;
 
 const success: ToastFn = (title, options) =>
   addToast(title, "success", options);
-const error: ToastFn = (title, options) => addToast(title, "error", options);
+const error = (value: string | Error, options?: ToastOptions): string => {
+  const title = typeof value === "string" ? value : value.message;
+  const source = options?.error ?? value;
+  if (
+    !(source instanceof HttpError) ||
+    source.status < 500 ||
+    !source.requestId
+  )
+    return addToast(title, "error", options);
+  const requestId = source.requestId;
+  return addToast(title, "error", {
+    ...options,
+    description: [
+      options?.description,
+      i18n.t("common:error.reference", { id: requestId }),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    action: {
+      label: i18n.t("common:error.copyReference"),
+      onClick: () => {
+        void copyErrorReference(requestId);
+      },
+    },
+  });
+};
 const info: ToastFn = (title, options) => addToast(title, "info", options);
 const warning: ToastFn = (title, options) =>
   addToast(title, "warning", options);

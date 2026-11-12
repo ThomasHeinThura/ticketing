@@ -41,6 +41,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { openPaletteEntry } from "@/components/search-command-menu/open-search-entry";
 import { pushRecentItem } from "@/components/search-command-menu/recent-items";
 import {
   type PaletteEntry,
@@ -54,10 +55,12 @@ import { shortcuts } from "@/constants/shortcuts";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { authClient } from "@/lib/auth-client";
 import { routes } from "@/lib/routes";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 const SearchCommandMenu = lazy(
@@ -125,7 +128,9 @@ export function CommandPalette({
   const navigate = useNavigate();
   const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
+  const { data: workspaces } = useGetWorkspaces(false, open);
   const { data: session, isPending: sessionPending } = authClient.useSession();
+  const activeWorkspaceId = getActiveOrganizationId(session);
   // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
   const canCreateWorkspace = useCanCreateWorkspace();
   const projectCreationPermission = useWorkspacePermission(workspace?.id);
@@ -270,22 +275,45 @@ export function CommandPalette({
     [searchEnabled, searchTerm, searchResults?.results, recentItems, t],
   );
 
+  const selectingRef = useRef(false);
+
   const handleSearchResult = useCallback(
-    (entry: PaletteEntry) => {
-      if (workspace?.id && session?.user?.id) {
-        pushRecentItem(session.user.id, workspace.id, {
-          type: entry.type,
-          id: entry.id,
-          title: entry.title,
-          description: entry.description,
-          href: entry.href,
+    async (entry: PaletteEntry) => {
+      if (selectingRef.current) return;
+      selectingRef.current = true;
+      try {
+        const opened = await openPaletteEntry({
+          entry,
+          activeWorkspaceId,
+          workspaces,
+          navigate,
+          errorMessage: t("navigation:workspaceSwitcher.switchFailed"),
         });
+        if (!opened) return;
+        if (workspace?.id && session?.user?.id) {
+          pushRecentItem(session.user.id, workspace.id, {
+            type: entry.type,
+            id: entry.id,
+            title: entry.title,
+            description: entry.description,
+            href: entry.href,
+          });
+        }
+        setQuery("");
+        onOpenChange(false);
+      } finally {
+        selectingRef.current = false;
       }
-      setQuery("");
-      onOpenChange(false);
-      navigate({ to: entry.href as never });
     },
-    [navigate, onOpenChange, workspace?.id, session?.user?.id],
+    [
+      activeWorkspaceId,
+      navigate,
+      onOpenChange,
+      session?.user?.id,
+      t,
+      workspace?.id,
+      workspaces,
+    ],
   );
 
   const getResultIcon = (type: PaletteEntry["type"]) => {
@@ -549,7 +577,7 @@ export function CommandPalette({
                               <CommandItem
                                 key={item.value}
                                 value={item.value}
-                                onClick={() => runCommand(item.onRun)}
+                                onClick={() => item.onRun()}
                                 className="flex items-start gap-3 py-3"
                                 aria-label={`${item.resultType}: ${item.label}`}
                               >

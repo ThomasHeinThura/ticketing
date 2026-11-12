@@ -5,14 +5,16 @@ import {
   AlertDialogTitle,
   Sheet,
 } from "@taskdesk/ui";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SettingsSidebar, {
   SettingsSidebarProvider,
 } from "@/components/SettingsSidebar";
 
+const navigate = vi.hoisted(() => vi.fn());
+
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigate,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -45,6 +47,7 @@ function renderSettings({ menuOpen }: { menuOpen: boolean }) {
 
 afterEach(() => {
   cleanup();
+  navigate.mockReset();
 });
 
 describe("SettingsSidebar", () => {
@@ -58,6 +61,14 @@ describe("SettingsSidebar", () => {
     renderSettings({ menuOpen: true });
 
     expect(screen.getAllByText("Account nav")).toHaveLength(2);
+  });
+
+  it("sends the mobile menu's back button to the projects list at /agent", () => {
+    renderSettings({ menuOpen: true });
+
+    fireEvent.click(screen.getByText("navigation:page.backToWorkspace"));
+
+    expect(navigate).toHaveBeenCalledExactlyOnceWith({ to: "/agent" });
   });
 
   it("keeps page dialogs out of the settings sheet's dialog tree", () => {

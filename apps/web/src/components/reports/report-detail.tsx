@@ -10,6 +10,7 @@ import { ChevronLeft, Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
+import { ErrorReference } from "@/components/errors/error-reference";
 import PageTitle from "@/components/page-title";
 import { SettingsAccessChecking } from "@/components/settings/settings-access";
 import { exportReport, ReportsDisabledError } from "@/fetchers/report";
@@ -50,6 +51,7 @@ export function ReportError({ error }: { error: unknown }) {
       <AlertDescription>
         {t(`reports:errors.${key}.description`)}
       </AlertDescription>
+      <ErrorReference error={error} />
     </Alert>
   );
 }

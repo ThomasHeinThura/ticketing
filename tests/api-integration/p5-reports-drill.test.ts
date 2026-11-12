@@ -218,6 +218,10 @@ describe("time reports (hours only, never a rate)", () => {
   async function seed() {
     const team = await makeTeam(w.workspaceId, [w.member.user.id]);
     await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: team.id })
+      .where(eq(schema.projectTable.id, w.projectA.id));
+    await db
       .update(schema.teamTable)
       .set({ capacityDaysPerWeek: "5", name: "Support team" })
       .where(eq(schema.teamTable.id, team.id));

@@ -21,7 +21,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import db from "../../apps/api/src/database";
+import db, { schema } from "../../apps/api/src/database";
 import type { createApp } from "../../apps/api/src/index";
 import {
   policyShadowEventTable,
@@ -37,6 +37,7 @@ import {
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
+import { createSeesAllWorkspaceMember } from "./helpers/project-reach-world";
 import { addMember } from "./helpers/reach-world";
 import { ensureCreationWorkflow } from "./helpers/workflow";
 
@@ -68,6 +69,13 @@ vi.unmock("../../apps/api/src/index");
  * their intended scenario instead of S7's `missing_identity` case.
  */
 async function backfillPersons(): Promise<void> {
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: { staffSelfRegistrationEnabled: true },
+    });
   await seedInternalOrganisationAndStaffPersons();
 }
 
@@ -2326,7 +2334,8 @@ describe("#323 Opus S2 — evidence is attributed to the route that actually ran
     timeout: 60_000,
   }, async () => {
     const fresh = await createAppWithShadow("on");
-    const owner = await createWorkspaceMember({ role: "owner" });
+    // Production workspace creation also persists the owner's workspace sees_all grant.
+    const owner = await createSeesAllWorkspaceMember({ role: "owner" });
     await backfillPersons();
     fresh.mockUser(owner.user);
     const fixture = await createProjectFixture({

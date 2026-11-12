@@ -51,6 +51,8 @@ const methodsResponseSchema = z
     customer: localAuthMethodSetSchema,
     emailProviderEnabled: z.boolean(),
     emailOtpDisabledByEnvironment: z.boolean(),
+    staffSelfRegistrationEnabled: z.boolean(),
+    staffRegistrationDisabledByEnvironment: z.boolean(),
     revision: localAuthMethodsRevisionSchema,
   })
   .openapi("LocalAuthMethods");
@@ -62,7 +64,7 @@ const getRoute = createRoute({
   tags: ["Instance"],
   summary: "Get the local sign-in methods of the staff and customer portals",
   description:
-    "Current instance administrators only, session-only. Returns the stored method flags per portal as the runtime resolves them, whether an email provider is enabled, and whether the environment switches email-code sign-in off. Never returns configuration values or secrets.",
+    "Current instance administrators only, session-only. Returns stored method flags per portal, staff self-registration, whether an email provider is enabled, and whether the environment switches email-code or staff self-registration off. Never returns configuration values or secrets.",
   middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("Local sign-in methods", methodsResponseSchema),
@@ -77,7 +79,7 @@ const putRoute = createRoute({
   tags: ["Instance"],
   summary: "Set the local sign-in methods of the staff and customer portals",
   description:
-    "Current instance administrators only, elevated and session-only (PA-15 operation `auth_local_methods_update`, bound to all six flags). Staff password sign-in can never be disabled (R5), and email-code sign-in cannot be enabled while the environment switches it off: either request is refused with 422 before any proof is spent. The write stores one row per method and portal, retires any other stored row for these methods, audits the changed keys only and reloads authentication on every replica.",
+    "Current instance administrators only, elevated and session-only (PA-15 operation `auth_local_methods_update`, bound to all six method flags, the staff registration setting and the read revision). Changes to staff self-registration require an enrolled second factor and a fresh TOTP or backup-code proof; other saves keep the standard PA-15 rules. Staff password sign-in can never be disabled (R5), and email-code sign-in cannot be enabled while the environment switches it off: either request is refused with 422 before any proof is spent. The write stores one row per method and portal, retires any other stored row for these methods, audits the changed keys only and reloads authentication on every replica.",
   middleware: [requireSessionOnly()] as const,
   request: {
     headers: stepUpTokenHeader,
@@ -136,11 +138,16 @@ async function readLocalMethodRows(
  * Every stored row's own counter, sorted by id (as `authConfigurationVersion` does): any insert,
  * update or retirement changes it, and an unrelated larger counter cannot hide a change.
  */
-function revisionOf(rows: readonly StoredRow[]): string {
+function revisionOf(
+  rows: readonly StoredRow[],
+  staffSelfRegistrationEnabled: boolean,
+): string {
   const pairs = rows
     .map((row) => [row.id, row.configVersion] as const)
     .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
-  return createHash("sha256").update(JSON.stringify(pairs)).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify([pairs, staffSelfRegistrationEnabled]))
+    .digest("hex");
 }
 
 function storedMethods(rows: readonly AuthPluginConfigRow[]) {
@@ -150,7 +157,19 @@ function storedMethods(rows: readonly AuthPluginConfigRow[]) {
   };
 }
 
+async function readStaffRegistration(executor: Executor): Promise<boolean> {
+  const [row] = await executor
+    .select({
+      enabled: schema.instanceSettingTable.staffSelfRegistrationEnabled,
+    })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  return row?.enabled === true;
+}
+
 async function methodsResponse(rows: readonly StoredRow[]) {
+  const staffSelfRegistrationEnabled = await readStaffRegistration(db);
   const methods: {
     agent: LocalAuthProviders;
     customer: LocalAuthProviders;
@@ -161,7 +180,10 @@ async function methodsResponse(rows: readonly StoredRow[]) {
     customer: methods.customer,
     emailProviderEnabled: emailProvider.enabled,
     emailOtpDisabledByEnvironment: isEmailOtpSignInDisabledByEnvironment(),
-    revision: revisionOf(rows),
+    staffSelfRegistrationEnabled,
+    staffRegistrationDisabledByEnvironment:
+      process.env.DISABLE_REGISTRATION === "true",
+    revision: revisionOf(rows, staffSelfRegistrationEnabled),
   };
 }
 
@@ -259,12 +281,46 @@ const routes = apiRouter()
             const rows = await readLocalMethodRows(tx, { lock: true });
             // Another administrator saved since this request's read: refuse before the
             // proof is spent, so nothing is overwritten silently and no proof is burned.
-            if (revisionOf(rows) !== requested.expectedRevision)
+            const beforeStaffRegistration = await readStaffRegistration(tx);
+            if (
+              revisionOf(rows, beforeStaffRegistration) !==
+              requested.expectedRevision
+            )
               throw new LocalMethodsConflictError();
             const before = storedMethods(rows);
-            await spend(tx);
+            const registrationChanged =
+              beforeStaffRegistration !==
+              requested.staffSelfRegistrationEnabled;
+            await spend(tx, { requireSecondFactor: registrationChanged });
 
             const now = new Date();
+            if (registrationChanged) {
+              await tx
+                .insert(schema.instanceSettingTable)
+                .values({
+                  id: "singleton",
+                  staffSelfRegistrationEnabled:
+                    requested.staffSelfRegistrationEnabled,
+                })
+                .onConflictDoUpdate({
+                  target: schema.instanceSettingTable.id,
+                  set: {
+                    staffSelfRegistrationEnabled:
+                      requested.staffSelfRegistrationEnabled,
+                  },
+                });
+              await appendAuditLog(tx, {
+                action: "plugin.changed",
+                actorId: userId,
+                actorType: "person",
+                traceId,
+                workspaceId: null,
+                entityType: "instance_setting",
+                entityId: "staff_self_registration_enabled",
+                before: { enabled: beforeStaffRegistration },
+                after: { enabled: requested.staffSelfRegistrationEnabled },
+              });
+            }
             let retired = 0;
             let written = 0;
             for (const [pluginId, key] of LOCAL_AUTH_METHOD_PLUGINS) {
@@ -376,7 +432,7 @@ const routes = apiRouter()
                 auditOk = false;
               }
             }
-            return { written, auditOk };
+            return { written: written + Number(registrationChanged), auditOk };
           }),
       );
     } catch (error) {

@@ -12,11 +12,8 @@ import {
   CardTitle,
   Skeleton,
 } from "@taskdesk/ui";
-import {
-  getPortalProjects,
-  type PortalProjectOption,
-  portalProjectKeys,
-} from "@/fetchers/portal/projects";
+import type { PortalProjectOption } from "@/fetchers/portal/projects";
+import { portalProjectsOptions } from "@/hooks/queries/portal/portal-projects-options";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { routes } from "@/lib/routes";
 import {
@@ -81,15 +78,19 @@ function ProjectCard({ project }: { project: PortalProjectOption }) {
  * the top-bar selector's query, so it adds no request. With `?project=KEY` only that project's
  * card is shown; an organisation with no projects shows no section.
  */
-export function PortalProjectsCards({ projectKey }: { projectKey?: string }) {
+export function PortalProjectsCards({
+  projectKey,
+  prefetched = false,
+}: {
+  projectKey?: string;
+  prefetched?: boolean;
+}) {
   const { t } = usePortalTranslation("portal");
   const projects = useQuery({
-    queryKey: portalProjectKeys.list(),
-    queryFn: getPortalProjects,
-    retry: false,
+    ...portalProjectsOptions(),
     staleTime: 60_000,
-    // Staff actions must show when the customer comes back (shared client: refetchOnMount false).
-    refetchOnMount: "always",
+    // The dashboard loader refreshes on entry and the mount reuses that read.
+    refetchOnMount: prefetched ? false : "always",
   });
   const visible = (projects.data?.data ?? []).filter(
     (project) => !projectKey || project.key === projectKey,

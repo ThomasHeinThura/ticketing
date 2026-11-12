@@ -11,8 +11,8 @@ import { readEmailProvider } from "./repository";
 import {
   isLocalMailpitCaptureEnabled,
   isValidMailpitCaptureConfig,
+  parseStoredEmailConfig,
   type SmtpConfig,
-  smtpConfigurationSchema,
 } from "./schema";
 
 /** No configurable bypass: notification providers cannot reach private/metadata networks. */
@@ -110,7 +110,11 @@ export async function resolveRuntimeSmtp(): Promise<SmtpConfiguration | null> {
     )
       throw new Error("SMTP configuration unavailable");
     if (!row.enabled) return null;
-    const config = smtpConfigurationSchema.parse(row.config);
+    // The stored document also carries the server-written test status, which the settings
+    // schema would reject; only the settings reach the transport.
+    const stored = parseStoredEmailConfig(row.config);
+    if (!stored) throw new Error("SMTP configuration unavailable");
+    const config = stored.config;
     const password = row.secrets
       ? decryptIdentityClientSecret(row.id, row.secrets)
       : null;

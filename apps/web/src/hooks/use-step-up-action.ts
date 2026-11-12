@@ -29,7 +29,9 @@ export type StepUpResult<T> = { ok: true; value: T } | { ok: false };
  * operation binding, runs the protected write with the resulting single-use token and then drops
  * the secret. The secret lives only in this component state; a failure of any stage clears it.
  */
-export function useStepUpAction() {
+export function useStepUpAction(
+  options: { requireSecondFactor?: boolean } = {},
+) {
   const [method, setMethodState] = useState<StepUpMethod>("password");
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
@@ -48,7 +50,11 @@ export function useStepUpAction() {
     queryFn: getCurrentFactorStatus,
     staleTime: 15_000,
   });
-  const availableMethods = factor.data?.availableMethods ?? [];
+  const availableMethods = (factor.data?.availableMethods ?? []).filter(
+    (method) =>
+      !options.requireSecondFactor ||
+      (factor.data?.enabled && (method === "totp" || method === "backup_code")),
+  );
   const defaultMethod: StepUpMethod =
     factor.data?.enabled || factor.data?.required
       ? (availableMethods.find((method) => method === "totp") ??
@@ -125,6 +131,10 @@ export function useStepUpAction() {
     busy,
     failure,
     availableMethods,
+    needsFactorEnrollment:
+      options.requireSecondFactor === true &&
+      factor.isSuccess &&
+      factor.data.enabled !== true,
     canRun:
       availableMethods.includes(effectiveMethod) &&
       (effectiveMethod === "sso_prompt_login" || secret.length > 0),

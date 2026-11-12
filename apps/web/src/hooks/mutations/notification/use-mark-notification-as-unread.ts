@@ -1,15 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import markNotificationAsUnread from "@/fetchers/notification/mark-notification-as-unread";
+import { useOptimisticNotification } from "./use-optimistic-notification";
 
-function useMarkNotificationAsUnread() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => markNotificationAsUnread(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
-  });
+export default function useMarkNotificationAsUnread() {
+  return useOptimisticNotification(markNotificationAsUnread, (id) => ({
+    id,
+    read: false,
+  }));
 }
-
-export default useMarkNotificationAsUnread;

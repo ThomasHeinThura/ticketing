@@ -20,25 +20,32 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
+  Skeleton,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { ActionTooltip } from "@/components/common/action-tooltip";
+import { ErrorDisplay } from "@/components/errors/error-display";
 import PageTitle from "@/components/page-title";
 import DefaultCommentVisibilitySetting from "@/components/project/default-comment-visibility-setting";
 import ProjectEngagementSettings from "@/components/project/project-engagement-settings";
+import ProjectNotFound from "@/components/project/project-not-found";
 import {
   classifyPlanningFailure,
   projectKeyError,
 } from "@/components/project/project-planning-form";
 import ProjectPlanningSettings from "@/components/project/project-planning-settings";
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
+import {
+  isForbiddenError,
+  SettingsAccessDenied,
+} from "@/components/settings/settings-access";
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
-import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
+import useGetProject from "@/hooks/queries/project/use-get-project";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -78,14 +85,47 @@ function normalizeProjectValues(
   };
 }
 
+function isNotFoundError(error: unknown) {
+  if (error instanceof HttpError) return error.status === 404;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { status?: unknown }).status === 404
+  );
+}
+
 function RouteComponent() {
   const { t } = useTranslation();
-  const { projectId: routeProjectId } = useParams({ strict: false });
-  const { project: storedProject } = useProjectStore();
+  const { projectId: rawProjectId } = useParams({ strict: false });
+  const projectId = rawProjectId ?? "";
+  const {
+    data: workspace,
+    isLoading: isWorkspaceLoading,
+    isError: isWorkspaceError,
+    error: workspaceError,
+  } = useActiveWorkspace();
+  // The project itself (`GET /project/:id`), not the legacy board payload: this page needs
+  // only its metadata, so it never loads or polls the old column and task data.
+  const {
+    data: projectData,
+    isLoading: isProjectLoading,
+    isError: isProjectError,
+    error: projectError,
+    refetch: refetchProject,
+  } = useGetProject({
+    id: projectId,
+    workspaceId: workspace?.id ?? "",
+  });
+  const project =
+    projectData &&
+    projectData.id === projectId &&
+    workspace?.id &&
+    projectData.workspaceId === workspace?.id
+      ? projectData
+      : undefined;
   // PR-13: a key is 2-8 uppercase letters. The project's own stored key stays valid while
   // unchanged (legacy keys predate the rule); the server applies the same exemption.
-  const storedKey =
-    storedProject?.id === routeProjectId ? (storedProject?.slug ?? null) : null;
+  const storedKey = project?.slug ?? null;
   const projectSchema = useMemo(
     () =>
       z.object({
@@ -126,27 +166,15 @@ function RouteComponent() {
   const [renameKeyOpen, setRenameKeyOpen] = useState(false);
   const [isRenamingKey, setIsRenamingKey] = useState(false);
 
-  const { data: workspace } = useActiveWorkspace();
-  const { projectId: rawProjectId } = useParams({ strict: false });
-  const projectId = rawProjectId ?? "";
-  const { data: fetchedProject } = useGetTasks(projectId);
-  const { project, setProject } = useProjectStore();
-
-  useEffect(() => {
-    if (fetchedProject) {
-      setProject(fetchedProject);
-    }
-  }, [fetchedProject, setProject]);
-
   const { mutateAsync: updateProject } = useUpdateProject();
   const { mutateAsync: deleteProject, isPending: isDeleting } =
     useDeleteProject();
   const deleteProjectButtonRef = useRef<HTMLButtonElement>(null);
   const { canUpdateProjects, canDeleteProjects, canExportTasks } =
     useWorkspacePermission();
-  const canEdit = canUpdateProjects();
-  const canDelete = canDeleteProjects();
-  const canExport = canExportTasks();
+  const canEdit = Boolean(project) && canUpdateProjects();
+  const canDelete = Boolean(project) && canDeleteProjects();
+  const canExport = Boolean(project) && canExportTasks();
 
   const projectForm = useForm<ProjectFormValues>({
     resolver: standardSchemaResolver(projectSchema),
@@ -160,7 +188,10 @@ function RouteComponent() {
   });
 
   useEffect(() => {
-    if (!project) return;
+    if (!project) {
+      lastSavedRef.current = null;
+      return;
+    }
 
     const nextValues = {
       name: project.name || "",
@@ -289,15 +320,17 @@ function RouteComponent() {
       });
       lastSavedRef.current = next;
       projectForm.reset(next, { keepDirty: false });
-      // The store is fed by the legacy board query; update it now so nothing keeps using the
-      // old key until that query refetches.
-      setProject({
-        ...project,
-        name: next.name,
-        slug: next.slug,
-        description: next.description,
-        icon: next.icon,
-      });
+      // The store is fed by the legacy board query, not by this page. If it holds this
+      // project, update it now so nothing keeps using the old key until that query refetches.
+      const { project: boardProject, setProject } = useProjectStore.getState();
+      if (boardProject?.id === project.id)
+        setProject({
+          ...boardProject,
+          name: next.name,
+          slug: next.slug,
+          description: next.description,
+          icon: next.icon,
+        });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["tasks", project.id] }),
         queryClient.invalidateQueries({ queryKey: ["projects"] }),
@@ -332,7 +365,6 @@ function RouteComponent() {
     projectForm,
     updateProject,
     queryClient,
-    setProject,
     workspace?.id,
     t,
   ]);
@@ -385,9 +417,9 @@ function RouteComponent() {
         const latest = projectFormRef.current.getValues() as ProjectFormValues;
         const normalized = normalizeProjectValues(latest);
         const last = lastSavedRef.current;
+        if (!last) return;
         // The key is excluded on purpose: leaving the page must never rename it (PR-14).
         const hasPendingChanges =
-          !last ||
           last.name !== normalized.name ||
           last.description !== normalized.description ||
           last.icon !== normalized.icon;
@@ -424,6 +456,75 @@ function RouteComponent() {
       );
     }
   }, [project?.id, deleteProject, openPendingAction, t]);
+
+  if (
+    isWorkspaceLoading ||
+    (Boolean(workspace?.id) && isProjectLoading && Boolean(projectId))
+  ) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div
+          aria-label={t("common:empty.loading")}
+          className="max-w-4xl mx-auto"
+          data-testid="project-general-loading"
+          role="status"
+        >
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </>
+    );
+  }
+
+  if (isWorkspaceError) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div className="max-w-4xl mx-auto">
+          <ErrorDisplay
+            error={workspaceError}
+            onRetry={() =>
+              void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+            }
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (isProjectError && isForbiddenError(projectError)) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div className="max-w-4xl mx-auto">
+          <SettingsAccessDenied />
+        </div>
+      </>
+    );
+  }
+
+  if (isProjectError && !isNotFoundError(projectError)) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div className="max-w-4xl mx-auto">
+          <ErrorDisplay
+            error={projectError}
+            onRetry={() => void refetchProject()}
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (!project) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <ProjectNotFound className="max-w-4xl mx-auto" />
+      </>
+    );
+  }
 
   return (
     <>

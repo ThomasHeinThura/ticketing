@@ -113,4 +113,25 @@ describe("canonical Kaneo schedule adapter", () => {
       status: 403,
     });
   });
+  it("records the server HTTP Date header so calendar views follow the server clock", async () => {
+    const { resetServerClock, serverNow } = await import("@/lib/server-clock");
+    resetServerClock();
+    mock.get.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [],
+          page: { hasMore: false, nextCursor: null },
+        }),
+        { headers: { date: "Wed, 21 Oct 2026 12:00:00 GMT" } },
+      ),
+    );
+    try {
+      await getScheduleProject("p1", "w1");
+      expect(new Date(serverNow()).toISOString().slice(0, 10)).toBe(
+        "2026-10-21",
+      );
+    } finally {
+      resetServerClock();
+    }
+  });
 });

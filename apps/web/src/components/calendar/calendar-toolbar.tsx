@@ -63,7 +63,7 @@ export default function CalendarToolbar({
   return (
     <div className="border-b border-border/80 px-3 py-3 sm:px-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:w-auto">
           <Heading className="text-sm font-semibold text-foreground">
             {t("tasks:calendar.title")}
           </Heading>
@@ -75,7 +75,7 @@ export default function CalendarToolbar({
           </span>
         </div>
 
-        <div className="flex min-w-0 flex-wrap items-center gap-1">
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-1 sm:w-auto">
           {actions ? (
             <div className="[&_button]:min-h-11 [&_button]:min-w-11 sm:[&_button]:min-h-0 sm:[&_button]:min-w-0">
               {actions}

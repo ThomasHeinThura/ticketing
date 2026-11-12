@@ -29,6 +29,7 @@ vi.mock("@tanstack/react-router", async (original) => ({
   }),
 }));
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: () => undefined },
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));

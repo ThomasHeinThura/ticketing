@@ -93,7 +93,12 @@ function AgentHome() {
   } = useGetWorkspaces();
   const fallback = (
     <WorkspaceLayout title={t("navigation:sidebar.projects")}>
-      <div className="flex flex-col gap-4 p-6">
+      <div
+        aria-label={t("common:empty.loading")}
+        className="flex flex-col gap-4 p-6"
+        data-testid="workspace-projects-route-pending"
+        role="status"
+      >
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
       </div>
@@ -216,10 +221,12 @@ function AgentRootRoute() {
   if (location.pathname === "/agent" || location.pathname === "/agent/") {
     return <AgentHome />;
   }
-  // Settings use kaneo's full-page settings shell, as /dashboard/settings does.
+  // Settings use kaneo's full-page settings shell, as /dashboard/settings does. A work item's
+  // full page and a project's Calendar bring their own header, so they get no frame here.
   if (
     location.pathname.startsWith("/agent/settings") ||
-    /^\/agent\/work-items\/[^/]+\/?$/u.test(location.pathname)
+    /^\/agent\/work-items\/[^/]+\/?$/u.test(location.pathname) ||
+    /^\/agent\/projects\/[^/]+\/calendar\/?$/u.test(location.pathname)
   ) {
     return <Outlet />;
   }

@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "取消",
 			"close": "关闭",
@@ -73,6 +74,10 @@
 			"unknown": "未知"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "出错了",
 			"troubleshooting": "故障排查步骤：",
 			"tryAgain": "重试",
@@ -131,6 +136,7 @@
 				"organisationError": "无法加载客户组织。",
 				"organisationRetry": "重试",
 				"organisationEmpty": "暂无活跃的客户组织。此{{term_project_other}}将为内部{{term_project_other}}。",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "无（内部{{term_project_other}}）",
 				"organisationHint": "可选。现在选择，{{term_project_other}}创建后无法更改。",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
@@ -327,7 +333,8 @@
 			"toggleLink": "登录",
 			"instanceStatusError": "无法连接服务器，请稍后重试。",
 			"instanceAdminTitle": "设置你的 TaskDesk 实例",
-			"instanceAdminSubtitle": "此账户将成为拥有完整权限的实例管理员。"
+			"instanceAdminSubtitle": "此账户将成为拥有完整权限的实例管理员。",
+			"invitationOnly": "Accounts are by invitation. Ask your administrator for an invitation."
 		},
 		"verifyOtp": {
 			"pageTitle": "验证码",
@@ -530,6 +537,20 @@
 			"title": "Change password",
 			"tooLong": "Password must be at most 128 characters.",
 			"wrongCurrent": "Your current password is incorrect."
+		},
+		"passwordRecovery": {
+			"forgot": "Forgot password?",
+			"requestTitle": "Reset your password",
+			"confirmation": "If an account exists for that address, we sent a link",
+			"send": "Send reset link",
+			"back": "Back to sign in",
+			"resetTitle": "Choose a new password",
+			"newPassword": "New password",
+			"confirmPassword": "Confirm new password",
+			"mismatch": "Passwords do not match",
+			"invalid": "This link is invalid, expired, or already used. Request a new link.",
+			"success": "Your password has been reset.",
+			"reset": "Reset password"
 		}
 	},
 	"settings": {
@@ -1203,14 +1224,14 @@
 		"projectWorkflow": {
 			"pageTitle": "工作流设置",
 			"title": "工作流",
-			"subtitle": "配置此{{term_project_other}}的看板列和自动化规则。",
-			"columnsTitle": "列",
-			"columnsDescription": "管理看板上显示的列，可拖拽排序。打开“完成列”以表示已完成阶段。",
-			"automationTitle": "自动化规则",
-			"automationDescription": "将集成事件映射到列。当事件发生时，关联的{{term_work_item_one}}会移动到指定的列。",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
 			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"columnsTitle": "Columns",
+			"columnsDescription": "Manage the columns that appear on your board. Drag to reorder. Turn on \"Done column\" for stages that represent completed work.",
+			"automationTitle": "Automation Rules",
+			"automationDescription": "Map integration events to columns. When an event occurs, the linked {{term_work_item_one}} moves to the specified column.",
+			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectSwitcher": {
 			"selectProject": "选择{{term_project_other}}",
@@ -1926,7 +1947,8 @@
 				"open": "Create service key",
 				"readIncluded": "Read access is always included. Tick any write access the key needs.",
 				"submit": "Create key",
-				"title": "Create a service key"
+				"title": "Create a service key",
+				"failed": "Failed to create the service key"
 			},
 			"deleteAria": "Request deletion of {{name}}",
 			"deleteFailed": "Failed to request the deletion",
@@ -2062,7 +2084,8 @@
 			"checking": "Checking your access",
 			"loadErrorTitle": "Could not check your access",
 			"loadErrorDescription": "Your permissions could not be loaded. Try again."
-		}
+		},
+		"openSettingsMenu": "Open settings menu"
 	},
 	"navigation": {
 		"projectViews": {
@@ -2081,7 +2104,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "建议",
@@ -2176,7 +2201,8 @@
 			"addWorkspace": "添加工作区",
 			"workspaceSettings": "工作区设置",
 			"instanceUsers": "实例用户",
-			"selectWorkspace": "选择工作区"
+			"selectWorkspace": "选择工作区",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2260,6 +2286,8 @@
 		"newCount_other": "{{count}} 条新通知",
 		"emptyTitle": "暂无通知",
 		"emptySubtitle": "更新和活动将显示在这里。",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "清空所有通知",
 		"clearDialogTitle": "清空所有通知？",
 		"clearDialogDescription": "这将永久删除所有通知，此操作不可撤销。",
@@ -2989,6 +3017,7 @@
 	},
 	"workspace": {
 		"projects": {
+			"notMember": "You are not a member of this project",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "创建{{term_project_other}}",
 			"title": "标题",
@@ -3032,7 +3061,6 @@
 		},
 		"search": {
 			"pageTitle": "搜索",
-			"backToDashboard": "返回控制台",
 			"placeholder": "按{{term_work_item_other}}标题或短 ID 搜索（例如 DEP-23）…",
 			"hint": "在此工作区的所有{{term_project_other}}中搜索。使用类似 DEP-23 的短 ID 来定位{{term_work_item_other}}。",
 			"searching": "搜索中…",
@@ -3050,7 +3078,10 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "Back to Dashboard"
 		},
 		"create": {
 			"pageTitle": "创建工作区",
@@ -3089,11 +3120,21 @@
 		"invitations": {
 			"pendingBadge": "待处理",
 			"expires": "{{date}} 过期",
+			"expiredOn": "Expired {{date}}",
 			"linkLabel": "邀请链接",
 			"copyLink": "复制链接",
+			"copyingLink": "Copying…",
 			"linkCopied": "邀请链接已复制",
 			"copyFailed": "无法自动复制，请选中链接后按 Ctrl+C。",
-			"expiredBadge": "expired"
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "邀请团队成员",
@@ -3127,6 +3168,10 @@
 			"cancelDialogTitle": "取消邀请？",
 			"cancelDialogDescription": "确定要取消 {{email}} 的邀请吗？此操作不可撤销。",
 			"removeMember": "移除成员",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "取消邀请",
 			"removeSuccess": "团队成员已移除",
 			"removeError": "移除团队成员失败",
@@ -3134,7 +3179,8 @@
 			"cancelInviteError": "取消邀请失败",
 			"roleUpdateSuccess": "角色已更新",
 			"roleUpdateError": "更新角色失败",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -5339,6 +5385,9 @@
 			"confirmRequest": "Request deletion",
 			"deleteRequested": "Deletion requested. Approve it to complete.",
 			"deleteError": "Deletion could not be requested."
+		},
+		"clientErrors": {
+			"importHolidays": "Failed to import holidays"
 		}
 	},
 	"savedViews": {
@@ -5546,7 +5595,8 @@
 			"rate_limited": "Too many verification attempts. Wait a few minutes and try again.",
 			"step_up": "Fresh verification was unavailable, did not match, or has expired. Verify again and retry. Nothing was changed.",
 			"unavailable": "The identity service is temporarily unavailable. Nothing was changed; try again.",
-			"unknown": "The request could not be completed. Nothing was changed."
+			"unknown": "The request could not be completed. Nothing was changed.",
+			"enroll_factor": "Enroll a second factor before changing staff self-registration."
 		},
 		"events": {
 			"actors": {
@@ -5791,7 +5841,13 @@
 			"staffPasswordLocked": "Staff password sign-in is always on. It is the recovery sign-in when every other method fails, so it cannot be turned off.",
 			"switchLabel": "{{method}} for {{audience}}",
 			"title": "Sign-in methods",
-			"unavailable": "Sign-in methods unavailable"
+			"unavailable": "Sign-in methods unavailable",
+			"staffRegistration": "Allow staff self-registration",
+			"staffRegistrationDescription": "Allow people to create staff accounts without an invitation.",
+			"customerInvitationOnly": "Customer portal: invitation only",
+			"registrationEnvironmentDisabled": "The environment disables staff self-registration.",
+			"registrationOn": "Allow staff self-registration",
+			"registrationOff": "Require invitations for staff registration"
 		}
 	},
 	"notificationProvider": {
@@ -5819,12 +5875,9 @@
 			"runtime": "Using saved instance configuration.",
 			"unconfigured": "No email provider is configured."
 		},
-		"test": "Test connection",
-		"testHelp": "Checks connection and authentication without sending an email.",
 		"title": "Notification delivery",
 		"unavailable": "Email configuration unavailable",
 		"username": "Username (optional)",
-		"verified": "Connection verified. No email was sent.",
 		"mention": {
 			"description": "Email me when someone mentions me in a work item comment.",
 			"enabled": "Email for mentions",
@@ -5867,12 +5920,6 @@
 			"saveFailed": "The comment preference could not be saved. Try again.",
 			"title": "Work item comment emails"
 		},
-		"diagnostics": {
-			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
-			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
-			"smtp_timeout": "The SMTP server did not respond before the connection deadline.",
-			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings."
-		},
 		"teamNotification": {
 			"title": "Team notifications",
 			"description": "Email notifications sent to your teams by automation rules.",
@@ -5889,7 +5936,112 @@
 		},
 		"captureToMailpit": "Capture email in local Mailpit inbox (local Compose only)",
 		"captureHelp": "Local testing only. Messages are captured in the Mailpit inbox instead of being sent externally.",
-		"captureUnavailable": "Local Mailpit capture is unavailable in this deployment. Enter a public SMTP configuration to continue."
+		"captureUnavailable": "Local Mailpit capture is unavailable in this deployment. Enter a public SMTP configuration to continue.",
+		"credentialsRequired": "Enter the password for the new provider. A saved password is not reused when the provider changes.",
+		"testDestinationPasswordRequired": "Enter the SMTP password again to test changed connection settings, or save cleared credentials before testing without authentication.",
+		"failure": {
+			"authentication": "Wrong SMTP credentials: the server rejected the user name or password.",
+			"connection": "The host could not be reached. Check the host, the port and network access.",
+			"failed": "The test email could not be sent.",
+			"message_rejected": "The server did not accept the sender or the recipient.",
+			"rejected": "The server refused the message.",
+			"starttls_required": "The server requires a STARTTLS connection. Keep “Require TLS before authentication” on and use port 587.",
+			"temporary": "The server reported a temporary problem. Try again shortly.",
+			"throttled": "The server is limiting how fast mail may be sent. Wait a moment and try again.",
+			"timeout": "The server did not answer in time.",
+			"tls": "The secure connection could not be verified. Check the certificate and the TLS settings."
+		},
+		"failureSes": {
+			"authentication": "Amazon SES rejected the SMTP credentials (535). Use the SES SMTP user name and password from the SES console, not your AWS access key.",
+			"message_rejected": "Amazon SES refused the message (554). The From address must be a verified SES identity, and while the account is in the sandbox the recipient must be verified too.",
+			"starttls_required": "Amazon SES requires a STARTTLS connection (530). Keep “Require TLS before authentication” on and use port 587.",
+			"throttled": "Amazon SES is throttling this account (454). Wait a moment and try again."
+		},
+		"failureShort": {
+			"authentication": "wrong SMTP credentials",
+			"connection": "server unreachable",
+			"failed": "send failed",
+			"message_rejected": "sender or recipient not accepted",
+			"rejected": "message refused",
+			"starttls_required": "STARTTLS required",
+			"temporary": "temporary server problem",
+			"throttled": "throttled",
+			"timeout": "timed out",
+			"tls": "secure connection could not be verified"
+		},
+		"provider": "Provider",
+		"providerChoice": {
+			"label": "Send email through",
+			"ses": "Amazon SES",
+			"smtp": "Custom SMTP"
+		},
+		"region": "Region",
+		"ses": {
+			"credentialsHelp": "Create these in the SES console under SMTP settings. They are not your AWS access key.",
+			"dismiss": "Dismiss",
+			"fromHelp": "Must be an identity verified in Amazon SES, either this address or its domain.",
+			"password": "SES SMTP password",
+			"regionHelp": "The region decides the SMTP host. Port 587 with STARTTLS is fixed and shown read-only.",
+			"regionLabel": "AWS region",
+			"regionOption": "{{name}} ({{region}})",
+			"regionPlaceholder": "Choose a region",
+			"regions": {
+				"ap-northeast-1": "Asia Pacific (Tokyo)",
+				"ap-northeast-2": "Asia Pacific (Seoul)",
+				"ap-northeast-3": "Asia Pacific (Osaka)",
+				"ap-south-1": "Asia Pacific (Mumbai)",
+				"ap-southeast-1": "Asia Pacific (Singapore)",
+				"ap-southeast-2": "Asia Pacific (Sydney)",
+				"ca-central-1": "Canada (Central)",
+				"eu-central-1": "Europe (Frankfurt)",
+				"eu-north-1": "Europe (Stockholm)",
+				"eu-west-1": "Europe (Ireland)",
+				"eu-west-2": "Europe (London)",
+				"eu-west-3": "Europe (Paris)",
+				"sa-east-1": "South America (São Paulo)",
+				"us-east-1": "US East (N. Virginia)",
+				"us-east-2": "US East (Ohio)",
+				"us-gov-east-1": "AWS GovCloud (US-East)",
+				"us-gov-west-1": "AWS GovCloud (US-West)",
+				"us-west-1": "US West (N. California)",
+				"us-west-2": "US West (Oregon)"
+			},
+			"sandboxBody": "In the sandbox SES only delivers to verified addresses. Until your account has production access, use “Copy link” on invitations to send them by hand.",
+			"sandboxTitle": "New Amazon SES accounts start in the sandbox",
+			"username": "SES SMTP user name"
+		},
+		"status": {
+			"failed": "Failed",
+			"lastTested": "Last tested {{time}}: {{result}}",
+			"never": "Never tested",
+			"resultFailed": "{{reason}}",
+			"resultFailedCode": "{{reason}} (SMTP {{code}})",
+			"resultVerified": "test email sent",
+			"stale": "Not tested since change",
+			"verified": "Verified"
+		},
+		"testSend": {
+			"button": "Send test email",
+			"failedTitle": "The test email was not sent",
+			"help": "Sends one short email to this address using the values in this form, saved or not. Testing does not save anything.",
+			"notSaved": "These values are not saved yet. Save them, then test again to record the result.",
+			"recipientLabel": "Send the test email to",
+			"recipientRequired": "Enter the address that should receive the test email.",
+			"replyCodeOnly": "Server reply {{code}}",
+			"replyTextOnly": "Server reply: {{text}}",
+			"replyWithCode": "Server reply {{code}}: {{text}}",
+			"sending": "Sending…",
+			"sent": "Test email accepted by the mail server. Check the inbox of the address above."
+		},
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"verified": "Connection verified. No email was sent.",
+		"diagnostics": {
+			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
+			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
+			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings.",
+			"smtp_timeout": "The SMTP server did not respond before the connection deadline."
+		}
 	},
 	"featureFlags": {
 		"flags": {
@@ -6196,7 +6348,55 @@
 			"title": "Invitation limits"
 		},
 		"localFactorEveryone": "Everyone (staff)",
-		"localFactorStaffOnlyHelp": "The local factor policy applies to staff only. Customers sign in to the portal without a local factor."
+		"localFactorStaffOnlyHelp": "The local factor policy applies to staff only. Customers sign in to the portal without a local factor.",
+		"observability": {
+			"optional": "Optional",
+			"allStaff": "All staff",
+			"selectedRole": "Selected role",
+			"conflict": "Settings changed in another session. Reload and retry.",
+			"requestFailed": "The request could not be completed.",
+			"unavailable": "Observability settings are unavailable.",
+			"saveFailed": "Settings could not be saved.",
+			"factorSaveFailed": "The factor policy could not be saved.",
+			"rotateFailed": "Token rotation could not be completed.",
+			"description": "Configure safe server log levels and the internal metrics scrape credential.",
+			"copyToken": "<strong>Copy this token now.</strong> It will not be shown again.",
+			"tokenSaved": "I saved the token",
+			"factorPolicy": "Local factor policy",
+			"factorHelp": "Require verified TOTP or one-use backup codes for the selected audience. Unsupported upstream MFA is not accepted as proof.",
+			"requiredAudience": "Required audience",
+			"roleId": "Role ID",
+			"saveFactor": "Save factor policy",
+			"logLevels": "Structured log levels",
+			"defaultLevel": "Default level",
+			"saveLevels": "Save log levels",
+			"metricsToken": "Metrics scrape token",
+			"metricsHelp": "The listener is internal to the service. The token is stored as a digest and is only returned once after rotation.",
+			"configured": "A token is configured.",
+			"notConfigured": "No token is configured.",
+			"configuredRotated": "A token is configured. Last rotated {{when}}.",
+			"notConfiguredRotated": "No token is configured. Last rotated {{when}}.",
+			"freshFactorProof": "Fresh factor proof",
+			"factorProofType": "Factor proof type",
+			"verifyPassword": "Verify password and rotate",
+			"verifyFactor": "Verify factor and rotate",
+			"loading": "Loading observability settings…",
+			"modules": {
+				"http": "http",
+				"auth": "auth",
+				"database": "database",
+				"jobs": "jobs",
+				"audit": "audit",
+				"plugins": "plugins",
+				"realtime": "realtime"
+			},
+			"levels": {
+				"error": "error",
+				"warn": "warn",
+				"info": "info",
+				"debug": "debug"
+			}
+		}
 	},
 	"customFields": {
 		"access": {
@@ -6799,6 +6999,10 @@
 		},
 		"stepUp": {
 			"failedTitle": "Fresh verification failed. Nothing was changed."
+		},
+		"clientErrors": {
+			"update": "Failed to update the webhook",
+			"test": "Failed to send the test event"
 		}
 	},
 	"roles": {
@@ -6831,7 +7035,8 @@
 			"blockedDescription": "{{count}} people still hold this role. Move them to another role on the People tab first.",
 			"blockedTitle": "Move the people first",
 			"description": "Deleting a role is a request you approve next. It cannot be undone.",
-			"title": "Delete this role"
+			"title": "Delete this role",
+			"failed": "Failed to delete the role"
 		},
 		"detail": {
 			"allRoles": "All roles",
@@ -6934,7 +7139,8 @@
 			"suspended": "Suspended",
 			"title": "People",
 			"confirmDescription_one": "Move {{count}} person from {{from}} to {{to}}? Their permissions change immediately.",
-			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately."
+			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately.",
+			"moveFailed": "Failed to move the people to the other role"
 		},
 		"preview": {
 			"actions": "Actions on a work item",
@@ -6981,6 +7187,176 @@
 		},
 		"stepUp": {
 			"failedTitle": "Fresh verification failed. Nothing was changed."
+		},
+		"capabilityCatalog": {
+			"groups": {
+				"labels_fields": "Labels & fields",
+				"service_desk": "Service desk",
+				"time_cost": "Time & cost",
+				"knowledge": "Knowledge",
+				"integrations": "Integrations"
+			},
+			"labels": {
+				"workspace__read": "Workspace: read",
+				"workspace__update": "Workspace: update",
+				"workspace__delete": "Workspace: delete",
+				"workspace__manage_members": "Workspace: manage members",
+				"workspace__manage_roles": "Workspace: manage roles",
+				"workspace__manage_settings": "Workspace: manage settings",
+				"workspace__transfer_ownership": "Workspace: transfer ownership",
+				"project__create": "Project: create",
+				"project__read": "Project: read",
+				"project__update": "Project: update",
+				"project__manage_members": "Project: manage members",
+				"project__manage_settings": "Project: manage settings",
+				"project__archive": "Project: archive",
+				"project__delete": "Project: delete",
+				"work_item__read": "Work item: read",
+				"work_item__create": "Work item: create",
+				"work_item__update": "Work item: update",
+				"work_item__delete": "Work item: delete",
+				"work_item__assign": "Work item: assign",
+				"work_item__transition": "Work item: transition",
+				"work_item__rank": "Work item: rank",
+				"work_item__set_priority": "Work item: set priority",
+				"work_item__escalate_priority": "Work item: escalate priority",
+				"work_item__export": "Work item: export",
+				"comment__create": "Comment: create",
+				"comment__create_internal": "Comment: create internal",
+				"comment__update_own": "Comment: update own",
+				"comment__delete_own": "Comment: delete own",
+				"comment__update_any": "Comment: update any",
+				"comment__delete_any": "Comment: delete any",
+				"attachment__create": "Attachment: create",
+				"attachment__delete_own": "Attachment: delete own",
+				"attachment__delete_any": "Attachment: delete any",
+				"label__manage": "Label: manage",
+				"custom_field__manage": "Custom field: manage",
+				"saved_view__read": "Saved view: read",
+				"saved_view__create": "Saved view: create",
+				"saved_view__share": "Saved view: share",
+				"sla_policy__read": "Sla policy: read",
+				"sla_policy__manage": "Sla policy: manage",
+				"workflow__read": "Workflow: read",
+				"workflow__manage": "Workflow: manage",
+				"request_type__read": "Request type: read",
+				"request_type__manage": "Request type: manage",
+				"intake__triage": "Intake: triage",
+				"approval__request": "Approval: request",
+				"approval__request_cab": "Approval: request cab",
+				"approval__decide": "Approval: decide",
+				"approval__decide_cab": "Approval: decide cab",
+				"time_entry__create": "Time entry: create",
+				"time_entry__update_own": "Time entry: update own",
+				"time_entry__delete_own": "Time entry: delete own",
+				"time_entry__read_any": "Time entry: read any",
+				"time_entry__update_any": "Time entry: update any",
+				"time_entry__delete_any": "Time entry: delete any",
+				"time_entry__log_backdated": "Time entry: log backdated",
+				"time_entry__manage_rates": "Time entry: manage rates",
+				"budget__read": "Budget: read",
+				"budget__manage": "Budget: manage",
+				"report__read": "Report: read",
+				"report__read_all": "Report: read all",
+				"report__export": "Report: export",
+				"kb_article__read": "Kb article: read",
+				"kb_article__write": "Kb article: write",
+				"kb_article__publish": "Kb article: publish",
+				"service__read": "Service: read",
+				"service__manage": "Service: manage",
+				"change__manage": "Change: manage",
+				"release__manage": "Release: manage",
+				"member__invite": "Member: invite",
+				"member__remove": "Member: remove",
+				"api_key__manage": "Api key: manage",
+				"webhook__manage": "Webhook: manage",
+				"automation__manage": "Automation: manage"
+			},
+			"descriptions": {
+				"workspace__read": "See the workspace and its settings",
+				"workspace__update": "Edit workspace general settings",
+				"workspace__delete": "Delete the workspace",
+				"workspace__manage_members": "Add and remove workspace members",
+				"workspace__manage_roles": "Create and edit roles",
+				"workspace__manage_settings": "Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, workspace terminology",
+				"workspace__transfer_ownership": "Transfer ownership of the workspace to another existing member",
+				"project__create": "Create a project or managed service",
+				"project__read": "See a project in reach",
+				"project__update": "Edit project fields, health, milestones, prerequisites, stakeholders, document links — not parent_id or owner_team_id",
+				"project__manage_members": "Manage the project roster and per-project roles, and the two reach-affecting fields parent_id and owner_team_id (see Reach)",
+				"project__manage_settings": "Project states, features, labels, SLA and calendar assignment, automations",
+				"project__archive": "Archive and restore",
+				"project__delete": "Soft-delete",
+				"work_item__read": "See work items in reach",
+				"work_item__create": "Create work items",
+				"work_item__update": "Edit title, description, dates, labels, custom fields; archive",
+				"work_item__assign": "Assign to anyone on the roster",
+				"work_item__transition": "Change state, subject to workflow legality",
+				"work_item__rank": "Re-order within a state or backlog",
+				"work_item__set_priority": "Set priority up or down",
+				"work_item__escalate_priority": "Raise priority only — the customer capability",
+				"work_item__export": "Export a view or list to CSV/XLSX",
+				"comment__create": "Comment publicly",
+				"comment__create_internal": "Comment internally",
+				"comment__update_own": "Edit own comments within the window",
+				"comment__delete_own": "Delete own comments",
+				"comment__update_any": "Edit anyone's comment",
+				"comment__delete_any": "Delete anyone's comment",
+				"attachment__create": "Upload to a work item or comment",
+				"attachment__delete_own": "Delete own attachments",
+				"attachment__delete_any": "Delete anyone's attachments",
+				"label__manage": "Create, edit, delete labels",
+				"custom_field__manage": "Define custom fields and sections",
+				"saved_view__read": "List and open saved views and queues shared with you",
+				"saved_view__create": "Create private saved views and queues",
+				"saved_view__share": "Share a view with a team or the workspace",
+				"sla_policy__read": "Read SLA policies and service calendars",
+				"sla_policy__manage": "Author policies and calendars",
+				"workflow__read": "Read workflows",
+				"workflow__manage": "Create, edit, publish workflows",
+				"request_type__read": "Read request types (triage needs this)",
+				"request_type__manage": "Author request types and per-organisation catalogues",
+				"intake__triage": "Claim, accept, decline, merge, clarify submissions; manage queues",
+				"approval__request": "Request a customer approval",
+				"approval__request_cab": "Request a CAB approval (staff only)",
+				"approval__decide": "Decide an approval addressed to you",
+				"approval__decide_cab": "Decide a CAB approval — and be a member of the CAB team",
+				"time_entry__create": "Log own time; start/stop own timer",
+				"time_entry__update_own": "Edit own entries",
+				"time_entry__delete_own": "Delete own entries",
+				"time_entry__read_any": "See anyone's entries",
+				"time_entry__update_any": "Edit anyone's entries",
+				"time_entry__delete_any": "Delete anyone's entries",
+				"time_entry__log_backdated": "Log beyond the workspace backdating limit",
+				"time_entry__manage_rates": "Rates, cost types; see cost data",
+				"budget__read": "See budgets",
+				"budget__manage": "Create and edit budgets",
+				"report__read": "Reports for your reach",
+				"report__read_all": "Reports across all projects the person can reach; this capability does not grant project reach",
+				"report__export": "Export a report",
+				"kb_article__read": "Read articles",
+				"kb_article__write": "Draft and edit articles",
+				"kb_article__publish": "Publish, archive, manage categories",
+				"service__read": "See services",
+				"service__manage": "Manage services, dependencies and service state",
+				"change__manage": "Change details, freezes, freeze override (elevated)",
+				"release__manage": "Releases and checklists",
+				"member__invite": "Invite people",
+				"member__remove": "Remove people",
+				"webhook__manage": "Webhooks, secret rotation, redelivery",
+				"automation__manage": "Rules at project scope (workspace scope also needs workspace:manage_settings)",
+				"instance__admin": "Administer the whole deployment (God Mode)",
+				"instance__read_audit": "Read the instance audit log",
+				"instance__manage_plugins": "Configure, test, enable and disable plugins",
+				"instance__manage_jobs": "Change job cadence, enable/disable, trigger manually",
+				"instance__manage_terminology": "Edit instance-level terminology overrides"
+			}
+		},
+		"clientErrors": {
+			"create": "Failed to create the role",
+			"previewImpact": "Failed to preview the role impact",
+			"save": "Failed to save the role",
+			"unexpectedDryRun": "Role dry-run returned a mutation result"
 		}
 	},
 	"agile": {
@@ -8280,6 +8656,8 @@
 			"title": "Accept your invitation"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
@@ -8296,6 +8674,15 @@
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation",
 			"title": "Invite to this organisation"
+		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
 		},
 		"denied": {
 			"description": "Inviting people needs the member:invite permission in this workspace.",
@@ -8323,8 +8710,17 @@
 		"title": "Customer invitations",
 		"toasts": {
 			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it.",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"sent": "Invitation sent"
+			"sent": "Invitation sent",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		}
 	},
 	"reports": {

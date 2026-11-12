@@ -109,12 +109,12 @@ export async function insertStaffPersonIfAbsent(
     });
 }
 
-export async function listAllUserIds() {
-  return defaultDb.select({ id: schema.userTable.id }).from(schema.userTable);
+export async function listAllUserIds(executor: Executor = defaultDb) {
+  return executor.select({ id: schema.userTable.id }).from(schema.userTable);
 }
 
-export async function listUserIdsWithPerson() {
-  return defaultDb
+export async function listUserIdsWithPerson(executor: Executor = defaultDb) {
+  return executor
     .select({ userId: schema.personTable.userId })
     .from(schema.personTable)
     .where(isNotNull(schema.personTable.userId));
@@ -122,8 +122,9 @@ export async function listUserIdsWithPerson() {
 
 export async function insertStaffPersonBatch(
   rows: Array<typeof schema.personTable.$inferInsert>,
+  executor: Executor = defaultDb,
 ): Promise<void> {
-  await defaultDb
+  await executor
     .insert(schema.personTable)
     .values(rows)
     .onConflictDoNothing({

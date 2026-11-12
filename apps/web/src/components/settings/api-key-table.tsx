@@ -24,6 +24,7 @@ import useRequestApiKeyDeletion from "@/hooks/mutations/api-key/use-request-api-
 import useRevokeApiKey from "@/hooks/mutations/api-key/use-revoke-api-key";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { cn } from "@/lib/cn";
+import { localizedAdminErrorMessage } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
 import type { ApiKey } from "@/types/api-key";
 
@@ -81,9 +82,12 @@ export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
       setPendingRevokeId(null);
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings:apiKey.table.toastRevokeError"),
+        localizedAdminErrorMessage(
+          error,
+          t,
+          t("settings:apiKey.table.toastRevokeError"),
+        ),
+        { error },
       );
     } finally {
       setRevokingId(null);
@@ -97,9 +101,12 @@ export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
       await openPendingAction(pending);
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings:apiKey.table.toastDeleteError"),
+        localizedAdminErrorMessage(
+          error,
+          t,
+          t("settings:apiKey.table.toastDeleteError"),
+        ),
+        { error },
       );
     } finally {
       setDeletingId(null);

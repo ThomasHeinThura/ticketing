@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import { normaliseInviteeEmail } from "../customer-invitation/logic";
-import { schema } from "../database";
+import db, { schema } from "../database";
 import type { Transaction } from "../database/executor";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
@@ -13,6 +13,36 @@ const USER = schema.userTable;
 const IMPORT_RUN = schema.importRunTable;
 const WORKSPACE = schema.workspaceTable;
 const EXTERNAL_IDENTITY = schema.externalIdentityTable;
+
+/** Preliminary lookup after local address proof; the claim transaction revalidates every condition. */
+export async function hasPotentialStaffImportClaim(
+  email: string,
+): Promise<boolean> {
+  const normalizedEmail = normaliseInviteeEmail(email);
+  const rows = await db
+    .select({ id: PERSON.id })
+    .from(CLAIM)
+    .innerJoin(PERSON, eq(PERSON.id, CLAIM.personId))
+    .innerJoin(
+      schema.organisationTable,
+      eq(schema.organisationTable.id, PERSON.organisationId),
+    )
+    .where(
+      and(
+        eq(CLAIM.normalizedEmail, normalizedEmail),
+        isNull(CLAIM.claimedAt),
+        isNull(PERSON.userId),
+        eq(PERSON.isPlaceholder, true),
+        eq(PERSON.active, true),
+        eq(PERSON.side, "staff"),
+        eq(schema.organisationTable.isInternal, true),
+        eq(schema.organisationTable.active, true),
+        isNull(schema.organisationTable.deletedAt),
+      ),
+    )
+    .limit(2);
+  return rows.length === 1;
+}
 
 export type VerifiedPlaceholderClaimInput = {
   userId: string;

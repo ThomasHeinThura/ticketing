@@ -1,6 +1,10 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 /**
  * Workspace webhooks (`WH-1`..`WH-15`). The workspace travels in `X-Workspace-Id`, as the API
@@ -79,12 +83,18 @@ export type UpdateWebhookInput = {
   version?: number;
 };
 
-async function ensureOk(response: Response, message: string) {
+async function ensureOk(
+  response: Response,
+  message: string,
+  fallbackKey?: string,
+) {
   if (response.ok) return;
-  throw new HttpError(
-    response.status,
-    await readErrorDetail(response, message),
-  );
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, message, fallbackKey);
+  const detail = await readErrorDetail(response, message);
+  throw new HttpError(response.status, detail, undefined, {
+    fallbackKey: detail === message ? fallbackKey : undefined,
+  });
 }
 
 /** WH-15: the single-use step-up proof for create, destination change and secret rotation. */
@@ -144,7 +154,11 @@ export async function updateWebhook(
       body: JSON.stringify(input),
     },
   );
-  await ensureOk(response, "Failed to update the webhook");
+  await ensureOk(
+    response,
+    "Failed to update the webhook",
+    "webhooks:clientErrors.update",
+  );
   return (await response.json()) as Webhook;
 }
 
@@ -176,7 +190,11 @@ export async function sendWebhookTestEvent(
     getApiUrl(`/webhooks/${encodeURIComponent(id)}/test`),
     { method: "POST", credentials: "include" },
   );
-  await ensureOk(response, "Failed to send the test event");
+  await ensureOk(
+    response,
+    "Failed to send the test event",
+    "webhooks:clientErrors.test",
+  );
   return (await response.json()) as WebhookDelivery;
 }
 
@@ -194,7 +212,11 @@ export async function listWebhookDeliveries(
     ),
     { credentials: "include", cache: "no-store" },
   );
-  await ensureOk(response, "Unable to load the delivery history");
+  await ensureOk(
+    response,
+    "Unable to load the delivery history",
+    "webhooks:deliveries.loadErrorDescription",
+  );
   return (await response.json()) as WebhookDeliveryPage;
 }
 
@@ -207,7 +229,11 @@ export async function redeliverWebhookDelivery(
     ),
     { method: "POST", credentials: "include" },
   );
-  await ensureOk(response, "Failed to redeliver");
+  await ensureOk(
+    response,
+    "Failed to redeliver",
+    "webhooks:deliveries.redeliveryFailed",
+  );
   return (await response.json()) as WebhookDelivery;
 }
 
@@ -229,6 +255,10 @@ export async function requestWebhookDeletion(
     getApiUrl(`/webhooks/${encodeURIComponent(id)}`),
     { method: "DELETE", credentials: "include" },
   );
-  await ensureOk(response, "Failed to request the deletion");
+  await ensureOk(
+    response,
+    "Failed to request the deletion",
+    "settings:serviceKeys.deleteFailed",
+  );
   return (await response.json()) as WebhookDeletionRequest;
 }

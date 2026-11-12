@@ -110,11 +110,7 @@ export function OnboardingFlow() {
       setStep("success");
 
       setTimeout(() => {
-        navigate({
-          to: "/dashboard/workspace/$workspaceId",
-          params: { workspaceId: workspace.id },
-          replace: true,
-        });
+        navigate({ to: "/agent", replace: true });
       }, 1500);
     } catch (error) {
       toast.error(

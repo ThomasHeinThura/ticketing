@@ -1,6 +1,10 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 export type PortalAnnouncementSeverity = "info" | "maintenance" | "incident";
 
@@ -23,6 +27,8 @@ async function request<T>(path: string): Promise<T> {
   const response = await apiFetch(getApiUrl(path), {
     credentials: "include",
   });
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, "The request failed");
   if (!response.ok)
     throw new HttpError(
       response.status,

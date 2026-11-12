@@ -687,6 +687,11 @@ export default function ProjectsPage({
                             >
                               {project.name}
                             </Link>
+                            {project.seenOnlyViaWorkspaceRole ? (
+                              <span className="text-muted-foreground text-xs">
+                                {t("workspace:projects.notMember")}
+                              </span>
+                            ) : null}
                             {project.kind === "managed_service" ? (
                               <Badge
                                 variant="secondary"

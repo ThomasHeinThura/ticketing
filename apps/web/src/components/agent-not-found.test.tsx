@@ -6,7 +6,13 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 
@@ -26,7 +32,7 @@ afterEach(cleanup);
  * layout (the settings shell, the agent shell). The agent router passes this component as
  * `defaultNotFoundComponent` (main.tsx), so every layout shows it inside its own frame.
  */
-function renderUnknownPath(path: string) {
+function renderUnknownPath(path: string, previous?: string) {
   const rootRoute = createRootRoute();
   const settingsShell = createRoute({
     getParentRoute: () => rootRoute,
@@ -44,10 +50,13 @@ function renderUnknownPath(path: string) {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([settingsShell.addChildren([general])]),
-    history: createMemoryHistory({ initialEntries: [path] }),
+    history: createMemoryHistory({
+      initialEntries: previous ? [previous, path] : [path],
+    }),
     defaultNotFoundComponent: AgentNotFound,
   });
-  return render(<RouterProvider router={router} />);
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
 describe("AgentNotFound (UX-8)", () => {
@@ -55,36 +64,40 @@ describe("AgentNotFound (UX-8)", () => {
     renderUnknownPath("/dashboard/settings/workspace/import");
     const page = await screen.findByTestId("agent-not-found");
     expect(screen.getByTestId("settings-shell")).toContainElement(page);
-    expect(
-      screen.getByRole("heading", {
-        level: 1,
-        name: translate("portal:notFound.title"),
-      }),
-    ).toBeInTheDocument();
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: translate("portal:notFound.title"),
+    });
+    expect(heading).toHaveFocus();
+    expect(document.title).toContain(translate("portal:notFound.title"));
     expect(
       screen.getByText(translate("portal:notFound.description")),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^Not Found$/u)).not.toBeInTheDocument();
   });
 
-  it("offers the way back to the user's work and to the projects list", async () => {
-    renderUnknownPath("/nothing-here");
+  it("offers workspace home and a history back action", async () => {
+    const router = renderUnknownPath("/nothing-here", "/previous");
     expect(
       await screen.findByRole("link", {
-        name: translate("navigation:sidebar.myWork"),
-      }),
-    ).toHaveAttribute("href", "/agent/my-work");
-    expect(
-      screen.getByRole("link", {
         name: translate("navigation:sidebar.projects"),
       }),
     ).toHaveAttribute("href", "/agent");
+    const back = screen.getByRole("button", {
+      name: translate("common:states.back"),
+    });
+    back.focus();
+    expect(back).toHaveFocus();
+    fireEvent.click(back);
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/previous"),
+    );
   });
 
   it("never echoes the requested address", async () => {
-    const { container } = renderUnknownPath("/agent/acme-secret/ref-42");
+    renderUnknownPath("/agent/acme-secret/ref-42");
     await screen.findByTestId("agent-not-found");
-    expect(container.textContent).not.toContain("acme-secret");
-    expect(container.textContent).not.toContain("ref-42");
+    expect(document.body.textContent).not.toContain("acme-secret");
+    expect(document.body.textContent).not.toContain("ref-42");
   });
 });

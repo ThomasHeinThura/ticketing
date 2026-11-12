@@ -7,6 +7,7 @@ import type {
 } from "./identity-connections";
 import type { StepUpMethod } from "./instance-users";
 import type { LocalAuthMethodsRequest } from "./local-auth-methods";
+import type { EmailProviderInput } from "./notification-provider";
 import type { S3DraftRequest } from "./s3-draft";
 
 /**
@@ -80,6 +81,10 @@ export type IdentityOperationBinding =
   | ({
       operation: "auth_local_methods_update";
     } & LocalAuthMethodsRequest)
+  | {
+      operation: "notification_provider_save";
+      request: EmailProviderInput;
+    }
   | {
       operation: "webhook_rotate_all";
       replacementSetDigest: string;
