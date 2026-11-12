@@ -230,6 +230,21 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("ProjectOverviewPage", () => {
+  it("keeps the shared placeholder until the overview read finishes", async () => {
+    let finish!: (value: ReturnType<typeof overview>) => void;
+    mocks.getProjectOverview.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    renderPage();
+    expect(await screen.findByTestId("page-loading")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    await act(async () => finish(overview()));
+    expect(await screen.findByTestId("project-overview-page")).toBeVisible();
+  });
   it("shows the header line, KPIs, attention banner and summary", async () => {
     renderPage();
     const header = await screen.findByTestId("project-overview-header-line");

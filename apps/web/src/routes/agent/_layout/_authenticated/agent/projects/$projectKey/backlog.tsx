@@ -7,7 +7,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -26,6 +25,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { PageLoading } from "@/components/page-loading";
 import PageTitle from "@/components/page-title";
 import ProjectNotFound from "@/components/project/project-not-found";
 import {
@@ -335,6 +335,18 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
       </>
     );
 
+  if (isLoading)
+    return (
+      <>
+        <PageTitle
+          title={t("navigation:projectList.backlog", {
+            defaultValue: "Backlog",
+          })}
+        />
+        <PageLoading frame="backlog" />
+      </>
+    );
+
   return (
     <>
       <PageTitle
@@ -461,17 +473,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
           </Suspense>
         ) : null}
 
-        {isLoading ? (
-          <div
-            className="flex flex-col gap-2"
-            data-testid="backlog-loading"
-            aria-busy="true"
-          >
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : isError ? (
+        {isError ? (
           <Alert variant="error" data-testid="backlog-error">
             <AlertTitle>{t("workItems:list.errorTitle")}</AlertTitle>
             <AlertDescription className="flex items-center justify-between gap-3">

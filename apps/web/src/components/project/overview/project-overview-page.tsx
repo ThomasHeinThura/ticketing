@@ -416,8 +416,7 @@ export function ProjectOverviewPage({
     };
   }, [canCreate]);
 
-  if (isLoading || (project && overview.isLoading))
-    return <PageLoading label={t("loading")} />;
+  if (isLoading || (project && overview.isLoading)) return <PageLoading />;
   if (!project || overview.isError || !overview.data)
     return (
       <div className="mx-auto w-full max-w-6xl p-4 md:p-6">

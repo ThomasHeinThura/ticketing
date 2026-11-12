@@ -9,6 +9,7 @@ import "@/index.css";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-launcher";
+import { PageLoadingAnnouncer } from "./components/page-loading-announcer";
 import AuthProvider from "./components/providers/auth-provider";
 import { DeferredUserPreferencesSync } from "./components/providers/deferred-user-preferences-sync";
 import { ThemeProvider } from "./components/providers/theme-provider";
@@ -166,10 +167,12 @@ function bootstrapApplication() {
               <AuthProvider>
                 <DeferredUserPreferencesSync />
                 <AppI18nProvider>
-                  <KeyboardShortcutsProvider>
-                    <App />
-                    <KeyboardShortcutsHelpLauncher />
-                  </KeyboardShortcutsProvider>
+                  <PageLoadingAnnouncer>
+                    <KeyboardShortcutsProvider>
+                      <App />
+                      <KeyboardShortcutsHelpLauncher />
+                    </KeyboardShortcutsProvider>
+                  </PageLoadingAnnouncer>
                 </AppI18nProvider>
               </AuthProvider>
             </ThemeProvider>

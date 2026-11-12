@@ -12,6 +12,9 @@
 				"appName": {
 					"type": "string"
 				},
+				"pageLoading": {
+					"type": "string"
+				},
 				"audit": {
 					"type": "object",
 					"additionalProperties": false,
@@ -994,6 +997,7 @@
 			},
 			"required": [
 				"appName",
+				"pageLoading",
 				"audit",
 				"picker",
 				"boolean",

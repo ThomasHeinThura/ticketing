@@ -158,7 +158,11 @@ it("refetches the dashboard figures and cases after an approval decision", async
   await waitFor(() => expect(fake.getCases).toHaveBeenCalledTimes(2));
   approvals.unmount();
 
-  // Returning to the dashboard fetches again (`refetchOnMount: "always"`).
+  // Returning to the dashboard starts the same reads from its route loader.
+  const { prefetchPortalHome } = await import(
+    "@/hooks/queries/portal/prefetch-portal-home"
+  );
+  prefetchPortalHome(client, "customer-a", {});
   render(
     <QueryClientProvider client={client}>
       <Dashboard />

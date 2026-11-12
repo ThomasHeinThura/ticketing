@@ -36,14 +36,46 @@ it("uses the shared page placeholder for a pending route", async () => {
   await screen.findByText("Home");
   void router.navigate({ to: "/slow" });
   const placeholder = await screen.findByTestId("page-loading");
+  expect(placeholder).toHaveAttribute("role", "status");
+  expect(placeholder).toHaveAttribute("aria-busy", "true");
+  expect(placeholder).toHaveAttribute("aria-live", "polite");
+  expect(placeholder).toHaveAccessibleName();
   expect(placeholder.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(
     2,
   );
   expect(placeholder.querySelector('[data-slot="skeleton"]')).toHaveClass(
     "motion-reduce:animate-none",
   );
+  expect(placeholder.querySelector('[data-slot="skeleton"]')).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
   await act(async () => {
     finish();
   });
   await screen.findByText("Loaded");
+});
+
+it("keeps one live announcer across a placeholder handoff", async () => {
+  const { PageLoadingAnnouncer } = await import(
+    "@/components/page-loading-announcer"
+  );
+  const { PageLoading } = await import("@/components/page-loading");
+  const view = render(
+    <PageLoadingAnnouncer>
+      <PageLoading key="pending" />
+    </PageLoadingAnnouncer>,
+  );
+  const announcer = screen.getByTestId("loading-announcer");
+  expect(announcer).toHaveAttribute("aria-live", "polite");
+  const firstText = announcer.textContent;
+  expect(firstText).toBeTruthy();
+  view.rerender(
+    <PageLoadingAnnouncer>
+      <PageLoading key="data" />
+    </PageLoadingAnnouncer>,
+  );
+  expect(screen.getByTestId("loading-announcer")).toBe(announcer);
+  expect(announcer.textContent).toBe(firstText);
+  expect(screen.getAllByRole("status")).toHaveLength(1);
 });

@@ -1,7 +1,9 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import NotificationInbox from "@/components/notification/notification-inbox";
 import MyWork from "@/components/work-item/my-work";
+
+const inboxState = vi.hoisted(() => ({ loading: true }));
 
 // WCAG 2.4.2: the agent's My work and Inbox pages name themselves in the browser tab.
 
@@ -35,7 +37,7 @@ vi.mock("@/hooks/queries/approval/use-get-my-approvals", () => ({
   default: () => ({ data: undefined, isLoading: true }),
 }));
 vi.mock("@/hooks/queries/notification/use-get-notifications", () => ({
-  default: () => ({ data: undefined, isLoading: true }),
+  default: () => ({ data: undefined, isLoading: inboxState.loading }),
 }));
 vi.mock(
   "@/hooks/mutations/notification/use-mark-all-notifications-as-read",
@@ -73,7 +75,19 @@ describe("agent page titles", () => {
   });
 
   it("titles the Inbox", () => {
-    render(<NotificationInbox filter="all" onFilterChange={() => undefined} />);
+    const view = render(
+      <NotificationInbox filter="all" onFilterChange={() => undefined} />,
+    );
     expect(document.title).toBe("Inbox · TaskDesk");
+    expect(screen.getByTestId("page-loading")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    inboxState.loading = false;
+    view.rerender(
+      <NotificationInbox filter="all" onFilterChange={() => undefined} />,
+    );
+    expect(screen.queryByTestId("page-loading")).toBeNull();
+    inboxState.loading = true;
   });
 });

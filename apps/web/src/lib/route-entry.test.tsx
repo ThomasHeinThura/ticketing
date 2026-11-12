@@ -6,8 +6,8 @@ import {
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { outstandingCasesQuery } from "@/components/portal/cases/portal-outstanding-cases";
 import useGetNotifications from "@/hooks/queries/notification/use-get-notifications";
+import { outstandingCasesQuery } from "@/hooks/queries/portal/outstanding-cases-query";
 import { portalProjectsOptions } from "@/hooks/queries/portal/portal-projects-options";
 import {
   usePortalCases,
@@ -284,4 +284,101 @@ it("refreshes the overview when returning from a child route", async () => {
     params: { projectKey: "OPS" },
   });
   await waitFor(() => expect(mocks.overview).toHaveBeenCalledTimes(1));
+});
+
+describe("project discovery access", () => {
+  it("waits for workspace discovery before requesting projects", async () => {
+    let finish!: (workspaces: Array<{ id: string }>) => void;
+    mocks.workspaces.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    loader(overview, {
+      context: context(client),
+      params: { projectKey: "OPS" },
+      cause: "enter",
+      location: { pathname: "/agent/projects/OPS" },
+    });
+    expect(mocks.projects).not.toHaveBeenCalled();
+    finish([{ id: "ws" }]);
+    await waitFor(() => expect(mocks.overview).toHaveBeenCalledTimes(1));
+    expect(mocks.projects).toHaveBeenCalledTimes(1);
+  });
+  it.each(["missing", "inaccessible", "failed"])(
+    "does not discover projects when workspace is %s",
+    async (state) => {
+      if (state === "inaccessible")
+        mocks.workspaces.mockResolvedValue([{ id: "other" }]);
+      if (state === "failed")
+        mocks.workspaces.mockRejectedValue(new Error("offline"));
+      const routeContext =
+        state === "missing"
+          ? { queryClient: client, session: { session: {} } }
+          : context(client);
+      loader(overview, {
+        context: routeContext,
+        params: { projectKey: "OPS" },
+        cause: "enter",
+        location: { pathname: "/agent/projects/OPS" },
+      });
+      loader(backlog, {
+        context: routeContext,
+        params: { projectKey: "OPS" },
+        deps: {},
+        cause: "enter",
+      });
+      if (state !== "missing")
+        await waitFor(() =>
+          expect(client.getQueryState(["workspaces"])?.fetchStatus).toBe(
+            "idle",
+          ),
+        );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mocks.projects).not.toHaveBeenCalled();
+      expect(mocks.detail).not.toHaveBeenCalled();
+      expect(mocks.overview).not.toHaveBeenCalled();
+      expect(mocks.items).not.toHaveBeenCalled();
+      expect(mocks.searchItems).not.toHaveBeenCalled();
+    },
+  );
+});
+
+it("preloads portal links without reads and refreshes cached dashboard data on entry", async () => {
+  const {
+    createMemoryHistory,
+    createRootRouteWithContext,
+    createRoute,
+    createRouter,
+  } = await import("@tanstack/react-router");
+  const { portalRoutePendingOptions } = await import("@/lib/route-pending");
+  const root = createRootRouteWithContext<{ portalUserId: string }>()();
+  const other = createRoute({ getParentRoute: () => root, path: "/other" });
+  const options = portal as unknown as { loader: (args: never) => unknown };
+  const dashboard = createRoute({
+    getParentRoute: () => root,
+    path: "/",
+    loader: (args) => options.loader({ ...args, deps: {} } as never),
+  });
+  const router = createRouter({
+    routeTree: root.addChildren([other, dashboard]),
+    history: createMemoryHistory({ initialEntries: ["/other"] }),
+    context: { portalUserId: "u1" },
+    ...portalRoutePendingOptions,
+  });
+  portalClient.setQueryData(["portal", "u1", "home", null], {});
+  portalClient.setQueryData(portalProjectsOptions().queryKey, { data: [] });
+  portalClient.setQueryData(
+    ["portal", "u1", "cases", outstandingCasesQuery({})],
+    {},
+  );
+  await router.load();
+  await router.preloadRoute({ to: "/" });
+  expect(mocks.home).not.toHaveBeenCalled();
+  expect(mocks.cases).not.toHaveBeenCalled();
+  expect(mocks.portalProjects).not.toHaveBeenCalled();
+  await router.navigate({ to: "/" });
+  await waitFor(() => expect(mocks.home).toHaveBeenCalledTimes(1));
+  expect(mocks.cases).toHaveBeenCalledTimes(1);
+  expect(mocks.portalProjects).toHaveBeenCalledTimes(1);
 });

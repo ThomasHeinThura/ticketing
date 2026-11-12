@@ -10,11 +10,11 @@ export async function resolveRouteProject(
 ) {
   const workspaceId = getActiveOrganizationId(session);
   if (!workspaceId) return;
-  const [workspaces, projects] = await Promise.all([
-    queryClient.ensureQueryData(workspacesOptions()),
-    queryClient.ensureQueryData(projectsOptions(workspaceId)),
-  ]);
+  const workspaces = await queryClient.ensureQueryData(workspacesOptions());
   if (!workspaces.some((workspace) => workspace.id === workspaceId)) return;
+  const projects = await queryClient.ensureQueryData(
+    projectsOptions(workspaceId),
+  );
   const project = projects?.find((candidate) => candidate.slug === projectKey);
   if (project) return { project, workspaceId };
 }

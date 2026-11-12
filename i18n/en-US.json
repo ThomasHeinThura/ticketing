@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"pageLoading": "Loading page",
 		"audit": {
 			"columns": {
 				"timestamp": "Timestamp",

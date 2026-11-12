@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "キャンセル",
 			"close": "閉じる",

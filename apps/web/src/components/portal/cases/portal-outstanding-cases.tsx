@@ -16,6 +16,7 @@ import {
   PortalCaseFilters,
 } from "@/components/portal/cases/portal-case-filters";
 import { PortalCaseTable } from "@/components/portal/cases/portal-case-table";
+import { outstandingCasesQuery } from "@/hooks/queries/portal/outstanding-cases-query";
 import { usePortalCases } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
@@ -24,23 +25,7 @@ import {
   routes,
 } from "@/lib/routes";
 
-/** Rows of the outstanding list; the full list lives on `/requests`. */
-const ROWS = 10;
 const OUTSTANDING = PORTAL_OUTSTANDING_STATUSES.join(",");
-
-export function outstandingCasesQuery(
-  filters: Pick<PortalHomeSearch, "scope" | "status" | "priority">,
-  project?: string,
-) {
-  const { scope, priority } = filters;
-  return {
-    scope: scope ?? "mine",
-    status: filters.status ?? OUTSTANDING,
-    ...(priority ? { priority } : {}),
-    ...(project ? { project } : {}),
-    limit: ROWS,
-  } as const;
-}
 
 /**
  * The dashboard's outstanding cases (S4b): My/All, Status and Severity filters kept in the URL,
