@@ -60,8 +60,8 @@ See [ADR 0004](#pending-01-architectureadr0004-two-portals-two-origins).
 | Requirement | Contract |
 | --- | --- |
 | Request | Both sign-in hosts offer email recovery and return the same confirmation regardless of account or mail configuration. Requests have per-IP and per-address limits. |
-| Link | The link is valid for one hour, single-use and bound to the host and matching active staff or customer identity. Only an existing local password credential is eligible; SSO-only identities cannot gain one. |
-| Completion | The reset form enforces the local password policy; expired, used or malformed links show a generic invalid-link state. Completion revokes all sessions and records an audit row without secrets. Requests are audited without address or token. |
+| Link | The link is valid for one hour, single-use and bound to the host and matching active staff or customer identity. Only an existing local password credential is eligible; SSO-only identities cannot gain one. Only a digest is stored. A newly issued link or a successful password change invalidates earlier links. |
+| Completion | The reset form enforces the local password policy; expired, used or malformed links show a generic invalid-link state. Completion revokes all sessions and records an audit row without secrets. Requests are audited without address or token. The reset page removes the token from the address bar before routing and sends no referrer. |
 
 ### Screens
 

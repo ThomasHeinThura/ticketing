@@ -7,10 +7,14 @@ import {
   getConfiguredCustomerOrigin,
   reloadAuthConfiguration,
 } from "../../apps/api/src/auth";
-import { signResetToken } from "../../apps/api/src/auth/password-reset";
+import {
+  hashResetIdentifier,
+  signResetToken,
+} from "../../apps/api/src/auth/password-reset";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
 import { nextClientIp } from "./helpers/organization-http";
@@ -266,7 +270,7 @@ describe("password recovery portal and credential boundaries", () => {
   ) {
     const token = randomUUID();
     await db.insert(schema.verificationTable).values({
-      identifier: `reset-password:${token}`,
+      identifier: await hashResetIdentifier(`reset-password:${token}`),
       value: userId,
       expiresAt: new Date(Date.now() + (expired ? -1000 : 3600000)),
     });
@@ -280,6 +284,10 @@ describe("password recovery portal and credential boundaries", () => {
     const staff = await staffUser();
     const customer = await admittedCustomer();
     const staffToken = await insertToken(staff.user.id, "agent");
+    const credentialBefore = await db
+      .select({ password: schema.accountTable.password })
+      .from(schema.accountTable)
+      .where(eq(schema.accountTable.userId, staff.user.id));
     expect((await complete("portal", staffToken)).status).toBe(400);
     expect(
       (await complete("agent", await insertToken(customer.user.id, "agent")))
@@ -289,6 +297,12 @@ describe("password recovery portal and credential boundaries", () => {
       (await complete("agent", await insertToken(staff.user.id, "agent", true)))
         .status,
     ).toBe(400);
+    expect(
+      await db
+        .select({ password: schema.accountTable.password })
+        .from(schema.accountTable)
+        .where(eq(schema.accountTable.userId, staff.user.id)),
+    ).toEqual(credentialBefore);
     await db
       .delete(schema.accountTable)
       .where(eq(schema.accountTable.userId, staff.user.id));
@@ -348,6 +362,253 @@ describe("password recovery portal and credential boundaries", () => {
       .from(schema.auditLogTable)
       .where(eq(schema.auditLogTable.action, "auth.password_reset_requested"));
     expect(audit).toHaveLength(4);
+  });
+  it("stores only digests and supersedes the earlier link on a newer request", async () => {
+    const staff = await staffUser();
+    await requestReset("agent", staff.user.email);
+    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
+    const first = new URL(sentPasswordResetEmails[0]?.resetLink ?? "");
+    const earlier = first.searchParams.get("token") ?? "";
+    const raw = earlier.split(".")[0] ?? "";
+    const rows = await db
+      .select()
+      .from(schema.verificationTable)
+      .where(eq(schema.verificationTable.value, staff.user.id));
+    expect(rows).toHaveLength(1);
+    expect(JSON.stringify(rows)).not.toContain(raw);
+    expect(JSON.stringify(rows)).not.toContain(earlier);
+    expect(rows[0]?.identifier).toBe(
+      await hashResetIdentifier(`reset-password:${raw}`),
+    );
+    await requestReset("agent", staff.user.email);
+    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(2));
+    const newer =
+      new URL(sentPasswordResetEmails[1]?.resetLink ?? "").searchParams.get(
+        "token",
+      ) ?? "";
+    expect((await complete("agent", earlier)).status).toBe(400);
+    expect((await complete("agent", newer)).status).toBe(200);
+    expect((await complete("agent", earlier)).status).toBe(400);
+    expect((await complete("agent", newer)).status).toBe(400);
+  });
+  it("allows only one concurrent reset completion", async () => {
+    const staff = await staffUser();
+    await requestReset("agent", staff.user.email);
+    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
+    const token =
+      new URL(sentPasswordResetEmails[0]?.resetLink ?? "").searchParams.get(
+        "token",
+      ) ?? "";
+    const results = await Promise.all([
+      complete("agent", token),
+      complete("agent", token),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
+  });
+  it("invalidates recovery links when the password changes", async () => {
+    const staff = await staffUser();
+    const login = await passwordSignIn(
+      "agent",
+      staff.user.email,
+      staff.password,
+    );
+    const cookie = login.headers
+      .getSetCookie()
+      .find((v) => v.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    if (!cookie) throw new Error("Session cookie missing");
+    await requestReset("agent", staff.user.email);
+    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
+    const token =
+      new URL(sentPasswordResetEmails[0]?.resetLink ?? "").searchParams.get(
+        "token",
+      ) ?? "";
+    const change = await csrfRequest(
+      sharedApp(),
+      "/api/auth/change-password",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: staff.password,
+          newPassword: "new-valid-password-42",
+        }),
+      },
+      cookie,
+    );
+    expect(change.status).toBe(200);
+    expect((await complete("agent", token)).status).toBe(400);
+  });
+  it("preserves MFA, ban and bootstrap state while revoking multiple sessions", async () => {
+    const staff = await staffUser();
+    const logins = await Promise.all([
+      passwordSignIn("agent", staff.user.email, staff.password),
+      passwordSignIn("agent", staff.user.email, staff.password),
+    ]);
+    const cookies = logins.map(
+      (r) =>
+        r.headers
+          .getSetCookie()
+          .find((v) => v.startsWith("__Host-tdk_agent_session="))
+          ?.split(";", 1)[0],
+    );
+    expect(cookies.every(Boolean)).toBe(true);
+    const [impersonated] = await db
+      .select({ id: schema.sessionTable.id })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, staff.user.id))
+      .limit(1);
+    if (!impersonated) throw new Error("Session missing");
+    await db
+      .update(schema.sessionTable)
+      .set({ impersonatedBy: staff.user.id })
+      .where(eq(schema.sessionTable.id, impersonated.id));
+    await db.insert(schema.twoFactorTable).values({
+      id: randomUUID(),
+      userId: staff.user.id,
+      secret: "encrypted-factor-fixture",
+      backupCodes: "encrypted-backups-fixture",
+      verified: true,
+    });
+    const factors = await db
+      .select()
+      .from(schema.twoFactorTable)
+      .where(eq(schema.twoFactorTable.userId, staff.user.id));
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: true, banned: true, banReason: "test" })
+      .where(eq(schema.userTable.id, staff.user.id));
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ setupCompletedAt: null })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    const settings = await db
+      .select({
+        setupCompletedAt: schema.instanceSettingTable.setupCompletedAt,
+      })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    const token = await insertToken(staff.user.id, "agent");
+    expect((await complete("agent", token)).status).toBe(200);
+    const [user] = await db
+      .select({
+        twoFactorEnabled: schema.userTable.twoFactorEnabled,
+        banned: schema.userTable.banned,
+        banReason: schema.userTable.banReason,
+      })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, staff.user.id));
+    expect(user).toEqual({
+      twoFactorEnabled: true,
+      banned: true,
+      banReason: "test",
+    });
+    expect(
+      await db
+        .select({
+          setupCompletedAt: schema.instanceSettingTable.setupCompletedAt,
+        })
+        .from(schema.instanceSettingTable)
+        .where(eq(schema.instanceSettingTable.id, "singleton")),
+    ).toEqual(settings);
+    expect(await sessionCount(staff.user.id)).toBe(0);
+    expect(
+      await db
+        .select()
+        .from(schema.twoFactorTable)
+        .where(eq(schema.twoFactorTable.userId, staff.user.id)),
+    ).toEqual(factors);
+    for (const cookie of cookies) {
+      const response = await sharedApp().request(
+        `${base("agent")}/api/auth/get-session`,
+        { headers: { host: new URL(AGENT_ORIGIN).host, cookie: cookie ?? "" } },
+      );
+      expect(await response.json()).toBeNull();
+    }
+  });
+  it("keeps MFA required at the next login", async () => {
+    const staff = await staffUser();
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: true })
+      .where(eq(schema.userTable.id, staff.user.id));
+    await db.insert(schema.twoFactorTable).values({
+      id: randomUUID(),
+      userId: staff.user.id,
+      secret: "encrypted-factor-fixture",
+      backupCodes: "encrypted-backups-fixture",
+      verified: true,
+    });
+    const token = await insertToken(staff.user.id, "agent");
+    expect((await complete("agent", token)).status).toBe(200);
+    const login = await passwordSignIn(
+      "agent",
+      staff.user.email,
+      "new-secure-password",
+    );
+    expect(login.status).toBe(200);
+    expect(await login.json()).toMatchObject({ twoFactorRedirect: true });
+  });
+  it("does not use an untrusted forwarded Host in recovery links", async () => {
+    const staff = await staffUser();
+    const response = await sharedApp().request(
+      `${base("agent")}/api/auth/request-password-reset`,
+      {
+        method: "POST",
+        headers: {
+          host: new URL(AGENT_ORIGIN).host,
+          origin: base("agent"),
+          "x-forwarded-host": "attacker.example",
+          "content-type": "application/json",
+          "x-forwarded-for": nextClientIp(),
+        },
+        body: JSON.stringify({ email: staff.user.email }),
+      },
+    );
+    expect(response.status).toBe(200);
+    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
+    const url = new URL(sentPasswordResetEmails[0]?.resetLink ?? "");
+    expect(url.origin).toBe(new URL(getConfiguredAgentOrigin()).origin);
+  });
+  it("answers identically for missing, passwordless, suspended and throttled addresses", async () => {
+    const staff = await staffUser();
+    const passwordless = await staffUser();
+    const suspended = await staffUser();
+    await db
+      .delete(schema.accountTable)
+      .where(eq(schema.accountTable.userId, passwordless.user.id));
+    await db
+      .update(schema.userTable)
+      .set({ banned: true })
+      .where(eq(schema.userTable.id, suspended.user.id));
+    const responses = [
+      await requestReset("agent", staff.user.email),
+      await requestReset("agent", `${randomUUID()}@example.test`),
+      await requestReset("agent", passwordless.user.email),
+      await requestReset("agent", suspended.user.email),
+    ];
+    for (let n = 0; n < 3; n++)
+      responses.push(await requestReset("agent", staff.user.email));
+    const values = await Promise.all(
+      responses.map(async (r) => ({
+        status: r.status,
+        body: await r.json(),
+        // Per-request tracing and wall-clock values are unrelated to account state.
+        headers: [...r.headers.entries()]
+          .filter(
+            ([name]) =>
+              ![
+                "date",
+                "x-request-id",
+                "traceparent",
+                "server-timing",
+              ].includes(name),
+          )
+          .sort(([a], [b]) => a.localeCompare(b)),
+        setCookie: r.headers.getSetCookie(),
+      })),
+    );
+    for (const value of values) expect(value).toEqual(values[0]);
   });
   it("returns identical responses for missing users and failed mail", async () => {
     const staff = await staffUser();

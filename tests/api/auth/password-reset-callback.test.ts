@@ -56,6 +56,27 @@ describe("reset mail callback", () => {
       expect(link.searchParams.get("token")).toMatch(/^token\./);
     },
   );
+  it("does not build the link from a forged request Host", async () => {
+    const callback = auth.options.emailAndPassword?.sendResetPassword;
+    if (!callback) throw new Error("Missing callback");
+    await Reflect.apply(callback, undefined, [
+      { user, token: "token", url: "http://attacker.example/reset" },
+      new Request("http://attacker.example", {
+        headers: { host: "attacker.example" },
+      }),
+    ]);
+    await vi.waitFor(() => expect(mocks.send).toHaveBeenCalledOnce());
+    const link = new URL(mocks.send.mock.calls[0]?.[2].resetLink);
+    expect(link.origin).toBe("http://localhost:5173");
+  });
+  it("refuses the library callback that falls back to plaintext lookup", async () => {
+    const response = await auth.handler(
+      new Request(
+        "http://localhost:5173/api/auth/reset-password/raw?callbackURL=%2Fauth%2Freset-password",
+      ),
+    );
+    expect(response.status).toBe(404);
+  });
   it("does not send to an ineligible account", async () => {
     mocks.eligible.mockResolvedValue(false);
     await invoke(auth);

@@ -1,9 +1,18 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, gt, isNotNull, ne } from "drizzle-orm";
 import db, { schema } from "../database";
 import type { Transaction } from "../database/executor";
 
 export type ResetPortal = "agent" | "customer";
+export const RESET_IDENTIFIER_PREFIX = "reset-password-sha256:";
+
+/** Only the digest is persisted; Better Auth calls this for both creation and consumption. */
+export async function hashResetIdentifier(identifier: string): Promise<string> {
+  return (
+    RESET_IDENTIFIER_PREFIX +
+    createHash("sha256").update(identifier).digest("hex")
+  );
+}
 
 /** Bind a bearer to its issuing host without putting the auth secret in storage. */
 export function signResetToken(
@@ -85,7 +94,10 @@ export async function lockResetUser(
     .from(schema.verificationTable)
     .where(
       and(
-        eq(schema.verificationTable.identifier, `reset-password:${token}`),
+        eq(
+          schema.verificationTable.identifier,
+          await hashResetIdentifier(`reset-password:${token}`),
+        ),
         gt(schema.verificationTable.expiresAt, new Date()),
       ),
     )

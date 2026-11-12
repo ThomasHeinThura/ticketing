@@ -1,9 +1,12 @@
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { capturePasswordResetToken } from "../src/lib/password-reset-token";
 import { PortalApplicationProviders } from "../src/portal/portal-application-providers";
 import { routeTree } from "../src/routeTree.portal.gen";
 import "@/index.css";
+
+capturePasswordResetToken();
 
 const router = createRouter({
   routeTree,

@@ -29,6 +29,7 @@ import { loadLocalFactorState } from "./auth/local-factor-service";
 import {
   canResetPassword,
   consumeResetAddressLimit,
+  hashResetIdentifier,
   lockResetUser,
   signResetToken,
   verifyResetToken,
@@ -473,6 +474,12 @@ function createAuth(
     secret: authSecret,
     basePath: "/api/auth",
     database: createCredentialAwareDrizzleAdapter(),
+    verification: {
+      storeIdentifier: {
+        default: "plain",
+        overrides: { "reset-password:": { hash: hashResetIdentifier } },
+      },
+    },
     user: {
       additionalFields: {
         locale: {
@@ -1050,6 +1057,11 @@ function createAuth(
               message:
                 "If this email exists in our system, check your email for the reset link",
             });
+        }
+        // Links go directly to the web app; the library's legacy GET callback
+        // also falls back to plaintext identifiers, so it is deliberately closed.
+        if (ctx.path.startsWith("/reset-password/")) {
+          throw new APIError("NOT_FOUND", { message: "Not found" });
         }
         if (ctx.path === "/reset-password") {
           const signed =

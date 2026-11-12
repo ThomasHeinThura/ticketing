@@ -1,8 +1,13 @@
 import { Alert, AlertDescription, Button, Input } from "@taskdesk/ui";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useResetPassword from "@/hooks/mutations/use-reset-password";
 import useSendPasswordReset from "@/hooks/mutations/use-send-password-reset";
+import {
+  capturePasswordResetToken,
+  clearPasswordResetToken,
+  readPasswordResetToken,
+} from "@/lib/password-reset-token";
 
 type Props = { portal: boolean };
 
@@ -62,7 +67,11 @@ export function ForgotPassword({ portal }: Props) {
 
 export function ResetPassword({ portal }: Props) {
   const { t } = useTranslation();
-  const token = new URLSearchParams(window.location.search).get("token") ?? "";
+  const [token, setToken] = useState(() => {
+    capturePasswordResetToken();
+    return readPasswordResetToken();
+  });
+  useEffect(() => () => clearPasswordResetToken(), []);
   const validToken = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(token);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -90,6 +99,12 @@ export function ResetPassword({ portal }: Props) {
       setDone(true);
     } catch {
       setError("invalid");
+    } finally {
+      clearPasswordResetToken();
+      setToken("");
+      setPassword("");
+      setConfirm("");
+      reset.reset();
     }
   }
   const signIn = portal ? "/sign-in" : "/auth/sign-in";
