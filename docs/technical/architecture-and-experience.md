@@ -1525,6 +1525,8 @@ Three levels, following Plane, with clear ownership at each.
 
 Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) and `/agent/god-mode/*` URLs redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
 
+An unknown agent page has a focused page heading, an explanation, a workspace home link and a history Back action. Protected routes continue to send signed-out visitors to sign-in; the invitation acceptance route remains separate.
+
 Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
 
 Detail: [Settings hierarchy](feature-contracts-p4.md#settings-hierarchy).

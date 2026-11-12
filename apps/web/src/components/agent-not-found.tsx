@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import {
   Button,
   Empty,
@@ -9,6 +9,7 @@ import {
   EmptyTitle,
 } from "@taskdesk/ui";
 import { Compass } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { routes } from "@/lib/routes";
@@ -22,6 +23,11 @@ import { routes } from "@/lib/routes";
  */
 export function AgentNotFound() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
   return (
     <Empty data-testid="agent-not-found" className="min-h-[60vh]">
       <PageTitle title={t("portal:notFound.title")} />
@@ -30,16 +36,18 @@ export function AgentNotFound() {
           <Compass />
         </EmptyMedia>
         <EmptyTitle>
-          <h1>{t("portal:notFound.title")}</h1>
+          <h1 ref={headingRef} tabIndex={-1}>
+            {t("portal:notFound.title")}
+          </h1>
         </EmptyTitle>
         <EmptyDescription>{t("portal:notFound.description")}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent className="flex-row flex-wrap justify-center">
-        <Button render={<Link to={routes.agentMyWork.path} />}>
-          {t("navigation:sidebar.myWork")}
-        </Button>
-        <Button variant="outline" render={<Link to={routes.agentHome.path} />}>
+        <Button render={<Link to={routes.agentHome.path} />}>
           {t("navigation:sidebar.projects")}
+        </Button>
+        <Button variant="outline" onClick={() => router.history.back()}>
+          {t("common:states.back")}
         </Button>
       </EmptyContent>
     </Empty>

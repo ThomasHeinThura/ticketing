@@ -373,6 +373,7 @@ Backlog is a separate destination rather than a layout, because it has different
 **Shared across layouts**
 
 - `VW-1` Filter, sort, grouping and search live in the URL and survive a layout switch. The board and timeline grouping is `group` (`assignee` or `priority`; `state` is the default and never written), the calendar range is `calendarView` (`week` or `day`) anchored on `date` (`YYYY-MM-DD`), and `month` still names the month view.
+- Clearing the project search returns focus to its input, including when the input is in a popover. The calendar toolbar wraps on phones so its range, navigation, view and permitted selection controls remain usable without horizontal overflow.
 - `VW-2` Layout choice is remembered per project per user, and the URL always wins. See
   [Per-user preferences](feature-contracts-p1.md#views-per-user-preferences).
 - `VW-3` Every layout supports multi-select and the same bulk action bar.
