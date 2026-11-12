@@ -762,3 +762,148 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
     expect(await staffConfig()).toMatchObject({ disableEmailOtpSignIn: false });
   });
 });
+
+describe("signed-in portal password change", () => {
+  it("requires a customer session, checks the old password, and updates only its caller", async () => {
+    await makeStaffUser("password-change-admin", "admin");
+    const customer = await makeCustomerUser();
+    const other = await makeCustomerUser();
+    const { app } = createApp();
+    const agentCookie = await staffSession(
+      app,
+      "password-change-admin@example.test",
+    );
+    const enabled = await putWithProof(app, agentCookie, {
+      agent: STAFF_ALL,
+      customer: { ...CUSTOMER_OFF, password: true },
+    });
+    expect(enabled.status).toBe(200);
+    const login = await passwordSignIn(app, "customer", customer.email);
+    expect(login.status).toBe(200);
+    const portalCookie = login.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_portal_session="))
+      ?.split(";", 1)[0];
+    expect(portalCookie).toBeDefined();
+    const origin = getConfiguredCustomerOrigin();
+    const change = (cookie: string | undefined, currentPassword: string) =>
+      app.request(`${origin}/api/auth/change-password`, {
+        method: "POST",
+        headers: {
+          host: new URL(origin).host,
+          origin,
+          "content-type": "application/json",
+          ...(cookie ? { cookie } : {}),
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword: "replacement-password-42",
+          revokeOtherSessions: false,
+          userId: other.id,
+        }),
+      });
+    expect((await change(undefined, PASSWORD)).status).toBe(401);
+    expect(
+      (
+        await change(
+          agentCookie.replace(
+            "__Host-tdk_agent_session=",
+            "__Host-tdk_portal_session=",
+          ),
+          PASSWORD,
+        )
+      ).status,
+    ).toBe(401);
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: true })
+      .where(eq(schema.userTable.id, customer.id));
+    const status = await app.request(`${origin}/api/me/security/factors`, {
+      headers: { host: new URL(origin).host, cookie: portalCookie as string },
+    });
+    expect(status.status).toBe(200);
+    expect(await status.json()).toMatchObject({
+      enabled: true,
+      hasLocalPassword: true,
+      passwordRequiredForEnrollment: false,
+    });
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: false })
+      .where(eq(schema.userTable.id, customer.id));
+    const wrong = await change(portalCookie, "incorrect-password");
+    expect(wrong.status).toBe(400);
+    expect((await wrong.json()).code).toBe("INVALID_PASSWORD");
+    const success = await change(portalCookie, PASSWORD);
+    expect(success.status, await success.clone().text()).toBe(200);
+    const accounts = await db
+      .select()
+      .from(schema.accountTable)
+      .where(inArray(schema.accountTable.userId, [customer.id, other.id]));
+    const compare = apiRequire("bcryptjs") as {
+      compare(value: string, hash: string): Promise<boolean>;
+    };
+    const own = accounts.find((account) => account.userId === customer.id);
+    const untouched = accounts.find((account) => account.userId === other.id);
+    expect(
+      await compare.compare("replacement-password-42", own?.password ?? ""),
+    ).toBe(true);
+    expect(await compare.compare(PASSWORD, untouched?.password ?? "")).toBe(
+      true,
+    );
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "auth.password_changed"),
+          eq(schema.auditLogTable.actorId, customer.id),
+        ),
+      );
+    expect(audit).toHaveLength(1);
+
+    const peerLogin = await app.request(`${origin}/api/auth/sign-in/email`, {
+      method: "POST",
+      headers: {
+        host: new URL(origin).host,
+        origin,
+        "content-type": "application/json",
+        "x-forwarded-for": nextClientIp(),
+      },
+      body: JSON.stringify({
+        email: customer.email,
+        password: "replacement-password-42",
+      }),
+    });
+    expect(peerLogin.status).toBe(200);
+    const sessionsBefore = await db
+      .select()
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, customer.id));
+    expect(sessionsBefore.length).toBeGreaterThanOrEqual(2);
+    const revoked = await app.request(`${origin}/api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        host: new URL(origin).host,
+        origin,
+        "content-type": "application/json",
+        cookie: portalCookie as string,
+      },
+      body: JSON.stringify({
+        currentPassword: "replacement-password-42",
+        newPassword: "another-password-42",
+        revokeOtherSessions: true,
+      }),
+    });
+    expect(revoked.status, await revoked.clone().text()).toBe(200);
+    const sessionsAfter = await db
+      .select()
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, customer.id));
+    expect(sessionsAfter).toHaveLength(1);
+    expect(
+      sessionsBefore.some((session) => session.id === sessionsAfter[0]?.id),
+    ).toBe(false);
+    expect(sessionsAfter[0]?.portal).toBe("customer");
+  });
+});

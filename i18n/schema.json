@@ -1515,6 +1515,66 @@
 					},
 					"required": ["pageTitle", "title", "subtitle", "passwordDisabled"]
 				},
+				"changePassword": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"currentPassword": {
+							"type": "string"
+						},
+						"newPassword": {
+							"type": "string"
+						},
+						"confirmPassword": {
+							"type": "string"
+						},
+						"revoke": {
+							"type": "string"
+						},
+						"required": {
+							"type": "string"
+						},
+						"tooLong": {
+							"type": "string"
+						},
+						"mismatch": {
+							"type": "string"
+						},
+						"wrongCurrent": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						},
+						"success": {
+							"type": "string"
+						},
+						"submit": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"currentPassword",
+						"newPassword",
+						"confirmPassword",
+						"revoke",
+						"required",
+						"tooLong",
+						"mismatch",
+						"wrongCurrent",
+						"failed",
+						"success",
+						"submit",
+						"saving"
+					]
+				},
 				"accountSecurity": {
 					"type": "object",
 					"additionalProperties": false,
@@ -1992,6 +2052,7 @@
 				"signUpForm",
 				"twoFactor",
 				"godModeSignIn",
+				"changePassword",
 				"accountSecurity",
 				"invitation",
 				"onboarding",

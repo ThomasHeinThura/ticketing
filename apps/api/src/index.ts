@@ -21,6 +21,7 @@ import apiKey from "./api-key";
 import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
+import { appendAuditLog } from "./audit/audit-writer";
 import {
   assertCookieDomainIsNotConfiguredForHostIsolation,
   authForHost,
@@ -55,7 +56,7 @@ import {
 import portalAuthMethods from "./customer-invitation/auth-methods";
 import { customerInvitationDeliveryKeyring } from "./customer-invitation/delivery/keyring";
 import { purgeExpiredCustomerInvitationEnvelopes } from "./customer-invitation/delivery/repository";
-import {
+import db, {
   closeMigrationPool,
   getDatabase,
   getMigrationDatabase,
@@ -100,6 +101,7 @@ import instanceJobs from "./instance/jobs";
 import localFactorPolicy from "./instance/local-factor-policy";
 import instanceMcpUsage from "./instance/mcp-usage";
 import observability from "./instance/observability";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
 import {
   logDatabaseFailure,
   logHttpLifecycleFailure,
@@ -110,6 +112,7 @@ import {
   beginObservedRequest,
   logTaskDesk,
   observeRequest,
+  recordAuditWriteFailure,
   startObservabilityRuntime,
   stopObservabilityRuntime,
 } from "./instance/observability/runtime";
@@ -441,6 +444,8 @@ function isApiRequestPath(path: string): boolean {
 const CUSTOMER_AUTH_ENDPOINTS = new Set([
   "GET /api/auth/get-session",
   "POST /api/auth/sign-out",
+  "POST /api/auth/change-password",
+  "GET /api/me/security/factors",
   "POST /api/auth/two-factor/verify-totp",
   "POST /api/auth/two-factor/verify-backup-code",
   "POST /api/portal/sign-in/home-realm",
@@ -558,6 +563,15 @@ async function handleAuthRequest(
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
+  if (
+    portal === "customer" &&
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/change-password" &&
+    !session?.session
+  ) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
   // GM-9: an impersonation session may not change credentials, factors, keys or the account
   // through Better Auth; it may only read and sign out.
   if (
@@ -596,15 +610,40 @@ async function handleAuthRequest(
       throw error;
     }
   }
-  if (!mutation) return selected.handler(authRequest);
-
-  const outcome = await withExplicitCredentialMutation(mutation, () =>
-    selected.handler(authRequest),
-  );
-  if (outcome.state.deleteFailure) {
-    return c.json({ error: "credential_revocation_failed" }, 503);
+  let result: Response;
+  if (!mutation) {
+    result = await selected.handler(authRequest);
+  } else {
+    const outcome = await withExplicitCredentialMutation(mutation, () =>
+      selected.handler(authRequest),
+    );
+    if (outcome.state.deleteFailure) {
+      return c.json({ error: "credential_revocation_failed" }, 503);
+    }
+    result = outcome.result;
   }
-  return outcome.result;
+  if (
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/change-password" &&
+    result.ok &&
+    session?.user
+  ) {
+    try {
+      await db.transaction((tx) =>
+        appendAuditLog(tx, {
+          action: "auth.password_changed",
+          actorId: session.user.id,
+          actorType: "person",
+          entityType: "person",
+          entityId: session.user.id,
+        }),
+      );
+    } catch {
+      recordAuditWriteFailure("mutation");
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    }
+  }
+  return result;
 }
 
 function explicitAuthCredentialMutation(

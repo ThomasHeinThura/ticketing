@@ -65162,6 +65162,9 @@
                     "passwordRequiredForEnrollment": {
                       "type": "boolean"
                     },
+                    "hasLocalPassword": {
+                      "type": "boolean"
+                    },
                     "policyMode": {
                       "type": "string",
                       "enum": [
@@ -65189,6 +65192,7 @@
                     "enabled",
                     "required",
                     "passwordRequiredForEnrollment",
+                    "hasLocalPassword",
                     "policyMode",
                     "availableMethods"
                   ]
@@ -65197,7 +65201,22 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "A session is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
           },
           "403": {
             "description": "The caller's identity is inactive",

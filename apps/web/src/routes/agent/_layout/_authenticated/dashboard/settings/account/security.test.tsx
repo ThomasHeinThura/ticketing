@@ -44,6 +44,9 @@ vi.mock("@/components/settings/connected-accounts-panel", async () => {
 vi.mock("@/fetchers/get-api-url", () => ({
   getApiUrl: (path: string) => `/api/${path}`,
 }));
+vi.mock("@/hooks/mutations/use-change-password", () => ({
+  default: () => ({ mutateAsync: vi.fn() }),
+}));
 vi.mock("@/lib/auth-client", () => ({
   authClient: { twoFactor: { enable: fixture.enable, verifyTotp: vi.fn() } },
 }));
@@ -151,4 +154,39 @@ describe("account security factor enrollment", () => {
       replace: true,
     });
   });
+});
+
+describe("account security password visibility", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+  it.each([true, false])(
+    "shows the card only when local password is %s",
+    async (hasLocalPassword) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                enabled: true,
+                required: false,
+                passwordRequiredForEnrollment: false,
+                hasLocalPassword,
+                policyMode: "optional",
+              }),
+              { status: 200 },
+            ),
+        ),
+      );
+      render(<SecurityPage />);
+      await screen.findByText("auth:accountSecurity.enabled");
+      expect(
+        Boolean(
+          screen.queryByRole("button", { name: "auth:changePassword.submit" }),
+        ),
+      ).toBe(hasLocalPassword);
+    },
+  );
 });

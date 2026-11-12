@@ -236,7 +236,12 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   `/api/public/health/ready`. Those existing health handlers remain independent of which
   origin received the request. Once the two-instance identity boundary is configured, the
   portal host admits only its exact Better Auth sign-in/session/OIDC endpoints and the
-  registered `kind: portal` API policies. The agent API stays unreachable there. Pending
+  registered `kind: portal` API policies. As of D-G (Thomas, 12 Nov 2026), the portal also
+  admits `POST /api/auth/change-password` for an admitted customer session and
+  `GET /api/me/security/factors` for that session's own security status. The agent API stays
+  unreachable there. The current password is verified, the existing policy and rate limit apply,
+  peer sessions can be revoked, and successful password changes are audited without secrets.
+  The status includes local-password presence even with MFA enabled. Pending
   submission and work-item attachment objects are uploaded on the filesystem driver only by
   `PUT /api/storage/portal-attachment-upload`, using a link bound to the requesting customer
   (Thomas, 4 November 2026). The generic filesystem attachment PUT is refused on the portal
