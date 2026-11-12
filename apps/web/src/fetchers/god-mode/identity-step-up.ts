@@ -81,9 +81,10 @@ export type IdentityOperationBinding =
   | ({
       operation: "auth_local_methods_update";
     } & LocalAuthMethodsRequest)
-  | ({
+  | {
       operation: "notification_provider_save";
-    } & EmailProviderInput)
+      request: EmailProviderInput;
+    }
   | {
       operation: "webhook_rotate_all";
       replacementSetDigest: string;

@@ -89,12 +89,17 @@ async function administrator() {
   };
 }
 type Administrator = Awaited<ReturnType<typeof administrator>>;
+function serializeAuditRows(rows: unknown) {
+  return JSON.stringify(rows, (_key, value) =>
+    typeof value === "bigint" ? value.toString() : value,
+  );
+}
 /** One single-use proof bound to exactly this body; undefined when the body cannot be bound. */
 async function proofFor(f: Administrator, body: unknown) {
   const binding = {
     kind: "operation",
     operation: "notification_provider_save",
-    ...(body as Record<string, unknown>),
+    request: body,
   };
   const challenge = await csrfRequest(
     f.app,
@@ -599,7 +604,7 @@ describe("persisted SMTP provider backend", () => {
         .from(schema.auditLogTable)
         .where(eq(schema.auditLogTable.action, "plugin.tested"));
       expect(audit).toHaveLength(1);
-      const recorded = JSON.stringify(audit);
+      const recorded = serializeAuditRows(audit);
       for (const leaked of [
         password,
         config.username,
@@ -695,8 +700,9 @@ describe("persisted SMTP provider backend", () => {
       .from(schema.auditLogTable)
       .where(eq(schema.auditLogTable.action, "plugin.tested"));
     expect(audit).toHaveLength(2);
-    expect(JSON.stringify(audit)).not.toContain(savedPassword);
-    expect(JSON.stringify(audit)).not.toContain(replacement);
+    const recorded = serializeAuditRows(audit);
+    expect(recorded).not.toContain(savedPassword);
+    expect(recorded).not.toContain(replacement);
   });
   it("refuses to reuse an SES password for another region", async () => {
     const f = await administrator();
@@ -1024,11 +1030,30 @@ describe("persisted SMTP provider backend", () => {
     });
     expect(other).toBeDefined();
     expect((await patch(f, body, other)).status).toBe(403);
+    const proofRow = async (proof: string | undefined) => {
+      if (!proof) throw new Error("Fixture proof missing");
+      return requireRow(
+        await db
+          .select()
+          .from(schema.stepUpConfirmationTable)
+          .where(
+            eq(
+              schema.stepUpConfirmationTable.tokenHash,
+              createHash("sha256")
+                .update(Buffer.from(proof, "base64url"))
+                .digest(),
+            ),
+          ),
+        "notification provider proof",
+      );
+    };
+    expect((await proofRow(other)).state).toBe("issued");
     const hostSwap = await proofFor(f, {
       ...body,
       config: { ...config, host: "evil.example.test" },
     });
     expect((await patch(f, body, hostSwap)).status).toBe(403);
+    expect((await proofRow(hostSwap)).state).toBe("issued");
     expect(
       await db
         .select()
@@ -1039,15 +1064,22 @@ describe("persisted SMTP provider backend", () => {
     const token = await proofFor(f, body);
     expect(token).toBeDefined();
     expect((await patch(f, body, token)).status).toBe(200);
-    // Exactly one proof was spent, for this operation, and only by the write that succeeded.
-    const proofs = await db.select().from(schema.stepUpConfirmationTable);
-    const spent = proofs.filter(
-      (row) =>
-        row.operationKey === "notification_provider_save" &&
-        row.state === "consumed",
-    );
-    expect(spent).toHaveLength(1);
+    // New challenges invalidate prior proofs for this operation by marking them consumed.
+    // Check this exact token and the spend audit to distinguish execution from invalidation.
+    expect((await proofRow(token)).state).toBe("consumed");
+    const spends = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_consumed"));
+    expect(spends).toHaveLength(1);
     expect((await providerRow()).configVersion).toBe(1);
+    expect((await patch(f, { ...body, version: 1 }, token)).status).toBe(403);
+    expect((await providerRow()).configVersion).toBe(1);
+    const audit = serializeAuditRows(
+      await db.select().from(schema.auditLogTable),
+    );
+    for (const secret of [PASSWORD, body.password, config.username])
+      expect(audit).not.toContain(secret);
   });
   it("keeps the proof unspent when the save is refused for a stale version", async () => {
     const f = await administrator();

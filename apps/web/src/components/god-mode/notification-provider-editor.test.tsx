@@ -317,7 +317,7 @@ describe("runtime email configuration", () => {
     expect(token).toBe("step-up-token");
     expect(mocks.stepBinding).toHaveBeenCalledWith({
       operation: "notification_provider_save",
-      ...request,
+      request,
     });
     expect(request).toMatchObject({ password: "synthetic-new-secret" });
   });

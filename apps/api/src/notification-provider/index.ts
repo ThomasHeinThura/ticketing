@@ -94,7 +94,7 @@ const router = apiRouter()
     const request = c.req.valid("json");
     const result = await runWithStepUp(
       c,
-      { operation: NOTIFICATION_PROVIDER_SAVE_OPERATION, ...request },
+      { operation: NOTIFICATION_PROVIDER_SAVE_OPERATION, request },
       (spend) =>
         updateEmailProvider(
           request,

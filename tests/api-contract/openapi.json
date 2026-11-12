@@ -67627,178 +67627,187 @@
                           "notification_provider_save"
                         ]
                       },
-                      "version": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "enabled": {
-                        "type": "boolean",
-                        "x-taskdesk-form": {
-                          "labelKey": "enabled",
-                          "control": "switch",
-                          "group": "provider"
-                        }
-                      },
-                      "config": {
+                      "request": {
                         "type": "object",
                         "properties": {
-                          "captureToMailpit": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "captureToMailpit",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
-                          },
-                          "provider": {
-                            "type": "string",
-                            "enum": [
-                              "smtp",
-                              "ses"
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "provider",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "region": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "enum": [
-                              "us-east-1",
-                              "us-east-2",
-                              "us-west-1",
-                              "us-west-2",
-                              "ap-south-1",
-                              "ap-northeast-1",
-                              "ap-northeast-2",
-                              "ap-northeast-3",
-                              "ap-southeast-1",
-                              "ap-southeast-2",
-                              "ca-central-1",
-                              "eu-central-1",
-                              "eu-north-1",
-                              "eu-west-1",
-                              "eu-west-2",
-                              "eu-west-3",
-                              "sa-east-1",
-                              "us-gov-east-1",
-                              "us-gov-west-1",
-                              null
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "region",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "host": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 253,
-                            "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
-                            "x-taskdesk-form": {
-                              "labelKey": "host",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "port": {
+                          "version": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 65535,
-                            "x-taskdesk-form": {
-                              "labelKey": "port",
-                              "control": "number",
-                              "group": "config"
-                            }
+                            "minimum": 0
                           },
-                          "secure": {
+                          "enabled": {
                             "type": "boolean",
                             "x-taskdesk-form": {
-                              "labelKey": "secure",
-                              "control": "checkbox",
-                              "group": "config"
+                              "labelKey": "enabled",
+                              "control": "switch",
+                              "group": "provider"
                             }
                           },
-                          "requireTLS": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "requireTLS",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
+                          "config": {
+                            "type": "object",
+                            "properties": {
+                              "captureToMailpit": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "captureToMailpit",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "provider": {
+                                "type": "string",
+                                "enum": [
+                                  "smtp",
+                                  "ses"
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "provider",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "region": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "us-east-1",
+                                  "us-east-2",
+                                  "us-west-1",
+                                  "us-west-2",
+                                  "ap-south-1",
+                                  "ap-northeast-1",
+                                  "ap-northeast-2",
+                                  "ap-northeast-3",
+                                  "ap-southeast-1",
+                                  "ap-southeast-2",
+                                  "ca-central-1",
+                                  "eu-central-1",
+                                  "eu-north-1",
+                                  "eu-west-1",
+                                  "eu-west-2",
+                                  "eu-west-3",
+                                  "sa-east-1",
+                                  "us-gov-east-1",
+                                  "us-gov-west-1",
+                                  null
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "region",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "host": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 253,
+                                "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
+                                "x-taskdesk-form": {
+                                  "labelKey": "host",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "port": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535,
+                                "x-taskdesk-form": {
+                                  "labelKey": "port",
+                                  "control": "number",
+                                  "group": "config"
+                                }
+                              },
+                              "secure": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "secure",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "requireTLS": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "requireTLS",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "username": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 320,
+                                "x-taskdesk-form": {
+                                  "labelKey": "username",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "fromAddress": {
+                                "type": "string",
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "fromAddress",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              },
+                              "replyTo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "replyTo",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              }
+                            },
+                            "required": [
+                              "host",
+                              "port",
+                              "secure",
+                              "requireTLS",
+                              "username",
+                              "fromAddress",
+                              "replyTo"
+                            ],
+                            "additionalProperties": false
                           },
-                          "username": {
+                          "password": {
                             "type": [
                               "string",
                               "null"
                             ],
                             "minLength": 1,
-                            "maxLength": 320,
+                            "maxLength": 16384,
                             "x-taskdesk-form": {
-                              "labelKey": "username",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "fromAddress": {
-                            "type": "string",
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "fromAddress",
-                              "control": "email",
-                              "group": "config"
-                            }
-                          },
-                          "replyTo": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "replyTo",
-                              "control": "email",
-                              "group": "config"
+                              "labelKey": "password",
+                              "control": "password",
+                              "group": "secret"
                             }
                           }
                         },
                         "required": [
-                          "host",
-                          "port",
-                          "secure",
-                          "requireTLS",
-                          "username",
-                          "fromAddress",
-                          "replyTo"
+                          "version",
+                          "enabled"
                         ],
                         "additionalProperties": false
-                      },
-                      "password": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "minLength": 1,
-                        "maxLength": 16384,
-                        "x-taskdesk-form": {
-                          "labelKey": "password",
-                          "control": "password",
-                          "group": "secret"
-                        }
                       }
                     },
                     "required": [
                       "kind",
                       "operation",
-                      "version",
-                      "enabled"
+                      "request"
                     ],
                     "additionalProperties": false
                   }
@@ -75309,163 +75318,181 @@
                           "notification_provider_save"
                         ]
                       },
-                      "version": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "enabled": {
-                        "type": "boolean",
-                        "x-taskdesk-form": {
-                          "labelKey": "enabled",
-                          "control": "switch",
-                          "group": "provider"
-                        }
-                      },
-                      "config": {
+                      "request": {
                         "type": "object",
                         "properties": {
-                          "captureToMailpit": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "captureToMailpit",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
-                          },
-                          "provider": {
-                            "type": "string",
-                            "enum": [
-                              "smtp",
-                              "ses"
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "provider",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "region": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "enum": [
-                              "us-east-1",
-                              "us-east-2",
-                              "us-west-1",
-                              "us-west-2",
-                              "ap-south-1",
-                              "ap-northeast-1",
-                              "ap-northeast-2",
-                              "ap-northeast-3",
-                              "ap-southeast-1",
-                              "ap-southeast-2",
-                              "ca-central-1",
-                              "eu-central-1",
-                              "eu-north-1",
-                              "eu-west-1",
-                              "eu-west-2",
-                              "eu-west-3",
-                              "sa-east-1",
-                              "us-gov-east-1",
-                              "us-gov-west-1",
-                              null
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "region",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "host": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 253,
-                            "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
-                            "x-taskdesk-form": {
-                              "labelKey": "host",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "port": {
+                          "version": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 65535,
-                            "x-taskdesk-form": {
-                              "labelKey": "port",
-                              "control": "number",
-                              "group": "config"
-                            }
+                            "minimum": 0
                           },
-                          "secure": {
+                          "enabled": {
                             "type": "boolean",
                             "x-taskdesk-form": {
-                              "labelKey": "secure",
-                              "control": "checkbox",
-                              "group": "config"
+                              "labelKey": "enabled",
+                              "control": "switch",
+                              "group": "provider"
                             }
                           },
-                          "requireTLS": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "requireTLS",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
+                          "config": {
+                            "type": "object",
+                            "properties": {
+                              "captureToMailpit": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "captureToMailpit",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "provider": {
+                                "type": "string",
+                                "enum": [
+                                  "smtp",
+                                  "ses"
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "provider",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "region": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "us-east-1",
+                                  "us-east-2",
+                                  "us-west-1",
+                                  "us-west-2",
+                                  "ap-south-1",
+                                  "ap-northeast-1",
+                                  "ap-northeast-2",
+                                  "ap-northeast-3",
+                                  "ap-southeast-1",
+                                  "ap-southeast-2",
+                                  "ca-central-1",
+                                  "eu-central-1",
+                                  "eu-north-1",
+                                  "eu-west-1",
+                                  "eu-west-2",
+                                  "eu-west-3",
+                                  "sa-east-1",
+                                  "us-gov-east-1",
+                                  "us-gov-west-1",
+                                  null
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "region",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "host": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 253,
+                                "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
+                                "x-taskdesk-form": {
+                                  "labelKey": "host",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "port": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535,
+                                "x-taskdesk-form": {
+                                  "labelKey": "port",
+                                  "control": "number",
+                                  "group": "config"
+                                }
+                              },
+                              "secure": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "secure",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "requireTLS": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "requireTLS",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "username": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 320,
+                                "x-taskdesk-form": {
+                                  "labelKey": "username",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "fromAddress": {
+                                "type": "string",
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "fromAddress",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              },
+                              "replyTo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "replyTo",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              }
+                            },
+                            "required": [
+                              "host",
+                              "port",
+                              "secure",
+                              "requireTLS",
+                              "username",
+                              "fromAddress",
+                              "replyTo"
+                            ],
+                            "additionalProperties": false
                           },
-                          "username": {
+                          "password": {
                             "type": [
                               "string",
                               "null"
                             ],
                             "minLength": 1,
-                            "maxLength": 320,
+                            "maxLength": 16384,
                             "x-taskdesk-form": {
-                              "labelKey": "username",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "fromAddress": {
-                            "type": "string",
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "fromAddress",
-                              "control": "email",
-                              "group": "config"
-                            }
-                          },
-                          "replyTo": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "replyTo",
-                              "control": "email",
-                              "group": "config"
+                              "labelKey": "password",
+                              "control": "password",
+                              "group": "secret"
                             }
                           }
                         },
                         "required": [
-                          "host",
-                          "port",
-                          "secure",
-                          "requireTLS",
-                          "username",
-                          "fromAddress",
-                          "replyTo"
+                          "version",
+                          "enabled"
                         ],
                         "additionalProperties": false
-                      },
-                      "password": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 1024
                       },
                       "challengeId": {
                         "type": "string"
@@ -75480,17 +75507,21 @@
                         "enum": [
                           "password"
                         ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
                       }
                     },
                     "required": [
                       "kind",
                       "operation",
-                      "version",
-                      "enabled",
-                      "password",
+                      "request",
                       "challengeId",
                       "nonce",
-                      "method"
+                      "method",
+                      "password"
                     ],
                     "additionalProperties": false
                   },
@@ -75509,171 +75540,181 @@
                           "notification_provider_save"
                         ]
                       },
-                      "version": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "enabled": {
-                        "type": "boolean",
-                        "x-taskdesk-form": {
-                          "labelKey": "enabled",
-                          "control": "switch",
-                          "group": "provider"
-                        }
-                      },
-                      "config": {
+                      "request": {
                         "type": "object",
                         "properties": {
-                          "captureToMailpit": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "captureToMailpit",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
-                          },
-                          "provider": {
-                            "type": "string",
-                            "enum": [
-                              "smtp",
-                              "ses"
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "provider",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "region": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "enum": [
-                              "us-east-1",
-                              "us-east-2",
-                              "us-west-1",
-                              "us-west-2",
-                              "ap-south-1",
-                              "ap-northeast-1",
-                              "ap-northeast-2",
-                              "ap-northeast-3",
-                              "ap-southeast-1",
-                              "ap-southeast-2",
-                              "ca-central-1",
-                              "eu-central-1",
-                              "eu-north-1",
-                              "eu-west-1",
-                              "eu-west-2",
-                              "eu-west-3",
-                              "sa-east-1",
-                              "us-gov-east-1",
-                              "us-gov-west-1",
-                              null
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "region",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "host": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 253,
-                            "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
-                            "x-taskdesk-form": {
-                              "labelKey": "host",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "port": {
+                          "version": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 65535,
-                            "x-taskdesk-form": {
-                              "labelKey": "port",
-                              "control": "number",
-                              "group": "config"
-                            }
+                            "minimum": 0
                           },
-                          "secure": {
+                          "enabled": {
                             "type": "boolean",
                             "x-taskdesk-form": {
-                              "labelKey": "secure",
-                              "control": "checkbox",
-                              "group": "config"
+                              "labelKey": "enabled",
+                              "control": "switch",
+                              "group": "provider"
                             }
                           },
-                          "requireTLS": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "requireTLS",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
+                          "config": {
+                            "type": "object",
+                            "properties": {
+                              "captureToMailpit": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "captureToMailpit",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "provider": {
+                                "type": "string",
+                                "enum": [
+                                  "smtp",
+                                  "ses"
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "provider",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "region": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "us-east-1",
+                                  "us-east-2",
+                                  "us-west-1",
+                                  "us-west-2",
+                                  "ap-south-1",
+                                  "ap-northeast-1",
+                                  "ap-northeast-2",
+                                  "ap-northeast-3",
+                                  "ap-southeast-1",
+                                  "ap-southeast-2",
+                                  "ca-central-1",
+                                  "eu-central-1",
+                                  "eu-north-1",
+                                  "eu-west-1",
+                                  "eu-west-2",
+                                  "eu-west-3",
+                                  "sa-east-1",
+                                  "us-gov-east-1",
+                                  "us-gov-west-1",
+                                  null
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "region",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "host": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 253,
+                                "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
+                                "x-taskdesk-form": {
+                                  "labelKey": "host",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "port": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535,
+                                "x-taskdesk-form": {
+                                  "labelKey": "port",
+                                  "control": "number",
+                                  "group": "config"
+                                }
+                              },
+                              "secure": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "secure",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "requireTLS": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "requireTLS",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "username": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 320,
+                                "x-taskdesk-form": {
+                                  "labelKey": "username",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "fromAddress": {
+                                "type": "string",
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "fromAddress",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              },
+                              "replyTo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "replyTo",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              }
+                            },
+                            "required": [
+                              "host",
+                              "port",
+                              "secure",
+                              "requireTLS",
+                              "username",
+                              "fromAddress",
+                              "replyTo"
+                            ],
+                            "additionalProperties": false
                           },
-                          "username": {
+                          "password": {
                             "type": [
                               "string",
                               "null"
                             ],
                             "minLength": 1,
-                            "maxLength": 320,
+                            "maxLength": 16384,
                             "x-taskdesk-form": {
-                              "labelKey": "username",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "fromAddress": {
-                            "type": "string",
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "fromAddress",
-                              "control": "email",
-                              "group": "config"
-                            }
-                          },
-                          "replyTo": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "replyTo",
-                              "control": "email",
-                              "group": "config"
+                              "labelKey": "password",
+                              "control": "password",
+                              "group": "secret"
                             }
                           }
                         },
                         "required": [
-                          "host",
-                          "port",
-                          "secure",
-                          "requireTLS",
-                          "username",
-                          "fromAddress",
-                          "replyTo"
+                          "version",
+                          "enabled"
                         ],
                         "additionalProperties": false
-                      },
-                      "password": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "minLength": 1,
-                        "maxLength": 16384,
-                        "x-taskdesk-form": {
-                          "labelKey": "password",
-                          "control": "password",
-                          "group": "secret"
-                        }
                       },
                       "challengeId": {
                         "type": "string"
@@ -75697,8 +75738,7 @@
                     "required": [
                       "kind",
                       "operation",
-                      "version",
-                      "enabled",
+                      "request",
                       "challengeId",
                       "nonce",
                       "method",
@@ -75721,171 +75761,181 @@
                           "notification_provider_save"
                         ]
                       },
-                      "version": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "enabled": {
-                        "type": "boolean",
-                        "x-taskdesk-form": {
-                          "labelKey": "enabled",
-                          "control": "switch",
-                          "group": "provider"
-                        }
-                      },
-                      "config": {
+                      "request": {
                         "type": "object",
                         "properties": {
-                          "captureToMailpit": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "captureToMailpit",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
-                          },
-                          "provider": {
-                            "type": "string",
-                            "enum": [
-                              "smtp",
-                              "ses"
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "provider",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "region": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "enum": [
-                              "us-east-1",
-                              "us-east-2",
-                              "us-west-1",
-                              "us-west-2",
-                              "ap-south-1",
-                              "ap-northeast-1",
-                              "ap-northeast-2",
-                              "ap-northeast-3",
-                              "ap-southeast-1",
-                              "ap-southeast-2",
-                              "ca-central-1",
-                              "eu-central-1",
-                              "eu-north-1",
-                              "eu-west-1",
-                              "eu-west-2",
-                              "eu-west-3",
-                              "sa-east-1",
-                              "us-gov-east-1",
-                              "us-gov-west-1",
-                              null
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "region",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "host": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 253,
-                            "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
-                            "x-taskdesk-form": {
-                              "labelKey": "host",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "port": {
+                          "version": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 65535,
-                            "x-taskdesk-form": {
-                              "labelKey": "port",
-                              "control": "number",
-                              "group": "config"
-                            }
+                            "minimum": 0
                           },
-                          "secure": {
+                          "enabled": {
                             "type": "boolean",
                             "x-taskdesk-form": {
-                              "labelKey": "secure",
-                              "control": "checkbox",
-                              "group": "config"
+                              "labelKey": "enabled",
+                              "control": "switch",
+                              "group": "provider"
                             }
                           },
-                          "requireTLS": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "requireTLS",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
+                          "config": {
+                            "type": "object",
+                            "properties": {
+                              "captureToMailpit": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "captureToMailpit",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "provider": {
+                                "type": "string",
+                                "enum": [
+                                  "smtp",
+                                  "ses"
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "provider",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "region": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "us-east-1",
+                                  "us-east-2",
+                                  "us-west-1",
+                                  "us-west-2",
+                                  "ap-south-1",
+                                  "ap-northeast-1",
+                                  "ap-northeast-2",
+                                  "ap-northeast-3",
+                                  "ap-southeast-1",
+                                  "ap-southeast-2",
+                                  "ca-central-1",
+                                  "eu-central-1",
+                                  "eu-north-1",
+                                  "eu-west-1",
+                                  "eu-west-2",
+                                  "eu-west-3",
+                                  "sa-east-1",
+                                  "us-gov-east-1",
+                                  "us-gov-west-1",
+                                  null
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "region",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "host": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 253,
+                                "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
+                                "x-taskdesk-form": {
+                                  "labelKey": "host",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "port": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535,
+                                "x-taskdesk-form": {
+                                  "labelKey": "port",
+                                  "control": "number",
+                                  "group": "config"
+                                }
+                              },
+                              "secure": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "secure",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "requireTLS": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "requireTLS",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "username": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 320,
+                                "x-taskdesk-form": {
+                                  "labelKey": "username",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "fromAddress": {
+                                "type": "string",
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "fromAddress",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              },
+                              "replyTo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "replyTo",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              }
+                            },
+                            "required": [
+                              "host",
+                              "port",
+                              "secure",
+                              "requireTLS",
+                              "username",
+                              "fromAddress",
+                              "replyTo"
+                            ],
+                            "additionalProperties": false
                           },
-                          "username": {
+                          "password": {
                             "type": [
                               "string",
                               "null"
                             ],
                             "minLength": 1,
-                            "maxLength": 320,
+                            "maxLength": 16384,
                             "x-taskdesk-form": {
-                              "labelKey": "username",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "fromAddress": {
-                            "type": "string",
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "fromAddress",
-                              "control": "email",
-                              "group": "config"
-                            }
-                          },
-                          "replyTo": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "replyTo",
-                              "control": "email",
-                              "group": "config"
+                              "labelKey": "password",
+                              "control": "password",
+                              "group": "secret"
                             }
                           }
                         },
                         "required": [
-                          "host",
-                          "port",
-                          "secure",
-                          "requireTLS",
-                          "username",
-                          "fromAddress",
-                          "replyTo"
+                          "version",
+                          "enabled"
                         ],
                         "additionalProperties": false
-                      },
-                      "password": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "minLength": 1,
-                        "maxLength": 16384,
-                        "x-taskdesk-form": {
-                          "labelKey": "password",
-                          "control": "password",
-                          "group": "secret"
-                        }
                       },
                       "challengeId": {
                         "type": "string"
@@ -75910,8 +75960,7 @@
                     "required": [
                       "kind",
                       "operation",
-                      "version",
-                      "enabled",
+                      "request",
                       "challengeId",
                       "nonce",
                       "method",
@@ -77266,171 +77315,181 @@
                           "notification_provider_save"
                         ]
                       },
-                      "version": {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      "enabled": {
-                        "type": "boolean",
-                        "x-taskdesk-form": {
-                          "labelKey": "enabled",
-                          "control": "switch",
-                          "group": "provider"
-                        }
-                      },
-                      "config": {
+                      "request": {
                         "type": "object",
                         "properties": {
-                          "captureToMailpit": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "captureToMailpit",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
-                          },
-                          "provider": {
-                            "type": "string",
-                            "enum": [
-                              "smtp",
-                              "ses"
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "provider",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "region": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "enum": [
-                              "us-east-1",
-                              "us-east-2",
-                              "us-west-1",
-                              "us-west-2",
-                              "ap-south-1",
-                              "ap-northeast-1",
-                              "ap-northeast-2",
-                              "ap-northeast-3",
-                              "ap-southeast-1",
-                              "ap-southeast-2",
-                              "ca-central-1",
-                              "eu-central-1",
-                              "eu-north-1",
-                              "eu-west-1",
-                              "eu-west-2",
-                              "eu-west-3",
-                              "sa-east-1",
-                              "us-gov-east-1",
-                              "us-gov-west-1",
-                              null
-                            ],
-                            "x-taskdesk-form": {
-                              "labelKey": "region",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "host": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 253,
-                            "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
-                            "x-taskdesk-form": {
-                              "labelKey": "host",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "port": {
+                          "version": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 65535,
-                            "x-taskdesk-form": {
-                              "labelKey": "port",
-                              "control": "number",
-                              "group": "config"
-                            }
+                            "minimum": 0
                           },
-                          "secure": {
+                          "enabled": {
                             "type": "boolean",
                             "x-taskdesk-form": {
-                              "labelKey": "secure",
-                              "control": "checkbox",
-                              "group": "config"
+                              "labelKey": "enabled",
+                              "control": "switch",
+                              "group": "provider"
                             }
                           },
-                          "requireTLS": {
-                            "type": "boolean",
-                            "x-taskdesk-form": {
-                              "labelKey": "requireTLS",
-                              "control": "checkbox",
-                              "group": "config"
-                            }
+                          "config": {
+                            "type": "object",
+                            "properties": {
+                              "captureToMailpit": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "captureToMailpit",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "provider": {
+                                "type": "string",
+                                "enum": [
+                                  "smtp",
+                                  "ses"
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "provider",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "region": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "us-east-1",
+                                  "us-east-2",
+                                  "us-west-1",
+                                  "us-west-2",
+                                  "ap-south-1",
+                                  "ap-northeast-1",
+                                  "ap-northeast-2",
+                                  "ap-northeast-3",
+                                  "ap-southeast-1",
+                                  "ap-southeast-2",
+                                  "ca-central-1",
+                                  "eu-central-1",
+                                  "eu-north-1",
+                                  "eu-west-1",
+                                  "eu-west-2",
+                                  "eu-west-3",
+                                  "sa-east-1",
+                                  "us-gov-east-1",
+                                  "us-gov-west-1",
+                                  null
+                                ],
+                                "x-taskdesk-form": {
+                                  "labelKey": "region",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "host": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 253,
+                                "pattern": "^[a-zA-Z0-9.:[\\]-]+$/u",
+                                "x-taskdesk-form": {
+                                  "labelKey": "host",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "port": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 65535,
+                                "x-taskdesk-form": {
+                                  "labelKey": "port",
+                                  "control": "number",
+                                  "group": "config"
+                                }
+                              },
+                              "secure": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "secure",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "requireTLS": {
+                                "type": "boolean",
+                                "x-taskdesk-form": {
+                                  "labelKey": "requireTLS",
+                                  "control": "checkbox",
+                                  "group": "config"
+                                }
+                              },
+                              "username": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 320,
+                                "x-taskdesk-form": {
+                                  "labelKey": "username",
+                                  "control": "text",
+                                  "group": "config"
+                                }
+                              },
+                              "fromAddress": {
+                                "type": "string",
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "fromAddress",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              },
+                              "replyTo": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "maxLength": 320,
+                                "format": "email",
+                                "x-taskdesk-form": {
+                                  "labelKey": "replyTo",
+                                  "control": "email",
+                                  "group": "config"
+                                }
+                              }
+                            },
+                            "required": [
+                              "host",
+                              "port",
+                              "secure",
+                              "requireTLS",
+                              "username",
+                              "fromAddress",
+                              "replyTo"
+                            ],
+                            "additionalProperties": false
                           },
-                          "username": {
+                          "password": {
                             "type": [
                               "string",
                               "null"
                             ],
                             "minLength": 1,
-                            "maxLength": 320,
+                            "maxLength": 16384,
                             "x-taskdesk-form": {
-                              "labelKey": "username",
-                              "control": "text",
-                              "group": "config"
-                            }
-                          },
-                          "fromAddress": {
-                            "type": "string",
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "fromAddress",
-                              "control": "email",
-                              "group": "config"
-                            }
-                          },
-                          "replyTo": {
-                            "type": [
-                              "string",
-                              "null"
-                            ],
-                            "maxLength": 320,
-                            "format": "email",
-                            "x-taskdesk-form": {
-                              "labelKey": "replyTo",
-                              "control": "email",
-                              "group": "config"
+                              "labelKey": "password",
+                              "control": "password",
+                              "group": "secret"
                             }
                           }
                         },
                         "required": [
-                          "host",
-                          "port",
-                          "secure",
-                          "requireTLS",
-                          "username",
-                          "fromAddress",
-                          "replyTo"
+                          "version",
+                          "enabled"
                         ],
                         "additionalProperties": false
-                      },
-                      "password": {
-                        "type": [
-                          "string",
-                          "null"
-                        ],
-                        "minLength": 1,
-                        "maxLength": 16384,
-                        "x-taskdesk-form": {
-                          "labelKey": "password",
-                          "control": "password",
-                          "group": "secret"
-                        }
                       },
                       "challengeId": {
                         "type": "string"
@@ -77450,8 +77509,7 @@
                     "required": [
                       "kind",
                       "operation",
-                      "version",
-                      "enabled",
+                      "request",
                       "challengeId",
                       "nonce",
                       "method"

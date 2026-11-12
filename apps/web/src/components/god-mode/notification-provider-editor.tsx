@@ -378,7 +378,7 @@ function ProviderForm({
     // Mail carries reset links, so the write needs the administrator's second factor again; the
     // single-use proof is bound to exactly this request.
     const result = await step.run(
-      { operation: "notification_provider_save", ...request },
+      { operation: "notification_provider_save", request },
       (token) => saveEmailProvider(request, token),
     );
     if (!result.ok) {

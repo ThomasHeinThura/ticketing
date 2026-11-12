@@ -121,4 +121,50 @@ describe("email provider save proof canonicalization", () => {
       "Email provider verification unavailable",
     );
   });
+
+  it("nests the write under request so the SMTP password never collides with a password step-up factor", async () => {
+    const { extChallengeSchemas, extProveSchemas } = await import(
+      "../../../apps/api/src/auth/step-up-ext"
+    );
+    const challengeUnion = extChallengeSchemas;
+    const proveUnion = extProveSchemas;
+    for (const smtpPassword of [
+      undefined,
+      null,
+      "synthetic-smtp-secret",
+    ] as const) {
+      const write =
+        smtpPassword === undefined
+          ? { version: 3, enabled: true, config }
+          : { version: 3, enabled: true, config, password: smtpPassword };
+      const challengePayload = {
+        kind: "operation" as const,
+        operation: "notification_provider_save" as const,
+        request: write,
+      };
+      const matchedChallenges = challengeUnion.filter(
+        (schema) => schema.safeParse(challengePayload).success,
+      );
+      expect(matchedChallenges).toHaveLength(1);
+
+      const provePayload = {
+        ...challengePayload,
+        challengeId: "challenge-1",
+        nonce: "n".repeat(43),
+        method: "password" as const,
+        password: "synthetic-admin-password",
+      };
+      const matchedProofs = proveUnion
+        .map((schema) => schema.safeParse(provePayload))
+        .filter((parsed) => parsed.success);
+      expect(matchedProofs).toHaveLength(1);
+      expect(matchedProofs[0]?.data).toMatchObject({
+        password: "synthetic-admin-password",
+        request:
+          smtpPassword === undefined
+            ? { version: 3, enabled: true }
+            : { version: 3, enabled: true, password: smtpPassword },
+      });
+    }
+  });
 });

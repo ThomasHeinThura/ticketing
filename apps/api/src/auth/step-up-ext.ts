@@ -190,8 +190,9 @@ const shapes = {
   [STORAGE_CONFIG_SAVE_OPERATION]: s3DraftWriteSchema.shape,
   [STORAGE_CONFIG_TEST_OPERATION]: s3DraftWriteSchema.shape,
   // The whole write: settings, enabled flag, CAS version and the password's keep/clear/replace
-  // intent. Saving changes where password-reset and invitation mail is sent from.
-  [NOTIFICATION_PROVIDER_SAVE_OPERATION]: writeProviderSchema.shape,
+  // intent, nested under `request` so the SMTP `password` field never collides with the
+  // administrator's `password` factor on `POST /me/step-up`.
+  [NOTIFICATION_PROVIDER_SAVE_OPERATION]: { request: writeProviderSchema },
 } as const;
 
 export type ExtOperation = keyof typeof shapes;
@@ -278,9 +279,10 @@ export type ExtInput =
     } & z.infer<typeof localAuthMethodsBody>)
   | ({ operation: typeof STORAGE_CONFIG_SAVE_OPERATION } & S3DraftWrite)
   | ({ operation: typeof STORAGE_CONFIG_TEST_OPERATION } & S3DraftWrite)
-  | ({
+  | {
       operation: typeof NOTIFICATION_PROVIDER_SAVE_OPERATION;
-    } & EmailProviderWrite);
+      request: EmailProviderWrite;
+    };
 
 const sortedUnique = (values: readonly string[]) => [...new Set(values)].sort();
 
@@ -629,7 +631,7 @@ function binding(input: ExtInput): {
           input.operation,
           NOTIFICATION_PROVIDER_SAVE_ROUTE,
           1,
-          canonicalEmailProviderRequest(input),
+          canonicalEmailProviderRequest(input.request),
         ),
       };
     case AUTH_LOCAL_METHODS_UPDATE_OPERATION:

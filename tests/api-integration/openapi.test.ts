@@ -101,7 +101,7 @@ describe("TaskDesk API OpenAPI spec", () => {
         "application/json"
       ]?.schema;
 
-    expect(challengeSchema?.oneOf).toHaveLength(29);
+    expect(challengeSchema?.oneOf).toHaveLength(30);
     const branches = challengeSchema?.oneOf as Array<{
       properties?: {
         kind?: { enum?: string[] };
@@ -111,7 +111,7 @@ describe("TaskDesk API OpenAPI spec", () => {
     const operationBranches = branches.filter(
       (branch) => branch.properties?.kind?.enum?.[0] === "operation",
     );
-    expect(operationBranches).toHaveLength(28);
+    expect(operationBranches).toHaveLength(29);
     expect(
       operationBranches
         .map((branch) => branch.properties?.operation?.enum?.[0])
