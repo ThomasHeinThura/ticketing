@@ -1,3 +1,4 @@
+import { notifyServerError } from "@taskdesk/libs/src/hono";
 import { getApiUrl } from "../fetchers/get-api-url";
 
 export function getPortalAuthBaseURL() {
@@ -12,7 +13,12 @@ export function getPortalAuthBaseURL() {
   }
 }
 
-type AuthError = { status: number; message?: string; code?: string };
+type AuthError = {
+  status: number;
+  message?: string;
+  code?: string;
+  requestId?: string;
+};
 type AuthResult<T> = { data: T | null; error: AuthError | null };
 type PortalSession = {
   session: { id: string } & Record<string, unknown>;
@@ -29,6 +35,7 @@ async function authFetch<T>(
     headers: init.body ? { "content-type": "application/json" } : undefined,
     body: init.body ? JSON.stringify(init.body) : undefined,
   });
+  notifyServerError(response);
   const text = await response.text();
   let payload: unknown = null;
   try {
@@ -48,7 +55,27 @@ async function authFetch<T>(
       typeof payload.code === "string"
         ? payload.code
         : undefined;
-    return { data: null, error: { status: response.status, message, code } };
+    const bodyId =
+      payload &&
+      typeof payload === "object" &&
+      "requestId" in payload &&
+      typeof payload.requestId === "string"
+        ? payload.requestId
+        : undefined;
+    const headerId = response.headers.get("x-taskdesk-request-id") ?? undefined;
+    const requestId =
+      response.status >= 500
+        ? [bodyId, headerId].find((id) => id && /^[0-9a-f]{32}$/.test(id))
+        : undefined;
+    return {
+      data: null,
+      error: {
+        status: response.status,
+        message: response.status >= 500 ? undefined : message,
+        code: response.status >= 500 ? undefined : code,
+        ...(requestId ? { requestId } : {}),
+      },
+    };
   }
   return { data: payload as T, error: null };
 }

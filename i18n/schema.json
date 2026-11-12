@@ -397,6 +397,18 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"reference": {
+							"type": "string"
+						},
+						"copyReference": {
+							"type": "string"
+						},
+						"copyReferenceFailed": {
+							"type": "string"
+						},
+						"serverReferenceToast": {
+							"type": "string"
+						},
 						"title": {
 							"type": "string"
 						},
@@ -531,6 +543,10 @@
 						}
 					},
 					"required": [
+						"reference",
+						"copyReference",
+						"copyReferenceFailed",
+						"serverReferenceToast",
 						"title",
 						"description",
 						"troubleshooting",

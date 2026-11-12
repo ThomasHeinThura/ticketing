@@ -73,6 +73,10 @@
 			"unknown": "未知"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "出错了",
 			"troubleshooting": "故障排查步骤：",
 			"tryAgain": "重试",

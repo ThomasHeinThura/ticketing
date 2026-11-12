@@ -1,7 +1,11 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 import { type ReportSearch, reportQuery } from "@/lib/report-search";
 
 /** Reports and dashboards (`RP-1`..`RP-18`): the envelope every report comes back in. */
@@ -230,6 +234,8 @@ const RULE_CODES = new Set([
 ]);
 
 async function failure(response: Response, fallback: string): Promise<never> {
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, fallback);
   const detail = await readErrorDetail(response, fallback);
   if (response.status === 409 && detail === "feature_disabled")
     throw new ReportsDisabledError();

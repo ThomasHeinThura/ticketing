@@ -111,6 +111,7 @@ import {
 import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
 import {
   beginObservedRequest,
+  logServerError,
   logTaskDesk,
   observeRequest,
   recordAuditWriteFailure,
@@ -160,6 +161,7 @@ import notificationPreferences from "./notification-preferences";
 import notificationProvider from "./notification-provider";
 import { installRuntimeSmtpResolver } from "./notification-provider/runtime";
 import oauth from "./oauth";
+import { handleServerError } from "./observability/server-error-handler";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import pages from "./pages";
 import pendingAction from "./pending-action";
@@ -1130,15 +1132,7 @@ export function createApp(
   declareCatchAllMiddleware(requestMetricsMiddleware);
   app.use("*", requestMetricsMiddleware);
 
-  app.onError((err, c) => {
-    if (err instanceof HTTPException) {
-      // expected errors (401/404/...) are not reported; real failures are
-      if (err.status >= 500) {
-      }
-      return err.getResponse();
-    }
-    return c.json({ message: "Internal Server Error" }, 500);
-  });
+  app.onError((err, c) => handleServerError(err, c, logServerError));
   const staticRoots = resolveStaticRoots({
     agent: options.staticRoot,
     portal: options.portalStaticRoot,

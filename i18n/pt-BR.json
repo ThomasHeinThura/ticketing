@@ -73,6 +73,10 @@
 			"unknown": "Desconhecido"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Algo deu errado",
 			"troubleshooting": "Passos para solução de problemas:",
 			"tryAgain": "Tentar novamente",

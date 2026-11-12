@@ -73,6 +73,10 @@
 			"unknown": "Tidak diketahui"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Terjadi kesalahan",
 			"troubleshooting": "Langkah pemecahan masalah:",
 			"tryAgain": "Coba lagi",

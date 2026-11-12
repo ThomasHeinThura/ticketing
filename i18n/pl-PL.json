@@ -73,6 +73,10 @@
 			"unknown": "Nieznany"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Coś poszło nie tak",
 			"description": "Strona niespodziewanie się zawiesiła. Odświeżenie powinno pomóc.",
 			"troubleshooting": "Kroki diagnostyczne:",
