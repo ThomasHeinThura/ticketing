@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BUILT_IN_ROLES, type BuiltInRoleKey } from "@taskdesk/permissions";
 import {
   cleanup,
   fireEvent,
@@ -11,6 +12,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./request-types";
 
 const mocks = vi.hoisted(() => ({
+  role: "admin" as string,
+  checking: false,
+  getWorkItemTypes: vi.fn(),
   search: { requestTypeId: "rt-1" } as { requestTypeId?: string },
   navigate: vi.fn(),
   getRequestTypes: vi.fn(),
@@ -39,10 +43,24 @@ vi.mock("@/fetchers/intake-group-order", () => ({
   replaceRequestTypeGroupOrder: mocks.replaceRequestTypeGroupOrder,
 }));
 vi.mock("@/hooks/queries/work-item/use-get-work-item-types", () => ({
-  default: () => ({ data: [{ id: "wit-1", name: "Task" }], isLoading: false }),
+  default: (...args: unknown[]) => {
+    mocks.getWorkItemTypes(...args);
+    return { data: [{ id: "wit-1", name: "Task" }], isLoading: false };
+  },
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" }, isLoading: false }),
+}));
+// `/api/capabilities` reports `manageRequestTypes` from the strict `request_type:manage`, so a
+// role holds the flag exactly when its built-in capability list does.
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canManageRequestTypes: () =>
+      (
+        BUILT_IN_ROLES[mocks.role as BuiltInRoleKey].capabilities as string[]
+      ).includes("request_type:manage"),
+    isCheckingPermissions: mocks.checking,
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("react-i18next", () => ({
@@ -84,10 +102,20 @@ const type = {
   position: 0,
 };
 
-function renderPage() {
+function renderPage(failed = false) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  if (failed) {
+    const query = queryClient.getQueryCache().build(queryClient, {
+      queryKey: ["workspace-capabilities", "workspace-1", "member"],
+    });
+    query.setState({
+      status: "error",
+      fetchStatus: "idle",
+      error: new Error("failed"),
+    });
+  }
   return render(
     <QueryClientProvider client={queryClient}>
       <RequestTypesPage />
@@ -97,6 +125,9 @@ function renderPage() {
 
 describe("request type editor", () => {
   beforeEach(() => {
+    mocks.role = "admin";
+    mocks.checking = false;
+    mocks.getWorkItemTypes.mockReset();
     mocks.search = { requestTypeId: "rt-1" };
     mocks.getRequestTypes.mockReset().mockResolvedValue({
       requestTypes: [type],
@@ -116,6 +147,64 @@ describe("request type editor", () => {
       );
   });
   afterEach(() => cleanup());
+
+  it.each(["denied", "checking"])(
+    "does not fetch editor data while %s",
+    (state) => {
+      mocks.role = "viewer";
+      mocks.checking = state === "checking";
+      renderPage();
+      expect(
+        state === "denied"
+          ? screen.getByTestId("settings-access-denied")
+          : screen.getByRole("status", {
+              name: "settings:accessDenied.checking",
+            }),
+      ).toBeTruthy();
+      expect(mocks.getRequestTypes).not.toHaveBeenCalled();
+      expect(mocks.getRequestType).not.toHaveBeenCalled();
+      expect(mocks.getRequestTypeGroupOrder).not.toHaveBeenCalled();
+      expect(mocks.getWorkItemTypes).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["lead", "member", "viewer"])(
+    "shows the no-access state to a %s and sends no request",
+    (role) => {
+      mocks.role = role;
+      renderPage();
+      expect(screen.getByTestId("settings-access-denied")).toBeTruthy();
+      expect(screen.queryByLabelText("Field key")).toBeNull();
+      expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+      expect(screen.queryByTestId("settings-access-error")).toBeNull();
+      expect(mocks.getRequestTypes).not.toHaveBeenCalled();
+      expect(mocks.getRequestType).not.toHaveBeenCalled();
+      expect(mocks.getRequestTypeGroupOrder).not.toHaveBeenCalled();
+      expect(mocks.getWorkItemTypes).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["owner", "admin"])(
+    "opens the authoring editor for the %s role",
+    async (role) => {
+      mocks.role = role;
+      renderPage();
+      expect(
+        (await screen.findAllByLabelText("Field key")).length,
+      ).toBeGreaterThan(0);
+      expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+      expect(mocks.getRequestTypes).toHaveBeenCalledWith("workspace-1");
+    },
+  );
+
+  it("fails closed when capabilities fail", () => {
+    mocks.checking = true;
+    renderPage(true);
+    expect(screen.getByTestId("settings-access-error")).toBeTruthy();
+    expect(mocks.getRequestTypes).not.toHaveBeenCalled();
+    expect(mocks.getRequestType).not.toHaveBeenCalled();
+    expect(mocks.getRequestTypeGroupOrder).not.toHaveBeenCalled();
+  });
 
   it("keeps the same field row mounted while its key is edited", async () => {
     renderPage();

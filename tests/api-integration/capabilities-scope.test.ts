@@ -495,6 +495,26 @@ describe("GET /api/capabilities", () => {
     expect((await response.json()).manageServiceCalendars).toBe(false);
   });
 
+  it("reports request type authoring separately from read access for each built-in role", async () => {
+    const { app } = createApp();
+    for (const [role, allowed] of [
+      ["owner", true],
+      ["admin", true],
+      ["manager", true],
+      ["lead", false],
+      ["member", false],
+      ["viewer", false],
+    ] as const) {
+      const member = await createWorkspaceMember({ role });
+      mockAuthenticatedSession(member.user);
+      const response = await app.request(
+        `/api/capabilities?workspaceId=${member.workspace.id}`,
+      );
+      expect(response.status, role).toBe(200);
+      expect((await response.json()).manageRequestTypes, role).toBe(allowed);
+    }
+  });
+
   it("reports the canonical saved-view audience capabilities", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
