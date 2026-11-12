@@ -37,13 +37,19 @@ import { TaskDeskClient } from "../../packages/mcp/src/taskdesk/client";
 import { registerTools } from "../../packages/mcp/src/tools/register";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+  grantProjectManageAccess,
+  grantProjectRole,
+} from "./helpers/fixtures";
 import { makeCustomField, setCustomValue } from "./helpers/p4-closeout";
 import { setAgileFlags } from "./helpers/p5-agile";
 import { setPagesFlag } from "./helpers/p5-pages";
 import { setFeature } from "./helpers/p5-reports";
 import { setServiceFlag } from "./helpers/p5-service";
 import { setTimeFlags } from "./helpers/p5-time";
+import { ensureAgentSession } from "./helpers/pending-deletion";
 import {
   addMember,
   createItem,
@@ -2247,6 +2253,145 @@ describe("B-5: staff project reach", () => {
         .where(eq(schema.savedViewTable.id, saved.id));
       expect(current?.name).toBe("Membership race");
     }
+  });
+
+  for (const role of ["member", "viewer"] as const) {
+    it(`${role} cannot use project management routes through a project grant`, async () => {
+      const caller = await createWorkspaceMember({ role });
+      const { project } = await createProjectFixture({
+        workspaceId: caller.workspace.id,
+      });
+      // This grant supplies reach and the strict project capability, including delete and
+      // archive by implication. The workspace role must still independently authorize writes.
+      await grantProjectManageAccess(caller.user.id, project.id);
+      await ensureAgentSession(caller.user.id);
+      const [milestone] = await db
+        .insert(schema.milestoneTable)
+        .values({
+          projectId: project.id,
+          name: "Original",
+          date: new Date("2030-01-01"),
+        })
+        .returning();
+      if (!milestone) throw new Error("milestone missing");
+      const { app } = createApp();
+      mockAuthenticatedSession(caller.user);
+      const projectPath = `/api/project/${project.id}`;
+      const milestonePath = `${projectPath}/milestones/${milestone.id}`;
+      const cases = [
+        [
+          "PUT",
+          projectPath,
+          {
+            name: "Changed",
+            icon: "Folder",
+            slug: project.slug,
+            description: "",
+            isPublic: false,
+          },
+        ],
+        ["PATCH", `${projectPath}/health`, { health: "red" }],
+        ["DELETE", projectPath, undefined],
+        ["PUT", `${projectPath}/archive`, undefined],
+        ["PUT", `${projectPath}/unarchive`, undefined],
+        [
+          "POST",
+          `${projectPath}/milestones`,
+          { name: "New", date: "2030-01-01T00:00:00.000Z" },
+        ],
+        ["PATCH", milestonePath, { name: "Changed" }],
+        ["PATCH", milestonePath, { reached: true }],
+        ["DELETE", milestonePath, undefined],
+        [
+          "PUT",
+          `/api/project/reorder?workspaceId=${caller.workspace.id}`,
+          { projects: [{ id: project.id, position: 0 }] },
+        ],
+      ] as const;
+      for (const [method, url, body] of cases) {
+        const response = await json(app, method, url, body);
+        expect(
+          response.status,
+          `${method} ${url}: ${await response.clone().text()}`,
+        ).toBe(403);
+      }
+      // Restore is exercised against an actually deleted row, not a no-op on a live one.
+      await db
+        .update(schema.projectTable)
+        .set({
+          deletedAt: new Date(),
+          purgeAfter: new Date(Date.now() + 30 * 86_400_000),
+        })
+        .where(eq(schema.projectTable.id, project.id));
+      const restore = await json(app, "PUT", `${projectPath}/restore`);
+      expect(restore.status, await restore.clone().text()).toBe(403);
+      const [savedProject] = await db
+        .select()
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.id, project.id));
+      const [savedMilestone] = await db
+        .select()
+        .from(schema.milestoneTable)
+        .where(eq(schema.milestoneTable.id, milestone.id));
+      expect(savedProject?.deletedAt).not.toBeNull();
+      expect(savedProject?.name).toBe(project.name);
+      expect(savedProject?.archivedAt).toBeNull();
+      expect(savedMilestone?.name).toBe("Original");
+      expect(savedMilestone?.reachedAt).toBeNull();
+      expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+    });
+  }
+
+  it("requires both archive and update API-key scopes for archive, unarchive and restore", async () => {
+    const caller = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: caller.workspace.id,
+    });
+    await grantProjectManageAccess(caller.user.id, project.id);
+    const archiveOnly = await makeApiKey(caller.user.id, {
+      project: ["read", "archive"],
+      workspace: ["read"],
+    });
+    const both = await makeApiKey(caller.user.id, {
+      project: ["read", "archive", "update"],
+      workspace: ["read"],
+    });
+    const { app } = createApp();
+    mockAnonymousSession();
+    for (const action of ["archive", "unarchive", "restore"] as const) {
+      if (action === "restore") {
+        await db
+          .update(schema.projectTable)
+          .set({
+            deletedAt: new Date(),
+            purgeAfter: new Date(Date.now() + 30 * 86_400_000),
+          })
+          .where(eq(schema.projectTable.id, project.id));
+      }
+      setAmbientHeaders({ "x-api-key": archiveOnly });
+      const denied = await json(
+        app,
+        "PUT",
+        `/api/project/${project.id}/${action}`,
+      );
+      expect(denied.status, action).toBe(403);
+      expect(await denied.text()).toContain("Insufficient API key scope");
+      setAmbientHeaders({ "x-api-key": both });
+      const allowed = await json(
+        app,
+        "PUT",
+        `/api/project/${project.id}/${action}`,
+      );
+      expect(allowed.status, `${action}: ${await allowed.clone().text()}`).toBe(
+        200,
+      );
+    }
+    const [persisted] = await db
+      .select()
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    expect(persisted?.deletedAt).toBeNull();
+    expect(persisted?.archivedAt).toBeNull();
   });
 
   it("reorder returns only reachable projects and never renumbers hidden rows", async () => {
