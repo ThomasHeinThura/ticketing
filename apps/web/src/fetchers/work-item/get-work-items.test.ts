@@ -63,6 +63,18 @@ describe("getWorkItems", () => {
     mocks.get.mockReset();
   });
 
+  it("forwards an abort signal to the list transport", async () => {
+    const controller = new AbortController();
+    mocks.get.mockResolvedValue({
+      ok: true,
+      json: async () => makeEnvelope([]),
+    });
+    await getWorkItems("proj_1", "key", "asc", { signal: controller.signal });
+    expect(mocks.get).toHaveBeenCalledWith(expect.anything(), {
+      init: { signal: controller.signal },
+    });
+  });
+
   it("returns hasPartialFailure: false with every row intact when the whole response is valid", async () => {
     const goodA = makeItem({ id: "wi_1", key: "PROJ-1", number: 1 });
     const goodB = makeItem({ id: "wi_2", key: "PROJ-2", number: 2 });

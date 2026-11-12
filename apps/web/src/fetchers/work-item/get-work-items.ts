@@ -41,6 +41,7 @@ async function getWorkItems(
     limit?: number;
     /** P5 agile: narrow to one cycle or module (`cycle` / `module` list filters). */
     scope?: WorkItemAgileScope;
+    signal?: AbortSignal;
   } = {},
 ): Promise<WorkItemsResult> {
   const query: Record<string, string> = {
@@ -51,10 +52,15 @@ async function getWorkItems(
     ...(options.scope?.cycleId ? { cycle: options.scope.cycleId } : {}),
     ...(options.scope?.moduleId ? { module: options.scope.moduleId } : {}),
   };
-  const response = await client.projects[":projectId"]["work-items"].$get({
-    param: { projectId },
-    query: query as { sort: typeof sort; dir: typeof dir },
-  });
+  const response = await client.projects[":projectId"]["work-items"].$get(
+    {
+      param: { projectId },
+      query: query as { sort: typeof sort; dir: typeof dir },
+    },
+    ...(options.signal
+      ? ([{ init: { signal: options.signal } }] as const)
+      : []),
+  );
 
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to fetch work items");

@@ -4,7 +4,7 @@ import {
   useInfiniteQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
@@ -158,6 +158,16 @@ function useGetWorkItems({
   const activeKey = useSearch ? searchQueryKey : listQueryKey;
   // A key's JSON representation is stable even when callers recreate their filter arrays.
   const activeKeyId = JSON.stringify(activeKey);
+  const [changedKey, setChangedKey] = useState<string>();
+  const keyRef = useRef(activeKeyId);
+  keyRef.current = activeKeyId;
+  useEffect(() => {
+    setChangedKey((current) =>
+      realtimeStatus === "available" || current !== activeKeyId
+        ? undefined
+        : current,
+    );
+  }, [activeKeyId, realtimeStatus]);
   const pollRef = useRef({
     activeKey,
     projectId,
@@ -209,81 +219,38 @@ function useGetWorkItems({
       const oldData = before.data as
         | InfiniteData<WorkItemsResult, string | undefined>
         | undefined;
+      if (!oldData?.pages.length) return;
       inFlight = true;
       try {
-        // A separate, short-lived query uses the same QueryCache error handling and retry
-        // policy as a normal read, without putting partial pages into the list cache.
-        const refreshed = await queryClient.fetchQuery({
+        const first = await queryClient.fetchQuery({
           queryKey: ["work-list-outage-poll", ...input.activeKey],
           gcTime: 0,
-          queryFn: async (): Promise<
-            InfiniteData<WorkItemsResult, string | undefined>
-          > => {
-            const readPage = async (cursor?: string) =>
-              input.useSearch
-                ? (await loadSearchWorkItems())({
-                    workspaceId: input.workspaceId as string,
-                    projectSlug: input.projectSlug as string,
-                    filter: input.structuredFilter ?? "",
-                    sort: input.sort,
-                    dir: input.dir,
-                    sorts: input.effectiveSorts,
-                    columns: input.columns,
-                    cursor,
-                  })
-                : fetchWorkItemsListPage(
-                    input.projectId as string,
-                    input.sort,
-                    input.dir,
-                    cursor,
-                  );
-            const first = await readPage();
-            const oldFirst = oldData?.pages[0];
-            const sameBoundary =
-              oldFirst &&
-              oldFirst.nextCursor === first.nextCursor &&
-              oldFirst.hasMore === first.hasMore &&
-              oldFirst.items.length === first.items.length &&
-              oldFirst.items.every(
-                (item, index) => item.id === first.items[index]?.id,
-              );
-            if (sameBoundary && oldData)
-              return { ...oldData, pages: [first, ...oldData.pages.slice(1)] };
-
-            // The cursor is live, so membership changes may push or pull rows across
-            // boundaries. Re-read the loaded range before publishing anything.
-            const pages = [first];
-            const pageParams: (string | undefined)[] = [undefined];
-            const loadedCount = oldData?.pages.length ?? 1;
-            while (pages.length < loadedCount) {
-              const previous = pages[pages.length - 1];
-              const cursor = previous?.hasMore
-                ? previous.nextCursor
-                : undefined;
-              if (!cursor || pageParams.includes(cursor)) break;
-              pageParams.push(cursor);
-              pages.push(await readPage(cursor));
+          retry: false,
+          queryFn: async ({ signal }) => {
+            if (input.useSearch) {
+              const search = await loadSearchWorkItems();
+              signal.throwIfAborted();
+              return search({
+                workspaceId: input.workspaceId as string,
+                projectSlug: input.projectSlug as string,
+                filter: input.structuredFilter ?? "",
+                sort: input.sort,
+                dir: input.dir,
+                sorts: input.effectiveSorts,
+                columns: input.columns,
+                cursor: undefined,
+                signal,
+              });
             }
-            // An insertion can push the last loaded row onto the next page. Include
-            // that page when the previous range's last row disappeared past its edge.
-            const oldLast = oldData?.pages.at(-1)?.items.at(-1)?.id;
-            const last = pages.at(-1);
-            const next = last?.hasMore ? last.nextCursor : undefined;
-            if (
-              oldLast &&
-              !pages.some((page) =>
-                page.items.some((item) => item.id === oldLast),
-              ) &&
-              next &&
-              !pageParams.includes(next)
-            ) {
-              pageParams.push(next);
-              pages.push(await readPage(next));
-            }
-            return { pages, pageParams };
+            return fetchWorkItemsListPage(
+              input.projectId as string,
+              input.sort,
+              input.dir,
+              undefined,
+              signal,
+            );
           },
         });
-        // A manual refresh, pagination, realtime update, or mutation wins over this read.
         if (
           disposed ||
           query.state !== before ||
@@ -292,7 +259,28 @@ function useGetWorkItems({
             .find({ queryKey: input.activeKey, exact: true }) !== query
         )
           return;
-        queryClient.setQueryData(input.activeKey, refreshed);
+        const firstIds = first.items.map((item) => item.id);
+        const previousIds =
+          oldData.pages[0]?.items.map((item) => item.id) ?? [];
+        if (
+          firstIds.length !== previousIds.length ||
+          firstIds.some((id, index) => id !== previousIds[index])
+        ) {
+          setChangedKey(activeKeyId);
+        }
+        const updates = new Map(first.items.map((item) => [item.id, item]));
+        queryClient.setQueryData<
+          InfiniteData<WorkItemsResult, string | undefined>
+        >(input.activeKey, (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              items: page.items.map((item) => updates.get(item.id) ?? item),
+            })),
+          };
+        });
       } catch (error) {
         // fetchQuery has already invoked the cache's normal error callback.
         if (
@@ -320,6 +308,10 @@ function useGetWorkItems({
     return () => {
       disposed = true;
       clearInterval(timer);
+      void queryClient.cancelQueries({
+        queryKey: ["work-list-outage-poll", ...JSON.parse(activeKeyId)],
+        exact: true,
+      });
     };
   }, [activeKeyId, pollingEnabled, queryClient]);
   const accessDenied =
@@ -331,6 +323,13 @@ function useGetWorkItems({
     active.error.message === "cursor_changed";
   return {
     ...active,
+    hasNewerChanges:
+      realtimeStatus !== "available" && changedKey === activeKeyId,
+    refreshChangedList: async () => {
+      const refreshed = await active.refetch();
+      if (!refreshed.isError && keyRef.current === activeKeyId)
+        setChangedKey(undefined);
+    },
     // React Query deliberately retains cached pages after a failed refresh. A fresh
     // authorization denial must hide them; a recoverable paging failure must not.
     data: accessDenied ? undefined : active.data,

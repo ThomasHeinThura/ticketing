@@ -52,6 +52,7 @@ export function fetchWorkItemsListPage(
   sort: WorkItemSortField,
   dir: WorkItemSortDirection,
   cursor: string | undefined,
+  signal?: AbortSignal,
 ) {
   const listSort =
     sort === "key" ||
@@ -61,5 +62,10 @@ export function fetchWorkItemsListPage(
     sort === "dueDate"
       ? sort
       : "key";
-  return getWorkItems(projectId, listSort, dir, { cursor });
+  return getWorkItems(
+    projectId,
+    listSort,
+    dir,
+    signal ? { cursor, signal } : { cursor },
+  );
 }

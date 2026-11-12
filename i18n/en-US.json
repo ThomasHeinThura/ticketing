@@ -3186,6 +3186,7 @@
 		}
 	},
 	"workItems": {
+		"listChanged": "This list has changed.",
 		"relations": {
 			"add": "Add relation",
 			"type": "Relation type",
