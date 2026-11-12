@@ -1,5 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import {
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useWorkspacePermission } from "./use-workspace-permission";
@@ -392,6 +396,51 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canInviteUsers()).toBe(true);
     expect(result.current.canManageTeam()).toBe(true);
     expect(result.current.canRemoveMembers()).toBe(true);
+  });
+
+  it("exposes failed and paused refreshes without changing cached capability values", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () => fullCapabilityMap({ createSavedViews: true }),
+    });
+    const { result, unmount } = renderHook(() => useWorkspacePermission(), {
+      wrapper,
+    });
+    await waitFor(() =>
+      expect(result.current.canCreateSavedViews()).toBe(true),
+    );
+    capabilitiesGet.mockResolvedValueOnce({ ok: false });
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["workspace-capabilities"],
+      });
+    });
+    await waitFor(() => expect(result.current.isPermissionError).toBe(true));
+    expect(result.current.canCreateSavedViews()).toBe(true);
+    try {
+      act(() => {
+        onlineManager.setOnline(false);
+      });
+      act(() => {
+        void queryClient.invalidateQueries({
+          queryKey: ["workspace-capabilities"],
+        });
+      });
+      await waitFor(() =>
+        expect(result.current.permissionFetchStatus).toBe("paused"),
+      );
+      expect(result.current.canCreateSavedViews()).toBe(true);
+    } finally {
+      unmount();
+      onlineManager.setOnline(true);
+      queryClient.clear();
+    }
   });
 
   it("defaults every capability to false while the request is pending, never undefined", () => {

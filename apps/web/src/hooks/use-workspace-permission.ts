@@ -121,6 +121,8 @@ export function useWorkspacePermission(
     data: capabilities,
     isLoading,
     isFetching,
+    isError,
+    fetchStatus,
   } = useQuery({
     queryKey: sharesActiveRead
       ? ["workspace-capabilities", workspaceId, activeRole]
@@ -212,5 +214,7 @@ export function useWorkspacePermission(
       Boolean(workspaceId && (isTargetScoped || role)) &&
       (isLoading || !capabilities),
     isRefetchingPermissions: isFetching,
+    isPermissionError: isError,
+    permissionFetchStatus: fetchStatus,
   };
 }

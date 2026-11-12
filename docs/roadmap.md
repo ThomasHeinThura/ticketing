@@ -2,6 +2,8 @@
 
 **Direction (Thomas, 28 Oct 2026):** phases ended after P6. P0–P6 are implemented, independently AI-reviewed and accepted by Thomas (27 Oct, with open lows) and merged to `main` (28 Oct). All further work is one ordered backlog of fixes, bugs and features, worked top to bottom under [AGENTS.md](../AGENTS.md). Original Kaneo (`42bb8011`) stays the interface; real persisted data only; status counts come from the requirement index and evidence, never invented percentages. Progress is shown in the [report](report/report.html) and [status](status.md).
 
+**Current plan (Thomas, 12 Nov 2026):** the [UAT completion plan](plan.md) replaces the UAT week plan and the A8 order below. UAT handover is Monday 23 Nov. The tables in this file are history until that plan closes.
+
 The current requirement index has 668 unverified and five partial-local-evidence rows. These are evidence states, not a reversal of Thomas's P0–P6 acceptance; do not promote report states without per-ID evidence. The current browser findings #1059 (agent recovery), #1060 (keyboard-clear focus) and #1061 (mobile Calendar toolbar) remain in L-08; bounded calendar checks do not close the full sweep.
 
 <a id="uat-week-plan-30-oct--6-nov-2026"></a>

@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Badge,
   Button,
@@ -620,7 +620,10 @@ export default function ProjectsPage({
               document.body.classList.remove("taskdesk-dragging")
             }
           >
-            <Table data-testid="g13-projects-content">
+            <Table
+              data-testid="g13-projects-content"
+              scrollLabel={t("workspace:projects.pageTitle")}
+            >
               <TableHeader className="p-4">
                 <TableRow>
                   <TableHead className="text-foreground font-medium">
@@ -674,7 +677,14 @@ export default function ProjectsPage({
                         <TableCell className="py-3">
                           <div className="flex items-center gap-3">
                             <IconComponent className="w-5 h-5 text-muted-foreground" />
-                            <span className="font-medium">{project.name}</span>
+                            <Link
+                              to="/agent/projects/$projectKey"
+                              params={{ projectKey: project.slug }}
+                              className="rounded-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {project.name}
+                            </Link>
                             {project.kind === "managed_service" ? (
                               <Badge
                                 variant="secondary"

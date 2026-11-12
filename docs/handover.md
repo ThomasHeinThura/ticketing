@@ -1,16 +1,55 @@
-# Handover — 11 November 2026
+# Handover — 12 November 2026 (Codex → Claude, fleet in Orca)
 
 Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [testing](testing.md) first. Thomas's current instructions override everything here.
 
 ## Who works on version 2
 
-Codex coordinates version 2. Independent Orca child worktrees hold draft work; the main checkout remains on the G11 branch. Use the middle and high tiers in AGENTS.md according to risk. Keep file ownership separate and use worker results as evidence, not acceptance.
+From 12 Nov Thomas hands version 2 to **Claude as coordinator of the agent fleet in Orca**. Each work stream in the [plan](plan.md) is an Orca worker in an existing worktree; no new worktrees are created and a worktree is closed once its work is merged. Implementers run on Claude Sonnet, or Codex (Terra, Luna) and Gemini when their limits allow; every PR gets an independent high-tier review (Claude Opus or Codex Sol) by a model that did not write the code; no Fable subagents. Thomas gave standing approval on 12 Nov to merge reviewed, green PRs and to deploy to the UAT host. He gets a status report in chat every hour, starting "Hey Thomas", failures first. Only the coordinator edits status, roadmap, handover and the plan, and only the coordinator merges. Codex and Gemini workers are used only if Thomas asks.
 
 ## Goal
 
-Complete the full audit, repair the remaining defects and qualify a clean seeded local SIT and Technexus UAT. Thomas approved replacing both environments after verified backups, confirmed no active testers, and directed use of the existing private credentials files. Credentials never enter docs, logs or PRs. Each later merge still needs his explicit approval.
+**Finish UAT by Monday 23 November 2026** under the [plan](plan.md). "Finished" (Thomas, 12 Nov) means: every planned fix and feature merged and reviewed, the latest signed image clean-installed on local SIT and the UAT host, and the agents' own review on that build showing no high or medium defect. Only then does Thomas review; do not ask him to review while fixes are in flight. Credentials never enter docs, logs or PRs.
 
-## State now
+## Decisions of 12 Nov (Thomas)
+
+Full list with effects in [plan](plan.md) section 2. In short:
+
+- **Workspaces.** Only the super admin (instance admin) creates workspaces. Final.
+- **Sign-in.** Agent app and customer portal are invitation-only, with God Mode on/off switches (default off). This reverses A-15 (open sign-up).
+- **Invitations.** The inviter chooses the role.
+- **Projects.** Projects and managed services are visible only to invited members, staff and customers alike; each customer person sees only their own projects. Workspace admin and manager see all projects and can add themselves.
+- **Journeys.** Jira and Plane for projects, Jira Service Management for ticketing; the look stays Kaneo and must feel premium.
+- **In UAT scope.** Password recovery by email through Amazon SES, enforced CSP, dependency fixes, A8-8 seed data.
+- **G11.** Frozen: report-only, no work. #1091, #1106 and #1114 are parked.
+- **Environments.** Wipe and clean-install both local SIT and the UAT host after a verified backup. The data there is not real.
+- **Merges approved.** #1090, #1093, #1101, #1113, A8-3, #1086, in that order.
+- **Portal wording.** "Requester" and "Raised by" for staff-raised cases.
+- **Email setup.** God Mode gets an Amazon SES setup screen with a Test button.
+- **Invitation links.** The inviter can copy an invitation link at any time while it is valid and send it by hand. This rewrites CP-23.
+- **Teams.** A team that owns a project gives its members access to it; nobody can add themselves to a team.
+
+Open questions and their defaults are in [plan](plan.md) section 10.
+
+## Audit of 12 Nov
+
+[Report](report/project-audit-2026-11-12.md). Main findings: fixes written but unmerged (19 open PRs); effort had drifted to release tooling and G11; no written finish line; most browser tests use a fake server; screens wait for the server before they move; no shared page frame. Security: with open sign-up, any account could create a workspace and reach every customer organisation. Until plan items B-1, B-2 and B-7 ship, every install sets `DISABLE_REGISTRATION`, `DISABLE_PASSWORD_REGISTRATION` and `DISABLE_WORKSPACE_CREATION` to `true`.
+
+## Reference comparison of 12 Nov
+
+[Report](report/reference-comparison-2026-11-12.md): TaskDesk against Plane, Kaneo, Jira, Jira Service Management, OpenProject and ticketing products on features, access, workflow and design. Outcome: keep the breadth, follow the shared pattern (private invite-only projects, customers see their own requests, reply and internal note separate), and do not build public projects, anonymous roles or Jira-style schemes. Items it added are in the [plan](plan.md) section 11.
+
+## Checkout and worktrees
+
+- **Cleanup done 12 Nov (Thomas: "delete what is safe and completely finished").** 21 Orca worktrees were removed after a second check that each was clean and fully pushed; their merged local branches went with them. Disk use under the Orca workspaces fell from 47 GB to 30 GB. Two untracked report copies that were byte-identical to `main` were deleted.
+- **Kept on purpose:**
+  - 10 worktrees of open PRs (#1098, #1101, #1104, #1105, #1108, #1109, #1112, #1113, #1114, #1115).
+  - 13 worktrees with uncommitted or unpushed work: `a8-3-settings-access` (3 unpushed commits, plan item A-5), `d15-signed-sit-browser` (2), `seed-bootstrap-integration` (3), `bootstrap-verified-totp-clean`, `bootstrap-verified-totp-final`, `candidate-copy-transform`, `g11-entry-closure-next`, `g11-terminology-churn`, `g11-toast-experiment`, `reports-permission-loading`, `s3-disposable-approvals-fixture`, `seed-private-identity-map`, `browser-audit-canary`. Look at each diff before deciding.
+  - `.taskdesk-claude-v2` (holds a private `.env` and local deploy settings) and `release-1103-operator` (an open terminal).
+- **Main checkout.** The coordinator's lane, on a branch cut from `main`. Thomas's original 8 Nov files and the old `privatebrowser-*.mjs` scripts were deleted on 12 Nov with his approval. It still carries three items of unknown origin that are never staged: a modified `tests/e2e/helpers/mfa-csrf-app-fixture.ts` and the untracked `scripts/sit/full-browser-audit.mjs` and `tests/api/mfa-csrf-disposable-safety.test.ts`.
+- **Docker Desktop was not running on 12 Nov**, so local SIT was down. Browser checks, integration tests on this machine and the clean install need it started.
+- **Rule from now:** no worktree without a PR or a push; remove worktrees with `orca worktree rm`, never by hand.
+
+## State on 11 Nov (before the re-plan)
 
 - **11 Nov A8-10:** #1111 merged as `fc8b5d657382be72146540c64974a9f64ed610e8`; release run 42967095869 passed build, scan, SBOM, sign and publish. Signed index `sha256:e29e9265845cd3e79e3b5b411dad8a680ac70399908f5d8f0b51979301469aeb` passed independent provenance and cosign checks. The sanitized 8 Nov reports and local tooling fixes are historical documentation evidence, not a completed live browser audit. No SIT or Technexus deployment followed this docs merge.
 - **11 Nov release tooling:** Thomas approved and merged #1094 (docs) and #1107 (signed PR-candidate issuance workflow). Both release runs passed build, scan, SBOM and signing. The workflow has not been dispatched. Draft #1108's offline volume selector passed every required CI check on `aead2faa`; report-only G11 missed work-list LCP, assignment paint and 200-task board render. Stacked draft #1109 passed 16 offline tests and one local-Docker event-fence test; all 22 reported non-G11 hosted checks passed and report-only G11 failed. Its exact owned fixture container and host lock were removed. A trusted candidate copy/install/return adapter and branch-candidate browser acceptance are still absent; neither draft is merge-ready.

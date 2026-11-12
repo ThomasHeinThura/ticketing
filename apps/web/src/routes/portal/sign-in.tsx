@@ -375,7 +375,7 @@ function PortalSignIn() {
     <main className="flex min-h-svh items-center justify-center bg-background p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>{title}</CardTitle>
+          <CardTitle render={(props) => <h1 {...props} />}>{title}</CardTitle>
           <CardDescription>{subtitle}</CardDescription>
         </CardHeader>
         <CardContent>

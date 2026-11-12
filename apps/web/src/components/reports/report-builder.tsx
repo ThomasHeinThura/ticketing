@@ -32,6 +32,7 @@ import {
   useReportCatalogue,
 } from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useGetActiveWorkspaceUser } from "@/hooks/queries/workspace-users/use-active-workspace-user";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import type { ReportBuilderSearch } from "@/lib/report-search";
 import { routes } from "@/lib/routes";
@@ -120,13 +121,30 @@ function ReportBuilderScreen({ search }: { search: ReportBuilderSearch }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data: workspace } = useActiveWorkspace();
+  const {
+    data: member,
+    isFetching: isMemberFetching,
+    isError: isMemberError,
+    fetchStatus: memberFetchStatus,
+  } = useGetActiveWorkspaceUser();
   const workspaceId = workspace?.id ?? "";
   const fields = useCustomFields(workspaceId);
   const permissions = useWorkspacePermission();
   // `POST`/`PATCH /api/views` need saved_view:create; a team audience needs saved_view:share and
   // a workspace one workspace:manage_settings (SV-15, SV-18). A role without them still runs and
   // previews reports (report:read); it is never offered a save the server would refuse.
-  const canSave = permissions.canCreateSavedViews();
+  const isResolvingPermissions =
+    !workspace ||
+    !user?.id ||
+    member === undefined ||
+    isMemberFetching ||
+    memberFetchStatus === "paused" ||
+    isMemberError ||
+    permissions.isCheckingPermissions ||
+    permissions.isRefetchingPermissions ||
+    permissions.isPermissionError ||
+    permissions.permissionFetchStatus === "paused";
+  const canSave = member !== null && permissions.canCreateSavedViews();
   const canShare = permissions.canShareSavedViews();
   const canShareWorkspace = permissions.canManageWorkspaceSettings();
   const [name, setName] = useState("");
@@ -451,7 +469,13 @@ function ReportBuilderScreen({ search }: { search: ReportBuilderSearch }) {
             onClose={() => setDrilling(null)}
           />
         ) : null}
-        {permissions.isCheckingPermissions ? null : canSave ? (
+        {isMemberError || permissions.isPermissionError ? (
+          <Alert variant="error" data-testid="report-builder-permission-error">
+            <AlertDescription>
+              {t("reports:errors.failed.description")}
+            </AlertDescription>
+          </Alert>
+        ) : isResolvingPermissions ? null : canSave ? (
           <Card>
             <CardContent className="flex flex-wrap items-end gap-4 p-4">
               <Pick
