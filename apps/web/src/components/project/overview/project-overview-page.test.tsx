@@ -103,6 +103,7 @@ const project = {
   id: "p1",
   workspaceId: "w1",
   slug: "HELP",
+  seenOnlyViaWorkspaceRole: false,
   name: "Help desk",
   status: "on_hold",
   objective: "Run first-line support",
@@ -199,6 +200,7 @@ function renderPage(client = appQueryClient()) {
 }
 
 beforeEach(() => {
+  project.seenOnlyViaWorkspaceRole = false;
   mocks.canUpdate = true;
   mocks.canManage = true;
   mocks.canCreate = true;
@@ -244,6 +246,18 @@ describe("ProjectOverviewPage", () => {
     );
     await act(async () => finish(overview()));
     expect(await screen.findByTestId("project-overview-page")).toBeVisible();
+  });
+
+  it("shows the see-all hint only for projects identified by the server", async () => {
+    project.seenOnlyViaWorkspaceRole = true;
+    const page = renderPage();
+    await screen.findByTestId("project-overview-page");
+    expect(screen.getByText("projects.notMember")).toBeVisible();
+    page.unmount();
+    project.seenOnlyViaWorkspaceRole = false;
+    renderPage();
+    await screen.findByTestId("project-overview-page");
+    expect(screen.queryByText("projects.notMember")).toBeNull();
   });
   it("shows the header line, KPIs, attention banner and summary", async () => {
     renderPage();

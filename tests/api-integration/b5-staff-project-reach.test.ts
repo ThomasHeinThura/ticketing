@@ -1,10 +1,12 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import type { Context } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPersonalApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
+import { currentProjectReachPredicate } from "../../apps/api/src/database/repositories/identity-scope.repository";
 import {
   automationTable,
   workItemTemplateTable,
@@ -31,11 +33,15 @@ import {
   timeEntryTable,
 } from "../../apps/api/src/database/schema-p5-time";
 import { createApp } from "../../apps/api/src/index";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import { resolveRosterRole } from "../../apps/api/src/project/members/roster.repository";
 import { putAttachmentObject } from "../../apps/api/src/storage";
+import { callerReach } from "../../apps/api/src/utils/caller-reach";
 import * as viewRepository from "../../apps/api/src/view/repository";
 import { TaskDeskClient } from "../../packages/mcp/src/taskdesk/client";
 import { registerTools } from "../../packages/mcp/src/tools/register";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
+import { createCustomerPrincipal } from "./helpers/customer-principal";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
@@ -113,6 +119,65 @@ async function projectManagementSnapshot(projectId: string) {
   };
 }
 
+type ReachProject = {
+  id: string;
+  workspaceId: string;
+  organisationId: string | null;
+};
+
+/** Exercise the actual request identity adapter, callerReach and SQL predicate over the same rows. */
+async function reachPaths(
+  userId: string,
+  projects: readonly ReachProject[],
+  portal: "agent" | "customer" = "agent",
+) {
+  const context = {
+    get: (key: string) => (key === "session" ? { portal } : undefined),
+  } as unknown as Context;
+  const caller = await callerReach(context, userId);
+  const sqlRows = caller.identity
+    ? await db
+        .select({ id: schema.projectTable.id })
+        .from(schema.projectTable)
+        .where(
+          and(
+            inArray(
+              schema.projectTable.id,
+              projects.map((project) => project.id),
+            ),
+            currentProjectReachPredicate(
+              caller.identity,
+              schema.projectTable.id,
+              schema.projectTable.workspaceId,
+              schema.projectTable.organisationId,
+            ),
+          ),
+        )
+    : [];
+  const sqlIds = new Set(sqlRows.map((row) => row.id));
+  const listIds = new Set(
+    await caller.reachableProjectIds(
+      projects.map((project) => project.workspaceId),
+    ),
+  );
+  const results = [];
+  for (const project of projects) {
+    const perRow = await caller.reaches({
+      projectId: project.id,
+      workspaceId: project.workspaceId,
+      organisationId: project.organisationId,
+    });
+    expect(perRow, `callerReach row for ${project.id}`).toBe(
+      sqlIds.has(project.id),
+    );
+    expect(listIds.has(project.id), `callerReach list for ${project.id}`).toBe(
+      sqlIds.has(project.id),
+    );
+    results.push(perRow);
+  }
+  return { identity: caller.identity, results };
+}
+
 describe("B-5: staff project reach", () => {
   let mixedStorageRoot: string | undefined;
   beforeEach(async () => {
@@ -126,6 +191,276 @@ describe("B-5: staff project reach", () => {
     if (mixedStorageRoot)
       await rm(mixedStorageRoot, { recursive: true, force: true });
     mixedStorageRoot = undefined;
+  });
+
+  for (const role of ["owner", "admin", "manager"] as const) {
+    it(`${role} in workspace A cannot reach workspace B through either path or HTTP`, async () => {
+      const world = await setupWorld();
+      const caller = await addMember(world.workspaceId, role);
+      const foreign = await createWorkspaceMember({ role: "admin" });
+      const projectB = (
+        await createProjectFixture({ workspaceId: foreign.workspace.id })
+      ).project;
+      await db
+        .update(schema.membershipTable)
+        .set({ seesAll: false })
+        .where(
+          and(
+            eq(schema.membershipTable.personId, caller.personId),
+            eq(schema.membershipTable.scope, "workspace"),
+          ),
+        );
+      expect(
+        await db
+          .select()
+          .from(schema.membershipTable)
+          .where(
+            and(
+              eq(schema.membershipTable.personId, caller.personId),
+              eq(schema.membershipTable.scope, "project"),
+            ),
+          ),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(schema.teamMemberTable)
+          .where(eq(schema.teamMemberTable.userId, caller.user.id)),
+      ).toHaveLength(0);
+      expect(
+        (await reachPaths(caller.user.id, [world.project, projectB])).results,
+      ).toEqual([true, false]);
+      const { app } = createApp();
+      mockAuthenticatedSession(caller.user);
+      const listB = await json(
+        app,
+        "GET",
+        `/api/project?workspaceId=${foreign.workspace.id}`,
+      );
+      expect([403, 404]).toContain(listB.status);
+      expect(await listB.text()).not.toContain(projectB.id);
+      expect(
+        (await json(app, "GET", `/api/project/${projectB.id}`)).status,
+      ).toBe(404);
+    });
+  }
+
+  it("manager in A and member in B has see-all only in A", async () => {
+    const world = await setupWorld();
+    const caller = await addMember(world.workspaceId, "manager");
+    const foreign = await createWorkspaceMember({ role: "admin" });
+    const projectB = (
+      await createProjectFixture({ workspaceId: foreign.workspace.id })
+    ).project;
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: foreign.workspace.id,
+      userId: caller.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    await db
+      .update(schema.membershipTable)
+      .set({ seesAll: false })
+      .where(
+        and(
+          eq(schema.membershipTable.personId, caller.personId),
+          eq(schema.membershipTable.scope, "workspace"),
+        ),
+      );
+    expect(
+      (await reachPaths(caller.user.id, [world.project, projectB])).results,
+    ).toEqual([true, false]);
+    const { app } = createApp();
+    mockAuthenticatedSession(caller.user);
+    const listB = await json(
+      app,
+      "GET",
+      `/api/project?workspaceId=${foreign.workspace.id}`,
+    );
+    expect(listB.status).toBe(200);
+    expect(await listB.text()).not.toContain(projectB.id);
+    expect((await json(app, "GET", `/api/project/${projectB.id}`)).status).toBe(
+      404,
+    );
+  });
+
+  it("a removed or suspended manager loses reach through both paths", async () => {
+    const world = await setupWorld();
+    const caller = await addMember(world.workspaceId, "manager");
+    const foreign = await createWorkspaceMember({ role: "admin" });
+    const projectB = (
+      await createProjectFixture({ workspaceId: foreign.workspace.id })
+    ).project;
+    await db
+      .update(schema.membershipTable)
+      .set({ seesAll: false })
+      .where(
+        and(
+          eq(schema.membershipTable.personId, caller.personId),
+          eq(schema.membershipTable.scope, "workspace"),
+        ),
+      );
+    expect(
+      (await reachPaths(caller.user.id, [world.project, projectB])).results,
+    ).toEqual([true, false]);
+    await db
+      .update(schema.userTable)
+      .set({ banned: true })
+      .where(eq(schema.userTable.id, caller.user.id));
+    const banned = await reachPaths(caller.user.id, [world.project, projectB]);
+    expect(banned.identity).toBeNull();
+    expect(banned.results).toEqual([false, false]);
+    await db
+      .update(schema.userTable)
+      .set({ banned: false })
+      .where(eq(schema.userTable.id, caller.user.id));
+    await db
+      .update(schema.personTable)
+      .set({ active: false })
+      .where(eq(schema.personTable.id, caller.personId));
+    const suspended = await reachPaths(caller.user.id, [
+      world.project,
+      projectB,
+    ]);
+    expect(suspended.identity).toBeNull();
+    expect(suspended.results).toEqual([false, false]);
+    await db
+      .update(schema.personTable)
+      .set({ active: true })
+      .where(eq(schema.personTable.id, caller.personId));
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, world.workspaceId),
+          eq(schema.workspaceUserTable.userId, caller.user.id),
+        ),
+      );
+    expect(
+      (await reachPaths(caller.user.id, [world.project, projectB])).results,
+    ).toEqual([false, false]);
+  });
+
+  it("customer portal identity ignores forged manager workspace rows", async () => {
+    const world = await setupWorld();
+    const foreign = await createWorkspaceMember({ role: "admin" });
+    const projectB = (
+      await createProjectFixture({ workspaceId: foreign.workspace.id })
+    ).project;
+    const customer = await createCustomerPrincipal();
+    for (const workspaceId of [world.workspaceId, foreign.workspace.id]) {
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId,
+        userId: customer.user.id,
+        role: "manager",
+        joinedAt: new Date(),
+      });
+    }
+    const result = await reachPaths(
+      customer.user.id,
+      [world.project, projectB],
+      "customer",
+    );
+    expect(result.identity?.side).toBe("customer");
+    expect(result.identity?.portal).toBe("customer");
+    expect(result.results).toEqual([false, false]);
+    const own = (await createProjectFixture({ workspaceId: world.workspaceId }))
+      .project;
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: customer.orgId })
+      .where(eq(schema.projectTable.id, own.id));
+    expect(
+      (
+        await reachPaths(
+          customer.user.id,
+          [{ ...own, organisationId: customer.orgId }, projectB],
+          "customer",
+        )
+      ).results,
+    ).toEqual([true, false]);
+  });
+
+  it("cannot resolve owner, admin or manager as project roster roles on a fresh workspace", async () => {
+    const world = await setupWorld();
+    for (const role of ["owner", "admin", "manager"]) {
+      expect(await resolveRosterRole(db, world.workspaceId, role)).toBeNull();
+    }
+  });
+
+  for (const role of [
+    "owner",
+    "admin",
+    "manager",
+    "lead",
+    "member",
+    "viewer",
+  ] as const) {
+    it(`${role}: project list and SQL reach agree without a stored see-all flag`, async () => {
+      const world = await setupWorld();
+      const caller = await addMember(world.workspaceId, role);
+      await db
+        .update(schema.membershipTable)
+        .set({ seesAll: false })
+        .where(
+          and(
+            eq(schema.membershipTable.personId, caller.personId),
+            eq(schema.membershipTable.scope, "workspace"),
+          ),
+        );
+      const identity = await resolveIdentity({
+        userId: caller.user.id,
+        credential: "session",
+      });
+      if (!identity) throw new Error("identity missing");
+      const sqlVisible = await db
+        .select({ id: schema.projectTable.id })
+        .from(schema.projectTable)
+        .where(
+          and(
+            eq(schema.projectTable.id, world.project.id),
+            currentProjectReachPredicate(
+              identity,
+              schema.projectTable.id,
+              schema.projectTable.workspaceId,
+              schema.projectTable.organisationId,
+            ),
+          ),
+        );
+      const { app } = createApp();
+      mockAuthenticatedSession(caller.user);
+      const response = await json(
+        app,
+        "GET",
+        `/api/project?workspaceId=${world.workspaceId}`,
+      );
+      expect(response.status, await response.clone().text()).toBe(200);
+      const projects = (await response.json()) as Array<{
+        id: string;
+        seenOnlyViaWorkspaceRole?: boolean;
+      }>;
+      const project = projects.find((row) => row.id === world.project.id);
+      const expected = ["owner", "admin", "manager"].includes(role);
+      expect(sqlVisible.length > 0).toBe(expected);
+      expect(Boolean(project)).toBe(expected);
+      if (project) expect(project.seenOnlyViaWorkspaceRole).toBe(true);
+    });
+  }
+
+  it("manager reaches projects without project or team membership", async () => {
+    const world = await setupWorld();
+    const caller = await addMember(world.workspaceId, "manager");
+    const { app } = createApp();
+    mockAuthenticatedSession(caller.user);
+    const list = await json(
+      app,
+      "GET",
+      `/api/project?workspaceId=${world.workspaceId}`,
+    );
+    expect(list.status, await list.clone().text()).toBe(200);
+    expect(await list.text()).toContain(world.project.id);
+    const detail = await json(app, "GET", `/api/project/${world.project.id}`);
+    expect(detail.status, await detail.clone().text()).toBe(200);
   });
 
   for (const role of ["member", "lead", "viewer"] as const) {

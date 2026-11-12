@@ -337,6 +337,10 @@
               "statistics": {
                 "$ref": "#/components/schemas/ProjectStatistics"
               },
+              "seenOnlyViaWorkspaceRole": {
+                "type": "boolean",
+                "description": "The caller reaches this project only through owner, admin or manager workspace-wide visibility."
+              },
               "descendantStatistics": {
                 "$ref": "#/components/schemas/ProjectStatistics"
               },

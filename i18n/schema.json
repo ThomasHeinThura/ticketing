@@ -12455,6 +12455,9 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"notMember": {
+							"type": "string"
+						},
 						"pageTitle": {
 							"type": "string"
 						},
@@ -12578,6 +12581,7 @@
 						}
 					},
 					"required": [
+						"notMember",
 						"pageTitle",
 						"createProject",
 						"title",

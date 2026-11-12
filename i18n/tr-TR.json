@@ -3019,6 +3019,7 @@
 	},
 	"workspace": {
 		"projects": {
+			"notMember": "You are not a member of this project",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "{{term_project_one}} oluştur",
 			"title": "Başlık",

@@ -3699,3 +3699,7 @@ Agent and customer accounts can change their own local password in account setti
 ## Customer organisation reach — 12 November 2026, Thomas
 
 The audit finding extends D-A: only a current instance admin can extend a workspace’s customer reach. This reverses the instance-wide project organisation selector and unrestricted first binding described in the 13 October creation-binding decision. A live project or a soft-deleted project still within its recovery window establishes service; after permanent deletion or expiry of that window the link ends unless another qualifying project exists. Restoration within the recovery window therefore does not extend reach. Subsequent project creators may bind to a served customer; unserved IDs give non-admins the same refusal regardless of validity.
+
+## Workspace project visibility — 12 November 2026
+
+Thomas decided on 12 November 2026 (D-E): workspace owners, admins and managers see every project in their workspace. This replaces the earlier rule that required a separate `sees_all` grant for manager visibility. Other staff roles retain project, ancestor and owning-team reach. The separate decision that these three roles may join themselves is pending implementation; no self-join route is introduced by this change.
