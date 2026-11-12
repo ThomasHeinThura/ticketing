@@ -1,4 +1,5 @@
-import { randomBytes } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
 import {
   closeSync,
   existsSync,
@@ -6,180 +7,252 @@ import {
   lstatSync,
   mkdirSync,
   openSync,
-  readdirSync,
   readFileSync,
   realpathSync,
-  renameSync,
   rmdirSync,
-  statSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { readFreshJournal } from "./local-fresh-journal.mjs";
 
-function hasUnfinishedJournal(privateDir) {
-  const root = join(realpathSync(privateDir), "fresh-backups");
-  if (!existsSync(root)) return false;
-  if (!lstatSync(root).isDirectory())
-    throw new Error("Backup directory is not a trusted directory.");
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    if (entry.isSymbolicLink())
-      throw new Error("Backup inventory contains a symbolic link.");
-    if (!entry.isDirectory()) continue;
-    if (existsSync(join(root, entry.name, "proof-uncertain"))) return true;
-    const file = join(root, entry.name, "journal.json");
-    if (existsSync(`${file}.next`)) return true;
-    if (!existsSync(file)) continue;
-    const stat = lstatSync(file);
-    if (!stat.isFile() || stat.isSymbolicLink())
-      throw new Error("Recovery journal is not a regular file.");
-    const journal = readFreshJournal(file);
-    if (
-      !journal.steps.some(
-        (step) => step.name === "complete" && step.state === "done",
-      )
-    )
-      return true;
+export const DAEMON_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9:_-]{3,127}$/;
+const PROJECT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+export function isLocalUnixSocket(value) {
+  try {
+    const endpoint = new URL(value);
+    return (
+      endpoint.protocol === "unix:" &&
+      !endpoint.hostname &&
+      endpoint.pathname.startsWith("/") &&
+      !endpoint.search &&
+      !endpoint.hash
+    );
+  } catch {
+    return false;
   }
-  return false;
 }
 
-export function inspectFreshLock(
-  env,
-  { signal = (pid) => process.kill(pid, 0) } = {},
-) {
-  const directory = `${realpathSync(env.SIT_COMPOSE_ENV)}.lock`;
-  if (!existsSync(directory))
-    return {
-      state: "absent",
-      hasJournal: hasUnfinishedJournal(env.SIT_PRIVATE_DIR),
-    };
-  if (!lstatSync(directory).isDirectory())
-    throw new Error("Release lock is not a directory.");
-  const ownerFile = join(directory, "owner");
-  const info = lstatSync(ownerFile);
-  if (!info.isFile() || info.isSymbolicLink())
-    throw new Error("Release lock owner is not a regular file.");
-  const owner = readFileSync(ownerFile, "utf8");
-  const match = /^([1-9]\d*) ([a-f0-9]{64})\n$/.exec(owner);
-  if (!match || !Number.isSafeInteger(Number(match[1])))
-    throw new Error("Release lock owner is invalid.");
-  const pid = Number(match[1]);
-  let dead = false;
-  try {
-    signal(pid);
-  } catch (error) {
-    if (error.code === "ESRCH") dead = true;
-    else throw new Error("Cannot establish whether lock owner is alive.");
+export function buildDockerClientEnv(env = process.env, extra = {}) {
+  const clientEnv = {
+    PATH: env.PATH,
+    HOME: env.HOME,
+    DOCKER_HOST: env.DOCKER_HOST,
+    DOCKER_CONTEXT: env.DOCKER_CONTEXT,
+    DOCKER_CONFIG: env.DOCKER_CONFIG,
+    SSH_AUTH_SOCK: env.SSH_AUTH_SOCK,
+    COMPOSE_DISABLE_ENV_FILE: "1",
+    ...extra,
+  };
+  for (const key of Object.keys(clientEnv)) {
+    if (clientEnv[key] === undefined) delete clientEnv[key];
   }
-  const hasJournal = hasUnfinishedJournal(env.SIT_PRIVATE_DIR);
+  return clientEnv;
+}
+
+export function readDockerDaemonIdentity({
+  env = process.env,
+  run = spawnSync,
+  checkout = process.cwd(),
+} = {}) {
+  if (env.DOCKER_HOST && !isLocalUnixSocket(env.DOCKER_HOST))
+    throw new Error("Docker endpoint must be a local Unix socket.");
+
+  const clientEnv = buildDockerClientEnv(env);
+  const execDocker = (argv, label) => {
+    const result = run("docker", argv, {
+      cwd: checkout,
+      env: clientEnv,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 30000,
+    });
+    if (result.error || result.status !== 0)
+      throw new Error(`${label} failed.`);
+    return result.stdout || "";
+  };
+
+  const contextName = execDocker(
+    ["context", "show"],
+    "Docker context inspection",
+  ).trim();
+  if (!contextName) throw new Error("Docker context could not be determined.");
+
+  let contexts;
+  try {
+    contexts = JSON.parse(
+      execDocker(
+        ["context", "inspect", contextName],
+        "Docker context inspection",
+      ),
+    );
+  } catch (error) {
+    if (error.message === "Docker context inspection failed.") throw error;
+    throw new Error("Invalid Docker context inspection.");
+  }
+  const endpointHost = contexts?.[0]?.Endpoints?.docker?.Host;
+  if (
+    !Array.isArray(contexts) ||
+    contexts.length !== 1 ||
+    !isLocalUnixSocket(endpointHost)
+  )
+    throw new Error("Docker context must use a local Unix socket.");
+
+  const daemonId = execDocker(
+    ["info", "--format", "{{.ID}}"],
+    "Docker daemon identity inspection",
+  ).trim();
+  if (!DAEMON_ID_PATTERN.test(daemonId))
+    throw new Error("Docker daemon ID could not be verified.");
+
   return {
-    state: dead ? "stale" : "live",
-    pid,
-    createdAt: statSync(ownerFile).birthtime.toISOString(),
-    hasJournal,
+    daemonId,
+    contextName,
+    endpointHost,
+    dockerHost: env.DOCKER_HOST ?? "",
+    dockerContext: env.DOCKER_CONTEXT ?? "",
+    dockerConfig: env.DOCKER_CONFIG ?? "",
   };
 }
 
-export function clearFreshStaleLock(
-  env,
-  { signal = (pid) => process.kill(pid, 0) } = {},
-) {
-  const directory = `${realpathSync(env.SIT_COMPOSE_ENV)}.lock`;
-  const before = inspectFreshLock(env, { signal });
-  if (before.state !== "stale" || before.hasJournal)
+export function assertSameDockerDaemon(expected, options = {}) {
+  const current = readDockerDaemonIdentity(options);
+  if (
+    !expected ||
+    current.daemonId !== expected.daemonId ||
+    current.contextName !== expected.contextName ||
+    current.endpointHost !== expected.endpointHost ||
+    current.dockerHost !== expected.dockerHost ||
+    current.dockerContext !== expected.dockerContext ||
+    current.dockerConfig !== expected.dockerConfig
+  ) {
     throw new Error(
-      "Only a stale lock without an unfinished journal can be cleared.",
+      "Docker daemon or context changed during run; refusing destructive command.",
     );
-  const originalOwner = readFileSync(join(directory, "owner"), "utf8");
-  const guard = join(directory, "recovery-claim");
-  try {
-    mkdirSync(guard, { mode: 0o700 });
-  } catch {
-    throw new Error("Another recovery operation owns the lock claim.");
   }
-  try {
-    const again = inspectFreshLock(env, { signal });
-    if (
-      again.state !== "stale" ||
-      again.hasJournal ||
-      again.pid !== before.pid ||
-      again.createdAt !== before.createdAt ||
-      readFileSync(join(directory, "owner"), "utf8") !== originalOwner
-    )
-      throw new Error("Lock state changed; no lock was cleared.");
-    const owner = join(directory, "owner");
-    // Refuse unexpected entries instead of removing anything not owned by us.
-    const entries = readdirSync(directory).sort();
-    if (JSON.stringify(entries) !== JSON.stringify(["owner", "recovery-claim"]))
-      throw new Error("Unexpected lock contents; inspect manually.");
-    unlinkSync(owner);
-  } finally {
-    rmdirSync(guard);
-  }
-  rmdirSync(directory);
-  return before;
+  return current;
 }
 
-export function claimFreshRecoveryLock(
-  env,
-  { lock, signal = (pid) => process.kill(pid, 0) },
-) {
-  const before = inspectFreshLock(env, { signal });
-  if (before.state === "live")
-    throw new Error("Local release lock owner is still running.");
-  if (!before.hasJournal)
-    throw new Error("No unfinished recovery journal exists.");
-  if (before.state === "absent") return lock(env);
-  const directory = `${realpathSync(env.SIT_COMPOSE_ENV)}.lock`;
-  const ownerFile = join(directory, "owner");
-  const originalOwner = readFileSync(ownerFile, "utf8");
-  const guard = join(directory, "recovery-claim");
+export function defaultDaemonLockRoot() {
+  return realpathSync("/tmp");
+}
+
+function ensureTrustedLockRoot(lockRoot) {
+  if (!existsSync(lockRoot))
+    mkdirSync(lockRoot, { recursive: true, mode: 0o700 });
+  const info = lstatSync(lockRoot);
+  if (info.isSymbolicLink() || !info.isDirectory())
+    throw new Error("Daemon lock root is not a trusted directory.");
+  if (lockRoot === defaultDaemonLockRoot()) {
+    if (info.uid !== 0 || (info.mode & 0o1002) !== 0o1002)
+      throw new Error("Shared lock root is not a root-owned sticky directory.");
+  } else {
+    if (typeof process.getuid === "function" && info.uid !== process.getuid())
+      throw new Error("Daemon lock root is not owned by the current user.");
+    if ((info.mode & 0o077) !== 0)
+      throw new Error("Daemon lock root permissions are too broad.");
+  }
+}
+
+export function daemonProjectLockPath({
+  daemonId,
+  project,
+  lockRoot = defaultDaemonLockRoot(),
+}) {
+  if (!DAEMON_ID_PATTERN.test(String(daemonId || "")))
+    throw new Error("Daemon ID is invalid for lock derivation.");
+  if (!PROJECT_NAME_PATTERN.test(String(project || "")))
+    throw new Error("Compose project name is invalid for lock derivation.");
+  ensureTrustedLockRoot(lockRoot);
+  const digest = createHash("sha256")
+    .update(`${daemonId}\0${project}`)
+    .digest("hex")
+    .slice(0, 32);
+  return join(lockRoot, `taskdesk-sit-${project}-${digest}.lock`);
+}
+
+function describeExistingOwner(directory, signal) {
   try {
-    mkdirSync(guard, { mode: 0o700 });
+    const dirInfo = lstatSync(directory);
+    if (dirInfo.isSymbolicLink() || !dirInfo.isDirectory()) return "";
+    const ownerFile = join(directory, "owner");
+    const ownerInfo = lstatSync(ownerFile);
+    if (ownerInfo.isSymbolicLink() || !ownerInfo.isFile()) return "";
+    const raw = readFileSync(ownerFile, "utf8");
+    const match = /^([1-9]\d*) ([a-f0-9]{64})\n$/.exec(raw);
+    if (!match || !Number.isSafeInteger(Number(match[1]))) return "";
+    const pid = Number(match[1]);
+    try {
+      signal(pid);
+      return ` by live PID ${pid}`;
+    } catch (error) {
+      if (error?.code === "ESRCH")
+        return ` from dead PID ${pid}; inspect Docker state and remove the lock directory manually`;
+      return ` by PID ${pid}`;
+    }
   } catch {
-    throw new Error("Another recovery operation owns the lock claim.");
+    return "";
   }
+}
+
+export function acquireDaemonProjectLock({
+  daemonId,
+  project,
+  lockRoot,
+  signal = (pid) => process.kill(pid, 0),
+}) {
+  const directory = daemonProjectLockPath({ daemonId, project, lockRoot });
+  const ownerFile = join(directory, "owner");
   const token = randomBytes(32).toString("hex");
-  const nextOwner = `${process.pid} ${token}\n`;
+  const expectedOwner = `${process.pid} ${token}\n`;
+
   try {
-    const again = inspectFreshLock(env, { signal });
-    if (
-      again.state !== "stale" ||
-      !again.hasJournal ||
-      again.pid !== before.pid ||
-      again.createdAt !== before.createdAt ||
-      readFileSync(ownerFile, "utf8") !== originalOwner
-    )
-      throw new Error("Lock state changed; recovery lock was not claimed.");
-    const entries = readdirSync(directory).sort();
-    if (JSON.stringify(entries) !== JSON.stringify(["owner", "recovery-claim"]))
-      throw new Error("Unexpected lock contents; inspect manually.");
-    const nextFile = join(directory, "owner.next");
-    const fd = openSync(nextFile, "wx", 0o600);
-    try {
-      writeFileSync(fd, nextOwner);
-      fsyncSync(fd);
-    } finally {
-      closeSync(fd);
-    }
-    renameSync(nextFile, ownerFile);
-    const dirFd = openSync(directory, "r");
-    try {
-      fsyncSync(dirFd);
-    } finally {
-      closeSync(dirFd);
-    }
-  } finally {
-    rmdirSync(guard);
+    mkdirSync(directory, { mode: 0o700 });
+  } catch {
+    const detail = describeExistingOwner(directory, signal);
+    throw new Error(
+      `Daemon project lock ${directory} is already held${detail || "; inspect Docker state before retrying"}.`,
+    );
   }
+
+  let fd;
+  try {
+    fd = openSync(ownerFile, "wx", 0o600);
+    writeFileSync(fd, expectedOwner);
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = undefined;
+  } catch {
+    if (fd !== undefined) {
+      try {
+        closeSync(fd);
+      } catch {}
+    }
+    try {
+      unlinkSync(ownerFile);
+    } catch {}
+    try {
+      rmdirSync(directory);
+    } catch {}
+    throw new Error("Daemon project lock could not be initialized.");
+  }
+
   return () => {
     try {
-      if (readFileSync(ownerFile, "utf8") === nextOwner) {
+      const dirInfo = lstatSync(directory);
+      const fileInfo = lstatSync(ownerFile);
+      if (
+        !dirInfo.isSymbolicLink() &&
+        dirInfo.isDirectory() &&
+        !fileInfo.isSymbolicLink() &&
+        fileInfo.isFile() &&
+        readFileSync(ownerFile, "utf8") === expectedOwner
+      ) {
         unlinkSync(ownerFile);
         rmdirSync(directory);
       }
-    } catch {}
+    } catch {
+      /* Leave altered or inaccessible lock state for manual inspection. */
+    }
   };
 }

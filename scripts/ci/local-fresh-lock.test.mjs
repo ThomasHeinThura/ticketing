@@ -1,157 +1,95 @@
 import assert from "node:assert/strict";
 import {
   existsSync,
-  mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
-  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
-  clearFreshStaleLock,
-  inspectFreshLock,
+  acquireDaemonProjectLock,
+  assertSameDockerDaemon,
+  daemonProjectLockPath,
+  readDockerDaemonIdentity,
 } from "../../deploy/local-fresh-lock.mjs";
 
+const project = "taskdesk-codex-testing";
 function fixture(t) {
-  const dir = mkdtempSync(join(os.tmpdir(), "fresh-lock-"));
+  const dir = mkdtempSync(join(os.tmpdir(), "daemon-lock-test-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const file = join(dir, "compose.env");
-  writeFileSync(file, "");
-  mkdirSync(`${file}.lock`);
-  writeFileSync(join(`${file}.lock`, "owner"), `12345 ${"a".repeat(64)}\n`);
-  return {
-    env: { SIT_COMPOSE_ENV: file, SIT_PRIVATE_DIR: dir },
-    lock: `${file}.lock`,
-  };
+  return { daemonId: "daemon-1234", project, lockRoot: join(dir, "locks") };
 }
-const dead = () => {
-  const error = new Error("missing");
-  error.code = "ESRCH";
-  throw error;
-};
-
-test("stale lock without a journal is reported and cleared only explicitly", (t) => {
-  const f = fixture(t);
-  const state = inspectFreshLock(f.env, { signal: dead });
-  assert.equal(state.state, "stale");
-  assert.equal(state.pid, 12345);
-  assert.equal(state.hasJournal, false);
-  assert.equal(existsSync(f.lock), true);
-  clearFreshStaleLock(f.env, { signal: dead });
-  assert.equal(existsSync(f.lock), false);
-});
-test("live owners, permission errors and unfinished journals cannot be cleared", (t) => {
-  const f = fixture(t);
-  assert.throws(() => clearFreshStaleLock(f.env, { signal: () => {} }));
-  assert.throws(() =>
-    clearFreshStaleLock(f.env, {
-      signal: () => {
-        const error = new Error("denied");
-        error.code = "EPERM";
-        throw error;
-      },
-    }),
-  );
-  const backup = join(f.env.SIT_PRIVATE_DIR, "fresh-backups", "a");
-  mkdirSync(backup, { recursive: true });
-  writeFileSync(
-    join(backup, "journal.json"),
-    JSON.stringify({ version: 1, steps: [{ name: "rm", state: "started" }] }),
-  );
-  assert.equal(inspectFreshLock(f.env, { signal: dead }).hasJournal, true);
-  assert.throws(() => clearFreshStaleLock(f.env, { signal: dead }));
-  assert.equal(existsSync(f.lock), true);
-});
-test("unexpected lock contents are not removed", (t) => {
-  const f = fixture(t);
-  writeFileSync(join(f.lock, "unknown"), "keep");
-  assert.throws(
-    () => clearFreshStaleLock(f.env, { signal: dead }),
-    /Unexpected/,
-  );
-  assert.equal(existsSync(join(f.lock, "unknown")), true);
-});
-
-test("incomplete journal writes and untrusted backup symlinks block stale lock clearing", (t) => {
-  const f = fixture(t);
-  const backup = join(f.env.SIT_PRIVATE_DIR, "fresh-backups", "a");
-  mkdirSync(backup, { recursive: true });
-  writeFileSync(join(backup, "journal.json.next"), "partial");
-  assert.equal(inspectFreshLock(f.env, { signal: dead }).hasJournal, true);
-  assert.throws(() => clearFreshStaleLock(f.env, { signal: dead }));
-  unlinkSync(join(backup, "journal.json.next"));
-  symlinkSync(backup, join(f.env.SIT_PRIVATE_DIR, "fresh-backups", "link"));
-  assert.throws(
-    () => clearFreshStaleLock(f.env, { signal: dead }),
-    /symbolic link/,
-  );
-});
-
-test("malformed owner refuses to inspect or remove the lock", (t) => {
-  const f = fixture(t);
-  writeFileSync(join(f.lock, "owner"), "12345 invalid\n");
-  assert.throws(() => inspectFreshLock(f.env, { signal: dead }), /invalid/);
-  assert.throws(() => clearFreshStaleLock(f.env, { signal: dead }));
-  assert.equal(existsSync(f.lock), true);
-});
-
-test("uncertain proof cleanup prevents stale-lock clearance", (t) => {
-  const f = fixture(t);
-  const backup = join(f.env.SIT_PRIVATE_DIR, "fresh-backups", "a");
-  mkdirSync(backup, { recursive: true });
-  writeFileSync(join(backup, "proof-uncertain"), "inspect proof\n");
-  assert.equal(inspectFreshLock(f.env, { signal: dead }).hasJournal, true);
-  assert.throws(() => clearFreshStaleLock(f.env, { signal: dead }));
-});
-
-test("unfinished recovery remains visible when the lock is absent", (t) => {
-  const f = fixture(t);
-  unlinkSync(join(f.lock, "owner"));
-  rmSync(f.lock, { recursive: true });
-  const backup = join(f.env.SIT_PRIVATE_DIR, "fresh-backups", "a");
-  mkdirSync(backup, { recursive: true });
-  writeFileSync(join(backup, "proof-uncertain"), "pending");
-  const state = inspectFreshLock(f.env, { signal: dead });
-  assert.equal(state.state, "absent");
-  assert.equal(state.hasJournal, true);
-});
-
-test("claimFreshRecoveryLock atomically takes over stale lock only when unfinished journal exists and releases cleanly", async (t) => {
-  const { claimFreshRecoveryLock } = await import(
-    "../../deploy/local-fresh-lock.mjs"
-  );
-  const f = fixture(t);
-  // Refuses without unfinished journal
-  assert.throws(
-    () => claimFreshRecoveryLock(f.env, { lock: () => () => {}, signal: dead }),
-    /No unfinished/,
-  );
-  const backup = join(f.env.SIT_PRIVATE_DIR, "fresh-backups", "ref-1");
-  mkdirSync(backup, { recursive: true });
-  writeFileSync(
-    join(backup, "journal.json"),
-    JSON.stringify({
-      version: 1,
-      reference: "ref-1",
-      steps: [{ name: "stop", state: "failed" }],
-    }),
-  );
-  // Refuses live owner
-  assert.throws(
-    () =>
-      claimFreshRecoveryLock(f.env, { lock: () => () => {}, signal: () => {} }),
-    /still running/,
-  );
-  // Claims stale lock and releases on completion
-  const release = claimFreshRecoveryLock(f.env, {
-    lock: () => () => {},
-    signal: dead,
-  });
-  assert.equal(existsSync(f.lock), true);
+test("lock excludes concurrent users and releases only its own lock", (t) => {
+  const opts = fixture(t);
+  const release = acquireDaemonProjectLock(opts);
+  const path = daemonProjectLockPath(opts);
+  assert.throws(() => acquireDaemonProjectLock(opts), /already held/);
+  assert.ok(existsSync(path));
   release();
-  assert.equal(existsSync(f.lock), false);
+  assert.equal(existsSync(path), false);
+});
+test("changed lock owner is left untouched for manual inspection", (t) => {
+  const opts = fixture(t);
+  const release = acquireDaemonProjectLock(opts);
+  const path = daemonProjectLockPath(opts);
+  const original = readFileSync(join(path, "owner"), "utf8");
+  writeFileSync(join(path, "owner"), `1 ${"a".repeat(64)}\n`);
+  release();
+  assert.ok(existsSync(path));
+  assert.notEqual(readFileSync(join(path, "owner"), "utf8"), original);
+});
+test("lock keys distinguish daemons and reject malformed identifiers", (t) => {
+  const opts = fixture(t);
+  const first = acquireDaemonProjectLock(opts);
+  const second = acquireDaemonProjectLock({ ...opts, daemonId: "daemon-5678" });
+  assert.throws(
+    () => daemonProjectLockPath({ ...opts, project: "../foreign" }),
+    /invalid/,
+  );
+  first();
+  second();
+});
+test("identity checks daemon, context and socket", () => {
+  let daemon = "daemon-1234";
+  let endpoint = "unix:///var/run/docker.sock";
+  const run = (_bin, args) => ({
+    status: 0,
+    stdout:
+      args[0] === "info"
+        ? daemon
+        : args[1] === "show"
+          ? "default"
+          : JSON.stringify([{ Endpoints: { docker: { Host: endpoint } } }]),
+  });
+  const opts = { env: {}, run };
+  const identity = readDockerDaemonIdentity(opts);
+  assert.doesNotThrow(() => assertSameDockerDaemon(identity, opts));
+  daemon = "daemon-5678";
+  assert.throws(() => assertSameDockerDaemon(identity, opts), /changed/);
+  daemon = "daemon-1234";
+  endpoint = "tcp://example.com:2375";
+  assert.throws(
+    () => assertSameDockerDaemon(identity, opts),
+    /local Unix socket/,
+  );
+});
+
+test("untrusted lock roots and malformed owners never clear a held lock", (t) => {
+  const opts = fixture(t);
+  const release = acquireDaemonProjectLock(opts);
+  const path = daemonProjectLockPath(opts);
+  writeFileSync(join(path, "owner"), "malformed\n");
+  release();
+  assert.ok(existsSync(path));
+  assert.throws(() => acquireDaemonProjectLock(opts), /already held/);
+  const link = `${opts.lockRoot}-link`;
+  symlinkSync(opts.lockRoot, link);
+  assert.throws(
+    () => daemonProjectLockPath({ ...opts, lockRoot: link }),
+    /trusted directory/,
+  );
 });

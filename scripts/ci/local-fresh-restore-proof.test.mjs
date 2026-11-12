@@ -35,6 +35,7 @@ function fixture(t, mode = "success") {
           Name: `/${createArgs[createArgs.indexOf("--name") + 1]}`,
           Config: {
             Labels: {
+              "com.docker.compose.project": "taskdesk-codex-testing",
               "info.taskdesk.restore-proof":
                 createArgs[createArgs.indexOf("--label") + 1].split("=")[1],
             },

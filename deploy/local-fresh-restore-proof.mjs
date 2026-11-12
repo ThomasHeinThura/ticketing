@@ -2,14 +2,11 @@ import { randomBytes } from "node:crypto";
 import {
   closeSync,
   fstatSync,
-  fsyncSync,
-  lstatSync,
   mkdtempSync,
   openSync,
   readFileSync,
   readSync,
   rmSync,
-  writeFileSync,
 } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
@@ -24,48 +21,6 @@ export function isVerifiedRestoreProof(value) {
       value.verified === true &&
       typeof value.attachmentManifest === "string",
   );
-}
-
-export function writeRestoreProofRecord(backupDir, reference, receipt) {
-  if (receipt?.verified !== true)
-    throw new Error("Restore proof did not return a verified receipt.");
-  const file = resolve(backupDir, "restore-proof.json");
-  const record = {
-    version: 1,
-    reference,
-    verified: true,
-    verifiedAt: receipt.verifiedAt || new Date().toISOString(),
-    attachmentManifest: String(receipt.attachmentManifest ?? "[]"),
-  };
-  const fd = openSync(file, "wx", 0o600);
-  try {
-    writeFileSync(fd, `${JSON.stringify(record, null, 2)}\n`);
-    fsyncSync(fd);
-  } finally {
-    closeSync(fd);
-  }
-  const dirFd = openSync(backupDir, "r");
-  try {
-    fsyncSync(dirFd);
-  } finally {
-    closeSync(dirFd);
-  }
-}
-
-export function readRestoreProofRecord(backupDir, reference) {
-  const file = resolve(backupDir, "restore-proof.json");
-  const stat = lstatSync(file);
-  if (!stat.isFile() || stat.isSymbolicLink())
-    throw new Error("Persisted restore proof is not a regular file.");
-  const value = JSON.parse(readFileSync(file, "utf8"));
-  if (
-    value?.version !== 1 ||
-    value.verified !== true ||
-    value.reference !== reference ||
-    typeof value.attachmentManifest !== "string"
-  )
-    throw new Error("Persisted restore proof is invalid.");
-  return value;
 }
 
 // Run on the live application and on the extracted archive. Reject symlinks and
@@ -193,6 +148,7 @@ export function verifyRestoreProof({
   attachments,
   backupDir,
   report = () => {},
+  beforeRemove = () => {},
   validateArchive = validateTarFile,
   pause = () =>
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000),
@@ -248,6 +204,8 @@ export function verifyRestoreProof({
         name,
         "--label",
         label,
+        "--label",
+        "com.docker.compose.project=taskdesk-codex-testing",
         "--network",
         "none",
         "--tmpfs",
@@ -305,6 +263,8 @@ export function verifyRestoreProof({
       c.Id !== id ||
       c.Name !== `/${name}` ||
       c.Config?.Labels?.["info.taskdesk.restore-proof"] !== marker ||
+      c.Config?.Labels?.["com.docker.compose.project"] !==
+        "taskdesk-codex-testing" ||
       c.Config?.Image !== databaseImage
     )
       throw new Error("Restore proof ownership is not confirmed.");
@@ -373,18 +333,18 @@ export function verifyRestoreProof({
     if (restored !== expectedCounts)
       throw new Error("Restored database table or row counts mismatch.");
     if (dbName) {
-      const activeWriters = cmd("docker", [
+      const clientSessions = cmd("docker", [
         "exec",
         databaseId,
         "sh",
         "-c",
-        'exec psql -X -Atqc "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND state <> \'idle\'" -U "$POSTGRES_USER" -d "$1"',
-        "writers",
+        'exec psql -X -Atqc "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()" -U "$POSTGRES_USER" -d "$1"',
+        "sessions",
         dbName,
       ]).trim();
-      if (activeWriters !== "0")
+      if (clientSessions !== "0")
         throw new Error(
-          "Active database sessions detected during snapshot verification; quiesce writers before retrying.",
+          "Client database sessions detected during snapshot verification; write barrier was violated.",
         );
       const liveCounts = cmd(
         "docker",
@@ -402,7 +362,7 @@ export function verifyRestoreProof({
       );
       if (liveCounts !== expectedCounts)
         throw new Error(
-          "Live database changed during backup verification; quiesce writers before retrying.",
+          "Live database changed during backup verification; write barrier was violated.",
         );
     }
     report("Restore proof matched database counts and attachment hashes.");
@@ -411,6 +371,18 @@ export function verifyRestoreProof({
   }
   if (id && owned) {
     try {
+      beforeRemove();
+      const recheck = JSON.parse(cmd("docker", ["inspect", id]));
+      if (
+        recheck.length !== 1 ||
+        recheck[0].Id !== id ||
+        recheck[0].Name !== `/${name}` ||
+        recheck[0].Config?.Labels?.["info.taskdesk.restore-proof"] !== marker ||
+        recheck[0].Config?.Labels?.["com.docker.compose.project"] !==
+          "taskdesk-codex-testing" ||
+        recheck[0].Config?.Image !== databaseImage
+      )
+        throw new Error("Restore proof label mismatch before cleanup.");
       cmd("docker", ["rm", "-f", "-v", id]);
       if (
         cmd("docker", [
@@ -425,9 +397,10 @@ export function verifyRestoreProof({
         throw new Error(
           "Restore proof container cleanup could not be confirmed.",
         );
-    } catch {
+    } catch (cleanupError) {
       failure = new ProofCleanupUncertain(
-        `Restore proof container cleanup failed; inspect exact ID ${id}.`,
+        `Restore proof failed or cleanup was uncertain; inspect exact ID ${id}.`,
+        { cause: failure || cleanupError },
       );
     }
   } else if (id) {

@@ -13,6 +13,10 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  acquireDaemonProjectLock,
+  readDockerDaemonIdentity,
+} from "./local-fresh-lock.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const project = "taskdesk-codex-testing";
@@ -86,6 +90,7 @@ export function deployLocal(options = {}) {
   const args = options.args ?? process.argv.slice(2);
   const env = options.env ?? process.env;
   const exists = options.exists ?? existsSync;
+  const run = options.run ?? spawnSync;
   if (
     args.length ||
     !env.SIT_COMPOSE_ENV ||
@@ -96,11 +101,25 @@ export function deployLocal(options = {}) {
     !exists(env.SIT_PRIVATE_DIR)
   )
     return deployLocalLocked(options);
-  const release = (options.acquireLock ?? acquireLocalReleaseLock)(env);
+  let releaseDaemonLock = () => {};
+  if (!options.acquireLock) {
+    const daemon = readDockerDaemonIdentity({ env, run, checkout: root });
+    releaseDaemonLock = acquireDaemonProjectLock({
+      daemonId: daemon.daemonId,
+      project,
+      lockRoot: options.lockRoot,
+      signal: options.signal,
+    });
+  }
   try {
-    return deployLocalLocked(options);
+    const release = (options.acquireLock ?? acquireLocalReleaseLock)(env);
+    try {
+      return deployLocalLocked(options);
+    } finally {
+      release();
+    }
   } finally {
-    release();
+    releaseDaemonLock();
   }
 }
 
@@ -564,6 +583,8 @@ export function deployLocalLocked({
       proofName,
       "--label",
       label,
+      "--label",
+      `com.docker.compose.project=${project}`,
       "--network",
       "bridge",
       "--read-only",
