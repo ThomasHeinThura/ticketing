@@ -563,8 +563,10 @@ for (const theme of THEMES)
         await expect(
           colleague.getByText("Raised by: Support team"),
         ).toBeVisible();
+        // The requester shows in the Requester column on wide frames and under the title on
+        // narrow ones; only one of the two is visible at a time.
         await expect(
-          colleague.getByText("Dana Customer").first(),
+          colleague.getByText("Dana Customer").locator("visible=true").first(),
         ).toBeVisible();
         const selfRaised = page.getByRole("row").filter({ hasText: "SUB-5" });
         await expect(selfRaised.getByText("Raised by")).toHaveCount(0);
