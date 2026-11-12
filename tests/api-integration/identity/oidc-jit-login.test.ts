@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { refreshStaffRegistration } from "../../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
 import {
@@ -96,7 +97,10 @@ beforeEach(async () => {
   // The setup's restoreAllMocks does not reset this module-level vi.fn implementation.
   resetEntraTokenValidatorMock();
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", staffSelfRegistrationEnabled: true });
+  await refreshStaffRegistration();
   await db
     .insert(schema.instanceFeatureFlagTable)
     .values({ featureKey: "feature.customer_portal", enabled: true })
@@ -430,6 +434,72 @@ async function expectJitIdentity(
 }
 
 describe("OIDC JIT first login (IP-9, IP-10)", () => {
+  it("refuses uninvited first login and admits a verified invited staff user", async () => {
+    const target = await seedAgent("jit-invitation-connection");
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ staffSelfRegistrationEnabled: false })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    await refreshStaffRegistration();
+    await signIn("jit-invitation-connection", "agent");
+    expect(
+      await db
+        .select()
+        .from(schema.userTable)
+        .where(eq(schema.userTable.email, "jit-first-login@example.test")),
+    ).toHaveLength(0);
+    await db.insert(schema.invitationTable).values({
+      workspaceId: WORKSPACE_ID,
+      inviterId: "jit-login-creator",
+      email: "jit-first-login@example.test",
+      role: "member",
+      status: "pending",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    const admitted = await signIn("jit-invitation-connection", "agent");
+    expect(admitted.status).toBe(302);
+    await expectJitIdentity("jit-invitation-connection", "agent", target);
+  });
+
+  it("does not accept an unverified OIDC address even when invited", async () => {
+    await seedAgent("jit-unverified-invitation");
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ staffSelfRegistrationEnabled: false })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    await refreshStaffRegistration();
+    await db.insert(schema.invitationTable).values({
+      workspaceId: WORKSPACE_ID,
+      inviterId: "jit-login-creator",
+      email: "jit-first-login@example.test",
+      role: "member",
+      status: "pending",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    vi.mocked(validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => ({
+        ok: true,
+        claims: {
+          iss: expectation.issuer,
+          tid: expectation.tenantId,
+          oid: SUBJECT,
+          email: "jit-first-login@example.test",
+          email_verified: false,
+          name: "JIT First Login",
+          acct: 0,
+          roles: ["TaskDesk.User"],
+        },
+      }),
+    );
+    await signIn("jit-unverified-invitation", "agent");
+    expect(
+      await db
+        .select()
+        .from(schema.userTable)
+        .where(eq(schema.userTable.email, "jit-first-login@example.test")),
+    ).toHaveLength(0);
+  });
+
   it("creates the user, person, account, identity and default grant for an agent", async () => {
     const target = await seedAgent("jit-agent-connection");
     const response = await signIn("jit-agent-connection", "agent");

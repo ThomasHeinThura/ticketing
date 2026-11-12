@@ -1,3 +1,4 @@
+import { staffSelfRegistrationEnabled } from "../auth/staff-registration";
 import {
   findInvitationWithNames,
   findPendingInvitation,
@@ -23,9 +24,7 @@ export async function checkRegistrationAllowed(
   invitationId?: string,
   options?: { allowInvitationByEmail?: boolean },
 ): Promise<RegistrationCheckResult> {
-  const isRegistrationDisabled = process.env.DISABLE_REGISTRATION === "true";
-
-  if (!isRegistrationDisabled) {
+  if (staffSelfRegistrationEnabled()) {
     return {
       allowed: true,
       reason: "Registration is enabled",
@@ -34,7 +33,7 @@ export async function checkRegistrationAllowed(
 
   const canMatchByEmail = Boolean(options?.allowInvitationByEmail && email);
 
-  if (!invitationId && !canMatchByEmail) {
+  if (!email || (!invitationId && !canMatchByEmail)) {
     return {
       allowed: false,
       reason:

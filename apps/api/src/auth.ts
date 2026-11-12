@@ -46,6 +46,11 @@ import {
   updateSessionPortal,
 } from "./auth/repository";
 import {
+  refreshStaffRegistration,
+  staffSelfRegistrationEnabled,
+} from "./auth/staff-registration";
+import { allowsStaffInvitationByEmail } from "./auth/staff-registration-path";
+import {
   establishVerifiedLocalStaffPerson,
   verifiedLocalEmailClaimMethod,
 } from "./auth/verified-placeholder-claim";
@@ -99,6 +104,7 @@ import { consumeAnonymousInvitationRateLimit } from "./utils/invitation-anonymou
 import { isCloud } from "./utils/is-cloud";
 import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
+import { findPendingInvitation } from "./utils/registration.repository";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 import { ensureStaffPersonForUser } from "./utils/seed-internal-organisation";
@@ -121,7 +127,6 @@ config();
 
 const githubSso = getGithubSsoOAuthCredentials();
 
-const isRegistrationDisabled = process.env.DISABLE_REGISTRATION === "true";
 const isPasswordRegistrationDisabled =
   process.env.DISABLE_PASSWORD_REGISTRATION === "true";
 const isLoginFormDisabled = process.env.DISABLE_LOGIN_FORM === "true";
@@ -868,7 +873,12 @@ function createAuth(
               const bootstrapRefusal = await checkRegistrationAllowed(
                 user.email,
                 invitationId,
-                { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+                {
+                  allowInvitationByEmail: allowsStaffInvitationByEmail(
+                    ctx?.path,
+                    user.emailVerified === true,
+                  ),
+                },
               );
               throw new APIError("FORBIDDEN", {
                 message: bootstrapRefusal.allowed
@@ -877,10 +887,24 @@ function createAuth(
               });
             }
 
+            if (
+              isOAuthCallbackPath(ctx?.path) &&
+              !user.emailVerified &&
+              !staffSelfRegistrationEnabled()
+            ) {
+              throw new APIError("FORBIDDEN", {
+                message: "Registration requires a verified email address.",
+              });
+            }
             const result = await checkRegistrationAllowed(
               user.email,
               invitationId,
-              { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+              {
+                allowInvitationByEmail: allowsStaffInvitationByEmail(
+                  ctx?.path,
+                  user.emailVerified === true,
+                ),
+              },
             );
             if (!result.allowed) {
               throw new APIError("FORBIDDEN", {
@@ -943,12 +967,17 @@ function createAuth(
               }
             });
 
-            // #315 S7 / #324: boot seeding alone misses local users who register
-            // after startup. The current local password-signup path creates ordinary
-            // internal staff identities. Do not infer a staff identity for OAuth
-            // callbacks: their portal and organisation must come from a configured
-            // identity connection, which owns that provisioning decision.
-            if (context?.path === "/sign-up/email") {
+            // Other verified sign-in methods acquire a staff identity when the
+            // address has a live staff invitation. Provider configuration alone
+            // does not turn an arbitrary OAuth identity into staff.
+            const invited =
+              isOAuthCallbackPath(context?.path) &&
+              user.emailVerified &&
+              (await findPendingInvitation({
+                email: user.email,
+                now: new Date(),
+              }));
+            if (context?.path === "/sign-up/email" || invited) {
               await ensureStaffPersonForUser(user.id);
             }
           },
@@ -1088,7 +1117,7 @@ function createAuth(
           }
         }
 
-        if (!isRegistrationDisabled || isInstanceAdminSetup) {
+        if (staffSelfRegistrationEnabled() || isInstanceAdminSetup) {
           return;
         }
 
@@ -1472,6 +1501,7 @@ export async function reloadAuthConfiguration(): Promise<boolean> {
     const [pluginRows, connectionRows] = await Promise.all([
       getStoredAuthPluginConfigRows(),
       getIdentityConnectionConfigVersions(),
+      refreshStaffRegistration(),
     ]);
     const nextVersion = Math.max(
       0,

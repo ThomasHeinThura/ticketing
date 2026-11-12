@@ -3609,3 +3609,8 @@ Only obsolete workflow/delegation provenance may remain here; product clauses mu
 | 23 Oct | P5: rename old time table to `task_time_entry`; inline-SVG charts + Table equivalents; dnd-kit dashboard grid; indented-list service impact; estimates under project settings; CAB workflow opt-in for existing workspaces; NOT VALID FKs with scratch DB first; staff-only project Pages; customer-scoped invitations refusing staff roles | `TC-*`, `RP-*`, `ES-*`, `SVC-*`, `CH-*`, `CP-11` | Thomas (recommended options) |
 | 23 Oct | Customer invitations use a new hashed single-use credential and a scope discriminator on `invitation`; Pages reuse `project:read`/`project:update`; typed-domain route claims non-enumeration for accounts only (ADR 0014); invitation lifetime and rate limits are instance configuration | `CP-20`..`CP-29`, `PG-1`..`PG-8` | standing |
 | 27 Oct 2026 | The local-factor policy applies to staff only: customers are exempt in every mode (including `required_everyone`) and customer SSO sign-in never reaches the agent-only `/auth/two-factor` (a factor a customer enrolled voluntarily is still honoured on local sign-in); the God Mode label reads "Everyone (staff)" | `CP-19`, `P3-R1-04` | recommended option, Thomas standing rule |
+
+
+### 12 Nov 2026 — Thomas, D-B: invitation-only accounts
+
+D-B reverses A-15 (31 Oct 2026) open sign-up. Staff self-registration is disabled by default and may be enabled by an instance administrator with step-up; the customer portal remains invitation-only.

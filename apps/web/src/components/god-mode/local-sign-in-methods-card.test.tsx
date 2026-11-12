@@ -63,6 +63,8 @@ vi.mock("@/lib/toast", () => ({
 import { LocalSignInMethodsCard } from "./local-sign-in-methods-card";
 
 const stored: LocalAuthMethods = {
+  staffSelfRegistrationEnabled: false,
+  staffRegistrationDisabledByEnvironment: false,
   agent: { password: true, magicLink: true, emailOtp: true },
   customer: { password: false, magicLink: false, emailOtp: false },
   emailProviderEnabled: true,
@@ -92,6 +94,42 @@ function renderCard() {
 }
 
 describe("LocalSignInMethodsCard", () => {
+  it("binds the registration switch to the step-up proof and shows the portal state", async () => {
+    mocks.update.mockResolvedValue({
+      ...stored,
+      staffSelfRegistrationEnabled: true,
+    });
+    renderCard();
+    fireEvent.click(
+      await screen.findByRole("switch", {
+        name: "Allow staff self-registration",
+      }),
+    );
+    expect(
+      screen.getByText("Customer portal: invitation only"),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save sign-in methods" }),
+    );
+    fireEvent.change(await screen.findByLabelText("Password"), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(mocks.prove).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: "auth_local_methods_update",
+          staffSelfRegistrationEnabled: true,
+        }),
+        expect.anything(),
+      ),
+    );
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ staffSelfRegistrationEnabled: true }),
+      "step-up-token",
+    );
+  });
+
   it("locks staff password on and starts with nothing to save", async () => {
     renderCard();
     const staffPassword = await screen.findByRole("switch", {
@@ -132,6 +170,7 @@ describe("LocalSignInMethodsCard", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     const request = {
+      staffSelfRegistrationEnabled: false,
       agent: { password: true, magicLink: true, emailOtp: true },
       customer: { password: true, magicLink: false, emailOtp: false },
       expectedRevision: "a".repeat(64),
@@ -235,6 +274,7 @@ describe("LocalSignInMethodsCard", () => {
     await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1));
     expect(mocks.update).toHaveBeenCalledWith(
       {
+        staffSelfRegistrationEnabled: false,
         agent: { password: true, magicLink: true, emailOtp: false },
         customer: { password: true, magicLink: false, emailOtp: false },
         expectedRevision: "a".repeat(64),

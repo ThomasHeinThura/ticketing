@@ -73,6 +73,12 @@ afterEach(() => {
 });
 
 describe("staff sign-in page", () => {
+  it("does not offer signup when registration is disabled", () => {
+    render(<SignIn />);
+    expect(
+      screen.queryByText("auth:signIn.toggleLink"),
+    ).not.toBeInTheDocument();
+  });
   it("shows the email-code form while staff email code is on and SMTP is configured", () => {
     render(<SignIn />);
     expect(

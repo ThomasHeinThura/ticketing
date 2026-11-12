@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { refreshStaffRegistration } from "../../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../../apps/api/src/database";
 import type { createApp } from "../../../apps/api/src/index";
 import {
   ensureSetupToken,
-  isSetupCompleted,
   SETUP_TOKEN_SINGLETON_ID,
 } from "../../../apps/api/src/instance/setup-token";
 
@@ -108,19 +108,19 @@ export function nextClientIp(): string {
  * `signUpInstanceAdmin` below instead, which drives the actual token flow.
  */
 export async function ensureNotFirstSignup(): Promise<void> {
-  if (await isSetupCompleted()) {
-    return;
-  }
+  // Fixtures using this helper exercise ordinary open registration, not the invitation gate.
   await db
     .insert(schema.instanceSettingTable)
     .values({
       id: SETUP_TOKEN_SINGLETON_ID,
       setupCompletedAt: new Date(),
+      staffSelfRegistrationEnabled: true,
     })
     .onConflictDoUpdate({
       target: schema.instanceSettingTable.id,
-      set: { setupCompletedAt: new Date() },
+      set: { setupCompletedAt: new Date(), staffSelfRegistrationEnabled: true },
     });
+  await refreshStaffRegistration();
 }
 
 export async function signUpUser(
@@ -133,7 +133,6 @@ export async function signUpUser(
   }>,
 ): Promise<SignedUpUser> {
   await ensureNotFirstSignup();
-
   const email = overrides?.email ?? `user-${randomUUID()}@example.com`;
   const response = await app.request("/api/auth/sign-up/email", {
     method: "POST",

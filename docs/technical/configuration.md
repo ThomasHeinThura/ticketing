@@ -84,3 +84,8 @@ Configuration is backed-up data: `instance_setting`, `instance_branding`, `insta
 ## Source installer integrity
 
 The maintained source SHA-256 for `install.sh` is `088bd56959c79068ac9d97cc3e4f627a961fe20c78f37facfbb1aa982cc39215`. Refresh it with an intentional installer change. The installer regression checks the actual source bytes; release archives and deployed images still require their own verified checksums and source identity.
+
+
+### Staff registration
+
+The instance setting `staff_self_registration_enabled` defaults to false. God Mode controls it through the elevated sign-in methods save; `DISABLE_REGISTRATION=true` forces staff self-registration off regardless of the stored value, while valid staff invitations remain usable. `DISABLE_PASSWORD_REGISTRATION=true` independently disables password registration. The customer portal remains invitation-only.

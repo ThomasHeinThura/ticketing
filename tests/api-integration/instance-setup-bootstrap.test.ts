@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { count, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { refreshStaffRegistration } from "../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import {
@@ -97,6 +98,14 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
   it("(a) still refuses a zero-user signup with no token even when registration is otherwise wide open (DISABLE_REGISTRATION=false)", async () => {
     process.env.DISABLE_REGISTRATION = "false";
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await refreshStaffRegistration();
     const { app } = createApp();
 
     const response = await signUp(app);
@@ -269,6 +278,14 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     // token has NO special effect any more -- it is only meaningful on a
     // zero-user instance. The new user must NOT be promoted to admin.
     process.env.DISABLE_REGISTRATION = "false";
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await refreshStaffRegistration();
     const { app } = createApp();
     const openEmail = `ordinary-${randomUUID()}@example.com`;
     const openResponse = await signUp(app, {

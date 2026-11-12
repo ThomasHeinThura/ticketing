@@ -1274,6 +1274,9 @@ export const instanceSettingTable = pgTable(
   "instance_setting",
   {
     id: text("id").primaryKey().default("singleton"),
+    staffSelfRegistrationEnabled: boolean("staff_self_registration_enabled")
+      .notNull()
+      .default(false),
     // Durable first-run marker (auth-and-identity.md § Break-glass). Non-null means
     // the instance has been claimed: the zero-user bootstrap bypass in auth.ts and
     // the TASKDESK_BOOTSTRAP_ADMIN_EMAIL headless path are both permanently inert

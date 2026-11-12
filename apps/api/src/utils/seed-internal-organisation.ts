@@ -109,10 +109,18 @@ export async function ensureInternalOrganisation(
 }
 
 /** Ensure an ordinary registered user has the same internal staff identity as boot users. */
-export async function ensureStaffPersonForUser(userId: string): Promise<void> {
-  const internalOrganisation = await ensureInternalOrganisation();
+export async function ensureStaffPersonForUser(
+  userId: string,
+  executor = executorOrDefault(),
+): Promise<void> {
+  const internalOrganisation = await ensureInternalOrganisation(executor);
   const now = new Date();
-  await insertStaffPersonIfAbsent(userId, internalOrganisation.id, now);
+  await insertStaffPersonIfAbsent(
+    userId,
+    internalOrganisation.id,
+    now,
+    executor,
+  );
 }
 
 /**

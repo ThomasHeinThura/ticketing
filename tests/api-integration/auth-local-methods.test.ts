@@ -10,10 +10,11 @@ import {
 } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import acceptInvitation from "../../apps/api/src/invitation/controllers/accept-invitation";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
-import { requireRow } from "./helpers/fixtures";
+import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 import { nextClientIp } from "./helpers/organization-http";
 import { mintStepUpToken, STEP_UP_TOKEN_HEADER } from "./helpers/step-up";
 
@@ -64,7 +65,10 @@ const PLUGIN_IDS = ["auth.password", "auth.magic-link", "auth.email-otp"];
 type App = ReturnType<typeof createApp>["app"];
 type Methods = { password: boolean; magicLink: boolean; emailOtp: boolean };
 type Body = { agent: Methods; customer: Methods };
-type RevisedBody = Body & { expectedRevision: string };
+type RevisedBody = Body & {
+  expectedRevision: string;
+  staffSelfRegistrationEnabled: boolean;
+};
 const ZERO_REVISION = "0".repeat(64);
 
 const STAFF_ALL: Methods = { password: true, magicLink: true, emailOtp: true };
@@ -225,9 +229,14 @@ async function withRevision(
   cookie: string,
   body: Body | RevisedBody,
 ): Promise<RevisedBody> {
-  return "expectedRevision" in body
-    ? body
-    : { ...body, expectedRevision: await currentRevision(app, cookie) };
+  return {
+    staffSelfRegistrationEnabled: false,
+    ...body,
+    expectedRevision:
+      "expectedRevision" in body
+        ? body.expectedRevision
+        : await currentRevision(app, cookie),
+  };
 }
 
 async function putMethods(
@@ -324,6 +333,196 @@ async function auditRows() {
 }
 
 describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
+  it("requires an invitation for password signup even when the environment forces registration off", async () => {
+    const inviter = await createWorkspaceMember({ role: "owner" });
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ staffSelfRegistrationEnabled: true })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    await reloadAuthConfiguration();
+    vi.stubEnv("DISABLE_REGISTRATION", "true");
+    const { app } = createApp();
+    const origin = getConfiguredAgentOrigin();
+    const signup = (email: string, invitationId?: string) =>
+      app.request(`${origin}/api/auth/sign-up/email`, {
+        method: "POST",
+        headers: {
+          host: new URL(origin).host,
+          origin,
+          "content-type": "application/json",
+          "x-forwarded-for": nextClientIp(),
+        },
+        body: JSON.stringify({
+          email,
+          password: PASSWORD,
+          name: "Invited staff",
+          invitationId,
+        }),
+      });
+    const stranger = `${randomUUID()}@example.test`;
+    expect((await signup(stranger)).status).toBe(403);
+    const email = `${randomUUID()}@example.test`;
+    const [invitation] = await db
+      .insert(schema.invitationTable)
+      .values({
+        workspaceId: inviter.workspace.id,
+        inviterId: inviter.user.id,
+        email,
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(Date.now() + 86_400_000),
+      })
+      .returning();
+    if (!invitation) throw new Error("invitation fixture");
+    const admitted = await signup(email, invitation.id);
+    expect(admitted.status, await admitted.clone().text()).toBe(200);
+    const [user] = await db
+      .select()
+      .from(schema.userTable)
+      .where(eq(schema.userTable.email, email));
+    if (!user) throw new Error("invited user not created");
+    const [person] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id));
+    expect(person?.side).toBe("staff");
+  });
+
+  it.each(["email-otp", "magic-link"] as const)(
+    "requires a staff invitation for %s account creation",
+    async (method) => {
+      const inviter = await createWorkspaceMember({ role: "owner" });
+      const { app } = createApp();
+      const origin = getConfiguredAgentOrigin();
+      const post = (path: string, body: unknown) =>
+        app.request(`${origin}${path}`, {
+          method: "POST",
+          headers: {
+            host: new URL(origin).host,
+            origin,
+            "content-type": "application/json",
+            "x-forwarded-for": nextClientIp(),
+          },
+          body: JSON.stringify(body),
+        });
+      const attempt = async (email: string) => {
+        if (method === "email-otp") {
+          mailbox.otp = null;
+          const sent = await post("/api/auth/email-otp/send-verification-otp", {
+            email,
+            type: "sign-in",
+          });
+          expect(sent.status).toBe(200);
+          expect(mailbox.otp).toBeTruthy();
+          return post("/api/auth/sign-in/email-otp", {
+            email,
+            otp: mailbox.otp,
+          });
+        }
+        mailbox.magicLink = null;
+        const sent = await post("/api/auth/sign-in/magic-link", {
+          email,
+          callbackURL: "/dashboard",
+        });
+        expect(sent.status).toBe(200);
+        expect(mailbox.magicLink).toBeTruthy();
+        const link = new URL(String(mailbox.magicLink), origin);
+        return app.request(`${origin}${link.pathname}${link.search}`, {
+          headers: {
+            host: new URL(origin).host,
+            "x-forwarded-for": nextClientIp(),
+          },
+          redirect: "manual",
+        });
+      };
+      const stranger = `${randomUUID()}@example.test`;
+      await attempt(stranger);
+      expect(
+        await db
+          .select()
+          .from(schema.userTable)
+          .where(eq(schema.userTable.email, stranger)),
+      ).toHaveLength(0);
+      const email = `${randomUUID()}@example.test`;
+      await db.insert(schema.invitationTable).values({
+        workspaceId: inviter.workspace.id,
+        inviterId: inviter.user.id,
+        email,
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(Date.now() + 86_400_000),
+      });
+      await attempt(email);
+      const [user] = await db
+        .select()
+        .from(schema.userTable)
+        .where(eq(schema.userTable.email, email));
+      if (!user) throw new Error("invited user not created");
+      const [person] = await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, user.id));
+      expect(person?.side).toBe("staff");
+    },
+  );
+
+  it("creates the staff identity atomically when a previously provisioned user accepts", async () => {
+    const inviter = await createWorkspaceMember({ role: "owner" });
+    const email = `${randomUUID()}@example.test`;
+    const [user] = await db
+      .insert(schema.userTable)
+      .values({ id: randomUUID(), email, name: "Invitee" })
+      .returning();
+    if (!user) throw new Error("user fixture");
+    const [invitation] = await db
+      .insert(schema.invitationTable)
+      .values({
+        workspaceId: inviter.workspace.id,
+        inviterId: inviter.user.id,
+        email,
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(Date.now() + 86_400_000),
+      })
+      .returning();
+    if (!invitation) throw new Error("invitation fixture");
+    await acceptInvitation(invitation.id, user.id);
+    const [person] = await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id));
+    expect(person?.side).toBe("staff");
+  });
+
+  it("does not create a staff identity for an expired invitation", async () => {
+    const inviter = await createWorkspaceMember({ role: "owner" });
+    const email = `${randomUUID()}@example.test`;
+    const [user] = await db
+      .insert(schema.userTable)
+      .values({ id: randomUUID(), email, name: "Invitee" })
+      .returning();
+    if (!user) throw new Error("user fixture");
+    const [invitation] = await db
+      .insert(schema.invitationTable)
+      .values({
+        workspaceId: inviter.workspace.id,
+        inviterId: inviter.user.id,
+        email,
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(Date.now() - 1000),
+      })
+      .returning();
+    if (!invitation) throw new Error("invitation fixture");
+    await expect(acceptInvitation(invitation.id, user.id)).rejects.toThrow();
+    expect(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, user.id)),
+    ).toHaveLength(0);
+  });
+
   it("denies a non-administrator on read and write", async () => {
     await makeStaffUser("local-methods-plain", null);
     const { app } = createApp();
@@ -340,6 +539,7 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
           agent: STAFF_ALL,
           customer: STAFF_ALL,
           expectedRevision: ZERO_REVISION,
+          staffSelfRegistrationEnabled: false,
         },
         PASSWORD,
       ),
@@ -373,6 +573,39 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
     expect(body.customer).toEqual(CUSTOMER_OFF);
     expect(typeof body.emailProviderEnabled).toBe("boolean");
     expect(typeof body.emailOtpDisabledByEnvironment).toBe("boolean");
+  });
+
+  it("requires step-up to change staff registration and audits old and new values", async () => {
+    await makeStaffUser("registration-admin", "admin");
+    const { app } = createApp();
+    const cookie = await staffSession(app, "registration-admin@example.test");
+    const base = { agent: STAFF_ALL, customer: CUSTOMER_OFF };
+    const revision = await currentRevision(app, cookie);
+    const requested = {
+      ...base,
+      expectedRevision: revision,
+      staffSelfRegistrationEnabled: true,
+    };
+    const refused = await putMethods(app, cookie, requested);
+    expect(refused.status).toBe(403);
+    const response = await putWithProof(app, cookie, requested);
+    expect(response.status, await response.clone().text()).toBe(200);
+    const stored = await db
+      .select({
+        enabled: schema.instanceSettingTable.staffSelfRegistrationEnabled,
+      })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(stored[0]?.enabled).toBe(true);
+    const audits = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        eq(schema.auditLogTable.entityId, "staff_self_registration_enabled"),
+      );
+    expect(audits).toHaveLength(1);
+    expect(audits[0]?.before).toEqual({ enabled: false });
+    expect(audits[0]?.after).toEqual({ enabled: true });
   });
 
   it("refuses to disable staff password with 422 before spending a proof", async () => {
@@ -539,7 +772,7 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
     );
     expect(linkSent.status, await linkSent.clone().text()).toBe(200);
     expect(mailbox.magicLink).toBeTruthy();
-    const link = new URL(mailbox.magicLink as string, origin);
+    const link = new URL(String(mailbox.magicLink), origin);
     const verified = await app.request(
       `${origin}${link.pathname}${link.search}`,
       {
@@ -679,6 +912,7 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
       agent: STAFF_ALL,
       customer: CUSTOMER_OFF,
       expectedRevision: staleRevision,
+      staffSelfRegistrationEnabled: false,
     };
     const token = await mintStepUpToken(
       app,

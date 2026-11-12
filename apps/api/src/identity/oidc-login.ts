@@ -18,6 +18,7 @@ import { setSessionCookie } from "better-auth/cookies";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { appendAuditLog } from "../audit/audit-writer";
+import { staffSelfRegistrationEnabled } from "../auth/staff-registration";
 import {
   customerInvitationContinuationCookieName,
   readCustomerInvitationContinuationContext,
@@ -43,6 +44,7 @@ import {
   invalidateWorkspaceDeletionAccessLosses,
 } from "../pending-action/workspace-access-invalidation";
 import { dbNowUtc } from "../utils/db-time";
+import { findPendingInvitation } from "../utils/registration.repository";
 import { ensureInternalOrganisation } from "../utils/seed-internal-organisation";
 import { invalidateNativeAuthorization } from "../ws";
 import {
@@ -1199,6 +1201,23 @@ async function signInAdmittedIdentity(input: {
       let acceptedDeliveries: string[] = [];
       const invitedCustomer =
         portal === "customer" && input.invitationContext !== undefined;
+      if (portal === "agent" && !userId && !staffSelfRegistrationEnabled()) {
+        const verifiedEmail =
+          claims.email_verified === true &&
+          typeof claims.email === "string" &&
+          claims.email.toLowerCase() === identity.address.toLowerCase();
+        const invitation =
+          verifiedEmail &&
+          (await findPendingInvitation({
+            email: identity.address,
+            now,
+            executor: tx,
+          }));
+        if (!invitation)
+          throw new APIError("UNAUTHORIZED", {
+            message: "Identity sign-in failed",
+          });
+      }
       if (existing) {
         if (
           !existing.active ||
