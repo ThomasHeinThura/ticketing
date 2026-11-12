@@ -21,7 +21,7 @@ import { toast } from "@/lib/toast";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import { PropertyRadioMenu } from "./property-radio-menu";
 import { propertyTriggerProps } from "./work-item-property-row";
-import { useRefreshWorkItem } from "./work-item-save";
+import { useRefreshWorkItem, workItemMutationScope } from "./work-item-save";
 
 type Option = { id: string; label: string };
 
@@ -109,6 +109,7 @@ function EstimateRow({ item, compact }: RowProps) {
       !(error instanceof FeatureDisabledError) && count < 2,
   });
   const save = useMutation({
+    scope: workItemMutationScope(item.key),
     mutationFn: (pointId: string | null) =>
       setWorkItemEstimate(item.key, pointId),
     onSuccess: async () => {
@@ -169,6 +170,7 @@ function CycleRow({ item, compact }: RowProps) {
   });
   const currentId = agileFieldsOf(item).cycleId;
   const save = useMutation({
+    scope: workItemMutationScope(item.key),
     mutationFn: (cycleId: string | null) => setWorkItemCycle(item.key, cycleId),
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: ["agile"] });
@@ -213,6 +215,7 @@ function ModuleRow({ item, compact }: RowProps) {
   });
   const currentId = agileFieldsOf(item).moduleId;
   const save = useMutation({
+    scope: workItemMutationScope(item.key),
     mutationFn: (moduleId: string | null) =>
       setWorkItemModule(item.key, moduleId),
     onSuccess: async () => {

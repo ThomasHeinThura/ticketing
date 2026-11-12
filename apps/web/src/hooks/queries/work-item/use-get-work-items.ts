@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { mergeWorkItemListPage } from "@/components/work-item/work-item-save";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
@@ -73,8 +74,12 @@ function useGetWorkItems({
   const listQuery = useInfiniteQuery({
     queryKey: listQueryKey,
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
-      fetchWorkItemsListPage(projectId as string, sort, dir, pageParam),
+    queryFn: async ({ pageParam }) =>
+      mergeWorkItemListPage(
+        queryClient,
+        listQueryKey,
+        await fetchWorkItemsListPage(projectId as string, sort, dir, pageParam),
+      ),
     getNextPageParam: (last, _pages, _lastParam, pageParams) =>
       last.hasMore && last.nextCursor && !pageParams.includes(last.nextCursor)
         ? last.nextCursor
@@ -108,7 +113,7 @@ function useGetWorkItems({
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const searchWorkItems = await loadSearchWorkItems();
-      return searchWorkItems({
+      const page = await searchWorkItems({
         workspaceId: workspaceId as string,
         projectSlug: projectSlug as string,
         filter: structuredFilter ?? "",
@@ -118,6 +123,7 @@ function useGetWorkItems({
         columns,
         cursor: pageParam,
       });
+      return mergeWorkItemListPage(queryClient, searchQueryKey, page);
     },
     getNextPageParam: (last) =>
       last.hasMore ? (last.nextCursor ?? undefined) : undefined,

@@ -14741,6 +14741,9 @@
 						"transitionConflict": {
 							"type": "string"
 						},
+						"transitionForbidden": {
+							"type": "string"
+						},
 						"transitionUnavailable": {
 							"type": "string"
 						},
@@ -14772,6 +14775,9 @@
 							"type": "string"
 						},
 						"assignmentConflict": {
+							"type": "string"
+						},
+						"assignmentForbidden": {
 							"type": "string"
 						},
 						"assignmentError": {
@@ -14861,6 +14867,7 @@
 						"loadingTransitions",
 						"transitionsError",
 						"transitionConflict",
+						"transitionForbidden",
 						"transitionUnavailable",
 						"assignmentHeading",
 						"assignee",
@@ -14872,6 +14879,7 @@
 						"confirmReassignDescription",
 						"confirmAssignment",
 						"assignmentConflict",
+						"assignmentForbidden",
 						"assignmentError",
 						"unassignmentError",
 						"loadingPeople",

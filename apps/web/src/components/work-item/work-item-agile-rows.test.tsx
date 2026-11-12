@@ -44,7 +44,10 @@ vi.mock("@/fetchers/agile", () => ({
   setWorkItemEstimate: vi.fn(),
   setWorkItemModule: vi.fn(),
 }));
-vi.mock("./work-item-save", () => ({ useRefreshWorkItem: () => vi.fn() }));
+vi.mock("./work-item-save", () => ({
+  useRefreshWorkItem: () => vi.fn(),
+  workItemMutationScope: (key: string) => ({ id: `work-item:${key}` }),
+}));
 vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn() } }));
 
 const item = {

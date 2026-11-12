@@ -1,13 +1,19 @@
 import {
   type QueryClient,
   type QueryState,
+  useIsMutating,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect } from "react";
+import {
+  isWorkItemMutating,
+  workItemMutationKey,
+} from "@/components/work-item/work-item-save";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
 import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
+import type { WorkItemDetailRow } from "@/types/work-item";
 
 /**
  * How old a read of this item may be and still serve a mount without asking again: the read
@@ -20,6 +26,28 @@ export const WORK_ITEM_READ_REUSE_MS = 5_000;
 
 export const workItemDetailQueryKey = (key: string | undefined) =>
   ["work-items", "detail", key] as const;
+
+/**
+ * Keeps the cached detail row when a read completes while an optimistic write for this item
+ * is in flight, or when an out-of-order response carries an older version than the cache.
+ */
+async function readWorkItemDetail(queryClient: QueryClient, key: string) {
+  const incoming = await getWorkItem(key);
+  const cached = queryClient.getQueryData<WorkItemDetailRow>(
+    workItemDetailQueryKey(key),
+  );
+  if (cached) {
+    if (isWorkItemMutating(queryClient, key)) return cached;
+    if (
+      typeof cached.version === "number" &&
+      typeof incoming?.version === "number" &&
+      cached.version > incoming.version
+    ) {
+      return cached;
+    }
+  }
+  return incoming;
+}
 
 /**
  * When a screen showing each item last closed, per query client. Changes made after that are not
@@ -78,7 +106,7 @@ function isReusableRefusal(
 export function prefetchWorkItemDetail(queryClient: QueryClient, key: string) {
   void queryClient.prefetchQuery({
     queryKey: workItemDetailQueryKey(key),
-    queryFn: () => getWorkItem(key),
+    queryFn: () => readWorkItemDetail(queryClient, key),
     staleTime: WORK_ITEM_READ_REUSE_MS,
   });
 }
@@ -88,10 +116,14 @@ function useGetWorkItem({ key }: { key: string | undefined }) {
   const { status: realtimeStatus } = useNativeWorkItemRealtime(
     key ? [`work_item:${key}`] : [],
   );
+  const isMutating = useIsMutating({
+    mutationKey: key ? workItemMutationKey(key) : ["work-items", "mutate", ""],
+    exact: true,
+  });
   const closedAt = () => (key ? (lastClosed(queryClient).get(key) ?? 0) : 0);
   const query = useQuery({
     queryKey: workItemDetailQueryKey(key),
-    queryFn: () => getWorkItem(key as string),
+    queryFn: () => readWorkItemDetail(queryClient, key as string),
     enabled: !!key,
     // The detail page and side pane re-read the item on mount (the app default is not to), so
     // opening an item never shows a cached copy that changed while no screen watched it. A read
@@ -103,7 +135,8 @@ function useGetWorkItem({ key }: { key: string | undefined }) {
         ? "always"
         : false,
     retryOnMount: (current) => !isReusableRefusal(current.state, closedAt()),
-    refetchInterval: realtimeStatus === "available" ? false : 30_000,
+    refetchInterval:
+      realtimeStatus === "available" || isMutating > 0 ? false : 30_000,
     refetchIntervalInBackground: false,
   });
   useEffect(() => {

@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { mergeWorkItemListPage } from "@/components/work-item/work-item-save";
 import getProjectStates from "@/fetchers/project/get-project-states";
 import getProjects from "@/fetchers/project/get-projects";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
@@ -87,20 +88,30 @@ export function prefetchWorkListData(
             }),
         }),
       );
-    else if (!usesWorkItemSearch(search))
+    else if (!usesWorkItemSearch(search)) {
+      const listQueryKey = workItemsListQueryKey(
+        project.id,
+        search.sort,
+        search.dir,
+      );
       reads.push(
         queryClient.ensureInfiniteQueryData({
-          queryKey: workItemsListQueryKey(project.id, search.sort, search.dir),
+          queryKey: listQueryKey,
           initialPageParam: undefined as string | undefined,
-          queryFn: ({ pageParam }) =>
-            fetchWorkItemsListPage(
-              project.id,
-              search.sort,
-              search.dir,
-              pageParam,
+          queryFn: async ({ pageParam }) =>
+            mergeWorkItemListPage(
+              queryClient,
+              listQueryKey,
+              await fetchWorkItemsListPage(
+                project.id,
+                search.sort,
+                search.dir,
+                pageParam,
+              ),
             ),
         }),
       );
+    }
     await Promise.all(reads);
   })().then(
     () => undefined,

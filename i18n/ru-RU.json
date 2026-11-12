@@ -3675,7 +3675,9 @@
 			"reasonChangeRisk": "{{term_change_one}} risk is too high",
 			"reasonUnknown": "not available",
 			"reasonApprovalPending": "waiting for approval",
-			"reasonCabPending": "waiting for {{term_change_one}} advisory board approval"
+			"reasonCabPending": "waiting for {{term_change_one}} advisory board approval",
+			"assignmentForbidden": "You don't have permission to change the assignee of this {{term_work_item_one}}.",
+			"transitionForbidden": "You don't have permission to change the state of this {{term_work_item_one}}."
 		},
 		"board": {
 			"changeState": "Change state",

@@ -480,3 +480,77 @@ test("Escape in a create-dialog picker closes only the picker and keeps the draf
   await expect(title).toHaveValue("Draft kept across Escape");
   await expect(priority).toBeFocused();
 });
+
+test("state and assignee show at once, close their menus, serialise writes and roll back a refused queued change", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installPerformanceApiFixture(page, { workflowCapabilities: true });
+
+  let releaseTransition!: () => void;
+  const transitionGate = new Promise<void>((resolve) => {
+    releaseTransition = resolve;
+  });
+  let transitionStarted = false;
+  await page.route(
+    `**/api/work-items/${WORK_ITEM_KEY}/transition`,
+    async (route) => {
+      transitionStarted = true;
+      await transitionGate;
+      return route.fallback();
+    },
+  );
+
+  let releaseAssign!: () => void;
+  const assignGate = new Promise<void>((resolve) => {
+    releaseAssign = resolve;
+  });
+  let assignStarted = false;
+  await page.route(
+    `**/api/work-items/${WORK_ITEM_KEY}/assign`,
+    async (route) => {
+      assignStarted = true;
+      await assignGate;
+      return route.fulfill({
+        status: 403,
+        contentType: "application/problem+json",
+        body: JSON.stringify({ title: "Forbidden", status: 403 }),
+      });
+    },
+  );
+
+  await page.goto(`/agent/work-items/${WORK_ITEM_KEY}`);
+  const stateTrigger = page.getByTestId("work-item-state-control");
+  const assigneeTrigger = page.getByTestId("work-item-assignee-control");
+  await expect(stateTrigger).toContainText("Backlog");
+  await expect(assigneeTrigger).toContainText("Unassigned");
+
+  // State updates at once and closes its menu while POST /transition is still held.
+  await stateTrigger.click();
+  await page.getByRole("menuitem", { name: /In progress/ }).click();
+  await expect(stateTrigger).toContainText("In progress");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect.poll(() => transitionStarted).toBe(true);
+
+  // Choosing an assignee while the state write is in flight updates at once, closes the
+  // picker and queues behind the active item scope without sending POST /assign yet.
+  await assigneeTrigger.click();
+  await page.getByRole("button", { name: /G11 Agent/ }).click();
+  await expect(assigneeTrigger).toContainText("G11 Agent");
+  await expect(page.locator("[data-slot=popover-content]")).toHaveCount(0);
+  expect(assignStarted).toBe(false);
+
+  // Once the state write finishes, the queued assign runs; its 403 rolls back only the
+  // assignee and surfaces the translated toast while keeping the confirmed state.
+  releaseTransition();
+  await expect.poll(() => assignStarted).toBe(true);
+  releaseAssign();
+
+  await expect(assigneeTrigger).toContainText("Unassigned");
+  await expect(stateTrigger).toContainText("In progress");
+  await expect(
+    page.getByText(
+      "You do not have permission to change the assignee of this work item.",
+    ),
+  ).toBeVisible();
+});

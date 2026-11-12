@@ -44,7 +44,13 @@ vi.mock("@/fetchers/work-item/update-work-item", () => ({
 
 import useWorkItemGroupDrag from "@/components/work-item/use-work-item-group-drag";
 import WorkItemListRealtime from "@/components/work-item/work-item-list-realtime";
-import { useSaveWorkItemFields } from "@/components/work-item/work-item-save";
+import {
+  applyOptimisticWorkItemFields,
+  settleWorkItemMutation,
+  useSaveWorkItemFields,
+  workItemMutationKey,
+  workItemMutationScope,
+} from "@/components/work-item/work-item-save";
 import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
@@ -1508,5 +1514,122 @@ describe("work-item list realtime composition", () => {
     await new Promise((resolve) => setTimeout(resolve, 1_100));
     expect(MockWebSocket.instances).toHaveLength(1);
     expect(result.current.status).toBe("unavailable");
+  });
+
+  it("does not overwrite a pending optimistic detail change when another person's realtime hint arrives, and picks it up on settle", async () => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, refetchOnWindowFocus: false },
+        mutations: { retry: false },
+      },
+    });
+    const baseItem = {
+      key: "WI-OPT",
+      projectId: "project-1",
+      workspaceId: "workspace-1",
+      stateName: "To do",
+      stateCategory: "unstarted",
+      priority: "high",
+      version: 1,
+      unavailableFields: [],
+    } as unknown as WorkItemDetailRow;
+    mocks.getWorkItem.mockResolvedValue(baseItem);
+
+    function OptimisticDetail() {
+      const query = useGetWorkItem({ key: "WI-OPT" });
+      return (
+        <output data-testid="optimistic-detail">
+          {query.data
+            ? `${query.data.stateName}|${query.data.priority}|${query.data.version}`
+            : "loading"}
+        </output>
+      );
+    }
+
+    render(<OptimisticDetail />, { wrapper: wrapperFor(client) });
+    await waitFor(() =>
+      expect(screen.getByTestId("optimistic-detail")).toHaveTextContent(
+        "To do|high|1",
+      ),
+    );
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected detail socket");
+    act(() => {
+      socket.open();
+      socket.frame({ type: "subscribed", topic: "work_item:WI-OPT" });
+    });
+    mocks.getWorkItem.mockClear();
+
+    const write = deferred<{ key: string; version: number }>();
+    const mutation = client.getMutationCache().build(client, {
+      mutationKey: workItemMutationKey("WI-OPT"),
+      scope: workItemMutationScope("WI-OPT"),
+      onMutate: () =>
+        applyOptimisticWorkItemFields(client, baseItem, {
+          stateName: "In progress",
+          stateCategory: "started",
+        }),
+      mutationFn: () => write.promise,
+      onSettled: () =>
+        settleWorkItemMutation(client, "WI-OPT", () =>
+          client.invalidateQueries({
+            queryKey: ["work-items", "detail", "WI-OPT"],
+          }),
+        ),
+    });
+
+    let inflight!: Promise<unknown>;
+    act(() => {
+      inflight = mutation.execute(undefined);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("optimistic-detail")).toHaveTextContent(
+        "In progress|high|1",
+      ),
+    );
+
+    // Another person updates priority while our local state write is still in flight.
+    mocks.getWorkItem.mockResolvedValue({
+      ...baseItem,
+      stateName: "To do",
+      priority: "urgent",
+      version: 2,
+    });
+    act(() =>
+      socket.frame({
+        type: "work_item.updated",
+        topic: "work_item:WI-OPT",
+        eventId: "evt-concurrent-remote",
+        payload: { key: "WI-OPT" },
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(mocks.getWorkItem).not.toHaveBeenCalled();
+    expect(screen.getByTestId("optimistic-detail")).toHaveTextContent(
+      "In progress|high|1",
+    );
+    expect(
+      client.getQueryState(["work-items", "detail", "WI-OPT"])?.isInvalidated,
+    ).toBe(true);
+
+    // Once our write settles, the single settle refetch picks up both changes.
+    mocks.getWorkItem.mockResolvedValue({
+      ...baseItem,
+      stateName: "In progress",
+      stateCategory: "started",
+      priority: "urgent",
+      version: 3,
+    });
+    await act(async () => {
+      write.resolve({ key: "WI-OPT", version: 3 });
+      await inflight;
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("optimistic-detail")).toHaveTextContent(
+        "In progress|urgent|3",
+      ),
+    );
+    expect(mocks.getWorkItem).toHaveBeenCalledTimes(1);
   });
 });

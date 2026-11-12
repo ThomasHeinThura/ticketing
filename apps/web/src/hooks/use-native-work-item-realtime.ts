@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { windowId } from "@taskdesk/libs";
 import { useEffect, useRef, useState } from "react";
+import { isWorkItemMutating } from "@/components/work-item/work-item-save";
 import { getApiUrl, toWebSocketBase } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
@@ -146,7 +147,15 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       const queryKeys = [...pendingInvalidations.values()];
       pendingInvalidations.clear();
       for (const queryKey of queryKeys) {
-        void queryClient.invalidateQueries({ queryKey, refetchType });
+        const mutatingDetail =
+          queryKey[0] === "work-items" &&
+          queryKey[1] === "detail" &&
+          typeof queryKey[2] === "string" &&
+          isWorkItemMutating(queryClient, queryKey[2]);
+        void queryClient.invalidateQueries({
+          queryKey,
+          refetchType: mutatingDetail ? "none" : refetchType,
+        });
       }
     }
 
