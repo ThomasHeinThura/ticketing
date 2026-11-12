@@ -2061,7 +2061,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Предложения",
@@ -2156,7 +2158,8 @@
 			"addWorkspace": "Добавить рабочую область",
 			"workspaceSettings": "Настройки рабочей области",
 			"instanceUsers": "Пользователи экземпляра",
-			"selectWorkspace": "Выберите рабочую область"
+			"selectWorkspace": "Выберите рабочую область",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",

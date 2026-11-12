@@ -2038,7 +2038,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "추천",
@@ -2133,7 +2135,8 @@
 			"addWorkspace": "워크스페이스 추가",
 			"workspaceSettings": "워크스페이스 설정",
 			"instanceUsers": "인스턴스 사용자",
-			"selectWorkspace": "워크스페이스 선택"
+			"selectWorkspace": "워크스페이스 선택",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",

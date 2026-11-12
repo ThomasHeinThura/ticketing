@@ -24,6 +24,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
 // Loaded with the strip, not lazily: the "More" menu then paints in the same commit as the
 // measurement that shows it, so the header never settles without it and shifts afterwards.
@@ -33,7 +34,9 @@ import useProjectPagesFeature, {
   useProjectFeature,
 } from "@/hooks/queries/feature-flag/use-project-pages-feature";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { activateWorkspaceForNavigation } from "@/lib/activate-workspace-for-navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { buildProjectViewSwitchUrl } from "@/lib/project-layout-navigation";
@@ -45,6 +48,7 @@ import {
   routes,
 } from "@/lib/routes";
 import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
+import { toast } from "@/lib/toast";
 
 const MobileProjectNav = lazy(
   () => import("@/components/common/header/mobile-project-nav"),
@@ -100,14 +104,34 @@ function ViewTab({
   active,
   icon: Icon,
   onClick,
+  disabledReason,
   children,
 }: {
   view: ProjectView;
   active: boolean;
   icon: LucideIcon;
   onClick: () => void;
+  disabledReason?: string;
   children: ReactNode;
 }) {
+  if (disabledReason) {
+    return (
+      <ActionTooltip label={disabledReason}>
+        <Button
+          variant={active ? "secondary" : "ghost"}
+          size="xs"
+          data-project-view={view}
+          aria-disabled="true"
+          aria-description={disabledReason}
+          aria-current={active ? "page" : undefined}
+          className="h-6 scroll-mx-6 cursor-not-allowed gap-1.5 rounded-md px-2 text-xs opacity-64"
+        >
+          <Icon className="size-3.5" />
+          {children}
+        </Button>
+      </ActionTooltip>
+    );
+  }
   return (
     <Button
       variant={active ? "secondary" : "ghost"}
@@ -157,16 +181,19 @@ export default function ProjectLayoutControls({
   const isActiveWorkspace = Boolean(
     !isSessionPending && activeWorkspaceId && activeWorkspaceId === workspaceId,
   );
+  const { data: workspaces } = useGetWorkspaces();
   const { data: workspaceProjects } = useGetProjects({ workspaceId });
-  const canonicalProjectSlug = (
+  const verifiedProjectSlug = (
     targetProjectId: string,
     candidateSlug: string | undefined,
   ): string | undefined => {
-    if (!candidateSlug || !isActiveWorkspace) return undefined;
-    const canonical = workspaceProjects?.find(
+    if (!candidateSlug) return undefined;
+    const matches = workspaceProjects?.filter(
       (candidate) => candidate.slug === candidateSlug,
     );
+    const canonical = matches?.[0];
     if (
+      matches?.length !== 1 ||
       !canonical ||
       canonical.id !== targetProjectId ||
       (canonical.workspaceId !== undefined &&
@@ -176,6 +203,37 @@ export default function ProjectLayoutControls({
     }
     return candidateSlug;
   };
+  const canonicalProjectSlug = (
+    targetProjectId: string,
+    candidateSlug: string | undefined,
+  ): string | undefined =>
+    isActiveWorkspace
+      ? verifiedProjectSlug(targetProjectId, candidateSlug)
+      : undefined;
+  const candidateSlugForCurrentProject =
+    projectSlug ??
+    workspaceProjects?.find((candidate) => candidate.id === projectId)?.slug;
+  const verifiedCurrentProjectSlug = verifiedProjectSlug(
+    projectId,
+    candidateSlugForCurrentProject,
+  );
+  const isWorkspaceUnauthorized = Boolean(
+    !isActiveWorkspace &&
+      workspaces &&
+      !workspaces.some((candidate) => candidate.id === workspaceId),
+  );
+  const isShadowedProjectSlug = Boolean(
+    candidateSlugForCurrentProject &&
+      workspaceProjects &&
+      !verifiedCurrentProjectSlug,
+  );
+  const slugViewsDisabledReason = isShadowedProjectSlug
+    ? t("navigation:projectViews.shadowedKeyUnavailable")
+    : isWorkspaceUnauthorized
+      ? t("navigation:workspaceSwitcher.switchFailed")
+      : !verifiedCurrentProjectSlug
+        ? t("navigation:projectViews.keyUnavailable")
+        : undefined;
   const permissions = useWorkspacePermission(workspaceId);
   const canCreateProject =
     !permissions.isCheckingPermissions && permissions.canCreateProjects();
@@ -296,14 +354,40 @@ export default function ProjectLayoutControls({
     viewport.addEventListener("wheel", onWheel, { passive: false });
     return () => viewport.removeEventListener("wheel", onWheel);
   }, [showViewSwitcher]);
+  const activatingWorkspaceRef = useRef(false);
+  const openSlugOnlyProjectView = async (
+    buildHref: (projectKey: string) => string,
+    targetSlug = verifiedCurrentProjectSlug,
+  ) => {
+    if (!targetSlug) return;
+    const href = buildHref(targetSlug);
+    if (isActiveWorkspace) {
+      await navigate({ href });
+      return;
+    }
+    if (isWorkspaceUnauthorized) {
+      toast.error(t("navigation:workspaceSwitcher.switchFailed"));
+      return;
+    }
+    if (activatingWorkspaceRef.current) return;
+    activatingWorkspaceRef.current = true;
+    try {
+      await activateWorkspaceForNavigation(workspaceId);
+    } catch {
+      toast.error(t("navigation:workspaceSwitcher.switchFailed"));
+      return;
+    } finally {
+      activatingWorkspaceRef.current = false;
+    }
+    await navigate({ href });
+  };
   const handleNavigateToOverviewView = (
     view: keyof typeof OVERVIEW_VIEW_ROUTES,
   ) => {
-    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
-    if (resolvedSlug)
-      void navigate({
-        href: OVERVIEW_VIEW_ROUTES[view].build({ projectKey: resolvedSlug }),
-      });
+    if (slugViewsDisabledReason) return;
+    void openSlugOnlyProjectView((projectKey) =>
+      OVERVIEW_VIEW_ROUTES[view].build({ projectKey }),
+    );
   };
   const handleNavigateToBacklog = () => {
     const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
@@ -330,25 +414,22 @@ export default function ProjectLayoutControls({
     });
   };
   const handleNavigateToCycles = () => {
-    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
-    if (resolvedSlug)
-      void navigate({
-        href: routes.projectCycles.build({ projectKey: resolvedSlug }),
-      });
+    if (slugViewsDisabledReason) return;
+    void openSlugOnlyProjectView((projectKey) =>
+      routes.projectCycles.build({ projectKey }),
+    );
   };
   const handleNavigateToPages = () => {
-    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
-    if (resolvedSlug)
-      void navigate({
-        href: routes.projectPages.build({ projectKey: resolvedSlug }),
-      });
+    if (slugViewsDisabledReason) return;
+    void openSlugOnlyProjectView((projectKey) =>
+      routes.projectPages.build({ projectKey }),
+    );
   };
   const handleNavigateToModules = () => {
-    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
-    if (resolvedSlug)
-      void navigate({
-        href: routes.projectModules.build({ projectKey: resolvedSlug }),
-      });
+    if (slugViewsDisabledReason) return;
+    void openSlugOnlyProjectView((projectKey) =>
+      routes.projectModules.build({ projectKey }),
+    );
   };
   const handleNavigateToCalendar = () => {
     // Use the canonical `/agent` Calendar only when this workspace is active and its project
@@ -391,6 +472,10 @@ export default function ProjectLayoutControls({
       nextProject.id,
       nextProject.slug,
     );
+    const nextVerifiedSlug = verifiedProjectSlug(
+      nextProject.id,
+      nextProject.slug,
+    );
     if (resolvedView in OVERVIEW_VIEW_ROUTES) {
       if (nextCanonicalSlug) {
         void navigate({
@@ -398,6 +483,14 @@ export default function ProjectLayoutControls({
             resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
           ].build({ projectKey: nextCanonicalSlug }),
         });
+      } else if (nextVerifiedSlug && !isWorkspaceUnauthorized) {
+        void openSlugOnlyProjectView(
+          (projectKey) =>
+            OVERVIEW_VIEW_ROUTES[
+              resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
+            ].build({ projectKey }),
+          nextVerifiedSlug,
+        );
       } else {
         void navigate({
           to: PROJECT_BOARD_PATH,
@@ -440,6 +533,24 @@ export default function ProjectLayoutControls({
       resolvedView === "pages"
     ) {
       if (!nextCanonicalSlug) {
+        if (
+          (resolvedView === "cycles" ||
+            resolvedView === "modules" ||
+            resolvedView === "pages") &&
+          nextVerifiedSlug &&
+          !isWorkspaceUnauthorized
+        ) {
+          void openSlugOnlyProjectView(
+            (projectKey) =>
+              resolvedView === "cycles"
+                ? routes.projectCycles.build({ projectKey })
+                : resolvedView === "pages"
+                  ? routes.projectPages.build({ projectKey })
+                  : routes.projectModules.build({ projectKey }),
+            nextVerifiedSlug,
+          );
+          return;
+        }
         void navigate({
           to:
             resolvedView === "backlog"
@@ -475,12 +586,14 @@ export default function ProjectLayoutControls({
     view: ProjectView;
     icon: LucideIcon;
     label: string;
+    disabledReason?: string;
     onSelect: () => void;
   }> = [
     {
       view: "overview",
       icon: LayoutDashboard,
       label: t("navigation:projectViews.overview"),
+      disabledReason: slugViewsDisabledReason,
       onSelect: () => handleNavigateToOverviewView("overview"),
     },
     {
@@ -521,6 +634,7 @@ export default function ProjectLayoutControls({
             view: "cycles" as const,
             icon: Repeat,
             label: t("navigation:projectViews.cycles"),
+            disabledReason: slugViewsDisabledReason,
             onSelect: handleNavigateToCycles,
           },
         ]
@@ -531,6 +645,7 @@ export default function ProjectLayoutControls({
             view: "modules" as const,
             icon: Layers,
             label: t("navigation:projectViews.modules"),
+            disabledReason: slugViewsDisabledReason,
             onSelect: handleNavigateToModules,
           },
         ]
@@ -541,6 +656,7 @@ export default function ProjectLayoutControls({
             view: "pages" as const,
             icon: FileText,
             label: t("navigation:projectViews.pages"),
+            disabledReason: slugViewsDisabledReason,
             onSelect: handleNavigateToPages,
           },
         ]
@@ -549,18 +665,21 @@ export default function ProjectLayoutControls({
       view: "prerequisites",
       icon: ListChecks,
       label: t("navigation:projectViews.prerequisites"),
+      disabledReason: slugViewsDisabledReason,
       onSelect: () => handleNavigateToOverviewView("prerequisites"),
     },
     {
       view: "team",
       icon: Users,
       label: t("navigation:projectViews.team"),
+      disabledReason: slugViewsDisabledReason,
       onSelect: () => handleNavigateToOverviewView("team"),
     },
     {
       view: "documents",
       icon: Files,
       label: t("navigation:projectViews.documents"),
+      disabledReason: slugViewsDisabledReason,
       onSelect: () => handleNavigateToOverviewView("documents"),
     },
   ];
@@ -611,6 +730,7 @@ export default function ProjectLayoutControls({
                 agileFeatures.modules ? handleNavigateToModules : undefined
               }
               onSelectPages={pagesOn ? handleNavigateToPages : undefined}
+              slugViewsDisabledReason={slugViewsDisabledReason}
               onSelectProject={handleProjectSwitch}
               onAddProject={addProject}
               onOpenProjectSettings={() =>
@@ -671,6 +791,7 @@ export default function ProjectLayoutControls({
                     view={tab.view}
                     active={resolvedView === tab.view}
                     icon={tab.icon}
+                    disabledReason={tab.disabledReason}
                     onClick={tab.onSelect}
                   >
                     {tab.label}

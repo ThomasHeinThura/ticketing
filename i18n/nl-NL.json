@@ -2043,7 +2043,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Suggesties",
@@ -2138,7 +2140,8 @@
 			"addWorkspace": "Werkruimte toevoegen",
 			"workspaceSettings": "Werkruimte-instellingen",
 			"instanceUsers": "Instantiegebruikers",
-			"selectWorkspace": "Werkruimte selecteren"
+			"selectWorkspace": "Werkruimte selecteren",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",

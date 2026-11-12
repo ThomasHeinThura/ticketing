@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   activateWorkspace: vi.fn((_workspaceId: string) =>
     Promise.resolve({ id: "w2" }),
   ),
+  toastError: vi.fn(),
   activeOrganizationId: "w1" as string | null,
   workspaces: [{ id: "w1" }, { id: "w2" }] as Array<{ id: string }>,
 }));
@@ -38,8 +39,14 @@ vi.mock("@/hooks/queries/search/use-global-search", () => ({
 vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
   default: () => ({ data: mocks.workspaces }),
 }));
-vi.mock("@/fetchers/workspace/activate-workspace", () => ({
-  default: (workspaceId: string) => mocks.activateWorkspace(workspaceId),
+vi.mock("@/lib/activate-workspace-for-navigation", () => ({
+  activateWorkspaceForNavigation: (workspaceId: string) =>
+    mocks.activateWorkspace(workspaceId),
+}));
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    error: mocks.toastError,
+  },
 }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -74,6 +81,7 @@ beforeEach(() => {
   mocks.activateWorkspace.mockImplementation(() =>
     Promise.resolve({ id: "w2" }),
   );
+  mocks.toastError.mockReset();
   mocks.search.mockImplementation((params) => ({
     data: params.q ? { results, totalCount: 3 } : undefined,
     isLoading: false,
@@ -131,8 +139,9 @@ describe("WorkspaceSearch (P1R1-1)", () => {
     });
   });
 
-  it("opens /agent directly for the active workspace, activates another authorized workspace first, and refuses unauthorized workspaces", async () => {
+  it("opens /agent directly for the active workspace, shows a toast when activation is refused or rejects, and navigates after activation succeeds", async () => {
     vi.useRealTimers();
+    const onSearchChange = vi.fn();
     mocks.search.mockImplementation(() => ({
       data: {
         results: [
@@ -150,7 +159,7 @@ describe("WorkspaceSearch (P1R1-1)", () => {
       <WorkspaceSearch
         workspaceId="w2"
         search={{ q: "workspace" }}
-        onSearchChange={vi.fn()}
+        onSearchChange={onSearchChange}
       />,
     );
 
@@ -160,9 +169,35 @@ describe("WorkspaceSearch (P1R1-1)", () => {
     mocks.navigate.mockClear();
 
     fireEvent.click(screen.getByText("Denied Workspace"));
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "navigation:workspaceSwitcher.switchFailed",
+      );
+    });
     expect(mocks.activateWorkspace).not.toHaveBeenCalled();
     expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(onSearchChange).not.toHaveBeenCalled();
+    expect(
+      screen.getByPlaceholderText("workspace:search.placeholder"),
+    ).toHaveValue("workspace");
 
+    mocks.toastError.mockClear();
+    mocks.activateWorkspace.mockRejectedValueOnce(new Error("403 Forbidden"));
+
+    fireEvent.click(screen.getByText("Ops Workspace"));
+    await waitFor(() => {
+      expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "navigation:workspaceSwitcher.switchFailed",
+      );
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(onSearchChange).not.toHaveBeenCalled();
+    expect(
+      screen.getByPlaceholderText("workspace:search.placeholder"),
+    ).toHaveValue("workspace");
+
+    mocks.activateWorkspace.mockClear();
     fireEvent.click(screen.getByText("Ops Workspace"));
     await waitFor(() => {
       expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");

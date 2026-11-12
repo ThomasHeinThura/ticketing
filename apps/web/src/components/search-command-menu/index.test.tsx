@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   activateWorkspace: vi.fn((_workspaceId: string) =>
     Promise.resolve({ id: "w2" }),
   ),
+  toastError: vi.fn(),
   workspaces: [{ id: "w1" }, { id: "w2" }] as Array<{ id: string }>,
   activeOrganizationId: "w1" as string | null,
   groups: [] as SearchGroup[],
@@ -61,8 +62,14 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
   default: () => ({ data: mocks.workspaces }),
 }));
-vi.mock("@/fetchers/workspace/activate-workspace", () => ({
-  default: (workspaceId: string) => mocks.activateWorkspace(workspaceId),
+vi.mock("@/lib/activate-workspace-for-navigation", () => ({
+  activateWorkspaceForNavigation: (workspaceId: string) =>
+    mocks.activateWorkspace(workspaceId),
+}));
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    error: mocks.toastError,
+  },
 }));
 
 vi.mock("@/hooks/queries/search/use-global-search", () => ({
@@ -137,7 +144,11 @@ vi.mock("@taskdesk/ui", async () => {
 beforeEach(() => {
   mocks.search.mockImplementation(() => ({ data: undefined }));
   mocks.navigate.mockReset();
-  mocks.activateWorkspace.mockClear();
+  mocks.activateWorkspace.mockReset();
+  mocks.activateWorkspace.mockImplementation((_workspaceId: string) =>
+    Promise.resolve({ id: "w2" }),
+  );
+  mocks.toastError.mockReset();
   mocks.workspaces = [{ id: "w1" }, { id: "w2" }];
   mocks.activeOrganizationId = "w1";
   mocks.groups = [];
@@ -165,7 +176,7 @@ describe("SearchCommandMenu (#407)", () => {
     );
   });
 
-  it("activates a non-active authorized workspace before navigating to /agent and refuses unauthorized workspaces", async () => {
+  it("keeps the dialog and query open with a toast when workspace activation is refused or rejects, and closes after activation succeeds", async () => {
     mocks.search.mockImplementation(({ q }: { q: string }) => ({
       data: q
         ? {
@@ -176,13 +187,17 @@ describe("SearchCommandMenu (#407)", () => {
           }
         : undefined,
     }));
-    const setOpen = vi.fn();
 
-    render(
-      <KeyboardShortcutsProvider>
-        <SearchCommandMenu open setOpen={setOpen} />
-      </KeyboardShortcutsProvider>,
-    );
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <KeyboardShortcutsProvider>
+          <SearchCommandMenu open={open} setOpen={setOpen} />
+        </KeyboardShortcutsProvider>
+      );
+    }
+
+    render(<Harness />);
 
     fireEvent.change(screen.getByLabelText("search query"), {
       target: { value: "Workspace" },
@@ -191,15 +206,42 @@ describe("SearchCommandMenu (#407)", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "workspace: Denied Workspace" }),
     );
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "navigation:workspaceSwitcher.switchFailed",
+      );
+    });
     expect(mocks.activateWorkspace).not.toHaveBeenCalled();
     expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId("search-command-dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("search query")).toHaveValue("Workspace");
+
+    mocks.toastError.mockClear();
+    mocks.activateWorkspace.mockRejectedValueOnce(new Error("403 Forbidden"));
 
     fireEvent.click(
       screen.getByRole("button", { name: "workspace: Ops Workspace" }),
     );
     await waitFor(() => {
       expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "navigation:workspaceSwitcher.switchFailed",
+      );
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId("search-command-dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("search query")).toHaveValue("Workspace");
+
+    mocks.activateWorkspace.mockClear();
+    fireEvent.click(
+      screen.getByRole("button", { name: "workspace: Ops Workspace" }),
+    );
+    await waitFor(() => {
+      expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");
       expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+      expect(
+        screen.queryByTestId("search-command-dialog"),
+      ).not.toBeInTheDocument();
     });
     expect(mocks.activateWorkspace.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.navigate.mock.invocationCallOrder[0],

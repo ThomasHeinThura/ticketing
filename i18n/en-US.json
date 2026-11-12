@@ -2043,7 +2043,9 @@
 			"documents": "Documents",
 			"moreLabel": "More {{term_project_one}} views",
 			"notFound": "This {{term_project_one}} does not exist or is out of reach.",
-			"backToProjects": "Back to {{term_project_other}}"
+			"backToProjects": "Back to {{term_project_other}}",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Suggestions",
@@ -2138,7 +2140,8 @@
 			"addWorkspace": "Add workspace",
 			"workspaceSettings": "Workspace settings",
 			"instanceUsers": "Instance users",
-			"selectWorkspace": "Select workspace"
+			"selectWorkspace": "Select workspace",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",

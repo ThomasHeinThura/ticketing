@@ -8290,6 +8290,12 @@
 						},
 						"backToProjects": {
 							"type": "string"
+						},
+						"shadowedKeyUnavailable": {
+							"type": "string"
+						},
+						"keyUnavailable": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8308,7 +8314,9 @@
 						"documents",
 						"moreLabel",
 						"notFound",
-						"backToProjects"
+						"backToProjects",
+						"shadowedKeyUnavailable",
+						"keyUnavailable"
 					]
 				},
 				"commandPalette": {
@@ -8670,6 +8678,9 @@
 						},
 						"selectWorkspace": {
 							"type": "string"
+						},
+						"switchFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8678,7 +8689,8 @@
 						"addWorkspace",
 						"workspaceSettings",
 						"instanceUsers",
-						"selectWorkspace"
+						"selectWorkspace",
+						"switchFailed"
 					]
 				},
 				"page": {

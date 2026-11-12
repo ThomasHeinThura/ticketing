@@ -28011,9 +28011,6 @@
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#1",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#2",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#3",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#4",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#5",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-foreground#0"
 		],
 		"occurrences": [
@@ -28059,51 +28056,6 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#2",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#3",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#4",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#5",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
 			},
@@ -28142,9 +28094,6 @@
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#1",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#2",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#3",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#4",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#5",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-foreground#0"
 		],
 		"occurrences": [
@@ -28190,51 +28139,6 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#2",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#3",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#4",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>bg-secondary",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-foreground#5",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
 			},
@@ -33659,9 +33563,6 @@
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#2",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#3",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#4",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#5",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
@@ -33729,51 +33630,6 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#2",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#3",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#4",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#5",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
 			},
@@ -33814,9 +33670,6 @@
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#2",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#3",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#4",
-			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#5",
 			"apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
@@ -33884,51 +33737,6 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#2",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#3",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#4",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]>hover:bg-accent",
-					"apps/web/src/components/common/header/mobile-project-nav.tsx:MobileProjectNav",
-					"jsx:Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/common/header/mobile-project-nav.tsx::MobileProjectNav::Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/Button[0]::text-muted-foreground#5",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/common/header/mobile-project-nav.tsx"
 			},

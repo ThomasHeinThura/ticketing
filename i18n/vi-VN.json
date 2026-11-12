@@ -2038,7 +2038,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Gợi ý",
@@ -2133,7 +2135,8 @@
 			"addWorkspace": "Thêm không gian làm việc",
 			"workspaceSettings": "Cài đặt không gian làm việc",
 			"instanceUsers": "Người dùng phiên bản",
-			"selectWorkspace": "Chọn không gian làm việc"
+			"selectWorkspace": "Chọn không gian làm việc",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",

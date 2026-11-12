@@ -121,35 +121,36 @@ function SearchCommandMenu({
     [open, workspace?.id, userId],
   );
 
+  const selectingRef = useRef(false);
+
   const handleSelect = async (entry: PaletteEntry) => {
-    if (
-      entry.type === "workspace" &&
-      workspaces &&
-      !workspaces.some((candidate) => candidate.id === entry.id)
-    ) {
-      return;
-    }
-    navigatedRef.current = true;
-    setOpen(false);
-    setQuery("");
-    const opened = await openPaletteEntry({
-      entry,
-      activeWorkspaceId,
-      workspaces,
-      navigate,
-    });
-    if (!opened) {
-      navigatedRef.current = false;
-      return;
-    }
-    if (workspace?.id && userId) {
-      pushRecentItem(userId, workspace.id, {
-        type: entry.type,
-        id: entry.id,
-        title: entry.title,
-        description: entry.description,
-        href: entry.href,
+    if (selectingRef.current) return;
+    selectingRef.current = true;
+    try {
+      const opened = await openPaletteEntry({
+        entry,
+        activeWorkspaceId,
+        workspaces,
+        navigate,
+        errorMessage: t("navigation:workspaceSwitcher.switchFailed"),
       });
+      if (!opened) {
+        return;
+      }
+      navigatedRef.current = true;
+      setOpen(false);
+      setQuery("");
+      if (workspace?.id && userId) {
+        pushRecentItem(userId, workspace.id, {
+          type: entry.type,
+          id: entry.id,
+          title: entry.title,
+          description: entry.description,
+          href: entry.href,
+        });
+      }
+    } finally {
+      selectingRef.current = false;
     }
   };
 

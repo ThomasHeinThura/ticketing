@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
@@ -28,6 +29,22 @@ const routerState = vi.hoisted(() => ({
   pathname: "/agent/projects/ENG/work",
   searchStr: "?q=urgent",
   navigate: vi.fn(),
+}));
+const activateWorkspaceMock = vi.hoisted(() =>
+  vi.fn((_workspaceId: string) => Promise.resolve({ id: _workspaceId })),
+);
+const workspacesState = vi.hoisted(() => ({
+  data: [
+    { id: "workspace-1" },
+    { id: "workspace-2" },
+    { id: "workspace-a" },
+    { id: "workspace-b" },
+    { id: "workspace-active" },
+  ] as Array<{ id: string }>,
+}));
+const toastError = vi.hoisted(() => vi.fn());
+const mobileNavState = vi.hoisted(() => ({
+  lastProps: null as Record<string, unknown> | null,
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -119,6 +136,23 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   }),
 }));
 
+vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
+  default: () => ({
+    data: workspacesState.data,
+  }),
+}));
+
+vi.mock("@/lib/activate-workspace-for-navigation", () => ({
+  activateWorkspaceForNavigation: (workspaceId: string) =>
+    activateWorkspaceMock(workspaceId),
+}));
+
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    error: toastError,
+  },
+}));
+
 vi.mock("@/components/common/header/project-crumb-select", () => ({
   default: ({
     onAddProject,
@@ -152,7 +186,10 @@ const props = {
 };
 
 vi.mock("@/components/common/header/mobile-project-nav", () => ({
-  default: () => <div data-testid="mobile-project-nav" />,
+  default: (navProps: Record<string, unknown>) => {
+    mobileNavState.lastProps = navProps;
+    return <div data-testid="mobile-project-nav" />;
+  },
 }));
 
 beforeEach(() => {
@@ -160,10 +197,26 @@ beforeEach(() => {
   routerState.pathname = "/agent/projects/ENG/work";
   routerState.searchStr = "?q=urgent";
   routerState.navigate.mockReset();
+  activateWorkspaceMock.mockReset();
+  activateWorkspaceMock.mockImplementation((workspaceId: string) =>
+    Promise.resolve({ id: workspaceId }),
+  );
+  toastError.mockReset();
+  mobileNavState.lastProps = null;
+  featureState.cycles = false;
+  featureState.modules = false;
+  featureState.pages = false;
   featureState.calendar = true;
   featureState.timeline = true;
   sessionState.activeOrganizationId = "workspace-1";
   sessionState.isPending = false;
+  workspacesState.data = [
+    { id: "workspace-1" },
+    { id: "workspace-2" },
+    { id: "workspace-a" },
+    { id: "workspace-b" },
+    { id: "workspace-active" },
+  ];
   projectsState.data = [
     { id: "project-1", workspaceId: "workspace-1", slug: "ENG" },
     { id: "project-2", workspaceId: "workspace-1", slug: "OPS" },
@@ -433,8 +486,8 @@ describe("ProjectLayoutControls permissions", () => {
 
   it("keeps workspace and project identity on the ID-scoped calendar URL when a duplicate slug shadows the project", () => {
     projectsState.data = [
-      { id: "shadow-eng", workspaceId: "workspace-1", slug: "ENG" },
       { id: "project-1", workspaceId: "workspace-1", slug: "ENG" },
+      { id: "shadow-eng", workspaceId: "workspace-1", slug: "ENG" },
       { id: "shadow-ops", workspaceId: "workspace-1", slug: "OPS" },
       { id: "project-2", workspaceId: "workspace-1", slug: "OPS" },
     ];
@@ -725,5 +778,182 @@ describe("ProjectLayoutControls tab strip overflow", () => {
     viewportState.width = 1024;
     render(<ProjectLayoutControls {...props} showViewSwitcher />);
     expect(screen.queryByTestId("mobile-project-nav")).toBeNull();
+  });
+
+  it("activates a non-active workspace before opening slug-only project views across desktop tabs, overflow, and mobile handlers, and surfaces a toast on rejection", async () => {
+    sessionState.activeOrganizationId = "workspace-a";
+    projectsState.data = [
+      { id: "project-1", workspaceId: "workspace-b", slug: "ENG" },
+    ];
+    featureState.cycles = true;
+    featureState.modules = true;
+    featureState.pages = true;
+    viewportState.width = 768;
+    layOutStrip(450);
+    routerState.pathname =
+      "/dashboard/workspace/workspace-b/project/project-1/calendar";
+    routerState.searchStr = "";
+
+    render(
+      <ProjectLayoutControls
+        {...props}
+        workspaceId="workspace-b"
+        activeView="calendar"
+        showViewSwitcher
+      />,
+    );
+
+    expect(await screen.findByTestId("mobile-project-nav")).toBeInTheDocument();
+    expect(mobileNavState.lastProps?.slugViewsDisabledReason).toBeUndefined();
+
+    for (const [label, expectedHref] of [
+      ["Overview", "/agent/projects/ENG"],
+      ["Cycles", "/agent/projects/ENG/cycles"],
+      ["Modules", "/agent/projects/ENG/modules"],
+      ["Pages", "/agent/projects/ENG/pages"],
+      ["Prerequisites", "/agent/projects/ENG/prerequisites"],
+      ["Team", "/agent/projects/ENG/team"],
+      ["Documents", "/agent/projects/ENG/documents"],
+    ] as const) {
+      activateWorkspaceMock.mockClear();
+      routerState.navigate.mockClear();
+
+      fireEvent.click(screen.getByRole("button", { name: label }));
+      await waitFor(() => {
+        expect(activateWorkspaceMock).toHaveBeenCalledWith("workspace-b");
+        expect(routerState.navigate).toHaveBeenCalledWith({
+          href: expectedHref,
+        });
+      });
+      expect(activateWorkspaceMock.mock.invocationCallOrder[0]).toBeLessThan(
+        routerState.navigate.mock.invocationCallOrder[0],
+      );
+    }
+
+    // Overflow menu item activates workspace-b before navigating.
+    activateWorkspaceMock.mockClear();
+    routerState.navigate.mockClear();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "More Project views" }),
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Documents" }));
+    await waitFor(() => {
+      expect(activateWorkspaceMock).toHaveBeenCalledWith("workspace-b");
+      expect(routerState.navigate).toHaveBeenCalledWith({
+        href: "/agent/projects/ENG/documents",
+      });
+    });
+
+    // Mobile handler activates workspace-b before navigating.
+    activateWorkspaceMock.mockClear();
+    routerState.navigate.mockClear();
+    const onSelectOverview = mobileNavState.lastProps?.onSelectOverview as
+      | (() => void)
+      | undefined;
+    expect(onSelectOverview).toBeTypeOf("function");
+    onSelectOverview?.();
+    await waitFor(() => {
+      expect(activateWorkspaceMock).toHaveBeenCalledWith("workspace-b");
+      expect(routerState.navigate).toHaveBeenCalledWith({
+        href: "/agent/projects/ENG",
+      });
+    });
+
+    // Rejected activation surfaces a translated error toast and stays on the current route.
+    activateWorkspaceMock.mockClear();
+    routerState.navigate.mockClear();
+    activateWorkspaceMock.mockRejectedValueOnce(new Error("403 Forbidden"));
+    fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+    await waitFor(() => {
+      expect(activateWorkspaceMock).toHaveBeenCalledWith("workspace-b");
+      expect(toastError).toHaveBeenCalledWith(
+        translate("navigation:workspaceSwitcher.switchFailed"),
+      );
+    });
+    expect(routerState.navigate).not.toHaveBeenCalled();
+  });
+
+  it("renders slug-only project controls disabled with a translated tooltip explanation when a shadowed slug cannot be resolved safely", async () => {
+    projectsState.data = [
+      { id: "shadow-eng", workspaceId: "workspace-1", slug: "ENG" },
+      { id: "project-1", workspaceId: "workspace-1", slug: "ENG" },
+    ];
+    featureState.cycles = true;
+    featureState.modules = true;
+    featureState.pages = true;
+    viewportState.width = 768;
+    layOutStrip(450);
+    routerState.pathname =
+      "/dashboard/workspace/workspace-1/project/project-1/calendar";
+    routerState.searchStr = "";
+
+    const expectedReason = translate(
+      "navigation:projectViews.shadowedKeyUnavailable",
+    );
+
+    render(
+      <ProjectLayoutControls
+        {...props}
+        activeView="calendar"
+        showViewSwitcher
+      />,
+    );
+
+    expect(await screen.findByTestId("mobile-project-nav")).toBeInTheDocument();
+    expect(mobileNavState.lastProps?.slugViewsDisabledReason).toBe(
+      expectedReason,
+    );
+
+    for (const label of [
+      "Overview",
+      "Cycles",
+      "Modules",
+      "Pages",
+      "Prerequisites",
+      "Team",
+      "Documents",
+    ]) {
+      const button = screen.getByRole("button", { name: label });
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      expect(button).toHaveAttribute("aria-description", expectedReason);
+    }
+
+    for (const label of ["Backlog", "Work items", "Calendar", "Timeline"]) {
+      expect(screen.getByRole("button", { name: label })).toBeEnabled();
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+    expect(activateWorkspaceMock).not.toHaveBeenCalled();
+    expect(routerState.navigate).not.toHaveBeenCalled();
+
+    const overviewWrapper = document.querySelector<HTMLElement>(
+      '[data-project-view="overview"]',
+    );
+    if (!overviewWrapper) throw new Error("missing overview wrapper");
+    act(() => {
+      overviewWrapper.focus();
+    });
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      expectedReason,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "More Project views" }),
+    );
+    const overflowDocs = await screen.findByRole("menuitem", {
+      name: "Documents",
+    });
+    expect(overflowDocs).toHaveAttribute("aria-disabled", "true");
+    expect(overflowDocs).toHaveAttribute("aria-description", expectedReason);
+    fireEvent.click(overflowDocs);
+    expect(routerState.navigate).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    act(() => overflowDocs.focus());
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      expectedReason,
+    );
+    fireEvent.keyDown(overflowDocs, { key: "Enter" });
+    expect(routerState.navigate).not.toHaveBeenCalled();
+    expect(overflowDocs).toBeInTheDocument();
   });
 });

@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
     { id: "workspace-2", name: "Ops Workspace" },
   ],
   activeOrganizationId: "workspace-1" as string | null,
+  toastError: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -28,12 +29,23 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) =>
-      key === "navigation:sidebar.overview" ? "Overview" : "Select workspace",
+      key === "navigation:sidebar.overview"
+        ? "Overview"
+        : key === "navigation:workspaceSwitcher.switchFailed"
+          ? "Could not switch workspace. Check your access and try again."
+          : "Select workspace",
   }),
 }));
 
-vi.mock("@/fetchers/workspace/activate-workspace", () => ({
-  default: (workspaceId: string) => state.activateWorkspace(workspaceId),
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    error: (message: string) => state.toastError(message),
+  },
+}));
+
+vi.mock("@/lib/activate-workspace-for-navigation", () => ({
+  activateWorkspaceForNavigation: (workspaceId: string) =>
+    state.activateWorkspace(workspaceId),
 }));
 
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
@@ -60,7 +72,11 @@ vi.mock("@/lib/auth-client", () => ({
 
 beforeEach(() => {
   state.navigate.mockReset();
-  state.activateWorkspace.mockClear();
+  state.activateWorkspace.mockReset();
+  state.activateWorkspace.mockImplementation((_workspaceId: string) =>
+    Promise.resolve({ id: "workspace-2" }),
+  );
+  state.toastError.mockReset();
   state.activeOrganizationId = "workspace-1";
 });
 
@@ -94,5 +110,22 @@ describe("WorkspaceCrumbSelect", () => {
     expect(state.activateWorkspace.mock.invocationCallOrder[0]).toBeLessThan(
       state.navigate.mock.invocationCallOrder[0],
     );
+  });
+
+  it("shows a translated error toast and stays on the current route when activation rejects", async () => {
+    state.activateWorkspace.mockRejectedValueOnce(new Error("403 Forbidden"));
+    render(<WorkspaceCrumbSelect workspaceId="workspace-2" />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Overview: Ops Workspace" }),
+    );
+
+    await waitFor(() => {
+      expect(state.activateWorkspace).toHaveBeenCalledWith("workspace-2");
+      expect(state.toastError).toHaveBeenCalledWith(
+        "Could not switch workspace. Check your access and try again.",
+      );
+    });
+    expect(state.navigate).not.toHaveBeenCalled();
   });
 });
