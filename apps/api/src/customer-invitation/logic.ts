@@ -53,11 +53,16 @@ export function customerInvitationStatus(input: {
   return "pending";
 }
 
-/** 256 bits from the CSPRNG, URL-safe. Shown once, in the email link fragment; never stored. */
+/** 256-bit URL-safe credential helper; customer invitations derive credentials via `credential-key.ts` (D-N). */
 export function newCredential(): { credential: string; hash: string } {
   const credential = randomBytes(32).toString("base64url");
   return { credential, hash: hashCredential(credential) };
 }
+
+export {
+  deriveCustomerInvitationCredential,
+  resolveCustomerInvitationCredentialForCopy,
+} from "./credential-key";
 
 export function hashCredential(credential: string): string {
   return createHash("sha256").update(credential, "utf8").digest("hex");

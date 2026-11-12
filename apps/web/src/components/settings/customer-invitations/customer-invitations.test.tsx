@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   listProjects: vi.fn(),
   create: vi.fn(),
   resend: vi.fn(),
+  copyLink: vi.fn(),
+  copyToClipboard: vi.fn(),
   revoke: vi.fn(),
   openPendingAction: vi.fn(),
   navigate: vi.fn(),
@@ -49,8 +51,12 @@ vi.mock("@/fetchers/customer-invitation", () => ({
     mocks.listProjects(...args),
   createCustomerInvitation: (...args: unknown[]) => mocks.create(...args),
   resendCustomerInvitation: (...args: unknown[]) => mocks.resend(...args),
+  copyCustomerInvitationLink: (...args: unknown[]) => mocks.copyLink(...args),
   requestCustomerInvitationRevoke: (...args: unknown[]) =>
     mocks.revoke(...args),
+}));
+vi.mock("@/lib/copy-to-clipboard", () => ({
+  copyToClipboard: (text: string) => mocks.copyToClipboard(text),
 }));
 vi.mock("@/lib/format", () => ({
   formatDateTime: (value: string) => `at ${value}`,
@@ -93,7 +99,7 @@ afterEach(() => {
 });
 
 describe("customer invitations screen", () => {
-  it("lists every status for the chosen organisation and offers resend and revoke only while open", async () => {
+  it("lists every status with expiry, offers Copy link only while pending, and offers Resend/Revoke while open", async () => {
     mocks.listOrganisations.mockResolvedValue([
       { id: "o1", key: "acme", name: "Acme" },
     ]);
@@ -111,6 +117,10 @@ describe("customer invitations screen", () => {
     ).toBeTruthy();
     expect(screen.getByText("customerInvitations:status.revoked")).toBeTruthy();
     expect(screen.getByText("customerInvitations:status.expired")).toBeTruthy();
+    // Only the single pending row offers Copy link; expired, accepted and revoked do not.
+    expect(
+      screen.getAllByText("customerInvitations:actions.copyLink"),
+    ).toHaveLength(1);
     // pending and expired are the two open ones.
     expect(
       screen.getAllByText("customerInvitations:actions.resend"),
@@ -118,7 +128,41 @@ describe("customer invitations screen", () => {
     expect(
       screen.getAllByText("customerInvitations:actions.revoke"),
     ).toHaveLength(2);
+    expect(
+      screen.getAllByText("at 2026-10-26T10:00:00.000Z").length,
+    ).toBeGreaterThanOrEqual(4);
     expect(mocks.listInvitations).toHaveBeenCalledWith("w1", "o1");
+  });
+
+  it("copies a pending customer invitation link from the table row", async () => {
+    mocks.listOrganisations.mockResolvedValue([
+      { id: "o1", key: "acme", name: "Acme" },
+    ]);
+    mocks.listInvitations.mockResolvedValue([invitation("a", "pending")]);
+    mocks.copyLink.mockResolvedValue({
+      link: "https://portal.example.test/invite/a#t=tok123",
+      expiresAt: "2026-10-26T10:00:00.000Z",
+    });
+    mocks.copyToClipboard.mockResolvedValue(true);
+
+    renderScreen();
+    fireEvent.click(
+      await screen.findByText("customerInvitations:actions.copyLink"),
+    );
+
+    await waitFor(() =>
+      expect(mocks.copyLink).toHaveBeenCalledWith("w1", "o1", "a"),
+    );
+    await waitFor(() =>
+      expect(mocks.copyToClipboard).toHaveBeenCalledWith(
+        "https://portal.example.test/invite/a#t=tok123",
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText("customerInvitations:actions.copied"),
+      ).toBeTruthy(),
+    );
   });
 
   it("revoke only requests the pending action; nothing is removed here", async () => {
@@ -139,14 +183,34 @@ describe("customer invitations screen", () => {
     );
   });
 
-  it("resends a pending invitation", async () => {
+  it("shows a translated error toast and copies nothing when row copy is refused or rate-limited", async () => {
+    mocks.listOrganisations.mockResolvedValue([
+      { id: "o1", key: "acme", name: "Acme" },
+    ]);
+    mocks.listInvitations.mockResolvedValue([invitation("a", "pending")]);
+    mocks.copyLink.mockRejectedValue(
+      Object.assign(new Error("Too many requests"), { status: 429 }),
+    );
+
+    renderScreen();
+    fireEvent.click(
+      await screen.findByText("customerInvitations:actions.copyLink"),
+    );
+
+    await waitFor(() =>
+      expect(mocks.copyLink).toHaveBeenCalledWith("w1", "o1", "a"),
+    );
+    expect(mocks.copyToClipboard).not.toHaveBeenCalled();
+  });
+
+  it("resends a pending invitation and shows the result card when no email provider is set up", async () => {
     mocks.listOrganisations.mockResolvedValue([
       { id: "o1", key: "acme", name: "Acme" },
     ]);
     mocks.listInvitations.mockResolvedValue([invitation("a", "pending")]);
     mocks.resend.mockResolvedValue({
       ...invitation("a", "pending"),
-      delivered: true,
+      delivered: false,
     });
     renderScreen();
     fireEvent.click(
@@ -155,9 +219,15 @@ describe("customer invitations screen", () => {
     await waitFor(() =>
       expect(mocks.resend).toHaveBeenCalledWith("w1", "o1", "a"),
     );
+    expect(
+      await screen.findByText("customerInvitations:resultCard.resentTitle"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("customerInvitations:resultCard.noEmailProvider"),
+    ).toBeTruthy();
   });
 
-  it("sends an invitation with the chosen projects; the role is not a field", async () => {
+  it("sends an invitation with the chosen projects; then shows the queued result card", async () => {
     mocks.listOrganisations.mockResolvedValue([
       { id: "o1", key: "acme", name: "Acme" },
     ]);
@@ -175,6 +245,7 @@ describe("customer invitations screen", () => {
     const input = await screen.findByLabelText(
       "customerInvitations:create.email",
     );
+    expect(screen.queryByLabelText(/role/i)).toBeNull();
     fireEvent.change(input, { target: { value: "new@example.test" } });
     fireEvent.click(
       await screen.findByRole("checkbox", { name: "First project" }),
@@ -188,7 +259,12 @@ describe("customer invitations screen", () => {
         ["p1"],
       ),
     );
-    expect(screen.queryByLabelText(/role/i)).toBeNull();
+    expect(
+      await screen.findByText("customerInvitations:resultCard.createdTitle"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("customerInvitations:resultCard.emailQueued"),
+    ).toBeTruthy();
   });
 
   it("asks for an organisation first when none is chosen", async () => {

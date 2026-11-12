@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
-import { ProjectIdFeatureOff } from "@/components/agile/feature-off";
+import {
+  ProjectFeatureOff,
+  ProjectIdFeatureOff,
+} from "@/components/agile/feature-off";
 import ProjectLayout from "@/components/common/project-layout";
 import { useProjectFeatureState } from "@/hooks/queries/feature-flag/use-project-pages-feature";
 
@@ -11,15 +14,18 @@ import { useProjectFeatureState } from "@/hooks/queries/feature-flag/use-project
 export default function ProjectViewFeatureGate({
   projectId,
   workspaceId,
+  projectKey,
   view,
   children,
 }: {
   projectId: string;
   workspaceId: string;
+  projectKey?: string;
   view: "calendar" | "gantt";
   children: ReactNode;
 }) {
   const feature = view === "calendar" ? "feature.calendar" : "feature.timeline";
+  const offFeature = view === "calendar" ? "calendar" : "timeline";
   const enabled = useProjectFeatureState(projectId, feature);
   if (enabled === true) return children;
   return (
@@ -31,12 +37,20 @@ export default function ProjectViewFeatureGate({
     >
       {enabled === false ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <ProjectIdFeatureOff
-            feature={view === "calendar" ? "calendar" : "timeline"}
-            headingLevel={1}
-            projectId={projectId}
-            workspaceId={workspaceId}
-          />
+          {projectKey ? (
+            <ProjectFeatureOff
+              feature={offFeature}
+              headingLevel={1}
+              projectKey={projectKey}
+            />
+          ) : (
+            <ProjectIdFeatureOff
+              feature={offFeature}
+              headingLevel={1}
+              projectId={projectId}
+              workspaceId={workspaceId}
+            />
+          )}
         </div>
       ) : null}
     </ProjectLayout>

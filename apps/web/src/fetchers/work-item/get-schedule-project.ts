@@ -2,6 +2,7 @@ import { client } from "@taskdesk/libs";
 import getProject from "@/fetchers/project/get-project";
 import searchWorkItems from "@/fetchers/work-item/search-work-items";
 import { HttpError } from "@/lib/http-error";
+import { recordServerDate } from "@/lib/server-clock";
 import type Task from "@/types/task";
 
 type ScheduleTask = Task & {
@@ -56,6 +57,7 @@ export async function getScheduleProject(
       },
       { init: { signal } },
     );
+    recordServerDate(response);
     if (!response.ok)
       throw new HttpError(
         response.status,

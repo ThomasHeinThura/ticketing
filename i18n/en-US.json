@@ -1225,13 +1225,13 @@
 		"projectWorkflow": {
 			"pageTitle": "Workflow Settings",
 			"title": "Workflow",
-			"subtitle": "Configure board columns and automation rules for this {{term_project_one}}.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
+			"statesTitle": "States",
+			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
 			"columnsTitle": "Columns",
 			"columnsDescription": "Manage the columns that appear on your board. Drag to reorder. Turn on \"Done column\" for stages that represent completed work.",
 			"automationTitle": "Automation Rules",
 			"automationDescription": "Map integration events to columns. When an event occurs, the linked {{term_work_item_one}} moves to the specified column.",
-			"statesTitle": "States",
-			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
 			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectMembers": {
@@ -2109,7 +2109,9 @@
 			"documents": "Documents",
 			"moreLabel": "More {{term_project_one}} views",
 			"notFound": "This {{term_project_one}} does not exist or is out of reach.",
-			"backToProjects": "Back to {{term_project_other}}"
+			"backToProjects": "Back to {{term_project_other}}",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Suggestions",
@@ -2204,7 +2206,8 @@
 			"addWorkspace": "Add workspace",
 			"workspaceSettings": "Workspace settings",
 			"instanceUsers": "Instance users",
-			"selectWorkspace": "Select workspace"
+			"selectWorkspace": "Select workspace",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2289,6 +2292,8 @@
 		"newCount_other": "{{count}} new",
 		"emptyTitle": "No notifications yet",
 		"emptySubtitle": "You'll see updates and activity here.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Clear all notifications",
 		"clearDialogTitle": "Clear all notifications?",
 		"clearDialogDescription": "This will permanently remove all notifications. You can't undo this action.",
@@ -3066,7 +3071,6 @@
 		},
 		"search": {
 			"pageTitle": "Search",
-			"backToDashboard": "Back to Dashboard",
 			"placeholder": "Search {{term_work_item_other}} by key, title, description or comment text...",
 			"hint": "Search across all {{term_project_other}} you can reach. Use keys like DEP-23 to find a specific {{term_work_item_other}}, or text from a description or comment.",
 			"searching": "Searching...",
@@ -3085,7 +3089,10 @@
 			"scopeLabel": "Search in",
 			"scopeAll": "Everything",
 			"scopeWorkItems": "{{term_work_item_other}}",
-			"scopeProjects": "{{term_project_other}}"
+			"scopeProjects": "{{term_project_other}}",
+			"unavailableTitle": "Workspace unavailable",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"backToDashboard": "Back to Dashboard"
 		},
 		"create": {
 			"pageTitle": "Create Workspace",
@@ -3124,11 +3131,21 @@
 		"invitations": {
 			"pendingBadge": "pending",
 			"expires": "Expires {{date}}",
+			"expiredOn": "Expired {{date}}",
 			"linkLabel": "Invitation link",
 			"copyLink": "Copy link",
+			"copyingLink": "Copying…",
 			"linkCopied": "Invitation link copied",
 			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
-			"expiredBadge": "expired"
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "Invite Team Member",
@@ -3162,6 +3179,10 @@
 			"cancelDialogTitle": "Cancel Invitation?",
 			"cancelDialogDescription": "Are you sure you want to cancel the invitation for {{email}}? This action cannot be undone.",
 			"removeMember": "Remove Member",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "Cancel Invitation",
 			"removeSuccess": "Team member removed successfully",
 			"removeError": "Failed to remove team member",
@@ -3169,7 +3190,8 @@
 			"cancelInviteError": "Failed to cancel invitation",
 			"roleUpdateSuccess": "Role updated",
 			"roleUpdateError": "Failed to update role",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -8994,26 +9016,46 @@
 			"expired": "Expired"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
 		"create": {
 			"title": "Invite to this organisation",
-			"description": "The person receives an email with a link to accept on the customer portal. The link works once and expires.",
+			"description": "The person receives an email with a link to accept on the customer portal, or you can copy the link and send it yourself. The link works once and expires.",
 			"email": "Email address",
+			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
+			"submit": "Send invitation",
 			"projectsTitle": "Projects (optional)",
 			"projectsLoadError": "Could not load projects. Try again.",
 			"accessTitle": "Customer access",
 			"accessError": "Could not load or update customer access.",
 			"grantAccess": "Grant access",
-			"revokeAccess": "Remove access",
-			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
-			"submit": "Send invitation"
+			"revokeAccess": "Remove access"
+		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
 		},
 		"toasts": {
 			"sent": "Invitation sent",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it."
+			"notDelivered": "Email not sent — copy the link and send it yourself",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"accept": {
 			"title": "Accept your invitation",

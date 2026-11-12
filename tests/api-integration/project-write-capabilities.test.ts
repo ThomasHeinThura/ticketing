@@ -18,7 +18,7 @@ describe("project write capabilities", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses project authority for update and milestone writes, and requires archive authority", async () => {
+  it("requires workspace project authority and all API key scopes for project writes", async () => {
     const world = await setupWorld();
     const { app } = createApp();
     const editor = await addMember(world.workspaceId, "member");
@@ -35,14 +35,14 @@ describe("project write capabilities", () => {
       slug: world.project.slug,
       description: "edited",
     });
-    expect(update.status, await update.clone().text()).toBe(200);
+    expect(update.status, await update.clone().text()).toBe(403);
     const milestone = await json(
       app,
       "POST",
       `/api/project/${world.project.id}/milestones`,
       { name: "milestone", date: "2031-01-01T00:00:00.000Z" },
     );
-    expect(milestone.status, await milestone.clone().text()).toBe(200);
+    expect(milestone.status, await milestone.clone().text()).toBe(403);
     const archive = await json(
       app,
       "PUT",
@@ -58,7 +58,34 @@ describe("project write capabilities", () => {
         })
       ).status,
     ).toBe(403);
-    const key = await makeApiKey(editor.user.id, {
+    const admin = await addMember(world.workspaceId, "admin");
+    await grantProjectRole(admin.user.id, world.project.id, [
+      "project:read",
+      "project:update",
+    ]);
+    mockAuthenticatedSession(admin.user);
+    const adminUpdate = await json(
+      app,
+      "PUT",
+      `/api/project/${world.project.id}`,
+      {
+        name: "Edited project",
+        icon: "Folder",
+        slug: world.project.slug,
+        description: "edited",
+      },
+    );
+    expect(adminUpdate.status, await adminUpdate.clone().text()).toBe(200);
+    const adminMilestone = await json(
+      app,
+      "POST",
+      `/api/project/${world.project.id}/milestones`,
+      { name: "admin milestone", date: "2031-01-01T00:00:00.000Z" },
+    );
+    expect(adminMilestone.status, await adminMilestone.clone().text()).toBe(
+      200,
+    );
+    const key = await makeApiKey(admin.user.id, {
       project: ["read", "update"],
     });
     mockAnonymousSession();
@@ -70,7 +97,7 @@ describe("project write capabilities", () => {
       { name: "keyed", date: "2031-01-01T00:00:00.000Z" },
     );
     expect(keyed.status, await keyed.clone().text()).toBe(200);
-    const narrow = await makeApiKey(editor.user.id, { project: ["read"] });
+    const narrow = await makeApiKey(admin.user.id, { project: ["read"] });
     setAmbientHeaders({ "x-api-key": narrow });
     expect(
       (

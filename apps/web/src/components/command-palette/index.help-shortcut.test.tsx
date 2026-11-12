@@ -45,6 +45,9 @@ vi.mock("@/hooks/queries/config/use-get-config", () => ({
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: undefined }),
 }));
+vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
+  default: () => ({ data: undefined }),
+}));
 
 vi.mock("@/store/user-preferences", () => ({
   useUserPreferencesStore: () => ({ setTheme: vi.fn() }),

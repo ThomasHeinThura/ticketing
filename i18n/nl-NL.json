@@ -948,13 +948,13 @@
 		"projectWorkflow": {
 			"pageTitle": "Workflow-instellingen",
 			"title": "Workflow",
-			"subtitle": "Configureer bord-kolommen en automatiseringsregels voor dit {{term_project_one}}.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
+			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
+			"statesTitle": "States",
 			"columnsTitle": "Kolommen",
 			"columnsDescription": "Beheer de kolommen op je bord. Sleep om de volgorde te wijzigen. Schakel \"Gereed-kolom\" in voor stadia die voltooid werk vertegenwoordigen.",
 			"automationTitle": "Automatiseringsregels",
 			"automationDescription": "Koppel integratie-gebeurtenissen aan kolommen. Bij een gebeurtenis verplaatst de {{term_work_item_one}} automatisch naar de gekozen kolom.",
-			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
 			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectSwitcher": {
@@ -2109,7 +2109,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Suggesties",
@@ -2204,7 +2206,8 @@
 			"addWorkspace": "Werkruimte toevoegen",
 			"workspaceSettings": "Werkruimte-instellingen",
 			"instanceUsers": "Instantiegebruikers",
-			"selectWorkspace": "Werkruimte selecteren"
+			"selectWorkspace": "Werkruimte selecteren",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2289,6 +2292,8 @@
 		"newCount_other": "{{count}} nieuw",
 		"emptyTitle": "Nog geen meldingen",
 		"emptySubtitle": "Updates en activiteiten verschijnen hier.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Alle meldingen wissen",
 		"clearDialogTitle": "Alle meldingen wissen?",
 		"clearDialogDescription": "Dit zal alle meldingen permanent verwijderen. Dit kan niet ongedaan worden gemaakt.",
@@ -3066,7 +3071,6 @@
 		},
 		"search": {
 			"pageTitle": "Zoeken",
-			"backToDashboard": "Terug naar dashboard",
 			"placeholder": "Zoek {{term_work_item_other}} op titel of ID (bijv. DEP-23)...",
 			"hint": "Zoek in alle {{term_project_other}} van deze werkruimte. Gebruik ID's zoals DEP-23 voor specifieke {{term_work_item_other}}.",
 			"searching": "Zoeken...",
@@ -3085,7 +3089,10 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "Terug naar dashboard"
 		},
 		"create": {
 			"pageTitle": "Werkruimte maken",
@@ -3124,11 +3131,21 @@
 		"invitations": {
 			"linkLabel": "Uitnodigingslink",
 			"copyLink": "Link kopiëren",
+			"copyingLink": "Copying…",
 			"linkCopied": "Uitnodigingslink gekopieerd",
 			"copyFailed": "Automatisch kopiëren mislukt. Selecteer de link en druk op Ctrl+C.",
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
 			"pendingBadge": "in afwachting",
 			"expires": "Verloopt op {{date}}",
-			"expiredBadge": "expired"
+			"expiredOn": "Expired {{date}}",
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "Teamlid uitnodigen",
@@ -3161,6 +3178,10 @@
 			"cancelDialogTitle": "Uitnodiging annuleren?",
 			"cancelDialogDescription": "Weet je zeker dat je de uitnodiging voor {{email}} wilt annuleren?",
 			"removeMember": "Lid verwijderen",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "Uitnodiging annuleren",
 			"removeSuccess": "Teamlid succesvol verwijderd",
 			"removeError": "Verwijderen teamlid mislukt",
@@ -3169,7 +3190,8 @@
 			"ariaInvitationActions": "Uitnodigingsacties",
 			"roleUpdateSuccess": "Rol bijgewerkt",
 			"roleUpdateError": "Bijwerken rol mislukt",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -8685,6 +8707,8 @@
 			"title": "Accept your invitation"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
@@ -8698,15 +8722,24 @@
 		"create": {
 			"description": "The person receives an email with a link to accept on the customer portal. The link works once and expires.",
 			"email": "Email address",
+			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
+			"submit": "Send invitation",
+			"title": "Invite to this organisation",
 			"projectsTitle": "Projects (optional)",
 			"projectsLoadError": "Could not load projects. Try again.",
 			"accessTitle": "Customer access",
 			"accessError": "Could not load or update customer access.",
 			"grantAccess": "Grant access",
-			"revokeAccess": "Remove access",
-			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
-			"submit": "Send invitation",
-			"title": "Invite to this organisation"
+			"revokeAccess": "Remove access"
+		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
 		},
 		"denied": {
 			"description": "Inviting people needs the member:invite permission in this workspace.",
@@ -8734,8 +8767,17 @@
 		"title": "Customer invitations",
 		"toasts": {
 			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it.",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"sent": "Invitation sent"
+			"sent": "Invitation sent",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		}
 	},
 	"reports": {

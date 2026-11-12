@@ -4847,6 +4847,12 @@
 						"subtitle": {
 							"type": "string"
 						},
+						"statesTitle": {
+							"type": "string"
+						},
+						"statesDescription": {
+							"type": "string"
+						},
 						"columnsTitle": {
 							"type": "string"
 						},
@@ -4859,12 +4865,6 @@
 						"automationDescription": {
 							"type": "string"
 						},
-						"statesTitle": {
-							"type": "string"
-						},
-						"statesDescription": {
-							"type": "string"
-						},
 						"columnsNote": {
 							"type": "string"
 						}
@@ -4873,12 +4873,12 @@
 						"pageTitle",
 						"title",
 						"subtitle",
+						"statesTitle",
+						"statesDescription",
 						"columnsTitle",
 						"columnsDescription",
 						"automationTitle",
 						"automationDescription",
-						"statesTitle",
-						"statesDescription",
 						"columnsNote"
 					]
 				},
@@ -8543,6 +8543,12 @@
 						},
 						"backToProjects": {
 							"type": "string"
+						},
+						"shadowedKeyUnavailable": {
+							"type": "string"
+						},
+						"keyUnavailable": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8561,7 +8567,9 @@
 						"documents",
 						"moreLabel",
 						"notFound",
-						"backToProjects"
+						"backToProjects",
+						"shadowedKeyUnavailable",
+						"keyUnavailable"
 					]
 				},
 				"commandPalette": {
@@ -8923,6 +8931,9 @@
 						},
 						"selectWorkspace": {
 							"type": "string"
+						},
+						"switchFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8931,7 +8942,8 @@
 						"addWorkspace",
 						"workspaceSettings",
 						"instanceUsers",
-						"selectWorkspace"
+						"selectWorkspace",
+						"switchFailed"
 					]
 				},
 				"page": {
@@ -9302,6 +9314,12 @@
 				"emptySubtitle": {
 					"type": "string"
 				},
+				"unavailable": {
+					"type": "string"
+				},
+				"unavailableMessage": {
+					"type": "string"
+				},
 				"clearAll": {
 					"type": "string"
 				},
@@ -9524,6 +9542,8 @@
 				"title",
 				"emptyTitle",
 				"emptySubtitle",
+				"unavailable",
+				"unavailableMessage",
 				"clearAll",
 				"clearDialogTitle",
 				"clearDialogDescription",
@@ -12639,9 +12659,6 @@
 						"pageTitle": {
 							"type": "string"
 						},
-						"backToDashboard": {
-							"type": "string"
-						},
 						"placeholder": {
 							"type": "string"
 						},
@@ -12710,11 +12727,19 @@
 						},
 						"scopeProjects": {
 							"type": "string"
+						},
+						"unavailableTitle": {
+							"type": "string"
+						},
+						"unavailableDescription": {
+							"type": "string"
+						},
+						"backToDashboard": {
+							"type": "string"
 						}
 					},
 					"required": [
 						"pageTitle",
-						"backToDashboard",
 						"placeholder",
 						"hint",
 						"searching",
@@ -12731,7 +12756,10 @@
 						"scopeLabel",
 						"scopeAll",
 						"scopeWorkItems",
-						"scopeProjects"
+						"scopeProjects",
+						"unavailableTitle",
+						"unavailableDescription",
+						"backToDashboard"
 					]
 				},
 				"create": {
@@ -12870,10 +12898,16 @@
 						"expires": {
 							"type": "string"
 						},
+						"expiredOn": {
+							"type": "string"
+						},
 						"linkLabel": {
 							"type": "string"
 						},
 						"copyLink": {
+							"type": "string"
+						},
+						"copyingLink": {
 							"type": "string"
 						},
 						"linkCopied": {
@@ -12882,18 +12916,52 @@
 						"copyFailed": {
 							"type": "string"
 						},
+						"copyFieldPlaceholder": {
+							"type": "string"
+						},
+						"resultEmailSent": {
+							"type": "string"
+						},
+						"resultEmailNotSent": {
+							"type": "string"
+						},
+						"validUntil": {
+							"type": "string"
+						},
 						"expiredBadge": {
+							"type": "string"
+						},
+						"copyErrorForbidden": {
+							"type": "string"
+						},
+						"copyErrorInactive": {
+							"type": "string"
+						},
+						"copyErrorRateLimited": {
+							"type": "string"
+						},
+						"copyRequestFailed": {
 							"type": "string"
 						}
 					},
 					"required": [
 						"pendingBadge",
 						"expires",
+						"expiredOn",
 						"linkLabel",
 						"copyLink",
+						"copyingLink",
 						"linkCopied",
 						"copyFailed",
-						"expiredBadge"
+						"copyFieldPlaceholder",
+						"resultEmailSent",
+						"resultEmailNotSent",
+						"validUntil",
+						"expiredBadge",
+						"copyErrorForbidden",
+						"copyErrorInactive",
+						"copyErrorRateLimited",
+						"copyRequestFailed"
 					]
 				},
 				"inviteModal": {
@@ -13008,6 +13076,18 @@
 						"removeMember": {
 							"type": "string"
 						},
+						"resendInvitation": {
+							"type": "string"
+						},
+						"resendDialogTitle": {
+							"type": "string"
+						},
+						"resendSuccess": {
+							"type": "string"
+						},
+						"resendError": {
+							"type": "string"
+						},
 						"cancelInvitation": {
 							"type": "string"
 						},
@@ -13031,6 +13111,9 @@
 						},
 						"joinedOn": {
 							"type": "string"
+						},
+						"resendInvalidRole": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -13046,6 +13129,10 @@
 						"cancelDialogTitle",
 						"cancelDialogDescription",
 						"removeMember",
+						"resendInvitation",
+						"resendDialogTitle",
+						"resendSuccess",
+						"resendError",
 						"cancelInvitation",
 						"removeSuccess",
 						"removeError",
@@ -13053,7 +13140,8 @@
 						"cancelInviteError",
 						"roleUpdateSuccess",
 						"roleUpdateError",
-						"joinedOn"
+						"joinedOn",
+						"resendInvalidRole"
 					]
 				}
 			},
@@ -37040,6 +37128,12 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"copyLink": {
+							"type": "string"
+						},
+						"copied": {
+							"type": "string"
+						},
 						"resend": {
 							"type": "string"
 						},
@@ -37047,7 +37141,7 @@
 							"type": "string"
 						}
 					},
-					"required": ["resend", "revoke"]
+					"required": ["copyLink", "copied", "resend", "revoke"]
 				},
 				"create": {
 					"type": "object",
@@ -37060,6 +37154,12 @@
 							"type": "string"
 						},
 						"email": {
+							"type": "string"
+						},
+						"roleNote": {
+							"type": "string"
+						},
+						"submit": {
 							"type": "string"
 						},
 						"projectsTitle": {
@@ -37079,26 +37179,56 @@
 						},
 						"revokeAccess": {
 							"type": "string"
-						},
-						"roleNote": {
-							"type": "string"
-						},
-						"submit": {
-							"type": "string"
 						}
 					},
 					"required": [
 						"title",
 						"description",
 						"email",
+						"roleNote",
+						"submit",
 						"projectsTitle",
 						"projectsLoadError",
 						"accessTitle",
 						"accessError",
 						"grantAccess",
-						"revokeAccess",
-						"roleNote",
-						"submit"
+						"revokeAccess"
+					]
+				},
+				"resultCard": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"createdTitle": {
+							"type": "string"
+						},
+						"resentTitle": {
+							"type": "string"
+						},
+						"emailQueued": {
+							"type": "string"
+						},
+						"noEmailProvider": {
+							"type": "string"
+						},
+						"validUntil": {
+							"type": "string"
+						},
+						"shareDescription": {
+							"type": "string"
+						},
+						"done": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"createdTitle",
+						"resentTitle",
+						"emailQueued",
+						"noEmailProvider",
+						"validUntil",
+						"shareDescription",
+						"done"
 					]
 				},
 				"toasts": {
@@ -37113,9 +37243,49 @@
 						},
 						"notDelivered": {
 							"type": "string"
+						},
+						"linkCopied": {
+							"type": "string"
+						},
+						"copyFailed": {
+							"type": "string"
+						},
+						"queued": {
+							"type": "string"
+						},
+						"resentQueued": {
+							"type": "string"
+						},
+						"noEmailProvider": {
+							"type": "string"
+						},
+						"copyErrorForbidden": {
+							"type": "string"
+						},
+						"copyErrorInactive": {
+							"type": "string"
+						},
+						"copyErrorRateLimited": {
+							"type": "string"
+						},
+						"copyRequestFailed": {
+							"type": "string"
 						}
 					},
-					"required": ["sent", "resent", "notDelivered"]
+					"required": [
+						"sent",
+						"resent",
+						"notDelivered",
+						"linkCopied",
+						"copyFailed",
+						"queued",
+						"resentQueued",
+						"noEmailProvider",
+						"copyErrorForbidden",
+						"copyErrorInactive",
+						"copyErrorRateLimited",
+						"copyRequestFailed"
+					]
 				},
 				"accept": {
 					"type": "object",
@@ -37221,6 +37391,7 @@
 				"status",
 				"actions",
 				"create",
+				"resultCard",
 				"toasts",
 				"accept"
 			]

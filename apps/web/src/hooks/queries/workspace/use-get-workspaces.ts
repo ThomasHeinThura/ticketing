@@ -11,7 +11,7 @@ export const workspacesOptions = () => ({
 // ["workspaces"] key is deliberate: apps/web/src/routes/_layout/
 // _authenticated/dashboard/settings/workspace/general.tsx's delete-workspace
 // mutation already invalidates this exact key.
-function useGetWorkspaces(refetchOnMount = false) {
+function useGetWorkspaces(refetchOnMount = false, enabled = true) {
   const {
     data: workspaces,
     error,
@@ -21,6 +21,7 @@ function useGetWorkspaces(refetchOnMount = false) {
   } = useQuery({
     ...workspacesOptions(),
     refetchOnMount,
+    enabled,
   });
 
   return {

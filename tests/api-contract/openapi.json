@@ -5178,6 +5178,67 @@
           "newOwnerUserId"
         ]
       },
+      "InvitedWorkspaceMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inviterId": {
+            "type": "string"
+          },
+          "delivered": {
+            "type": "boolean",
+            "description": "Whether the invitation email was handed to the configured mail provider."
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "status",
+          "expiresAt",
+          "createdAt",
+          "inviterId",
+          "delivered"
+        ]
+      },
+      "WorkspaceInvitationCopiedLink": {
+        "type": "object",
+        "properties": {
+          "link": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "link",
+          "expiresAt"
+        ]
+      },
       "WorkspaceRole": {
         "type": "object",
         "properties": {
@@ -8812,13 +8873,29 @@
             "type": "object",
             "properties": {
               "delivered": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "Whether an email provider is configured, so email is queued for eligible invitations. Identical for real and inert invitations; does not indicate provider handoff or delivery."
               }
             },
             "required": [
               "delivered"
             ]
           }
+        ]
+      },
+      "CustomerInvitationCopiedLink": {
+        "type": "object",
+        "properties": {
+          "link": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link",
+          "expiresAt"
         ]
       },
       "AcceptedCustomerInvitation": {
@@ -34250,7 +34327,7 @@
           "Workspaces"
         ],
         "summary": "Invite a user to a workspace",
-        "description": "Invite a user, by email, into a workspace. Native replacement for authClient.organization.inviteMember(). Sends the invitation email on success.",
+        "description": "Invite a user, by email, into a workspace. Native replacement for authClient.organization.inviteMember(). Reports `delivered: boolean` indicating whether the email was handed to the configured mail provider.",
         "parameters": [
           {
             "schema": {
@@ -34324,7 +34401,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkspaceInvitation"
+                  "$ref": "#/components/schemas/InvitedWorkspaceMember"
                 }
               }
             }
@@ -34855,6 +34932,96 @@
           },
           "403": {
             "description": "Invitation permission required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/invitations/{invitationId}/copy-link": {
+      "post": {
+        "operationId": "copyWorkspaceInvitationLink",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "Copy the accept link for a pending workspace invitation",
+        "description": "Agent-host browser session only (never an API key, MCP key or impersonation session). Requires `member:invite` in the workspace at request time. Only pending, unexpired invitations may be copied; copying never extends expiry, sets `Cache-Control: no-store`, is rate-limited per actor and records `invitation.link_copied` in the audit log.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "invitationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace invitation accept link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceInvitationCopiedLink"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Browser session and invite capability required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invitation not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invitation is expired, revoked or already accepted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many copy requests",
             "content": {
               "text/plain": {
                 "schema": {
@@ -105918,7 +106085,7 @@
           "Customer invitations"
         ],
         "summary": "List an organisation's customer invitations with status",
-        "description": "Status is pending, accepted, revoked or expired. The accept credential is never returned.",
+        "description": "Status is pending, accepted, revoked or expired. The accept credential is never returned here.",
         "parameters": [
           {
             "schema": {
@@ -105981,7 +106148,7 @@
           "Customer invitations"
         ],
         "summary": "Invite an address into a customer organisation",
-        "description": "Always the customer role. A body that names any other role, a team or a scope is refused 422. The accept link is emailed; it is never in the response. An address that cannot accept here (a member, staff, another organisation's customer, a deactivated customer) is answered exactly like any other address: a pending row with no credential and no email, the reason audited only. `delivered` reports only whether an email provider is configured on the instance, never the outcome of a particular send.",
+        "description": "Always the customer role. A body that names any other role, a team or a scope is refused 422. The accept link is queued for email when a provider is configured and is never returned in the create response; while pending and unexpired, a holder of `member:invite` who reaches the organisation may copy the same link from `POST .../copy-link`. An address that cannot accept here (a member, staff, another organisation's customer, a deactivated customer) is answered exactly like any other address: a pending row with no credential hash and no email, the reason audited only. `delivered` reports only whether an email provider is configured on the instance, never provider handoff or delivery.",
         "parameters": [
           {
             "schema": {
@@ -106105,7 +106272,7 @@
           "Customer invitations"
         ],
         "summary": "Resend a pending customer invitation",
-        "description": "Issues a fresh accept credential, invalidates the previous one and extends expiry. An inert row is re-evaluated: if its address can now be invited it gets a credential and is sent normally. `delivered` reports only whether an email provider is configured.",
+        "description": "Increments generation to issue a fresh accept credential, invalidates the previous link and extends expiry. An inert row is re-evaluated: if its address can now be invited it gets a credential and is queued normally. `delivered` reports only whether an email provider is configured on the instance, never provider handoff or delivery.",
         "parameters": [
           {
             "schema": {
@@ -106192,6 +106359,107 @@
         }
       }
     },
+    "/workspace/{workspaceId}/organisations/{organisationId}/invitations/{id}/copy-link": {
+      "post": {
+        "operationId": "copyCustomerInvitationLink",
+        "tags": [
+          "Customer invitations"
+        ],
+        "summary": "Copy the accept link for a pending customer invitation",
+        "description": "Agent-host browser session only (never an API key, MCP key or impersonation session). Requires `member:invite` in the workspace and reach to the organisation at request time. Only pending, unexpired invitations may be copied; copying never extends expiry or changes generation, sets `Cache-Control: no-store`, is rate-limited per actor and records `invitation.link_copied` in the audit log.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "organisationId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The customer invitation accept link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerInvitationCopiedLink"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Browser session and invite capability required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invitation not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invitation is expired, revoked or already accepted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many copy requests",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/portal/invitations/{id}/accept": {
       "post": {
         "operationId": "acceptCustomerInvitation",
@@ -106199,7 +106467,7 @@
           "Portal invitations"
         ],
         "summary": "Accept a customer invitation",
-        "description": "Portal host only. The signed-in customer session's verified address must equal the invitation address and the body must carry the credential from the email link. Every refusal is the same 404.",
+        "description": "Portal host only. The signed-in customer session's verified address must equal the invitation address and the body must carry the credential from the invitation link. Every refusal is the same 404.",
         "parameters": [
           {
             "schema": {

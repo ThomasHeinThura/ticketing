@@ -81,6 +81,7 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "invitation.sent",
   "invitation.redeemed",
   "invitation.revoked",
+  "invitation.link_copied",
   // Plugin configuration (keys only, never values), a test() call even when unsaved,
   // key rotation.
   "plugin.changed",

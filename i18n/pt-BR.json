@@ -1226,13 +1226,13 @@
 		"projectWorkflow": {
 			"pageTitle": "Configurações de fluxo de trabalho",
 			"title": "Fluxo de trabalho",
-			"subtitle": "Configure as colunas do quadro e as regras de automação deste {{term_project_one}}.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
+			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
+			"statesTitle": "States",
 			"columnsTitle": "Colunas",
 			"columnsDescription": "Gerencie as colunas exibidas no seu quadro. Arraste para reordenar. Ative \"Coluna de concluído\" para as etapas que representam trabalho concluído.",
 			"automationTitle": "Regras de automação",
 			"automationDescription": "Mapeie eventos de integração para colunas. Quando um evento ocorrer, a {{term_work_item_one}} vinculada será movida para a coluna especificada.",
-			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
 			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectSwitcher": {
@@ -2114,7 +2114,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Sugestões",
@@ -2209,7 +2211,8 @@
 			"addWorkspace": "Adicionar espaço de trabalho",
 			"workspaceSettings": "Configurações do espaço de trabalho",
 			"instanceUsers": "Usuários da instância",
-			"selectWorkspace": "Selecionar espaço de trabalho"
+			"selectWorkspace": "Selecionar espaço de trabalho",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2294,6 +2297,8 @@
 		"newCount_other": "{{count}} novas",
 		"emptyTitle": "Ainda não há notificações",
 		"emptySubtitle": "Você verá atualizações e atividades aqui.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Limpar todas as notificações",
 		"clearDialogTitle": "Limpar todas as notificações?",
 		"clearDialogDescription": "Isso removerá permanentemente todas as notificações. Você não pode desfazer esta ação.",
@@ -3076,7 +3081,6 @@
 		},
 		"search": {
 			"pageTitle": "Buscar",
-			"backToDashboard": "Voltar ao painel",
 			"placeholder": "Buscar {{term_work_item_other}} por título ou ID curto (ex.: DEP-23)...",
 			"hint": "Busque em todos os {{term_project_other}} deste espaço de trabalho. Use IDs curtos como DEP-23 para encontrar {{term_work_item_other}} específicas.",
 			"searching": "Buscando...",
@@ -3096,7 +3100,10 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "Voltar ao painel"
 		},
 		"create": {
 			"pageTitle": "Criar espaço de trabalho",
@@ -3135,11 +3142,21 @@
 		"invitations": {
 			"pendingBadge": "pendente",
 			"expires": "Expira em {{date}}",
+			"expiredOn": "Expired {{date}}",
 			"linkLabel": "Link do convite",
 			"copyLink": "Copiar link",
+			"copyingLink": "Copying…",
 			"linkCopied": "Link do convite copiado",
 			"copyFailed": "Não foi possível copiar automaticamente. Selecione o link e pressione Ctrl+C.",
-			"expiredBadge": "expired"
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "Convidar membro da equipe",
@@ -3173,6 +3190,10 @@
 			"cancelDialogTitle": "Cancelar convite?",
 			"cancelDialogDescription": "Tem certeza de que deseja cancelar o convite de {{email}}? Esta ação não pode ser desfeita.",
 			"removeMember": "Remover membro",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "Cancelar convite",
 			"removeSuccess": "Membro da equipe removido com sucesso",
 			"removeError": "Falha ao remover membro da equipe",
@@ -3180,7 +3201,8 @@
 			"cancelInviteError": "Falha ao cancelar convite",
 			"roleUpdateSuccess": "Função atualizada",
 			"roleUpdateError": "Falha ao atualizar função",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -8745,6 +8767,8 @@
 			"title": "Accept your invitation"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
@@ -8758,15 +8782,24 @@
 		"create": {
 			"description": "The person receives an email with a link to accept on the customer portal. The link works once and expires.",
 			"email": "Email address",
+			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
+			"submit": "Send invitation",
+			"title": "Invite to this organisation",
 			"projectsTitle": "Projects (optional)",
 			"projectsLoadError": "Could not load projects. Try again.",
 			"accessTitle": "Customer access",
 			"accessError": "Could not load or update customer access.",
 			"grantAccess": "Grant access",
-			"revokeAccess": "Remove access",
-			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
-			"submit": "Send invitation",
-			"title": "Invite to this organisation"
+			"revokeAccess": "Remove access"
+		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
 		},
 		"denied": {
 			"description": "Inviting people needs the member:invite permission in this workspace.",
@@ -8794,8 +8827,17 @@
 		"title": "Customer invitations",
 		"toasts": {
 			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it.",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"sent": "Invitation sent"
+			"sent": "Invitation sent",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		}
 	},
 	"reports": {

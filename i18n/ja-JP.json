@@ -1026,8 +1026,7 @@
 			"deleteDialog": {
 				"title": "ロールを削除",
 				"description": "これによりロール「{{role}}」は完全に削除されます。このロールが割り当てられていたメンバーは権限を失います。"
-			},
-			"permissionCount_one": "{{count}} permission"
+			}
 		},
 		"workspaceLabels": {
 			"pageTitle": "ラベル設定",
@@ -1225,13 +1224,13 @@
 		"projectWorkflow": {
 			"pageTitle": "ワークフロー設定",
 			"title": "ワークフロー",
-			"subtitle": "この{{term_project_other}}のボードカラムと自動化ルールを設定します。",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
+			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
+			"statesTitle": "States",
 			"columnsTitle": "カラム",
 			"columnsDescription": "ボードに表示されるカラムを管理します。ドラッグして並べ替えます。完了した作業を表すステージには「完了カラム」をオンにしてください。",
 			"automationTitle": "自動化ルール",
 			"automationDescription": "連携イベントをカラムにマッピングします。イベントが発生すると、リンクされた{{term_work_item_one}}が指定されたカラムに移動します。",
-			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
 			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
 		},
 		"projectSwitcher": {
@@ -1725,8 +1724,7 @@
 			"title": "{{term_work_item_one}} templates",
 			"type": "{{term_work_item_one}} type",
 			"typePlaceholder": "Choose a type",
-			"descriptionPlaceholder": "Describe the {{term_work_item_one}}...",
-			"itemCount_one": "{{count}} item"
+			"descriptionPlaceholder": "Describe the {{term_work_item_one}}..."
 		},
 		"projectMembers": {
 			"actionsFor": "Actions for {{name}}",
@@ -1777,8 +1775,7 @@
 				"roleChange": "{{from}} to {{to}}",
 				"roleChanges": "Role changes",
 				"title": "Move {{term_project_one}}",
-				"via": "{{role}} via {{project}}",
-				"descendants_one": "{{count}} sub-{{term_project_one}} moves with it and is affected the same way."
+				"via": "{{role}} via {{project}}"
 			},
 			"role": "Role",
 			"roleUpdated": "Role updated",
@@ -1866,8 +1863,7 @@
 				"saveDraft": "Save draft",
 				"title": "Transitions",
 				"to": "To",
-				"unsaved": "Unsaved changes",
-				"guards_one": "{{count}} guard"
+				"unsaved": "Unsaved changes"
 			},
 			"validation": {
 				"description": "Checked against every {{term_project_one}} that uses this workflow.",
@@ -1889,8 +1885,7 @@
 				"stateNoOutbound": "\"{{state}}\" has no outbound transition in this workflow.",
 				"unknownProject": "Unknown {{term_project_one}}",
 				"unknownState": "an unavailable state",
-				"impact": "Potential impact — people: {{people}}; projects: {{projects}}; work items: {{workItems}}.",
-				"stuckTitle_one": "{{count}} {{term_work_item_one}} would be stranded"
+				"impact": "Potential impact — people: {{people}}; projects: {{projects}}; work items: {{workItems}}."
 			},
 			"versions": {
 				"actions": "Actions",
@@ -2109,7 +2104,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "候補",
@@ -2204,7 +2201,8 @@
 			"addWorkspace": "ワークスペースを追加",
 			"workspaceSettings": "ワークスペース設定",
 			"instanceUsers": "インスタンスユーザー",
-			"selectWorkspace": "ワークスペースを選択"
+			"selectWorkspace": "ワークスペースを選択",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2288,6 +2286,8 @@
 		"newCount_other": "{{count}} 件の新着",
 		"emptyTitle": "通知はまだありません",
 		"emptySubtitle": "更新やアクティビティがここに表示されます。",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "すべての通知を消去",
 		"clearDialogTitle": "すべての通知を消去しますか？",
 		"clearDialogDescription": "これにより、すべての通知が完全に削除されます。この操作は取り消せません。",
@@ -2297,10 +2297,7 @@
 		"reminderLeadTime": {
 			"minutes_other": "{{count}} 分",
 			"hours_other": "{{count}} 時間",
-			"days_other": "{{count}} 日",
-			"minutes_one": "{{count}} minute",
-			"hours_one": "{{count}} hour",
-			"days_one": "{{count}} day"
+			"days_other": "{{count}} 日"
 		},
 		"events": {
 			"task_created": {
@@ -2340,8 +2337,7 @@
 				"contentWithTask": "{{term_work_item_one}}「{{taskTitle}}」の時間計測を開始しました",
 				"contentWithoutTask": "{{term_work_item_one}}の時間計測を開始しました"
 			}
-		},
-		"newCount_one": "{{count}} new"
+		}
 	},
 	"activity": {
 		"assignedToSelf": "が{{term_work_item_one}}を自分に割り当てました",
@@ -2899,8 +2895,7 @@
 			"draft": "下書き",
 			"open": "オープン",
 			"label": "Pull Request",
-			"count_other": "{{count}} 件の PR",
-			"count_one": "{{count}} PR"
+			"count_other": "{{count}} 件の PR"
 		},
 		"assignee": {
 			"label": "担当者",
@@ -3066,7 +3061,6 @@
 		},
 		"search": {
 			"pageTitle": "検索",
-			"backToDashboard": "ダッシュボードに戻る",
 			"placeholder": "タイトルまたはID (例: DEP-23) で{{term_work_item_other}}を検索...",
 			"hint": "このワークスペース内のすべての{{term_project_other}}を検索します。特定の{{term_work_item_other}}を見つけるには DEP-23 のような{{term_work_item_other}}IDを使用してください。",
 			"searching": "検索中...",
@@ -3085,7 +3079,9 @@
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
-			"resultsFound_one": "{{count}} result found"
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "ダッシュボードに戻る"
 		},
 		"create": {
 			"pageTitle": "ワークスペースを作成",
@@ -3124,11 +3120,21 @@
 		"invitations": {
 			"pendingBadge": "保留中",
 			"expires": "有効期限: {{date}}",
+			"expiredOn": "Expired {{date}}",
 			"linkLabel": "招待リンク",
 			"copyLink": "リンクをコピー",
+			"copyingLink": "Copying…",
 			"linkCopied": "招待リンクをコピーしました",
 			"copyFailed": "自動コピーできませんでした。リンクを選択して Ctrl+C を押してください。",
-			"expiredBadge": "expired"
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "チームメンバーを招待",
@@ -3162,6 +3168,10 @@
 			"cancelDialogTitle": "招待をキャンセルしますか？",
 			"cancelDialogDescription": "本当に {{email}} への招待をキャンセルしますか？この操作は取り消せません。",
 			"removeMember": "メンバーを削除",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "招待をキャンセル",
 			"removeSuccess": "チームメンバーを削除しました",
 			"removeError": "チームメンバーの削除に失敗しました",
@@ -3169,7 +3179,8 @@
 			"cancelInviteError": "招待のキャンセルに失敗しました",
 			"roleUpdateSuccess": "ロールを更新しました",
 			"roleUpdateError": "ロールの更新に失敗しました",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -3683,8 +3694,7 @@
 				"invalid": "The request was not valid. No updates were applied.",
 				"forbidden": "You do not have permission for this action.",
 				"unknown": "Could not update the selected {{term_work_item_other}}. Try again."
-			},
-			"selected_one": "{{count}} {{term_work_item_one}} selected"
+			}
 		},
 		"filter": {
 			"addCondition": "Add condition",
@@ -3804,8 +3814,7 @@
 				"relates": "relates to",
 				"required_by": "required by",
 				"requires": "requires"
-			},
-			"hidden_one": "{{count}} related item you cannot see"
+			}
 		},
 		"deletion": {
 			"actions": "{{term_work_item_one}} actions",
@@ -3825,8 +3834,7 @@
 			"visibility": {
 				"organisation": "Visible to the customer organisation",
 				"private": "Not visible to customers"
-			},
-			"childrenAffected_one": "This item has {{count}} child item. Deleting the parent keeps its children."
+			}
 		},
 		"legacyView": {
 			"continue": "Open without unsupported controls",
@@ -4491,8 +4499,7 @@
 					"remaining_other": "{{count}} days remaining",
 					"start": "Start",
 					"title": "Subscription period",
-					"upcoming": "Starts on {{date}}",
-					"remaining_one": "{{count}} day remaining"
+					"upcoming": "Starts on {{date}}"
 				},
 				"summary": {
 					"inScope": "In scope",
@@ -4765,9 +4772,7 @@
 			"result": "{{succeeded}} deleted; {{failed}} could not be deleted.",
 			"succeeded_other": "{{count}} {{term_work_item_other}} deleted",
 			"targets": "Exact {{term_work_item_other}} selected for deletion",
-			"action": "Delete {{term_work_item_other}}",
-			"count_one": "Delete {{count}} {{term_work_item_one}}",
-			"succeeded_one": "{{count}} {{term_work_item_one}} deleted"
+			"action": "Delete {{term_work_item_other}}"
 		},
 		"comment": {
 			"action": "Delete comment",
@@ -4887,9 +4892,7 @@
 			"open": "Open import run",
 			"source": "Source: {{plugin}}, mapping version {{version}}.",
 			"unavailable": "Import run summary unavailable",
-			"writes_other": "{{count}} records will be created or updated.",
-			"count_one": "{{count}} record in this run.",
-			"writes_one": "{{count}} record will be created or updated."
+			"writes_other": "{{count}} records will be created or updated."
 		},
 		"targets": {
 			"approval_decision": "Record approval decision",
@@ -5252,8 +5255,7 @@
 			"conflictRefreshing": "Refreshing the latest calendar…",
 			"timezoneCountUnavailable": "Reference counts could not be loaded. Confirm only if you accept that SLA deadlines will be recalculated.",
 			"retroactiveDescription_other": "This holiday change covers days that have already passed. {{count}} open {{term_work_item_other}} on this calendar have run through them, so their deadlines move later.",
-			"retroactiveTitle": "Deadlines may have moved",
-			"retroactiveDescription_one": "This holiday change covers days that have already passed. {{count}} open {{term_work_item_one}} on this calendar has run through them, so its deadline moves later."
+			"retroactiveTitle": "Deadlines may have moved"
 		},
 		"holidays": {
 			"add": "Add holiday",
@@ -5481,8 +5483,7 @@
 		"openIntakeQueue": "Open intake queue",
 		"pairedQueueDescription": "This view is part of a saved intake queue.",
 		"emptySubmissionsTitle": "No matching submissions",
-		"emptySubmissionsDescription": "No submissions match this saved view.",
-		"count_one": "{{count}} matching {{term_work_item_one}}"
+		"emptySubmissionsDescription": "No submissions match this saved view."
 	},
 	"identityConnections": {
 		"common": {
@@ -6447,8 +6448,7 @@
 			"typeColumn": "Work item type",
 			"value": "Value",
 			"visibilityDescription": "Choose, for each work item type, whether the field is hidden, visible or required. A required field blocks creation and moving into a started or completed state; cancelling is always allowed.",
-			"visibilityTitle": "Where it applies",
-			"deleteHelp_one": "{{count}} work item holds a value. Deleting asks for confirmation; the values are kept and the field can be restored for 30 days."
+			"visibilityTitle": "Where it applies"
 		},
 		"fallbackSection": "Other",
 		"fields": {
@@ -6498,8 +6498,7 @@
 			"sectionCount_other": "{{count}} fields",
 			"sectionEmpty": "No fields in this section.",
 			"showDeleted": "Show deleted fields",
-			"title": "Custom fields",
-			"sectionCount_one": "{{count}} field"
+			"title": "Custom fields"
 		},
 		"operators": {
 			"eq": "Equals",
@@ -6576,8 +6575,7 @@
 			"loading": "Loading teams",
 			"members_other": "{{count}} members",
 			"new": "New team",
-			"title": "Teams",
-			"members_one": "{{count}} member"
+			"title": "Teams"
 		},
 		"roster": {
 			"actions": "Actions",
@@ -6704,9 +6702,7 @@
 			},
 			"window": "Look back",
 			"evaluated_other": "{{count}} events examined.",
-			"summary_other": "Would have fired {{count}} times in the last {{days}} days",
-			"summary_one": "Would have fired {{count}} time in the last {{days}} days",
-			"evaluated_one": "{{count}} event examined."
+			"summary_other": "Would have fired {{count}} times in the last {{days}} days"
 		},
 		"editor": {
 			"addAction": "Add action",
@@ -6771,8 +6767,7 @@
 			"retry": "Retry",
 			"runAs": "Runs as {{role}}",
 			"summary": "When {{trigger}}. {{conditions}} conditions, {{actions}} actions.",
-			"fired_other": "Fired {{count}} times",
-			"fired_one": "Fired {{count}} time"
+			"fired_other": "Fired {{count}} times"
 		},
 		"priorities": {
 			"high": "High",
@@ -7377,9 +7372,7 @@
 			"moduleTitle": "Not in a {{term_module_one}}",
 			"readOnly": "You can see this list but not change membership.",
 			"refused_other": "{{count}} {{term_work_item_other}} were not added: {{reason}}",
-			"title": "Backlog",
-			"added_one": "{{count}} {{term_work_item_one}} added",
-			"refused_one": "{{count}} {{term_work_item_one}} was not added: {{reason}}"
+			"title": "Backlog"
 		},
 		"burndown": {
 			"chartDescription": "Burndown from {{start}} to {{end}}, in {{unit}}: remaining work, scope and the ideal line.",
@@ -7400,8 +7393,7 @@
 			"noScopeDescription": "This {{term_cycle_one}} has no {{term_work_item_other}}, so there is nothing to burn down.",
 			"noScopeTitle": "No scope",
 			"title": "Burndown",
-			"unestimated_other": "{{count}} items have no estimate and are not counted in the scope ({{percent}}% of the {{term_cycle_one}}).",
-			"unestimated_one": "{{count}} item has no estimate and is not counted in the scope ({{percent}}% of the {{term_cycle_one}})."
+			"unestimated_other": "{{count}} items have no estimate and are not counted in the scope ({{percent}}% of the {{term_cycle_one}})."
 		},
 		"common": {
 			"cancel": "Cancel",
@@ -7440,13 +7432,9 @@
 			"summary": {
 				"backlog_other": "{{count}} incomplete items return to the backlog.",
 				"leave_other": "{{count}} incomplete items stay in this {{term_cycle_one}}.",
-				"nextCycle_other": "{{count}} incomplete items move to {{name}}.",
-				"leave_one": "{{count}} incomplete item stays in this {{term_cycle_one}}.",
-				"backlog_one": "{{count}} incomplete item returns to the backlog.",
-				"nextCycle_one": "{{count}} incomplete item moves to {{name}}."
+				"nextCycle_other": "{{count}} incomplete items move to {{name}}."
 			},
-			"title": "Complete {{name}}",
-			"description_one": "{{count}} {{term_work_item_one}} is not done. Choose what happens to it."
+			"title": "Complete {{name}}"
 		},
 		"cycles": {
 			"create": "Create {{term_cycle_one}}",
@@ -7516,8 +7504,7 @@
 				"nothingUsed": "No {{term_work_item_one}} has an estimate yet, so nothing is lost.",
 				"title": "Review the estimate change",
 				"to": "New",
-				"totals": "{{mapped}} estimates carry over and {{cleared}} are cleared.",
-				"clearWarning_one": "{{count}} estimate has no equivalent in the new scale and will be cleared."
+				"totals": "{{mapped}} estimates carry over and {{cleared}} are cleared."
 			},
 			"readOnly": "Only {{term_project_one}} admins can change the estimate system.",
 			"removePoint": "Remove {{value}}",
@@ -7640,8 +7627,7 @@
 			"notStarted": "Not started",
 			"progress": "Progress",
 			"scope": "Scope",
-			"unestimated_other": "{{count}} items are unestimated ({{percent}}% of the scope)",
-			"unestimated_one": "{{count}} item is unestimated ({{percent}}% of the scope)"
+			"unestimated_other": "{{count}} items are unestimated ({{percent}}% of the scope)"
 		},
 		"systems": {
 			"categories": "Categories",
@@ -7742,8 +7728,7 @@
 			"rename": "Rename",
 			"renameDescription": "Change the category name.",
 			"renameTitle": "Rename category",
-			"topLevel": "Top level",
-			"articles_one": "{{count}} article"
+			"topLevel": "Top level"
 		},
 		"conflict": {
 			"description": "The article changed while you were editing. Compare the two versions and choose which to keep.",
@@ -7803,9 +7788,7 @@
 			"helpful_other": "{{count}} found it helpful",
 			"loadError": "The feedback could not be loaded.",
 			"noComments": "No comments yet.",
-			"notHelpful_other": "{{count}} found it not helpful",
-			"helpful_one": "{{count}} found it helpful",
-			"notHelpful_one": "{{count}} found it not helpful"
+			"notHelpful_other": "{{count}} found it not helpful"
 		},
 		"fields": {
 			"author": "Author",
@@ -8037,8 +8020,7 @@
 			},
 			"new": "Declare a freeze",
 			"rangeInvalid": "The freeze must end after it starts.",
-			"showCancelled": "Show cancelled freezes",
-			"affected_one": "{{count}} planned {{term_change_one}} now falls inside this freeze and cannot be approved without an override."
+			"showCancelled": "Show cancelled freezes"
 		},
 		"nav": {
 			"changes": "{{term_change_one}} calendar",
@@ -8083,9 +8065,7 @@
 			"startingPoint": "Check these dates against the holidays your support actually observes before you add them.",
 			"startingPointTitle": "A starting point, not authority",
 			"title": "Country holiday presets",
-			"year": "Year",
-			"confirm_one": "Add {{count}} holiday",
-			"retroactive_one": "{{count}} open {{term_work_item_one}} has a deadline that moves later because of these holidays."
+			"year": "Year"
 		},
 		"releases": {
 			"create": {
@@ -8099,8 +8079,7 @@
 					"description": "The {{term_change_other}} deployed in this release.",
 					"empty": "No {{term_change_other}} are associated with this release.",
 					"hidden_other": "{{count}} {{term_change_other}} in {{term_project_other}} you cannot see are part of this release.",
-					"title": "{{term_change_other}}",
-					"hidden_one": "{{count}} {{term_change_one}} in a {{term_project_one}} you cannot see is part of this release."
+					"title": "{{term_change_other}}"
 				},
 				"checklist": {
 					"description": "Copied from the {{term_service_one}} when the release was created.",
@@ -8148,8 +8127,7 @@
 				"emptyTitle": "No releases yet",
 				"filterService": "{{term_service_one}}",
 				"new": "New release",
-				"title": "Releases",
-				"changes_one": "{{count}} {{term_change_one}}"
+				"title": "Releases"
 			},
 			"status": {
 				"cancelled": "Cancelled",
@@ -8266,9 +8244,7 @@
 				"searchPlaceholder": "Search by name or category",
 				"title": "{{term_service_other}}",
 				"catalogueDescription": "A catalogue of the systems we run, used to record {{term_change_other}} and releases against them. It holds no customers, contracts or SLAs: to support a customer, create a managed service.",
-				"createManagedService": "Create managed service",
-				"incidents_one": "{{count}} incident",
-				"openChanges_one": "{{count}} open {{term_change_one}}"
+				"createManagedService": "Create managed service"
 			}
 		},
 		"status": {
@@ -8393,10 +8369,7 @@
 			"committedSeparateCurrencies": "No single total; see the currency breakdown.",
 			"committedUnknownLine_other": "{{count}} open {{term_work_item_other}} have unknown committed cost (unscheduled: {{unscheduled}}, non-time estimate: {{nonTime}}, unassigned: {{unassigned}}, unrated: {{unrated}}; {{minutes}} known remaining).",
 			"committedUnknownValue": "Unknown",
-			"committedUnscheduled_other": "{{count}} unscheduled open {{term_work_item_other}} have no due date, so they cannot be assigned to a budget period.",
-			"committedCurrencyLine_one": "{{amount}} across {{count}} open {{term_work_item_one}}",
-			"committedUnknownLine_one": "{{count}} open {{term_work_item_one}} has unknown committed cost (unscheduled: {{unscheduled}}, non-time estimate: {{nonTime}}, unassigned: {{unassigned}}, unrated: {{unrated}}; {{minutes}} known remaining).",
-			"committedUnscheduled_one": "{{count}} unscheduled open {{term_work_item_one}} has no due date, so it cannot be assigned to a budget period."
+			"committedUnscheduled_other": "{{count}} unscheduled open {{term_work_item_other}} have no due date, so they cannot be assigned to a budget period."
 		},
 		"edit": {
 			"title": "Edit time entry"
@@ -8450,8 +8423,7 @@
 		"review": {
 			"badge": "Check this",
 			"dialogHint": "This timer ran past 12 hours and was stopped for you. Correct the time to what actually happened.",
-			"notice_other": "{{count}} timers ran past 12 hours and were stopped for you. Check what actually happened.",
-			"notice_one": "{{count}} timer ran past 12 hours and was stopped for you. Check what actually happened."
+			"notice_other": "{{count}} timers ran past 12 hours and were stopped for you. Check what actually happened."
 		},
 		"section": {
 			"add": "Log time",
@@ -8531,8 +8503,7 @@
 			"title": "Costs",
 			"type": "Cost type",
 			"units": "Units ({{unit}})",
-			"unitsShort": "Units",
-			"count_one": "{{count}} entry"
+			"unitsShort": "Units"
 		},
 		"costTypes": {
 			"add": "Add cost type",
@@ -8685,6 +8656,8 @@
 			"title": "Accept your invitation"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
@@ -8698,15 +8671,24 @@
 		"create": {
 			"description": "The person receives an email with a link to accept on the customer portal. The link works once and expires.",
 			"email": "Email address",
+			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
+			"submit": "Send invitation",
+			"title": "Invite to this organisation",
 			"projectsTitle": "Projects (optional)",
 			"projectsLoadError": "Could not load projects. Try again.",
 			"accessTitle": "Customer access",
 			"accessError": "Could not load or update customer access.",
 			"grantAccess": "Grant access",
-			"revokeAccess": "Remove access",
-			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
-			"submit": "Send invitation",
-			"title": "Invite to this organisation"
+			"revokeAccess": "Remove access"
+		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
 		},
 		"denied": {
 			"description": "Inviting people needs the member:invite permission in this workspace.",
@@ -8734,8 +8716,17 @@
 		"title": "Customer invitations",
 		"toasts": {
 			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it.",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"sent": "Invitation sent"
+			"sent": "Invitation sent",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		}
 	},
 	"reports": {
@@ -9031,9 +9022,7 @@
 			"sourcesHistorical": "Historical sources: {{historical}}.",
 			"sourcesLive": "Live components: {{live}}.",
 			"sourcesMixed": "Historical sources: {{historical}}; live components: {{live}}.",
-			"sourcesUnknown": "Source details are unavailable for this saved report.",
-			"scopeAll_one": "All {{term_project_other}} ({{count}} {{term_project_one}})",
-			"scopeReach_one": "Your {{term_project_other}} ({{count}} {{term_project_one}})"
+			"sourcesUnknown": "Source details are unavailable for this saved report."
 		},
 		"dashboard": {
 			"choose": "Choose a dashboard",
@@ -9110,15 +9099,12 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "{{title}} の操作",
-			"limits_one": "{{count}} of {{max}} widgets"
+			"widgetActions": "{{title}} の操作"
 		},
 		"empty": {
 			"excluded_other": "{{count}} items were left out: {{reason}}.",
 			"noData": "Nothing to show for these filters.",
-			"noDataInWindow_other": "No data in this period. {{count}} items fall outside it.",
-			"noDataInWindow_one": "No data in this period. {{count}} item falls outside it.",
-			"excluded_one": "{{count}} item was left out: {{reason}}."
+			"noDataInWindow_other": "No data in this period. {{count}} items fall outside it."
 		},
 		"errors": {
 			"disabled": {
@@ -9181,8 +9167,7 @@
 			"type": "Type",
 			"window": "Window",
 			"datePlaceholder": "未設定",
-			"clearDate": "日付をクリア",
-			"days_one": "{{count}} day"
+			"clearDate": "日付をクリア"
 		},
 		"index": {
 			"categories": "Report categories",
@@ -9359,8 +9344,7 @@
 				},
 				"ready": {
 					"description_other": "{{count}} rows. It can be downloaded for 24 hours.",
-					"title": "Your export is ready",
-					"description_one": "{{count}} row. It can be downloaded for 24 hours."
+					"title": "Your export is ready"
 				},
 				"running": {
 					"description": "Large exports take a little while. You can keep working.",
@@ -9415,8 +9399,7 @@
 		},
 		"chartScroll": {
 			"hint_other": "Scroll sideways to see all {{count}} columns.",
-			"region": "{{label}} Scrolls sideways.",
-			"hint_one": "Scroll sideways to see the {{count}} column."
+			"region": "{{label}} Scrolls sideways."
 		}
 	},
 	"godModeDeliveries": {
@@ -9474,8 +9457,7 @@
 			"skippedOutOfReach": "Skipped out of reach",
 			"suppressed": "Suppressed"
 		},
-		"title": "Deliveries",
-		"childCount_one": "{{count}} delivery"
+		"title": "Deliveries"
 	},
 	"godModeJobs": {
 		"checkedAt": "Updated {{when}}",
@@ -9672,8 +9654,7 @@
 		"purgeRequestFailed": "The hard-purge request could not be created. Reload and try again.",
 		"purgeConflict": "This organisation is not currently eligible for purge. Review its legal hold and dependencies, then reload.",
 		"unknownDate": "unknown",
-		"restoreOperationUnavailable": "The deletion record is unavailable. Reload the directory.",
-		"selectedCount_one": "{{count}} request type selected"
+		"restoreOperationUnavailable": "The deletion record is unavailable. Reload the directory."
 	},
 	"godModePlugins": {
 		"checkedAt": "Updated {{when}}",
@@ -9818,16 +9799,7 @@
 			"request_other": "Requests",
 			"submission_other": "Submissions",
 			"service_other": "Services",
-			"change_other": "Changes",
-			"work_item_one": "Work item",
-			"project_one": "Project",
-			"cycle_one": "Cycle",
-			"module_one": "Module",
-			"epic_one": "Epic",
-			"request_one": "Request",
-			"submission_one": "Submission",
-			"service_one": "Service",
-			"change_one": "Change"
+			"change_other": "Changes"
 		},
 		"customer": {
 			"work_item_other": "Requests",
@@ -9838,16 +9810,7 @@
 			"request_other": "Requests",
 			"submission_other": "Requests",
 			"service_other": "Services",
-			"change_other": "Changes",
-			"work_item_one": "Request",
-			"project_one": "Project",
-			"cycle_one": "Cycle",
-			"module_one": "Module",
-			"epic_one": "Epic",
-			"request_one": "Request",
-			"submission_one": "Request",
-			"service_one": "Service",
-			"change_one": "Change"
+			"change_other": "Changes"
 		}
 	},
 	"godModeWebhooks": {
@@ -10291,8 +10254,7 @@
 	"projectOverview": {
 		"attention": {
 			"blocking_other": "{{count}} blocking prerequisites are outstanding.",
-			"seeWaiting": "See what is waiting",
-			"blocking_one": "{{count}} blocking prerequisite is outstanding."
+			"seeWaiting": "See what is waiting"
 		},
 		"common": {
 			"actionsFor": "Actions for {{name}}",
@@ -10363,8 +10325,7 @@
 				"none": "No contract"
 			},
 			"title": "Contract",
-			"usedOf": "{{used}} h of {{contracted}} h used",
-			"daysLeft_one": "{{count}} day left"
+			"usedOf": "{{used}} h of {{contracted}} h used"
 		},
 		"documents": {
 			"add": "Add document",
@@ -10531,10 +10492,7 @@
 				"workspace": "{{name}} (workspace default)",
 				"none": "{{name}}"
 			},
-			"title": "Service levels",
-			"minutes_one": "{{count}} min",
-			"hours_one": "{{count}} h",
-			"days_one": "{{count}} day"
+			"title": "Service levels"
 		},
 		"status": {
 			"active": "Active",
@@ -10584,8 +10542,7 @@
 			"title": "Team",
 			"unnamed": "Unnamed person",
 			"wait": "Wait before escalating (minutes)",
-			"waitMinutes_other": "escalate after {{count}} minutes",
-			"waitMinutes_one": "escalate after {{count}} minute"
+			"waitMinutes_other": "escalate after {{count}} minutes"
 		}
 	}
 }

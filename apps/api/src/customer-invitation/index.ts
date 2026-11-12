@@ -1,5 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
-import type { Context } from "hono";
+import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
@@ -14,6 +14,9 @@ import {
 } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { requireReachFilteredList } from "../utils/reach-filtered-list";
+import { requireAgentBrowserSession } from "../utils/require-agent-browser-session";
+import { requireCopyInvitationLinkRateLimit } from "../utils/require-copy-link-rate-limit";
+import { requireInvitationCopyAccess } from "../utils/require-invitation-copy-access";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -25,6 +28,7 @@ import {
 } from "./repository";
 import {
   acceptedCustomerInvitationSchema,
+  customerInvitationCopiedLinkSchema,
   customerInvitationListSchema,
   customerInvitationSentSchema,
   customerOrganisationListSchema,
@@ -40,6 +44,7 @@ import {
 import {
   acceptCustomerInvitation,
   assertCreateBodyIsCustomerOnly,
+  copyCustomerInvitationLink,
   createCustomerInvitation,
   type InviteActor,
   resendCustomerInvitation,
@@ -49,7 +54,7 @@ import {
  * Customer invitations (CP-20..CP-26). Agent side: workspace-scoped `member:invite` over a browser
  * session (never an API key or MCP key), naming a customer organisation. Revoke is the existing
  * `DELETE /api/invitation/{id}` pending-action route. Portal side: accept, by an admitted customer
- * session that carries the credential from the email link.
+ * session that carries the credential from the email or copied link.
  */
 
 type Vars = BaseVariables & {
@@ -61,6 +66,19 @@ const manage = [
   requireSessionOnly(),
   workspaceAccess.fromParam("workspaceId"),
   requireWorkspaceCapability("member:invite"),
+] as const;
+
+async function noStoreHeader(c: Context, next: Next) {
+  c.header("Cache-Control", "no-store");
+  await next();
+}
+
+const copyLinkMiddleware = [
+  noStoreHeader,
+  requireAgentBrowserSession(),
+  workspaceAccess.fromParam("workspaceId"),
+  requireInvitationCopyAccess({ scope: "customer", idParam: "id" }),
+  requireCopyInvitationLinkRateLimit(),
 ] as const;
 
 /** The caller's live identity: reach for CP-20 is read at the request, never cached on the session. */
@@ -102,7 +120,7 @@ const listRoute = createRoute({
   tags: ["Customer invitations"],
   summary: "List an organisation's customer invitations with status",
   description:
-    "Status is pending, accepted, revoked or expired. The accept credential is never returned.",
+    "Status is pending, accepted, revoked or expired. The accept credential is never returned here.",
   middleware: [...manage] as const,
   request: { params: organisationParam },
   responses: {
@@ -139,7 +157,7 @@ const createRouteDef = createRoute({
   tags: ["Customer invitations"],
   summary: "Invite an address into a customer organisation",
   description:
-    "Always the customer role. A body that names any other role, a team or a scope is refused 422. The accept link is emailed; it is never in the response. An address that cannot accept here (a member, staff, another organisation's customer, a deactivated customer) is answered exactly like any other address: a pending row with no credential and no email, the reason audited only. `delivered` reports only whether an email provider is configured on the instance, never the outcome of a particular send.",
+    "Always the customer role. A body that names any other role, a team or a scope is refused 422. The accept link is queued for email when a provider is configured and is never returned in the create response; while pending and unexpired, a holder of `member:invite` who reaches the organisation may copy the same link from `POST .../copy-link`. An address that cannot accept here (a member, staff, another organisation's customer, a deactivated customer) is answered exactly like any other address: a pending row with no credential hash and no email, the reason audited only. `delivered` reports only whether an email provider is configured on the instance, never provider handoff or delivery.",
   middleware: [...manage] as const,
   request: {
     params: organisationParam,
@@ -167,7 +185,7 @@ const resendRoute = createRoute({
   tags: ["Customer invitations"],
   summary: "Resend a pending customer invitation",
   description:
-    "Issues a fresh accept credential, invalidates the previous one and extends expiry. An inert row is re-evaluated: if its address can now be invited it gets a credential and is sent normally. `delivered` reports only whether an email provider is configured.",
+    "Increments generation to issue a fresh accept credential, invalidates the previous link and extends expiry. An inert row is re-evaluated: if its address can now be invited it gets a credential and is queued normally. `delivered` reports only whether an email provider is configured on the instance, never provider handoff or delivery.",
   middleware: [...manage] as const,
   request: { params: invitationParam },
   responses: {
@@ -179,6 +197,29 @@ const resendRoute = createRoute({
   },
 });
 
+const copyLinkRoute = createRoute({
+  method: "post",
+  path: "/workspace/{workspaceId}/organisations/{organisationId}/invitations/{id}/copy-link",
+  operationId: "copyCustomerInvitationLink",
+  tags: ["Customer invitations"],
+  summary: "Copy the accept link for a pending customer invitation",
+  description:
+    "Agent-host browser session only (never an API key, MCP key or impersonation session). Requires `member:invite` in the workspace and reach to the organisation at request time. Only pending, unexpired invitations may be copied; copying never extends expiry or changes generation, sets `Cache-Control: no-store`, is rate-limited per actor and records `invitation.link_copied` in the audit log.",
+  middleware: [...copyLinkMiddleware] as const,
+  request: { params: invitationParam },
+  responses: {
+    200: jsonResponse(
+      "The customer invitation accept link",
+      customerInvitationCopiedLinkSchema,
+    ),
+    401: errorResponse("Unauthorized"),
+    403: errorResponse("Browser session and invite capability required"),
+    404: errorResponse("Invitation not found"),
+    409: errorResponse("Invitation is expired, revoked or already accepted"),
+    429: errorResponse("Too many copy requests"),
+  },
+});
+
 const acceptRoute = createRoute({
   method: "post",
   path: "/portal/invitations/{id}/accept",
@@ -186,7 +227,7 @@ const acceptRoute = createRoute({
   tags: ["Portal invitations"],
   summary: "Accept a customer invitation",
   description:
-    "Portal host only. The signed-in customer session's verified address must equal the invitation address and the body must carry the credential from the email link. Every refusal is the same 404.",
+    "Portal host only. The signed-in customer session's verified address must equal the invitation address and the body must carry the credential from the invitation link. Every refusal is the same 404.",
   middleware: [portalAcceptScope] as const,
   request: {
     params: portalInvitationParam,
@@ -294,6 +335,17 @@ const customerInvitation = apiRouter<Vars>()
       invitationId: id,
     });
     return c.json(resent, 200);
+  })
+  .openapi(copyLinkRoute, async (c) => {
+    const { workspaceId, organisationId, id } = c.req.valid("param");
+    c.header("Cache-Control", "no-store");
+    const copied = await copyCustomerInvitationLink({
+      actor: actorOf(c),
+      identity: await callerIdentity(c),
+      scope: { workspaceId, organisationId },
+      invitationId: id,
+    });
+    return c.json(copied, 200);
   })
   .openapi(acceptRoute, async (c) => {
     await acceptCustomerInvitation({

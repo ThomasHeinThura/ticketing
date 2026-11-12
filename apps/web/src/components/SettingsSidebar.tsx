@@ -89,10 +89,7 @@ export default function SettingsSidebar({
               onClick={() => {
                 if (!workspaceId) return;
 
-                navigate({
-                  to: "/dashboard/workspace/$workspaceId",
-                  params: { workspaceId },
-                });
+                navigate({ to: "/agent" });
               }}
             >
               <ChevronLeft aria-hidden="true" className="size-4" />

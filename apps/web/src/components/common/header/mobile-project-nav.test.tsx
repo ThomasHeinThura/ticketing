@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 import MobileProjectNav from "./mobile-project-nav";
@@ -159,4 +165,64 @@ describe("MobileProjectNav current view", () => {
           .filter((button) => button.getAttribute("aria-current") === "page"),
       ).toHaveLength(1);
     });
+
+  it("disables slug-only views with a tooltip explanation when the project key cannot be resolved safely", async () => {
+    const onSelectOverview = vi.fn();
+    const reason = translate("navigation:projectViews.shadowedKeyUnavailable");
+
+    render(
+      <MobileProjectNav
+        workspaceId="workspace-1"
+        projectId="project-1"
+        activeView="calendar"
+        slugViewsDisabledReason={reason}
+        onSelectOverview={onSelectOverview}
+        onSelectPrerequisites={vi.fn()}
+        onSelectTeam={vi.fn()}
+        onSelectDocuments={vi.fn()}
+        onSelectBoard={vi.fn()}
+        onSelectBacklog={vi.fn()}
+        onSelectCalendar={vi.fn()}
+        onSelectGantt={vi.fn()}
+        onSelectCycles={vi.fn()}
+        onSelectModules={vi.fn()}
+        onSelectPages={vi.fn()}
+        onSelectProject={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("navigation:mobileProjectNav.menuLabel"),
+      }),
+    );
+
+    const overview = await screen.findByRole("button", { name: "Overview" });
+    for (const label of [
+      "Overview",
+      "Cycles",
+      "Modules",
+      "Pages",
+      "Prerequisites",
+      "Team",
+      "Documents",
+    ]) {
+      const button = screen.getByRole("button", { name: label });
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      expect(button).toHaveAttribute("aria-description", reason);
+    }
+
+    for (const label of ["Backlog", "Work items", "Calendar", "Timeline"]) {
+      expect(screen.getByRole("button", { name: label })).toBeEnabled();
+    }
+
+    fireEvent.click(overview);
+    expect(onSelectOverview).not.toHaveBeenCalled();
+
+    act(() => {
+      screen.getByRole("button", { name: "Backlog" }).focus();
+      overview.focus();
+    });
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(reason);
+  });
 });

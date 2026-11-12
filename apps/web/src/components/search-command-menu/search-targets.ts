@@ -81,9 +81,7 @@ export function searchResultHref(item: SearchResultItem): string | null {
     case "person":
       return routes.workspaceMembers.build({ q: item.title });
     case "workspace":
-      return item.id
-        ? `/dashboard/workspace/${encodeURIComponent(item.id)}`
-        : null;
+      return item.id ? routes.agentHome.path : null;
     default:
       return null;
   }
@@ -102,7 +100,11 @@ export function projectSearchGroups(
           {
             value: "recent",
             label: translate("navigation:search.groups.recent"),
-            items: [...recentItems],
+            items: recentItems.map((item) =>
+              item.type === "workspace"
+                ? { ...item, href: routes.agentHome.path }
+                : item,
+            ),
           },
         ]
       : [];

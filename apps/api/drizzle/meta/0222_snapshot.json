@@ -1,6 +1,6 @@
 {
 	"id": "5dcb5129-c60d-48c8-a9cf-824a1fa2312c",
-	"prevId": "3ffee7fb-068f-45ec-a9e1-6397e6c6597e",
+	"prevId": "f84b6e75-d114-4b82-824a-0a1de4ac912f",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -5044,6 +5044,13 @@
 					"primaryKey": false,
 					"notNull": false
 				},
+				"generation": {
+					"name": "generation",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 1
+				},
 				"last_sent_at": {
 					"name": "last_sent_at",
 					"type": "timestamp with time zone",
@@ -5215,6 +5222,10 @@
 				"invitation_scope_allowed": {
 					"name": "invitation_scope_allowed",
 					"value": "scope IN ('staff', 'customer')"
+				},
+				"invitation_generation_positive": {
+					"name": "invitation_generation_positive",
+					"value": "generation >= 1"
 				},
 				"invitation_scope_shape": {
 					"name": "invitation_scope_shape",

@@ -556,9 +556,7 @@ async function collectCommandPaletteInteraction(
   };
   let navigationPaint =
     metric === "navigate" ? await readNavigationPaint() : null;
-  await expect(page).toHaveURL(
-    new RegExp(`/dashboard/workspace/${WORKSPACE_ID}`),
-  );
+  await expect(page).toHaveURL(/\/agent\/?$/);
   await expect(
     page.getByRole("main").getByText("Performance fixture", { exact: true }),
   ).toBeVisible();

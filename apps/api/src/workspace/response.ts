@@ -39,19 +39,38 @@ export const workspaceSummarySchema = z
 
 export const workspaceSummaryListSchema = z.array(workspaceSummarySchema);
 
+const workspaceInvitationFields = {
+  id: z.string(),
+  email: z.string(),
+  role: z.string().nullable(),
+  status: z.string(),
+  expiresAt: responseTimestamp,
+  createdAt: responseTimestamp,
+  inviterId: z.string(),
+};
+
 export const workspaceInvitationSchema = z
-  .object({
-    id: z.string(),
-    email: z.string(),
-    role: z.string().nullable(),
-    status: z.string(),
-    expiresAt: responseTimestamp,
-    createdAt: responseTimestamp,
-    inviterId: z.string(),
-  })
+  .object(workspaceInvitationFields)
   .openapi("WorkspaceInvitation");
 
 export const workspaceInvitationListSchema = z.array(workspaceInvitationSchema);
+
+export const invitedWorkspaceMemberSchema = z
+  .object({
+    ...workspaceInvitationFields,
+    delivered: z.boolean().openapi({
+      description:
+        "Whether the invitation email was handed to the configured mail provider.",
+    }),
+  })
+  .openapi("InvitedWorkspaceMember");
+
+export const workspaceInvitationCopiedLinkSchema = z
+  .object({
+    link: z.string(),
+    expiresAt: responseTimestamp,
+  })
+  .openapi("WorkspaceInvitationCopiedLink");
 
 export const workspaceDetailSchema = z
   .object({

@@ -24,6 +24,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import ProjectCrumbSelect from "@/components/common/header/project-crumb-select";
 // Loaded with the strip, not lazily: the "More" menu then paints in the same commit as the
 // measurement that shows it, so the header never settles without it and shifts afterwards.
@@ -33,10 +34,21 @@ import useProjectPagesFeature, {
   useProjectFeature,
 } from "@/hooks/queries/feature-flag/use-project-pages-feature";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { activateWorkspaceForNavigation } from "@/lib/activate-workspace-for-navigation";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { buildProjectViewSwitchUrl } from "@/lib/project-layout-navigation";
-import { routes } from "@/lib/routes";
+import {
+  PROJECT_BACKLOG_PATH,
+  PROJECT_BOARD_PATH,
+  PROJECT_CALENDAR_PATH,
+  PROJECT_GANTT_PATH,
+  routes,
+} from "@/lib/routes";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
+import { toast } from "@/lib/toast";
 
 const MobileProjectNav = lazy(
   () => import("@/components/common/header/mobile-project-nav"),
@@ -92,14 +104,34 @@ function ViewTab({
   active,
   icon: Icon,
   onClick,
+  disabledReason,
   children,
 }: {
   view: ProjectView;
   active: boolean;
   icon: LucideIcon;
   onClick: () => void;
+  disabledReason?: string;
   children: ReactNode;
 }) {
+  if (disabledReason) {
+    return (
+      <ActionTooltip label={disabledReason}>
+        <Button
+          variant={active ? "secondary" : "ghost"}
+          size="xs"
+          data-project-view={view}
+          aria-disabled="true"
+          aria-description={disabledReason}
+          aria-current={active ? "page" : undefined}
+          className="h-6 scroll-mx-6 cursor-not-allowed gap-1.5 rounded-md px-2 text-xs opacity-64"
+        >
+          <Icon className="size-3.5" />
+          {children}
+        </Button>
+      </ActionTooltip>
+    );
+  }
   return (
     <Button
       variant={active ? "secondary" : "ghost"}
@@ -143,7 +175,65 @@ export default function ProjectLayoutControls({
   const navigate = useNavigate();
   const location = useLocation();
   const showsProjectMenu = useIsMobile(TAB_STRIP_BREAKPOINT);
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
+  const activeWorkspaceId = getActiveOrganizationId(session);
+  const isActiveWorkspace = Boolean(
+    !isSessionPending && activeWorkspaceId && activeWorkspaceId === workspaceId,
+  );
+  const { data: workspaces } = useGetWorkspaces();
   const { data: workspaceProjects } = useGetProjects({ workspaceId });
+  const verifiedProjectSlug = (
+    targetProjectId: string,
+    candidateSlug: string | undefined,
+  ): string | undefined => {
+    if (!candidateSlug) return undefined;
+    const matches = workspaceProjects?.filter(
+      (candidate) => candidate.slug === candidateSlug,
+    );
+    const canonical = matches?.[0];
+    if (
+      matches?.length !== 1 ||
+      !canonical ||
+      canonical.id !== targetProjectId ||
+      (canonical.workspaceId !== undefined &&
+        canonical.workspaceId !== workspaceId)
+    ) {
+      return undefined;
+    }
+    return candidateSlug;
+  };
+  const canonicalProjectSlug = (
+    targetProjectId: string,
+    candidateSlug: string | undefined,
+  ): string | undefined =>
+    isActiveWorkspace
+      ? verifiedProjectSlug(targetProjectId, candidateSlug)
+      : undefined;
+  const candidateSlugForCurrentProject =
+    projectSlug ??
+    workspaceProjects?.find((candidate) => candidate.id === projectId)?.slug;
+  const verifiedCurrentProjectSlug = verifiedProjectSlug(
+    projectId,
+    candidateSlugForCurrentProject,
+  );
+  const isWorkspaceUnauthorized = Boolean(
+    !isActiveWorkspace &&
+      workspaces &&
+      !workspaces.some((candidate) => candidate.id === workspaceId),
+  );
+  const isShadowedProjectSlug = Boolean(
+    candidateSlugForCurrentProject &&
+      workspaceProjects &&
+      !verifiedCurrentProjectSlug,
+  );
+  const slugViewsDisabledReason = isShadowedProjectSlug
+    ? t("navigation:projectViews.shadowedKeyUnavailable")
+    : isWorkspaceUnauthorized
+      ? t("navigation:workspaceSwitcher.switchFailed")
+      : !verifiedCurrentProjectSlug
+        ? t("navigation:projectViews.keyUnavailable")
+        : undefined;
   const permissions = useWorkspacePermission(workspaceId);
   const canCreateProject =
     !permissions.isCheckingPermissions && permissions.canCreateProjects();
@@ -264,88 +354,175 @@ export default function ProjectLayoutControls({
     viewport.addEventListener("wheel", onWheel, { passive: false });
     return () => viewport.removeEventListener("wheel", onWheel);
   }, [showViewSwitcher]);
+  const activatingWorkspaceRef = useRef(false);
+  const openSlugOnlyProjectView = async (
+    buildHref: (projectKey: string) => string,
+    targetSlug = verifiedCurrentProjectSlug,
+  ) => {
+    if (!targetSlug) return;
+    const href = buildHref(targetSlug);
+    if (isActiveWorkspace) {
+      await navigate({ href });
+      return;
+    }
+    if (isWorkspaceUnauthorized) {
+      toast.error(t("navigation:workspaceSwitcher.switchFailed"));
+      return;
+    }
+    if (activatingWorkspaceRef.current) return;
+    activatingWorkspaceRef.current = true;
+    try {
+      await activateWorkspaceForNavigation(workspaceId);
+    } catch {
+      toast.error(t("navigation:workspaceSwitcher.switchFailed"));
+      return;
+    } finally {
+      activatingWorkspaceRef.current = false;
+    }
+    await navigate({ href });
+  };
   const handleNavigateToOverviewView = (
     view: keyof typeof OVERVIEW_VIEW_ROUTES,
   ) => {
-    if (projectSlug)
-      void navigate({
-        href: OVERVIEW_VIEW_ROUTES[view].build({ projectKey: projectSlug }),
-      });
+    if (slugViewsDisabledReason) return;
+    void openSlugOnlyProjectView((projectKey) =>
+      OVERVIEW_VIEW_ROUTES[view].build({ projectKey }),
+    );
   };
   const handleNavigateToBacklog = () => {
-    if (projectSlug)
-      void navigate({
-        href: buildProjectViewSwitchUrl(
-          "backlog",
-          { workspaceId, projectId, projectKey: projectSlug },
-          location.searchStr,
-        ),
-      });
-  };
-  const handleNavigateToBoard = () => {
-    if (projectSlug)
-      void navigate({
-        href: buildProjectViewSwitchUrl(
-          "board",
-          { workspaceId, projectId, projectKey: projectSlug },
-          location.searchStr,
-        ),
-      });
-  };
-  const handleNavigateToCycles = () => {
-    if (projectSlug)
-      void navigate({
-        href: routes.projectCycles.build({ projectKey: projectSlug }),
-      });
-  };
-  const handleNavigateToPages = () => {
-    if (projectSlug)
-      void navigate({
-        href: routes.projectPages.build({ projectKey: projectSlug }),
-      });
-  };
-  const handleNavigateToModules = () => {
-    if (projectSlug)
-      void navigate({
-        href: routes.projectModules.build({ projectKey: projectSlug }),
-      });
-  };
-  const handleNavigateToCalendar = () => {
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    if (!projectSlug && !resolvedSlug) return;
+    if (!resolvedSlug && (!workspaceId || !projectId)) return;
     void navigate({
-      to: buildProjectViewSwitchUrl(
-        "calendar",
-        { workspaceId, projectId },
+      href: buildProjectViewSwitchUrl(
+        "backlog",
+        { workspaceId, projectId, projectKey: resolvedSlug },
         location.searchStr,
       ),
     });
   };
-  const handleNavigateToGantt = () => {
-    // The view state carries over to the canonical `/agent` Timeline when the project key is
-    // known, and to Kaneo's Gantt URL otherwise.
-    const timelineUrl = buildProjectViewSwitchUrl(
-      "gantt",
-      { workspaceId, projectId, projectKey: projectSlug },
+  const handleNavigateToBoard = () => {
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    if (!projectSlug && !resolvedSlug) return;
+    if (!resolvedSlug && (!workspaceId || !projectId)) return;
+    void navigate({
+      href: buildProjectViewSwitchUrl(
+        "board",
+        { workspaceId, projectId, projectKey: resolvedSlug },
+        location.searchStr,
+      ),
+    });
+  };
+  const handleNavigateToCycles = () => {
+    if (slugViewsDisabledReason) return;
+    void openSlugOnlyProjectView((projectKey) =>
+      routes.projectCycles.build({ projectKey }),
+    );
+  };
+  const handleNavigateToPages = () => {
+    if (slugViewsDisabledReason) return;
+    void openSlugOnlyProjectView((projectKey) =>
+      routes.projectPages.build({ projectKey }),
+    );
+  };
+  const handleNavigateToModules = () => {
+    if (slugViewsDisabledReason) return;
+    void openSlugOnlyProjectView((projectKey) =>
+      routes.projectModules.build({ projectKey }),
+    );
+  };
+  const handleNavigateToCalendar = () => {
+    // Use the canonical `/agent` Calendar only when this workspace is active and its project
+    // key resolves back to this exact project; otherwise keep workspace/project identity via
+    // Kaneo's ID-scoped calendar URL and its guarded redirect.
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    const calendarUrl = buildProjectViewSwitchUrl(
+      "calendar",
+      { workspaceId, projectId, projectKey: resolvedSlug },
       location.searchStr,
     );
-    void navigate(projectSlug ? { href: timelineUrl } : { to: timelineUrl });
+    void navigate(
+      resolvedSlug || calendarUrl.includes("?")
+        ? { href: calendarUrl }
+        : { to: calendarUrl },
+    );
+  };
+  const handleNavigateToGantt = () => {
+    // Use the canonical `/agent` Timeline only when this workspace is active and its project
+    // key resolves back to this exact project; otherwise keep workspace/project identity via
+    // Kaneo's ID-scoped Gantt URL.
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    const timelineUrl = buildProjectViewSwitchUrl(
+      "gantt",
+      { workspaceId, projectId, projectKey: resolvedSlug },
+      location.searchStr,
+    );
+    void navigate(
+      resolvedSlug || timelineUrl.includes("?")
+        ? { href: timelineUrl }
+        : { to: timelineUrl },
+    );
   };
   const handleProjectSwitch = (nextProjectId: string) => {
     const nextProject = workspaceProjects?.find(
       (candidate) => candidate.id === nextProjectId,
     );
     if (!nextProject) return;
+    const nextCanonicalSlug = canonicalProjectSlug(
+      nextProject.id,
+      nextProject.slug,
+    );
+    const nextVerifiedSlug = verifiedProjectSlug(
+      nextProject.id,
+      nextProject.slug,
+    );
     if (resolvedView in OVERVIEW_VIEW_ROUTES) {
-      void navigate({
-        href: OVERVIEW_VIEW_ROUTES[
-          resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
-        ].build({ projectKey: nextProject.slug }),
-      });
+      if (nextCanonicalSlug) {
+        void navigate({
+          href: OVERVIEW_VIEW_ROUTES[
+            resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
+          ].build({ projectKey: nextCanonicalSlug }),
+        });
+      } else if (nextVerifiedSlug && !isWorkspaceUnauthorized) {
+        void openSlugOnlyProjectView(
+          (projectKey) =>
+            OVERVIEW_VIEW_ROUTES[
+              resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
+            ].build({ projectKey }),
+          nextVerifiedSlug,
+        );
+      } else {
+        void navigate({
+          to: PROJECT_BOARD_PATH,
+          params: { workspaceId, projectId: nextProject.id },
+        });
+      }
       return;
     }
     if (resolvedView === "gantt") {
-      void navigate({
-        href: routes.projectTimeline.build({ projectKey: nextProject.slug }),
-      });
+      if (nextCanonicalSlug) {
+        void navigate({
+          href: routes.projectTimeline.build({ projectKey: nextCanonicalSlug }),
+        });
+      } else {
+        void navigate({
+          to: PROJECT_GANTT_PATH,
+          params: { workspaceId, projectId: nextProject.id },
+        });
+      }
+      return;
+    }
+    if (resolvedView === "calendar") {
+      if (nextCanonicalSlug) {
+        void navigate({
+          href: routes.projectCalendar.build({ projectKey: nextCanonicalSlug }),
+        });
+      } else {
+        void navigate({
+          to: PROJECT_CALENDAR_PATH,
+          params: { workspaceId, projectId: nextProject.id },
+        });
+      }
       return;
     }
     if (
@@ -355,29 +532,53 @@ export default function ProjectLayoutControls({
       resolvedView === "modules" ||
       resolvedView === "pages"
     ) {
+      if (!nextCanonicalSlug) {
+        if (
+          (resolvedView === "cycles" ||
+            resolvedView === "modules" ||
+            resolvedView === "pages") &&
+          nextVerifiedSlug &&
+          !isWorkspaceUnauthorized
+        ) {
+          void openSlugOnlyProjectView(
+            (projectKey) =>
+              resolvedView === "cycles"
+                ? routes.projectCycles.build({ projectKey })
+                : resolvedView === "pages"
+                  ? routes.projectPages.build({ projectKey })
+                  : routes.projectModules.build({ projectKey }),
+            nextVerifiedSlug,
+          );
+          return;
+        }
+        void navigate({
+          to:
+            resolvedView === "backlog"
+              ? PROJECT_BACKLOG_PATH
+              : PROJECT_BOARD_PATH,
+          params: { workspaceId, projectId: nextProject.id },
+        });
+        return;
+      }
       void navigate({
         href:
           resolvedView === "backlog"
-            ? routes.projectBacklog.build({ projectKey: nextProject.slug })
+            ? routes.projectBacklog.build({ projectKey: nextCanonicalSlug })
             : resolvedView === "cycles"
-              ? routes.projectCycles.build({ projectKey: nextProject.slug })
+              ? routes.projectCycles.build({ projectKey: nextCanonicalSlug })
               : resolvedView === "pages"
-                ? routes.projectPages.build({ projectKey: nextProject.slug })
+                ? routes.projectPages.build({ projectKey: nextCanonicalSlug })
                 : resolvedView === "modules"
                   ? routes.projectModules.build({
-                      projectKey: nextProject.slug,
+                      projectKey: nextCanonicalSlug,
                     })
                   : routes.workItemList.build(
-                      { projectKey: nextProject.slug },
+                      { projectKey: nextCanonicalSlug },
                       { layout: "board" },
                     ),
       });
       return;
     }
-    void navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
-      params: { workspaceId, projectId: nextProjectId },
-    });
   };
 
   // One list drives the strip and its "More" menu, in the strip's order.
@@ -385,12 +586,14 @@ export default function ProjectLayoutControls({
     view: ProjectView;
     icon: LucideIcon;
     label: string;
+    disabledReason?: string;
     onSelect: () => void;
   }> = [
     {
       view: "overview",
       icon: LayoutDashboard,
       label: t("navigation:projectViews.overview"),
+      disabledReason: slugViewsDisabledReason,
       onSelect: () => handleNavigateToOverviewView("overview"),
     },
     {
@@ -431,6 +634,7 @@ export default function ProjectLayoutControls({
             view: "cycles" as const,
             icon: Repeat,
             label: t("navigation:projectViews.cycles"),
+            disabledReason: slugViewsDisabledReason,
             onSelect: handleNavigateToCycles,
           },
         ]
@@ -441,6 +645,7 @@ export default function ProjectLayoutControls({
             view: "modules" as const,
             icon: Layers,
             label: t("navigation:projectViews.modules"),
+            disabledReason: slugViewsDisabledReason,
             onSelect: handleNavigateToModules,
           },
         ]
@@ -451,6 +656,7 @@ export default function ProjectLayoutControls({
             view: "pages" as const,
             icon: FileText,
             label: t("navigation:projectViews.pages"),
+            disabledReason: slugViewsDisabledReason,
             onSelect: handleNavigateToPages,
           },
         ]
@@ -459,18 +665,21 @@ export default function ProjectLayoutControls({
       view: "prerequisites",
       icon: ListChecks,
       label: t("navigation:projectViews.prerequisites"),
+      disabledReason: slugViewsDisabledReason,
       onSelect: () => handleNavigateToOverviewView("prerequisites"),
     },
     {
       view: "team",
       icon: Users,
       label: t("navigation:projectViews.team"),
+      disabledReason: slugViewsDisabledReason,
       onSelect: () => handleNavigateToOverviewView("team"),
     },
     {
       view: "documents",
       icon: Files,
       label: t("navigation:projectViews.documents"),
+      disabledReason: slugViewsDisabledReason,
       onSelect: () => handleNavigateToOverviewView("documents"),
     },
   ];
@@ -521,6 +730,7 @@ export default function ProjectLayoutControls({
                 agileFeatures.modules ? handleNavigateToModules : undefined
               }
               onSelectPages={pagesOn ? handleNavigateToPages : undefined}
+              slugViewsDisabledReason={slugViewsDisabledReason}
               onSelectProject={handleProjectSwitch}
               onAddProject={addProject}
               onOpenProjectSettings={() =>
@@ -581,6 +791,7 @@ export default function ProjectLayoutControls({
                     view={tab.view}
                     active={resolvedView === tab.view}
                     icon={tab.icon}
+                    disabledReason={tab.disabledReason}
                     onClick={tab.onSelect}
                   >
                     {tab.label}

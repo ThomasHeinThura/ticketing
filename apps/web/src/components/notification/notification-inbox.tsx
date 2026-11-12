@@ -6,6 +6,7 @@ import { ActionTooltip } from "@/components/common/action-tooltip";
 import {
   getNotificationContent,
   getNotificationTitle,
+  isLegacyTaskNotification,
   useNotificationClick,
 } from "@/components/notification/notification-dropdown";
 import { PageLoading } from "@/components/page-loading";
@@ -180,6 +181,11 @@ export default function NotificationInbox({
                     {content ? (
                       <p className="mt-0.5 line-clamp-2 text-muted-foreground text-xs">
                         {content}
+                      </p>
+                    ) : null}
+                    {isLegacyTaskNotification(notification) ? (
+                      <p className="mt-0.5 text-muted-foreground text-xs italic">
+                        {t("notifications:unavailable")}
                       </p>
                     ) : null}
                   </div>
