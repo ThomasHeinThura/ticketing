@@ -19,6 +19,14 @@ type RegistrationCheckResult = {
   };
 };
 
+/**
+ * `DISABLE_REGISTRATION=true` forces staff self-registration off whatever the stored setting.
+ * This is the one place that reads the switch; every other module asks here.
+ */
+export function staffRegistrationDisabledByEnvironment(): boolean {
+  return process.env.DISABLE_REGISTRATION === "true";
+}
+
 export async function checkRegistrationAllowed(
   email?: string,
   invitationId?: string,

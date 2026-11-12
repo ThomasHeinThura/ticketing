@@ -4,6 +4,7 @@ import {
   claimVerifiedImportPlaceholder,
   reportPlaceholderClaimAuditWriteFailure,
 } from "../identity/placeholder-claim";
+import { staffRegistrationDisabledByEnvironment } from "../utils/check-registration-allowed";
 import { findPendingInvitation } from "../utils/registration.repository";
 import { insertStaffPersonIfAbsent } from "../utils/seed-defaults.repository";
 import { ensureInternalOrganisation } from "../utils/seed-internal-organisation";
@@ -49,7 +50,7 @@ export async function establishVerifiedLocalStaffPerson(input: {
         .where(eq(schema.instanceSettingTable.id, "singleton"))
         .limit(1);
       if (
-        process.env.DISABLE_REGISTRATION === "true" ||
+        staffRegistrationDisabledByEnvironment() ||
         setting?.enabled !== true
       ) {
         const invitation = await findPendingInvitation({

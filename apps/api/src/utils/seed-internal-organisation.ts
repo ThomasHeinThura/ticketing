@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import { type Executor, executorOrDefault } from "../database/executor";
+import { staffRegistrationDisabledByEnvironment } from "./check-registration-allowed";
 import { isUniqueViolation } from "./is-unique-violation";
 import {
   findInternalOrganisationId,
@@ -157,7 +158,7 @@ export async function seedInternalOrganisationAndStaffPersons() {
       const known = new Set(people.map((person) => person.userId));
       const missing = users.filter((user) => !known.has(user.id));
       if (
-        process.env.DISABLE_REGISTRATION === "true" ||
+        staffRegistrationDisabledByEnvironment() ||
         setting?.enabled !== true
       ) {
         console.log(
