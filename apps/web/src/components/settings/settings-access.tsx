@@ -17,6 +17,7 @@ import {
 } from "@taskdesk/ui";
 import { useCallback, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
@@ -212,24 +213,14 @@ export function SettingsAccessError() {
 export function SettingsAccessGate({
   access,
   children,
-  deniedTitle,
-  deniedDescription,
 }: {
   access: SettingsAccess;
   children: React.ReactNode;
-  deniedTitle?: string;
-  deniedDescription?: string;
 }) {
   const placeholderVisible = useDelayedPending(access === "checking");
   if (access === "checking" || (access === "allowed" && placeholderVisible))
     return <SettingsAccessChecking visible={placeholderVisible} />;
   if (access === "error") return <SettingsAccessError />;
-  if (access === "denied")
-    return (
-      <SettingsAccessDenied
-        title={deniedTitle}
-        description={deniedDescription}
-      />
-    );
+  if (access === "denied") return <NoAccessPage />;
   return <>{children}</>;
 }

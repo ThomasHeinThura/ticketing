@@ -33,7 +33,9 @@ import {
 import { formatDateMedium } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { type PortalHomeSearch, routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+import type { PortalHomeSearch } from "@/lib/portal-route-search";
+
 import type { PortalCaseFilterPatch } from "../cases/portal-case-filters";
 import { PortalOutstandingCases } from "../cases/portal-outstanding-cases";
 import { PortalHomeKpis } from "../portal-home-kpis";

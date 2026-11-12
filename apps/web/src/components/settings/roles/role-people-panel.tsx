@@ -39,6 +39,7 @@ import {
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import {
   RoleApiError,
   reassignRole,
@@ -52,6 +53,7 @@ import {
   useRoleHolders,
 } from "@/hooks/queries/workspace-roles/use-role-queries";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
+import { localizedAdminErrorMessage } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
 
 /**
@@ -135,10 +137,14 @@ export function RolePeoplePanel({
   const remove = useMutation({
     mutationFn: () => requestRoleDeletion(workspaceId, role.id),
     onSuccess: (pending) => openPendingAction(pending),
-    onError: (error) => toast.error(error.message),
+    onError: (error) =>
+      toast.error(
+        localizedAdminErrorMessage(error, t, t("roles:delete.failed")),
+        { error },
+      ),
   });
 
-  const moveError = move.error instanceof RoleApiError ? move.error : null;
+  const moveError = move.error;
   const canDelete = canManageRoles && !role.isSystem;
 
   return (
@@ -333,11 +339,21 @@ export function RolePeoplePanel({
               <div className="px-6">
                 <Alert variant="error">
                   <AlertTitle>
-                    {t(`roles:errors.${moveError.code ?? "generic"}`, {
-                      defaultValue: t("roles:errors.generic"),
-                    })}
+                    {t(
+                      `roles:errors.${moveError instanceof RoleApiError ? (moveError.code ?? "reassign_refused") : "reassign_refused"}`,
+                      {
+                        defaultValue: t("roles:errors.reassign_refused"),
+                      },
+                    )}
                   </AlertTitle>
-                  <AlertDescription>{moveError.message}</AlertDescription>
+                  <AlertDescription>
+                    {localizedAdminErrorMessage(
+                      moveError,
+                      t,
+                      t("roles:people.moveFailed"),
+                    )}
+                    <ErrorReference error={moveError} />
+                  </AlertDescription>
                 </Alert>
               </div>
             ) : null}

@@ -121,7 +121,7 @@ export function WorkItemFileDropOverlay({
     >
       <div className="flex items-center gap-2 rounded-xl border border-border border-dashed bg-card px-6 py-5 font-medium text-sm shadow-lg">
         <Upload className="size-4" />
-        {t("workItems:detail.attachments.dropToAttach")}
+        {t("workItemExtras:detail.attachments.dropToAttach")}
       </div>
     </div>
   );

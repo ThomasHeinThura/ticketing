@@ -1,3 +1,4 @@
+// D-E (12 Nov): limited custom actors preserve role-override and reach denials.
 /**
  * #750: a key's identity carries its STORED capability scope on the project-reach routes.
  *
@@ -15,7 +16,7 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { grantProjectRole } from "./helpers/fixtures";
 import {
-  addMember,
+  addProjectLimitedMember,
   json,
   makeApiKey,
   setAmbientHeaders,
@@ -98,7 +99,7 @@ describe("API integration: API-key identity carries its stored capability scope 
 
   it("a key never exceeds its owner: a scope the owner lacks in the project is refused like the session", async () => {
     const { world, app } = await arrange();
-    const owner = await addMember(world.workspaceId, "admin");
+    const owner = await addProjectLimitedMember(world.workspaceId);
     // The owner reaches the project but holds no project:read through its role.
     await grantProjectRole(owner.user.id, world.project.id, ["work_item:read"]);
     mockAuthenticatedSession(owner.user);

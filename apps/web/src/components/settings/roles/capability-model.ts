@@ -8,6 +8,12 @@ import {
   isCapability,
 } from "@taskdesk/permissions";
 
+import {
+  CAPABILITY_DESCRIPTION_KEYS,
+  CAPABILITY_GROUP_KEYS,
+  CAPABILITY_LABEL_KEYS,
+} from "./capability-copy";
+
 /**
  * The capability vocabulary as the role editor shows it (RL-1, RL-2): grouped by area, each with
  * the one-line plain-English description. Everything comes from `@taskdesk/permissions`'
@@ -41,6 +47,26 @@ function titleCase(value: string): string {
 export function capabilityLabel(id: string): string {
   const [resource = "", action = ""] = id.split(":");
   return `${titleCase(resource)}: ${action.replaceAll("_", " ")}`;
+}
+
+type Translate = (key: string) => string;
+
+export function translatedCapabilityLabel(id: string, t: Translate): string {
+  const key = CAPABILITY_LABEL_KEYS[id];
+  return key ? t(key) : id;
+}
+
+export function translatedCapabilityDescription(
+  id: string,
+  t: Translate,
+): string {
+  const key = CAPABILITY_DESCRIPTION_KEYS[id];
+  return key ? t(key) : describeCapability(id);
+}
+
+export function translatedCapabilityGroup(group: string, t: Translate): string {
+  const key = CAPABILITY_GROUP_KEYS[group];
+  return key ? t(key) : group;
 }
 
 const GROUP_ORDER: readonly string[] = CAPABILITY_GROUPS;

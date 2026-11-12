@@ -30,8 +30,8 @@ import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
 import { seedIntake, submissionRow, submitAs } from "./helpers/intake-http";
 
-async function seed() {
-  const t = await buildTenant("dup-reach");
+async function seed(projectLimitedRequester = false) {
+  const t = await buildTenant("dup-reach", { projectLimitedRequester });
   const owner = await addCustomer(t);
   const other = await addCustomer(t);
   await db
@@ -443,7 +443,7 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
   });
 
   it("direct repository reads bind both parent arms to the actual requester and acceptance state", async () => {
-    const s = await seed();
+    const s = await seed(true);
     const visibleOwn = requireRow(
       await db
         .insert(schema.attachmentTable)
@@ -836,7 +836,7 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
   });
 
   it("keeps linked attachment reads on archived projects and closes them on reach revocation", async () => {
-    const s = await seed();
+    const s = await seed(true);
     await db
       .update(schema.projectTable)
       .set({ archivedAt: new Date() })
@@ -1009,8 +1009,9 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
     ] as const) {
       await apply();
       const list = await portalRequest(t, s.owner, base);
-      expect(list.status, label).toBe(200);
-      expect(await names(list), label).toEqual([]);
+      expect(list.status, label).toBe(label === "project deleted" ? 404 : 200);
+      if (label !== "project deleted")
+        expect(await names(list), label).toEqual([]);
       for (const suffix of ["", "/preview"]) {
         const read = await portalRequest(
           t,

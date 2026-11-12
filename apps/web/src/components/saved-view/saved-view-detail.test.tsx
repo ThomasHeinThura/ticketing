@@ -26,34 +26,47 @@ const mocks = vi.hoisted(() => ({
   toggleSavedViewPin: vi.fn(),
   getProjects: vi.fn(),
   canShare: false,
+  canCreate: true,
+  personId: "person-1",
   canManage: false,
   editorProps: undefined as Record<string, unknown> | undefined,
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
+  useTranslation: (namespace?: string) => ({
     t: (key: string, options?: Record<string, unknown>) =>
-      translate(
-        `savedViews:${
-          typeof options?.count === "number"
-            ? `${key}_${options.count === 1 ? "one" : "other"}`
-            : key
-        }`,
-        options,
-      ),
+      namespace === "common"
+        ? translate(`common:${key}`, options)
+        : translate(
+            `savedViews:${
+              typeof options?.count === "number"
+                ? `${key}_${options.count === 1 ? "one" : "other"}`
+                : key
+            }`,
+            options,
+          ),
   }),
 }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <>{children}</>,
   useNavigate: () => vi.fn(),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   default: () => ({ user: { id: "viewer-1" } }),
 }));
+vi.mock("@/hooks/use-own-person-id", () => ({
+  useOwnPersonId: () => ({ data: mocks.personId }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canShareSavedViews: () => mocks.canShare,
+    canCreateSavedViews: () => mocks.canCreate,
+    isCheckingPermissions: false,
     canManageWorkspaceSettings: () => mocks.canManage,
   }),
 }));
@@ -221,6 +234,8 @@ const unreadable = (status: number) =>
 
 beforeEach(() => {
   mocks.canShare = false;
+  mocks.canCreate = true;
+  mocks.personId = "person-1";
   mocks.canManage = false;
   mocks.editorProps = undefined;
   mocks.getSavedView.mockResolvedValue(baseView);
@@ -242,6 +257,41 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+describe("saved view action permissions", () => {
+  it("hides clone and edit from a viewer", async () => {
+    mocks.canCreate = false;
+    renderDetail(storedSearch);
+    await screen.findByText("Stored result");
+    expect(
+      screen.queryByRole("button", { name: translate("savedViews:clone") }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: translate("savedViews:edit") }),
+    ).toBeNull();
+  });
+  it("keeps clone but hides edit for another person's view", async () => {
+    mocks.personId = "person-other";
+    renderDetail(storedSearch);
+    await screen.findByText("Stored result");
+    expect(
+      screen.getByRole("button", { name: translate("savedViews:clone") }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: translate("savedViews:edit") }),
+    ).toBeNull();
+  });
+  it("shows no access for a forbidden view without a complete shared URL", async () => {
+    unreadable(403);
+    renderDetail({});
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "You don't have access",
+      }),
+    ).toHaveFocus();
+  });
 });
 
 describe("SV-19 saved view the viewer cannot read, complete URL snapshot", () => {

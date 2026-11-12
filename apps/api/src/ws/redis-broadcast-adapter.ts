@@ -50,6 +50,7 @@ const nativeBroadcastSchema = v.object({
   at: v.string(),
   key: v.string(),
   customerVisible: v.boolean(),
+  initiator: v.optional(v.object({ userId: v.string(), windowId: v.string() })),
 });
 const nativeAuthorizationInvalidationSchema = v.strictObject({
   type: v.literal("identity.invalidate"),

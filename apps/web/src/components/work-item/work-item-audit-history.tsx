@@ -80,7 +80,7 @@ export default function WorkItemAuditHistory({
             ] as const,
         ),
       ),
-      unknown: t("workItems:detail.unavailable"),
+      unknown: t("workItemExtras:detail.unavailable"),
       empty: t("workItems:auditHistory.emptyValue", {
         defaultValue: "(empty)",
       }),

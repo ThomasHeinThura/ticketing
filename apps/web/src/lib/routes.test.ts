@@ -274,6 +274,16 @@ describe("projectViewRoutes.projectBoard, projectCalendar and projectBacklog", (
     );
   });
 
+  it("registers the canonical /agent calendar next to Kaneo's old calendar URL", () => {
+    expect(routes.projectCalendar.build({ projectKey: "HELP/1" })).toBe(
+      "/agent/projects/HELP%2F1/calendar",
+    );
+    expect(generatedRouteMetadata.agent).toContain(routes.projectCalendar.path);
+    expect(generatedRouteMetadata.agent).toContain(
+      projectViewRoutes.projectCalendar.path,
+    );
+  });
+
   it("round-trips task panel and shortcut/history transitions through registered route URLs", () => {
     const backlogUrl = projectViewRoutes.projectBacklog.build(params, {
       taskId: "task/backlog",

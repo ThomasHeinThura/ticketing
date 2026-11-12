@@ -14,6 +14,7 @@ import {
 import { lazy, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SubmissionQueueTable } from "@/components/intake/submission-queue-table";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import WorkItemList from "@/components/work-item/work-item-list";
 import {
   getIntakeQueue,
@@ -121,6 +122,7 @@ export function IntakeQueuePanel({
   selectedRef,
   onOpenSubmission,
   onOpenWorkItem,
+  onAccessDenied,
 }: {
   workspaceId: string;
   queueId: string;
@@ -134,6 +136,7 @@ export function IntakeQueuePanel({
   selectedRef?: string;
   onOpenSubmission: (ref: string) => void;
   onOpenWorkItem: (key: string) => void;
+  onAccessDenied?: (queueId: string) => void;
 }) {
   const { t, i18n } = useTranslation("intake");
   const submissionContext = JSON.stringify([
@@ -217,6 +220,10 @@ export function IntakeQueuePanel({
       }),
     enabled: Boolean(workspaceId && queueId && queue.isSuccess),
   });
+  const forbidden = [queue.error, results.error].some(isForbiddenError);
+  useEffect(() => {
+    if (forbidden) onAccessDenied?.(queueId);
+  }, [forbidden, onAccessDenied, queueId]);
   const workItemRows = useMemo(
     () => parseRows(results.data?.workItems.data),
     [results.data?.workItems.data],
@@ -250,6 +257,7 @@ export function IntakeQueuePanel({
   const changeColumns = (next: WorkItemSearchColumn[] | undefined) =>
     onWorkItemQueryChange({ columns: next });
 
+  if (forbidden && onAccessDenied) return null;
   if (queue.isError || results.isError) {
     return (
       <Alert variant="error" role="alert">

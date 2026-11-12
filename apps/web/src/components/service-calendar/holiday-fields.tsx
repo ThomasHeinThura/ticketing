@@ -37,6 +37,24 @@ export function HolidayFields({
     saveLabel: t("common:actions.save"),
   });
 
+  if (disabled) {
+    const date =
+      "date" in holiday
+        ? holiday.date
+        : "from" in holiday
+          ? `${holiday.from} – ${holiday.to}`
+          : `${holiday.month}/${holiday.day}`;
+    return (
+      <div className="rounded-lg border border-border p-3">
+        <p>{t("holidays.item", { count: index + 1 })}</p>
+        <p>
+          {t(`holidays.${kind}`)}: {date}
+        </p>
+        {holiday.name ? <p>{holiday.name}</p> : null}
+      </div>
+    );
+  }
+
   return (
     <fieldset className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
       <legend className="px-1 text-sm font-medium">
@@ -81,7 +99,7 @@ export function HolidayFields({
               id={`holiday-${index}-date`}
               label={t("holidays.dateLabel")}
               dateEntry={dateEntry(t("holidays.dateLabel"))}
-              placeholder={t("customFields:value.notSet")}
+              placeholder={t("workItems:customFieldValue.notSet")}
               disabled={disabled}
               value={"date" in holiday ? holiday.date : ""}
               onChange={(date) => onPatch({ date })}
@@ -97,7 +115,7 @@ export function HolidayFields({
                 id={`holiday-${index}-from`}
                 label={t("holidays.from")}
                 dateEntry={dateEntry(t("holidays.from"))}
-                placeholder={t("customFields:value.notSet")}
+                placeholder={t("workItems:customFieldValue.notSet")}
                 disabled={disabled}
                 value={holiday.from}
                 onChange={(from) => onPatch({ from })}
@@ -111,7 +129,7 @@ export function HolidayFields({
                 id={`holiday-${index}-to`}
                 label={t("holidays.through")}
                 dateEntry={dateEntry(t("holidays.through"))}
-                placeholder={t("customFields:value.notSet")}
+                placeholder={t("workItems:customFieldValue.notSet")}
                 disabled={disabled}
                 value={holiday.to}
                 onChange={(to) => onPatch({ to })}

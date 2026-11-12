@@ -18,7 +18,8 @@ import {
   portalProjectKeys,
 } from "@/fetchers/portal/projects";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { parsePortalProjectSearch, routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+import { parsePortalProjectSearch } from "@/lib/portal-route-search";
 
 const ALL_PROJECTS = "";
 /** `routes.portalProject.path` (`/projects/$projectKey`) as a pathname match. */

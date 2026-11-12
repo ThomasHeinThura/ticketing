@@ -34,11 +34,28 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/lib/format", () => ({
   formatDateMedium: () => "Sep 1, 2026",
+  formatDateTime: () => "Sep 1, 2026, 12:00 AM",
 }));
 
-const { cancelInvitation, openPendingAction } = vi.hoisted(() => ({
+const {
+  cancelInvitation,
+  openPendingAction,
+  copyWorkspaceInvitationLink,
+  inviteWorkspaceMember,
+} = vi.hoisted(() => ({
   cancelInvitation: vi.fn(),
   openPendingAction: vi.fn(),
+  copyWorkspaceInvitationLink: vi.fn(),
+  inviteWorkspaceMember: vi.fn(),
+}));
+
+vi.mock("@/fetchers/workspace/copy-workspace-invitation-link", () => ({
+  copyWorkspaceInvitationLink: (...args: unknown[]) =>
+    copyWorkspaceInvitationLink(...args),
+}));
+
+vi.mock("@/fetchers/workspace/invite-workspace-member", () => ({
+  default: (...args: unknown[]) => inviteWorkspaceMember(...args),
 }));
 
 vi.mock("@/hooks/mutations/workspace-user/use-cancel-invitation", () => ({
@@ -64,8 +81,12 @@ vi.mock(
   }),
 );
 
+const workspaceRolesData = vi.fn<() => Array<{ role: string; name: string }>>(
+  () => [],
+);
+
 vi.mock("@/hooks/queries/workspace/use-workspace-roles", () => ({
-  default: () => ({ data: [] }),
+  default: () => ({ data: workspaceRolesData() }),
 }));
 
 const canInviteUsers = vi.fn(() => true);
@@ -84,6 +105,11 @@ vi.mock("../providers/auth-provider/hooks/use-auth", () => ({
 
 beforeEach(() => {
   canInviteUsers.mockReturnValue(true);
+  workspaceRolesData.mockReturnValue([]);
+  copyWorkspaceInvitationLink.mockResolvedValue({
+    link: `${window.location.origin}/invitation/accept/invite-1`,
+    expiresAt: "2026-12-03T00:00:00.000Z",
+  });
 });
 
 afterEach(() => {
@@ -96,7 +122,7 @@ const pendingInvitation = {
   email: "invitee@example.com",
   role: "member",
   status: "pending",
-  expiresAt: "2026-09-01T00:00:00.000Z",
+  expiresAt: "2026-12-01T00:00:00.000Z",
 } as unknown as WorkspaceUserInvitation;
 
 // `id` is the USER's id on the native member shape, and it is deliberately
@@ -159,7 +185,13 @@ describe("MembersTable remove member", () => {
 });
 
 describe("MembersTable pending invitation row menu", () => {
-  it("copies the invitation link for that invitation when 'Copy link' is clicked", async () => {
+  it("awaits the copy-link endpoint and copies the server-returned link when 'Copy link' is clicked", async () => {
+    const serverLink =
+      "https://agent.example.test/invitation/accept/invite-1?server=1";
+    copyWorkspaceInvitationLink.mockResolvedValue({
+      link: serverLink,
+      expiresAt: "2026-12-03T00:00:00.000Z",
+    });
     copyToClipboard.mockResolvedValue(true);
 
     render(
@@ -182,13 +214,195 @@ describe("MembersTable pending invitation row menu", () => {
       }),
     );
 
-    expect(copyToClipboard).toHaveBeenCalledWith(
-      `${window.location.origin}/invitation/accept/invite-1`,
+    await waitFor(() =>
+      expect(copyWorkspaceInvitationLink).toHaveBeenCalledWith(
+        "workspace-1",
+        "invite-1",
+      ),
+    );
+    await waitFor(() =>
+      expect(copyToClipboard).toHaveBeenCalledWith(serverLink),
     );
     await waitFor(() =>
       expect(success).toHaveBeenCalledWith("team:invitations.linkCopied"),
     );
   });
+
+  it("offers Resend and Cancel but hides 'Copy link' on expired invitation rows", async () => {
+    const expiredInvitation = {
+      ...pendingInvitation,
+      id: "invite-expired",
+      expiresAt: "2026-09-01T00:00:00.000Z",
+    } as unknown as WorkspaceUserInvitation;
+
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[expiredInvitation]}
+        users={[] as WorkspaceUser[]}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "team:membersTable.ariaInvitationActions",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: "team:membersTable.resendInvitation",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("menuitem", {
+        name: "team:membersTable.cancelInvitation",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("menuitem", {
+        name: "team:invitations.copyLink",
+      }),
+    ).toBeNull();
+  });
+
+  it.each([
+    [403, "team:invitations.copyErrorForbidden"],
+    [409, "team:invitations.copyErrorInactive"],
+    [429, "team:invitations.copyErrorRateLimited"],
+    [500, "team:invitations.copyRequestFailed"],
+  ])(
+    "copies nothing and shows %s -> %s when row-menu copy fails on the server",
+    async (status, expectedKey) => {
+      copyWorkspaceInvitationLink.mockRejectedValue(
+        Object.assign(new Error(`HTTP ${status}`), { status }),
+      );
+
+      render(
+        <MembersTable
+          workspaceId="workspace-1"
+          invitations={[pendingInvitation]}
+          users={[] as WorkspaceUser[]}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "team:membersTable.ariaInvitationActions",
+        }),
+      );
+
+      fireEvent.click(
+        await screen.findByRole("menuitem", {
+          name: "team:invitations.copyLink",
+        }),
+      );
+
+      await waitFor(() => expect(error).toHaveBeenCalledWith(expectedKey));
+      expect(copyToClipboard).not.toHaveBeenCalled();
+      expect(success).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["viewer", "lead", "manager", "admin", "triage-specialist"] as const)(
+    "preserves the invitation's actual role (%s) on resend instead of mapping to member",
+    async (role) => {
+      workspaceRolesData.mockReturnValue([
+        { role: "triage-specialist", name: "Triage Specialist" },
+      ]);
+      inviteWorkspaceMember.mockResolvedValue({
+        id: "invite-role",
+        email: "invitee@example.com",
+        role,
+        status: "pending",
+        expiresAt: "2026-12-15T00:00:00.000Z",
+        delivered: false,
+      });
+
+      render(
+        <MembersTable
+          workspaceId="workspace-1"
+          invitations={[
+            {
+              ...pendingInvitation,
+              id: "invite-role",
+              role,
+            } as unknown as WorkspaceUserInvitation,
+          ]}
+          users={[] as WorkspaceUser[]}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "team:membersTable.ariaInvitationActions",
+        }),
+      );
+
+      fireEvent.click(
+        await screen.findByRole("menuitem", {
+          name: "team:membersTable.resendInvitation",
+        }),
+      );
+
+      await waitFor(() =>
+        expect(inviteWorkspaceMember).toHaveBeenCalledWith({
+          workspaceId: "workspace-1",
+          email: "invitee@example.com",
+          role,
+          resend: true,
+        }),
+      );
+      expect(
+        await screen.findByText("team:membersTable.resendDialogTitle"),
+      ).toBeVisible();
+      expect(
+        screen.getByText("team:invitations.resultEmailNotSent"),
+      ).toBeVisible();
+    },
+  );
+
+  it.each([null, "", "owner", "customer", "deleted-custom-role"] as const)(
+    "refuses resending an invitation with missing or invalid role (%s) and shows a translated error",
+    async (badRole) => {
+      workspaceRolesData.mockReturnValue([
+        { role: "triage-specialist", name: "Triage Specialist" },
+      ]);
+
+      render(
+        <MembersTable
+          workspaceId="workspace-1"
+          invitations={[
+            {
+              ...pendingInvitation,
+              id: "invite-bad-role",
+              role: badRole,
+            } as unknown as WorkspaceUserInvitation,
+          ]}
+          users={[] as WorkspaceUser[]}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "team:membersTable.ariaInvitationActions",
+        }),
+      );
+
+      fireEvent.click(
+        await screen.findByRole("menuitem", {
+          name: "team:membersTable.resendInvitation",
+        }),
+      );
+
+      await waitFor(() =>
+        expect(error).toHaveBeenCalledWith(
+          "team:membersTable.resendInvalidRole",
+        ),
+      );
+      expect(inviteWorkspaceMember).not.toHaveBeenCalled();
+    },
+  );
 
   it("requests the cancellation directly and opens the in-place approval as the only confirmation", async () => {
     cancelInvitation.mockResolvedValue({ pendingActionId: "pa-invite" });

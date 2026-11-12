@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project-reach denials.
 /**
  * Project reach on the legacy task-keyed write routes (task, task comment, activity, task
  * relation). Their policies are `reach: "required"` on the `work_item` scope and the
@@ -24,7 +25,7 @@ import {
 } from "./helpers/fixtures";
 import { LEGACY_WRITE_ROUTE_KEYS } from "./helpers/reach-route-keys";
 import {
-  addMember,
+  addProjectLimitedMember,
   json,
   MATRIX,
   makeApiKey,
@@ -324,7 +325,7 @@ describe("API integration: project reach on the legacy task-keyed write routes",
         .returning();
       if (!hiddenTask) throw new Error("hidden task");
       // A colleague who reaches BOTH projects (and so may legitimately link them).
-      const both = await addMember(world.workspaceId, "admin");
+      const both = await addProjectLimitedMember(world.workspaceId);
       await grantWorkItemProjectAccess(both.user.id, world.project.id);
       await grantWorkItemProjectAccess(both.user.id, hidden.project.id);
       return { world, app, s, hiddenTask, both };
@@ -358,7 +359,7 @@ describe("API integration: project reach on the legacy task-keyed write routes",
     it("creating a relation to a target the caller reaches but may only read answers 404 and writes nothing", async () => {
       const { world, app, s, hiddenTask } = await twoProjects();
       // Full authority on the source's project, read-only on the target's project.
-      const mixed = await addMember(world.workspaceId, "admin");
+      const mixed = await addProjectLimitedMember(world.workspaceId);
       await grantWorkItemProjectAccess(mixed.user.id, world.project.id);
       const [hiddenProject] = await db
         .select({ projectId: schema.taskTable.projectId })

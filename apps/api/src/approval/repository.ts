@@ -19,6 +19,7 @@ import { type Executor, executorOrDefault } from "../database/executor";
 import {
   currentInstanceAdminPredicate,
   currentProjectReachPredicate,
+  customerProjectAccessExists,
 } from "../database/repositories/identity-scope.repository";
 import { logTaskDesk } from "../instance/observability/runtime";
 import type { ApiKey } from "../openapi";
@@ -31,6 +32,20 @@ import {
 
 const approverPerson = alias(schema.personTable, "approver_person");
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function approvalPartyProjectScope(
+  identity: ResolvedIdentity,
+  executor: Executor,
+) {
+  return identity.side === "customer"
+    ? customerProjectAccessExists(
+        identity.personId,
+        identity.organisationId,
+        schema.projectTable.id,
+        executor,
+      )
+    : sql`true`;
+}
 
 function requestWorkItemVisibility(
   identity: ResolvedIdentity,
@@ -797,6 +812,7 @@ export async function loadApprovalTargetByApprovalId(
     .where(
       and(
         eq(schema.approvalTable.id, id),
+        approvalPartyProjectScope(identity, queryDb),
         or(
           requestWorkItemScope(identity, queryDb),
           eq(schema.approvalTable.requestedBy, identity.personId),
@@ -881,6 +897,7 @@ export async function loadApprovalAddressing(
       and(
         eq(schema.approvalTable.id, id),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        approvalPartyProjectScope(identity, db),
         or(
           eq(schema.approvalTable.approverId, identity.personId),
           eq(schema.approvalTable.requestedBy, identity.personId),
@@ -947,6 +964,7 @@ export async function listApprovalRows(
       and(
         eq(schema.approvalTable.workItemId, workItemId),
         eq(schema.approvalTable.workspaceId, workspaceId),
+        approvalPartyProjectScope(identity, db),
         or(
           requestWorkItemScope(identity, db, options),
           eq(schema.approvalTable.requestedBy, identity.personId),
@@ -1133,6 +1151,7 @@ export async function listApprovalsForPerson(
     .where(
       and(
         ...clauses,
+        approvalPartyProjectScope(identity, db),
         or(
           requestWorkItemScope(identity, db),
           eq(schema.approvalTable.requestedBy, identity.personId),

@@ -11,6 +11,7 @@ import {
   CardTitle,
   Label,
   LoadingStatus,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -214,15 +215,18 @@ function VisibilityForm({
               {notice}
             </p>
           ) : null}
-          <Button
-            disabled={busy || !changed}
+          <SaveButton
+            disabled={!changed && !busy}
+            pending={busy}
+            success={notice !== null}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => void submit()}
             type="button"
           >
-            {busy
-              ? t("organisation.customerVisibility.saving")
-              : t("organisation.customerVisibility.save")}
-          </Button>
+            {t("organisation.customerVisibility.save")}
+          </SaveButton>
         </div>
       </CardContent>
     </Card>

@@ -1,15 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
+  isForbiddenError,
   SettingsAccessChecking,
-  SettingsAccessDenied,
   SettingsAccessError,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
 import { ProjectBudget } from "@/components/time-tracking/project-budget";
 import { ProjectBillableSetting } from "@/components/time-tracking/time-settings";
+import { useProjectBudget } from "@/hooks/queries/time-tracking/use-time-tracking";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/projects/$projectId/budget",
@@ -31,9 +33,20 @@ function RouteComponent() {
     projectId,
   );
   const timeAccess = useSettingsAccess((permission) => permission.canLogTime());
+  const budget = useProjectBudget(
+    budgetAccess === "allowed" ? projectId : undefined,
+  );
   const failed = budgetAccess === "error" || timeAccess === "error";
   const checking = budgetAccess === "checking" || timeAccess === "checking";
   const placeholderVisible = useDelayedPending(checking);
+  if (
+    !failed &&
+    !checking &&
+    budgetAccess === "denied" &&
+    timeAccess === "denied"
+  )
+    return <NoAccessPage />;
+  if (!checking && isForbiddenError(budget.error)) return <NoAccessPage />;
   return (
     <div className="max-w-4xl mx-auto">
       <PageTitle title={t("timeTracking:budget.title")} />
@@ -44,8 +57,6 @@ function RouteComponent() {
         (placeholderVisible &&
           (budgetAccess === "allowed" || timeAccess === "allowed")) ? (
         <SettingsAccessChecking visible={placeholderVisible} />
-      ) : budgetAccess === "denied" && timeAccess === "denied" ? (
-        <SettingsAccessDenied />
       ) : (
         <div className="space-y-6">
           {timeAccess === "allowed" ? (
@@ -53,9 +64,7 @@ function RouteComponent() {
           ) : null}
           {budgetAccess === "allowed" ? (
             <ProjectBudget projectId={projectId} />
-          ) : (
-            <SettingsAccessDenied />
-          )}
+          ) : null}
         </div>
       )}
     </div>

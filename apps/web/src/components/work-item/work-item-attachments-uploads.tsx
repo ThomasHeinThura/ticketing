@@ -93,7 +93,7 @@ function UploadRow({ upload }: { upload: WorkItemUpload }) {
                 t(
                   upload.empty
                     ? "workItems:create.attachments.empty"
-                    : "workItems:detail.attachments.uploadFailed",
+                    : "workItemExtras:detail.attachments.uploadFailed",
                 )}
             </span>
           ) : (
@@ -114,7 +114,7 @@ function UploadRow({ upload }: { upload: WorkItemUpload }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={t("workItems:detail.attachments.retryUpload", {
+            aria-label={t("workItemExtras:detail.attachments.retryUpload", {
               name: upload.file.name,
             })}
             onClick={() => retryWorkItemUpload(upload.id)}
@@ -124,7 +124,7 @@ function UploadRow({ upload }: { upload: WorkItemUpload }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={t("workItems:detail.attachments.dismissUpload", {
+            aria-label={t("workItemExtras:detail.attachments.dismissUpload", {
               name: upload.file.name,
             })}
             onClick={() => dismissWorkItemUpload(upload.id)}
@@ -148,7 +148,7 @@ export function WorkItemUploadList({
   return (
     <ul
       className="flex flex-col gap-2"
-      aria-label={t("workItems:detail.attachments.uploadsLabel")}
+      aria-label={t("workItemExtras:detail.attachments.uploadsLabel")}
     >
       {uploads.map((upload) => (
         <UploadRow key={upload.id} upload={upload} />

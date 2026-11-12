@@ -293,7 +293,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
     });
   });
 
-  it("a member added directly as admin has reach; a plain member or viewer or manager gains none", async () => {
+  it("a member added directly as admin has reach; a plain member or viewer gains none; a manager has reach", async () => {
     const world = await newWorld();
     const admin = await addMember(world, "admin");
     const member = await addMember(world, "member");
@@ -310,7 +310,8 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       role: "manager",
       joinedAt: new Date(),
     });
-    expect(await canReadProject(world, manager)).toBe(404);
+    // D-E (12 Nov): validated system managers see every workspace project.
+    expect(await canReadProject(world, manager)).toBe(200);
     for (const actor of [member, viewer, manager]) {
       expect(
         (await reachRows(actor.user.id, world.workspaceId)).grants,
@@ -665,7 +666,8 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       const member = await addMember(world, "member");
       const grant = await explicitDirectGrant(world, member);
       await setRole(world, member, "admin");
-      expect(await canReadProject(world, member)).toBe(404);
+      // D-E (12 Nov): admin reach is role-derived even with an unrelated direct grant.
+      expect(await canReadProject(world, member)).toBe(200);
       let rows = await reachRows(member.user.id, world.workspaceId);
       expect(rows.membership).toEqual([
         { seesAll: false, roleKey: expect.stringMatching(/^explicit-direct-/) },
@@ -694,6 +696,17 @@ describe("workspace owner/admin explicit sees_all grant", () => {
             eq(schema.workspaceRoleTable.role, "admin"),
           ),
         );
+      // Canonical role rows have defined authority since 23 Oct; model a real custom role.
+      await db
+        .update(schema.roleTable)
+        .set({ isSystem: false })
+        .where(
+          and(
+            eq(schema.roleTable.workspaceId, world.workspaceId),
+            eq(schema.roleTable.scope, "workspace"),
+            eq(schema.roleTable.key, "admin"),
+          ),
+        );
       const lookalike = await addMember(world, "admin");
       expect(await canReadProject(world, lookalike)).toBe(404);
       expect(
@@ -701,7 +714,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       ).toEqual([]);
     });
 
-    it("a manager added and set through the real routes gains no grant", async () => {
+    it("a manager added and set through the real routes has derived reach without a grant", async () => {
       const world = await newWorld();
       await db.insert(schema.workspaceRoleTable).values({
         workspaceId: world.workspaceId,
@@ -712,12 +725,16 @@ describe("workspace owner/admin explicit sees_all grant", () => {
         updatedAt: new Date(),
       });
       const manager = await addMember(world, "manager");
-      expect(await canReadProject(world, manager)).toBe(404);
+      // D-E (12 Nov): validated system managers see every workspace project.
+      expect(await canReadProject(world, manager)).toBe(200);
       expect(
         (await reachRows(manager.user.id, world.workspaceId)).grants,
       ).toEqual([]);
       const other = await addMember(world, "member");
       await setRole(world, other, "manager");
+      expect(await canReadProject(world, other)).toBe(200);
+      await setRole(world, manager, "viewer");
+      expect(await canReadProject(world, manager)).toBe(404);
       expect(
         (await reachRows(other.user.id, world.workspaceId)).grants,
       ).toEqual([]);
@@ -863,7 +880,8 @@ describe("workspace owner/admin explicit sees_all grant", () => {
           ),
         );
       const admin = await addMember(world, "admin");
-      expect(await canReadProject(world, admin)).toBe(404);
+      // D-E (12 Nov): canonical system admin reach no longer waits for a backfill grant.
+      expect(await canReadProject(world, admin)).toBe(200);
       await seedDefaultWorkspaceRoles();
       await reconcileWorkspaceAdminReach();
       expect(await canReadProject(world, admin)).toBe(200);

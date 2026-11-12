@@ -12,7 +12,8 @@ import { PortalKpiCard } from "@/components/portal/portal-kpi-card";
 import { usePortalHome } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { formatPortalDuration } from "@/lib/portal-duration";
-import { PORTAL_OUTSTANDING_STATUSES, routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+import { PORTAL_OUTSTANDING_STATUSES } from "@/lib/portal-route-search";
 
 const OUTSTANDING = PORTAL_OUTSTANDING_STATUSES.join(",");
 

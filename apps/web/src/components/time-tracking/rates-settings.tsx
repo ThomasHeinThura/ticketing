@@ -3,10 +3,10 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Button,
   Input,
   Label,
   LoadingStatus,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -21,9 +21,11 @@ import {
   TableRow,
   useDelayedPending,
 } from "@taskdesk/ui";
+
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
@@ -111,6 +113,7 @@ function RatesSettingsContent() {
     minor !== null &&
     Boolean(effectiveFrom || today) &&
     !add.isPending;
+  if (isForbiddenError(rates.error)) return <NoAccessPage />;
   return (
     <RatesSettingsFrame>
       {!rates.isError && (loading || (placeholderVisible && rates.data)) ? (
@@ -124,13 +127,6 @@ function RatesSettingsContent() {
             style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           />
         </LoadingStatus>
-      ) : isForbiddenError(rates.error) ? (
-        <Alert variant="error">
-          <AlertTitle>{t("timeTracking:rates.forbiddenTitle")}</AlertTitle>
-          <AlertDescription>
-            {t("timeTracking:rates.forbiddenDescription")}
-          </AlertDescription>
-        </Alert>
       ) : rates.error instanceof TimeTrackingDisabledError ? (
         <Alert variant="info">
           <AlertTitle>{t("timeTracking:rates.disabledTitle")}</AlertTitle>
@@ -236,10 +232,18 @@ function RatesSettingsContent() {
                 onChange={setEffectiveFrom}
               />
             </div>
-            <Button type="submit" disabled={!canSubmit}>
+            <SaveButton
+              type="submit"
+              disabled={!canSubmit && !add.isPending}
+              pending={add.isPending}
+              success={add.isSuccess}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               <Plus aria-hidden="true" />
               {t("timeTracking:rates.add")}
-            </Button>
+            </SaveButton>
           </form>
           <p className="max-w-2xl text-muted-foreground text-xs">
             {t("timeTracking:rates.snapshotNote")}
@@ -291,11 +295,7 @@ function RatesSettingsContent() {
 export function RatesSettings() {
   const access = useSettingsAccess((permission) => permission.canManageRates());
   if (access === "allowed") return <RatesSettingsContent />;
-  return (
-    <RatesSettingsFrame>
-      <SettingsAccessGate access={access}>{null}</SettingsAccessGate>
-    </RatesSettingsFrame>
-  );
+  return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
 }
 
 function RatesSettingsFrame({ children }: { children: React.ReactNode }) {

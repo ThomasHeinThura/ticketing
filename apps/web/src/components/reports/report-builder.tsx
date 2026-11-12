@@ -17,9 +17,11 @@ import {
 import { ChevronLeft, Download, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { type CustomQueryInput, exportCustomReport } from "@/fetchers/report";
 import {
   createSavedView,
@@ -290,6 +292,8 @@ function ReportBuilderScreen({ search }: { search: ReportBuilderSearch }) {
       value: candidate,
       label: t(`reports:builder.visibilities.${candidate}`),
     }));
+  if ([catalogue.error, preview.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("reports:builder.title")} />

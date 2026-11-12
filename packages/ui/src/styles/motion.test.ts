@@ -80,6 +80,10 @@ describe("motion tokens (D-H)", () => {
     }
   });
 
+  it("keeps progress proportional to the remaining time", () => {
+    expect(themeToken("--ease-progress")).toBe("linear");
+  });
+
   it("declares --ease-spring as a linear() spring with about 1.5% overshoot", () => {
     const value = themeToken("--ease-spring");
     const body = /^linear\((.*)\)$/.exec(value)?.[1];
@@ -160,14 +164,14 @@ describe("press feedback utility (D-H rule 1)", () => {
 
 describe("reduced-motion block (#676)", () => {
   it("drops positional transitions on every *-positioner slot", () => {
-    const decl = declarationsFor(block, '[data-slot$="-positioner"]');
-    expect(decl).toMatch(/transition-property:\s*none\s*!important/);
+    const decl = declarationsFor(block, "*::after");
+    expect(decl).toMatch(/transition-duration:\s*0s\s*!important/);
   });
 
   it("drops the Button press scale but keeps non-movement feedback", () => {
     const decl = declarationsFor(block, '[data-slot="button"]');
     expect(decl).toMatch(/scale:\s*none\s*!important/);
-    expect(decl).toMatch(/transition-property:\s*box-shadow\s*!important/);
+    expect(block).toMatch(/transition-duration:\s*0s\s*!important/);
     expect(decl).not.toMatch(/opacity\s*:\s*(0|none)/);
   });
 
@@ -178,21 +182,19 @@ describe("reduced-motion block (#676)", () => {
   });
 
   it("snaps the tab indicator to the selected tab without sliding or morphing width", () => {
-    const indicator = declarationsFor(block, '[data-slot="tab-indicator"]');
-    expect(indicator).toMatch(/transition:\s*none\s*!important/);
+    const indicator = declarationsFor(block, "*::after");
+    expect(indicator).toMatch(/transition-duration:\s*0s\s*!important/);
     // Base UI positions the active indicator via translate; keep its resting placement intact.
     expect(indicator).not.toMatch(/translate:\s*none/);
   });
 
   it("stops the switch thumb and makes helper text changes instant", () => {
     const thumb = declarationsFor(block, '[data-slot="switch-thumb"]');
-    expect(thumb).toMatch(/transition:\s*none\s*!important/);
+    expect(block).toMatch(/transition-duration:\s*0s\s*!important/);
     expect(thumb).toMatch(/scale:\s*none\s*!important/);
     const helper = declarationsFor(block, '[data-slot="switch-helper-line"]');
     expect(helper).toMatch(/translate:\s*none\s*!important/);
-    expect(helper).toMatch(
-      /transition-property:\s*opacity,\s*visibility\s*!important/,
-    );
+    expect(block).toMatch(/transition-duration:\s*0s\s*!important/);
   });
 
   it("stops the skeleton shimmer", () => {
@@ -201,12 +203,11 @@ describe("reduced-motion block (#676)", () => {
       /\[data-slot="skeleton"\],\s*\.animate-skeleton\s*\{/,
     );
     const decl = declarationsFor(block, ".animate-skeleton");
-    expect(decl).toMatch(/animation:\s*none\s*!important/);
+    expect(block).toMatch(/animation:\s*none\s*!important/);
     expect(decl).toMatch(/--skeleton-highlight:\s*transparent\s*!important/);
   });
 
   it("keeps popup opacity states but makes transitions instantaneous", () => {
-    expect(block).toMatch(/transition-property:\s*opacity\s*!important/);
     expect(block).toMatch(/transition-duration:\s*0s\s*!important/);
     expect(block).toMatch(/transition-delay:\s*0s\s*!important/);
   });

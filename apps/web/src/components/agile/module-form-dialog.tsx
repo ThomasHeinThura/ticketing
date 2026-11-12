@@ -151,8 +151,8 @@ export function ModuleFormDialog({
             <DateField
               id="module-target"
               label={t("modules.form.target")}
-              placeholder={t("customFields:value.notSet")}
-              clearLabel={t("customFields:value.clear")}
+              placeholder={t("workItems:customFieldValue.notSet")}
+              clearLabel={t("workItems:customFieldValue.clear")}
               value={targetDate}
               onChange={setTargetDate}
               disabled={save.isPending}

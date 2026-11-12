@@ -71,19 +71,23 @@ export async function postWorkItemSearch(input: {
   sort?: WorkItemSearchSort[];
   columns?: WorkItemSearchColumn[];
   cursor?: string;
+  signal?: AbortSignal;
 }): Promise<StructuredWorkItemsResult> {
-  const response = await client["work-items"].search.$post({
-    json: {
-      workspaceId: input.workspaceId,
-      ...(input.cursor ? { cursor: input.cursor } : {}),
-      query: {
-        entity: "work_item",
-        ...(input.filter ? { filter: input.filter } : {}),
-        ...(input.sort && input.sort.length > 0 ? { sort: input.sort } : {}),
-        ...(input.columns ? { columns: input.columns } : {}),
+  const response = await client["work-items"].search.$post(
+    {
+      json: {
+        workspaceId: input.workspaceId,
+        ...(input.cursor ? { cursor: input.cursor } : {}),
+        query: {
+          entity: "work_item",
+          ...(input.filter ? { filter: input.filter } : {}),
+          ...(input.sort && input.sort.length > 0 ? { sort: input.sort } : {}),
+          ...(input.columns ? { columns: input.columns } : {}),
+        },
       },
     },
-  });
+    ...(input.signal ? ([{ init: { signal: input.signal } }] as const) : []),
+  );
   if (!response.ok) {
     throw new HttpError(
       response.status,
@@ -133,6 +137,7 @@ export default async function searchWorkItems(input: {
   columns?: WorkItemSearchColumn[];
   /** The `page.nextCursor` of the previous page; bound by the server to this exact query. */
   cursor?: string;
+  signal?: AbortSignal;
 }): Promise<StructuredWorkItemsResult> {
   const filter = parseFilterTextOrThrow(input.filter);
   const projectFilter = {
@@ -148,5 +153,6 @@ export default async function searchWorkItems(input: {
     sort: toSearchSorts(input.sorts, input.sort, input.dir),
     columns: input.columns,
     cursor: input.cursor,
+    ...(input.signal ? { signal: input.signal } : {}),
   });
 }

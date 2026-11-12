@@ -54,10 +54,33 @@ export async function readErrorDetail(
   return trimmed;
 }
 
+/** Translate only a client-generated fallback; retain useful server-provided detail. */
+export function localizedErrorMessage(
+  error: unknown,
+  translate: (key: string) => string,
+  fallback: string,
+): string {
+  if (error instanceof HttpError && error.fallbackKey)
+    return translate(error.fallbackKey);
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+/** Admin screens display only translated client fallbacks, never raw response messages. */
+export function localizedAdminErrorMessage(
+  error: unknown,
+  translate: (key: string) => string,
+  fallback: string,
+): string {
+  return error instanceof HttpError && error.fallbackKey
+    ? translate(error.fallbackKey)
+    : fallback;
+}
+
 /** Preserve a server reference while leaving client-error messages unchanged. */
 export async function httpErrorFromResponse(
   response: Response,
   fallback: string,
+  fallbackKey?: string,
 ): Promise<HttpError> {
   const detail =
     response.status >= 500
@@ -80,5 +103,7 @@ export async function httpErrorFromResponse(
   }
   if (!requestId || !/^[0-9a-f]{32}$/.test(requestId))
     requestId = response.headers.get("x-taskdesk-request-id") ?? undefined;
-  return new HttpError(response.status, detail, requestId);
+  return new HttpError(response.status, detail, requestId, {
+    fallbackKey: detail === fallback ? fallbackKey : undefined,
+  });
 }

@@ -20,8 +20,8 @@ vi.mock("@/hooks/mutations/comment/use-update-comment", () => ({
   }),
 }));
 
-vi.mock("react-i18next", () => ({
-  initReactI18next: { type: "3rdParty", init: vi.fn() },
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({
     t: (key: string) => key,
   }),

@@ -42,7 +42,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
-import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
+import { normalizeCanonicalWorkItemSelection } from "@/lib/normalize-canonical-work-item-selection";
 import { resolveRouteProject } from "@/lib/route-project-prefetch";
 import {
   parseWorkItemListSearch,
@@ -290,9 +290,12 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
     setRankingBusy(true);
     try {
       await rankWorkItem({ key: row.key, ...neighbours });
-      await queryClient.invalidateQueries({
-        queryKey: ["work-items", project.id],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["work-items", project.id] }),
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "detail", row.key],
+        }),
+      ]);
       setRankingNotice({
         kind: "status",
         text: t("workItems:board.rankSaved", {

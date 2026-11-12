@@ -13,6 +13,7 @@ import {
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { customerProjectAccessExists } from "../database/repositories/identity-scope.repository";
 import { personTable, projectTable } from "../database/schema";
 import {
   type PublishedReleaseSnapshot,
@@ -41,6 +42,7 @@ type PortalReleaseVariables = BaseVariables & {
   policyOrganisationId: string;
   policyOrganisationIdSource: "row";
   portalRelease: {
+    personId: string;
     organisationId: string;
     workspaceIds: string[];
   };
@@ -48,10 +50,13 @@ type PortalReleaseVariables = BaseVariables & {
 
 const notFound = () => new HTTPException(404, { message: "Release not found" });
 
-/** Only active customer people can read published releases for their organisation. */
+/** Only active customer people can read published releases for their granted projects. */
 async function resolvePortalReleaseScope(userId: string) {
   const [person] = await db
-    .select({ organisationId: personTable.organisationId })
+    .select({
+      personId: personTable.id,
+      organisationId: personTable.organisationId,
+    })
     .from(personTable)
     .where(
       and(
@@ -80,6 +85,11 @@ async function resolvePortalReleaseScope(userId: string) {
         eq(projectTable.organisationId, person.organisationId),
         isNull(projectTable.deletedAt),
         isNull(projectTable.archivedAt),
+        customerProjectAccessExists(
+          person.personId,
+          person.organisationId,
+          projectTable.id,
+        ),
       ),
     );
   // `feature.customer_portal` off for a workspace hides its releases from the portal.
@@ -93,6 +103,7 @@ async function resolvePortalReleaseScope(userId: string) {
     ),
   );
   return {
+    personId: person.personId,
     organisationId: person.organisationId,
     workspaceIds: enabled.filter((id): id is string => id !== null),
   };
@@ -138,6 +149,7 @@ const releaseListQuery = z
 
 type ReleaseCursor = {
   v: 1;
+  personId: string;
   organisationId: string;
   publishedAt: string;
   id: string;
@@ -149,6 +161,7 @@ function encodeCursor(cursor: ReleaseCursor) {
 
 function decodeCursor(
   value: string | undefined,
+  personId: string,
   organisationId: string,
 ): ReleaseCursor | null | false {
   if (value === undefined) return null;
@@ -162,8 +175,9 @@ function decodeCursor(
     const parsed = candidate as Record<string, unknown>;
     if (
       Object.keys(parsed).sort().join(",") !==
-        "id,organisationId,publishedAt,v" ||
+        "id,organisationId,personId,publishedAt,v" ||
       parsed.v !== 1 ||
+      parsed.personId !== personId ||
       parsed.organisationId !== organisationId ||
       typeof parsed.id !== "string" ||
       parsed.id.length < 1 ||
@@ -185,10 +199,12 @@ function decodeCursor(
 }
 
 /**
- * A release reaches an organisation through a live project of theirs linked to its service; a
- * project whose `feature.customer_portal` resolves off (project override first) is no such path.
+ * A release reaches a customer through a live project of their organisation that they hold access
+ * to and that is linked to its service; a project whose `feature.customer_portal` resolves off
+ * (project override first) is no such path.
  */
 function organisationReach(
+  personId: string,
   organisationId: string,
   portal: CustomerPortalScope | null,
 ) {
@@ -211,6 +227,11 @@ function organisationReach(
           eq(projectTable.organisationId, organisationId),
           isNull(projectTable.deletedAt),
           isNull(projectTable.archivedAt),
+          customerProjectAccessExists(
+            personId,
+            organisationId,
+            projectTable.id,
+          ),
           customerPortalOnSql(
             portal,
             projectTable.workspaceId,
@@ -241,13 +262,18 @@ function fromSnapshot(id: string, snapshot: PublishedReleaseSnapshot) {
 
 export async function listPortalReleases(
   scope: {
+    personId: string;
     organisationId: string;
     workspaceIds: readonly string[];
   },
   input: { limit: number; cursor?: string },
 ) {
   if (scope.workspaceIds.length === 0) return { data: [], nextCursor: null };
-  const cursor = decodeCursor(input.cursor, scope.organisationId);
+  const cursor = decodeCursor(
+    input.cursor,
+    scope.personId,
+    scope.organisationId,
+  );
   if (cursor === false)
     throw new HTTPException(400, { message: "Invalid release cursor" });
   const rows = await db
@@ -268,7 +294,11 @@ export async function listPortalReleases(
       and(
         published,
         inArray(releaseTable.workspaceId, [...scope.workspaceIds]),
-        organisationReach(scope.organisationId, await customerPortalScope()),
+        organisationReach(
+          scope.personId,
+          scope.organisationId,
+          await customerPortalScope(),
+        ),
         cursor
           ? or(
               lt(releaseTable.publishedAt, new Date(cursor.publishedAt)),
@@ -293,6 +323,7 @@ export async function listPortalReleases(
       hasMore && last?.publishedAt
         ? encodeCursor({
             v: 1,
+            personId: scope.personId,
             organisationId: scope.organisationId,
             publishedAt: last.publishedAt.toISOString(),
             id: last.id,
@@ -303,6 +334,7 @@ export async function listPortalReleases(
 
 export async function getPortalRelease(
   scope: {
+    personId: string;
     organisationId: string;
     workspaceIds: readonly string[];
   },
@@ -327,7 +359,11 @@ export async function getPortalRelease(
         eq(releaseTable.id, id),
         published,
         inArray(releaseTable.workspaceId, [...scope.workspaceIds]),
-        organisationReach(scope.organisationId, await customerPortalScope()),
+        organisationReach(
+          scope.personId,
+          scope.organisationId,
+          await customerPortalScope(),
+        ),
       ),
     )
     .limit(1);

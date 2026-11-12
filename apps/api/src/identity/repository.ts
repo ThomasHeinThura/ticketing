@@ -2389,6 +2389,7 @@ export async function getOidcIdentityForSignIn(
       side: schema.personTable.side,
       organisationId: schema.personTable.organisationId,
       personUserId: schema.personTable.userId,
+      provisionedVia: schema.externalIdentityTable.provisionedVia,
     })
     .from(schema.externalIdentityTable)
     .innerJoin(

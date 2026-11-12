@@ -17,8 +17,9 @@ export type CustomerOrganisationMembershipFact = {
 /**
  * The persisted row proves customer admission; the compiled built-in remains the grant.
  * Customer-side people have exactly one organisation membership, for their own
- * organisation, backed by the genuine built-in customer role. Other membership scopes
- * are deliberately ignored by customer identity construction.
+ * organisation, backed by the genuine built-in customer role. Other `membership` scopes
+ * are deliberately ignored by customer identity construction; per-person engagement reach
+ * lives in `customer_project_access` (owner decision D-D, 12 Nov 2026).
  */
 export function hasCanonicalCustomerMembership(
   organisationId: string,

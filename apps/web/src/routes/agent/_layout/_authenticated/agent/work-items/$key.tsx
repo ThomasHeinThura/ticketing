@@ -233,7 +233,9 @@ function WorkItemDetailWithProject({
   onRetry: () => void;
   onAccessLost: () => void;
 }) {
-  const { data: projects } = useGetProjects({ workspaceId: item.workspaceId });
+  const { data: projects, isLoading: isProjectLoading } = useGetProjects({
+    workspaceId: item.workspaceId,
+  });
   const project = projects?.find(
     (candidate) => candidate.id === item.projectId,
   );
@@ -245,7 +247,18 @@ function WorkItemDetailWithProject({
       activityFilter={activityFilter}
       focusedComment={focusedComment}
       onActivityFilterChange={onActivityFilterChange}
-      project={project ? { name: project.name, slug: project.slug } : undefined}
+      project={
+        project
+          ? {
+              name: project.name,
+              slug: project.slug,
+              organisationId: project.organisationId,
+              archivedAt: project.archivedAt,
+              deletedAt: project.deletedAt,
+            }
+          : undefined
+      }
+      isProjectLoading={isProjectLoading}
       pageHeader={
         <CanonicalWorkItemHeader
           workItemKey={workItemKey}

@@ -104,7 +104,7 @@ export default function ProjectLayout({
             <SidebarToggle />
             <div className="h-4 w-px shrink-0 bg-border/80" />
             <div className="hidden min-w-0 shrink items-center gap-1 md:flex">
-              <WorkspaceCrumbSelect />
+              <WorkspaceCrumbSelect workspaceId={workspaceId} />
               <span className="text-foreground text-xs">/</span>
             </div>
             {showProjectLayoutControls && !controlsPlaceholder ? (

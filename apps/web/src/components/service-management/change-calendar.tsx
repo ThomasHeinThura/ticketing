@@ -28,13 +28,15 @@ import {
 } from "@taskdesk/ui";
 import { addDays, addMonths, endOfMonth, startOfMonth } from "date-fns";
 import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CalendarTask } from "@/components/calendar/calendar-task-bar";
 import CalendarToolbar from "@/components/calendar/calendar-toolbar";
 import MonthGrid from "@/components/calendar/month-grid";
 import { buildMonthWeeks } from "@/components/calendar/month-grid-model";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   type CalendarChange,
   type Freeze,
@@ -115,11 +117,13 @@ function CalendarTab({
   month,
   canManage,
   onEditFreeze,
+  onForbidden,
 }: {
   workspaceId: string;
   month?: string;
   canManage: boolean;
   onEditFreeze: (id: string) => void;
+  onForbidden: () => void;
 }) {
   const { t } = useTranslation("serviceManagement");
   const navigate = useNavigate();
@@ -143,6 +147,9 @@ function CalendarTab({
       calendar.data.changes.length === 0 &&
       calendar.data.freezes.length === 0,
   });
+  useEffect(() => {
+    if (isForbiddenError(calendar.error)) onForbidden();
+  }, [calendar.error, onForbidden]);
   const tasks = useMemo(
     () =>
       calendar.data
@@ -169,7 +176,7 @@ function CalendarTab({
             void navigate({ to: routes.serviceManagementChanges.path })
           }
         />
-        {calendar.isError ? (
+        {isForbiddenError(calendar.error) ? null : calendar.isError ? (
           <div className="p-4">
             <QueryFailure
               error={calendar.error}
@@ -319,11 +326,13 @@ function FreezesTab({
   canManage,
   editing,
   onEdit,
+  onForbidden,
 }: {
   workspaceId: string;
   canManage: boolean;
   editing: string | "new" | null;
   onEdit: (id: string | "new" | null) => void;
+  onForbidden: () => void;
 }) {
   const { t } = useTranslation("serviceManagement");
   const invalidate = useInvalidateServiceManagement();
@@ -332,6 +341,9 @@ function FreezesTab({
   const placeholderVisible = useDelayedPending(freezes.isLoading, {
     releaseNow: freezes.isSuccess && freezes.data.length === 0,
   });
+  useEffect(() => {
+    if (isForbiddenError(freezes.error)) onForbidden();
+  }, [freezes.error, onForbidden]);
   const cancel = useMutation({
     mutationFn: (freeze: Freeze) =>
       updateFreeze(freeze.id, { cancel: true, version: freeze.version }),
@@ -364,7 +376,7 @@ function FreezesTab({
       {!freezes.isError && (freezes.isLoading || placeholderVisible) ? (
         <LoadingRows visible={placeholderVisible} />
       ) : null}
-      {freezes.isError ? (
+      {freezes.isError && !isForbiddenError(freezes.error) ? (
         <QueryFailure
           error={freezes.error}
           onRetry={() => void freezes.refetch()}
@@ -435,15 +447,20 @@ function FreezesTab({
 function OverridesTab({
   workspaceId,
   enabled,
+  onForbidden,
 }: {
   workspaceId: string;
   enabled: boolean;
+  onForbidden: () => void;
 }) {
   const { t } = useTranslation("serviceManagement");
   const overrides = useFreezeOverrides(workspaceId, enabled);
   const placeholderVisible = useDelayedPending(overrides.isLoading, {
     releaseNow: overrides.isSuccess && overrides.data.length === 0,
   });
+  useEffect(() => {
+    if (enabled && isForbiddenError(overrides.error)) onForbidden();
+  }, [enabled, overrides.error, onForbidden]);
   if (!enabled)
     return (
       <p className="text-sm text-muted-foreground">{t("overrides.denied")}</p>
@@ -456,7 +473,7 @@ function OverridesTab({
       {!overrides.isError && (overrides.isLoading || placeholderVisible) ? (
         <LoadingRows visible={placeholderVisible} />
       ) : null}
-      {overrides.isError ? (
+      {overrides.isError && !isForbiddenError(overrides.error) ? (
         <QueryFailure
           error={overrides.error}
           onRetry={() => void overrides.refetch()}
@@ -521,6 +538,10 @@ export function ChangeCalendarView({
   const status = useCatalogueStatus(workspaceId);
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const tab = search.tab ?? "calendar";
+  const [deniedRead, setDeniedRead] = useState<{
+    workspaceId: string;
+    tab: string;
+  } | null>(null);
   const canManage = status.data?.canManageChanges === true;
   // UX-1a (SR-03): with the catalogue off the off state replaces the sub-tabs, the calendar chrome
   // and the legend, and the calendar is not requested.
@@ -528,6 +549,14 @@ export function ChangeCalendarView({
   const statusPending = !status.data && !status.isError;
   const statusPlaceholder = useDelayedPending(statusPending);
   const { canManageWorkspaceSettings } = useWorkspacePermission();
+  if (
+    isForbiddenError(status.error) ||
+    (!statusPending &&
+      !catalogueOff &&
+      deniedRead?.workspaceId === workspaceId &&
+      deniedRead.tab === tab)
+  )
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("changes.title")} />
@@ -539,7 +568,10 @@ export function ChangeCalendarView({
         }
         description={t("changes.description")}
       >
-        <SectionNav active="changes" />
+        <SectionNav
+          active="changes"
+          canManageServices={status.data?.canManageServices === true}
+        />
         {statusPending ||
         (statusPlaceholder && !catalogueOff && !status.isError) ? (
           <LoadingRows visible={statusPlaceholder} />
@@ -582,6 +614,7 @@ export function ChangeCalendarView({
                 workspaceId={workspace.id}
                 month={search.month}
                 canManage={canManage}
+                onForbidden={() => setDeniedRead({ workspaceId, tab })}
                 onEditFreeze={(id) => {
                   void navigate({
                     to: routes.serviceManagementChanges.path,
@@ -596,9 +629,14 @@ export function ChangeCalendarView({
                 canManage={canManage}
                 editing={editing}
                 onEdit={setEditing}
+                onForbidden={() => setDeniedRead({ workspaceId, tab })}
               />
             ) : (
-              <OverridesTab workspaceId={workspace.id} enabled={canManage} />
+              <OverridesTab
+                workspaceId={workspace.id}
+                enabled={canManage}
+                onForbidden={() => setDeniedRead({ workspaceId, tab })}
+              />
             )}
           </>
         )}

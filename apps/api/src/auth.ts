@@ -66,7 +66,13 @@ import {
   updateSessionPortal,
 } from "./auth/repository";
 import {
+  refreshStaffRegistration,
+  staffSelfRegistrationEnabled,
+} from "./auth/staff-registration";
+import { allowsStaffInvitationByEmail } from "./auth/staff-registration-path";
+import {
   establishVerifiedLocalStaffPerson,
+  StaffInvitationRequiredError,
   verifiedLocalEmailClaimMethod,
 } from "./auth/verified-placeholder-claim";
 import { readCustomerInvitationContinuationContext } from "./customer-invitation/continuation-context";
@@ -87,6 +93,7 @@ import {
   identityOidcPlugin,
   OIDC_PENDING_SESSION_COOKIE,
 } from "./identity/oidc-login";
+import { hasPotentialStaffImportClaim } from "./identity/placeholder-claim";
 import {
   lockOidcConnection,
   lockOidcExternalIdentity,
@@ -128,6 +135,7 @@ import { consumeAnonymousInvitationRateLimit } from "./utils/invitation-anonymou
 import { isCloud } from "./utils/is-cloud";
 import { isDisposableEmail } from "./utils/is-disposable-email";
 import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
+import { findPendingInvitation } from "./utils/registration.repository";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 import { ensureStaffPersonForUser } from "./utils/seed-internal-organisation";
@@ -150,7 +158,6 @@ config();
 
 const githubSso = getGithubSsoOAuthCredentials();
 
-const isRegistrationDisabled = process.env.DISABLE_REGISTRATION === "true";
 const isPasswordRegistrationDisabled =
   process.env.DISABLE_PASSWORD_REGISTRATION === "true";
 const isLoginFormDisabled = process.env.DISABLE_LOGIN_FORM === "true";
@@ -990,7 +997,12 @@ function createAuth(
               const bootstrapRefusal = await checkRegistrationAllowed(
                 user.email,
                 invitationId,
-                { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+                {
+                  allowInvitationByEmail: allowsStaffInvitationByEmail(
+                    ctx?.path,
+                    user.emailVerified === true,
+                  ),
+                },
               );
               throw new APIError("FORBIDDEN", {
                 message: bootstrapRefusal.allowed
@@ -1005,7 +1017,12 @@ function createAuth(
               const pendingRefusal = await checkRegistrationAllowed(
                 user.email,
                 invitationId,
-                { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+                {
+                  allowInvitationByEmail: allowsStaffInvitationByEmail(
+                    ctx?.path,
+                    user.emailVerified === true,
+                  ),
+                },
               );
               throw new APIError("FORBIDDEN", {
                 message: pendingRefusal.allowed
@@ -1014,15 +1031,35 @@ function createAuth(
               });
             }
 
+            if (
+              isOAuthCallbackPath(ctx?.path) &&
+              !user.emailVerified &&
+              !staffSelfRegistrationEnabled()
+            ) {
+              throw new APIError("FORBIDDEN", {
+                message: "Registration requires a verified email address.",
+              });
+            }
             const result = await checkRegistrationAllowed(
               user.email,
               invitationId,
-              { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+              {
+                allowInvitationByEmail: allowsStaffInvitationByEmail(
+                  ctx?.path,
+                  user.emailVerified === true,
+                ),
+              },
             );
             if (!result.allowed) {
-              throw new APIError("FORBIDDEN", {
-                message: result.reason,
-              });
+              const localProof =
+                ctx?.path === "/sign-in/email-otp" ||
+                ctx?.path === "/magic-link/verify";
+              if (
+                !localProof ||
+                !(await hasPotentialStaffImportClaim(user.email))
+              ) {
+                throw new APIError("FORBIDDEN", { message: result.reason });
+              }
             }
           },
           after: async (user, context) => {
@@ -1055,12 +1092,17 @@ function createAuth(
               }
             }
 
-            // #315 S7 / #324: boot seeding alone misses local users who register
-            // after startup. The current local password-signup path creates ordinary
-            // internal staff identities. Do not infer a staff identity for OAuth
-            // callbacks: their portal and organisation must come from a configured
-            // identity connection, which owns that provisioning decision.
-            if (context?.path === "/sign-up/email") {
+            // Other verified sign-in methods acquire a staff identity when the
+            // address has a live staff invitation. Provider configuration alone
+            // does not turn an arbitrary OAuth identity into staff.
+            const invited =
+              isOAuthCallbackPath(context?.path) &&
+              user.emailVerified &&
+              (await findPendingInvitation({
+                email: user.email,
+                now: new Date(),
+              }));
+            if (context?.path === "/sign-up/email" || invited) {
               await ensureStaffPersonForUser(user.id, admissionTx ?? undefined);
             }
           },
@@ -1325,7 +1367,7 @@ function createAuth(
           }
         }
 
-        if (!isRegistrationDisabled || isInstanceAdminSetup) {
+        if (staffSelfRegistrationEnabled() || isInstanceAdminSetup) {
           return;
         }
 
@@ -1568,14 +1610,17 @@ function createAuth(
               verifiedEmail: newSession.user.email,
               method: verifiedClaimMethod,
             });
-          } catch {
+          } catch (error) {
             await ctx.context.internalAdapter.deleteSession(
               newSession.session.token,
             );
             deleteSessionCookie(ctx, true);
             ctx.context.setNewSession(null);
             throw new APIError("FORBIDDEN", {
-              message: "Sign-in is unavailable for this account.",
+              message:
+                error instanceof StaffInvitationRequiredError
+                  ? "Accounts are by invitation. Ask your administrator for an invitation."
+                  : "Sign-in is unavailable for this account.",
             });
           }
         }
@@ -1682,6 +1727,8 @@ function createAuth(
       }),
     },
     advanced: {
+      // Product configuration enforces this in every environment, independent of NODE_ENV.
+      disableOriginCheck: false,
       ipAddress: {
         // ONLY the internal header, which utils/auth-request.ts strips from every
         // inbound request and then sets from utils/resolve-client-ip.ts.
@@ -1753,6 +1800,7 @@ export async function reloadAuthConfiguration(): Promise<boolean> {
     const [pluginRows, connectionRows] = await Promise.all([
       getStoredAuthPluginConfigRows(),
       getIdentityConnectionConfigVersions(),
+      refreshStaffRegistration(),
     ]);
     const nextVersion = Math.max(
       0,

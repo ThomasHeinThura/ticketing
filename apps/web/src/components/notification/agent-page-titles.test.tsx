@@ -59,7 +59,10 @@ vi.mock("@/components/work-item/work-item-list", () => ({
   default: () => null,
 }));
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  inboxState.loading = true;
+});
 
 describe("agent page titles", () => {
   it("titles My work", () => {
@@ -110,6 +113,7 @@ describe("agent page titles", () => {
       () => <NotificationInbox filter="all" onFilterChange={() => undefined} />,
     ],
   ])("keeps %s as the one visually hidden page heading", (name, Page) => {
+    inboxState.loading = false;
     render(<Page />);
     const headings = screen.getAllByRole("heading", { level: 1 });
     expect(headings).toHaveLength(1);

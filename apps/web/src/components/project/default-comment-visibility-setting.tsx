@@ -35,12 +35,17 @@ function DefaultCommentVisibilitySetting({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { canManageProjectSettings, canManageProjects } =
-    useWorkspacePermission();
+  const { canManageProjectSettings, canUpdateProjects, isCheckingPermissions } =
+    useWorkspacePermission(workspaceId, projectId);
   const { data: project } = useGetProject({ id: projectId, workspaceId });
   const { mutateAsync: updateProject, isPending } = useUpdateProject();
 
-  if (!canManageProjectSettings()) return null;
+  if (
+    isCheckingPermissions ||
+    !canManageProjectSettings() ||
+    !canUpdateProjects()
+  )
+    return null;
 
   const current: CommentVisibility = isCommentVisibility(
     project?.defaultCommentVisibility,
@@ -95,7 +100,7 @@ function DefaultCommentVisibilitySetting({
             label: t(`activity:timeline.${value}`),
           }))}
           value={current}
-          disabled={!project || isPending || !canManageProjects()}
+          disabled={!project || isPending}
           onValueChange={handleChange}
         >
           <SelectTrigger

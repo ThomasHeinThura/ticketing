@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   navigate: vi.fn(),
   policy: null as Record<string, unknown> | null,
+  policyError: null as unknown,
+  checking: false,
+  canManage: true,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -21,6 +24,10 @@ vi.mock("react-i18next", () => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
   useNavigate: () => mocks.navigate,
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" } }),
@@ -29,7 +36,8 @@ vi.mock("@/hooks/queries/sla-policy/use-sla-policy", () => ({
   useSlaPolicy: () => ({
     data: mocks.policy,
     isLoading: false,
-    isError: false,
+    isError: Boolean(mocks.policyError),
+    error: mocks.policyError,
     refetch: vi.fn(),
   }),
 }));
@@ -47,8 +55,8 @@ vi.mock("@/hooks/queries/work-item/use-get-work-item-types", () => ({
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
-    canManageServiceCalendars: () => true,
-    isCheckingPermissions: false,
+    canManageServiceCalendars: () => mocks.canManage,
+    isCheckingPermissions: mocks.checking,
   }),
 }));
 vi.mock("@/hooks/mutations/sla-policy/use-create-sla-policy", () => ({
@@ -89,8 +97,28 @@ beforeEach(() => {
   mocks.update.mockReset().mockResolvedValue({});
   mocks.navigate.mockReset();
   mocks.policy = null;
+  mocks.policyError = null;
+  mocks.checking = false;
+  mocks.canManage = true;
 });
 afterEach(cleanup);
+
+describe("SLA policy access", () => {
+  it("waits for permission resolution before showing a forbidden read", () => {
+    mocks.policyError = { status: 403 };
+    mocks.checking = true;
+    renderEditor("existing");
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+  });
+  it("shows the shared no-access page for a forbidden main read", () => {
+    mocks.policyError = { status: 403 };
+    renderEditor("existing");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "states.noAccess.title" }),
+    ).toHaveFocus();
+  });
+});
 
 describe("SLA policy stable keys", () => {
   it("validates and sends a stable key when creating a policy", async () => {

@@ -9,7 +9,7 @@
  * would catch it.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -18,6 +18,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   prepareAuthenticatedApiFixture,
   requireRow,
@@ -98,7 +99,7 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
-    role,
+    role: role === "owner" ? "member" : role,
     joinedAt: new Date(),
   });
 
@@ -150,6 +151,16 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
       .returning(),
     "addWorkspaceMember: canonical authority role",
   );
+  if (role === "owner")
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: authorityRole.key })
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, workspaceId),
+          eq(schema.workspaceUserTable.userId, user.id),
+        ),
+      );
   await db.insert(schema.membershipTable).values({
     personId: person.id,
     scope: "workspace",
@@ -270,8 +281,10 @@ async function assignItemTo(
   });
 }
 
-async function setup() {
-  const { user: creator, workspace } = await createWorkspaceMember({
+async function setup(projectLimited = false) {
+  const { user: creator, workspace } = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({
     role: "admin",
   });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
@@ -498,7 +511,9 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
       name: "Ada Lovelace",
       projectId: project.id,
     });
-    const outsider = await createWorkspaceMember({ role: "admin" });
+    const outsider = await createWorkspaceMember({
+      role: "admin",
+    });
 
     mockAuthenticatedSession(outsider.user);
     const { app } = createApp();

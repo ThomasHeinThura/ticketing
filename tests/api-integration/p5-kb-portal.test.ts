@@ -75,6 +75,24 @@ async function expectHidden(
 }
 
 describe("KB-2 the double gate", () => {
+  it("removes a project article from every surface immediately when project access is revoked", async () => {
+    const article = await insertArticle(w.workspaceId, {
+      title: "Invoice project guide",
+      projectId: w.projectA.id,
+      state: "published",
+      customerVisible: true,
+    });
+    expect(await ids("/api/portal/kb?q=invoice")).toContain(article.id);
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, w.customerA.person.id),
+          eq(schema.customerProjectAccessTable.projectId, w.projectA.id),
+        ),
+      );
+    await expectHidden(article.id);
+  });
   it("shows an article that is published and customer visible", async () => {
     const article = await insertArticle(w.workspaceId, {
       title: "Where to find your invoice",

@@ -66,3 +66,29 @@ it("keeps a loading menu valid for axe without nested live regions", async () =>
   expect(screen.queryByRole("status")).toBeNull();
   await expectNoA11yViolations(baseElement);
 });
+it("hides the unassign action when the caller cannot clear the holder", async () => {
+  render(
+    <ContextMenu>
+      <ContextMenuTrigger>Task</ContextMenuTrigger>
+      <TaskContextMenuPresentation
+        onCopyLink={vi.fn()}
+        assignee={{
+          value: "other",
+          canUnassign: false,
+          options: [{ value: "self", name: "Self", label: "Self" }],
+          onChange: vi.fn(),
+        }}
+      />
+    </ContextMenu>,
+  );
+  fireEvent.contextMenu(screen.getByText("Task"));
+  fireEvent.click(
+    screen.getByRole("menuitem", { name: translate("tasks:assignee.label") }),
+  );
+  expect(
+    await screen.findByRole("menuitemcheckbox", { name: /Self/u }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("menuitemcheckbox", { name: /unassigned/i }),
+  ).toBeNull();
+});

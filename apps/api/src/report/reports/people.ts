@@ -6,6 +6,7 @@ import {
 import { dayOf, itemFrom, num, OPEN, selectRows, tsn } from "../context";
 import { countValue, DAY_MS, minutesToHours, ratePercent, utc } from "../logic";
 import { loadFactRows } from "../snapshot.repository";
+import { canReadAllTeams, reachableTeam } from "../team-reach";
 import type { ReportContext, ReportDefinition, Row } from "../types";
 import {
   cell,
@@ -194,21 +195,6 @@ function hoursOf(minutes: number): number {
   return Math.round((minutes / 60) * 10) / 10;
 }
 
-/**
- * R6-06: the teams a caller may see, as a predicate over alias `t` (team). `report:read_all` sees
- * every team of the workspace; everyone else sees the teams they belong to and the teams that own
- * a project in their reach (owner-team reach, TM-4). A team outside both is not listed, and its
- * members do not appear in a capacity or utilisation row only because capacity is set.
- */
-function reachableTeam(ctx: ReportContext) {
-  if (ctx.readAll) return sql`true`;
-  return sql`(
-    EXISTS (SELECT 1 FROM team_member mine WHERE mine.team_id = t.id AND mine.user_id = ${ctx.identity.userId})
-    OR EXISTS (SELECT 1 FROM project p WHERE p.owner_team_id = t.id AND p.workspace_id = ${ctx.workspaceId}
-      AND p.deleted_at IS NULL AND ${ctx.reach})
-  )`;
-}
-
 type AvailableRow = {
   person_id: string;
   minutes_per_week: number;
@@ -285,7 +271,7 @@ const utilisation: ReportDefinition = {
         // Keep this as an expression when nobody logged time in the selected period.
         sql`0::numeric`;
     const capacityVisible = ctx.readAnyTime
-      ? ctx.readAll && !ctx.filters.teamId
+      ? canReadAllTeams(ctx) && !ctx.filters.teamId
         ? sql`true`
         : sql`(pe.id = ${ctx.identity.personId} OR pe.id IN (SELECT person_id FROM listed))`
       : sql`pe.id = ${ctx.identity.personId}`;
@@ -303,6 +289,7 @@ const utilisation: ReportDefinition = {
         JOIN team_member tm ON tm.team_id = t.id
         JOIN person pc ON pc.user_id = tm.user_id
         WHERE t.workspace_id = ${ctx.workspaceId} AND t.capacity_days_per_week IS NOT NULL
+          AND ${reachableTeam(ctx)}
         GROUP BY 1),
       listed AS (
         SELECT pc.id AS person_id

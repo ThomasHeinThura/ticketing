@@ -1,9 +1,4 @@
-import {
-  Alert,
-  AlertDescription,
-  DelayedSuspense,
-  useDelayedPending,
-} from "@taskdesk/ui";
+import { Alert, AlertDescription, useDelayedPending } from "@taskdesk/ui";
 import {
   lazy,
   memo,
@@ -366,16 +361,7 @@ function WorkItemsPanel({
           </Alert>
         </div>
       ) : null}
-      {previewable ? (
-        <Suspense fallback={listFallback}>{listContent}</Suspense>
-      ) : (
-        <DelayedSuspense
-          fallback={(visible) => <WorkItemListLoading visible={visible} />}
-          immediate={isError}
-        >
-          {listContent}
-        </DelayedSuspense>
-      )}
+      <Suspense fallback={listFallback}>{listContent}</Suspense>
       {project &&
       !isLoading &&
       projectLifecycle.projectId === project.id &&

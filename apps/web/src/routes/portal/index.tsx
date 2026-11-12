@@ -10,18 +10,19 @@ import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { PortalProjectsCards } from "@/components/portal/projects/portal-projects-cards";
 import { outstandingCasesQuery } from "@/hooks/queries/portal/outstanding-cases-query";
 import { portalProjectsOptions } from "@/hooks/queries/portal/portal-projects-options";
-import { prefetchPortalHome } from "@/hooks/queries/portal/prefetch-portal-home";
 import {
   usePortalCases,
   usePortalHome,
 } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { importWithRetry } from "@/lib/lazy-retry";
+import { routes } from "@/lib/portal-route-builders";
 import {
   type PortalHomeSearch,
   parsePortalHomeSearch,
   portalProjectSearchMiddlewares,
-  routes,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
+
 import queryClient from "@/query-client";
 
 export const Route = createFileRoute("/")({
@@ -39,7 +40,14 @@ export const Route = createFileRoute("/")({
       portalState?: unknown;
     };
     if (cause === "enter" && portalUserId && !portalState) {
-      prefetchPortalHome(queryClient, portalUserId, deps);
+      // Prefetch is optional: the page queries fetch normally if its module is unavailable.
+      void importWithRetry(
+        () => import("@/hooks/queries/portal/prefetch-portal-home"),
+      )
+        .then(({ prefetchPortalHome }) =>
+          prefetchPortalHome(queryClient, portalUserId, deps),
+        )
+        .catch(() => undefined);
     }
   },
   component: PortalHome,

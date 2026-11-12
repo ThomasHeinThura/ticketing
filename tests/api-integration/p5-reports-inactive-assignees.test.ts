@@ -1,3 +1,4 @@
+// D-E (12 Nov): report scope remains reach-filtered even with report:read_all.
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -66,7 +67,7 @@ describe("inactive assignees report (AS-10)", () => {
     const all = await w.report(w.owner.user, "inactive_assignees");
     expect(all.response.status).toBe(200);
     expect(all.body.window.live).toBe(true);
-    expect(all.body.scope.kind).toBe("all");
+    expect(all.body.scope.kind).toBe("reach");
     expect(all.body.rows).toHaveLength(1);
     const allRow = all.body.rows[0] as Record<string, unknown>;
     expect(allRow._drill).toBe(w.other.personId);

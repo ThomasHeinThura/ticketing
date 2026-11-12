@@ -27,6 +27,7 @@ import {
   MenuItem,
   MenuPopup,
   MenuTrigger,
+  SaveButton,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -480,15 +481,20 @@ function StakeholderDialog({
           <Button variant="ghost" disabled={save.isPending} onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            disabled={!valid || save.isPending}
+          <SaveButton
+            disabled={!valid && !save.isPending}
+            pending={save.isPending}
+            success={false}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => {
               setProblem(null);
               save.mutate();
             }}
           >
             {t("team.add")}
-          </Button>
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

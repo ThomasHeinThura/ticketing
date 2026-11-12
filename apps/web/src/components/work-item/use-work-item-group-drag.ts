@@ -301,9 +301,22 @@ export default function useWorkItemGroupDrag({
       result = { kind: "error", text: describeFailure(error, item.key) };
     }
     try {
-      await queryClient.invalidateQueries({
-        queryKey: ["work-items", projectId],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["work-items", projectId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "detail", item.key],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "activity", item.key],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "transitions", item.key],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["labels", item.workspaceId, "work-items", item.key],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["work-items", "sla"] }),
+      ]);
     } catch {
       // The write result stands; the next realtime or manual refresh repairs the view.
     }

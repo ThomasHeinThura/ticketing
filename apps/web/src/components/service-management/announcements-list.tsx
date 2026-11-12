@@ -43,7 +43,12 @@ import {
   announcementState,
 } from "@/components/announcements/announcement-severity-badge";
 import { DateTimePicker } from "@/components/common/date-time-picker";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessChecking,
+} from "@/components/settings/settings-access";
 import {
   ANNOUNCEMENT_AUDIENCES,
   ANNOUNCEMENT_SEVERITIES,
@@ -613,6 +618,11 @@ export function AnnouncementsList() {
     releaseNow: announcements.isSuccess && announcements.data.length === 0,
   });
   const [editing, setEditing] = useState<Announcement | "new" | null>(null);
+  if (!status.isError && (!workspace || status.isLoading))
+    return <SettingsAccessChecking visible={statusPlaceholder} />;
+  if ([status.error, announcements.error].some(isForbiddenError))
+    return <NoAccessPage />;
+  if (status.data && !catalogueOff && !canManage) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("announcements.list.title")} />
@@ -628,7 +638,10 @@ export function AnnouncementsList() {
           ) : null
         }
       >
-        <SectionNav active="announcements" />
+        <SectionNav
+          active="announcements"
+          canManageServices={status.data?.canManageServices === true}
+        />
         {!status.isError &&
         (status.isLoading ||
           !workspace ||
@@ -636,15 +649,11 @@ export function AnnouncementsList() {
           <LoadingRows visible={statusPlaceholder} />
         ) : catalogueOff ? (
           <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
-        ) : !canManage ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>{t("announcements.forbidden.title")}</EmptyTitle>
-              <EmptyDescription>
-                {t("announcements.forbidden.description")}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+        ) : status.isError ? (
+          <QueryFailure
+            error={status.error}
+            onRetry={() => void status.refetch()}
+          />
         ) : !announcements.isError &&
           (announcements.isLoading || listPlaceholder) ? (
           <LoadingRows visible={listPlaceholder} />

@@ -3,6 +3,7 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { portalPendingApprovalProjectIds } from "../approval";
 import db, { schema } from "../database";
+import { customerProjectAccessExists } from "../database/repositories/identity-scope.repository";
 import { timeEntryTable } from "../database/schema-p5-time";
 import {
   type CustomerPortalScope,
@@ -242,13 +243,15 @@ export type PortalProjectDetail = z.infer<typeof portalProjectDetailSchema>;
 // Reach
 // ---------------------------------------------------------------------------------------------
 
-/** The organisation's live projects with the customer portal on. */
-function visibleProjects(
-  organisationId: string,
-  scope: CustomerPortalScope | null,
-) {
+/** The organisation's live projects granted to this customer person with the customer portal on. */
+function visibleProjects(viewer: Viewer, scope: CustomerPortalScope | null) {
   return and(
-    eq(schema.projectTable.organisationId, organisationId),
+    eq(schema.projectTable.organisationId, viewer.organisationId),
+    customerProjectAccessExists(
+      viewer.personId,
+      viewer.organisationId,
+      schema.projectTable.id,
+    ),
     isNull(schema.projectTable.deletedAt),
     isNull(schema.projectTable.archivedAt),
     customerPortalOnSql(
@@ -309,7 +312,7 @@ export async function listPortalProjects(userId: string, viewer: Viewer) {
       health: schema.projectTable.health,
     })
     .from(schema.projectTable)
-    .where(visibleProjects(viewer.organisationId, portalScope))
+    .where(visibleProjects(viewer, portalScope))
     .orderBy(asc(schema.projectTable.name), asc(schema.projectTable.slug));
   const counts = await countsByProject(
     userId,
@@ -367,7 +370,7 @@ export async function getPortalProject(
     .where(
       and(
         eq(schema.projectTable.slug, key),
-        visibleProjects(viewer.organisationId, portalScope),
+        visibleProjects(viewer, portalScope),
       ),
     )
     .limit(1);

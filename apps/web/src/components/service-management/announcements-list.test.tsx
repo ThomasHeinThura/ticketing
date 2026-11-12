@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   openPendingAction: vi.fn(),
   canManage: true,
+  statusLoading: false,
   catalogueEnabled: true,
   announcementsEnabled: vi.fn(),
   canAddressWorkspace: true,
@@ -34,6 +35,10 @@ vi.mock("react-i18next", async () => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: () => null,
   useNavigate: () => vi.fn(),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
@@ -51,7 +56,7 @@ vi.mock("@/hooks/queries/service-management", () => ({
       enabled: mocks.catalogueEnabled,
       canManageServices: mocks.canManage,
     },
-    isLoading: false,
+    isLoading: mocks.statusLoading,
   }),
   useInvalidateServiceManagement: () => vi.fn(),
   isFeatureDisabled: () => false,
@@ -123,6 +128,7 @@ function setup() {
 
 beforeEach(() => {
   mocks.canManage = true;
+  mocks.statusLoading = false;
   mocks.catalogueEnabled = true;
   mocks.canAddressWorkspace = true;
   mocks.rows = [draft];
@@ -339,15 +345,28 @@ describe("announcements management", () => {
       expect(actions).toHaveClass(name);
   });
 
-  it("shows an explanation instead of controls without service management permission", () => {
+  it.each(["viewer", "member", "lead"])(
+    "shows no access to a %s without service management permission",
+    () => {
+      mocks.canManage = false;
+      setup();
+      expect(
+        screen.queryByRole("button", { name: "New announcement" }),
+      ).toBeNull();
+      expect(
+        screen.getByRole("heading", {
+          level: 1,
+          name: "You don't have access",
+        }),
+      ).toBeInTheDocument();
+    },
+  );
+  it("shows loading while service permission is being checked", async () => {
     mocks.canManage = false;
+    mocks.statusLoading = true;
     setup();
-    expect(
-      screen.queryByRole("button", { name: "New announcement" }),
-    ).toBeNull();
-    expect(
-      screen.getByText("You cannot manage announcements"),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
   });
 });
 

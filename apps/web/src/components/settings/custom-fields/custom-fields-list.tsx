@@ -25,6 +25,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Skeleton,
   Switch,
   useDelayedPending,
@@ -40,7 +41,9 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   type CustomField,
   type CustomFieldSection,
@@ -92,6 +95,7 @@ function SectionDialog({
       await queryClient.invalidateQueries({
         queryKey: customFieldSectionsKey(workspaceId),
       });
+      toast.success(t("common:actions.saved"));
       onClose();
     },
   });
@@ -153,9 +157,17 @@ function SectionDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={save.isPending || !name.trim()}>
+            <SaveButton
+              type="submit"
+              disabled={!name.trim() && !save.isPending}
+              pending={save.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("customFields:editor.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -336,6 +348,8 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
           : fieldsIn(section.id, false).map((field) => field.id),
     }));
 
+  if ([fields.error, sections.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("customFields:list.title")} />

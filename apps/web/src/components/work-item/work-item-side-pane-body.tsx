@@ -12,6 +12,7 @@ import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import WorkItemActions from "./work-item-actions";
+import WorkItemNamespaceBoundary from "./work-item-namespace-boundary";
 
 const WorkItemDetail = lazy(loadWorkItemDetail);
 
@@ -110,36 +111,40 @@ export default function WorkItemSidePaneBody({
             <WorkItemDetailLoading visible={placeholderVisible} />
           </div>
         ) : (
-          <DelayedSuspense
-            immediate={isNotFound || isError}
-            fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
-          >
-            {item ? (
-              <SidePaneDetailWithProject
-                item={item}
-                workItemKey={itemKey}
-                activityFilter={activityFilter}
-                onActivityFilterChange={setActivityFilter}
-                isError={isError}
-                onRetry={refetch}
-                onAccessLost={onAccessLost}
-              />
-            ) : (
-              <WorkItemDetail
-                variant="pane"
-                item={undefined}
-                workItemKey={itemKey}
-                activityFilter={activityFilter}
-                onActivityFilterChange={setActivityFilter}
-                project={undefined}
-                isLoading={isLoading}
-                isNotFound={isNotFound}
-                isError={isError && !isNotFound}
-                onRetry={refetch}
-                onAccessLost={onAccessLost}
-              />
-            )}
-          </DelayedSuspense>
+          <WorkItemNamespaceBoundary>
+            <DelayedSuspense
+              immediate={isNotFound || isError}
+              fallback={(visible) => (
+                <WorkItemDetailLoading visible={visible} />
+              )}
+            >
+              {item ? (
+                <SidePaneDetailWithProject
+                  item={item}
+                  workItemKey={itemKey}
+                  activityFilter={activityFilter}
+                  onActivityFilterChange={setActivityFilter}
+                  isError={isError}
+                  onRetry={refetch}
+                  onAccessLost={onAccessLost}
+                />
+              ) : (
+                <WorkItemDetail
+                  variant="pane"
+                  item={undefined}
+                  workItemKey={itemKey}
+                  activityFilter={activityFilter}
+                  onActivityFilterChange={setActivityFilter}
+                  project={undefined}
+                  isLoading={isLoading}
+                  isNotFound={isNotFound}
+                  isError={isError && !isNotFound}
+                  onRetry={refetch}
+                  onAccessLost={onAccessLost}
+                />
+              )}
+            </DelayedSuspense>
+          </WorkItemNamespaceBoundary>
         )}
       </div>
     </div>
@@ -163,7 +168,9 @@ function SidePaneDetailWithProject({
   onRetry: () => void;
   onAccessLost: () => void;
 }) {
-  const { data: projects } = useGetProjects({ workspaceId: item.workspaceId });
+  const { data: projects, isLoading: isProjectLoading } = useGetProjects({
+    workspaceId: item.workspaceId,
+  });
   const project = projects?.find(
     (candidate) => candidate.id === item.projectId,
   );
@@ -175,7 +182,18 @@ function SidePaneDetailWithProject({
       workItemKey={workItemKey}
       activityFilter={activityFilter}
       onActivityFilterChange={onActivityFilterChange}
-      project={project ? { name: project.name, slug: project.slug } : undefined}
+      project={
+        project
+          ? {
+              name: project.name,
+              slug: project.slug,
+              organisationId: project.organisationId,
+              archivedAt: project.archivedAt,
+              deletedAt: project.deletedAt,
+            }
+          : undefined
+      }
+      isProjectLoading={isProjectLoading}
       isLoading={false}
       isNotFound={false}
       isError={isError}

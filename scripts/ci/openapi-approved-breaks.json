@@ -566,5 +566,29 @@
 		"pr": 1126,
 		"reason": "`verified` described a login-only check that no longer exists; the result now reports whether the test email was handed to the provider.",
 		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
+	},
+	{
+		"operation": "PUT /instance/auth/local-methods",
+		"rule": "new-required-request-property",
+		"fingerprint": "b87998864d85",
+		"pr": 1131,
+		"reason": "The local sign-in settings body now carries staffSelfRegistrationEnabled so the staff sign-up switch is saved with the other methods in one confirmed write.",
+		"decision": "Thomas, owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
+	},
+	{
+		"operation": "POST /me/step-up",
+		"rule": "request-body-any-of-removed",
+		"fingerprint": "4e457ce0fcb7",
+		"pr": 1131,
+		"reason": "The local-methods confirmation bindings were replaced by bindings that include staffSelfRegistrationEnabled; the old shapes are superseded, not dropped without replacement.",
+		"decision": "Thomas, owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
+	},
+	{
+		"operation": "POST /me/step-up/challenges",
+		"rule": "new-required-request-property",
+		"fingerprint": "1e55fd8f909c",
+		"pr": 1131,
+		"reason": "The second-factor challenge for saving local sign-in settings is bound to the staff sign-up switch value, so a proof cannot be reused for a different switch state.",
+		"decision": "Thomas, owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
 	}
 ]

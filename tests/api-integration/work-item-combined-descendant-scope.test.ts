@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -7,7 +8,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -73,7 +74,7 @@ describe("combined project board descendant authorization", () => {
   beforeEach(async () => resetTestDatabase());
 
   it("filters unreadable projects and stops at archived or deleted ancestors before paging and columns", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
+    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const projects = await Promise.all(
       [
         "combined-root",

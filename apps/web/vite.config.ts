@@ -8,6 +8,7 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
 import {
+  collectRowPaintAssets,
   findDeferredNamespaceUsers,
   i18nNamespaceGroups,
 } from "./vite/i18n-namespace-groups";
@@ -160,6 +161,25 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             for (const imported of chunk.dynamicImports)
               addStaticClosure(imported);
         }
+        for (const file of collectRowPaintAssets(
+          new Map(
+            Object.values(bundle).flatMap((chunk) =>
+              chunk.type === "chunk"
+                ? [
+                    [
+                      chunk.fileName,
+                      {
+                        modules: Object.keys(chunk.modules),
+                        imports: chunk.imports,
+                        dynamicImports: chunk.dynamicImports,
+                      },
+                    ] as const,
+                  ]
+                : [],
+            ),
+          ),
+        ))
+          addStaticClosure(file);
         const paintSources = new Map<string, string>();
         for (const fileName of paintChunks) {
           const chunk = bundle[fileName];

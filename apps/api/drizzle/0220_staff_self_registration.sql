@@ -1,0 +1,1 @@
+ALTER TABLE "instance_setting" ADD COLUMN "staff_self_registration_enabled" boolean DEFAULT false NOT NULL;

@@ -12,8 +12,8 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ clear: vi.fn() }),
 }));
-vi.mock("react-i18next", () => ({
-  initReactI18next: { type: "3rdParty", init: vi.fn() },
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: translate }),
 }));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({

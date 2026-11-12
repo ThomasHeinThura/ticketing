@@ -448,7 +448,7 @@ describe("portal catalogue route", () => {
     const requestForm = summary.closest("form");
     if (!requestForm) throw new Error("The request form is missing");
     const attach = screen.getByRole("button", {
-      name: "workItems:detail.attachments.add",
+      name: "workItemExtras:detail.attachments.add",
     });
 
     // No file staged: the request is not sent and focus goes to the visible Attach button.

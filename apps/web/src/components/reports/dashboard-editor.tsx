@@ -55,9 +55,11 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   createDashboard,
   type DashboardDetail,
@@ -889,6 +891,8 @@ function DashboardEditorScreen({ search }: { search: DashboardSearch }) {
   const placeholderVisible = useDelayedPending(
     dashboards.isLoading || !workspace || dashboard.isLoading,
   );
+  if ([dashboards.error, dashboard.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("reports:editor.title")} />

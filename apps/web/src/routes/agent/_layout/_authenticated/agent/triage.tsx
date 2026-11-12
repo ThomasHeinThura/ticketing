@@ -19,6 +19,7 @@ import { Filter } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/common/layout";
+import { NoAccessPage } from "@/components/common/page-states";
 import { IntakeQueuePanel } from "@/components/intake/queue-panel";
 import { IntakeQueuePicker } from "@/components/intake/queue-picker";
 import { SubmissionDetailSheet } from "@/components/intake/submission-detail-sheet";
@@ -31,6 +32,11 @@ import {
   TriageFilterMenu,
 } from "@/components/intake/triage-filter-menu";
 import PageTitle from "@/components/page-title";
+import {
+  SettingsAccessChecking,
+  SettingsAccessError,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import { getRequestTypes, getSubmissions } from "@/fetchers/intake";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -56,10 +62,14 @@ export const Route = createFileRoute("/_layout/_authenticated/agent/triage")({
 function IntakeRoute() {
   const { t } = useTranslation("intake");
   const workspace = useActiveWorkspace();
+  const [deniedQueue, setDeniedQueue] = useState<string | null>(null);
   const permissions = useWorkspacePermission(workspace.data?.id);
   // A-04: triage needs intake:triage. Without it nothing is fetched (the API answers 403) and
   // the page says so once the capability read settles.
-  const canTriage = permissions.canTriageIntake();
+  const access = useSettingsAccess((permission) =>
+    permission.canTriageIntake(),
+  );
+  const canTriage = access === "allowed";
   // `feature.intake` is off by default. While it is off every intake read answers 404, so
   // nothing is fetched and the page shows the calm off state instead of load errors.
   const features = useWorkspaceFeatures(workspace.data?.id);
@@ -163,9 +173,18 @@ function IntakeRoute() {
   const hasFilters = Boolean(requestType || assignee || age);
   const changeFilters = (patch: Record<string, string | undefined>) =>
     void navigate({ search: searchWith({ ...patch, cursor: undefined }) });
-  const deniedByServer =
-    queue.error instanceof HttpError && queue.error.status === 403;
+  const deniedByServer = [queue.error, requestTypeList.error].some(
+    (error) => error instanceof HttpError && error.status === 403,
+  );
   const canManageFeatures = permissions.canManageWorkspaceSettings();
+  if (access === "checking") return <SettingsAccessChecking />;
+  if (access === "error") return <SettingsAccessError />;
+  if (
+    access === "denied" ||
+    deniedByServer ||
+    (queuePair && deniedQueue === queuePair)
+  )
+    return <NoAccessPage />;
   if (workspace.data?.id && !intakeOn)
     return (
       <div className="flex h-full w-full min-w-0 flex-col">
@@ -214,31 +233,6 @@ function IntakeRoute() {
                     : undefined
                 }
               />
-            )}
-          </div>
-        </Layout.Content>
-      </div>
-    );
-  if (workspace.data?.id && (!canTriage || deniedByServer))
-    return (
-      <div className="flex h-full w-full min-w-0 flex-col">
-        <PageTitle title={t("title")} />
-        <Layout.Header className="items-center justify-between">
-          <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
-        </Layout.Header>
-        <Layout.Content className="overflow-y-auto">
-          <div className="flex flex-col gap-3 px-4 py-3">
-            {permissions.isCheckingPermissions === true && !deniedByServer ? (
-              <p role="status">{t("loading")}</p>
-            ) : (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>{t("noAccessTitle")}</EmptyTitle>
-                  <EmptyDescription>
-                    {t("noAccessDescription")}
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
             )}
           </div>
         </Layout.Content>
@@ -348,6 +342,7 @@ function IntakeRoute() {
             </Empty>
           ) : queuePair && workspace.data?.id ? (
             <IntakeQueuePanel
+              onAccessDenied={setDeniedQueue}
               workspaceId={workspace.data.id}
               queueId={queuePair}
               state={state}

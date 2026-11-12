@@ -15,6 +15,7 @@ import { ChevronRight } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
 import { useCatalogueStatus } from "@/hooks/queries/service-management";
@@ -88,8 +89,26 @@ export function NavMain() {
   // `feature.intake` off (the default): the entry is gone, as every intake read answers 404.
   const triageOn = canTriageIntake() && features.isOn("feature.intake");
   const timeTrackingOn = features.isOn("feature.time_tracking") && canLogTime();
-  // `feature.reports` off: the Reports and Dashboard entries are gone (P5 reports).
-  const reportsOn = features.isOn("feature.reports");
+  // The capabilities response has no report:read flag. The catalogue is the existing
+  // authoritative report read, shared with the Reports page and deferred until after paint.
+  const reportsEnabled = features.isOn("feature.reports");
+  const reportAccess = useQuery({
+    queryKey: ["reports", workspace?.id ?? "", "catalogue"],
+    queryFn: async () => {
+      const { getReportCatalogue } = await import("@/fetchers/report");
+      return getReportCatalogue(workspace?.id ?? "");
+    },
+    enabled: Boolean(shellPainted && workspace?.id && reportsEnabled),
+    retry: false,
+  });
+  const reportStatus = (reportAccess.error as { status?: unknown } | null)
+    ?.status;
+  const reportsOn =
+    reportsEnabled &&
+    (reportAccess.isSuccess ||
+      (reportAccess.isError &&
+        !isForbiddenError(reportAccess.error) &&
+        reportStatus !== 404));
   // `feature.service_catalogue` off: the service management entry is gone (P5). The status read
   // is open to everyone who can read projects, unlike the switch list.
   const catalogue = useCatalogueStatus(

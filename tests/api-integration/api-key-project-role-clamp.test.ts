@@ -21,6 +21,7 @@ import { grantProjectRole } from "./helpers/fixtures";
 import { ensureAgentSession } from "./helpers/pending-deletion";
 import {
   addMember,
+  addProjectLimitedMember,
   createItem,
   type Fixture,
   json,
@@ -364,7 +365,10 @@ describe("API integration: API key authority is clamped by the owner's project r
         it(`${write.name}: a workspace ${role} with a read-only project role gets 403 with a full-scope key, like the session`, async () => {
           const world = await setupWorld();
           const { app } = createApp();
-          const reader = await addMember(world.workspaceId, role);
+          const reader =
+            role === "admin"
+              ? await addProjectLimitedMember(world.workspaceId)
+              : await addMember(world.workspaceId, role);
           await grantProjectRole(reader.user.id, world.project.id, [
             "project:read",
             "work_item:read",
@@ -444,7 +448,7 @@ describe("API integration: API key authority is clamped by the owner's project r
         await route.prepare?.(world, item, app);
         // A workspace admin passes every legacy workspace statement; only the project role
         // (read-only) can refuse them. They authored the row, so ownership cannot refuse either.
-        const reader = await addMember(world.workspaceId, "admin");
+        const reader = await addProjectLimitedMember(world.workspaceId);
         await grantProjectRole(reader.user.id, world.project.id, [
           "project:read",
           "work_item:read",
@@ -481,7 +485,7 @@ describe("API integration: API key authority is clamped by the owner's project r
     it("POST and DELETE /api/task-relation: a workspace admin with a read-only project role is refused as a session and with a full-scope key", async () => {
       const world = await setupWorld();
       const { app } = createApp();
-      const reader = await addMember(world.workspaceId, "admin");
+      const reader = await addProjectLimitedMember(world.workspaceId);
       await grantProjectRole(reader.user.id, world.project.id, [
         "project:read",
         "work_item:read",
@@ -635,7 +639,7 @@ describe("API integration: API key authority is clamped by the owner's project r
       const world = await setupWorld();
       const { app } = createApp();
       const item = await createItem(app, world, TITLE);
-      const owner = await addMember(world.workspaceId, "admin");
+      const owner = await addProjectLimitedMember(world.workspaceId);
       await grantProjectRole(owner.user.id, world.project.id, [
         "project:read",
         "work_item:read",

@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationPreferencesSettings } from "./notification-preferences-settings";
 
 const updatePreferences = vi.fn();
+const preferenceToast = vi.fn();
 const preferences = {
   emailAddress: "mina@example.com",
   emailEnabled: false,
@@ -96,7 +97,10 @@ vi.mock(
   "@/hooks/mutations/notification-preferences/use-notification-preferences",
   () => ({
     useUpdateNotificationPreferences: () => ({
-      mutateAsync: updatePreferences,
+      mutateAsync: async (...args: unknown[]) => {
+        await updatePreferences(...args);
+        preferenceToast();
+      },
       isPending: false,
     }),
     useUpsertNotificationWorkspaceRule: () => ({ mutateAsync: vi.fn() }),
@@ -108,6 +112,7 @@ describe("NotificationPreferencesSettings", () => {
   afterEach(cleanup);
 
   beforeEach(() => {
+    preferenceToast.mockReset();
     updatePreferences.mockReset();
     updatePreferences.mockResolvedValue(undefined);
     canonical.handoff.mockReset();
@@ -166,6 +171,15 @@ describe("NotificationPreferencesSettings", () => {
         dueDateReminderLeadTimeMinutes: 2880,
       }),
     );
+    await waitFor(() => expect(preferenceToast).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "common:actions.saved" }),
+      ).toBeVisible(),
+    );
+    expect(
+      screen.getAllByRole("status").filter((node) => node.textContent?.trim()),
+    ).toHaveLength(0);
   });
 
   it("blocks saving a cleared reminder lead time", () => {
@@ -234,6 +248,18 @@ describe("NotificationPreferencesSettings", () => {
     expect(canonical.saveReportExport.mock.calls[0]?.[0]).toEqual({
       enabled: false,
     });
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.trim()),
+      ).toHaveLength(1),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.trim())[0],
+    ).toHaveTextContent("settings:notificationsPage.reportExportSaved");
     expect(updatePreferences).not.toHaveBeenCalled();
     expect(block).toBeTruthy();
   });

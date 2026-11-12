@@ -19,6 +19,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import { assignLimitedWebhookRole } from "./helpers/webhook-operator";
 
 const AGENT_HOST = new URL(getConfiguredAgentOrigin()).host;
 const CUSTOMER_HOST = new URL(getConfiguredCustomerOrigin()).host;
@@ -138,7 +139,8 @@ describe("mounted WH-13 rotate-all endpoints", () => {
       .update(schema.userTable)
       .set({ role: "admin" })
       .where(eq(schema.userTable.id, admin.user.id));
-    const ordinary = await createWorkspaceMember({ role: "owner" });
+    const ordinary = await createWorkspaceMember({ role: "member" });
+    await assignLimitedWebhookRole(ordinary.user.id, ordinary.workspace.id);
     const adminHook = await createWebhook(admin.workspace.id, admin.user.id);
     const ordinaryHook = await createWebhook(
       ordinary.workspace.id,
@@ -199,7 +201,8 @@ describe("mounted WH-13 rotate-all endpoints", () => {
       .update(schema.userTable)
       .set({ role: "admin" })
       .where(eq(schema.userTable.id, admin.user.id));
-    const ordinary = await createWorkspaceMember({ role: "owner" });
+    const ordinary = await createWorkspaceMember({ role: "member" });
+    await assignLimitedWebhookRole(ordinary.user.id, ordinary.workspace.id);
     const first = await createWebhook(admin.workspace.id, admin.user.id);
     const second = await createWebhook(ordinary.workspace.id, ordinary.user.id);
     const { app } = createApp();
@@ -278,7 +281,8 @@ describe("mounted WH-13 rotate-all endpoints", () => {
       userId: admin.user.id,
       password: await bcrypt.hash(PASSWORD, 4),
     });
-    const ordinary = await createWorkspaceMember({ role: "owner" });
+    const ordinary = await createWorkspaceMember({ role: "member" });
+    await assignLimitedWebhookRole(ordinary.user.id, ordinary.workspace.id);
     const first = await createWebhook(admin.workspace.id, admin.user.id);
     const second = await createWebhook(ordinary.workspace.id, ordinary.user.id);
     const { app } = createApp();

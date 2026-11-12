@@ -10,12 +10,17 @@ const mocks = vi.hoisted(() => ({
   canLogTime: false,
   checking: false,
   featuresPanel: vi.fn(),
+  getFeatures: vi.fn(async () => []),
   budget: vi.fn(),
   billable: vi.fn(),
   permissionArgs: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     useParams: () => ({ projectId: "project-1" }),
@@ -39,6 +44,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     };
   },
 }));
+vi.mock("@/fetchers/feature-flags", () => ({ getFeatures: mocks.getFeatures }));
 vi.mock("@/components/settings/feature-flags-panel", () => ({
   FeatureFlagsPanel: () => {
     mocks.featuresPanel();
@@ -50,6 +56,9 @@ vi.mock("@/components/time-tracking/project-budget", () => ({
     mocks.budget();
     return null;
   },
+}));
+vi.mock("@/hooks/queries/time-tracking/use-time-tracking", () => ({
+  useProjectBudget: () => ({ error: null }),
 }));
 vi.mock("@/components/time-tracking/time-settings", () => ({
   ProjectBillableSetting: () => {
@@ -129,6 +138,14 @@ describe("Project budget access", () => {
     renderWithClient(<Budget />);
     expect(mocks.budget).toHaveBeenCalled();
     expect(mocks.billable).not.toHaveBeenCalled();
+  });
+
+  it("shows only billable settings when budget access is absent", () => {
+    mocks.canLogTime = true;
+    renderWithClient(<Budget />);
+    expect(mocks.budget).not.toHaveBeenCalled();
+    expect(mocks.billable).toHaveBeenCalled();
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
   });
 
   it("shows both sections to a role with both capabilities", () => {

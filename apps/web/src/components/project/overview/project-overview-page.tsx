@@ -54,6 +54,7 @@ import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { formatPortalDuration } from "@/lib/portal-duration";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { JoinProject } from "../join-project";
 import { ContractPanel } from "./contract-panel";
 import { EditSummaryDialog } from "./edit-summary-dialog";
 import { MilestonesPanel } from "./milestones-panel";
@@ -344,7 +345,6 @@ export function ProjectOverviewPage({
   prefetched?: boolean;
 }) {
   const { t, i18n } = useTranslation("projectOverview");
-  const { t: workspaceT } = useTranslation("workspace");
   const {
     project: listed,
     workspaceId,
@@ -468,9 +468,10 @@ export function ProjectOverviewPage({
             ) : null}
           </h1>
           {listed?.seenOnlyViaWorkspaceRole ? (
-            <span className="text-muted-foreground text-xs">
-              {workspaceT("projects.notMember")}
-            </span>
+            <JoinProject
+              projectId={project.id}
+              canJoin={listed?.canJoin === true}
+            />
           ) : null}
           <div
             className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-muted-foreground text-xs"

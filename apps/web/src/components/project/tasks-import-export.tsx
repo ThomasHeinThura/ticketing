@@ -7,10 +7,10 @@ import { exportWorkItems } from "@/fetchers/work-item/export-work-items";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
-import type { ProjectWithTasks } from "@/types/project";
+import type { Project } from "@/types/project";
 
 type TasksImportExportProps = {
-  project: ProjectWithTasks;
+  project: Pick<Project, "workspaceId" | "slug">;
 };
 
 /**

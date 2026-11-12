@@ -1,5 +1,5 @@
 import { formatSubmissionReference } from "@taskdesk/domain";
-import { and, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import db, { schema } from "../database";
 import {
   type CustomerPortalScope,
@@ -7,7 +7,11 @@ import {
   customerPortalScope,
 } from "../feature-flag/enforce";
 import { findReadableDirectCaseRefs } from "../intake/portal-cases";
-import { loadPortalViewer } from "../intake/repository";
+import {
+  loadPortalViewer,
+  portalSubmissionProjectPredicateForActor,
+} from "../intake/repository";
+import { listVisibleNotificationInbox } from "./inbox.repository";
 
 type InboxRow = {
   notification: {
@@ -63,6 +67,7 @@ export async function resolvePortalNotificationTargets(
             and(
               inArray(schema.submissionTable.id, [...directSubmissionIds]),
               eq(schema.submissionTable.requesterId, requesterId),
+              portalSubmissionProjectPredicateForActor(requesterId, db),
             ),
           )
       : [],
@@ -114,6 +119,7 @@ export async function resolvePortalNotificationTargets(
             eq(schema.submissionTable.requesterId, requesterId),
             eq(schema.submissionTable.state, "accepted"),
             inArray(schema.submissionTable.workItemId, [...itemIds]),
+            portalSubmissionProjectPredicateForActor(requesterId, db),
           ),
         )
     : [];
@@ -354,36 +360,23 @@ const RECENT_NOTIFICATION_WINDOW_MS = 60_000;
 
 /**
  * Whether a payload-free realtime invalidation may be pushed to this customer: at least one of
- * their notifications from the last minute belongs to a project or workspace with the customer
- * portal on. A push caused only by an off workspace's event is dropped.
+ * their readable notifications from the last minute belongs to a project they reach with the
+ * customer portal on. A push caused only by an off workspace or ungranted project is dropped.
  */
 export async function portalRealtimeAdmitted(userId: string): Promise<boolean> {
   try {
-    const recent = await db
-      .select({
-        id: schema.notificationTable.id,
-        resourceType: schema.notificationTable.resourceType,
-        resourceId: schema.notificationTable.resourceId,
-      })
-      .from(schema.notificationTable)
-      .where(
-        and(
-          eq(schema.notificationTable.userId, userId),
-          gte(
-            schema.notificationTable.createdAt,
-            new Date(Date.now() - RECENT_NOTIFICATION_WINDOW_MS),
-          ),
-        ),
-      )
-      .orderBy(desc(schema.notificationTable.createdAt))
-      .limit(20);
-    return (
-      (
-        await admitPortalNotifications(
-          recent.map((notification) => ({ notification })),
-        )
-      ).size > 0
+    const cutoff = new Date(Date.now() - RECENT_NOTIFICATION_WINDOW_MS);
+    const inbox = await listVisibleNotificationInbox({
+      userId,
+      credentialCanReadTask: false,
+      filter: "all",
+      limit: 20,
+      admit: (rows) => admitPortalNotifications(rows),
+    });
+    const recent = inbox.rows.filter(
+      ({ notification }) => notification.createdAt >= cutoff,
     );
+    return recent.length > 0;
   } catch {
     return false;
   }

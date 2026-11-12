@@ -311,7 +311,18 @@ export async function replyToPortalRequest(input: {
       notFound();
     await assertProjectStillLive(tx, locked.projectId);
     const context = await findWorkItemMentionContext(tx, input.workItemId);
-    if (!context) notFound();
+    if (!context || !context.organisationId) notFound();
+    const [hasAccess] = await tx
+      .select({ projectId: schema.customerProjectAccessTable.projectId })
+      .from(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, input.personId),
+          eq(schema.customerProjectAccessTable.projectId, locked.projectId),
+        ),
+      )
+      .limit(1);
+    if (!hasAccess) notFound();
     const [comment] = await tx
       .insert(schema.commentTable)
       .values({

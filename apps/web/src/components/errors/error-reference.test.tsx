@@ -22,7 +22,9 @@ it("renders and copies a 5xx reference but does not show a 4xx reference", () =>
     value: { writeText },
   });
   const { rerender } = render(
-    <ErrorReference error={new HttpError(503, "unavailable", id)} />,
+    <ErrorReference
+      error={new HttpError(503, "unavailable", id, { fallbackKey: "test:key" })}
+    />,
   );
   expect(screen.getByText(`Reference: ${id}`)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Copy reference" }));

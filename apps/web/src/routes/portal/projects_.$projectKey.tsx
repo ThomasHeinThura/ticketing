@@ -5,7 +5,7 @@ import {
   type PortalHomeSearch,
   parsePortalHomeSearch,
   portalProjectSearchMiddlewares,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 /**
  * `docs/screens.md` portal "Project detail" (S4c): one project's customer view. U-11: its cases

@@ -652,7 +652,7 @@ describe("portal submission route", () => {
     renderSubmission();
 
     const preview = await screen.findByRole("button", {
-      name: "workItems:detail.attachments.pdfPreviewOpen",
+      name: "workItemExtras:detail.attachments.pdfPreviewOpen",
     });
     expect(
       screen.queryByRole("button", { name: /pdfPreviewOpen.*notes/ }),
@@ -660,7 +660,9 @@ describe("portal submission route", () => {
     expect(screen.getAllByRole("button", { name: "Download" })).toHaveLength(2);
     fireEvent.click(preview);
     expect(
-      await screen.findByTitle("workItems:detail.attachments.pdfPreviewTitle"),
+      await screen.findByTitle(
+        "workItemExtras:detail.attachments.pdfPreviewTitle",
+      ),
     ).toHaveAttribute("src", "/pdf-preview.html");
     expect(mocks.previewPath).toHaveBeenCalledWith("SUB-7", "pdf/1");
     expect(mocks.downloadPath).toHaveBeenCalledWith("SUB-7", "pdf/1");
@@ -682,7 +684,7 @@ describe("portal submission route", () => {
     renderSubmission();
 
     const preview = await screen.findByRole("button", {
-      name: "workItems:detail.attachments.pdfPreviewOpen",
+      name: "workItemExtras:detail.attachments.pdfPreviewOpen",
     });
     expect(screen.getByText(/vpn-guide\.pdf/u)).toBeVisible();
     expect(screen.queryByRole("button", { name: "Download" })).toBeNull();
@@ -692,7 +694,9 @@ describe("portal submission route", () => {
     ).toBeVisible();
     fireEvent.click(preview);
     expect(
-      await screen.findByTitle("workItems:detail.attachments.pdfPreviewTitle"),
+      await screen.findByTitle(
+        "workItemExtras:detail.attachments.pdfPreviewTitle",
+      ),
     ).toHaveAttribute("src", "/pdf-preview.html");
     expect(mocks.downloadPath).not.toHaveBeenCalled();
     expect(

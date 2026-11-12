@@ -42,7 +42,7 @@ vi.mock("@/hooks/mutations/approval/use-withdraw-approval", () => ({
   default: () => mocks.mutation,
 }));
 
-const WITHDRAW_NAME = /^workItems:detail\.approvals\.withdrawFor/;
+const WITHDRAW_NAME = /^workItemExtras:detail\.approvals\.withdrawFor/;
 
 function makeApproval(overrides: Record<string, unknown> = {}) {
   return {
@@ -96,10 +96,10 @@ describe("WorkItemApprovals", () => {
     render(<WorkItemApprovals workItemKey="PROJ-123" />);
     expect(screen.getByTestId("work-item-approvals")).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:detail.approvals.kind.customer"),
+      screen.getByText("workItemExtras:detail.approvals.kind.customer"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:detail.approvals.state.pending"),
+      screen.getByText("workItemExtras:detail.approvals.state.pending"),
     ).toBeInTheDocument();
     expect(screen.getByText("Casey")).toBeInTheDocument();
   });
@@ -129,7 +129,9 @@ describe("WorkItemApprovals", () => {
     render(<WorkItemApprovals workItemKey="PROJ-123" />);
     expect(screen.getByTestId("work-item-approvals-error")).toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:detail.approvals.retry" }),
+      screen.getByRole("button", {
+        name: "workItemExtras:detail.approvals.retry",
+      }),
     );
     expect(mocks.refetch).toHaveBeenCalledTimes(1);
   });
@@ -156,7 +158,7 @@ describe("WorkItemApprovals", () => {
     readyWith([makeApproval({ state: "withdrawn", canWithdraw: true })]);
     render(<WorkItemApprovals workItemKey="PROJ-123" />);
     expect(
-      screen.getByText("workItems:detail.approvals.state.withdrawn"),
+      screen.getByText("workItemExtras:detail.approvals.state.withdrawn"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: WITHDRAW_NAME })).toBeNull();
   });
@@ -178,7 +180,7 @@ describe("WorkItemApprovals", () => {
     readyWith([makeApproval({ approverReachLost: true })]);
     render(<WorkItemApprovals workItemKey="PROJ-123" />);
     expect(
-      screen.getByText("workItems:detail.approvals.reachLost"),
+      screen.getByText("workItemExtras:detail.approvals.reachLost"),
     ).toBeInTheDocument();
   });
 
@@ -191,16 +193,16 @@ describe("WorkItemApprovals", () => {
     render(<WorkItemApprovals workItemKey="PROJ-123" />);
     expect(
       screen.getByRole("button", {
-        name: "workItems:detail.approvals.withdrawing",
+        name: "workItemExtras:detail.approvals.withdrawing",
       }),
     ).toBeDisabled();
   });
 
   it.each([
-    [409, "workItems:detail.approvals.withdrawConflict"],
-    [403, "workItems:detail.approvals.withdrawForbidden"],
-    [404, "workItems:detail.approvals.withdrawForbidden"],
-    [500, "workItems:detail.approvals.withdrawFailed"],
+    [409, "workItemExtras:detail.approvals.withdrawConflict"],
+    [403, "workItemExtras:detail.approvals.withdrawForbidden"],
+    [404, "workItemExtras:detail.approvals.withdrawForbidden"],
+    [500, "workItemExtras:detail.approvals.withdrawFailed"],
   ])("shows a clear message for a %i withdrawal failure", (status, key) => {
     mocks.mutation = {
       ...mocks.mutation,
@@ -228,8 +230,10 @@ describe("WorkItemApprovals", () => {
     expect(names[0]).toContain("Casey");
     expect(names[1]).toContain("Morgan");
     // WCAG 2.5.3: the visible label is the start of the accessible name.
-    expect(buttons[0]).toHaveTextContent("workItems:detail.approvals.withdraw");
-    expect(names[0]).toContain("workItems:detail.approvals.withdrawFor");
+    expect(buttons[0]).toHaveTextContent(
+      "workItemExtras:detail.approvals.withdraw",
+    );
+    expect(names[0]).toContain("workItemExtras:detail.approvals.withdrawFor");
   });
 
   it.each([
@@ -254,7 +258,7 @@ describe("WorkItemApprovals", () => {
     fireEvent.click(button);
     expect(
       screen.getByRole("heading", {
-        name: "workItems:detail.approvals.heading",
+        name: "workItemExtras:detail.approvals.heading",
       }),
     ).toHaveFocus();
   });
@@ -265,7 +269,9 @@ describe("WorkItemApprovals", () => {
     const status = screen.getByRole("status");
     expect(status).toBeEmptyDOMElement();
     fireEvent.click(screen.getByRole("button", { name: WITHDRAW_NAME }));
-    expect(status).toHaveTextContent("workItems:detail.approvals.withdrawn");
+    expect(status).toHaveTextContent(
+      "workItemExtras:detail.approvals.withdrawn",
+    );
   });
 
   it("N2 does not announce success when the withdrawal fails", () => {

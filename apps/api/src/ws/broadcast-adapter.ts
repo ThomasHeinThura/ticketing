@@ -31,6 +31,7 @@ export type NativeBroadcastMessage = {
   at: string;
   key: string;
   customerVisible: boolean;
+  initiator?: { userId: string; windowId: string };
 };
 
 export type NativeAuthorizationInvalidation = {

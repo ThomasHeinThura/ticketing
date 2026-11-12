@@ -111,6 +111,9 @@ async function createManualAcceptanceFixture(
     .update(schema.projectTable)
     .set({ organisationId: organisation.id })
     .where(eq(schema.projectTable.id, project.id));
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: requester.id, projectId: project.id });
   const type = await makeWorkItemType(member.workspace.id);
   await makeDefaultState(member.workspace.id, project.id);
   const requestType = requireRow(
@@ -641,11 +644,25 @@ describe("intake atomic conversion", () => {
         .returning(),
       "customer user",
     );
-    await db.insert(schema.personTable).values({
-      userId: customerUser.id,
-      organisationId: fixture.submission.organisationId,
-      side: "customer",
-      displayName: "Portal Requester",
+    const concurrentCustomer = requireRow(
+      await db
+        .insert(schema.personTable)
+        .values({
+          userId: customerUser.id,
+          organisationId: fixture.submission.organisationId,
+          side: "customer",
+          displayName: "Portal Requester",
+        })
+        .returning(),
+      "concurrent portal requester",
+    );
+    await grantCustomerOrganisationMembership(
+      fixture.submission.organisationId,
+      concurrentCustomer.id,
+    );
+    await db.insert(schema.customerProjectAccessTable).values({
+      personId: concurrentCustomer.id,
+      projectId: fixture.project.id,
     });
     const autoType = await makeWorkItemType(fixture.workspace.id);
     const autoRequestType = requireRow(
@@ -888,6 +905,9 @@ describe("intake atomic conversion", () => {
       .update(schema.projectTable)
       .set({ organisationId: organisation.id })
       .where(eq(schema.projectTable.id, project.id));
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: person.id, projectId: project.id });
     const type = await makeWorkItemType(workspace.id);
     const chosenType = await makeWorkItemType(workspace.id);
     await makeDefaultState(workspace.id, project.id);
@@ -1203,6 +1223,9 @@ describe("intake atomic conversion", () => {
       .update(schema.projectTable)
       .set({ organisationId: organisation.id })
       .where(eq(schema.projectTable.id, project.id));
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: requester.id, projectId: project.id });
     const type = await makeWorkItemType(workspace.id);
     await makeDefaultState(workspace.id, project.id);
     const formSchema = {

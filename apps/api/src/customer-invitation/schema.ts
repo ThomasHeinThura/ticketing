@@ -18,7 +18,10 @@ export const portalInvitationParam = z.object({ id: z.string().min(1) });
  * role, a team or a scope with 422 (CP-21) and audits it, rather than silently ignoring it.
  */
 export const createCustomerInvitationBody = z
-  .object({ email: z.string().trim().email().max(320) })
+  .object({
+    email: z.string().trim().email().max(320),
+    projectIds: z.array(z.string().min(1)).max(100).optional(),
+  })
   .passthrough();
 
 export const acceptCustomerInvitationBody = z

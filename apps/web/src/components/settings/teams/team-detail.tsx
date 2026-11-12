@@ -13,6 +13,8 @@ import {
   CardTitle,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -29,9 +31,11 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   addTeamMember,
   removeTeamMember,
@@ -49,35 +53,50 @@ import { toast } from "@/lib/toast";
 function useTeamMutation<TInput>(
   team: TeamDetail,
   fn: (input: TInput) => Promise<unknown>,
+  onSaved?: () => void,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: fn,
-    onSettled: async () => {
+    onSettled: async (_data, error) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["team", team.id] }),
         queryClient.invalidateQueries({
           queryKey: teamsKey(team.workspaceId),
         }),
       ]);
+      if (!error) onSaved?.();
     },
     onError: (error) => toast.error(error.message),
   });
 }
 
-export function TeamSettingsCard({ team }: { team: TeamDetail }) {
+export function TeamSettingsCard({
+  team,
+  completed = false,
+  onStart,
+  onSaved,
+}: {
+  team: TeamDetail;
+  completed?: boolean;
+  onStart?: () => void;
+  onSaved?: () => void;
+}) {
   const { t } = useTranslation();
   const [name, setName] = useState(team.name);
   const [capacity, setCapacity] = useState(
     team.capacityDaysPerWeek === null ? "" : String(team.capacityDaysPerWeek),
   );
   const [isCab, setIsCab] = useState(team.isCab);
-  const save = useTeamMutation(team, () =>
-    updateTeam(team.id, {
-      name: name.trim(),
-      capacityDaysPerWeek: capacity === "" ? null : Number(capacity),
-      isCab,
-    }),
+  const save = useTeamMutation(
+    team,
+    () =>
+      updateTeam(team.id, {
+        name: name.trim(),
+        capacityDaysPerWeek: capacity === "" ? null : Number(capacity),
+        isCab,
+      }),
+    onSaved,
   );
   const capacityValid =
     capacity === "" ||
@@ -89,6 +108,29 @@ export function TeamSettingsCard({ team }: { team: TeamDetail }) {
     (capacity === "" ? null : Number(capacity)) !== team.capacityDaysPerWeek ||
     isCab !== team.isCab;
   const disabled = !team.canManageTeam || save.isPending;
+  if (!team.canManageTeam)
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("teams:detail.settingsTitle")}</CardTitle>
+          <CardDescription>
+            {t("teams:detail.settingsReadOnly")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl>
+            <dt>{t("teams:fields.name")}</dt>
+            <dd>{team.name}</dd>
+            <dt>{t("teams:fields.capacity")}</dt>
+            <dd>{team.capacityDaysPerWeek ?? "—"}</dd>
+            <dt>{t("teams:fields.cab")}</dt>
+            <dd>
+              {t(team.isCab ? "roles:compare.has" : "roles:compare.hasNot")}
+            </dd>
+          </dl>
+        </CardContent>
+      </Card>
+    );
   return (
     <Card>
       <CardHeader>
@@ -104,7 +146,10 @@ export function TeamSettingsCard({ team }: { team: TeamDetail }) {
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
-            if (dirty && name.trim() && capacityValid) save.mutate(undefined);
+            if (dirty && name.trim() && capacityValid && !save.isPending) {
+              onStart?.();
+              save.mutate(undefined);
+            }
           }}
         >
           <div className="space-y-2">
@@ -160,12 +205,20 @@ export function TeamSettingsCard({ team }: { team: TeamDetail }) {
             </Alert>
           ) : null}
           {team.canManageTeam ? (
-            <Button
+            <SaveButton
               type="submit"
-              disabled={disabled || !dirty || !name.trim() || !capacityValid}
+              disabled={
+                !team.canManageTeam ||
+                ((!dirty || !name.trim() || !capacityValid) && !save.isPending)
+              }
+              pending={save.isPending}
+              success={completed}
+              retainedSuccess
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
             >
               {t("teams:detail.save")}
-            </Button>
+            </SaveButton>
           ) : null}
         </form>
       </CardContent>
@@ -379,8 +432,15 @@ export function TeamDetailView({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [savedTeamId, setSavedTeamId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!savedTeamId) return;
+    const timer = setTimeout(() => setSavedTeamId(null), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [savedTeamId]);
   const team = useTeam(teamId, showInactive);
   const placeholderVisible = useDelayedPending(team.isLoading);
+  if (isForbiddenError(team.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={team.data?.name ?? t("teams:detail.pageTitle")} />
@@ -427,6 +487,9 @@ export function TeamDetailView({
             <TeamSettingsCard
               key={`${team.data.id}:${team.data.name}:${team.data.capacityDaysPerWeek}:${team.data.isCab}`}
               team={team.data}
+              completed={savedTeamId === teamId}
+              onStart={() => setSavedTeamId(null)}
+              onSaved={() => setSavedTeamId(teamId)}
             />
             <RosterCard
               team={team.data}

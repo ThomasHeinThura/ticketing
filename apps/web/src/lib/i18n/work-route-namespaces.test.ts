@@ -73,6 +73,19 @@ describe("work route namespace groups", () => {
     }
   });
 
+  it("keeps list row labels eager and detail extras deferred", () => {
+    for (const file of locales) {
+      const catalog = JSON.parse(
+        readFileSync(path.join(i18nDir, file), "utf8"),
+      );
+      const { slim } = splitI18nNamespaces(catalog);
+      expect(slim).toHaveProperty("workItems.detail.unassigned");
+      expect(slim).toHaveProperty("workItems.detail.inactiveAssignee");
+      expect(slim).toHaveProperty("workItems.detail.editField");
+      expect(slim).toHaveProperty("workItems.customFieldValue.notSet");
+    }
+  });
+
   it("matches the work-list route only", () => {
     expect(WORK_LIST_PATH_PATTERN.test("/agent/projects/WLP/work")).toBe(true);
     expect(WORK_LIST_PATH_PATTERN.test("/agent/projects/WLP/work/")).toBe(true);

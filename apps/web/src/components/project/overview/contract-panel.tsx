@@ -16,6 +16,7 @@ import {
   Progress,
   ProgressIndicator,
   ProgressTrack,
+  SaveButton,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -460,15 +461,20 @@ function ContractDialog({
           <Button variant="ghost" disabled={save.isPending} onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            disabled={!datesValid || !hoursValid || save.isPending}
+          <SaveButton
+            disabled={(!datesValid || !hoursValid) && !save.isPending}
+            pending={save.isPending}
+            success={false}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => {
               setProblem(null);
               save.mutate();
             }}
           >
             {t("contract.dialog.save")}
-          </Button>
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

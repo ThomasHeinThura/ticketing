@@ -17,6 +17,7 @@ vi.mock("react-i18next", () => ({
     t: (key: string) =>
       ({
         "navigation:page.settingsTitle": "Settings",
+        "settings:openSettingsMenu": "translated menu label",
         "navigation:page.backToWorkspace": "Back to Workspace",
         "navigation:page.backToProject": "Back to Project",
         "settings:account": "Account",
@@ -92,7 +93,10 @@ describe("SettingsShell scoped heading", () => {
     expect(screen.getAllByText(title).length).toBeGreaterThan(0);
     expect(screen.queryByRole("tablist")).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Open settings menu" }),
+      screen.queryByRole("button", { name: "Open settings menu" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "translated menu label" }),
     ).toBeInTheDocument();
   });
 });
@@ -156,7 +160,7 @@ describe("SettingsShell landmarks (a11y #11, #13)", () => {
     const banner = screen.getByRole("banner");
     expect(banner).toHaveTextContent("God Mode");
     expect(banner).toContainElement(
-      screen.getByRole("button", { name: "Open settings menu" }),
+      screen.getByRole("button", { name: "translated menu label" }),
     );
   });
 });
@@ -167,7 +171,7 @@ describe("SettingsShell below lg", () => {
     renderSettings("/dashboard/settings/workspace/members");
     expect(mocks.useIsMobile).toHaveBeenCalledWith(1024);
     const menuButton = screen.getByRole("button", {
-      name: "Open settings menu",
+      name: "translated menu label",
     });
     expect(menuButton).toHaveClass("lg:hidden");
     expect(menuButton).not.toHaveClass("md:hidden");

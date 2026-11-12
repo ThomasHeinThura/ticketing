@@ -1416,6 +1416,13 @@ export async function runSitUserSeed(argv: readonly string[] = process.argv) {
             seesAll: false,
             now,
           });
+          await tx
+            .insert(schema.customerProjectAccessTable)
+            .values({
+              personId,
+              projectId: helpProjectId,
+            })
+            .onConflictDoNothing();
         } else if (account.workspaceRole) {
           for (const ws of allWorkspaces) {
             await tx

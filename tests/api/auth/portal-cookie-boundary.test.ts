@@ -9,6 +9,11 @@ import {
 } from "../../../apps/api/src/auth";
 
 describe("portal-bound authentication configuration", () => {
+  it("explicitly enforces origin checks on both auth instances", () => {
+    expect(auth.options.advanced?.disableOriginCheck).toBe(false);
+    expect(portalAuth.options.advanced?.disableOriginCheck).toBe(false);
+  });
+
   it("uses distinct __Host session cookies with host-only secure attributes", () => {
     const agentCookie = auth.options.advanced?.cookies?.session_token;
     const portalCookie = portalAuth.options.advanced?.cookies?.session_token;

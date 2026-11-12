@@ -12,6 +12,8 @@ import {
   Input,
   Label,
   LoadingStatus,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -20,7 +22,7 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TerminologyEditor } from "@/components/settings/terminology-editor";
 import {
@@ -136,6 +138,12 @@ function diff(
 
 export function InstanceSettingsForm() {
   const { t } = useTranslation("godModeSettings");
+  const [completed, setCompleted] = useState(false);
+  useEffect(() => {
+    if (!completed) return;
+    const timer = setTimeout(() => setCompleted(false), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [completed]);
   const query = useQuery({
     queryKey,
     queryFn: getInstanceSettings,
@@ -169,13 +177,29 @@ export function InstanceSettingsForm() {
     );
   return (
     <div className="space-y-6">
-      <SettingsFields key={query.data.updatedAt} loaded={query.data} />
+      <SettingsFields
+        key={query.data.updatedAt}
+        loaded={query.data}
+        completed={completed}
+        onStart={() => setCompleted(false)}
+        onSaved={() => setCompleted(true)}
+      />
       <TerminologyEditor target={{ scope: "instance" }} />
     </div>
   );
 }
 
-function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
+function SettingsFields({
+  loaded,
+  completed,
+  onStart,
+  onSaved,
+}: {
+  loaded: InstanceSettingsResponse;
+  completed: boolean;
+  onStart: () => void;
+  onSaved: () => void;
+}) {
   const { t } = useTranslation("godModeSettings");
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(() => toDraft(loaded.settings));
@@ -195,7 +219,10 @@ function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
   const save = useMutation({
     mutationFn: () =>
       patchInstanceSettings({ expectedUpdatedAt: loaded.updatedAt, changes }),
-    onSuccess: (next) => queryClient.setQueryData(queryKey, next),
+    onSuccess: (next) => {
+      queryClient.setQueryData(queryKey, next);
+      onSaved();
+    },
     onError: (error) => {
       if (error instanceof InstanceSettingsConflictError)
         void queryClient.invalidateQueries({ queryKey });
@@ -236,7 +263,10 @@ function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
       className="space-y-6"
       onSubmit={(event) => {
         event.preventDefault();
-        if (dirty && !save.isPending) save.mutate();
+        if (dirty && !save.isPending) {
+          onStart();
+          save.mutate();
+        }
       }}
     >
       {conflict ? (
@@ -425,9 +455,17 @@ function SettingsFields({ loaded }: { loaded: InstanceSettingsResponse }) {
       </Card>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={!dirty || save.isPending}>
+        <SaveButton
+          type="submit"
+          disabled={!dirty && !save.isPending}
+          pending={save.isPending}
+          success={completed}
+          retainedSuccess
+          savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+        >
           {t("save")}
-        </Button>
+        </SaveButton>
         <p className="text-muted-foreground text-xs">
           {t("lastChanged", { when: formatDateTime(loaded.updatedAt) })}
         </p>

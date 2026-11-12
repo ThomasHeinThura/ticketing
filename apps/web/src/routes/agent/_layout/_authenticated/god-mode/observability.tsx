@@ -12,10 +12,11 @@ import {
   SelectValue,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useCallback, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/god-mode/observability",
@@ -52,14 +53,16 @@ type FactorPolicy = {
 };
 
 function ObservabilitySettings() {
-  const { t } = useTranslation("godModeSettings");
+  const { t, i18n } = useTranslation("godModeSettings");
+  const translateRef = useRef(t);
+  translateRef.current = t;
   // `items` lets the trigger show the label rather than the raw policy value.
   const factorAudiences: Array<{ value: FactorPolicy["mode"]; label: string }> =
     [
-      { value: "off", label: "Disabled" },
-      { value: "optional", label: "Optional" },
-      { value: "required_staff", label: "All staff" },
-      { value: "required_role", label: "Selected role" },
+      { value: "off", label: t("godModePlugins:states.disabled") },
+      { value: "optional", label: t("observability.optional") },
+      { value: "required_staff", label: t("observability.allStaff") },
+      { value: "required_role", label: t("observability.selectedRole") },
       { value: "required_everyone", label: t("localFactorEveryone") },
     ];
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -87,8 +90,8 @@ function ObservabilitySettings() {
     if (!response.ok)
       throw new Error(
         response.status === 409
-          ? "Settings changed in another session. Reload and retry."
-          : "The request could not be completed.",
+          ? translateRef.current("observability.conflict")
+          : translateRef.current("observability.requestFailed"),
       );
     return body;
   }, []);
@@ -106,7 +109,7 @@ function ObservabilitySettings() {
 
   useEffect(() => {
     void refresh().catch(() =>
-      setError("Observability settings are unavailable."),
+      setError(translateRef.current("observability.unavailable")),
     );
   }, [refresh]);
 
@@ -126,7 +129,7 @@ function ObservabilitySettings() {
       );
     } catch (cause) {
       setError(
-        cause instanceof Error ? cause.message : "Settings could not be saved.",
+        cause instanceof Error ? cause.message : t("observability.saveFailed"),
       );
     } finally {
       setPending(false);
@@ -152,7 +155,7 @@ function ObservabilitySettings() {
       setError(
         cause instanceof Error
           ? cause.message
-          : "The factor policy could not be saved.",
+          : t("observability.factorSaveFailed"),
       );
     } finally {
       setPending(false);
@@ -202,7 +205,7 @@ function ObservabilitySettings() {
       setError(
         cause instanceof Error
           ? cause.message
-          : "Token rotation could not be completed.",
+          : t("observability.rotateFailed"),
       );
     } finally {
       setPending(false);
@@ -231,13 +234,14 @@ function ObservabilitySettings() {
 
   return (
     <>
-      <PageTitle title="Observability" />
+      <PageTitle title={t("navigation:sidebar.observability")} />
       <section className="mx-auto max-w-4xl space-y-6 bg-background">
         <header className="space-y-2">
-          <h1 className="text-2xl font-semibold">Observability</h1>
+          <h1 className="text-2xl font-semibold">
+            {t("navigation:sidebar.observability")}
+          </h1>
           <p className="text-muted-foreground">
-            Configure safe server log levels and the internal metrics scrape
-            credential.
+            {t("observability.description")}
           </p>
         </header>
         {error ? (
@@ -248,10 +252,14 @@ function ObservabilitySettings() {
         {oneTimeToken ? (
           <Alert>
             <AlertDescription>
-              <strong>Copy this token now.</strong> It will not be shown again.
+              <Trans
+                i18nKey="observability.copyToken"
+                ns="godModeSettings"
+                components={{ strong: <strong /> }}
+              />
               <code className="mt-2 block break-all">{oneTimeToken}</code>
               <Button className="mt-2" onClick={() => setOneTimeToken(null)}>
-                I saved the token
+                {t("observability.tokenSaved")}
               </Button>
             </AlertDescription>
           </Alert>
@@ -259,16 +267,17 @@ function ObservabilitySettings() {
         {settings && !placeholderVisible ? (
           <>
             <section className="space-y-4 rounded-md border p-4">
-              <h2 className="text-lg font-medium">Local factor policy</h2>
+              <h2 className="text-lg font-medium">
+                {t("observability.factorPolicy")}
+              </h2>
               <p className="text-sm text-muted-foreground">
-                Require verified TOTP or one-use backup codes for the selected
-                audience. Unsupported upstream MFA is not accepted as proof.
+                {t("observability.factorHelp")}
               </p>
               <p className="text-sm text-muted-foreground">
                 {t("localFactorStaffOnlyHelp")}
               </p>
               <div className="flex items-center justify-between gap-4">
-                <span>Required audience</span>
+                <span>{t("observability.requiredAudience")}</span>
                 <Select
                   value={factorPolicy?.mode ?? "optional"}
                   items={factorAudiences}
@@ -289,7 +298,7 @@ function ObservabilitySettings() {
                   }}
                 >
                   <SelectTrigger
-                    aria-label="Required audience"
+                    aria-label={t("observability.requiredAudience")}
                     className="w-56"
                   >
                     <SelectValue />
@@ -308,7 +317,7 @@ function ObservabilitySettings() {
                   className="block space-y-2 text-sm font-medium"
                   htmlFor="factor-required-role-id"
                 >
-                  Role ID
+                  {t("observability.roleId")}
                   <Input
                     id="factor-required-role-id"
                     value={requiredRoleIdInput}
@@ -328,26 +337,37 @@ function ObservabilitySettings() {
                 }
                 onClick={() => void saveFactorPolicy()}
               >
-                {pending ? "Saving…" : "Save factor policy"}
+                {pending
+                  ? t("identityConnections:common.saving")
+                  : t("observability.saveFactor")}
               </Button>
             </section>
             <section className="space-y-4 rounded-md border p-4">
-              <h2 className="text-lg font-medium">Structured log levels</h2>
+              <h2 className="text-lg font-medium">
+                {t("observability.logLevels")}
+              </h2>
               <div className="flex items-center justify-between gap-4">
-                <span>Default level</span>
+                <span>{t("observability.defaultLevel")}</span>
                 <Select
+                  items={levels.map((level) => ({
+                    value: level,
+                    label: t(`observability.levels.${level}`),
+                  }))}
                   value={settings.logLevels.default}
                   onValueChange={(value) =>
                     value && changeLevel("default", value as Level)
                   }
                 >
-                  <SelectTrigger aria-label="Default level" className="w-40">
+                  <SelectTrigger
+                    aria-label={t("observability.defaultLevel")}
+                    className="w-40"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {levels.map((level) => (
                       <SelectItem value={level} key={level}>
-                        {level}
+                        {t(`observability.levels.${level}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -358,8 +378,12 @@ function ObservabilitySettings() {
                   className="flex items-center justify-between gap-4 capitalize"
                   key={module}
                 >
-                  <span>{module}</span>
+                  <span>{t(`observability.modules.${module}`)}</span>
                   <Select
+                    items={levels.map((level) => ({
+                      value: level,
+                      label: t(`observability.levels.${level}`),
+                    }))}
                     value={
                       settings.logLevels.modules[module] ??
                       settings.logLevels.default
@@ -368,13 +392,16 @@ function ObservabilitySettings() {
                       value && changeLevel(module, value as Level)
                     }
                   >
-                    <SelectTrigger aria-label={module} className="w-40">
+                    <SelectTrigger
+                      aria-label={t(`observability.modules.${module}`)}
+                      className="w-40"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {levels.map((level) => (
                         <SelectItem value={level} key={level}>
-                          {level}
+                          {t(`observability.levels.${level}`)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -382,28 +409,42 @@ function ObservabilitySettings() {
                 </div>
               ))}
               <Button disabled={pending} onClick={() => void saveLogLevels()}>
-                {pending ? "Saving…" : "Save log levels"}
+                {pending
+                  ? t("identityConnections:common.saving")
+                  : t("observability.saveLevels")}
               </Button>
             </section>
             <section className="space-y-4 rounded-md border p-4">
-              <h2 className="text-lg font-medium">Metrics scrape token</h2>
+              <h2 className="text-lg font-medium">
+                {t("observability.metricsToken")}
+              </h2>
               <p className="text-sm text-muted-foreground">
-                The listener is internal to the service. The token is stored as
-                a digest and is only returned once after rotation.
+                {t("observability.metricsHelp")}
               </p>
               <p role="status">
-                {settings.metricsTokenConfigured
-                  ? "A token is configured."
-                  : "No token is configured."}
                 {settings.metricsTokenRotatedAt
-                  ? ` Last rotated ${new Date(settings.metricsTokenRotatedAt).toLocaleString()}.`
-                  : ""}
+                  ? t(
+                      settings.metricsTokenConfigured
+                        ? "observability.configuredRotated"
+                        : "observability.notConfiguredRotated",
+                      {
+                        when: formatDateTime(
+                          settings.metricsTokenRotatedAt,
+                          i18n.language,
+                        ),
+                      },
+                    )
+                  : t(
+                      settings.metricsTokenConfigured
+                        ? "observability.configured"
+                        : "observability.notConfigured",
+                    )}
               </p>
               <label
                 className="block space-y-2 text-sm font-medium"
                 htmlFor="observability-password"
               >
-                Current password
+                {t("instanceUsers:copy.19dff4dad0a7")}
               </label>
               <Input
                 id="observability-password"
@@ -416,7 +457,7 @@ function ObservabilitySettings() {
                 className="block space-y-2 text-sm font-medium"
                 htmlFor="observability-code"
               >
-                Fresh factor proof
+                {t("observability.freshFactorProof")}
               </label>
               <Select
                 value={codeMethod}
@@ -425,18 +466,22 @@ function ObservabilitySettings() {
                 }
               >
                 <SelectTrigger
-                  aria-label="Factor proof type"
+                  aria-label={t("observability.factorProofType")}
                   className="rounded-md border bg-background px-3 py-2"
                 >
                   <SelectValue>
                     {codeMethod === "totp"
-                      ? "Authenticator code"
-                      : "Backup code"}
+                      ? t("identityConnections:stepUp.authenticatorCode")
+                      : t("identityConnections:stepUp.backupCode")}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="totp">Authenticator code</SelectItem>
-                  <SelectItem value="backup_code">Backup code</SelectItem>
+                  <SelectItem value="totp">
+                    {t("identityConnections:stepUp.authenticatorCode")}
+                  </SelectItem>
+                  <SelectItem value="backup_code">
+                    {t("identityConnections:stepUp.backupCode")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <Input
@@ -451,7 +496,7 @@ function ObservabilitySettings() {
                   disabled={pending || !password}
                   onClick={() => void rotateMetricsToken("password")}
                 >
-                  Verify password and rotate
+                  {t("observability.verifyPassword")}
                 </Button>
                 <Button
                   variant="outline"
@@ -462,7 +507,7 @@ function ObservabilitySettings() {
                   }
                   onClick={() => void rotateMetricsToken(codeMethod)}
                 >
-                  Verify factor and rotate
+                  {t("observability.verifyFactor")}
                 </Button>
               </div>
             </section>
@@ -472,7 +517,7 @@ function ObservabilitySettings() {
             role="status"
             style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           >
-            Loading observability settings…
+            {t("observability.loading")}
           </p>
         )}
       </section>

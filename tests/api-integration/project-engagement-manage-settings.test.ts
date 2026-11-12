@@ -18,6 +18,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectManageAccess,
   grantProjectRole,
@@ -70,7 +71,9 @@ async function actorWithLegacyMap(
   legacy: Record<string, string[]>,
   projectCapabilities?: readonly string[],
 ) {
-  const actor = await createWorkspaceMember({ role });
+  const actor = await (role === "project-limited"
+    ? createProjectLimitedWorkspaceMember({ role: "manager" })
+    : createWorkspaceMember({ role }));
   const now = new Date();
   const existing = await db
     .select({ id: schema.workspaceRoleTable.id })
@@ -243,9 +246,9 @@ describe("API integration: PUT /api/project/{id} engagement fields need project:
     },
   );
 
-  it("honors a narrow project role over workspace manager settings authority for sessions and keys", async () => {
+  it("honors a narrow project role over custom workspace settings authority for sessions and keys", async () => {
     const { actor, project } = await actorWithLegacyMap(
-      "manager",
+      "project-limited",
       LEGACY_UPDATE,
       ["project:read", "project:update"],
     );

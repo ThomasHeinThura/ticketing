@@ -1,81 +1,84 @@
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
-interface TailwindCompiler {
-  build: (candidates: string[]) => string;
-}
-
-interface TailwindModule {
-  compile: (
-    css: string,
-    options: {
-      base: string;
-      loadStylesheet: (
-        id: string,
-        base: string,
-      ) => Promise<{ path: string; base: string; content: string }>;
-    },
-  ) => Promise<TailwindCompiler>;
-}
-
-interface LightningCssModule {
-  transform: (options: {
-    filename: string;
-    code: Uint8Array;
-    targets: { chrome: number };
-  }) => { code: Uint8Array };
-}
+import tailwindcss from "@tailwindcss/vite";
+import { build } from "vite";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const stylesDir = resolve(here, "../styles");
-const uiRequire = createRequire(resolve(here, "../../package.json"));
-const twViteRequire = createRequire(uiRequire.resolve("@tailwindcss/vite"));
-const { compile } = twViteRequire("tailwindcss") as TailwindModule;
-const twNodeRequire = createRequire(twViteRequire.resolve("@tailwindcss/node"));
-const lightningcss = twNodeRequire("lightningcss") as LightningCssModule;
+const cacheDir = resolve(here, "../../node_modules/.cache/motion-css");
 
-let cachedCompilerPromise: Promise<TailwindCompiler> | null = null;
+const compiled = new Map<string, Promise<string>>();
 
-function getMotionCompiler(): Promise<TailwindCompiler> {
-  if (!cachedCompilerPromise) {
-    cachedCompilerPromise = compile(
-      '@import "tailwindcss/utilities.css";\n@import "./theme.css";\n@import "./motion.css";',
-      {
-        base: stylesDir,
-        loadStylesheet: async (id: string, base: string) => {
-          const sheetPath = id.startsWith("tailwindcss/")
-            ? twViteRequire.resolve(id)
-            : resolve(base, id);
-          return {
-            path: sheetPath,
-            base: dirname(sheetPath),
-            content: readFileSync(sheetPath, "utf8"),
-          };
-        },
-      },
-    );
+/**
+ * Builds the real `packages/ui/src/styles/theme.css` + `motion.css` for the given class
+ * candidates through Vite with the `@tailwindcss/vite` plugin — the production CSS pipeline,
+ * including the lowering of CSS nesting — using only this package's declared dependencies.
+ */
+function compileMotionCss(candidates: string[]): Promise<string> {
+  const key = [...candidates].sort().join(" ");
+  let pending = compiled.get(key);
+  if (!pending) {
+    pending = (async () => {
+      mkdirSync(cacheDir, { recursive: true });
+      const entry = resolve(
+        cacheDir,
+        `motion-${compiled.size}-${process.pid}.css`,
+      );
+      const inline = key.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+      writeFileSync(
+        entry,
+        [
+          '@import "tailwindcss/utilities.css" source(none);',
+          `@import "${resolve(stylesDir, "theme.css")}";`,
+          `@import "${resolve(stylesDir, "motion.css")}";`,
+          `@source inline("${inline}");`,
+          "",
+        ].join("\n"),
+      );
+      try {
+        const result = await build({
+          configFile: false,
+          logLevel: "silent",
+          root: resolve(here, "../.."),
+          plugins: [tailwindcss()],
+          build: {
+            write: false,
+            minify: false,
+            cssMinify: false,
+            cssTarget: "chrome100",
+            rollupOptions: { input: entry },
+          },
+        });
+        const outputs = (Array.isArray(result) ? result : [result]).flatMap(
+          (item) => ("output" in item ? item.output : []),
+        );
+        const css = outputs
+          .filter(
+            (chunk) =>
+              chunk.type === "asset" && chunk.fileName.endsWith(".css"),
+          )
+          .map((chunk) => (chunk.type === "asset" ? String(chunk.source) : ""))
+          .join("\n");
+        if (!css) throw new Error("Motion CSS build produced no stylesheet");
+        return css;
+      } finally {
+        rmSync(entry, { force: true });
+      }
+    })();
+    compiled.set(key, pending);
   }
-  return cachedCompilerPromise;
+  return pending;
 }
 
 /**
- * Compiles the real `packages/ui/src/styles/theme.css` + `motion.css` through Tailwind v4
- * and flattens CSS nesting with LightningCSS (matching `@tailwindcss/vite`'s build pipeline)
- * so jsdom `getComputedStyle` evaluates production rules rather than handwritten stubs.
+ * Mounts the compiled production motion rules so jsdom `getComputedStyle` evaluates the real
+ * stylesheet rather than handwritten stubs.
  */
 export async function mountCompiledMotionStyles(
   candidates: string[],
 ): Promise<{ css: string; cleanup: () => void }> {
-  const compiler = await getMotionCompiler();
-  const rawCss = compiler.build(candidates);
-  const { code } = lightningcss.transform({
-    filename: "motion.css",
-    code: new TextEncoder().encode(rawCss),
-    targets: { chrome: 100 << 16 },
-  });
-  const css = new TextDecoder().decode(code);
+  const css = await compileMotionCss(candidates);
   const style = document.createElement("style");
   style.textContent = css;
   document.head.appendChild(style);

@@ -10,13 +10,17 @@ import {
 import { Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { openPaletteEntry } from "@/components/search-command-menu/open-search-entry";
 import {
   projectSearchGroups,
   type SearchResultItem,
 } from "@/components/search-command-menu/search-targets";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
+import { authClient } from "@/lib/auth-client";
 import { getPriorityIcon } from "@/lib/priority";
 import type { AgentGlobalSearch, AgentGlobalSearchScope } from "@/lib/routes";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 
 const DEBOUNCE_MS = 300;
 
@@ -48,6 +52,9 @@ export default function WorkspaceSearch({
 }: WorkspaceSearchProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { data: session } = authClient.useSession();
+  const { data: workspaces } = useGetWorkspaces();
+  const activeWorkspaceId = getActiveOrganizationId(session);
   const urlQuery = search.q ?? "";
   const scope: AgentGlobalSearchScope = search.scope ?? "all";
   const [input, setInput] = useState(urlQuery);
@@ -224,7 +231,17 @@ export default function WorkspaceSearch({
                       variant="ghost"
                       key={`${entry.type}:${entry.id}`}
                       type="button"
-                      onClick={() => navigate({ to: entry.href as never })}
+                      onClick={() => {
+                        void openPaletteEntry({
+                          entry,
+                          activeWorkspaceId,
+                          workspaces,
+                          navigate,
+                          errorMessage: t(
+                            "navigation:workspaceSwitcher.switchFailed",
+                          ),
+                        });
+                      }}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-background hover:bg-accent/60 transition-colors text-left"
                     >
                       {(() => {

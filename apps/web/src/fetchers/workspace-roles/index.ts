@@ -1,7 +1,11 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 /**
  * Roles (RL-1..RL-15) on the canonical `role` store. A role's capabilities are the stored
@@ -70,8 +74,10 @@ export class RoleApiError extends HttpError {
     message: string,
     code: string | null,
     body: Record<string, unknown> | null,
+    fallbackKey?: string,
+    requestId?: string,
   ) {
-    super(status, message);
+    super(status, message, requestId, { fallbackKey });
     this.name = "RoleApiError";
     this.code = code;
     this.body = body;
@@ -85,6 +91,7 @@ async function request<T>(
   path: string,
   init: { method?: string; body?: unknown; stepUpToken?: string } = {},
   fallback = "The request failed",
+  fallbackKey?: string,
 ): Promise<T> {
   const response = await apiFetch(getApiUrl(path), {
     method: init.method ?? "GET",
@@ -95,8 +102,13 @@ async function request<T>(
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
   });
   if (!response.ok) {
+    const serverError =
+      response.status >= 500
+        ? await httpErrorFromResponse(response, fallback, fallbackKey)
+        : undefined;
     const copy = response.clone();
-    const message = await readErrorDetail(response, fallback);
+    const message =
+      serverError?.message ?? (await readErrorDetail(response, fallback));
     let body: Record<string, unknown> | null = null;
     try {
       const parsed: unknown = await copy.json();
@@ -110,6 +122,8 @@ async function request<T>(
       message,
       typeof body?.error === "string" ? body.error : null,
       body,
+      message === fallback ? fallbackKey : undefined,
+      serverError?.requestId,
     );
   }
   return response.json() as Promise<T>;
@@ -180,6 +194,7 @@ export function createRole(
     base(workspaceId),
     { method: "POST", body: input, stepUpToken },
     "Failed to create the role",
+    "roles:clientErrors.create",
   );
 }
 
@@ -209,6 +224,9 @@ export function updateRole(
     options?.dryRun
       ? "Failed to preview the role impact"
       : "Failed to save the role",
+    options?.dryRun
+      ? "roles:clientErrors.previewImpact"
+      : "roles:clientErrors.save",
   );
 }
 
@@ -221,6 +239,7 @@ export function reassignRole(
     `${base(workspaceId)}/${encodeURIComponent(roleId)}/reassign`,
     { method: "POST", body: input },
     "Failed to move the people to the other role",
+    "roles:people.moveFailed",
   );
 }
 
@@ -230,5 +249,9 @@ export async function requestRoleDeletion(workspaceId: string, roleId: string) {
     getApiUrl(`${base(workspaceId)}/${encodeURIComponent(roleId)}`),
     { method: "DELETE", credentials: "include" },
   );
-  return readPendingDeletion(response, "Failed to delete the role");
+  return readPendingDeletion(
+    response,
+    "Failed to delete the role",
+    "roles:delete.failed",
+  );
 }

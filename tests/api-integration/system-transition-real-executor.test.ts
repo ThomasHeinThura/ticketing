@@ -553,6 +553,13 @@ describe("WF-21 customer reply on a resolved request, through the real reply pat
 
   async function acceptedSubmission(w: World, itemId: string) {
     const principal = await createCustomerPrincipal();
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: principal.person.id, projectId: w.project.id });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: principal.orgId })
+      .where(eq(schema.projectTable.id, w.project.id));
     const type = requireRow(
       await db
         .select()

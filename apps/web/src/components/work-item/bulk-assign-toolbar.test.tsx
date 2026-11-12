@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 import {
   act,
   cleanup,
@@ -9,9 +13,14 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
 import { translate } from "@/test/en-translation";
 import BulkAssignToolbar from "./bulk-assign-toolbar";
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: { user: { id: "person-1" } } }) },
+}));
 
 const mocks = vi.hoisted(() => ({
   assign: vi.fn(),
@@ -99,8 +108,8 @@ vi.mock("@/fetchers/label/project-labels", () => ({
 vi.mock("@/lib/i18n/domain", () => ({
   getPriorityLabel: (value: string) => value,
 }));
-vi.mock("react-i18next", () => ({
-  initReactI18next: { type: "3rdParty", init: vi.fn() },
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: translate }),
 }));
 
@@ -173,6 +182,62 @@ async function choose(name: string) {
 }
 
 describe("canonical bulk actions use original Kaneo composition", () => {
+  it("refreshes an observed detail once for a bulk edit and once for another person's event", async () => {
+    class Socket {
+      static OPEN = 1;
+      static current: Socket;
+      readyState = 1;
+      onopen?: () => void;
+      onmessage?: (event: { data: string }) => void;
+      onclose?: () => void;
+      constructor() {
+        Socket.current = this;
+      }
+      send() {}
+      close() {}
+      frame(frame: unknown) {
+        this.onmessage?.({ data: JSON.stringify(frame) });
+      }
+    }
+    vi.stubGlobal("WebSocket", Socket);
+    try {
+      const { client } = mount();
+      const detail = vi.fn(async () => ({}));
+      function Probe() {
+        useQuery({
+          queryKey: ["work-items", "detail", "WLP-1"],
+          queryFn: detail,
+        });
+        useNativeWorkItemRealtime(["project:proj_1"]);
+        return null;
+      }
+      render(
+        <QueryClientProvider client={client}>
+          <Probe />
+        </QueryClientProvider>,
+      );
+      await waitFor(() => expect(detail).toHaveBeenCalledTimes(1));
+      act(() => {
+        Socket.current.onopen?.();
+        Socket.current.frame({ type: "subscribed", topic: "project:proj_1" });
+      });
+      await choose("high");
+      await waitFor(() => expect(detail).toHaveBeenCalledTimes(2));
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(detail).toHaveBeenCalledTimes(2);
+      act(() =>
+        Socket.current.frame({
+          type: "work_item.updated",
+          topic: "project:proj_1",
+          eventId: "other",
+          payload: { key: "WLP-1" },
+        }),
+      );
+      await waitFor(() => expect(detail).toHaveBeenCalledTimes(3));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("uses the floating toolbar and searchable command actions, not inline form controls", async () => {
     mount();
     expect(

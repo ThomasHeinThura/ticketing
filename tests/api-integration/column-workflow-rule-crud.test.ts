@@ -489,7 +489,7 @@ describe("API integration: archive, column and workflow-rule authority (A8-2)", 
     expect(remaining.map((c) => c.id)).not.toContain(columns.done.id);
   });
 
-  it("refuses approval after the requester's project role drops project:manage_settings", async () => {
+  it("retains manager approval authority after the project role drops project:manage_settings", async () => {
     const { project, columns, manager } = await world();
     mockAuthenticatedSession(manager.user);
     const { app } = createApp();
@@ -535,23 +535,21 @@ describe("API integration: archive, column and workflow-rule authority (A8-2)", 
       pending,
     );
     const body = await approval.text();
-    // The executor answers a requester who lost the capability with the masked 404
-    // (`invalidatedApprovalError(approverLostAccess = true)`), not 403.
-    expect(approval.status, body).toBe(404);
+    // Thomas, 12 Nov 2026: a project role cannot remove manager workspace rights.
+    expect(approval.status, body).toBe(200);
     expect(
       await db.query.pendingActionTable.findFirst({
         where: eq(schema.pendingActionTable.id, pending.pendingActionId),
       }),
     ).toMatchObject({
-      state: "invalidated",
-      invalidationReason: "capability_removed",
+      state: "executed",
     });
     expect(
       await db
         .select()
         .from(schema.columnTable)
         .where(eq(schema.columnTable.id, columns.done.id)),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
   });
 
   describe("API keys", () => {

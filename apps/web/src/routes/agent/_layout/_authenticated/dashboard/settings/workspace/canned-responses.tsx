@@ -29,6 +29,7 @@ import {
   Input,
   Label,
   LoadingStatus,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -37,13 +38,20 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
+
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import {
   type CannedResponseInput,
   getCannedResponseLibrary,
@@ -203,9 +211,17 @@ function CannedResponseEditor({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={pending || !name.trim()}>
+            <SaveButton
+              type="submit"
+              disabled={!name.trim() && !pending}
+              pending={pending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:cannedResponses.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -214,6 +230,15 @@ function CannedResponseEditor({
 }
 
 function CannedResponsesPage() {
+  const access = useSettingsAccess((permission) =>
+    permission.canManageWorkspaceSettings(),
+  );
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return <CannedResponsesPageContent />;
+}
+
+function CannedResponsesPageContent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -262,6 +287,7 @@ function CannedResponsesPage() {
         return;
       }
       await cache.invalidateQueries({ queryKey: ["canned-responses"] });
+      toast.success(t("common:actions.saved"));
       close();
     },
   });
@@ -274,6 +300,7 @@ function CannedResponsesPage() {
   const placeholderVisible = useDelayedPending(busy, {
     releaseNow: !busy && library.isSuccess && filtered.length === 0,
   });
+  if (isForbiddenError(library.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("settings:cannedResponses.title")} />

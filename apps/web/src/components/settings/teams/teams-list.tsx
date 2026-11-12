@@ -24,18 +24,22 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { createTeam } from "@/fetchers/team";
 import { teamsKey, useTeams } from "@/hooks/queries/team/use-teams";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { routes } from "@/lib/routes";
+import { toast } from "@/lib/toast";
 
 function CreateTeamDialog({
   workspaceId,
@@ -57,6 +61,7 @@ function CreateTeamDialog({
       }),
     onSuccess: async (team) => {
       await queryClient.invalidateQueries({ queryKey: teamsKey(workspaceId) });
+      toast.success(t("common:actions.saved"));
       onClose();
       void navigate({
         to: routes.workspaceTeamDetail.path,
@@ -135,12 +140,17 @@ function CreateTeamDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button
+            <SaveButton
               type="submit"
-              disabled={mutation.isPending || !name.trim() || !capacityValid}
+              disabled={!mutation.isPending && (!name.trim() || !capacityValid)}
+              pending={mutation.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("teams:create.submit")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -161,6 +171,7 @@ export function TeamsList() {
   const placeholderVisible = useDelayedPending(loading, {
     releaseNow: !loading && teams.isSuccess && teams.data.length === 0,
   });
+  if (isForbiddenError(teams.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("teams:list.title")} />

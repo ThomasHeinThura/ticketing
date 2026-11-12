@@ -33,9 +33,11 @@ import {
 } from "@/fetchers/workspace-roles";
 import { useRoleHistory } from "@/hooks/queries/workspace-roles/use-role-queries";
 import {
-  capabilityLabel,
   compareCapabilities,
   summariseCapabilities,
+  translatedCapabilityDescription,
+  translatedCapabilityGroup,
+  translatedCapabilityLabel,
 } from "./capability-model";
 
 /** RL-11: "What can this role do?", the draft set as plain sentences grouped by area. */
@@ -65,12 +67,14 @@ export function RoleSummaryPanel({
       {groups.map((group) => (
         <Card key={group.group}>
           <CardHeader>
-            <CardTitle>{group.group}</CardTitle>
+            <CardTitle>{translatedCapabilityGroup(group.group, t)}</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="list-disc space-y-1 ps-5 text-sm">
               {group.items.map((item) => (
-                <li key={item.id}>{item.description}</li>
+                <li key={item.id}>
+                  {translatedCapabilityDescription(item.id, t)}
+                </li>
               ))}
             </ul>
           </CardContent>
@@ -226,10 +230,10 @@ export function RoleComparePanel({
               <TableRow key={row.id}>
                 <TableCell>
                   <div className="font-medium text-sm">
-                    {capabilityLabel(row.id)}
+                    {translatedCapabilityLabel(row.id, t)}
                   </div>
                   <div className="text-muted-foreground text-xs">
-                    {row.description}
+                    {translatedCapabilityDescription(row.id, t)}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -341,7 +345,9 @@ export function RoleHistoryPanel({
                   <span className="text-muted-foreground">
                     {t("roles:history.added")}{" "}
                   </span>
-                  {entry.added.map(capabilityLabel).join(", ")}
+                  {entry.added
+                    .map((id) => translatedCapabilityLabel(id, t))
+                    .join(", ")}
                 </div>
               ) : null}
               {entry.removed.length > 0 ? (
@@ -349,7 +355,9 @@ export function RoleHistoryPanel({
                   <span className="text-muted-foreground">
                     {t("roles:history.removed")}{" "}
                   </span>
-                  {entry.removed.map(capabilityLabel).join(", ")}
+                  {entry.removed
+                    .map((id) => translatedCapabilityLabel(id, t))
+                    .join(", ")}
                 </div>
               ) : null}
               {entry.rank ? (

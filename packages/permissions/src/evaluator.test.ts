@@ -375,14 +375,35 @@ describe("reach", () => {
     expect(reaches(person, { ...project, ownerTeamId: "team-2" })).toBe(false);
   });
 
-  it("6: a customer sees their own organisation and no other", () => {
+  it("6: a customer sees only granted projects of their own organisation and no other (D-D, CP-1)", () => {
     const customer = identity({
       side: "customer",
       portal: "customer",
       memberships: [],
-      reach: { kind: "organisation", ids: ["org-customer"] },
+      reach: {
+        kind: "organisation",
+        ids: ["org-customer"],
+        projectIds: [PROJECT],
+      },
     });
     expect(reaches(customer, project)).toBe(true);
+    // Another project of the SAME customer organisation without explicit grant is out of reach.
+    expect(reaches(customer, { ...project, projectId: "prj-2" })).toBe(false);
+    // A newly invited customer with default empty projectIds sees no project.
+    expect(
+      reaches(
+        {
+          ...customer,
+          reach: {
+            kind: "organisation",
+            ids: ["org-customer"],
+            projectIds: [],
+          },
+        },
+        project,
+      ),
+    ).toBe(false);
+    // A granted projectId never crosses an organisation boundary.
     expect(reaches(customer, { ...project, organisationId: "org-other" })).toBe(
       false,
     );
@@ -394,13 +415,17 @@ describe("reach", () => {
     expect(reaches(identity({ memberships: [] }), project)).toBe(false);
   });
 
-  it("limits a private record to its requester or participants inside the right organisation", () => {
+  it("limits a private record to its requester or participants inside a granted project", () => {
     const customer = identity({
       personId: "colleague",
       side: "customer",
       portal: "customer",
       memberships: [],
-      reach: { kind: "organisation", ids: ["org-customer"] },
+      reach: {
+        kind: "organisation",
+        ids: ["org-customer"],
+        projectIds: [PROJECT],
+      },
     });
     const privateProject = {
       ...project,
@@ -410,6 +435,21 @@ describe("reach", () => {
     expect(
       reaches({ ...customer, personId: "participant" }, privateProject),
     ).toBe(true);
+    // Even the requester loses reach once project access is removed (strict D-D rule).
+    expect(
+      reaches(
+        {
+          ...customer,
+          personId: "requester",
+          reach: {
+            kind: "organisation",
+            ids: ["org-customer"],
+            projectIds: [],
+          },
+        },
+        privateProject,
+      ),
+    ).toBe(false);
   });
 
   it("never consults authority — sees_all grants reach, roles do not", () => {

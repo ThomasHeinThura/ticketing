@@ -10,6 +10,7 @@ import {
   CardTitle,
   Label,
   LoadingStatus,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -30,10 +31,29 @@ import {
 } from "@/fetchers/notification-preferences/canonical-mention-preference";
 import useGetNotificationPreferences from "@/hooks/queries/notification-preferences/use-get-notification-preferences";
 
+type PreferenceKind = "mention" | "comment" | "teamNotification";
+
 export function CanonicalMentionPreference() {
   const { t } = useTranslation("notificationProvider");
   const preferences = useGetNotificationPreferences();
   const placeholderVisible = useDelayedPending(preferences.isLoading);
+  const [notices, setNotices] = useState<Record<PreferenceKind, string | null>>(
+    {
+      mention: null,
+      comment: null,
+      teamNotification: null,
+    },
+  );
+  const [announcement, setAnnouncement] = useState<{
+    kind: PreferenceKind;
+    message: string;
+  } | null>(null);
+  function updateNotice(kind: PreferenceKind, message: string | null) {
+    setNotices((current) => ({ ...current, [kind]: message }));
+    setAnnouncement((current) =>
+      message ? { kind, message } : current?.kind === kind ? null : current,
+    );
+  }
   const handoff = useQuery({
     queryKey: ["notification-preferences", "email-link-handoff"],
     queryFn: getEmailLinkHandoff,
@@ -102,6 +122,9 @@ export function CanonicalMentionPreference() {
       >
         {null}
       </LoadingStatus>
+      <span className="sr-only" role="status" aria-atomic="true">
+        {announcement?.message ?? ""}
+      </span>
       <div
         ref={mentionTarget}
         tabIndex={-1}
@@ -157,6 +180,8 @@ export function CanonicalMentionPreference() {
                 key={`${preference.source}:${preference.enabled}:${preference.digest}`}
                 preference={preference}
                 kind="mention"
+                notice={notices.mention}
+                onNotice={(message) => updateNotice("mention", message)}
               />
             )}
           </CardContent>
@@ -199,6 +224,10 @@ export function CanonicalMentionPreference() {
                 key={`${teamNotificationPreference.source}:${teamNotificationPreference.enabled}:${teamNotificationPreference.digest}`}
                 preference={teamNotificationPreference}
                 kind="teamNotification"
+                notice={notices.teamNotification}
+                onNotice={(message) =>
+                  updateNotice("teamNotification", message)
+                }
               />
             )}
           </CardContent>
@@ -238,6 +267,8 @@ export function CanonicalMentionPreference() {
                 key={`${commentPreference.source}:${commentPreference.enabled}:${commentPreference.digest}`}
                 preference={commentPreference}
                 kind="comment"
+                notice={notices.comment}
+                onNotice={(message) => updateNotice("comment", message)}
               />
             )}
           </CardContent>
@@ -249,22 +280,18 @@ export function CanonicalMentionPreference() {
 function MentionEmailForm({
   preference,
   kind,
+  notice,
+  onNotice,
 }: {
   preference: Preference;
-  kind: "mention" | "comment" | "teamNotification";
+  kind: PreferenceKind;
+  notice: string | null;
+  onNotice: (message: string | null) => void;
 }) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
   const [enabled, setEnabled] = useState(preference.enabled);
   const [digest, setDigest] = useState(preference.digest);
-  const [notice, setNotice] = useState<string | null>(null);
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
   const savePreference =
     preference.eventKind === "work_item.commented"
       ? saveCommentEmailPreference
@@ -277,6 +304,7 @@ function MentionEmailForm({
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
+        if (mutation.isPending) return;
         mutation.mutate(
           { enabled, digest },
           {
@@ -284,7 +312,7 @@ function MentionEmailForm({
               await queryClient.invalidateQueries({
                 queryKey: ["notification-preferences"],
               });
-              if (mounted.current) setNotice(t(`${kind}.saved`));
+              onNotice(t(`${kind}.saved`));
             },
           },
         );
@@ -297,7 +325,7 @@ function MentionEmailForm({
           disabled={mutation.isPending}
           onCheckedChange={(value) => {
             setEnabled(value);
-            setNotice(null);
+            onNotice(null);
           }}
         />
         <Label htmlFor={`${kind}-email-enabled`}>{t(`${kind}.enabled`)}</Label>
@@ -310,7 +338,7 @@ function MentionEmailForm({
             onValueChange={(value) => {
               if (value === "off" || value === "hourly" || value === "daily") {
                 setDigest(value);
-                setNotice(null);
+                onNotice(null);
               }
             }}
             disabled={mutation.isPending || !enabled}
@@ -344,20 +372,22 @@ function MentionEmailForm({
           {t(`${kind}.saveFailed`)}
         </p>
       )}
-      {notice && (
-        <p role="status" className="text-sm">
-          {notice}
-        </p>
-      )}
-      <Button
+      {notice && <p className="text-sm">{notice}</p>}
+      <SaveButton
         type="submit"
+        pending={mutation.isPending}
+        success={mutation.isSuccess}
+        savedLabel={t("common:actions.saved")}
+        workingLabel={t("common:actions.saving")}
+        announceSuccess={false}
         disabled={
-          mutation.isPending ||
-          (enabled === preference.enabled && digest === preference.digest)
+          !mutation.isPending &&
+          enabled === preference.enabled &&
+          digest === preference.digest
         }
       >
         {t(`${kind}.save`)}
-      </Button>
+      </SaveButton>
     </form>
   );
 }

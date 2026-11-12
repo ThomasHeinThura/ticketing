@@ -14,9 +14,15 @@ const mocks = vi.hoisted(() => ({
   search: {} as { q?: string; library?: string; id?: string },
   navigate: vi.fn(),
   editorPlaceholder: undefined as string | undefined,
+  canManage: true,
+  checking: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     fullPath: "/dashboard/settings/workspace/work-item-templates",
@@ -32,11 +38,14 @@ vi.mock("@/fetchers/work-item-template/work-item-templates", () => ({
   saveChecklistTemplate: vi.fn(),
   saveWorkItemTemplate: vi.fn(),
 }));
+vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
+  default: () => ({ data: { id: "workspace-1" } }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     workspace: { id: "workspace-1" },
-    canManageWorkspaceSettings: () => true,
-    isCheckingPermissions: false,
+    canManageWorkspaceSettings: () => mocks.canManage,
+    isCheckingPermissions: mocks.checking,
   }),
 }));
 vi.mock("@/hooks/queries/label/use-get-labels-by-workspace", () => ({
@@ -72,6 +81,8 @@ function renderPage() {
 
 describe("templates and checklists switch", () => {
   beforeEach(() => {
+    mocks.canManage = true;
+    mocks.checking = false;
     mocks.search = { q: "abc" };
     mocks.navigate.mockReset();
   });

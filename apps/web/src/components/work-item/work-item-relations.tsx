@@ -131,22 +131,32 @@ export default function WorkItemRelations({
   );
   const create = useMutation({
     mutationKey: ["relation-create", itemKey],
-    mutationFn: (targetKey: string) =>
+    mutationFn: ({
+      targetKey,
+    }: {
+      targetKey: string;
+      targetProjectId: string;
+    }) =>
       createWorkItemRelation({
         sourceKey: itemKey,
         targetKey,
         type: relationType,
       }),
-    onSuccess: async (_result, targetKey) => {
-      await Promise.all(
-        [itemKey, targetKey].flatMap((key) => [
+    onSuccess: async (_result, { targetKey, targetProjectId }) => {
+      await Promise.all([
+        ...[projectId, targetProjectId]
+          .filter((id, index, all) => all.indexOf(id) === index)
+          .map((id) =>
+            cache.invalidateQueries({ queryKey: ["work-items", id] }),
+          ),
+        ...[itemKey, targetKey].flatMap((key) => [
           cache.invalidateQueries({
             queryKey: ["work-items", "relations", workspaceId, key],
           }),
           // `RH-17`: the detail's blocked badge reads `blockedByOpenCount`.
           cache.invalidateQueries({ queryKey: ["work-items", "detail", key] }),
         ]),
-      );
+      ]);
       if (activeScope.current === scope)
         update({ ...state, picker: undefined, query: undefined });
     },
@@ -386,7 +396,12 @@ export default function WorkItemRelations({
                         key={item.id}
                         value={`${item.key} ${item.title}`}
                         disabled={create.isPending}
-                        onClick={() => create.mutate(item.key)}
+                        onClick={() =>
+                          create.mutate({
+                            targetKey: item.key,
+                            targetProjectId: item.projectId,
+                          })
+                        }
                         className="flex items-center gap-3 py-2"
                       >
                         <span className="text-xs text-muted-foreground shrink-0 font-mono">

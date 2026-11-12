@@ -95,16 +95,18 @@ export function WeeklyCoverCard({
                   </p>
                 )}
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onAdd(key)}
-                aria-label={t("weekly.addOn", { day: t(`weekdays.${key}`) })}
-              >
-                <Plus aria-hidden="true" />
-                {t("weekly.add")}
-              </Button>
+              {!disabled ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onAdd(key)}
+                  aria-label={t("weekly.addOn", { day: t(`weekdays.${key}`) })}
+                >
+                  <Plus aria-hidden="true" />
+                  {t("weekly.add")}
+                </Button>
+              ) : null}
             </section>
           ))}
         </DndContext>

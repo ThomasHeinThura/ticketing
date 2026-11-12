@@ -9,6 +9,12 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Dialog,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogTitle,
   Menu,
   MenuItem,
   MenuPopup,
@@ -24,12 +30,15 @@ import {
   CopyIcon,
   EllipsisIcon,
   MailIcon,
+  RefreshCwIcon,
   ShieldIcon,
   TrashIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
+import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
+import inviteWorkspaceMember from "@/fetchers/workspace/invite-workspace-member";
 import useCancelInvitation from "@/hooks/mutations/workspace-user/use-cancel-invitation";
 import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-workspace-user";
 import useUpdateWorkspaceUserRole from "@/hooks/mutations/workspace-user/use-update-workspace-user-role";
@@ -41,6 +50,7 @@ import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { toast } from "@/lib/toast";
+import queryClient from "@/query-client";
 import type {
   WorkspaceUser,
   WorkspaceUserInvitation,
@@ -91,6 +101,13 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   const [memberToDelete, setMemberToDelete] = useState<WorkspaceUser | null>(
     null,
   );
+  const [resentInvitation, setResentInvitation] = useState<{
+    id: string;
+    email: string;
+    expiresAt: string;
+    delivered: boolean;
+  } | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const { user: currentUser } = useAuth();
   const { mutateAsync: deleteWorkspaceUser, isPending: isDeleting } =
@@ -99,7 +116,8 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     useCancelInvitation();
   const openPendingAction = useOpenPendingAction();
   const { mutateAsync: updateMemberRole } = useUpdateWorkspaceUserRole();
-  const { copy: copyInvitationLink } = useCopyInvitationLink();
+  const { copy: copyInvitationLink, copied: copiedFromMenu } =
+    useCopyInvitationLink(workspaceId);
   const { data: allWorkspaceRoles = [] } = useWorkspaceRoles(workspaceId);
   const { canManageTeam, canRemoveMembers, canInviteUsers } =
     useWorkspacePermission();
@@ -195,6 +213,76 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
           ? error.message
           : t("team:membersTable.cancelInviteError"),
       );
+    }
+  };
+
+  const handleResendInvitation = async (
+    invitationToResend: WorkspaceUserInvitation,
+  ) => {
+    const resendRole =
+      typeof invitationToResend.role === "string"
+        ? invitationToResend.role.trim()
+        : "";
+    const isBuiltInStaffRole =
+      resendRole === "admin" ||
+      resendRole === "manager" ||
+      resendRole === "lead" ||
+      resendRole === "member" ||
+      resendRole === "viewer";
+    const roleInvalid =
+      !resendRole ||
+      resendRole === "owner" ||
+      resendRole === "customer" ||
+      (!isBuiltInStaffRole &&
+        allWorkspaceRoles.length > 0 &&
+        !allWorkspaceRoles.some((r) => r.role === resendRole));
+    if (roleInvalid) {
+      toast.error(t("team:membersTable.resendInvalidRole"));
+      return;
+    }
+
+    setResendingId(invitationToResend.id);
+    try {
+      const resent = await inviteWorkspaceMember({
+        workspaceId,
+        email: invitationToResend.email,
+        role: resendRole,
+        resend: true,
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["workspace-invites", workspaceId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["workspace", "full", workspaceId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["workspace-users", workspaceId],
+        }),
+      ]);
+      if (resent?.delivered !== false) {
+        toast.success(t("team:membersTable.resendSuccess"));
+      }
+      if (resent?.id) {
+        setResentInvitation({
+          id: resent.id,
+          email: invitationToResend.email,
+          expiresAt:
+            typeof resent.expiresAt === "string" ? resent.expiresAt : "",
+          delivered: Boolean(resent.delivered),
+        });
+      }
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /has no role named|owner role cannot be granted/i.test(error.message)
+      ) {
+        toast.error(t("team:membersTable.resendInvalidRole"));
+      } else {
+        toast.error(t("team:membersTable.resendError"));
+      }
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -463,11 +551,22 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         <EllipsisIcon className="size-4" />
                       </MenuTrigger>
                       <MenuPopup align="end">
+                        {!isExpired ? (
+                          <MenuItem
+                            onClick={() => copyInvitationLink(invitation.id)}
+                          >
+                            <CopyIcon className="size-4" />
+                            {t("team:invitations.copyLink")}
+                          </MenuItem>
+                        ) : null}
                         <MenuItem
-                          onClick={() => copyInvitationLink(invitation.id)}
+                          onClick={() =>
+                            void handleResendInvitation(invitation)
+                          }
+                          disabled={resendingId === invitation.id}
                         >
-                          <CopyIcon className="size-4" />
-                          {t("team:invitations.copyLink")}
+                          <RefreshCwIcon className="size-4" />
+                          {t("team:membersTable.resendInvitation")}
                         </MenuItem>
                         <MenuItem
                           onClick={() =>
@@ -502,6 +601,47 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
           ) : null}
         </TableBody>
       </Table>
+
+      <output aria-live="polite" className="sr-only">
+        {copiedFromMenu ? t("team:invitations.linkCopied") : ""}
+      </output>
+
+      <Dialog
+        open={resentInvitation !== null}
+        onOpenChange={(open) => {
+          if (!open) setResentInvitation(null);
+        }}
+      >
+        <DialogPopup
+          className="w-full max-w-md"
+          closeLabel={t("common:actions.close")}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {t("team:membersTable.resendDialogTitle")}
+            </DialogTitle>
+          </DialogHeader>
+          {resentInvitation ? (
+            <>
+              <DialogPanel className="space-y-3">
+                <InvitationResultCard
+                  kind="staff"
+                  invitationId={resentInvitation.id}
+                  workspaceId={workspaceId}
+                  email={resentInvitation.email}
+                  delivered={resentInvitation.delivered}
+                  expiresAt={resentInvitation.expiresAt}
+                />
+              </DialogPanel>
+              <DialogFooter>
+                <Button size="sm" onClick={() => setResentInvitation(null)}>
+                  {t("team:inviteModal.done")}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogPopup>
+      </Dialog>
 
       <AlertDialog
         open={!!memberToDelete}

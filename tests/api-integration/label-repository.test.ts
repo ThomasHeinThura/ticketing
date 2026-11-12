@@ -22,6 +22,7 @@ import { resolveRequestIdentity } from "../../apps/api/src/permissions/resolve-r
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
   requireRow,
@@ -61,9 +62,13 @@ async function seedTask(userId: string, projectId: string, number = 1) {
  * repository can be isolated from the controller-level checks that normally sit in front of
  * it (issue #580: the statement itself must keep the predicate).
  */
-async function seedTwoWorkspaces() {
-  const a = await createWorkspaceMember({ role: "admin" });
-  const b = await createWorkspaceMember({ role: "admin" });
+async function seedTwoWorkspaces(projectLimited = false) {
+  const a = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "admin" });
+  const b = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "admin" });
   const { project: projectA } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
@@ -152,7 +157,9 @@ describe("label repository (#580)", () => {
     const { a, b, taskA, taskA2 } = await seedTwoWorkspaces();
     const identityA = await identityFor(a.user.id);
     const identityB = await identityFor(b.user.id);
-    const workspaceOnly = await createWorkspaceMember({ role: "member" });
+    const workspaceOnly = await createWorkspaceMember({
+      role: "member",
+    });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: a.workspace.id,
       userId: workspaceOnly.user.id,
@@ -346,7 +353,7 @@ describe("label repository (#580)", () => {
   });
 
   it("rechecks current project reach in content reads after the resolved identity becomes stale", async () => {
-    const { a, projectA, taskA } = await seedTwoWorkspaces();
+    const { a, projectA, taskA } = await seedTwoWorkspaces(true);
     const identity = await identityFor(a.user.id);
     const definition = must(
       await insertWorkspaceLabelOnConflictDoNothing(db, identity, {
@@ -390,7 +397,7 @@ describe("label repository (#580)", () => {
   });
 
   it("family statements are scoped to one workspace and one name", async () => {
-    const { a, b, taskA, taskA2, taskB } = await seedTwoWorkspaces();
+    const { a, b, taskA, taskA2, taskB } = await seedTwoWorkspaces(true);
     const identityA = await identityFor(a.user.id);
     const identityB = await identityFor(b.user.id);
     const copyA = must(

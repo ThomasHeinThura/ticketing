@@ -35,7 +35,9 @@ import {
   portalProjectKeys,
 } from "@/fetchers/portal/projects";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { type PortalProjectsSearch, routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+import type { PortalProjectsSearch } from "@/lib/portal-route-search";
+
 import { PortalPageTitle } from "../portal-page-title";
 import {
   PortalProjectHealthBadge,

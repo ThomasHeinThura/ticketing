@@ -221,7 +221,9 @@ describe("God Mode Users action context", () => {
         ["minute", "42"],
       ]) {
         fireEvent.click(
-          screen.getByRole("combobox", { name: `customFields:value.${part}` }),
+          screen.getByRole("combobox", {
+            name: `workItems:customFieldValue.${part}`,
+          }),
         );
         const option = screen.getByRole("option", { name: value });
         fireEvent.pointerDown(option, { pointerType: "mouse", button: 0 });

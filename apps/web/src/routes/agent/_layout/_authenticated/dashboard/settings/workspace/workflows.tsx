@@ -21,6 +21,8 @@ import {
   Input,
   Label,
   LoadingStatus,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Skeleton,
   Table,
   TableBody,
@@ -30,10 +32,18 @@ import {
   TableRow,
   useDelayedPending,
 } from "@taskdesk/ui";
+
 import { ChevronLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessChecking,
+  SettingsAccessError,
+  useCapabilityCheckFailed,
+} from "@/components/settings/settings-access";
 import { CabTemplatePanel } from "@/components/workflow/cab-template-panel";
 import {
   type NamedOption,
@@ -83,7 +93,6 @@ const STATUS_VARIANT = {
 } as const;
 
 function WorkflowSettingsRoute() {
-  const { t } = useTranslation();
   const navigate = useNavigate({ from: Route.fullPath });
   const { workflowId } = Route.useSearch();
   const { data: workspace } = useActiveWorkspace();
@@ -91,9 +100,12 @@ function WorkflowSettingsRoute() {
   // State templates are workspace-wide; any project can list them for their names.
   const templates = useGetProjectStateTemplates(projects.data?.[0]?.id);
   const roles = useWorkspaceRoles(workspace?.id);
-  const { canManageWorkspaceSettings, isCheckingPermissions } =
+  const { canManageWorkflows, isCheckingPermissions } =
     useWorkspacePermission();
-  const canManage = canManageWorkspaceSettings() && !isCheckingPermissions;
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    isCheckingPermissions ? workspace?.id : undefined,
+  );
+  const canManage = canManageWorkflows() && !isCheckingPermissions;
   const states: NamedOption[] = (templates.data ?? []).map((template) => ({
     id: template.id,
     name: template.name,
@@ -105,39 +117,42 @@ function WorkflowSettingsRoute() {
     id: role.id,
     name: role.role,
   }));
+  if (isCheckingPermissions)
+    return capabilityCheckFailed ? (
+      <SettingsAccessError />
+    ) : (
+      <SettingsAccessChecking />
+    );
   return (
-    <>
-      <PageTitle title={t("settings:workflows.title")} />
-      <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
-        {workflowId ? (
-          <WorkflowDetailView
-            workflowId={workflowId}
-            canManage={canManage}
-            states={states}
-            roles={roleOptions}
-            projects={projectOptions}
-            onBack={() =>
-              void navigate({
-                to: routes.workflowSettings.path,
-                search: { workflowId: undefined },
-              })
-            }
-          />
-        ) : (
-          <WorkflowListView
-            workspaceId={workspace?.id}
-            canManage={canManage}
-            projects={projectOptions}
-            onOpen={(id) =>
-              void navigate({
-                to: routes.workflowSettings.path,
-                search: { workflowId: id },
-              })
-            }
-          />
-        )}
-      </div>
-    </>
+    <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+      {workflowId ? (
+        <WorkflowDetailView
+          workflowId={workflowId}
+          canManage={canManage}
+          states={states}
+          roles={roleOptions}
+          projects={projectOptions}
+          onBack={() =>
+            void navigate({
+              to: routes.workflowSettings.path,
+              search: { workflowId: undefined },
+            })
+          }
+        />
+      ) : (
+        <WorkflowListView
+          workspaceId={workspace?.id}
+          canManage={canManage}
+          projects={projectOptions}
+          onOpen={(id) =>
+            void navigate({
+              to: routes.workflowSettings.path,
+              search: { workflowId: id },
+            })
+          }
+        />
+      )}
+    </div>
   );
 }
 
@@ -163,8 +178,10 @@ function WorkflowListView({
       Boolean(workspaceId) && list.isSuccess && list.data.length === 0,
   });
   const [creating, setCreating] = useState(false);
+  if (isForbiddenError(list.error)) return <NoAccessPage />;
   return (
     <>
+      <PageTitle title={t("settings:workflows.title")} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="font-semibold text-2xl">
@@ -308,6 +325,7 @@ function CreateWorkflowDialog({
       await cache.invalidateQueries({ queryKey: ["workflows"] });
       setKey("");
       setName("");
+      toast.success(t("common:actions.saved"));
       onOpenChange(false);
       onCreated(workflow.id);
     },
@@ -369,12 +387,17 @@ function CreateWorkflowDialog({
           >
             {t("common:actions.cancel")}
           </Button>
-          <Button
-            disabled={!key.trim() || !name.trim() || create.isPending}
+          <SaveButton
+            disabled={(!key.trim() || !name.trim()) && !create.isPending}
+            pending={create.isPending}
+            success={false}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => create.mutate()}
           >
             {t("settings:workflows.create.submit")}
-          </Button>
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -407,6 +430,12 @@ function WorkflowDetailView({
     null,
   );
   const [adding, setAdding] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  useEffect(() => {
+    if (!draftSaved) return;
+    const timer = setTimeout(() => setDraftSaved(false), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [draftSaved]);
   const [validating, setValidating] = useState<{
     number: number;
     report: WorkflowValidation | undefined;
@@ -449,6 +478,7 @@ function WorkflowDetailView({
     onSuccess: async (version) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
       setWorking(null);
+      setDraftSaved(true);
       toast.success(
         t("settings:workflows.draftSaved", { number: version.number }),
       );
@@ -469,9 +499,11 @@ function WorkflowDetailView({
   const failed = [detail, saveDraft, validate, publish].find(
     (operation) => operation.isError,
   );
+  if (isForbiddenError(detail.error)) return <NoAccessPage />;
 
   return (
     <>
+      <PageTitle title={t("settings:workflows.title")} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <Button variant="ghost" size="xs" onClick={onBack}>
@@ -603,24 +635,38 @@ function WorkflowDetailView({
               </div>
               {canManage ? (
                 <div className="flex items-center gap-2">
-                  {working ? (
+                  {working || draftSaved ? (
                     <>
-                      <Badge variant="warning">
-                        {t("settings:workflows.transitions.unsaved")}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        disabled={saveDraft.isPending}
-                        onClick={() => setWorking(null)}
-                      >
-                        {t("settings:workflows.transitions.discard")}
-                      </Button>
-                      <Button
-                        disabled={saveDraft.isPending}
-                        onClick={() => saveDraft.mutate()}
+                      {working && (
+                        <Badge variant="warning">
+                          {t("settings:workflows.transitions.unsaved")}
+                        </Badge>
+                      )}
+                      {working && (
+                        <Button
+                          variant="outline"
+                          disabled={saveDraft.isPending}
+                          onClick={() => setWorking(null)}
+                        >
+                          {t("settings:workflows.transitions.discard")}
+                        </Button>
+                      )}
+                      <SaveButton
+                        disabled={!working && !saveDraft.isPending}
+                        pending={saveDraft.isPending}
+                        success={draftSaved}
+                        savedLabel={t("common:actions.saved")}
+                        workingLabel={t("common:actions.saving")}
+                        announceSuccess={false}
+                        onClick={() => {
+                          if (working) {
+                            setDraftSaved(false);
+                            saveDraft.mutate();
+                          }
+                        }}
                       >
                         {t("settings:workflows.transitions.saveDraft")}
-                      </Button>
+                      </SaveButton>
                     </>
                   ) : null}
                   <Button variant="outline" onClick={() => setAdding(true)}>

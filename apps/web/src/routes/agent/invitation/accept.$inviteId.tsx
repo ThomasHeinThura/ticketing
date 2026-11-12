@@ -77,10 +77,7 @@ function AcceptInvitation() {
         return;
       }
 
-      navigate({
-        to: "/dashboard/workspace/$workspaceId",
-        params: { workspaceId: data.invitation.workspaceId },
-      });
+      navigate({ to: "/agent" });
     } catch (error) {
       toast.error(
         error instanceof Error

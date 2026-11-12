@@ -19,6 +19,7 @@ import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerSelect } from "@/components/automation/picker-select";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   ESTIMATE_SYSTEMS,
   EstimateConfirmationError,
@@ -55,7 +56,9 @@ export function EstimateSettings({
     queryKey: ["agile", "estimate-settings", projectKey],
     queryFn: () => getEstimates(projectKey),
     retry: (count, error) =>
-      !(error instanceof FeatureDisabledError) && count < 2,
+      !(error instanceof FeatureDisabledError) &&
+      !isForbiddenError(error) &&
+      count < 2,
   });
   const [system, setSystem] = useState<EstimateSystem>("points");
   const [points, setPoints] = useState<DraftPoint[]>([]);
@@ -159,6 +162,45 @@ export function EstimateSettings({
         <AlertDescription>{t("estimates.loadFailed")}</AlertDescription>
       </Alert>
     );
+
+  if (!canManage) {
+    const current = estimate.system ?? "points";
+    const values = estimate.system
+      ? estimate.points.map((point) => point.value)
+      : estimate.defaults.points;
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("estimates.title")}</CardTitle>
+            <CardDescription>{t("estimates.description")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <dl>
+              <dt>{t("estimates.system")}</dt>
+              <dd>{t(`systems.${current}`)}</dd>
+              <dt>{t("estimates.scale")}</dt>
+              <dd>{values.join(", ")}</dd>
+            </dl>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("estimates.policy.title")}</CardTitle>
+            <CardDescription>
+              {t("estimates.policy.description")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>{t(`complete.policy.${estimate.incompletePolicy}.label`)}</p>
+            <p>
+              {t(`complete.policy.${estimate.incompletePolicy}.description`)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const disabled = !canManage || dryRun.isPending || apply.isPending;
   const changeSystem = (next: EstimateSystem) => {

@@ -38,8 +38,12 @@ describe("WorkItemSla", () => {
       },
     };
     render(<WorkItemSla workItemKey="HELP-7" />);
-    expect(screen.getByText("workItems:detail.sla.state.met")).toBeTruthy();
-    expect(screen.getByText("workItems:detail.sla.state.at_risk")).toBeTruthy();
+    expect(
+      screen.getByText("workItemExtras:detail.sla.state.met"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("workItemExtras:detail.sla.state.at_risk"),
+    ).toBeTruthy();
   });
 
   it("marks an at-risk bar and shows the due instant with its timezone", () => {
@@ -146,7 +150,7 @@ describe("WorkItemSla", () => {
     };
     render(<WorkItemSla workItemKey="HELP-7" />);
     expect(screen.getByTestId("work-item-sla-calendar").textContent).toBe(
-      "workItems:detail.sla.calendar",
+      "workItemExtras:detail.sla.calendar",
     );
     const markers = screen.getAllByTestId("work-item-sla-threshold-marker");
     expect(markers).toHaveLength(2);
@@ -202,6 +206,8 @@ describe("WorkItemSla", () => {
   it("says when no SLA data is available", () => {
     mocks.query = { isLoading: false, isError: true, data: undefined };
     render(<WorkItemSla workItemKey="HELP-7" />);
-    expect(screen.getByText("workItems:detail.sla.unavailable")).toBeTruthy();
+    expect(
+      screen.getByText("workItemExtras:detail.sla.unavailable"),
+    ).toBeTruthy();
   });
 });

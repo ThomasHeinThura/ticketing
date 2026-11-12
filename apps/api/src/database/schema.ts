@@ -412,14 +412,17 @@ export const invitationTable = pgTable(
     inviterId: text("inviter_id")
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
-    // CP-20..CP-26 (0153): `staff` (every pre-existing row) or `customer`. A customer row names one
-    // customer organisation and the `customer` role and carries a hash-only accept credential.
+    // CP-20..CP-26 (0153, 0221): `staff` (every pre-existing row) or `customer`. A customer row names one
+    // customer organisation and the `customer` role and carries a hash-only accept credential derived from
+    // `id` + `generation` under a dedicated HKDF sub-key (D-N); resending increments `generation`.
     scope: text("scope").default("staff").notNull(),
     organisationId: text("organisation_id").references(
       () => organisationTable.id,
       { onDelete: "cascade", onUpdate: "cascade" },
     ),
     credentialHash: text("credential_hash"),
+    validatedProjectIds: jsonb("validated_project_ids").$type<string[]>(),
+    generation: integer("generation").default(1).notNull(),
     lastSentAt: timestamp("last_sent_at", { mode: "date", withTimezone: true }),
     acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
     acceptedPersonId: text("accepted_person_id").references(
@@ -435,6 +438,7 @@ export const invitationTable = pgTable(
       "invitation_scope_allowed",
       sql.raw("scope IN ('staff', 'customer')"),
     ),
+    check("invitation_generation_positive", sql.raw("generation >= 1")),
     check(
       "invitation_scope_shape",
       sql.raw(
@@ -1274,6 +1278,9 @@ export const instanceSettingTable = pgTable(
   "instance_setting",
   {
     id: text("id").primaryKey().default("singleton"),
+    staffSelfRegistrationEnabled: boolean("staff_self_registration_enabled")
+      .notNull()
+      .default(false),
     // Durable first-run marker (auth-and-identity.md § Break-glass). Non-null means
     // the instance has been claimed: the zero-user bootstrap bypass in auth.ts and
     // the TASKDESK_BOOTSTRAP_ADMIN_EMAIL headless path are both permanently inert
@@ -4616,8 +4623,8 @@ export const workItemTable = pgTable(
     //   update would otherwise re-run the full locking walk for a write that never
     //   touches `parent_id`.
     parentId: text("parent_id"),
-    // `service` (data-model.md §7) is P5/later scope and does not exist yet -- plain
-    // nullable column, NO foreign key constraint, until it lands.
+    // work_item_workspace_service_fk is DEFERRABLE INITIALLY DEFERRED via migration 0223
+    // so workspace cascades do not depend on FK trigger order (FK added in 0151).
     serviceId: text("service_id"),
     startDate: timestamp("start_date", { mode: "date" }),
     dueDate: timestamp("due_date", { mode: "date" }),
@@ -4625,11 +4632,13 @@ export const workItemTable = pgTable(
     position: numeric("position", { precision: 20, scale: 10 })
       .notNull()
       .default("0"),
-    // `estimate_point`, `cycle`, `module` (data-model.md §8/§9) are P5/later scope and do
-    // not exist yet -- plain nullable columns, NO foreign key constraint, until they
-    // land.
+    // estimate_point remains a nullable identifier; cycle/module FKs are migration-managed.
     estimatePointId: text("estimate_point_id"),
+    // work_item_project_cycle_fk is DEFERRABLE INITIALLY DEFERRED via migration 0223
+    // so workspace cascades do not depend on FK trigger order (FK added in 0148).
     cycleId: text("cycle_id"),
+    // work_item_project_module_fk is DEFERRABLE INITIALLY DEFERRED via migration 0223
+    // so workspace cascades do not depend on FK trigger order (FK added in 0148).
     moduleId: text("module_id"),
     slaStartedAt: timestamp("sla_started_at", { mode: "date" }),
     slaPolicyVersionId: text("sla_policy_version_id"),
@@ -7431,5 +7440,74 @@ export const customerInvitationAuthContinuationTable = pgTable(
       "customer_invitation_auth_nonce_sha256",
       sql.raw("nonce_hash ~ '^[a-f0-9]{64}$'"),
     ),
+  ],
+);
+
+/**
+ * D-D (Thomas, 12 Nov 2026): explicit per-person customer reach to an engagement. A customer's
+ * authority remains their single organisation-scope `customer` role; reach requires both the
+ * project's `organisation_id` matching the customer's organisation and a row here.
+ */
+export const customerProjectAccessTable = pgTable(
+  "customer_project_access",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    grantedBy: text("granted_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "customer_project_access_pkey",
+      columns: [table.personId, table.projectId],
+    }),
+    index("customer_project_access_project_idx").on(table.projectId),
+  ],
+);
+
+/**
+ * D-D / CP-21 / CP-24: projects selected by the inviter on a customer-scope invitation, granted in
+ * `customer_project_access` inside the acceptance transaction.
+ */
+export const customerInvitationProjectTable = pgTable(
+  "customer_invitation_project",
+  {
+    invitationId: text("invitation_id")
+      .notNull()
+      .references(() => invitationTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "customer_invitation_project_pkey",
+      columns: [table.invitationId, table.projectId],
+    }),
+    index("customer_invitation_project_project_idx").on(table.projectId),
   ],
 );

@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  SaveButton,
   ScrollArea,
   Select,
   SelectContent,
@@ -24,6 +25,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import {
   FailureAlert,
   StepUpFields,
@@ -33,9 +35,11 @@ import {
   READ_CAPABILITIES,
   WRITE_CAPABILITY_GROUPS,
 } from "@/components/settings/create-api-key-dialog";
-import { describeCapability } from "@/components/settings/roles/capability-model";
+import { translatedCapabilityDescription } from "@/components/settings/roles/capability-model";
 import { createServiceKey } from "@/fetchers/service-keys";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { localizedAdminErrorMessage } from "@/lib/http-error";
+import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
 export const serviceKeysKey = (workspaceId: string) =>
@@ -102,6 +106,7 @@ export function CreateServiceKeyDialog({
       await queryClient.invalidateQueries({
         queryKey: serviceKeysKey(workspaceId),
       });
+      toast.success(t("common:actions.saved"));
       onCreated(created);
       onClose();
     },
@@ -225,7 +230,7 @@ export function CreateServiceKeyDialog({
                           >
                             <div className="min-w-0 flex-1 space-y-0.5">
                               <Label className="text-sm font-medium">
-                                {describeCapability(capability)}
+                                {translatedCapabilityDescription(capability, t)}
                               </Label>
                               <p className="text-xs text-muted-foreground">
                                 {capability}
@@ -250,7 +255,14 @@ export function CreateServiceKeyDialog({
             />
             {mutation.error && mutation.error.cause !== "step_up" ? (
               <Alert variant="error">
-                <AlertDescription>{mutation.error.message}</AlertDescription>
+                <AlertDescription>
+                  {localizedAdminErrorMessage(
+                    mutation.error,
+                    t,
+                    t("settings:serviceKeys.create.failed"),
+                  )}
+                  <ErrorReference error={mutation.error} />
+                </AlertDescription>
               </Alert>
             ) : null}
           </div>
@@ -263,14 +275,17 @@ export function CreateServiceKeyDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button
+            <SaveButton
               type="submit"
-              disabled={mutation.isPending || !nameValid || !stepUp.canRun}
+              disabled={!mutation.isPending && (!nameValid || !stepUp.canRun)}
+              pending={mutation.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
-              {mutation.isPending
-                ? t("settings:serviceKeys.create.creating")
-                : t("settings:serviceKeys.create.submit")}
-            </Button>
+              {t("settings:serviceKeys.create.submit")}
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>

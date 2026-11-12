@@ -12,9 +12,14 @@ const mocks = vi.hoisted(() => ({
   canManageWorkspaceSettings: false,
   checking: false,
   panel: vi.fn(),
+  getFeatures: vi.fn(async () => []),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   createFileRoute: () => (options: Record<string, unknown>) => options,
 }));
 vi.mock("react-i18next", () => ({
@@ -29,6 +34,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     isCheckingPermissions: mocks.checking,
   }),
 }));
+vi.mock("@/fetchers/feature-flags", () => ({ getFeatures: mocks.getFeatures }));
 vi.mock("@/components/settings/feature-flags-panel", () => ({
   FeatureFlagsPanel: (props: Record<string, unknown>) => {
     mocks.panel(props);
@@ -52,6 +58,7 @@ function renderPage() {
 afterEach(() => {
   cleanup();
   mocks.panel.mockReset();
+  mocks.getFeatures.mockReset().mockResolvedValue([]);
   mocks.canManageWorkspaceSettings = false;
   mocks.checking = false;
 });
@@ -73,6 +80,20 @@ describe("workspace features settings", () => {
       }),
     ).toBeTruthy();
     expect(mocks.panel).not.toHaveBeenCalled();
+  });
+
+  it("shows no access for a forbidden feature read", async () => {
+    mocks.canManageWorkspaceSettings = true;
+    mocks.getFeatures.mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { status: 403 }),
+    );
+    renderPage();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
+    ).toHaveFocus();
   });
 
   it("renders the workspace panel for a caller who can manage settings", () => {

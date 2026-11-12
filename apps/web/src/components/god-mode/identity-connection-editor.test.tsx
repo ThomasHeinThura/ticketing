@@ -25,12 +25,13 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("react-i18next", async () => {
+vi.mock("react-i18next", async (importOriginal) => {
   const { translate } = await import("@/test/en-translation");
   return {
+    ...(await importOriginal<typeof import("react-i18next")>()),
     useTranslation: (namespace: string) => ({
       t: (key: string, options?: Record<string, unknown>) =>
-        translate(`${namespace}:${key}`, options),
+        translate(key.includes(":") ? key : `${namespace}:${key}`, options),
       i18n: { language: "en-US" },
     }),
   };
@@ -110,6 +111,18 @@ describe("IdentityConnectionEditor (edit)", () => {
     expect(screen.queryByLabelText("Password")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await screen.findByText("Identity connection saved");
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("Identity connection saved");
+    expect(
+      screen
+        .queryAllByRole("alert")
+        .some((node) =>
+          node.textContent?.includes("Identity connection saved"),
+        ),
+    ).toBe(false);
     expect(mocks.prove).toHaveBeenCalledWith(
       {
         operation: "identity_connection_configure",

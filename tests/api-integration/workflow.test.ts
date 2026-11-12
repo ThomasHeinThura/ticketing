@@ -20,6 +20,7 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
   requireRow,
@@ -108,7 +109,9 @@ describe("API integration: workflow persistence", () => {
   });
 
   it("rejects creation from a role without workflow:manage", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createWorkspaceMember({
+      role: "member",
+    });
     mockAuthenticatedSession(member.user);
 
     const response = await createWorkflow({
@@ -121,7 +124,9 @@ describe("API integration: workflow persistence", () => {
   });
 
   it("a member (workflow:read) can list workflows but not create one", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createWorkspaceMember({
+      role: "member",
+    });
     mockAuthenticatedSession(member.user);
 
     const response = await listWorkflows(member.workspace.id);
@@ -135,7 +140,9 @@ describe("API integration: workflow persistence", () => {
   ])(
     "refuses legacy workspace reach after a duplicate $shape membership is added",
     async ({ initialRole, duplicateRole }) => {
-      const member = await createWorkspaceMember({ role: initialRole });
+      const member = await createWorkspaceMember({
+        role: initialRole,
+      });
       const workflow = await insertWorkflow({
         workspaceId: member.workspace.id,
         key: `duplicate-membership-${randomUUID()}`,
@@ -325,7 +332,7 @@ describe("API integration: workflow persistence", () => {
   });
 
   it("returns generic refusal and leaves publication untouched when any empty archived workspace project is unreachable", async () => {
-    const admin = await createWorkspaceMember({ role: "admin" });
+    const admin = await createProjectLimitedWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(admin.user);
     const { backlog, done } = await seedStateTemplates(admin.workspace.id);
     const workflowResponse = await createWorkflow({
@@ -473,7 +480,7 @@ describe("API integration: workflow persistence", () => {
   });
 
   it("does not count a malformed cross-scope role row as WF-9 project reach", async () => {
-    const admin = await createWorkspaceMember({ role: "admin" });
+    const admin = await createProjectLimitedWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(admin.user);
     const { backlog, done } = await seedStateTemplates(admin.workspace.id);
     const workflowResponse = await createWorkflow({
@@ -526,7 +533,7 @@ describe("API integration: workflow persistence", () => {
   });
 
   it("retries the full serializable WF-9 publication after a project-insert SSI cycle", async () => {
-    const admin = await createWorkspaceMember({ role: "admin" });
+    const admin = await createProjectLimitedWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(admin.user);
     const { backlog, done } = await seedStateTemplates(admin.workspace.id);
     const workflowResponse = await createWorkflow({

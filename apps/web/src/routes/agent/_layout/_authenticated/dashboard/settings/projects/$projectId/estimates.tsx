@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Alert,
@@ -8,7 +9,10 @@ import {
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { EstimateSettings } from "@/components/agile/estimate-settings";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
+import { getEstimates } from "@/fetchers/agile";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
@@ -33,6 +37,12 @@ function RouteComponent() {
     workspaceId: workspace?.id ?? "",
   });
   const project = projects?.find((candidate) => candidate.id === projectId);
+  const estimates = useQuery({
+    queryKey: ["agile", "estimate-settings", project?.slug ?? ""],
+    queryFn: () => getEstimates(project?.slug ?? ""),
+    enabled: Boolean(project && !isCheckingPermissions),
+    retry: false,
+  });
   const pending = !workspace || isCheckingPermissions || isLoading;
   const placeholderVisible = useDelayedPending(pending);
   if (pending || (placeholderVisible && project))
@@ -57,6 +67,7 @@ function RouteComponent() {
         </Alert>
       </div>
     );
+  if (isForbiddenError(estimates.error)) return <NoAccessPage />;
   return (
     <div className="max-w-4xl mx-auto">
       <PageTitle title={t("estimates.pageTitle")} />

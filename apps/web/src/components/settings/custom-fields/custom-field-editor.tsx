@@ -13,6 +13,8 @@ import {
   CardTitle,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -29,10 +31,16 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { CustomFieldValueInput } from "@/components/custom-field/custom-field-value-input";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import {
   type CustomField,
   type CustomFieldInput,
@@ -118,6 +126,9 @@ function EditorForm({
   others,
   types,
   canManage,
+  completed,
+  onStart,
+  onSaved,
 }: {
   field: CustomField | undefined;
   isNew: boolean;
@@ -126,6 +137,9 @@ function EditorForm({
   others: CustomField[];
   types: { id: string; name: string }[];
   canManage: boolean;
+  completed: boolean;
+  onStart: () => void;
+  onSaved: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -134,6 +148,12 @@ function EditorForm({
   const [draft, setDraft] = useState(() =>
     draftFrom(field, sections[0]?.id ?? ""),
   );
+  const previousVersion = useRef(field?.updatedAt);
+  useEffect(() => {
+    if (previousVersion.current === field?.updatedAt) return;
+    previousVersion.current = field?.updatedAt;
+    setDraft(draftFrom(field, sections[0]?.id ?? ""));
+  }, [field, sections]);
   const patch = (next: Partial<Draft>) =>
     setDraft((current) => ({ ...current, ...next }));
   const effectiveOptions = hasOptions(draft.format)
@@ -188,6 +208,7 @@ function EditorForm({
     },
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ["custom-fields"] });
+      if (!isNew) onSaved();
       toast.success(t("customFields:editor.saved"));
       if (isNew)
         void navigate({
@@ -224,7 +245,10 @@ function EditorForm({
       className="space-y-6"
       onSubmit={(event) => {
         event.preventDefault();
-        if (valid && !disabled) save.mutate();
+        if (valid && !disabled) {
+          onStart();
+          save.mutate();
+        }
       }}
     >
       <Card>
@@ -678,13 +702,19 @@ function EditorForm({
 
       <div className="flex flex-wrap items-center gap-2">
         {canManage ? (
-          <Button type="submit" disabled={disabled || !valid}>
-            {save.isPending
-              ? t("customFields:editor.saving")
-              : isNew
-                ? t("customFields:editor.create")
-                : t("customFields:editor.save")}
-          </Button>
+          <SaveButton
+            type="submit"
+            disabled={!canManage || !valid}
+            pending={save.isPending}
+            success={!isNew && completed}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
+          >
+            {isNew
+              ? t("customFields:editor.create")
+              : t("customFields:editor.save")}
+          </SaveButton>
         ) : null}
         {!isNew && canManage ? (
           <Button
@@ -710,8 +740,31 @@ function EditorForm({
 
 /** `docs/screens.md` "Custom field editor". */
 export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
+  return fieldId === "new" ? (
+    <NewCustomField />
+  ) : (
+    <CustomFieldEditorContent fieldId={fieldId} />
+  );
+}
+
+function NewCustomField() {
+  const access = useSettingsAccess((permission) =>
+    permission.canManageCustomFields(),
+  );
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return <CustomFieldEditorContent fieldId="new" />;
+}
+
+function CustomFieldEditorContent({ fieldId }: { fieldId: string }) {
   const { t } = useTranslation();
   const isNew = fieldId === "new";
+  const [completedId, setCompletedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!completedId) return;
+    const timer = setTimeout(() => setCompletedId(null), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [completedId]);
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
   const fields = useCustomFields(workspaceId);
@@ -733,6 +786,8 @@ export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
     ? t("customFields:editor.newTitle")
     : (field?.name ?? t("customFields:editor.pageTitle"));
 
+  if ([fields.error, sections.error, types.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={title} />
@@ -791,7 +846,10 @@ export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
           </Alert>
         ) : (
           <EditorForm
-            key={field ? `${field.id}:${field.updatedAt}` : "new"}
+            key={field?.id ?? "new"}
+            completed={completedId === fieldId}
+            onStart={() => setCompletedId(null)}
+            onSaved={() => setCompletedId(fieldId)}
             field={field}
             isNew={isNew}
             workspaceId={workspaceId}

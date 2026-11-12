@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectRowPaintAssets,
   findDeferredNamespaceUsers,
   referencedNamespaces,
 } from "../../../vite/i18n-namespace-groups";
@@ -77,4 +78,40 @@ describe("findDeferredNamespaceUsers", () => {
       }),
     ).toEqual([{ file: "/src/components/panel.tsx", namespace: "tasks" }]);
   });
+});
+
+it("rejects deferred labels in the row module one lazy hop beyond the list", () => {
+  const chunks = new Map([
+    [
+      "list.js",
+      {
+        modules: ["/src/components/work-item/work-item-kaneo-list.tsx"],
+        imports: [],
+        dynamicImports: ["inline.js"],
+      },
+    ],
+    [
+      "inline.js",
+      {
+        modules: ["/src/components/work-item/work-item-inline-fields.tsx"],
+        imports: ["helpers.js"],
+        dynamicImports: [],
+      },
+    ],
+    ["helpers.js", { modules: [], imports: [], dynamicImports: [] }],
+  ]);
+  const assets = collectRowPaintAssets(chunks);
+  expect(assets).toContain("inline.js");
+  expect(assets).toContain("helpers.js");
+  const sources = new Map(
+    [...assets].map((file) => [
+      file,
+      file === "inline.js" ? 't("workItemExtras:detail.unassigned")' : "",
+    ]),
+  );
+  expect(
+    findDeferredNamespaceUsers(sources, [...KNOWN, "workItemExtras"], {
+      slim: ["common", "workItems"],
+    }),
+  ).toEqual([{ file: "inline.js", namespace: "workItemExtras" }]);
 });

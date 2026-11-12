@@ -72,12 +72,7 @@ function InvitationsPage() {
         queryKey: ["invitations", "pending"],
       });
 
-      navigate({
-        to: "/dashboard/workspace/$workspaceId",
-        params: {
-          workspaceId: data.invitation.workspaceId || organizationId,
-        },
-      });
+      navigate({ to: "/agent" });
     } catch (error) {
       toast.error(
         error instanceof Error

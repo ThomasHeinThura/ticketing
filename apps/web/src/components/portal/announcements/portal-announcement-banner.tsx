@@ -8,7 +8,7 @@ import {
   getPortalAnnouncements,
   type PortalAnnouncement,
 } from "@/fetchers/portal/announcements";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 const STORAGE_KEY = "taskdesk.portal.dismissedAnnouncements";
 

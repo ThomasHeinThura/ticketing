@@ -13,7 +13,11 @@ import { createApp } from "../../apps/api/src/index";
 import { encryptSecret } from "../../apps/api/src/notification-preferences/secrets";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
+  requireRow,
+} from "./helpers/fixtures";
 
 const AGENT_HOST = new URL(getConfiguredAgentOrigin()).host;
 const CUSTOMER_HOST = new URL(getConfiguredCustomerOrigin()).host;
@@ -60,7 +64,9 @@ describe("GET /api/instance/webhooks/security-posture", () => {
       .update(schema.userTable)
       .set({ role: "admin" })
       .where(eq(schema.userTable.id, admin.user.id));
-    const ordinary = await createWorkspaceMember({ role: "owner" });
+    const ordinary = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     const seesAll = await createWorkspaceMember({ role: "owner" });
     const [seesAllPerson] = await db
       .select({ id: schema.personTable.id })
@@ -166,7 +172,9 @@ describe("GET /api/instance/webhooks/security-posture", () => {
       .update(schema.userTable)
       .set({ role: "admin" })
       .where(eq(schema.userTable.id, admin.user.id));
-    const ordinary = await createWorkspaceMember({ role: "owner" });
+    const ordinary = await createWorkspaceMember({
+      role: "owner",
+    });
 
     mockAuthenticatedSession({ ...ordinary.user, role: null });
     expect(

@@ -1541,6 +1541,34 @@
 			"when": 1794461069672,
 			"tag": "0219_notification_provider_step_up",
 			"breakpoints": true
+		},
+		{
+			"idx": 220,
+			"version": "7",
+			"when": 1794465850849,
+			"tag": "0220_staff_self_registration",
+			"breakpoints": true
+		},
+		{
+			"idx": 221,
+			"version": "7",
+			"when": 1794469097064,
+			"tag": "0221_invitation_credential_generation",
+			"breakpoints": true
+		},
+		{
+			"idx": 222,
+			"version": "7",
+			"when": 1794469097065,
+			"tag": "0222_customer_project_access",
+			"breakpoints": true
+		},
+		{
+			"idx": 223,
+			"version": "7",
+			"when": 1794469097066,
+			"tag": "0223_defer_workspace_cascade_links",
+			"breakpoints": true
 		}
 	]
 }

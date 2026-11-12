@@ -459,8 +459,8 @@ async function runJourney(
     const activity = staffPage.getByTestId("work-item-activity");
     const composer = activity.getByTestId("work-item-comment-composer");
     await composer
-      .getByRole("group", { name: "Who can see this comment?" })
-      .getByRole("button", { name: "Public", exact: true })
+      .getByRole("tablist", { name: "Who can see this comment?" })
+      .getByRole("tab", { name: "Reply to customer", exact: true })
       .click();
     await composer
       .locator(".taskdesk-comment-editor-content [contenteditable='true']")
@@ -490,7 +490,7 @@ async function runJourney(
             new URL(response.url()).pathname,
           ) && response.request().method() === "POST",
       ),
-      composer.getByRole("button", { name: "Send comment" }).click(),
+      composer.getByRole("button", { name: "Send to customer" }).click(),
     ]);
     expect(presigned.status()).toBe(200);
     expect(completed.status()).toBe(200);

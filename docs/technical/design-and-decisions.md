@@ -3551,7 +3551,7 @@ Thomas's direction after UAT testing on 3 November 2026.
 - **The customer portal belongs to a customer organisation.** Each organisation has a few portal users (customers, typically five to seven) who open tickets, follow them and see their status.
 - **Each organisation has at least one engagement.** It may have several delivery projects and several managed services.
 - **Status dashboards belong to the engagement, not the organisation.**
-  - **Portal:** the Dashboard is the organisation's entry point. It shows the organisation's cases across all its engagements, plus one card per engagement. Each engagement's own status page lives at Project Details: health, status, KPIs and cases scoped to that engagement, subscription period, hours used and remaining, milestones, contacts and shared documents.
+  - **Portal:** the Dashboard is the organisation's entry point. It shows cases and engagement cards only for projects to which the customer person has access. Each engagement's own status page lives at Project Details: health, status, KPIs and cases scoped to that engagement, subscription period, hours used and remaining, milestones, contacts and shared documents.
   - **Agent app:** the engagement's Overview tab is the staff equivalent.
 - **Company members (staff) work tickets in the same engagements.** They raise tickets for a customer, update and resolve them. Their billable time counts against the engagement's hour bank, and progress feeds the engagement's status. A ticket staff raise for a customer appears in that customer's portal (decision D6). The customer must be able to open it and reply, which closes the D6 "known gap" above.
 
@@ -3568,6 +3568,10 @@ Thomas's direction after UAT testing on 3 November 2026.
 A page can be shared with the customer only by adding it to Documents as a customer-visible entry. Pages themselves never appear in the portal.
 
 **UI.** Kaneo stays the visual base. Screens added for UAT (Overview, portal) are adjusted to Kaneo's spacing, typography and tab behaviour. Where the project tab strip overflows, it scrolls and keeps the active tab visible.
+
+**12 November 2026, Thomas, D-D:** This reverses the 3 November assumption that every customer person reaches every engagement of their organisation. Each person sees only explicitly granted projects of their own organisation. An invitation defaults to no projects and may include projects chosen by an authorised inviter; staff can grant or revoke access. Revocation also removes access to that project's cases for requesters and participants. Organisation-level request types without a project remain available.
+
+**12 November 2026, Thomas, B-8 rollout:** SIT and UAT will be wiped and clean-installed with the new seed. There is no automatic backfill: an upgrade of an installation with existing customer people leaves them without project access until staff grant it. Before any production upgrade, the owner must decide a one-time grant step.
 
 **Portal files (CP-19; A-07, A-08; Thomas, 10 November 2026).** The portal host serves work-item and submission attachment files only through short-lived API links on both filesystem and S3. The portal `own_request` and `own_submission` routes mint them after their own ownership and reach check:
 - **Download** (`GET`/`HEAD /api/storage/portal-download`): a customer-visible file on the request or on a live public comment, never an internal or deleted comment's file. The API rechecks that reach on every byte request before reading storage; S3 never returns a bucket URL to the portal caller.
@@ -3645,6 +3649,8 @@ Thomas decided on 12 November 2026 (owner decision D-H, "the UI must feel premiu
 
 `SwitchField` wraps `Switch` with `helper={{ checked, unchecked }}` while `Switch` stays the bare control, so plain `Switch` callers keep an unchanged DOM and do not enter helper contrast tracing. Both helper lines share one grid cell, so the reserved height is the taller line and the layout never jumps. The active line describes the switch (`aria-describedby`); the other is `inert`. Resting colours, sizes and spacing do not change; only the Storybook `Primitives/Skeleton Default` (`primitives-skeleton--default`) baseline is expected to change because Storybook runs with `reducedMotion: "reduce"` and reduced-motion skeletons drop `--skeleton-highlight` to `transparent`.
 
+Save controls may use `SaveButton` for a delayed working indicator and a temporary saved state. It retains its focus during a pending save, ignores repeat activation, reserves space for both labels and uses caller-provided translated text. The deferred toast viewport draws a decorative line for timed success notifications and hides it when reduced motion is requested. The `--ease-progress` token is linear so the line tracks time remaining; it is a clock pace rather than a transition easing curve.
+
 ## Workspace creation is for instance administrators — 12 November 2026
 
 Thomas decided on 12 November 2026 (D-A, final): only a current instance administrator creates a workspace, and the administrator hands it to a named owner. **This reverses open workspace creation**, where `DISABLE_WORKSPACE_CREATION` was the only restriction and, left unset, every signed-in staff account could create a workspace and become its owner with see-all reach.
@@ -3663,6 +3669,15 @@ A team that owns a project grants its members project reach, without adding capa
 
 For staff project reach, an explicit report or time-summary target outside reach answers 404. This reverses RP-17's prior silent exclusion for a Tier 3 filter naming a project after reach is lost; `report:read_all` retains its workspace-wide report scope.
 
+## Customer reply vs internal note distinction — 12 November 2026 (Thomas)
+
+Thomas decided on 12 November 2026 (`F-11` in the UAT completion plan): replying to a customer versus writing an internal note on a work item must be unmistakable, internal notes are tinted in both the composer and the conversation, and a public reply must never be sent by accident. **This reverses the 22 October 2026 `CA-5` / UI-04 neutral-composer decision** ("The work-item composer is neutral (no warning-tinted card); Internal/Public is a toggle plus an explanatory sentence").
+
+- **Composer modes and copy.** When both modes are available on a customer-visible work item, the composer header renders a two-option segmented `Tabs` control ("Reply to customer" and "Internal note"), paired with an audience line ("Visible to the customer" or "Only your team sees this") and a mode-specific submit button ("Send to customer" or "Add internal note"). Internal mode tints the composer card with the shared warning token surface (`border-warning/32 bg-warning/4`).
+- **Defaults, capabilities and customer visibility.** An empty composer opens on the project's `defaultCommentVisibility` (`CA-2`). When the caller holds only one of `comment:create` or `comment:create_internal`, or when the work item is not visible to any customer (requiring both a live customer-serving project and a customer requester on the item, failing closed until project facts settle), only the allowed mode is shown as a static badge and no public option is offered.
+- **No accidental public send.** Switching mode never submits and preserves the draft. `Ctrl/Cmd+Enter` submits only in the currently visible mode, captured at press time and re-verified after any asynchronous preflight before posting. Background refetches or changes to `defaultCommentVisibility` never overwrite an open composer's mode; if a draft's chosen audience loses capability, submission is blocked with a polite status notice until an explicit choice is made. If an item stops being customer-visible while the composer is open, the composer falls back to "Internal note", resets file-sharing, and announces the change (`role="status"`).
+- **Conversation and portal.** In the work-item conversation, internal notes carry the same warning surface tint and an "Internal note" badge readable by screen readers; public comments carry a "Reply to customer" badge. Portal routes continue to filter `visibility = 'public'` server-side (`CA-3`).
+
 ## Amazon SES setup and a real email test — 12 November 2026
 
 Thomas decided on 12 November 2026 (D-M) that God Mode sets up Amazon SES and that its Test button sends a real email. SES is used through its SMTP interface, so there is no new dependency.
@@ -3675,6 +3690,16 @@ On 12 November 2026 the coordinator accepted omitting free-form text from authen
 - **Saving needs the second factor again.** Mail carries password-reset and invitation links, so saving the provider is an elevated action: PA-15 operation `notification_provider_save`, bound to the whole write including the password's keep, clear or keyed-digest-of-replacement intent (migration 0219 adds it to the operation CHECK).
 
 This reverses two earlier rules: (1) "`notify.email` is a non-auth provider and saving it is not elevated" (the policy exemption on `PATCH /api/instance/notification-providers/email`), and (2) "an SMTP test shows only the bounded safe outcome, never raw provider replies, and sends no mail" (operations runbook, `executeSmtp` comment): the reply now leaves the server in the sanitised form above, and only when the caller asks for it. Delivery paths still never carry provider text. This is not a merge or deployment approval.
+
+## Copyable invitation links and email fallback (D-N) — 12 November 2026
+
+Thomas decided on 12 November 2026 (**D-N**, UAT completion plan C-6): an invitation link can be copied by a holder of `member:invite` for that workspace (and with reach to the organisation for customer invitations) at request time while the invitation is pending and unexpired, and sent to the invitee by hand; someone who loses `member:invite` or organisation reach can no longer copy. **This reverses the 23/25 October 2026 CP-23 rule that "the secret exists only in the email" / "the link is only ever emailed" and that retained database rows plus the long-lived instance key must never be able to reconstruct a live customer invitation credential.**
+
+- **12 November 2026, Thomas — copy access correction.** The earlier D-N inviter exception is reversed: copy requires current `member:invite` and, for customer invitations, organisation reach; original inviter status grants no exception.
+
+- **Derivation and storage.** `invitation` remains hash-only (`credential_hash = SHA-256(credential)`) and gains `generation integer NOT NULL DEFAULT 1` (migration `0221`). For customer invitations, `credential = base64url(HMAC-SHA256(subKey, invitationId + ":" + generation))`, where `subKey` is derived via `HKDF-SHA256` (`info = "taskdesk:customer-invitation:credential:v1"`) from `TASKDESK_ENCRYPTION_KEY` (never reusing the AES-256-GCM key directly; `TASKDESK_ENCRYPTION_KEY_PREVIOUS` is checked on copy during key rotation). Resend increments `generation` and overwrites `credential_hash`, immediately invalidating previous links; revoke clears `credential_hash`; copying never changes `generation` or extends `expires_at`.
+- **Copy endpoints and guards.** Customer links are returned only by `POST /api/workspace/{workspaceId}/organisations/{organisationId}/invitations/{id}/copy-link` (and staff copy auditing and link retrieval run through `POST /api/workspace/{workspaceId}/invitations/{invitationId}/copy-link`), restricted to authenticated non-impersonated browser sessions on the agent host holding `member:invite` at request time (never API keys, MCP keys, service keys, impersonation or the portal host), only while `pending` and unexpired, with `Cache-Control: no-store`, bounded per-actor rate limiting across both endpoints, and an `invitation.link_copied` audit row recording actor, invitation id, workspace id and organisation id (never the secret or email address). Staff create and resend responses are synchronous and include a boolean `delivered` flag ("Email sent" / "Email not sent — copy the link and send it yourself"). Customer create and resend responses stay indistinguishable for real and inert invitations and include `delivered`, which indicates only whether an email provider is configured on the instance (never claiming provider handoff or delivery), with the UI surfacing "Email queued — you can also copy the link and send it yourself" or "No email provider is set up — copy the link and send it yourself" alongside the copy action and expiry timestamp.
+- **Accepted security trade-off.** Previously, compromising both the database and `TASKDESK_ENCRYPTION_KEY` could not recover a customer invitation credential once the 15-minute `customer_invitation_delivery` envelope was erased. Under D-N, an attacker who obtains **both** a read of pending unexpired `invitation` rows (`id`, `generation`, `credential_hash`) **and** `TASKDESK_ENCRYPTION_KEY` can reconstruct pending unexpired customer invitation links (acceptance still additionally requires authenticating on the customer portal as the exact invited email address under `CP-24`, and expired, accepted or revoked rows remain unredeemable because `status`/`expires_at`/`credential_hash` reject them). This trade-off is accepted so UAT and self-hosted deployments without working outbound email can onboard customers reliably.
 
 ## Inactive historical references
 
@@ -3700,6 +3725,14 @@ The inviter chooses the staff role. A `member:invite`-scoped read returns only a
 
 Agent and customer accounts can change their own local password in account settings. The portal host admits the change-password auth endpoint only for an admitted customer session; the existing current-password verification, rate limit and optional peer-session revocation remain in force. The caller's factor status includes whether a local password exists even when MFA is enabled; no credential material is exposed. This extends the portal host allowlist and introduces no new URL.
 
+### 12 Nov 2026 — Thomas, D-B: invitation-only accounts
+
+D-B reverses A-15 (31 Oct 2026) open sign-up. Staff self-registration is disabled by default and may be enabled by an instance administrator with step-up; the customer portal remains invitation-only.
+
+### 12 Nov 2026 — Thomas, D-B: staff registration confirmation and provisioned identities
+
+Changing staff self-registration requires an enrolled second factor and a fresh TOTP or backup-code proof. Other sign-in method changes retain the existing PA-15 rules. With self-registration off, admission includes a live staff invitation, an identity provisioned by an administrator-configured connection under IP-19, or a claimable import placeholder under IP-30. These exemptions do not change IP-19 subject matching or IP-30 verified local proof and administrative confirmation.
+
 ## Customer organisation reach — 12 November 2026, Thomas
 
 The audit finding extends D-A: only a current instance admin can extend a workspace’s customer reach. This reverses the instance-wide project organisation selector and unrestricted first binding described in the 13 October creation-binding decision. A live project or a soft-deleted project still within its recovery window establishes service; after permanent deletion or expiry of that window the link ends unless another qualifying project exists. Restoration within the recovery window therefore does not extend reach. Subsequent project creators may bind to a served customer; unserved IDs give non-admins the same refusal regardless of validity.
@@ -3707,3 +3740,16 @@ The audit finding extends D-A: only a current instance admin can extend a worksp
 ## Workspace project visibility — 12 November 2026
 
 Thomas decided on 12 November 2026 (D-E): workspace owners, admins and managers see every project in their workspace. This replaces the earlier rule that required a separate `sees_all` grant for manager visibility. Other staff roles retain project, ancestor and owning-team reach. The separate decision that these three roles may join themselves is pending implementation; no self-join route is introduced by this change.
+
+### 12 Nov 2026 — Thomas: report project reach (D-E)
+
+Reports, dashboards and exports use the reader’s project reach, including when they hold `report:read_all`. Owner, admin and manager reach all workspace projects under D-E; other roles reach only their projects. This reverses the workspace-wide `report:read_all` scope recorded in the earlier staff project reach decision.
+
+### 12 Nov 2026 — Thomas: workspace rights survive project roles
+
+Owner, admin and manager always keep their workspace rights on every project; a project role only adds. This reverses the project-scope override rule for these three validated system roles only: joining as project-member or assigning project-viewer must never silently remove manager or administrator rights (archive/settings). Other roles retain project overrides, tier clamping and key scopes remain unchanged. D-E self-join uses the default project-member role and never permits team self-enrolment.
+
+
+**12 Nov 2026, Thomas — local SIT clean installation.** The approved local SIT wipe after a verified backup reverses the earlier preserve-only rule for that disposable environment. The protected native PostgreSQL on port 62870 remains outside the wipe, and fresh SIT seeding is limited to the newly created database.
+
+Owner, admin and manager always keep their workspace rights on every project; a project role only adds. This reverses the project-scope override rule for these three validated system roles only: joining as project-member or assigning project-viewer must never silently remove manager or administrator rights (archive/settings). Other roles retain project overrides, tier clamping and key scopes remain unchanged. D-E self-join uses the default project-member role and never permits team self-enrolment. D-E also reverses WH-14’s earlier project-limited manager example: these system roles now receive every workspace project. WH-15 still requires instance admin for a full-reach webhook; ownership and second-factor rules are unchanged.

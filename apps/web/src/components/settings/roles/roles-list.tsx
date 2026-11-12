@@ -21,7 +21,9 @@ import {
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useCallerRoleAuthority } from "@/hooks/use-caller-role-authority";
@@ -39,6 +41,7 @@ export function RolesList() {
   const placeholderVisible = useDelayedPending(loading, {
     releaseNow: !loading && roles.isSuccess && roles.data.length === 0,
   });
+  if (isForbiddenError(roles.error)) return <NoAccessPage />;
   const formatDate = (value: Date | string | null | undefined) =>
     value
       ? new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" }).format(

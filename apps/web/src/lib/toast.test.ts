@@ -23,11 +23,15 @@ describe("error toast", () => {
       configurable: true,
       value: { writeText },
     });
-    toast.error(new HttpError(500, "failure", id));
+    toast.error("translated fallback", {
+      error: new HttpError(500, "failure", id, { fallbackKey: "test:key" }),
+    });
     const item = add.mock.calls[0]?.[0] as unknown as {
+      title: string;
       description: string;
       actionProps: { children: string; onClick: () => void };
     };
+    expect(item.title).toBe("translated fallback");
     expect(item.description).toBe(`Reference: ${id}`);
     expect(item.actionProps.children).toBe("Copy reference");
     item.actionProps.onClick();

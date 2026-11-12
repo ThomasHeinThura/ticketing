@@ -2020,7 +2020,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `submission.reopen_requested` | A customer asks to reopen a resolved request from the portal (`CP-8`); record work-item id, submission number and the outcome (`reopened` or the refusal reason); the actor is the customer. One row per request that was reopened or newly flagged, none for a repeat press on an already-flagged refusal. Audit-only; no outbox event. |
 | `satisfaction.rated` | A customer rates or re-rates a resolution (`CP-9`); record the work-item id, score and whether it was a change; never the comment text. Audit-only; no outbox event. |
 | `comment.updated` · `comment.deleted` | Comment edit (`CA-17`) and soft-deletion/tombstone (`CA-18`); creation uses `work_item.commented` ([events.md](events.md)) |
-| `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
+| `invitation.sent` · `invitation.redeemed` · `invitation.revoked` · `invitation.link_copied` | Invitations (`invitation.link_copied` is audit-only, recording actor, invitation id, workspace id and organisation id — never the credential or email address) |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |
 | `instance.observability_changed` | Log-level keys or the metrics-token setting changed; record changed key names only, never values, token, hash, or arbitrary before/after documents |

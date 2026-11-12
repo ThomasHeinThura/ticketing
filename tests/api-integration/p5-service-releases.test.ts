@@ -38,8 +38,8 @@ type ReleaseBody = {
 
 beforeEach(async () => resetTestDatabase());
 
-async function releaseWorld() {
-  const w = await serviceWorld();
+async function releaseWorld(projectLimited = false) {
+  const w = await serviceWorld(projectLimited);
   const service = await w.ownerCall("/api/services", {
     method: "POST",
     body: {
@@ -295,7 +295,7 @@ describe("releases", () => {
 
   it("refuses an unknown service, a non-change work item and a change in a project the caller cannot reach", async () => {
     const { w, serviceId, change, create, changeType, world } =
-      await releaseWorld();
+      await releaseWorld(true);
     const unknownService = await w.ownerCall("/api/releases", {
       method: "POST",
       body: { workspaceId: w.workspaceId, name: "X", serviceId: randomUUID() },

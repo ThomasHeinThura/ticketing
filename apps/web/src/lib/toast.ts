@@ -12,6 +12,7 @@ type ToastAction = {
 
 type ToastOptions = {
   description?: string;
+  error?: unknown;
   action?: ToastAction;
   cancel?: ToastAction;
 };
@@ -50,9 +51,14 @@ const success: ToastFn = (title, options) =>
   addToast(title, "success", options);
 const error = (value: string | Error, options?: ToastOptions): string => {
   const title = typeof value === "string" ? value : value.message;
-  if (!(value instanceof HttpError) || value.status < 500 || !value.requestId)
+  const source = options?.error ?? value;
+  if (
+    !(source instanceof HttpError) ||
+    source.status < 500 ||
+    !source.requestId
+  )
     return addToast(title, "error", options);
-  const requestId = value.requestId;
+  const requestId = source.requestId;
   return addToast(title, "error", {
     ...options,
     description: [

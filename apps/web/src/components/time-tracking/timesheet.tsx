@@ -26,10 +26,10 @@ import {
 import { ChevronLeft, ChevronRight, Copy, Plus } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessDenied,
   SettingsAccessError,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
@@ -110,20 +110,8 @@ export function Timesheet(props: Props) {
         <SettingsAccessError />
       </TimesheetFrame>
     );
-  if (access === "denied") return <TimesheetDenied />;
+  if (access === "denied") return <NoAccessPage />;
   return <TimesheetContent {...props} />;
-}
-
-function TimesheetDenied() {
-  const { t } = useTranslation();
-  return (
-    <TimesheetFrame>
-      <SettingsAccessDenied
-        title={t("timeTracking:timesheet.deniedTitle")}
-        description={t("timeTracking:timesheet.deniedDescription")}
-      />
-    </TimesheetFrame>
-  );
 }
 
 function TimesheetContent({ search, onSearchChange }: Props) {
@@ -183,7 +171,7 @@ function TimesheetContent({ search, onSearchChange }: Props) {
       </TimesheetFrame>
     );
   if (isForbiddenError(probe.error) || isForbiddenError(entries.error))
-    return <TimesheetDenied />;
+    return <NoAccessPage />;
   if (
     !workspaceId ||
     !start ||

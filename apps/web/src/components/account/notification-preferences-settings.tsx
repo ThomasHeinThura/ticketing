@@ -12,6 +12,7 @@ import {
   NumberFieldInput,
   Radio,
   RadioGroup,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -211,6 +212,7 @@ function WorkspaceRuleCard({
     }),
   );
   const [isSaving, setIsSaving] = React.useState(false);
+  const [saveSucceeded, setSaveSucceeded] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const { data: projects } = useGetProjects({
     workspaceId:
@@ -437,12 +439,19 @@ function WorkspaceRuleCard({
       <Separator />
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          disabled={isBusy}
+        <SaveButton
+          disabled={isDeleting}
+          pending={isSaving}
+          success={saveSucceeded}
+          savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
           onClick={async () => {
             setIsSaving(true);
+            setSaveSucceeded(false);
             try {
               await onSave(workspace.id, state);
+              setSaveSucceeded(true);
             } finally {
               setIsSaving(false);
             }
@@ -452,7 +461,7 @@ function WorkspaceRuleCard({
           {isConnected
             ? t("settings:notificationsPage.saveChanges")
             : t("settings:notificationsPage.createRule")}
-        </Button>
+        </SaveButton>
         {isConnected ? (
           <Button
             disabled={isBusy}
@@ -553,19 +562,22 @@ function ReportExportEmailPreference() {
           {t("settings:notificationsPage.reportExportSaveFailed")}
         </p>
       ) : null}
-      {saved ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          {t("settings:notificationsPage.reportExportSaved")}
-        </p>
-      ) : null}
+      <p role="status" className="text-sm text-muted-foreground">
+        {saved ? t("settings:notificationsPage.reportExportSaved") : null}
+      </p>
       <div>
-        <Button
-          disabled={mutation.isPending || current === stored.enabled}
+        <SaveButton
+          disabled={!mutation.isPending && current === stored.enabled}
+          pending={mutation.isPending}
+          success={mutation.isSuccess}
+          savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
           onClick={() => mutation.mutate({ enabled: current })}
           type="button"
         >
           {t("settings:notificationsPage.reportExportSave")}
-        </Button>
+        </SaveButton>
       </div>
     </div>
   );
@@ -580,6 +592,8 @@ export function NotificationPreferencesSettings() {
   const { data: workspacesData } = useGetWorkspaces();
   const { mutateAsync: updatePreferences, isPending: isSavingPreferences } =
     useUpdateNotificationPreferences();
+  const [activeSave, setActiveSave] = React.useState<string | null>(null);
+  const [completedSave, setCompletedSave] = React.useState<string | null>(null);
   const { mutateAsync: upsertWorkspaceRule } =
     useUpsertNotificationWorkspaceRule();
   const { mutateAsync: deleteWorkspaceRule } =
@@ -816,12 +830,19 @@ export function NotificationPreferencesSettings() {
         </div>
 
         <div>
-          <Button
+          <SaveButton
             disabled={
-              isSavingPreferences ||
+              (isSavingPreferences && activeSave !== "events") ||
               (eventPrefs.dueDateReminderEnabled && !leadTimeValid)
             }
+            pending={isSavingPreferences && activeSave === "events"}
+            success={completedSave === "events"}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={async () => {
+              setActiveSave("events");
+              setCompletedSave(null);
               await updatePreferences({
                 taskAssignmentEnabled: eventPrefs.taskAssignmentEnabled,
                 taskCommentEnabled: eventPrefs.taskCommentEnabled,
@@ -837,11 +858,12 @@ export function NotificationPreferencesSettings() {
                     }
                   : {}),
               });
+              setCompletedSave("events");
             }}
             type="button"
           >
             {t("settings:notificationsPage.saveEventPreferences")}
-          </Button>
+          </SaveButton>
         </div>
       </div>
 
@@ -850,17 +872,28 @@ export function NotificationPreferencesSettings() {
       <ChannelCard
         actions={
           <div className="flex gap-2">
-            <Button
-              disabled={isSavingPreferences || !preferences?.emailAddress}
+            <SaveButton
+              disabled={
+                (isSavingPreferences && activeSave !== "email") ||
+                !preferences?.emailAddress
+              }
+              pending={isSavingPreferences && activeSave === "email"}
+              success={completedSave === "email"}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={async () => {
+                setActiveSave("email");
+                setCompletedSave(null);
                 await updatePreferences({
                   emailEnabled: globalPrefs.emailEnabled,
                 });
+                setCompletedSave("email");
               }}
               type="button"
             >
               {t("settings:notificationsPage.saveChanges")}
-            </Button>
+            </SaveButton>
           </div>
         }
         channel="email"
@@ -910,9 +943,16 @@ export function NotificationPreferencesSettings() {
       <ChannelCard
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={isSavingPreferences}
+            <SaveButton
+              disabled={isSavingPreferences && activeSave !== "gotify"}
+              pending={isSavingPreferences && activeSave === "gotify"}
+              success={completedSave === "gotify"}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={async () => {
+                setActiveSave("gotify");
+                setCompletedSave(null);
                 await updatePreferences({
                   gotifyEnabled: globalPrefs.gotify.enabled,
                   gotifyServerUrl: globalPrefs.gotify.serverUrl,
@@ -924,17 +964,20 @@ export function NotificationPreferencesSettings() {
                   ...prev,
                   gotify: { ...prev.gotify, token: "" },
                 }));
+                setCompletedSave("gotify");
               }}
               type="button"
             >
               {preferences?.gotifyConfigured
                 ? t("settings:notificationsPage.saveChanges")
                 : t("settings:notificationsPage.connectGotify")}
-            </Button>
+            </SaveButton>
             {preferences?.gotifyConfigured ? (
               <Button
                 disabled={isSavingPreferences}
                 onClick={async () => {
+                  setActiveSave(null);
+                  setCompletedSave(null);
                   await updatePreferences({
                     gotifyEnabled: false,
                     gotifyServerUrl: null,
@@ -1038,9 +1081,16 @@ export function NotificationPreferencesSettings() {
       <ChannelCard
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={isSavingPreferences}
+            <SaveButton
+              disabled={isSavingPreferences && activeSave !== "ntfy"}
+              pending={isSavingPreferences && activeSave === "ntfy"}
+              success={completedSave === "ntfy"}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={async () => {
+                setActiveSave("ntfy");
+                setCompletedSave(null);
                 await updatePreferences({
                   ntfyEnabled: globalPrefs.ntfy.enabled,
                   ntfyServerUrl: globalPrefs.ntfy.serverUrl,
@@ -1053,17 +1103,20 @@ export function NotificationPreferencesSettings() {
                   ...prev,
                   ntfy: { ...prev.ntfy, token: "" },
                 }));
+                setCompletedSave("ntfy");
               }}
               type="button"
             >
               {preferences?.ntfyConfigured
                 ? t("settings:notificationsPage.saveChanges")
                 : t("settings:notificationsPage.connectNtfy")}
-            </Button>
+            </SaveButton>
             {preferences?.ntfyConfigured ? (
               <Button
                 disabled={isSavingPreferences}
                 onClick={async () => {
+                  setActiveSave(null);
+                  setCompletedSave(null);
                   await updatePreferences({
                     ntfyEnabled: false,
                     ntfyServerUrl: null,
@@ -1183,9 +1236,16 @@ export function NotificationPreferencesSettings() {
       <ChannelCard
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={isSavingPreferences}
+            <SaveButton
+              disabled={isSavingPreferences && activeSave !== "webhook"}
+              pending={isSavingPreferences && activeSave === "webhook"}
+              success={completedSave === "webhook"}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={async () => {
+                setActiveSave("webhook");
+                setCompletedSave(null);
                 await updatePreferences({
                   webhookEnabled: globalPrefs.webhook.enabled,
                   webhookUrl: globalPrefs.webhook.url,
@@ -1197,17 +1257,20 @@ export function NotificationPreferencesSettings() {
                   ...prev,
                   webhook: { ...prev.webhook, secret: "" },
                 }));
+                setCompletedSave("webhook");
               }}
               type="button"
             >
               {preferences?.webhookConfigured
                 ? t("settings:notificationsPage.saveChanges")
                 : t("settings:notificationsPage.connectWebhook")}
-            </Button>
+            </SaveButton>
             {preferences?.webhookConfigured ? (
               <Button
                 disabled={isSavingPreferences}
                 onClick={async () => {
+                  setActiveSave(null);
+                  setCompletedSave(null);
                   await updatePreferences({
                     webhookEnabled: false,
                     webhookUrl: null,

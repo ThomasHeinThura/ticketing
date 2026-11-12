@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { portalNotificationRouter } from "../../apps/api/src/notification/portal-inbox";
@@ -6,7 +6,6 @@ import { apiRouter, type BaseVariables } from "../../apps/api/src/openapi";
 import { resetTestDatabase } from "./helpers/database";
 import {
   type Customer,
-  type IntakeSeed,
   seedIntake,
   submissionRow,
   submitAs,
@@ -57,6 +56,39 @@ async function addSubmissionNotification(
 beforeEach(async () => resetTestDatabase());
 
 describe("portal customer notification inbox", () => {
+  it("removes a project's notification immediately after access is revoked", async () => {
+    const seed = await seedIntake("portal-inbox-revoke");
+    const ref = await submitAs(seed, seed.customer);
+    const notification = await addSubmissionNotification(seed.customer, ref);
+    const app = appFor(seed.customer.user.id);
+    const url = `http://${portalHost}/api/portal/notification/inbox`;
+    const headers = { host: portalHost };
+    expect(
+      JSON.stringify(await (await app.request(url, { headers })).json()),
+    ).toContain(notification.id);
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(
+            schema.customerProjectAccessTable.personId,
+            seed.customer.person.id,
+          ),
+          eq(schema.customerProjectAccessTable.projectId, seed.t.project.id),
+        ),
+      );
+    expect(
+      JSON.stringify(await (await app.request(url, { headers })).json()),
+    ).not.toContain(notification.id);
+    expect(
+      (
+        await app.request(
+          `http://${portalHost}/api/portal/notification/${notification.id}/read`,
+          { method: "PATCH", headers },
+        )
+      ).status,
+    ).toBe(404);
+  });
   it("returns a customer-safe request link and supports read, unread and read-all", async () => {
     const seed = await seedIntake("no12-portal-inbox");
     const ref = await submitAs(seed, seed.customer);

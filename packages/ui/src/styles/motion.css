@@ -39,7 +39,7 @@
 }
 
 /* Reduced motion: state changes remain, but animations and transitions stop.
-   The slot-specific rules below also neutralize pressed scale and skeleton shimmer. */
+   The rules below also neutralize pressed scale and skeleton shimmer. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
@@ -57,29 +57,9 @@
     scroll-behavior: auto !important;
   }
 
-  [data-slot="popover-popup"],
-  [data-slot="select-popup"],
-  [data-slot="menu-popup"],
-  [data-slot="menu-sub-content"],
-  [data-slot="tooltip-popup"],
-  [data-slot="dialog-popup"],
-  [data-slot="alert-dialog-popup"],
-  [data-slot="command-dialog-popup"],
-  [data-slot="sheet-popup"],
-  [data-slot="toast-popup"] {
-    transition-property: opacity !important;
-  }
-
-  /* Positioners (popover, tooltip, select, menu, combobox, ...) must snap
-     when they reposition. All popup state changes above are also instantaneous. */
-  [data-slot$="-positioner"] {
-    transition-property: none !important;
-  }
-
   /* Drop the pressed scale; focus and hover feedback remains instantaneous. */
   [data-slot="button"] {
     scale: none !important;
-    transition-property: box-shadow !important;
   }
 
   /* Every other press-feedback consumer (tabs, sidebar items, interactive cards and rows)
@@ -89,7 +69,7 @@
   }
 
 
-  /* Tab indicator snaps to the selected tab instead of sliding or morphing width. */
+  /* Tab indicator snaps to selection without sliding or morphing width. */
   [data-slot="tab-indicator"] {
     transition: none !important;
   }
@@ -98,7 +78,6 @@
      is dropped. The state is still shown by the thumb side and the track colour. */
   [data-slot="switch-thumb"] {
     scale: none !important;
-    transition: none !important;
   }
 
   [data-slot="menu-checkbox-thumb"] {
@@ -108,7 +87,6 @@
   /* Switch helper text changes instantly without sliding. */
   [data-slot="switch-helper-line"] {
     translate: none !important;
-    transition-property: opacity, visibility !important;
   }
 
   /* Skeleton shimmer is movement: stop the sweep and drop the highlight band, so the
@@ -117,20 +95,6 @@
   [data-slot="skeleton"],
   .animate-skeleton {
     --skeleton-highlight: transparent !important;
-    animation: none !important;
   }
 
-  [data-slot="sidebar-gap"],
-  [data-slot="sidebar-container"],
-  [data-slot="sidebar-group-content"],
-  [data-slot="sidebar-menu-badge"] {
-    transition: none !important;
-  }
-
-  /* dnd-kit writes the shuffle transition inline, so this needs !important. The
-     dragged element still tracks the pointer; only the reflow is neutralized. */
-  [data-taskdesk-sortable] {
-    transition: none !important;
-  }
 }
-

@@ -344,6 +344,7 @@ describe("PA-15 Entra prompt=login step-up", () => {
     const enabled = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie: sessionCookie,
         "content-type": "application/json",
       },
@@ -367,6 +368,7 @@ describe("PA-15 Entra prompt=login step-up", () => {
     const verified = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie: sessionCookie,
         "content-type": "application/json",
       },
@@ -400,6 +402,7 @@ describe("PA-15 Entra prompt=login step-up", () => {
     const enabled = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie: sessionCookie,
         "content-type": "application/json",
       },

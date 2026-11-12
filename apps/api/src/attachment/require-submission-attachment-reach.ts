@@ -3,7 +3,10 @@ import { resolveFeatureFlag } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import { portalIdentity } from "../intake/repository";
+import {
+  hasPortalSubmissionProjectAccess,
+  portalIdentity,
+} from "../intake/repository";
 import { reachableLinkedWorkItemId } from "../intake/submission-linked-work-item";
 import type { BaseVariables } from "../openapi";
 import { callerReach } from "../utils/caller-reach";
@@ -71,6 +74,18 @@ export function requireSubmissionAttachmentReach(
       ...(person ? { requesterId: person.personId } : {}),
     });
     if (!row) throw new HTTPException(404, { message: "Submission not found" });
+    if (
+      person &&
+      !(await hasPortalSubmissionProjectAccess(
+        row.id,
+        {
+          personId: person.personId,
+          organisationId: person.organisationId,
+        },
+        db,
+      ))
+    )
+      throw new HTTPException(404, { message: "Submission not found" });
     await assertIntakeEnabled(row.workspaceId);
     // #740: the staff list and download expose the converted work item's attachments only to a
     // caller who reaches its project; otherwise the link is treated as absent. The portal

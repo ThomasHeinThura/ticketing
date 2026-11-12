@@ -72,6 +72,35 @@ const SECRET_MARKERS = [
 ];
 
 const WRITES: Case[] = [
+  ...(["PUT", "DELETE"] as const).map(
+    (method): Case => ({
+      matrixKey: `${method} /api/projects/{projectId}/customers/{personId}`,
+      apiKeyRefused: true,
+      prepare: async (_world, ids) => {
+        await db.insert(schema.organisationTable).values({
+          id: "reach-customer-org",
+          key: "reach-customer-org",
+          name: "Customer",
+          isInternal: false,
+        });
+        await db
+          .update(schema.projectTable)
+          .set({ organisationId: "reach-customer-org" })
+          .where(eq(schema.projectTable.id, ids.projectId));
+        await db.insert(schema.personTable).values({
+          id: "reach-customer",
+          organisationId: "reach-customer-org",
+          side: "customer",
+        });
+      },
+      call: (app, _world, ids) =>
+        json(
+          app,
+          method,
+          `/api/projects/${ids.projectId}/customers/reach-customer`,
+        ),
+    }),
+  ),
   {
     matrixKey: "PATCH /api/projects/{projectId}/settings/inheritance",
     call: (app, _w, i) =>
@@ -548,6 +577,12 @@ const READS: Case[] = [
     matrixKey: "GET /api/projects/{projectId}/state-templates",
     call: (a, _w, i) =>
       json(a, "GET", `/api/projects/${i.projectId}/state-templates`),
+  },
+  {
+    matrixKey: "GET /api/projects/{projectId}/customers",
+    apiKeyRefused: true,
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/customers`),
   },
   {
     matrixKey: "GET /api/projects/{projectId}/members",

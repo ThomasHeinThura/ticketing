@@ -57,7 +57,7 @@ describe("WorkItemApprovals decisions", () => {
     render(<WorkItemApprovals workItemKey="HELP-7" />);
     expect(
       screen.queryByRole("button", {
-        name: "workItems:detail.approvals.approve",
+        name: "workItemExtras:detail.approvals.approve",
       }),
     ).toBeNull();
   });
@@ -67,7 +67,7 @@ describe("WorkItemApprovals decisions", () => {
     render(<WorkItemApprovals workItemKey="HELP-7" />);
     fireEvent.click(
       screen.getByRole("button", {
-        name: "workItems:detail.approvals.approve",
+        name: "workItemExtras:detail.approvals.approve",
       }),
     );
     expect(mocks.decide).toHaveBeenCalledWith(
@@ -80,14 +80,16 @@ describe("WorkItemApprovals decisions", () => {
     mocks.my = [{ id: "approval-1" }];
     render(<WorkItemApprovals workItemKey="HELP-7" />);
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:detail.approvals.reject" }),
+      screen.getByRole("button", {
+        name: "workItemExtras:detail.approvals.reject",
+      }),
     );
     const confirm = screen.getByRole("button", {
-      name: "workItems:detail.approvals.confirmReject",
+      name: "workItemExtras:detail.approvals.confirmReject",
     });
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(
-      screen.getByLabelText("workItems:detail.approvals.rejectNote"),
+      screen.getByLabelText("workItemExtras:detail.approvals.rejectNote"),
       { target: { value: "Out of policy" } },
     );
     fireEvent.click(confirm);

@@ -4,9 +4,11 @@
 @source "../../../packages/ui/src";
 /* Include application routes explicitly in both entry builds and source-free image contexts. */
 @source ".";
-/* Test fixtures are not shipping UI. Keep every application and library component source. */
+/* Tests and stories are not shipping UI. Keep every application and library component source. */
 @source not "./**/*.test.{ts,tsx}";
 @source not "../../../packages/ui/src/**/*.test.{ts,tsx}";
+@source not "./**/*.stories.{ts,tsx}";
+@source not "../../../packages/ui/src/**/*.stories.{ts,tsx}";
 @import "@taskdesk/ui/styles/tokens.css";
 @import "@taskdesk/ui/styles/theme.css";
 @import "@taskdesk/ui/styles/density.css";

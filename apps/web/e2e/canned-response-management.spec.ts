@@ -297,9 +297,9 @@ test("insertion resolves current context and preserves drafts on failure", async
   await expect(editor).toContainText("Due 2026-10-25");
   await expect(
     page
-      .getByRole("group", { name: "Who can see this comment?" })
-      .getByRole("button", { name: "Internal", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+      .getByTestId("work-item-comment-composer")
+      .locator('[data-visibility="internal"]'),
+  ).toContainText("Internal note");
   await editor.fill("Keep my edited draft");
   fail = true;
   await select.click();

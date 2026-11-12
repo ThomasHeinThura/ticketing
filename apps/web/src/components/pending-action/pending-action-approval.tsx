@@ -751,11 +751,7 @@ export function PendingActionApproval({
         await navigate({ to: "/dashboard" });
       } else if (executed && action.data?.targetType === "project") {
         setProject(undefined);
-        if (activeWorkspace?.id)
-          await navigate({
-            to: "/dashboard/workspace/$workspaceId",
-            params: { workspaceId: activeWorkspace.id },
-          });
+        if (activeWorkspace?.id) await navigate({ to: "/agent" });
         else await navigate({ to: "/dashboard" });
       }
       // The role's page no longer exists: return to the roles list.

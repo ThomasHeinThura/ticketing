@@ -206,13 +206,17 @@ const SECTIONS = [
 /** The service-management screens, as links so each keeps its own URL. */
 export function SectionNav({
   active,
+  canManageServices = false,
 }: {
   active: (typeof SECTIONS)[number]["key"];
+  canManageServices?: boolean;
 }) {
   const { t } = useTranslation("serviceManagement");
   return (
     <nav aria-label={t("nav.title")} className="flex flex-wrap gap-1">
-      {SECTIONS.map((section) => (
+      {SECTIONS.filter(
+        (section) => section.key !== "announcements" || canManageServices,
+      ).map((section) => (
         <Button
           key={section.key}
           size="sm"

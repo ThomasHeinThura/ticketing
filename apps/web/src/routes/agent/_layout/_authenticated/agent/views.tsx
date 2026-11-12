@@ -21,9 +21,15 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { SavedViewAudienceFields } from "@/components/saved-view/saved-view-audience-fields";
+import {
+  SettingsAccessChecking,
+  SettingsAccessError,
+  useCapabilityCheckFailed,
+} from "@/components/settings/settings-access";
 import {
   countSavedView,
   createSavedView,
@@ -36,6 +42,7 @@ import {
 } from "@/fetchers/saved-views";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
+import { useOwnPersonId } from "@/hooks/use-own-person-id";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { parseSavedViewsSearch, routes } from "@/lib/routes";
@@ -73,6 +80,15 @@ function SavedViewsIndexRoute() {
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
   const permissions = useWorkspacePermission();
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    permissions.isCheckingPermissions ? workspace?.id : undefined,
+  );
+  const canCreate =
+    !permissions.isCheckingPermissions && permissions.canCreateSavedViews();
+  const canManage =
+    !permissions.isCheckingPermissions &&
+    permissions.canManageWorkspaceSettings();
+  const identity = useOwnPersonId(canCreate && !canManage);
   const queryClient = useQueryClient();
   const [newName, setNewName] = useState("");
   const [newVisibility, setNewVisibility] =
@@ -189,6 +205,12 @@ function SavedViewsIndexRoute() {
       ? deletion.variables
       : undefined;
 
+  if (views.error instanceof HttpError && views.error.status === 403) {
+    if (capabilityCheckFailed) return <SettingsAccessError />;
+    if (permissions.isCheckingPermissions) return <SettingsAccessChecking />;
+    return <NoAccessPage />;
+  }
+
   return (
     <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
       <PageTitle title={t("title")} />
@@ -207,52 +229,54 @@ function SavedViewsIndexRoute() {
           })
         }
       />
-      <form
-        className="flex flex-wrap items-end gap-2"
-        aria-label={t("createForm")}
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (
-            newName.trim() &&
-            (newVisibility !== "team" || newTeamId.trim()) &&
-            !create.isPending
-          ) {
-            create.mutate();
-          }
-        }}
-      >
-        <Input
-          aria-label={t("name")}
-          placeholder={t("name")}
-          maxLength={200}
-          value={newName}
-          onChange={(event) => setNewName(event.target.value)}
-        />
-        <SavedViewAudienceFields
-          visibility={newVisibility}
-          teamId={newTeamId}
-          onVisibilityChange={(value) => {
-            setNewVisibility(value);
-            if (value !== "team") setNewTeamId("");
+      {canCreate ? (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          aria-label={t("createForm")}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (
+              newName.trim() &&
+              (newVisibility !== "team" || newTeamId.trim()) &&
+              !create.isPending
+            ) {
+              create.mutate();
+            }
           }}
-          onTeamChange={setNewTeamId}
-          canShare={permissions.canShareSavedViews()}
-          canManageSettings={permissions.canManageWorkspaceSettings()}
-          teams={teamAudiences}
-        />
-        <Button
-          type="submit"
-          disabled={
-            !workspaceId ||
-            permissions.isCheckingPermissions ||
-            !newName.trim() ||
-            (newVisibility === "team" && !newTeamId.trim()) ||
-            create.isPending
-          }
         >
-          {create.isPending ? t("creating") : t("create")}
-        </Button>
-      </form>
+          <Input
+            aria-label={t("name")}
+            placeholder={t("name")}
+            maxLength={200}
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
+          />
+          <SavedViewAudienceFields
+            visibility={newVisibility}
+            teamId={newTeamId}
+            onVisibilityChange={(value) => {
+              setNewVisibility(value);
+              if (value !== "team") setNewTeamId("");
+            }}
+            onTeamChange={setNewTeamId}
+            canShare={permissions.canShareSavedViews()}
+            canManageSettings={permissions.canManageWorkspaceSettings()}
+            teams={teamAudiences}
+          />
+          <Button
+            type="submit"
+            disabled={
+              !workspaceId ||
+              permissions.isCheckingPermissions ||
+              !newName.trim() ||
+              (newVisibility === "team" && !newTeamId.trim()) ||
+              create.isPending
+            }
+          >
+            {create.isPending ? t("creating") : t("create")}
+          </Button>
+        </form>
+      ) : null}
       {create.isError ? (
         <p role="alert" className="text-destructive text-sm">
           {create.error instanceof HttpError && create.error.status === 403
@@ -322,33 +346,43 @@ function SavedViewsIndexRoute() {
                     >
                       {view.isPinned ? t("unpin") : t("pin")}
                     </Button>
-                    <Button
-                      variant="outline"
-                      aria-label={t("duplicateNamed", { name: view.name })}
-                      disabled={duplicate.isPending}
-                      onClick={() => duplicate.mutate(view)}
-                    >
-                      {t("duplicate")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      aria-label={t("requestDeleteNamed", { name: view.name })}
-                      disabled={deletion.isPending}
-                      onClick={async () => {
-                        try {
-                          // The approval opens in place as the one confirm dialog.
-                          await openPendingAction(
-                            await deletion.mutateAsync(view.id),
-                          );
-                        } catch {
-                          // The inline error below keeps the list and its URL intact.
-                        }
-                      }}
-                    >
-                      {pendingDelete === view.id
-                        ? t("requesting")
-                        : t("requestDelete")}
-                    </Button>
+                    {canCreate ? (
+                      <Button
+                        variant="outline"
+                        aria-label={t("duplicateNamed", { name: view.name })}
+                        disabled={duplicate.isPending}
+                        onClick={() => duplicate.mutate(view)}
+                      >
+                        {t("duplicate")}
+                      </Button>
+                    ) : null}
+                    {canManage ||
+                    (canCreate &&
+                      !identity.isFetching &&
+                      !identity.isError &&
+                      identity.data === view.createdBy) ? (
+                      <Button
+                        variant="outline"
+                        aria-label={t("requestDeleteNamed", {
+                          name: view.name,
+                        })}
+                        disabled={deletion.isPending}
+                        onClick={async () => {
+                          try {
+                            // The approval opens in place as the one confirm dialog.
+                            await openPendingAction(
+                              await deletion.mutateAsync(view.id),
+                            );
+                          } catch {
+                            // The inline error below keeps the list and its URL intact.
+                          }
+                        }}
+                      >
+                        {pendingDelete === view.id
+                          ? t("requesting")
+                          : t("requestDelete")}
+                      </Button>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>

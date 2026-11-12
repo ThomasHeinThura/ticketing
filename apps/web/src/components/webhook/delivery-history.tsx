@@ -29,7 +29,10 @@ import {
 } from "@taskdesk/ui";
 import { ArrowLeft, ChevronRight, RefreshCw, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
+import { ErrorReference } from "@/components/errors/error-reference";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   listWebhookDeliveries,
   redeliverWebhookDelivery,
@@ -38,13 +41,10 @@ import {
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime } from "@/lib/format";
+import { localizedAdminErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { deliveryVariant, formatPayload } from "./webhook-model";
-
-function errorText(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
 
 function PayloadBlock({ label, value }: { label: string; value: string }) {
   return (
@@ -182,7 +182,10 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
       });
     },
     onError: (error) =>
-      toast.error(errorText(error, t("deliveries.redeliveryFailed"))),
+      toast.error(
+        localizedAdminErrorMessage(error, t, t("deliveries.redeliveryFailed")),
+        { error },
+      ),
   });
 
   const rows = query.data?.pages.flatMap((page) => page.data) ?? [];
@@ -190,6 +193,9 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
   const placeholderVisible = useDelayedPending(loading, {
     releaseNow: !loading && query.isSuccess && rows.length === 0,
   });
+
+  if (!isCheckingPermissions && isForbiddenError(query.error))
+    return <NoAccessPage />;
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
@@ -230,7 +236,12 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
         <Alert variant="error">
           <AlertTitle>{t("deliveries.loadErrorTitle")}</AlertTitle>
           <AlertDescription>
-            {errorText(query.error, t("deliveries.loadErrorDescription"))}
+            {localizedAdminErrorMessage(
+              query.error,
+              t,
+              t("deliveries.loadErrorDescription"),
+            )}
+            <ErrorReference error={query.error} />
             <Button className="w-fit" onClick={() => void query.refetch()}>
               <RefreshCw aria-hidden="true" />
               {t("list.retry")}

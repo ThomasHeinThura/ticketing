@@ -9,7 +9,7 @@ import {
 } from "@taskdesk/ui";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 /**
  * Finding #7: the portal's branded not-found page. The host answers an unknown portal path with

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { describe, expect, it, vi } from "vitest";
+import { ImportConnectError } from "../../../apps/api/src/imports/engine/connect-error";
 import { handleServerError } from "../../../apps/api/src/observability/server-error-handler";
 
 describe("server error handler", () => {
@@ -92,4 +93,40 @@ it("does not surface untrusted 502 response reasons", async () => {
   expect(body).toMatchObject({ message: "Internal Server Error" });
   expect(JSON.stringify(body)).not.toContain("private_secret");
   expect(JSON.stringify(body)).not.toContain("internal");
+});
+
+// The web import fetcher (apps/web/src/fetchers/god-mode/imports.test.ts) reads exactly this
+// body; the two tests together pin the contract without one app importing the other.
+it("keeps an allowlisted import reason next to the reference", async () => {
+  const app = new Hono();
+  app.get("/test", () => {
+    throw new ImportConnectError("auth_failed");
+  });
+  app.onError((error, context) => handleServerError(error, context, vi.fn()));
+  const response = await app.request("/test");
+  const body = (await response.json()) as Record<string, unknown>;
+  expect(response.status).toBe(502);
+  expect(body).toEqual({
+    message: "Source connection failed",
+    reason: "auth_failed",
+    requestId: response.headers.get("x-taskdesk-request-id"),
+  });
+  expect(body.requestId).toMatch(/^[0-9a-f]{32}$/);
+});
+
+it("preserves the fixed pending-action failure code while redacting its cause", async () => {
+  const app = new Hono();
+  app.get("/pending", () => {
+    throw new HTTPException(500, {
+      message: "pending_action_failed",
+      cause: new Error("private failure detail"),
+    });
+  });
+  app.onError((error, context) => handleServerError(error, context, vi.fn()));
+  const response = await app.request("/pending");
+  expect(response.status).toBe(500);
+  const body = await response.json();
+  expect(body.message).toBe("pending_action_failed");
+  expect(body.requestId).toBe(response.headers.get("x-taskdesk-request-id"));
+  expect(JSON.stringify(body)).not.toContain("private failure detail");
 });

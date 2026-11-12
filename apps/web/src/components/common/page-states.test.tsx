@@ -1,20 +1,50 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ back: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  back: vi.fn(),
+  navigate: vi.fn(),
+  canGoBack: vi.fn(() => true),
+}));
 
 vi.mock("@tanstack/react-router", () => ({
-  useRouter: () => ({ history: { back: mocks.back } }),
+  useRouter: () => ({
+    history: { back: mocks.back, canGoBack: mocks.canGoBack },
+    navigate: mocks.navigate,
+  }),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-import { LoadErrorState, NoAccessState } from "./page-states";
+import { LoadErrorState, NoAccessPage, NoAccessState } from "./page-states";
 
 afterEach(() => {
   cleanup();
   mocks.back.mockReset();
+  mocks.navigate.mockReset();
+  mocks.canGoBack.mockReturnValue(true);
+});
+
+describe("NoAccessPage", () => {
+  it("focuses the only heading, sets the title and goes back", () => {
+    render(<NoAccessPage />);
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent("states.noAccess.title");
+    expect(heading).toHaveFocus();
+    expect(document.title).toBe("states.noAccess.title · TaskDesk");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "states.back" }));
+    expect(mocks.back).toHaveBeenCalledOnce();
+  });
+
+  it("returns to the workspace home when there is no history", () => {
+    mocks.canGoBack.mockReturnValue(false);
+    render(<NoAccessPage />);
+    fireEvent.click(screen.getByRole("button", { name: "states.back" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+    expect(mocks.back).not.toHaveBeenCalled();
+  });
 });
 
 describe("NoAccessState", () => {

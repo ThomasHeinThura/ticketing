@@ -46,12 +46,12 @@ import {
 } from "@/fetchers/portal-backlog";
 import { usePortalCases } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { routes } from "@/lib/portal-route-builders";
 import {
   type PortalRequestsSearch,
   parsePortalRequestsSearch,
   portalProjectSearchMiddlewares,
-  routes,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 /** Cases per page on the full list. */
 const PAGE_SIZE = 25;

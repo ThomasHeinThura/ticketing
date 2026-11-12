@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { httpErrorFromResponse } from "./http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  localizedAdminErrorMessage,
+} from "./http-error";
 
 describe("httpErrorFromResponse", () => {
   const id = "a".repeat(32);
@@ -16,6 +20,27 @@ describe("httpErrorFromResponse", () => {
       id,
     );
     expect((await httpErrorFromResponse(body, "fallback")).requestId).toBe(id);
+  });
+  it("keeps a fallback key separate from a server reference", async () => {
+    const key = "settings:client.failure";
+    const error = await httpErrorFromResponse(
+      new Response(JSON.stringify({ requestId: id, message: "private" }), {
+        status: 500,
+      }),
+      "fallback",
+      key,
+    );
+    expect(error).toMatchObject({ requestId: id, fallbackKey: key });
+    expect(
+      localizedAdminErrorMessage(
+        error,
+        (value) => `translated:${value}`,
+        "generic",
+      ),
+    ).toBe(`translated:${key}`);
+    expect(
+      new HttpError(500, "failure", undefined, { fallbackKey: key }).requestId,
+    ).toBeUndefined();
   });
   it("does not expose a reference on a 4xx", async () => {
     const response = new Response("Forbidden", {

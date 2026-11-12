@@ -22,7 +22,12 @@ const mocks = vi.hoisted(() => ({
   checking: false,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  useRouter: () => ({
+    history: { canGoBack: () => false, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   Link: ({ children }: { children?: React.ReactNode }) => (
     <a href="/">{children}</a>
   ),
@@ -282,11 +287,18 @@ describe("Timesheet without the log-time permission (UAT re-audit)", () => {
     mocks.canLogTime = false;
     renderSheet();
     expect(
-      await screen.findByText("timeTracking:timesheet.deniedTitle"),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("timeTracking:timesheet.loadErrorTitle"),
     ).toBeNull();
+    expect(screen.getByText("states.noAccess.description")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "states.back" }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "common:actions.retry" }),
     ).toBeNull();
@@ -301,7 +313,14 @@ describe("Timesheet without the log-time permission (UAT re-audit)", () => {
     );
     renderSheet();
     expect(
-      await screen.findByText("timeTracking:timesheet.deniedTitle"),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("states.noAccess.description")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "states.back" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "common:actions.retry" }),

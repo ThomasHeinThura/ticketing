@@ -18,6 +18,8 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
+			"saved": "Saved",
+			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
 			"refresh": "Refresh"
@@ -333,7 +335,8 @@
 			"toggleLink": "로그인",
 			"instanceStatusError": "서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.",
 			"instanceAdminTitle": "TaskDesk 인스턴스 설정",
-			"instanceAdminSubtitle": "이 계정은 전체 권한을 가진 인스턴스 관리자가 됩니다."
+			"instanceAdminSubtitle": "이 계정은 전체 권한을 가진 인스턴스 관리자가 됩니다.",
+			"invitationOnly": "Accounts are by invitation. Ask your administrator for an invitation."
 		},
 		"verifyOtp": {
 			"pageTitle": "인증 코드 확인",
@@ -1058,14 +1061,14 @@
 		"projectWorkflow": {
 			"pageTitle": "워크플로 설정",
 			"title": "워크플로",
-			"subtitle": "이 프로젝트의 보드 컬럼 및 자동화 규칙을 구성합니다.",
-			"columnsTitle": "컬럼",
-			"columnsDescription": "보드에 표시되는 컬럼을 관리합니다. 드래그하여 순서를 바꿉니다. 완료된 작업을 나타내는 단계의 경우 \"완료 컬럼\"을 켜세요.",
-			"automationTitle": "자동화 규칙",
-			"automationDescription": "연동 이벤트를 컬럼에 매핑합니다. 이벤트가 발생하면 연결된 작업이 지정된 컬럼으로 이동합니다.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
 			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"columnsTitle": "Columns",
+			"columnsDescription": "Manage the columns that appear on your board. Drag to reorder. Turn on \"Done column\" for stages that represent completed work.",
+			"automationTitle": "Automation Rules",
+			"automationDescription": "Map integration events to columns. When an event occurs, the linked {{term_work_item_one}} moves to the specified column.",
+			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_other}} 선택",
@@ -1598,8 +1601,7 @@
 			"deleteDialog": {
 				"title": "역할 삭제",
 				"description": "역할 \"{{role}}\"이(가) 영구적으로 삭제됩니다. 이 역할이 할당된 멤버는 해당 권한을 잃게 됩니다."
-			},
-			"permissionCount_one": "{{count}} permission"
+			}
 		},
 		"workspaceLabels": {
 			"pageTitle": "라벨 설정",
@@ -1724,8 +1726,7 @@
 			"title": "{{term_work_item_one}} templates",
 			"type": "{{term_work_item_one}} type",
 			"typePlaceholder": "Choose a type",
-			"descriptionPlaceholder": "Describe the {{term_work_item_one}}...",
-			"itemCount_one": "{{count}} item"
+			"descriptionPlaceholder": "Describe the {{term_work_item_one}}..."
 		},
 		"projectMembers": {
 			"actionsFor": "Actions for {{name}}",
@@ -1776,8 +1777,7 @@
 				"roleChange": "{{from}} to {{to}}",
 				"roleChanges": "Role changes",
 				"title": "Move {{term_project_one}}",
-				"via": "{{role}} via {{project}}",
-				"descendants_one": "{{count}} sub-{{term_project_one}} moves with it and is affected the same way."
+				"via": "{{role}} via {{project}}"
 			},
 			"role": "Role",
 			"roleUpdated": "Role updated",
@@ -1865,8 +1865,7 @@
 				"saveDraft": "Save draft",
 				"title": "Transitions",
 				"to": "To",
-				"unsaved": "Unsaved changes",
-				"guards_one": "{{count}} guard"
+				"unsaved": "Unsaved changes"
 			},
 			"validation": {
 				"description": "Checked against every {{term_project_one}} that uses this workflow.",
@@ -1888,8 +1887,7 @@
 				"stateNoOutbound": "\"{{state}}\" has no outbound transition in this workflow.",
 				"unknownProject": "Unknown {{term_project_one}}",
 				"unknownState": "an unavailable state",
-				"impact": "Potential impact — people: {{people}}; projects: {{projects}}; work items: {{workItems}}.",
-				"stuckTitle_one": "{{count}} {{term_work_item_one}} would be stranded"
+				"impact": "Potential impact — people: {{people}}; projects: {{projects}}; work items: {{workItems}}."
 			},
 			"versions": {
 				"actions": "Actions",
@@ -1951,7 +1949,8 @@
 				"open": "Create service key",
 				"readIncluded": "Read access is always included. Tick any write access the key needs.",
 				"submit": "Create key",
-				"title": "Create a service key"
+				"title": "Create a service key",
+				"failed": "Failed to create the service key"
 			},
 			"deleteAria": "Request deletion of {{name}}",
 			"deleteFailed": "Failed to request the deletion",
@@ -2087,7 +2086,8 @@
 			"checking": "Checking your access",
 			"loadErrorTitle": "Could not check your access",
 			"loadErrorDescription": "Your permissions could not be loaded. Try again."
-		}
+		},
+		"openSettingsMenu": "Open settings menu"
 	},
 	"navigation": {
 		"projectViews": {
@@ -2106,7 +2106,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "추천",
@@ -2201,7 +2203,8 @@
 			"addWorkspace": "워크스페이스 추가",
 			"workspaceSettings": "워크스페이스 설정",
 			"instanceUsers": "인스턴스 사용자",
-			"selectWorkspace": "워크스페이스 선택"
+			"selectWorkspace": "워크스페이스 선택",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2285,6 +2288,8 @@
 		"newCount_other": "새 알림 {{count}}개",
 		"emptyTitle": "아직 알림이 없습니다",
 		"emptySubtitle": "여기서 업데이트와 활동을 확인할 수 있습니다.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "모든 알림 지우기",
 		"clearDialogTitle": "모든 알림을 지우시겠습니까?",
 		"clearDialogDescription": "모든 알림이 영구적으로 제거됩니다. 이 작업은 취소할 수 없습니다.",
@@ -2333,12 +2338,8 @@
 		"reminderLeadTime": {
 			"minutes_other": "{{count}}분",
 			"hours_other": "{{count}}시간",
-			"days_other": "{{count}}일",
-			"minutes_one": "{{count}} minute",
-			"hours_one": "{{count}} hour",
-			"days_one": "{{count}} day"
-		},
-		"newCount_one": "{{count}} new"
+			"days_other": "{{count}}일"
+		}
 	},
 	"activity": {
 		"assignedToSelf": "이 작업을 자신에게 할당함",
@@ -2525,7 +2526,22 @@
 			},
 			"imported": "Imported",
 			"importedTitle": "Imported from {{system}} on {{date}}. The time shown is the original time.",
-			"shareFilesWithCustomer": "Share these files with the customer"
+			"shareFilesWithCustomer": "Share these files with the customer",
+			"replyToCustomer": "Reply to customer",
+			"internalNote": "Internal note",
+			"sendToCustomer": "Send to customer",
+			"addInternalNote": "Add internal note",
+			"onlyTeamSeesThis": "Only your team sees this",
+			"visibleToCustomer": "Visible to the customer",
+			"customerVisibilityLostFallback": "No longer visible to a customer — switched to an internal note.",
+			"internalVisibilityUnavailableCanReply": "Internal notes are unavailable for your permissions. This draft will not be sent unless you switch to Reply to customer.",
+			"publicVisibilityUnavailableCanNote": "This draft was written as a reply to the customer, which you cannot send. It will not be sent unless you keep it as an internal note.",
+			"commentVisibilityUnavailableNone": "You can no longer post comments on this item. Your draft has been kept.",
+			"switchToReplyToCustomer": "Switch to Reply to customer",
+			"keepAsInternalNote": "Keep as internal note",
+			"draftKeptAsInternalNote": "Draft kept as an internal note.",
+			"cannedResponseSwitchedToInternal": "Switched to an internal note for this canned response.",
+			"cannedResponsePublicChoiceNotice": "This canned response defaults to a customer reply. Kept as an internal note until you choose Reply to customer."
 		}
 	},
 	"tasks": {
@@ -2896,8 +2912,7 @@
 			"draft": "초안",
 			"open": "열림",
 			"label": "풀 리퀘스트",
-			"count_other": "PR {{count}}개",
-			"count_one": "{{count}} PR"
+			"count_other": "PR {{count}}개"
 		},
 		"assignee": {
 			"label": "담당자",
@@ -3020,6 +3035,9 @@
 	"workspace": {
 		"projects": {
 			"notMember": "You are not a member of this project",
+			"join": "Join project",
+			"joining": "Joining…",
+			"joinFailed": "Could not join project. Try again.",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "{{term_project_other}} 만들기",
 			"title": "제목",
@@ -3063,7 +3081,6 @@
 		},
 		"search": {
 			"pageTitle": "검색",
-			"backToDashboard": "대시보드로 돌아가기",
 			"placeholder": "제목 또는 짧은 ID로 {{term_work_item_other}} 검색 (예: DEP-23)...",
 			"hint": "이 워크스페이스의 모든 프로젝트에서 검색합니다. DEP-23과 같은 짧은 ID를 사용하여 특정 작업을 찾으세요.",
 			"searching": "검색 중...",
@@ -3082,7 +3099,9 @@
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
-			"resultsFound_one": "{{count}} result found"
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "Back to Dashboard"
 		},
 		"create": {
 			"pageTitle": "워크스페이스 만들기",
@@ -3121,11 +3140,21 @@
 		"invitations": {
 			"linkLabel": "초대 링크",
 			"copyLink": "링크 복사",
+			"copyingLink": "Copying…",
 			"linkCopied": "초대 링크가 복사되었습니다",
 			"copyFailed": "자동으로 복사하지 못했습니다. 링크를 선택한 후 Ctrl+C를 누르세요.",
+			"copyFieldPlaceholder": "Select Copy link to reveal and copy the invitation link",
+			"resultEmailSent": "Email sent",
+			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
 			"pendingBadge": "대기 중",
 			"expires": "{{date}} 만료",
-			"expiredBadge": "expired"
+			"expiredOn": "Expired {{date}}",
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "팀 멤버 초대",
@@ -3158,6 +3187,10 @@
 			"cancelDialogTitle": "초대를 취소하시겠습니까?",
 			"cancelDialogDescription": "{{email}}에 대한 초대를 취소하시겠습니까? 이 작업은 취소할 수 없습니다.",
 			"removeMember": "멤버 제거",
+			"resendInvitation": "Resend Invitation",
+			"resendDialogTitle": "Invitation resent",
+			"resendSuccess": "Invitation resent",
+			"resendError": "Failed to resend invitation",
 			"cancelInvitation": "초대 취소",
 			"removeSuccess": "팀 멤버가 제거되었습니다",
 			"removeError": "팀 멤버 제거에 실패했습니다",
@@ -3166,7 +3199,8 @@
 			"ariaInvitationActions": "초대 작업",
 			"roleUpdateSuccess": "역할이 업데이트되었습니다",
 			"roleUpdateError": "역할 업데이트에 실패했습니다",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -3207,6 +3241,7 @@
 		}
 	},
 	"workItems": {
+		"listChanged": "This list has changed.",
 		"parent": {
 			"label": "Parent",
 			"none": "No parent",
@@ -3235,172 +3270,9 @@
 		},
 		"detail": {
 			"loading": "Loading {{term_work_item_one}}…",
-			"notFoundDescription": "This {{term_work_item_one}} doesn't exist, or you don't have access to it.",
-			"errorTitle": "Couldn't load this {{term_work_item_one}}",
-			"errorDescription": "Something went wrong while loading this {{term_work_item_one}}.",
-			"retry": "Retry",
-			"keyLabel": "Key",
-			"titleLabel": "Title",
-			"stateLabel": "State",
-			"priorityLabel": "Priority",
-			"dueDateLabel": "Due date",
-			"assigneeLabel": "Assignee",
-			"descriptionHeading": "Description",
-			"detailsHeading": "Details",
-			"projectLabel": "{{term_project_one}}",
-			"startDateLabel": "Start date",
-			"createdLabel": "Created",
-			"updatedLabel": "Updated",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open.",
 			"unassigned": "Unassigned",
 			"inactiveAssignee": "(inactive)",
-			"noPriority": "No priority",
-			"noDueDate": "No due date",
-			"noStartDate": "No start date",
-			"noDescription": "No description",
-			"unavailable": "Unavailable",
-			"unavailableFieldLabel": "{{field}} unavailable",
-			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this {{term_work_item_one}} couldn't be fully loaded. They're marked below.",
-			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open.",
-			"approvals": {
-				"heading": "Approvals",
-				"loading": "Loading approvals…",
-				"empty": "No approvals on this {{term_work_item_one}}.",
-				"errorTitle": "Couldn't load approvals",
-				"errorDescription": "Something went wrong while loading approvals for this {{term_work_item_one}}.",
-				"retry": "Retry",
-				"kind": {
-					"customer": "Customer approval",
-					"cab": "Change advisory board approval"
-				},
-				"approverLabel": "Approver",
-				"requesterLabel": "Requested by",
-				"expiresLabel": "Expires",
-				"decidedLabel": "Decided",
-				"unknownPerson": "Unknown",
-				"state": {
-					"pending": "Pending",
-					"approved": "Approved",
-					"rejected": "Rejected",
-					"expired": "Expired",
-					"withdrawn": "Withdrawn"
-				},
-				"reachLost": "The approver no longer has access to this {{term_work_item_one}}. Withdraw the request and ask again.",
-				"withdraw": "Withdraw request",
-				"withdrawing": "Withdrawing…",
-				"withdrawErrorTitle": "Couldn't withdraw the approval",
-				"withdrawConflict": "This approval is no longer pending. The list has been refreshed.",
-				"withdrawForbidden": "You can no longer withdraw this approval. The list has been refreshed.",
-				"withdrawFailed": "Something went wrong while withdrawing the approval. Try again.",
-				"withdrawn": "Approval request withdrawn.",
-				"withdrawFor": "Withdraw request — {{label}}",
-				"approve": "Approve",
-				"confirmReject": "Reject with note",
-				"decideErrorTitle": "The decision was not recorded",
-				"decideFailed": "The decision could not be recorded.",
-				"reject": "Reject",
-				"rejectNote": "Why are you rejecting this?",
-				"decideConflict": "This approval was already decided, withdrawn or expired. The list now shows its current state.",
-				"request": {
-					"action": "Request approval",
-					"anyState": "Any state",
-					"approver": "Approver",
-					"candidatesError": "Eligible approvers could not be loaded.",
-					"chooseApprover": "Choose an approver",
-					"chooseTransition": "Choose a transition",
-					"description": "Choose a workflow gate and a person who can approve this {{term_work_item_one}}.",
-					"error": "The approval could not be requested. Refresh the options and try again.",
-					"expiryDays": "Expires in (days)",
-					"expiryHint": "Choose between 1 and {{max}} days. Instance default: {{days}} days.",
-					"invalidExpiry": "Expiry must be a whole number from 1 to {{max}} days.",
-					"kind": "Approval kind",
-					"more": "Load more approvers",
-					"noCandidates": "No eligible approvers found.",
-					"optionsError": "Approval request options could not be loaded.",
-					"search": "Search eligible approvers",
-					"submit": "Request approval",
-					"submitting": "Requesting…",
-					"success": "Approval requested.",
-					"title": "Request approval",
-					"transition": "Workflow transition",
-					"unavailable": "Approval requests are no longer available for this {{term_work_item_one}}.",
-					"noTransitions": "This {{term_work_item_one}}’s workflow has no approval gates."
-				}
-			},
-			"attachments": {
-				"add": "Add file",
-				"delete": "Delete {{name}}",
-				"deleteFailed": "The file could not be deleted.",
-				"empty": "No files attached.",
-				"heading": "Attachments",
-				"loadFailed": "Attachments could not be loaded.",
-				"uploadFailed": "The file could not be uploaded.",
-				"uploading": "Uploading…",
-				"closePreview": "Close preview",
-				"dismissUpload": "Dismiss {{name}}",
-				"download": "Download {{name}}",
-				"dropToAttach": "Drop files to attach them to this {{term_work_item_one}}",
-				"next": "Next image",
-				"preview": "Preview {{name}}",
-				"previous": "Previous image",
-				"retryUpload": "Retry {{name}}",
-				"uploadedBy": "by {{name}}",
-				"uploadsLabel": "Uploads in progress",
-				"backToFiles": "Back to files",
-				"commentParent": "Comment attachment",
-				"recoverableEmpty": "No attachments can be restored.",
-				"recoverableUntil": "Recoverable until {{date}}",
-				"recoverDeleted": "Recently deleted",
-				"restore": "Restore {{name}}",
-				"restoreFailed": "Unable to restore the attachment. Try again.",
-				"pdfPreviewDownload": "Download {{name}}",
-				"pdfPreviewLoading": "Loading PDF preview…",
-				"pdfPreviewNextPage": "Next page",
-				"pdfPreviewOpen": "Preview {{name}}",
-				"pdfPreviewPage": "Page {{page}} of {{count}}",
-				"pdfPreviewPreviousPage": "Previous page",
-				"pdfPreviewTitle": "PDF preview",
-				"pdfPreviewTooLarge": "This PDF is too large to preview. Download the file to view it.",
-				"pdfPreviewUnavailable": "PDF preview is unavailable. Download the file to view it.",
-				"pdfPreviewZoomIn": "Zoom in",
-				"pdfPreviewZoomOut": "Zoom out",
-				"sharedWithCustomer": "Visible to customer"
-			},
-			"sla": {
-				"due": "due {{date}}",
-				"heading": "SLA",
-				"metric": {
-					"first_response": "First response",
-					"resolution": "Resolution"
-				},
-				"remaining": "{{time}} left",
-				"state": {
-					"at_risk": "At risk",
-					"breached": "Breached",
-					"met": "Met",
-					"missed": "Missed",
-					"none": "No SLA",
-					"ok": "On track"
-				},
-				"unavailable": "SLA targets are not available for this item.",
-				"atRiskMark": "Close to its limit",
-				"atRiskPast": "Past the {{pct}}% at-risk mark",
-				"pausedSince": "Paused – {{reason}} since {{since}}",
-				"pauseReason": {
-					"manual": "paused by an agent",
-					"other": "on hold",
-					"waiting_customer": "waiting on customer"
-				},
-				"atRiskMarkerAt": "At-risk mark at {{pct}}% of the target",
-				"calendar": "Working calendar: {{name}}"
-			},
-			"change": {
-				"heading": "{{term_service_one}} and {{term_change_one}}"
-			},
-			"time": {
-				"heading": "Time"
-			},
-			"resizeProperties": "Resize properties panel",
 			"editField": "Edit {{name}}"
 		},
 		"list": {
@@ -3524,62 +3396,6 @@
 			"typeRequired": "Choose a type to enable Create.",
 			"notMovedToState": "{{key}} was created in the project's default state. The workflow does not allow moving it to {{state}} yet."
 		},
-		"journey": {
-			"editHeading": "Edit",
-			"edit": "Edit",
-			"title": "Title",
-			"description": "Description",
-			"startDate": "Start date",
-			"dueDate": "Due date",
-			"save": "Save",
-			"saving": "Saving…",
-			"cancel": "Cancel",
-			"saveAttention": "This needs your attention",
-			"editConflict": "Someone else changed this {{term_work_item_one}} (you edited version {{asserted}}; the latest is version {{current}}). Your draft is kept below. Review the latest values, then reload them or cancel.",
-			"saveError": "Something went wrong while saving. Your changes were not applied.",
-			"reloadLatest": "Discard my draft and reload the latest",
-			"editUnavailable": "Some fields could not be loaded, so this {{term_work_item_one}} can't be edited right now.",
-			"transitionPlaceholder": "Choose a new state",
-			"transitionBlocked": "unavailable: {{reasons}}",
-			"transitionNoteRequired": "note required",
-			"transitionNote": "Note",
-			"transitionsEmpty": "No state changes are available right now.",
-			"loadingTransitions": "Loading state changes…",
-			"transitionsError": "Couldn't load the available state changes.",
-			"transitionConflict": "This {{term_work_item_one}} changed state in the meantime. The available state changes were refreshed.",
-			"transitionUnavailable": "That state change isn't available right now. The available state changes were refreshed.",
-			"assignmentHeading": "Assignment",
-			"assignee": "Assignee",
-			"assigneePlaceholder": "Choose a person",
-			"assign": "Assign",
-			"assignToMe": "Assign to me",
-			"unassign": "Unassign",
-			"confirmReassign": "This {{term_work_item_one}} is already assigned",
-			"confirmReassignDescription": "Assigning it will take it from its current assignee, who will be notified. Confirm to continue.",
-			"confirmAssignment": "Confirm assignment",
-			"assignmentConflict": "The assignee changed in the meantime. The latest assignee is shown; try again if you still want to change it.",
-			"assignmentError": "Couldn't assign this {{term_work_item_one}}.",
-			"unassignmentError": "Couldn't unassign this {{term_work_item_one}}.",
-			"loadingPeople": "Loading people…",
-			"peopleError": "Couldn't load the people you can assign to.",
-			"noPeople": "There is nobody you can assign this {{term_work_item_one}} to.",
-			"unnamedPerson": "Unnamed person",
-			"editSaved": "Changes saved.",
-			"transitionSubmit": "Move to state",
-			"transitionMoving": "Moving…",
-			"transitionDone": "State changed to {{state}}.",
-			"assignDone": "Assigned to {{name}}.",
-			"unassignDone": "Unassigned.",
-			"reasonNoteRequired": "a note is required",
-			"reasonAssigneePresent": "needs an assignee",
-			"reasonChildrenClosed": "child items are still open",
-			"reasonNoOpenBlockers": "blocked by open items",
-			"reasonFieldRequired": "a required field is empty",
-			"reasonChangeRisk": "{{term_change_one}} risk is too high",
-			"reasonUnknown": "not available",
-			"reasonApprovalPending": "waiting for approval",
-			"reasonCabPending": "waiting for {{term_change_one}} advisory board approval"
-		},
 		"board": {
 			"changeState": "Change state",
 			"changeStateFor": "Change state of {{key}}",
@@ -3680,8 +3496,7 @@
 				"invalid": "The request was not valid. No updates were applied.",
 				"forbidden": "You do not have permission for this action.",
 				"unknown": "Could not update the selected {{term_work_item_other}}. Try again."
-			},
-			"selected_one": "{{count}} {{term_work_item_one}} selected"
+			}
 		},
 		"filter": {
 			"addCondition": "Add condition",
@@ -3801,8 +3616,7 @@
 				"relates": "relates to",
 				"required_by": "required by",
 				"requires": "requires"
-			},
-			"hidden_one": "{{count}} related item you cannot see"
+			}
 		},
 		"deletion": {
 			"actions": "{{term_work_item_one}} actions",
@@ -3822,8 +3636,7 @@
 			"visibility": {
 				"organisation": "Visible to the customer organisation",
 				"private": "Not visible to customers"
-			},
-			"childrenAffected_one": "This item has {{count}} child item. Deleting the parent keeps its children."
+			}
 		},
 		"legacyView": {
 			"continue": "Open without unsupported controls",
@@ -3873,21 +3686,73 @@
 			},
 			"title": "SLA {{metric}}: {{state}}"
 		},
-		"move": {
-			"action": "Move to {{term_project_one}}...",
-			"children": "Also move its sub-items",
-			"childrenDetachHelp": "Its direct sub-items stay in {{project}} with no parent, and the parent link is removed.",
-			"childrenMoveHelp": "The whole sub-item tree moves with it and keeps its structure.",
-			"confirm": "Move",
-			"consequences": "The {{term_work_item_one}} gets a new key in the target {{term_project_one}}, its own parent link is removed, its state is matched by state type, {{term_project_one}} labels are matched by name, and pending workflow timers are discarded.",
-			"description": "Choose the {{term_project_one}} this {{term_work_item_one}} should live in. It keeps its history, and the old key keeps redirecting to the new one.",
-			"failed": "Unable to move this {{term_work_item_one}}.",
-			"notFound": "That {{term_project_one}} is not available to you.",
-			"projectsFailed": "Unable to load {{term_project_other}}.",
-			"success": "Moved as {{key}}.",
-			"target": "Target {{term_project_one}}",
-			"targetPlaceholder": "Choose a {{term_project_one}}",
-			"title": "Move {{key}} to another {{term_project_one}}"
+		"priority": {
+			"urgent": "Urgent",
+			"high": "High",
+			"medium": "Medium",
+			"low": "Low",
+			"no-priority": "우선순위 없음"
+		},
+		"backlog": {
+			"emptyTitle": "No backlog items",
+			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
+			"rankColumn": "Order"
+		},
+		"journey": {
+			"confirmAssignment": "Confirm assignment",
+			"editHeading": "Edit",
+			"edit": "Edit",
+			"title": "Title",
+			"description": "Description",
+			"startDate": "Start date",
+			"dueDate": "Due date",
+			"save": "Save",
+			"saving": "Saving…",
+			"cancel": "Cancel",
+			"saveAttention": "This needs your attention",
+			"editConflict": "Someone else changed this {{term_work_item_one}} (you edited version {{asserted}}; the latest is version {{current}}). Your draft is kept below. Review the latest values, then reload them or cancel.",
+			"saveError": "Something went wrong while saving. Your changes were not applied.",
+			"reloadLatest": "Discard my draft and reload the latest",
+			"editUnavailable": "Some fields could not be loaded, so this {{term_work_item_one}} can't be edited right now.",
+			"transitionPlaceholder": "Choose a new state",
+			"transitionBlocked": "unavailable: {{reasons}}",
+			"transitionNoteRequired": "note required",
+			"transitionNote": "Note",
+			"transitionsEmpty": "No state changes are available right now.",
+			"loadingTransitions": "Loading state changes…",
+			"transitionsError": "Couldn't load the available state changes.",
+			"transitionConflict": "This {{term_work_item_one}} changed state in the meantime. The available state changes were refreshed.",
+			"transitionUnavailable": "That state change isn't available right now. The available state changes were refreshed.",
+			"assignmentHeading": "Assignment",
+			"assignee": "Assignee",
+			"assigneePlaceholder": "Choose a person",
+			"assign": "Assign",
+			"assignToMe": "Assign to me",
+			"unassign": "Unassign",
+			"confirmReassign": "This {{term_work_item_one}} is already assigned",
+			"confirmReassignDescription": "Assigning it will take it from its current assignee, who will be notified. Confirm to continue.",
+			"assignmentConflict": "The assignee changed in the meantime. The latest assignee is shown; try again if you still want to change it.",
+			"assignmentError": "Couldn't assign this {{term_work_item_one}}.",
+			"unassignmentError": "Couldn't unassign this {{term_work_item_one}}.",
+			"loadingPeople": "Loading people…",
+			"peopleError": "Couldn't load the people you can assign to.",
+			"noPeople": "There is nobody you can assign this {{term_work_item_one}} to.",
+			"unnamedPerson": "Unnamed person",
+			"editSaved": "Changes saved.",
+			"transitionSubmit": "Move to state",
+			"transitionMoving": "Moving…",
+			"transitionDone": "State changed to {{state}}.",
+			"assignDone": "Assigned to {{name}}.",
+			"unassignDone": "Unassigned.",
+			"reasonNoteRequired": "a note is required",
+			"reasonAssigneePresent": "needs an assignee",
+			"reasonChildrenClosed": "child items are still open",
+			"reasonNoOpenBlockers": "blocked by open items",
+			"reasonFieldRequired": "a required field is empty",
+			"reasonChangeRisk": "{{term_change_one}} risk is too high",
+			"reasonUnknown": "not available",
+			"reasonApprovalPending": "waiting for approval",
+			"reasonCabPending": "waiting for {{term_change_one}} advisory board approval"
 		},
 		"auditHistory": {
 			"action": "Action",
@@ -3948,17 +3813,37 @@
 			"noValue": "None",
 			"unassigned": "Unassigned"
 		},
-		"priority": {
-			"urgent": "Urgent",
-			"high": "High",
-			"medium": "Medium",
-			"low": "Low",
-			"no-priority": "우선순위 없음"
+		"move": {
+			"action": "Move to {{term_project_one}}...",
+			"children": "Also move its sub-items",
+			"childrenDetachHelp": "Its direct sub-items stay in {{project}} with no parent, and the parent link is removed.",
+			"childrenMoveHelp": "The whole sub-item tree moves with it and keeps its structure.",
+			"confirm": "Move",
+			"consequences": "The {{term_work_item_one}} gets a new key in the target {{term_project_one}}, its own parent link is removed, its state is matched by state type, {{term_project_one}} labels are matched by name, and pending workflow timers are discarded.",
+			"description": "Choose the {{term_project_one}} this {{term_work_item_one}} should live in. It keeps its history, and the old key keeps redirecting to the new one.",
+			"failed": "Unable to move this {{term_work_item_one}}.",
+			"notFound": "That {{term_project_one}} is not available to you.",
+			"projectsFailed": "Unable to load {{term_project_other}}.",
+			"success": "Moved as {{key}}.",
+			"target": "Target {{term_project_one}}",
+			"targetPlaceholder": "Choose a {{term_project_one}}",
+			"title": "Move {{key}} to another {{term_project_one}}"
 		},
-		"backlog": {
-			"emptyTitle": "No backlog items",
-			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
-			"rankColumn": "Order"
+		"customFieldValue": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes",
+			"hour": "시",
+			"minute": "분",
+			"invalidLocalTime": "이 시간은 시간 변경으로 건너뛰어집니다. 다른 시간을 선택하세요.",
+			"datetime": "Date and time"
 		}
 	},
 	"portal": {
@@ -4488,8 +4373,7 @@
 					"remaining_other": "{{count}} days remaining",
 					"start": "Start",
 					"title": "Subscription period",
-					"upcoming": "Starts on {{date}}",
-					"remaining_one": "{{count}} day remaining"
+					"upcoming": "Starts on {{date}}"
 				},
 				"summary": {
 					"inScope": "In scope",
@@ -4762,9 +4646,7 @@
 			"result": "{{succeeded}} deleted; {{failed}} could not be deleted.",
 			"succeeded_other": "{{count}} {{term_work_item_other}} deleted",
 			"targets": "Exact {{term_work_item_other}} selected for deletion",
-			"action": "Delete {{term_work_item_other}}",
-			"count_one": "Delete {{count}} {{term_work_item_one}}",
-			"succeeded_one": "{{count}} {{term_work_item_one}} deleted"
+			"action": "Delete {{term_work_item_other}}"
 		},
 		"comment": {
 			"action": "Delete comment",
@@ -4884,9 +4766,7 @@
 			"open": "Open import run",
 			"source": "Source: {{plugin}}, mapping version {{version}}.",
 			"unavailable": "Import run summary unavailable",
-			"writes_other": "{{count}} records will be created or updated.",
-			"count_one": "{{count}} record in this run.",
-			"writes_one": "{{count}} record will be created or updated."
+			"writes_other": "{{count}} records will be created or updated."
 		},
 		"targets": {
 			"approval_decision": "Record approval decision",
@@ -5249,8 +5129,7 @@
 			"conflictRefreshing": "Refreshing the latest calendar…",
 			"timezoneCountUnavailable": "Reference counts could not be loaded. Confirm only if you accept that SLA deadlines will be recalculated.",
 			"retroactiveDescription_other": "This holiday change covers days that have already passed. {{count}} open {{term_work_item_other}} on this calendar have run through them, so their deadlines move later.",
-			"retroactiveTitle": "Deadlines may have moved",
-			"retroactiveDescription_one": "This holiday change covers days that have already passed. {{count}} open {{term_work_item_one}} on this calendar has run through them, so its deadline moves later."
+			"retroactiveTitle": "Deadlines may have moved"
 		},
 		"holidays": {
 			"add": "Add holiday",
@@ -5380,6 +5259,9 @@
 			"confirmRequest": "Request deletion",
 			"deleteRequested": "Deletion requested. Approve it to complete.",
 			"deleteError": "Deletion could not be requested."
+		},
+		"clientErrors": {
+			"importHolidays": "Failed to import holidays"
 		}
 	},
 	"savedViews": {
@@ -5475,8 +5357,7 @@
 		"openIntakeQueue": "Open intake queue",
 		"pairedQueueDescription": "This view is part of a saved intake queue.",
 		"emptySubmissionsTitle": "No matching submissions",
-		"emptySubmissionsDescription": "No submissions match this saved view.",
-		"count_one": "{{count}} matching {{term_work_item_one}}"
+		"emptySubmissionsDescription": "No submissions match this saved view."
 	},
 	"identityConnections": {
 		"common": {
@@ -5588,7 +5469,8 @@
 			"rate_limited": "Too many verification attempts. Wait a few minutes and try again.",
 			"step_up": "Fresh verification was unavailable, did not match, or has expired. Verify again and retry. Nothing was changed.",
 			"unavailable": "The identity service is temporarily unavailable. Nothing was changed; try again.",
-			"unknown": "The request could not be completed. Nothing was changed."
+			"unknown": "The request could not be completed. Nothing was changed.",
+			"enroll_factor": "Enroll a second factor before changing staff self-registration."
 		},
 		"events": {
 			"actors": {
@@ -5833,7 +5715,13 @@
 			"staffPasswordLocked": "Staff password sign-in is always on. It is the recovery sign-in when every other method fails, so it cannot be turned off.",
 			"switchLabel": "{{method}} for {{audience}}",
 			"title": "Sign-in methods",
-			"unavailable": "Sign-in methods unavailable"
+			"unavailable": "Sign-in methods unavailable",
+			"staffRegistration": "Allow staff self-registration",
+			"staffRegistrationDescription": "Allow people to create staff accounts without an invitation.",
+			"customerInvitationOnly": "Customer portal: invitation only",
+			"registrationEnvironmentDisabled": "The environment disables staff self-registration.",
+			"registrationOn": "Allow staff self-registration",
+			"registrationOff": "Require invitations for staff registration"
 		}
 	},
 	"notificationProvider": {
@@ -6018,6 +5906,15 @@
 			"replyWithCode": "Server reply {{code}}: {{text}}",
 			"sending": "Sending…",
 			"sent": "Test email accepted by the mail server. Check the inbox of the address above."
+		},
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"verified": "Connection verified. No email was sent.",
+		"diagnostics": {
+			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
+			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
+			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings.",
+			"smtp_timeout": "The SMTP server did not respond before the connection deadline."
 		}
 	},
 	"featureFlags": {
@@ -6325,7 +6222,55 @@
 			"title": "Invitation limits"
 		},
 		"localFactorEveryone": "Everyone (staff)",
-		"localFactorStaffOnlyHelp": "The local factor policy applies to staff only. Customers sign in to the portal without a local factor."
+		"localFactorStaffOnlyHelp": "The local factor policy applies to staff only. Customers sign in to the portal without a local factor.",
+		"observability": {
+			"optional": "Optional",
+			"allStaff": "All staff",
+			"selectedRole": "Selected role",
+			"conflict": "Settings changed in another session. Reload and retry.",
+			"requestFailed": "The request could not be completed.",
+			"unavailable": "Observability settings are unavailable.",
+			"saveFailed": "Settings could not be saved.",
+			"factorSaveFailed": "The factor policy could not be saved.",
+			"rotateFailed": "Token rotation could not be completed.",
+			"description": "Configure safe server log levels and the internal metrics scrape credential.",
+			"copyToken": "<strong>Copy this token now.</strong> It will not be shown again.",
+			"tokenSaved": "I saved the token",
+			"factorPolicy": "Local factor policy",
+			"factorHelp": "Require verified TOTP or one-use backup codes for the selected audience. Unsupported upstream MFA is not accepted as proof.",
+			"requiredAudience": "Required audience",
+			"roleId": "Role ID",
+			"saveFactor": "Save factor policy",
+			"logLevels": "Structured log levels",
+			"defaultLevel": "Default level",
+			"saveLevels": "Save log levels",
+			"metricsToken": "Metrics scrape token",
+			"metricsHelp": "The listener is internal to the service. The token is stored as a digest and is only returned once after rotation.",
+			"configured": "A token is configured.",
+			"notConfigured": "No token is configured.",
+			"configuredRotated": "A token is configured. Last rotated {{when}}.",
+			"notConfiguredRotated": "No token is configured. Last rotated {{when}}.",
+			"freshFactorProof": "Fresh factor proof",
+			"factorProofType": "Factor proof type",
+			"verifyPassword": "Verify password and rotate",
+			"verifyFactor": "Verify factor and rotate",
+			"loading": "Loading observability settings…",
+			"modules": {
+				"http": "http",
+				"auth": "auth",
+				"database": "database",
+				"jobs": "jobs",
+				"audit": "audit",
+				"plugins": "plugins",
+				"realtime": "realtime"
+			},
+			"levels": {
+				"error": "error",
+				"warn": "warn",
+				"info": "info",
+				"debug": "debug"
+			}
+		}
 	},
 	"customFields": {
 		"access": {
@@ -6377,8 +6322,7 @@
 			"typeColumn": "Work item type",
 			"value": "Value",
 			"visibilityDescription": "Choose, for each work item type, whether the field is hidden, visible or required. A required field blocks creation and moving into a started or completed state; cancelling is always allowed.",
-			"visibilityTitle": "Where it applies",
-			"deleteHelp_one": "{{count}} work item holds a value. Deleting asks for confirmation; the values are kept and the field can be restored for 30 days."
+			"visibilityTitle": "Where it applies"
 		},
 		"fallbackSection": "Other",
 		"fields": {
@@ -6428,8 +6372,7 @@
 			"sectionCount_other": "{{count}} fields",
 			"sectionEmpty": "No fields in this section.",
 			"showDeleted": "Show deleted fields",
-			"title": "Custom fields",
-			"sectionCount_one": "{{count}} field"
+			"title": "Custom fields"
 		},
 		"operators": {
 			"eq": "Equals",
@@ -6446,21 +6389,6 @@
 			"name": "Section name",
 			"rename": "Rename section",
 			"renameNamed": "Rename section {{name}}"
-		},
-		"value": {
-			"amount": "Amount",
-			"clear": "Clear",
-			"currencyCode": "Currency code",
-			"no": "No",
-			"noChoices": "Nothing to choose from",
-			"notOnProject": "(not on this project)",
-			"notSet": "Not set",
-			"optional": "optional",
-			"requiredHint": "Required before this item can start or finish",
-			"yes": "Yes",
-			"hour": "시",
-			"minute": "분",
-			"invalidLocalTime": "이 시간은 시간 변경으로 건너뛰어집니다. 다른 시간을 선택하세요."
 		}
 	},
 	"teams": {
@@ -6506,8 +6434,7 @@
 			"loading": "Loading teams",
 			"members_other": "{{count}} members",
 			"new": "New team",
-			"title": "Teams",
-			"members_one": "{{count}} member"
+			"title": "Teams"
 		},
 		"roster": {
 			"actions": "Actions",
@@ -6634,9 +6561,7 @@
 			},
 			"window": "Look back",
 			"evaluated_other": "{{count}} events examined.",
-			"summary_other": "Would have fired {{count}} times in the last {{days}} days",
-			"summary_one": "Would have fired {{count}} time in the last {{days}} days",
-			"evaluated_one": "{{count}} event examined."
+			"summary_other": "Would have fired {{count}} times in the last {{days}} days"
 		},
 		"editor": {
 			"addAction": "Add action",
@@ -6701,8 +6626,7 @@
 			"retry": "Retry",
 			"runAs": "Runs as {{role}}",
 			"summary": "When {{trigger}}. {{conditions}} conditions, {{actions}} actions.",
-			"fired_other": "Fired {{count}} times",
-			"fired_one": "Fired {{count}} time"
+			"fired_other": "Fired {{count}} times"
 		},
 		"priorities": {
 			"high": "High",
@@ -6934,6 +6858,10 @@
 		},
 		"stepUp": {
 			"failedTitle": "Fresh verification failed. Nothing was changed."
+		},
+		"clientErrors": {
+			"update": "Failed to update the webhook",
+			"test": "Failed to send the test event"
 		}
 	},
 	"roles": {
@@ -6966,7 +6894,8 @@
 			"blockedDescription": "{{count}} people still hold this role. Move them to another role on the People tab first.",
 			"blockedTitle": "Move the people first",
 			"description": "Deleting a role is a request you approve next. It cannot be undone.",
-			"title": "Delete this role"
+			"title": "Delete this role",
+			"failed": "Failed to delete the role"
 		},
 		"detail": {
 			"allRoles": "All roles",
@@ -7069,7 +6998,8 @@
 			"suspended": "Suspended",
 			"title": "People",
 			"confirmDescription_one": "Move {{count}} person from {{from}} to {{to}}? Their permissions change immediately.",
-			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately."
+			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately.",
+			"moveFailed": "Failed to move the people to the other role"
 		},
 		"preview": {
 			"actions": "Actions on a work item",
@@ -7116,6 +7046,176 @@
 		},
 		"stepUp": {
 			"failedTitle": "Fresh verification failed. Nothing was changed."
+		},
+		"capabilityCatalog": {
+			"groups": {
+				"labels_fields": "Labels & fields",
+				"service_desk": "Service desk",
+				"time_cost": "Time & cost",
+				"knowledge": "Knowledge",
+				"integrations": "Integrations"
+			},
+			"labels": {
+				"workspace__read": "Workspace: read",
+				"workspace__update": "Workspace: update",
+				"workspace__delete": "Workspace: delete",
+				"workspace__manage_members": "Workspace: manage members",
+				"workspace__manage_roles": "Workspace: manage roles",
+				"workspace__manage_settings": "Workspace: manage settings",
+				"workspace__transfer_ownership": "Workspace: transfer ownership",
+				"project__create": "Project: create",
+				"project__read": "Project: read",
+				"project__update": "Project: update",
+				"project__manage_members": "Project: manage members",
+				"project__manage_settings": "Project: manage settings",
+				"project__archive": "Project: archive",
+				"project__delete": "Project: delete",
+				"work_item__read": "Work item: read",
+				"work_item__create": "Work item: create",
+				"work_item__update": "Work item: update",
+				"work_item__delete": "Work item: delete",
+				"work_item__assign": "Work item: assign",
+				"work_item__transition": "Work item: transition",
+				"work_item__rank": "Work item: rank",
+				"work_item__set_priority": "Work item: set priority",
+				"work_item__escalate_priority": "Work item: escalate priority",
+				"work_item__export": "Work item: export",
+				"comment__create": "Comment: create",
+				"comment__create_internal": "Comment: create internal",
+				"comment__update_own": "Comment: update own",
+				"comment__delete_own": "Comment: delete own",
+				"comment__update_any": "Comment: update any",
+				"comment__delete_any": "Comment: delete any",
+				"attachment__create": "Attachment: create",
+				"attachment__delete_own": "Attachment: delete own",
+				"attachment__delete_any": "Attachment: delete any",
+				"label__manage": "Label: manage",
+				"custom_field__manage": "Custom field: manage",
+				"saved_view__read": "Saved view: read",
+				"saved_view__create": "Saved view: create",
+				"saved_view__share": "Saved view: share",
+				"sla_policy__read": "Sla policy: read",
+				"sla_policy__manage": "Sla policy: manage",
+				"workflow__read": "Workflow: read",
+				"workflow__manage": "Workflow: manage",
+				"request_type__read": "Request type: read",
+				"request_type__manage": "Request type: manage",
+				"intake__triage": "Intake: triage",
+				"approval__request": "Approval: request",
+				"approval__request_cab": "Approval: request cab",
+				"approval__decide": "Approval: decide",
+				"approval__decide_cab": "Approval: decide cab",
+				"time_entry__create": "Time entry: create",
+				"time_entry__update_own": "Time entry: update own",
+				"time_entry__delete_own": "Time entry: delete own",
+				"time_entry__read_any": "Time entry: read any",
+				"time_entry__update_any": "Time entry: update any",
+				"time_entry__delete_any": "Time entry: delete any",
+				"time_entry__log_backdated": "Time entry: log backdated",
+				"time_entry__manage_rates": "Time entry: manage rates",
+				"budget__read": "Budget: read",
+				"budget__manage": "Budget: manage",
+				"report__read": "Report: read",
+				"report__read_all": "Report: read all",
+				"report__export": "Report: export",
+				"kb_article__read": "Kb article: read",
+				"kb_article__write": "Kb article: write",
+				"kb_article__publish": "Kb article: publish",
+				"service__read": "Service: read",
+				"service__manage": "Service: manage",
+				"change__manage": "Change: manage",
+				"release__manage": "Release: manage",
+				"member__invite": "Member: invite",
+				"member__remove": "Member: remove",
+				"api_key__manage": "Api key: manage",
+				"webhook__manage": "Webhook: manage",
+				"automation__manage": "Automation: manage"
+			},
+			"descriptions": {
+				"workspace__read": "See the workspace and its settings",
+				"workspace__update": "Edit workspace general settings",
+				"workspace__delete": "Delete the workspace",
+				"workspace__manage_members": "Add and remove workspace members",
+				"workspace__manage_roles": "Create and edit roles",
+				"workspace__manage_settings": "Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, workspace terminology",
+				"workspace__transfer_ownership": "Transfer ownership of the workspace to another existing member",
+				"project__create": "Create a project or managed service",
+				"project__read": "See a project in reach",
+				"project__update": "Edit project fields, health, milestones, prerequisites, stakeholders, document links — not parent_id or owner_team_id",
+				"project__manage_members": "Manage the project roster and per-project roles, and the two reach-affecting fields parent_id and owner_team_id (see Reach)",
+				"project__manage_settings": "Project states, features, labels, SLA and calendar assignment, automations",
+				"project__archive": "Archive and restore",
+				"project__delete": "Soft-delete",
+				"work_item__read": "See work items in reach",
+				"work_item__create": "Create work items",
+				"work_item__update": "Edit title, description, dates, labels, custom fields; archive",
+				"work_item__assign": "Assign to anyone on the roster",
+				"work_item__transition": "Change state, subject to workflow legality",
+				"work_item__rank": "Re-order within a state or backlog",
+				"work_item__set_priority": "Set priority up or down",
+				"work_item__escalate_priority": "Raise priority only — the customer capability",
+				"work_item__export": "Export a view or list to CSV/XLSX",
+				"comment__create": "Comment publicly",
+				"comment__create_internal": "Comment internally",
+				"comment__update_own": "Edit own comments within the window",
+				"comment__delete_own": "Delete own comments",
+				"comment__update_any": "Edit anyone's comment",
+				"comment__delete_any": "Delete anyone's comment",
+				"attachment__create": "Upload to a work item or comment",
+				"attachment__delete_own": "Delete own attachments",
+				"attachment__delete_any": "Delete anyone's attachments",
+				"label__manage": "Create, edit, delete labels",
+				"custom_field__manage": "Define custom fields and sections",
+				"saved_view__read": "List and open saved views and queues shared with you",
+				"saved_view__create": "Create private saved views and queues",
+				"saved_view__share": "Share a view with a team or the workspace",
+				"sla_policy__read": "Read SLA policies and service calendars",
+				"sla_policy__manage": "Author policies and calendars",
+				"workflow__read": "Read workflows",
+				"workflow__manage": "Create, edit, publish workflows",
+				"request_type__read": "Read request types (triage needs this)",
+				"request_type__manage": "Author request types and per-organisation catalogues",
+				"intake__triage": "Claim, accept, decline, merge, clarify submissions; manage queues",
+				"approval__request": "Request a customer approval",
+				"approval__request_cab": "Request a CAB approval (staff only)",
+				"approval__decide": "Decide an approval addressed to you",
+				"approval__decide_cab": "Decide a CAB approval — and be a member of the CAB team",
+				"time_entry__create": "Log own time; start/stop own timer",
+				"time_entry__update_own": "Edit own entries",
+				"time_entry__delete_own": "Delete own entries",
+				"time_entry__read_any": "See anyone's entries",
+				"time_entry__update_any": "Edit anyone's entries",
+				"time_entry__delete_any": "Delete anyone's entries",
+				"time_entry__log_backdated": "Log beyond the workspace backdating limit",
+				"time_entry__manage_rates": "Rates, cost types; see cost data",
+				"budget__read": "See budgets",
+				"budget__manage": "Create and edit budgets",
+				"report__read": "Reports for your reach",
+				"report__read_all": "Reports across all projects the person can reach; this capability does not grant project reach",
+				"report__export": "Export a report",
+				"kb_article__read": "Read articles",
+				"kb_article__write": "Draft and edit articles",
+				"kb_article__publish": "Publish, archive, manage categories",
+				"service__read": "See services",
+				"service__manage": "Manage services, dependencies and service state",
+				"change__manage": "Change details, freezes, freeze override (elevated)",
+				"release__manage": "Releases and checklists",
+				"member__invite": "Invite people",
+				"member__remove": "Remove people",
+				"webhook__manage": "Webhooks, secret rotation, redelivery",
+				"automation__manage": "Rules at project scope (workspace scope also needs workspace:manage_settings)",
+				"instance__admin": "Administer the whole deployment (God Mode)",
+				"instance__read_audit": "Read the instance audit log",
+				"instance__manage_plugins": "Configure, test, enable and disable plugins",
+				"instance__manage_jobs": "Change job cadence, enable/disable, trigger manually",
+				"instance__manage_terminology": "Edit instance-level terminology overrides"
+			}
+		},
+		"clientErrors": {
+			"create": "Failed to create the role",
+			"previewImpact": "Failed to preview the role impact",
+			"save": "Failed to save the role",
+			"unexpectedDryRun": "Role dry-run returned a mutation result"
 		}
 	},
 	"agile": {
@@ -7131,9 +7231,7 @@
 			"moduleTitle": "Not in a {{term_module_one}}",
 			"readOnly": "You can see this list but not change membership.",
 			"refused_other": "{{count}} {{term_work_item_other}} were not added: {{reason}}",
-			"title": "Backlog",
-			"added_one": "{{count}} {{term_work_item_one}} added",
-			"refused_one": "{{count}} {{term_work_item_one}} was not added: {{reason}}"
+			"title": "Backlog"
 		},
 		"burndown": {
 			"chartDescription": "Burndown from {{start}} to {{end}}, in {{unit}}: remaining work, scope and the ideal line.",
@@ -7154,8 +7252,7 @@
 			"noScopeDescription": "This {{term_cycle_one}} has no {{term_work_item_other}}, so there is nothing to burn down.",
 			"noScopeTitle": "No scope",
 			"title": "Burndown",
-			"unestimated_other": "{{count}} items have no estimate and are not counted in the scope ({{percent}}% of the {{term_cycle_one}}).",
-			"unestimated_one": "{{count}} item has no estimate and is not counted in the scope ({{percent}}% of the {{term_cycle_one}})."
+			"unestimated_other": "{{count}} items have no estimate and are not counted in the scope ({{percent}}% of the {{term_cycle_one}})."
 		},
 		"common": {
 			"cancel": "Cancel",
@@ -7194,13 +7291,9 @@
 			"summary": {
 				"backlog_other": "{{count}} incomplete items return to the backlog.",
 				"leave_other": "{{count}} incomplete items stay in this {{term_cycle_one}}.",
-				"nextCycle_other": "{{count}} incomplete items move to {{name}}.",
-				"leave_one": "{{count}} incomplete item stays in this {{term_cycle_one}}.",
-				"backlog_one": "{{count}} incomplete item returns to the backlog.",
-				"nextCycle_one": "{{count}} incomplete item moves to {{name}}."
+				"nextCycle_other": "{{count}} incomplete items move to {{name}}."
 			},
-			"title": "Complete {{name}}",
-			"description_one": "{{count}} {{term_work_item_one}} is not done. Choose what happens to it."
+			"title": "Complete {{name}}"
 		},
 		"cycles": {
 			"create": "Create {{term_cycle_one}}",
@@ -7270,8 +7363,7 @@
 				"nothingUsed": "No {{term_work_item_one}} has an estimate yet, so nothing is lost.",
 				"title": "Review the estimate change",
 				"to": "New",
-				"totals": "{{mapped}} estimates carry over and {{cleared}} are cleared.",
-				"clearWarning_one": "{{count}} estimate has no equivalent in the new scale and will be cleared."
+				"totals": "{{mapped}} estimates carry over and {{cleared}} are cleared."
 			},
 			"readOnly": "Only {{term_project_one}} admins can change the estimate system.",
 			"removePoint": "Remove {{value}}",
@@ -7394,8 +7486,7 @@
 			"notStarted": "Not started",
 			"progress": "Progress",
 			"scope": "Scope",
-			"unestimated_other": "{{count}} items are unestimated ({{percent}}% of the scope)",
-			"unestimated_one": "{{count}} item is unestimated ({{percent}}% of the scope)"
+			"unestimated_other": "{{count}} items are unestimated ({{percent}}% of the scope)"
 		},
 		"systems": {
 			"categories": "Categories",
@@ -7496,8 +7587,7 @@
 			"rename": "Rename",
 			"renameDescription": "Change the category name.",
 			"renameTitle": "Rename category",
-			"topLevel": "Top level",
-			"articles_one": "{{count}} article"
+			"topLevel": "Top level"
 		},
 		"conflict": {
 			"description": "The article changed while you were editing. Compare the two versions and choose which to keep.",
@@ -7557,9 +7647,7 @@
 			"helpful_other": "{{count}} found it helpful",
 			"loadError": "The feedback could not be loaded.",
 			"noComments": "No comments yet.",
-			"notHelpful_other": "{{count}} found it not helpful",
-			"helpful_one": "{{count}} found it helpful",
-			"notHelpful_one": "{{count}} found it not helpful"
+			"notHelpful_other": "{{count}} found it not helpful"
 		},
 		"fields": {
 			"author": "Author",
@@ -7791,8 +7879,7 @@
 			},
 			"new": "Declare a freeze",
 			"rangeInvalid": "The freeze must end after it starts.",
-			"showCancelled": "Show cancelled freezes",
-			"affected_one": "{{count}} planned {{term_change_one}} now falls inside this freeze and cannot be approved without an override."
+			"showCancelled": "Show cancelled freezes"
 		},
 		"nav": {
 			"changes": "{{term_change_one}} calendar",
@@ -7837,9 +7924,7 @@
 			"startingPoint": "Check these dates against the holidays your support actually observes before you add them.",
 			"startingPointTitle": "A starting point, not authority",
 			"title": "Country holiday presets",
-			"year": "Year",
-			"confirm_one": "Add {{count}} holiday",
-			"retroactive_one": "{{count}} open {{term_work_item_one}} has a deadline that moves later because of these holidays."
+			"year": "Year"
 		},
 		"releases": {
 			"create": {
@@ -7853,8 +7938,7 @@
 					"description": "The {{term_change_other}} deployed in this release.",
 					"empty": "No {{term_change_other}} are associated with this release.",
 					"hidden_other": "{{count}} {{term_change_other}} in {{term_project_other}} you cannot see are part of this release.",
-					"title": "{{term_change_other}}",
-					"hidden_one": "{{count}} {{term_change_one}} in a {{term_project_one}} you cannot see is part of this release."
+					"title": "{{term_change_other}}"
 				},
 				"checklist": {
 					"description": "Copied from the {{term_service_one}} when the release was created.",
@@ -7902,8 +7986,7 @@
 				"emptyTitle": "No releases yet",
 				"filterService": "{{term_service_one}}",
 				"new": "New release",
-				"title": "Releases",
-				"changes_one": "{{count}} {{term_change_one}}"
+				"title": "Releases"
 			},
 			"status": {
 				"cancelled": "Cancelled",
@@ -8020,9 +8103,7 @@
 				"searchPlaceholder": "Search by name or category",
 				"title": "{{term_service_other}}",
 				"catalogueDescription": "A catalogue of the systems we run, used to record {{term_change_other}} and releases against them. It holds no customers, contracts or SLAs: to support a customer, create a managed service.",
-				"createManagedService": "Create managed service",
-				"incidents_one": "{{count}} incident",
-				"openChanges_one": "{{count}} open {{term_change_one}}"
+				"createManagedService": "Create managed service"
 			}
 		},
 		"status": {
@@ -8147,10 +8228,7 @@
 			"committedSeparateCurrencies": "No single total; see the currency breakdown.",
 			"committedUnknownLine_other": "{{count}} open {{term_work_item_other}} have unknown committed cost (unscheduled: {{unscheduled}}, non-time estimate: {{nonTime}}, unassigned: {{unassigned}}, unrated: {{unrated}}; {{minutes}} known remaining).",
 			"committedUnknownValue": "Unknown",
-			"committedUnscheduled_other": "{{count}} unscheduled open {{term_work_item_other}} have no due date, so they cannot be assigned to a budget period.",
-			"committedCurrencyLine_one": "{{amount}} across {{count}} open {{term_work_item_one}}",
-			"committedUnknownLine_one": "{{count}} open {{term_work_item_one}} has unknown committed cost (unscheduled: {{unscheduled}}, non-time estimate: {{nonTime}}, unassigned: {{unassigned}}, unrated: {{unrated}}; {{minutes}} known remaining).",
-			"committedUnscheduled_one": "{{count}} unscheduled open {{term_work_item_one}} has no due date, so it cannot be assigned to a budget period."
+			"committedUnscheduled_other": "{{count}} unscheduled open {{term_work_item_other}} have no due date, so they cannot be assigned to a budget period."
 		},
 		"edit": {
 			"title": "Edit time entry"
@@ -8204,8 +8282,7 @@
 		"review": {
 			"badge": "Check this",
 			"dialogHint": "This timer ran past 12 hours and was stopped for you. Correct the time to what actually happened.",
-			"notice_other": "{{count}} timers ran past 12 hours and were stopped for you. Check what actually happened.",
-			"notice_one": "{{count}} timer ran past 12 hours and was stopped for you. Check what actually happened."
+			"notice_other": "{{count}} timers ran past 12 hours and were stopped for you. Check what actually happened."
 		},
 		"section": {
 			"add": "Log time",
@@ -8285,8 +8362,7 @@
 			"title": "Costs",
 			"type": "Cost type",
 			"units": "Units ({{unit}})",
-			"unitsShort": "Units",
-			"count_one": "{{count}} entry"
+			"unitsShort": "Units"
 		},
 		"costTypes": {
 			"add": "Add cost type",
@@ -8439,6 +8515,8 @@
 			"title": "Accept your invitation"
 		},
 		"actions": {
+			"copyLink": "Copy link",
+			"copied": "Invitation link copied",
 			"resend": "Resend",
 			"revoke": "Revoke"
 		},
@@ -8454,7 +8532,22 @@
 			"email": "Email address",
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation",
-			"title": "Invite to this organisation"
+			"title": "Invite to this organisation",
+			"projectsTitle": "Projects (optional)",
+			"projectsLoadError": "Could not load projects. Try again.",
+			"accessTitle": "Customer access",
+			"accessError": "Could not load or update customer access.",
+			"grantAccess": "Grant access",
+			"revokeAccess": "Remove access"
+		},
+		"resultCard": {
+			"createdTitle": "Invitation ready",
+			"resentTitle": "Invitation resent",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"validUntil": "Valid until {{date}}",
+			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
+			"done": "Done"
 		},
 		"denied": {
 			"description": "Inviting people needs the member:invite permission in this workspace.",
@@ -8482,8 +8575,17 @@
 		"title": "Customer invitations",
 		"toasts": {
 			"notDelivered": "The invitation was saved but the email could not be sent. Try resending it.",
+			"linkCopied": "Invitation link copied",
+			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"sent": "Invitation sent"
+			"sent": "Invitation sent",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		}
 	},
 	"reports": {
@@ -8779,9 +8881,7 @@
 			"sourcesHistorical": "Historical sources: {{historical}}.",
 			"sourcesLive": "Live components: {{live}}.",
 			"sourcesMixed": "Historical sources: {{historical}}; live components: {{live}}.",
-			"sourcesUnknown": "Source details are unavailable for this saved report.",
-			"scopeAll_one": "All {{term_project_other}} ({{count}} {{term_project_one}})",
-			"scopeReach_one": "Your {{term_project_other}} ({{count}} {{term_project_one}})"
+			"sourcesUnknown": "Source details are unavailable for this saved report."
 		},
 		"dashboard": {
 			"choose": "Choose a dashboard",
@@ -8858,15 +8958,12 @@
 			"title": "Dashboard editor",
 			"unsaved": "saved with the layout",
 			"wider": "Make {{title}} wider",
-			"widgetActions": "{{title}} 작업",
-			"limits_one": "{{count}} of {{max}} widgets"
+			"widgetActions": "{{title}} 작업"
 		},
 		"empty": {
 			"excluded_other": "{{count}} items were left out: {{reason}}.",
 			"noData": "Nothing to show for these filters.",
-			"noDataInWindow_other": "No data in this period. {{count}} items fall outside it.",
-			"noDataInWindow_one": "No data in this period. {{count}} item falls outside it.",
-			"excluded_one": "{{count}} item was left out: {{reason}}."
+			"noDataInWindow_other": "No data in this period. {{count}} items fall outside it."
 		},
 		"errors": {
 			"disabled": {
@@ -8929,8 +9026,7 @@
 			"type": "Type",
 			"window": "Window",
 			"datePlaceholder": "설정 안 됨",
-			"clearDate": "날짜 지우기",
-			"days_one": "{{count}} day"
+			"clearDate": "날짜 지우기"
 		},
 		"index": {
 			"categories": "Report categories",
@@ -9107,8 +9203,7 @@
 				},
 				"ready": {
 					"description_other": "{{count}} rows. It can be downloaded for 24 hours.",
-					"title": "Your export is ready",
-					"description_one": "{{count}} row. It can be downloaded for 24 hours."
+					"title": "Your export is ready"
 				},
 				"running": {
 					"description": "Large exports take a little while. You can keep working.",
@@ -9163,8 +9258,7 @@
 		},
 		"chartScroll": {
 			"hint_other": "Scroll sideways to see all {{count}} columns.",
-			"region": "{{label}} Scrolls sideways.",
-			"hint_one": "Scroll sideways to see the {{count}} column."
+			"region": "{{label}} Scrolls sideways."
 		}
 	},
 	"godModeDeliveries": {
@@ -9222,8 +9316,7 @@
 			"skippedOutOfReach": "Skipped out of reach",
 			"suppressed": "Suppressed"
 		},
-		"title": "Deliveries",
-		"childCount_one": "{{count}} delivery"
+		"title": "Deliveries"
 	},
 	"godModeJobs": {
 		"checkedAt": "Updated {{when}}",
@@ -9420,8 +9513,7 @@
 		"purgeRequestFailed": "The hard-purge request could not be created. Reload and try again.",
 		"purgeConflict": "This organisation is not currently eligible for purge. Review its legal hold and dependencies, then reload.",
 		"unknownDate": "unknown",
-		"restoreOperationUnavailable": "The deletion record is unavailable. Reload the directory.",
-		"selectedCount_one": "{{count}} request type selected"
+		"restoreOperationUnavailable": "The deletion record is unavailable. Reload the directory."
 	},
 	"godModePlugins": {
 		"checkedAt": "Updated {{when}}",
@@ -9566,16 +9658,7 @@
 			"request_other": "Requests",
 			"submission_other": "Submissions",
 			"service_other": "Services",
-			"change_other": "Changes",
-			"work_item_one": "Work item",
-			"project_one": "Project",
-			"cycle_one": "Cycle",
-			"module_one": "Module",
-			"epic_one": "Epic",
-			"request_one": "Request",
-			"submission_one": "Submission",
-			"service_one": "Service",
-			"change_one": "Change"
+			"change_other": "Changes"
 		},
 		"customer": {
 			"work_item_other": "Requests",
@@ -9586,16 +9669,7 @@
 			"request_other": "Requests",
 			"submission_other": "Requests",
 			"service_other": "Services",
-			"change_other": "Changes",
-			"work_item_one": "Request",
-			"project_one": "Project",
-			"cycle_one": "Cycle",
-			"module_one": "Module",
-			"epic_one": "Epic",
-			"request_one": "Request",
-			"submission_one": "Request",
-			"service_one": "Service",
-			"change_one": "Change"
+			"change_other": "Changes"
 		}
 	},
 	"godModeWebhooks": {
@@ -10039,8 +10113,7 @@
 	"projectOverview": {
 		"attention": {
 			"blocking_other": "{{count}} blocking prerequisites are outstanding.",
-			"seeWaiting": "See what is waiting",
-			"blocking_one": "{{count}} blocking prerequisite is outstanding."
+			"seeWaiting": "See what is waiting"
 		},
 		"common": {
 			"actionsFor": "Actions for {{name}}",
@@ -10111,8 +10184,7 @@
 				"none": "No contract"
 			},
 			"title": "Contract",
-			"usedOf": "{{used}} h of {{contracted}} h used",
-			"daysLeft_one": "{{count}} day left"
+			"usedOf": "{{used}} h of {{contracted}} h used"
 		},
 		"documents": {
 			"add": "Add document",
@@ -10279,10 +10351,7 @@
 				"workspace": "{{name}} (workspace default)",
 				"none": "{{name}}"
 			},
-			"title": "Service levels",
-			"minutes_one": "{{count}} min",
-			"hours_one": "{{count}} h",
-			"days_one": "{{count}} day"
+			"title": "Service levels"
 		},
 		"status": {
 			"active": "Active",
@@ -10332,8 +10401,174 @@
 			"title": "Team",
 			"unnamed": "Unnamed person",
 			"wait": "Wait before escalating (minutes)",
-			"waitMinutes_other": "escalate after {{count}} minutes",
-			"waitMinutes_one": "escalate after {{count}} minute"
+			"waitMinutes_other": "escalate after {{count}} minutes"
+		}
+	},
+	"workItemExtras": {
+		"detail": {
+			"notFoundDescription": "This {{term_work_item_one}} doesn't exist, or you don't have access to it.",
+			"errorTitle": "Couldn't load this {{term_work_item_one}}",
+			"errorDescription": "Something went wrong while loading this {{term_work_item_one}}.",
+			"retry": "Retry",
+			"keyLabel": "Key",
+			"titleLabel": "Title",
+			"stateLabel": "State",
+			"priorityLabel": "Priority",
+			"dueDateLabel": "Due date",
+			"assigneeLabel": "Assignee",
+			"descriptionHeading": "Description",
+			"detailsHeading": "Details",
+			"projectLabel": "{{term_project_one}}",
+			"startDateLabel": "Start date",
+			"createdLabel": "Created",
+			"updatedLabel": "Updated",
+			"noPriority": "No priority",
+			"noDueDate": "No due date",
+			"noStartDate": "No start date",
+			"noDescription": "No description",
+			"unavailable": "Unavailable",
+			"unavailableFieldLabel": "{{field}} unavailable",
+			"partialNoticeTitle": "Some details are missing",
+			"partialNoticeDescription": "Some fields on this {{term_work_item_one}} couldn't be fully loaded. They're marked below.",
+			"approvals": {
+				"heading": "Approvals",
+				"loading": "Loading approvals…",
+				"empty": "No approvals on this {{term_work_item_one}}.",
+				"errorTitle": "Couldn't load approvals",
+				"errorDescription": "Something went wrong while loading approvals for this {{term_work_item_one}}.",
+				"retry": "Retry",
+				"kind": {
+					"customer": "Customer approval",
+					"cab": "Change advisory board approval"
+				},
+				"approverLabel": "Approver",
+				"requesterLabel": "Requested by",
+				"expiresLabel": "Expires",
+				"decidedLabel": "Decided",
+				"unknownPerson": "Unknown",
+				"state": {
+					"pending": "Pending",
+					"approved": "Approved",
+					"rejected": "Rejected",
+					"expired": "Expired",
+					"withdrawn": "Withdrawn"
+				},
+				"reachLost": "The approver no longer has access to this {{term_work_item_one}}. Withdraw the request and ask again.",
+				"withdraw": "Withdraw request",
+				"withdrawing": "Withdrawing…",
+				"withdrawErrorTitle": "Couldn't withdraw the approval",
+				"withdrawConflict": "This approval is no longer pending. The list has been refreshed.",
+				"withdrawForbidden": "You can no longer withdraw this approval. The list has been refreshed.",
+				"withdrawFailed": "Something went wrong while withdrawing the approval. Try again.",
+				"withdrawn": "Approval request withdrawn.",
+				"withdrawFor": "Withdraw request — {{label}}",
+				"approve": "Approve",
+				"confirmReject": "Reject with note",
+				"decideErrorTitle": "The decision was not recorded",
+				"decideFailed": "The decision could not be recorded.",
+				"reject": "Reject",
+				"rejectNote": "Why are you rejecting this?",
+				"decideConflict": "This approval was already decided, withdrawn or expired. The list now shows its current state.",
+				"request": {
+					"action": "Request approval",
+					"anyState": "Any state",
+					"approver": "Approver",
+					"candidatesError": "Eligible approvers could not be loaded.",
+					"chooseApprover": "Choose an approver",
+					"chooseTransition": "Choose a transition",
+					"description": "Choose a workflow gate and a person who can approve this {{term_work_item_one}}.",
+					"error": "The approval could not be requested. Refresh the options and try again.",
+					"expiryDays": "Expires in (days)",
+					"expiryHint": "Choose between 1 and {{max}} days. Instance default: {{days}} days.",
+					"invalidExpiry": "Expiry must be a whole number from 1 to {{max}} days.",
+					"kind": "Approval kind",
+					"more": "Load more approvers",
+					"noCandidates": "No eligible approvers found.",
+					"optionsError": "Approval request options could not be loaded.",
+					"search": "Search eligible approvers",
+					"submit": "Request approval",
+					"submitting": "Requesting…",
+					"success": "Approval requested.",
+					"title": "Request approval",
+					"transition": "Workflow transition",
+					"unavailable": "Approval requests are no longer available for this {{term_work_item_one}}.",
+					"noTransitions": "This {{term_work_item_one}}’s workflow has no approval gates."
+				}
+			},
+			"attachments": {
+				"add": "Add file",
+				"delete": "Delete {{name}}",
+				"deleteFailed": "The file could not be deleted.",
+				"empty": "No files attached.",
+				"heading": "Attachments",
+				"loadFailed": "Attachments could not be loaded.",
+				"uploadFailed": "The file could not be uploaded.",
+				"uploading": "Uploading…",
+				"closePreview": "Close preview",
+				"dismissUpload": "Dismiss {{name}}",
+				"download": "Download {{name}}",
+				"dropToAttach": "Drop files to attach them to this {{term_work_item_one}}",
+				"next": "Next image",
+				"preview": "Preview {{name}}",
+				"previous": "Previous image",
+				"retryUpload": "Retry {{name}}",
+				"uploadedBy": "by {{name}}",
+				"uploadsLabel": "Uploads in progress",
+				"backToFiles": "Back to files",
+				"commentParent": "Comment attachment",
+				"recoverableEmpty": "No attachments can be restored.",
+				"recoverableUntil": "Recoverable until {{date}}",
+				"recoverDeleted": "Recently deleted",
+				"restore": "Restore {{name}}",
+				"restoreFailed": "Unable to restore the attachment. Try again.",
+				"pdfPreviewDownload": "Download {{name}}",
+				"pdfPreviewLoading": "Loading PDF preview…",
+				"pdfPreviewNextPage": "Next page",
+				"pdfPreviewOpen": "Preview {{name}}",
+				"pdfPreviewPage": "Page {{page}} of {{count}}",
+				"pdfPreviewPreviousPage": "Previous page",
+				"pdfPreviewTitle": "PDF preview",
+				"pdfPreviewTooLarge": "This PDF is too large to preview. Download the file to view it.",
+				"pdfPreviewUnavailable": "PDF preview is unavailable. Download the file to view it.",
+				"pdfPreviewZoomIn": "Zoom in",
+				"pdfPreviewZoomOut": "Zoom out",
+				"sharedWithCustomer": "Visible to customer"
+			},
+			"sla": {
+				"due": "due {{date}}",
+				"heading": "SLA",
+				"metric": {
+					"first_response": "First response",
+					"resolution": "Resolution"
+				},
+				"remaining": "{{time}} left",
+				"state": {
+					"at_risk": "At risk",
+					"breached": "Breached",
+					"met": "Met",
+					"missed": "Missed",
+					"none": "No SLA",
+					"ok": "On track"
+				},
+				"unavailable": "SLA targets are not available for this item.",
+				"atRiskMark": "Close to its limit",
+				"atRiskPast": "Past the {{pct}}% at-risk mark",
+				"pausedSince": "Paused – {{reason}} since {{since}}",
+				"pauseReason": {
+					"manual": "paused by an agent",
+					"other": "on hold",
+					"waiting_customer": "waiting on customer"
+				},
+				"atRiskMarkerAt": "At-risk mark at {{pct}}% of the target",
+				"calendar": "Working calendar: {{name}}"
+			},
+			"change": {
+				"heading": "{{term_service_one}} and {{term_change_one}}"
+			},
+			"time": {
+				"heading": "Time"
+			},
+			"resizeProperties": "Resize properties panel"
 		}
 	}
 }

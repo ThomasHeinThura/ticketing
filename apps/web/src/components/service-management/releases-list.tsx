@@ -32,8 +32,10 @@ import {
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { DateField } from "@/components/time-tracking/date-field";
 import {
   createRelease,
@@ -194,8 +196,8 @@ function CreateReleaseDialog({
                 <DateField
                   id="release-date"
                   label={t("releases.fields.plannedDate")}
-                  placeholder={t("customFields:value.notSet")}
-                  clearLabel={t("customFields:value.clear")}
+                  placeholder={t("workItems:customFieldValue.notSet")}
+                  clearLabel={t("workItems:customFieldValue.clear")}
                   value={plannedDate}
                   disabled={mutation.isPending}
                   onChange={setPlannedDate}
@@ -266,6 +268,8 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
       Boolean(workspace) && releases.isSuccess && releases.data.length === 0,
   });
   const [creating, setCreating] = useState(false);
+  if ([status.error, releases.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("releases.list.title")} />
@@ -281,7 +285,10 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
           ) : null
         }
       >
-        <SectionNav active="releases" />
+        <SectionNav
+          active="releases"
+          canManageServices={status.data?.canManageServices === true}
+        />
         {statusPending ||
         (statusPlaceholder && !catalogueOff && !status.isError) ? (
           <LoadingRows visible={statusPlaceholder} />
