@@ -4687,6 +4687,16 @@ const vGmAEmailProvider = {
   passwordConfigured: true,
   passwordPreview: "••••••••",
   localMailpitCaptureAvailable: false,
+  testStatus: {
+    state: "verified",
+    testedAt: "2026-10-12T09:15:00.000Z",
+    smtpCode: null,
+    category: null,
+  },
+  sesRegions: [
+    { region: "eu-west-1", host: "email-smtp.eu-west-1.amazonaws.com" },
+    { region: "us-east-1", host: "email-smtp.us-east-1.amazonaws.com" },
+  ],
 };
 
 const vGmAPlugins = {
@@ -4720,6 +4730,24 @@ const vGmAPlugins = {
             group: "config",
             required: false,
             nullable: false,
+            secret: false,
+          },
+          {
+            key: "config.provider",
+            labelKey: "provider",
+            control: "text",
+            group: "config",
+            required: false,
+            nullable: false,
+            secret: false,
+          },
+          {
+            key: "config.region",
+            labelKey: "region",
+            control: "text",
+            group: "config",
+            required: false,
+            nullable: true,
             secret: false,
           },
           {

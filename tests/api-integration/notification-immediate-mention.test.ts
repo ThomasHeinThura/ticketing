@@ -136,6 +136,7 @@ async function fixture() {
       },
     },
     { userId: actor.user.id, personId: author.id },
+    async () => undefined,
   );
   await saveCanonicalPreference(recipient.user.id, preference);
   return { actor, recipient, person, item, project, author };
@@ -317,6 +318,7 @@ describe("native persisted comment mention to immediate SMTP delivery", () => {
         await updateEmailProvider(
           { version: 1, enabled: false },
           { userId: f.actor.user.id, personId: f.author.id },
+          async () => undefined,
         );
       if (change === "quiet_hours")
         await db

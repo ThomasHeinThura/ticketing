@@ -806,7 +806,7 @@ Contract: `put`, `get`, `delete`, `presignUpload`, `presignDownload`, `stat`.
 
 | Plugin id | Notes |
 | --- | --- |
-| `notify.email` | SMTP. Config includes host, port, TLS, credentials, from-address. **Core** — sign-in codes, invitations, setup and notification email all depend on it |
+| `notify.email` | SMTP, either a custom server or Amazon SES through its SMTP interface (region picks the host; port 587 with STARTTLS). Config includes provider, region, host, port, TLS, credentials, from-address and the last test result. **Core** — sign-in codes, invitations, setup and notification email all depend on it |
 | `notify.webhook` | Generic JSON POST with HMAC signature. SSRF-guarded. Core (P4) |
 | `notify.teams` → `notify.slack` → `notify.telegram` → `notify.viber` → others | **Future, in that order** (decided 2026-09-05). Not in the three-to-four-month core scope. kaneo's inherited Slack/Discord/Telegram routers are **removed at fork**, not kept dormant ([inherited-features.md](#inherited-features)); the `notify.*` contract is the extension point they come back through |
 | `notify.discord` · `notify.ntfy` · `notify.gotify` | Future, unprioritised |

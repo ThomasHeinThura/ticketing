@@ -146,6 +146,7 @@ describe("TaskDesk API OpenAPI spec", () => {
         "auth_local_methods_update",
         "storage_config_save",
         "storage_config_test",
+        "notification_provider_save",
       ].sort(),
     );
     expect(

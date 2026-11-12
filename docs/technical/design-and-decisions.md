@@ -3599,6 +3599,17 @@ Thomas approved both changes on 5 November 2026:
 Neither approval constitutes a merge or deployment approval. Existing tenant,
 session, audit, encryption and secret-redaction boundaries remain required.
 
+## Amazon SES setup and a real email test — 12 November 2026
+
+Thomas decided on 12 November 2026 (D-M) that God Mode sets up Amazon SES and that its Test button sends a real email. SES is used through its SMTP interface, so there is no new dependency.
+
+- **Provider choice.** The email screen offers Custom SMTP or Amazon SES (the local Mailpit capture stays as it was). SES fixes the connection: the region decides the host `email-smtp.<region>.amazonaws.com`, the port is 587 and STARTTLS is required. The server derives and validates these from the region; the editor only shows them read-only. The credentials are the SES SMTP user name and password, not an AWS access key. Provider and region are stored in the provider's `config`.
+- **Test.** Test sends one fixed message to an address the administrator types (the signed-in administrator's by default) through the same transport and egress checks as every delivery, using the unsaved form values. It stays unelevated (it saves nothing), rate limited to 5 per administrator per minute and audited with the recipient's domain only. A delivery failure is an answer: a bounded category, the SMTP reply code, and the provider's text with e-mail addresses, host names, IP addresses, key identifiers, long tokens and the configured credentials removed.
+- **Status.** The last result (verified or failed, when, and the code) is stored in the provider row's `config` as server-written `lastTest`, and shown under the title. It is recorded only when the test ran against the saved settings; saving changed settings or a new password resets it to "Not tested since change". Recording a result neither bumps the version nor writes a row.
+- **Saving needs the second factor again.** Mail carries password-reset and invitation links, so saving the provider is an elevated action: PA-15 operation `notification_provider_save`, bound to the whole write including the password's keep, clear or keyed-digest-of-replacement intent (migration 0218 adds it to the operation CHECK).
+
+This reverses two earlier rules: (1) "`notify.email` is a non-auth provider and saving it is not elevated" (the policy exemption on `PATCH /api/instance/notification-providers/email`), and (2) "an SMTP test shows only the bounded safe outcome, never raw provider replies, and sends no mail" (operations runbook, `executeSmtp` comment): the reply now leaves the server in the sanitised form above, and only when the caller asks for it. Delivery paths still never carry provider text. This is not a merge or deployment approval.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.

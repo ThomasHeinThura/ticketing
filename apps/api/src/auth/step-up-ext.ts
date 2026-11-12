@@ -3,6 +3,15 @@ import { createServiceKeyBody } from "../api-key/schema";
 import { auditExportBody } from "../audit/schema";
 import type db from "../database";
 import { localAuthMethodsBody } from "../instance/auth-local-methods-schema";
+import {
+  type EmailProviderWrite,
+  writeProviderSchema,
+} from "../notification-provider/schema";
+import {
+  canonicalEmailProviderRequest,
+  NOTIFICATION_PROVIDER_SAVE_OPERATION,
+  NOTIFICATION_PROVIDER_SAVE_ROUTE,
+} from "../notification-provider/step-up-binding";
 import { z } from "../openapi";
 import {
   canonicalS3DraftRequest,
@@ -180,6 +189,9 @@ const shapes = {
   [AUTH_LOCAL_METHODS_UPDATE_OPERATION]: localAuthMethodsBody.shape,
   [STORAGE_CONFIG_SAVE_OPERATION]: s3DraftWriteSchema.shape,
   [STORAGE_CONFIG_TEST_OPERATION]: s3DraftWriteSchema.shape,
+  // The whole write: settings, enabled flag, CAS version and the password's keep/clear/replace
+  // intent. Saving changes where password-reset and invitation mail is sent from.
+  [NOTIFICATION_PROVIDER_SAVE_OPERATION]: writeProviderSchema.shape,
 } as const;
 
 export type ExtOperation = keyof typeof shapes;
@@ -265,7 +277,10 @@ export type ExtInput =
       operation: typeof AUTH_LOCAL_METHODS_UPDATE_OPERATION;
     } & z.infer<typeof localAuthMethodsBody>)
   | ({ operation: typeof STORAGE_CONFIG_SAVE_OPERATION } & S3DraftWrite)
-  | ({ operation: typeof STORAGE_CONFIG_TEST_OPERATION } & S3DraftWrite);
+  | ({ operation: typeof STORAGE_CONFIG_TEST_OPERATION } & S3DraftWrite)
+  | ({
+      operation: typeof NOTIFICATION_PROVIDER_SAVE_OPERATION;
+    } & EmailProviderWrite);
 
 const sortedUnique = (values: readonly string[]) => [...new Set(values)].sort();
 
@@ -606,6 +621,17 @@ function binding(input: ExtInput): {
         ),
       };
     }
+    case NOTIFICATION_PROVIDER_SAVE_OPERATION:
+      return {
+        operation: input.operation,
+        route: NOTIFICATION_PROVIDER_SAVE_ROUTE,
+        body: canonicalOperationBody(
+          input.operation,
+          NOTIFICATION_PROVIDER_SAVE_ROUTE,
+          1,
+          canonicalEmailProviderRequest(input),
+        ),
+      };
     case AUTH_LOCAL_METHODS_UPDATE_OPERATION:
       return {
         operation: input.operation,
@@ -745,7 +771,8 @@ export async function extAuthority(
     input.operation === AUDIT_EXPORT_OPERATION ||
     input.operation === AUTH_LOCAL_METHODS_UPDATE_OPERATION ||
     input.operation === STORAGE_CONFIG_SAVE_OPERATION ||
-    input.operation === STORAGE_CONFIG_TEST_OPERATION
+    input.operation === STORAGE_CONFIG_TEST_OPERATION ||
+    input.operation === NOTIFICATION_PROVIDER_SAVE_OPERATION
   )
     return isCurrentInstanceAdminForStepUp(userId, executor);
   try {

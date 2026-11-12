@@ -1,4 +1,5 @@
 import { z } from "../openapi";
+import { SES_SMTP_REGIONS, type SesSmtpRegion, sesSmtpSettings } from "./ses";
 
 type FormControl =
   | "text"
@@ -24,11 +25,26 @@ const header = z
   .string()
   .max(320)
   .refine((value) => !/[\r\n\0]/u.test(value), "Invalid header characters");
-export const smtpConfigurationSchema = z
+export const EMAIL_PROVIDER_KINDS = ["smtp", "ses"] as const;
+export type EmailProviderKind = (typeof EMAIL_PROVIDER_KINDS)[number];
+
+const smtpConfigurationObject = z
   .object({
     captureToMailpit: withFormMetadata(z.boolean().optional(), {
       labelKey: "captureToMailpit",
       control: "checkbox",
+      group: "config",
+    }),
+    /** Absent on rows saved before Amazon SES support; it reads as `smtp`. */
+    provider: withFormMetadata(z.enum(EMAIL_PROVIDER_KINDS).optional(), {
+      labelKey: "provider",
+      control: "text",
+      group: "config",
+    }),
+    /** Only for `ses`: it fixes host, port and TLS. */
+    region: withFormMetadata(z.enum(SES_SMTP_REGIONS).nullable().optional(), {
+      labelKey: "region",
+      control: "text",
       group: "config",
     }),
     host: withFormMetadata(
@@ -71,6 +87,47 @@ export const smtpConfigurationSchema = z
     }),
   })
   .strict();
+type SmtpConfigFields = z.infer<typeof smtpConfigurationObject>;
+type IssueContext = {
+  addIssue(issue: { code: "custom"; message: string; path: string[] }): void;
+};
+
+/**
+ * Amazon SES fixes the connection: the region decides the host and the port, TLS is always
+ * STARTTLS, and the SMTP user name is required. Whatever a client sends for those fields must be
+ * exactly what the region derives, so the editor's read-only values cannot drift from the server.
+ */
+function enforceProviderChoice(config: SmtpConfigFields, ctx: IssueContext) {
+  const issue = (path: string, message: string) =>
+    ctx.addIssue({ code: "custom", message, path: [path] });
+  if ((config.provider ?? "smtp") !== "ses") {
+    if (config.region != null)
+      issue("region", "A region is only valid for Amazon SES");
+    return;
+  }
+  if (config.captureToMailpit === true)
+    issue(
+      "captureToMailpit",
+      "Local capture cannot be combined with Amazon SES",
+    );
+  if (!config.region) {
+    issue("region", "Choose an Amazon SES region");
+    return;
+  }
+  const fixed = sesSmtpSettings(config.region);
+  if (config.host !== fixed.host) issue("host", "Host is fixed by the region");
+  if (config.port !== fixed.port) issue("port", "Port is fixed to 587");
+  if (config.secure !== fixed.secure)
+    issue("secure", "Amazon SES uses STARTTLS, not implicit TLS");
+  if (config.requireTLS !== fixed.requireTLS)
+    issue("requireTLS", "Amazon SES requires STARTTLS");
+  if (config.username === null)
+    issue("username", "The SES SMTP user name is required");
+}
+
+export const smtpConfigurationSchema = smtpConfigurationObject.superRefine(
+  enforceProviderChoice,
+);
 export type SmtpConfig = z.infer<typeof smtpConfigurationSchema>;
 
 /** The persisted capture mode is a single fixed local Compose destination. */
@@ -82,6 +139,113 @@ export function isValidMailpitCaptureConfig(config: SmtpConfig): boolean {
       config.secure === false &&
       config.requireTLS === false &&
       config.username === null)
+  );
+}
+
+/** Failure categories a test send reports; the editor maps each to its own message. */
+export const SMTP_TEST_FAILURE_CATEGORIES = [
+  "authentication",
+  "starttls_required",
+  "message_rejected",
+  "throttled",
+  "temporary",
+  "rejected",
+  "connection",
+  "tls",
+  "timeout",
+  "failed",
+] as const;
+export type SmtpTestFailureCategory =
+  (typeof SMTP_TEST_FAILURE_CATEGORIES)[number];
+
+const testTimestamp = z.string().datetime({ offset: true });
+/** What the editor shows under the title. `never`: no result exists for the saved settings. */
+export const emailTestStatusSchema = z.object({
+  state: z.enum(["never", "verified", "failed", "stale"]),
+  testedAt: testTimestamp.nullable(),
+  smtpCode: z.number().int().min(200).max(599).nullable(),
+  category: z.enum(SMTP_TEST_FAILURE_CATEGORIES).nullable(),
+});
+export type EmailTestStatus = z.infer<typeof emailTestStatusSchema>;
+/** The persisted form: `never` is the absence of the key, so it is never stored. */
+const storedTestStatusSchema = z
+  .object({
+    state: z.enum(["verified", "failed", "stale"]),
+    testedAt: testTimestamp.nullable(),
+    smtpCode: z.number().int().min(200).max(599).nullable(),
+    category: z.enum(SMTP_TEST_FAILURE_CATEGORIES).nullable(),
+  })
+  .strict();
+export type StoredTestStatus = z.infer<typeof storedTestStatusSchema>;
+
+/**
+ * The stored `config` document: the administrator-written settings plus the server-written
+ * `lastTest`. Clients can never write `lastTest` (the write schemas are the plain settings), and
+ * every reader of the stored document goes through `parseStoredEmailConfig`, because the strict
+ * settings schema rejects the extra key.
+ */
+const storedSmtpConfigurationSchema = z
+  .object({
+    ...smtpConfigurationObject.shape,
+    lastTest: storedTestStatusSchema.optional(),
+  })
+  .strict()
+  .superRefine(enforceProviderChoice);
+
+export function parseStoredEmailConfig(
+  value: unknown,
+): { config: SmtpConfig; lastTest: StoredTestStatus | null } | null {
+  const parsed = storedSmtpConfigurationSchema.safeParse(value);
+  if (!parsed.success) return null;
+  const { lastTest, ...config } = parsed.data;
+  return { config, lastTest: lastTest ?? null };
+}
+
+/** The document written to the row: settings plus, when there is one, the test status. */
+export function storedEmailConfig(
+  config: SmtpConfig,
+  lastTest: StoredTestStatus | null,
+): Record<string, unknown> {
+  return lastTest ? { ...config, lastTest } : { ...config };
+}
+
+export function emailTestStatus(
+  lastTest: StoredTestStatus | null,
+): EmailTestStatus {
+  return (
+    lastTest ?? {
+      state: "never",
+      testedAt: null,
+      smtpCode: null,
+      category: null,
+    }
+  );
+}
+
+export function emailProviderKind(config: SmtpConfig): EmailProviderKind {
+  return config.provider ?? "smtp";
+}
+
+/** Defaults filled in, so two spellings of the same settings compare equal. */
+export function normaliseSmtpConfig(config: SmtpConfig) {
+  return {
+    provider: emailProviderKind(config),
+    region: (config.region ?? null) as SesSmtpRegion | null,
+    captureToMailpit: config.captureToMailpit === true,
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    requireTLS: config.requireTLS,
+    username: config.username,
+    fromAddress: config.fromAddress,
+    replyTo: config.replyTo,
+  };
+}
+
+export function sameSmtpConfig(left: SmtpConfig, right: SmtpConfig): boolean {
+  return (
+    JSON.stringify(normaliseSmtpConfig(left)) ===
+    JSON.stringify(normaliseSmtpConfig(right))
   );
 }
 
@@ -126,13 +290,36 @@ export const writeProviderSchema = z
     ),
   })
   .strict();
+export type EmailProviderWrite = z.infer<typeof writeProviderSchema>;
 export const testProviderSchema = z
   .object({
     version: z.number().int().min(0).safe(),
     config: smtpConfigurationSchema.optional(),
     password: z.string().min(1).max(16_384).nullable().optional(),
+    /** Where the test message is sent; the editor defaults it to the signed-in administrator. */
+    recipient: header.email(),
   })
   .strict();
+export const testResultSchema = z.discriminatedUnion("ok", [
+  z.object({
+    ok: z.literal(true),
+    testedAt: testTimestamp,
+    /** Only the domain of the recipient is ever recorded or echoed. */
+    recipientDomain: z.string().min(1).max(253),
+    /** Whether the result was stored as the saved settings' status. */
+    persisted: z.boolean(),
+  }),
+  z.object({
+    ok: z.literal(false),
+    testedAt: testTimestamp,
+    category: z.enum(SMTP_TEST_FAILURE_CATEGORIES),
+    smtpCode: z.number().int().min(200).max(599).nullable(),
+    /** The provider's reply with addresses, hosts, IPs and credentials removed. */
+    providerText: z.string().max(240).nullable(),
+    persisted: z.boolean(),
+  }),
+]);
+export type TestResult = z.infer<typeof testResultSchema>;
 export const providerResponseSchema = z.object({
   version: z.number().int().min(0).safe(),
   source: z.enum(["runtime", "bootstrap", "unconfigured"]),
@@ -141,6 +328,11 @@ export const providerResponseSchema = z.object({
   passwordConfigured: z.boolean(),
   passwordPreview: z.literal("••••••••").nullable(),
   localMailpitCaptureAvailable: z.boolean(),
+  testStatus: emailTestStatusSchema,
+  /** Amazon SES regions the editor offers, each with the SMTP host the server derives. */
+  sesRegions: z.array(
+    z.object({ region: z.enum(SES_SMTP_REGIONS), host: z.string() }),
+  ),
 });
 
 const supportedFormControls = new Set<FormControl>([
