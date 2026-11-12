@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { sendNativeWorkspaceInvitationEmail } from "../../utils/send-workspace-invitation-email";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../utils/workspace-invitation-limits";
@@ -89,6 +91,7 @@ async function inviteWorkspaceMember(
   input: InviteWorkspaceMemberInput,
 ): Promise<InvitedWorkspaceMember> {
   const email = input.email.trim().toLowerCase();
+  const inviteeHash = createHash("sha256").update(email).digest("hex");
 
   const invitation = await db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, input.workspaceId);
@@ -140,10 +143,21 @@ async function inviteWorkspaceMember(
         existingInvitation.id,
         expiresAt,
         role,
+        input.inviterId,
       );
       if (!updated) {
         throw new Error("invitation update returned no row");
       }
+      await appendAuditLog(tx, {
+        actorId: input.inviterId,
+        actorType: "person",
+        workspaceId: input.workspaceId,
+        action: "invitation.sent",
+        entityType: "invitation",
+        entityId: updated.id,
+        before: { role: existingInvitation.role },
+        after: { scope: "staff", inviteeHash, resend: true, role },
+      });
       return updated;
     }
 
@@ -192,6 +206,16 @@ async function inviteWorkspaceMember(
     if (!created) {
       throw new Error("invitation insert returned no row");
     }
+    await appendAuditLog(tx, {
+      actorId: input.inviterId,
+      actorType: "person",
+      workspaceId: input.workspaceId,
+      action: "invitation.sent",
+      entityType: "invitation",
+      entityId: created.id,
+      before: null,
+      after: { scope: "staff", inviteeHash, resend: false, role },
+    });
     return created;
   });
 

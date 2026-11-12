@@ -34002,22 +34002,53 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "role": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "resend": {
+                        "type": "boolean",
+                        "enum": [
+                          false
+                        ]
+                      }
+                    },
+                    "required": [
+                      "email",
+                      "role"
+                    ]
                   },
-                  "role": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "resend": {
-                    "type": "boolean"
+                  {
+                    "type": "object",
+                    "properties": {
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "role": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "resend": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      }
+                    },
+                    "required": [
+                      "email",
+                      "resend"
+                    ]
                   }
-                },
-                "required": [
-                  "email"
                 ]
               }
             }

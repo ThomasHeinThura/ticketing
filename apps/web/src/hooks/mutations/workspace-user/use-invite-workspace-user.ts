@@ -5,22 +5,15 @@ import queryClient from "@/query-client";
 type InviteWorkspaceUserRequest = {
   workspaceId: string;
   email: string;
-  role?: string;
-  resend?: boolean;
-};
+} & ({ role: string; resend?: false } | { role?: string; resend: true });
 
 // S6a (issue #6, retrofit plan §3): native replacement for
 // authClient.organization.inviteMember() -- see
 // apps/web/src/fetchers/workspace/invite-workspace-member.ts.
 function useInviteWorkspaceUser() {
   return useMutation({
-    mutationFn: async ({
-      workspaceId,
-      email,
-      role,
-      resend,
-    }: InviteWorkspaceUserRequest) => {
-      return inviteWorkspaceMember({ workspaceId, email, role, resend });
+    mutationFn: async (request: InviteWorkspaceUserRequest) => {
+      return inviteWorkspaceMember(request);
     },
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries({

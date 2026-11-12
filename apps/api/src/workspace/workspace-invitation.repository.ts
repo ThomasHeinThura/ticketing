@@ -93,10 +93,11 @@ export async function refreshWorkspaceInvitation(
   invitationId: string,
   expiresAt: Date,
   role: string,
+  inviterId: string,
 ) {
   return await executor
     .update(schema.invitationTable)
-    .set({ expiresAt, role })
+    .set({ expiresAt, role, inviterId })
     .where(eq(schema.invitationTable.id, invitationId))
     .returning();
 }
