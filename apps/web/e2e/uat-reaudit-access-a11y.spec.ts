@@ -1,6 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 import { seriousOrCriticalViolations } from "./helpers/axe";
-import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import {
+  DEFAULT_RESOLVED_FEATURES,
+  installPerformanceApiFixture,
+} from "./helpers/g11-performance-fixture";
 
 /**
  * UAT re-audit (release d35d165), against the mocked API. The fixture's role holds none of
@@ -305,12 +308,165 @@ test.describe("settings when the capability read fails", () => {
       390,
       "settings-access-denied",
     ],
+    [
+      "/dashboard/settings/workspace/features",
+      "workspace-features",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/features",
+      "workspace-features",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/projects/project-g11/features",
+      "project-features",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/projects/project-g11/features",
+      "project-features",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/terminology",
+      "terminology",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/terminology",
+      "terminology",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/request-types",
+      "request-types",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/request-types",
+      "request-types",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/canned-responses",
+      "canned-responses",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/canned-responses",
+      "canned-responses",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/work-item-templates",
+      "work-item-templates",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/work-item-templates",
+      "work-item-templates",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/customer-invitations",
+      "customer-invitations",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/customer-invitations",
+      "customer-invitations",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/custom-fields/new",
+      "custom-field",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/custom-fields/new",
+      "custom-field",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/webhooks",
+      "webhooks",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/webhooks",
+      "webhooks",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/sla-policies/new",
+      "sla-policy",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/sla-policies/new",
+      "sla-policy",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/calendars/new",
+      "calendar",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/calendars/new",
+      "calendar",
+      390,
+      "settings-access-denied",
+    ],
   ] as const) {
     test(`${name} at ${width}: error with Retry, then recovers`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 844 });
       await installPerformanceApiFixture(page);
+      // The parent SLA routes require the feature and read their viewer-readable list
+      // before rendering Outlet; neither list is protected by the create capability.
+      if (name === "sla-policy" || name === "calendar") {
+        await page.route(
+          /\/api\/(?:workspaces\/[^/]+\/)?features\/resolved/u,
+          (route) =>
+            route.fulfill({
+              json: {
+                features: DEFAULT_RESOLVED_FEATURES.map((feature) =>
+                  feature.key === "feature.sla"
+                    ? { ...feature, enabled: true }
+                    : feature,
+                ),
+              },
+            }),
+        );
+        await page.route(
+          /\/api\/(?:service-calendars|sla-policies)(?:\?|$)/u,
+          (route) => route.fulfill({ json: { data: [], nextCursor: null } }),
+        );
+      }
       let failing = true;
       let capabilityReads = 0;
       await page.route("**/api/capabilities**", (route) => {
@@ -326,8 +482,12 @@ test.describe("settings when the capability read fails", () => {
       await expect(error).toContainText("Could not check your access");
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
       expect(
-        paths.filter((p) =>
-          /automations|state-templates|\/api\/time-/u.test(p),
+        paths.filter(
+          (p) =>
+            !p.endsWith("/resolved") &&
+            /automations|state-templates|features$|terminology|request-types|canned-responses|work-item-templates|customer-invitations|custom-fields|webhooks|sla-policies\/|service-calendars\/|\/api\/time-/u.test(
+              p,
+            ),
         ),
       ).toEqual([]);
       const overflow = await page.evaluate(
@@ -347,6 +507,7 @@ test.describe("settings when the capability read fails", () => {
         : page.getByText(settled);
       await expect(settledState).toBeVisible();
       await expect(error).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
       expect(capabilityReads).toBeGreaterThan(readsBeforeRetry);
       await shot(page, `capabilities-retried-${name}-${width}`);
     });

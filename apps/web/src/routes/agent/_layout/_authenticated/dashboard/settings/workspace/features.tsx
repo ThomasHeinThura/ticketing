@@ -9,6 +9,7 @@ import {
   SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { type FeatureLevel, getFeatures } from "@/fetchers/feature-flags";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
@@ -33,7 +34,13 @@ function WorkspaceFeatures() {
     retry: false,
   });
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="settings:workspaceFeatures.title"
+        descriptionKey="settings:workspaceFeatures.subtitle"
+      />
+    );
   if (isForbiddenError(features.error)) return <NoAccessPage />;
   return (
     <>

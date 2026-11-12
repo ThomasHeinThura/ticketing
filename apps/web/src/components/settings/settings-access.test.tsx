@@ -11,7 +11,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { type ReactNode, useEffect } from "react";
+import { type ComponentType, type ReactNode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -22,10 +22,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 const mocks = vi.hoisted(() => ({
   capabilitiesGet: vi.fn(),
+  protectedReads: vi.fn(),
   getStateTemplates: vi.fn(),
   membershipLoading: false,
 }));
 
+vi.mock("@/lib/i18n", () => ({ i18n: { language: "en-US" } }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -67,6 +69,14 @@ function renderWithClient(node: ReactNode) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  client.getQueryCache().subscribe((event) => {
+    if (
+      event.type === "updated" &&
+      event.action.type === "fetch" &&
+      event.query.queryKey[0] !== "workspace-capabilities"
+    )
+      mocks.protectedReads();
+  });
   return render(
     <QueryClientProvider client={client}>{node}</QueryClientProvider>,
   );
@@ -86,6 +96,7 @@ function SettingsScreen({ projectId }: { projectId?: string }) {
 
 beforeEach(() => {
   mocks.capabilitiesGet.mockReset();
+  mocks.protectedReads.mockClear();
   mocks.getStateTemplates.mockReset();
   mocks.membershipLoading = false;
 });
@@ -534,4 +545,115 @@ it("keeps the states page heading while permission loading fails", async () => {
     screen.getByRole("button", { name: "common:actions.retry" }),
   ).toBeEnabled();
   expect(mocks.getStateTemplates).not.toHaveBeenCalled();
+});
+
+vi.mock("@tanstack/react-router", () => ({
+  createFileRoute: () => (options: Record<string, unknown>) => ({
+    ...options,
+    useParams: () => ({ id: "new", projectId: "p-1" }),
+    useSearch: () => ({}),
+  }),
+  useParams: () => ({ projectId: "p-1" }),
+  useLocation: () => ({ pathname: "/dashboard/settings/workspace/webhooks" }),
+  useNavigate: () => vi.fn(),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
+  Link: () => null,
+  Outlet: () => null,
+}));
+vi.mock("@/fetchers/feature-flags", () => ({ getFeatures: vi.fn() }));
+vi.mock("@/fetchers/terminology", () => ({ getTerminology: vi.fn() }));
+
+import { getFeatures } from "@/fetchers/feature-flags";
+import { getTerminology } from "@/fetchers/terminology";
+import { Route as ScreenRoute1 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features";
+import { Route as ScreenRoute10 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars/$id";
+import { Route as ScreenRoute4 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses";
+import { Route as ScreenRoute0 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/features";
+import { Route as ScreenRoute3 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types";
+import { Route as ScreenRoute9 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies/$id";
+import { Route as ScreenRoute2 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology";
+import { Route as ScreenRoute8 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/webhooks";
+import { Route as ScreenRoute5 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/work-item-templates";
+import { CustomFieldEditor } from "./custom-fields/custom-field-editor";
+import { CustomerInvitations } from "./customer-invitations/customer-invitations";
+
+const settingsPages = [
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/workspace/features.tsx",
+    (ScreenRoute0 as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features.tsx",
+    (ScreenRoute1 as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology.tsx",
+    (ScreenRoute2 as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx",
+    (ScreenRoute3 as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx",
+    (ScreenRoute4 as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/workspace/work-item-templates.tsx",
+    (ScreenRoute5 as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "customer invitations",
+    () => <CustomerInvitations organisationId={undefined} />,
+  ],
+  ["new custom field", () => <CustomFieldEditor fieldId="new" />],
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/workspace/webhooks.tsx",
+    (ScreenRoute8 as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/workspace/sla-policies/$id.tsx",
+    (ScreenRoute9 as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars/$id.tsx",
+    (ScreenRoute10 as unknown as { component: ComponentType }).component,
+  ],
+] as const;
+
+describe.each(settingsPages)("%s heading", (_name, Page) => {
+  it("keeps one heading through checking and failure, offers Retry and sends no protected reads", async () => {
+    mocks.capabilitiesGet.mockResolvedValue(respond(503));
+    const { container } = renderWithClient(<Page />);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("settings-access-error"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "common:actions.retry" }),
+    ).toBeEnabled();
+    expect(mocks.protectedReads).not.toHaveBeenCalled();
+    expect(getFeatures).not.toHaveBeenCalled();
+    expect(getTerminology).not.toHaveBeenCalled();
+    expect(container.querySelector("form")).toBeNull();
+  });
+  it("replaces the page title with exactly one no-access heading when denied", async () => {
+    mocks.capabilitiesGet.mockResolvedValue(respond(200));
+    renderWithClient(<Page />);
+    expect(
+      await screen.findByTestId("settings-access-denied"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "states.noAccess.title",
+    );
+    expect(
+      screen.queryByRole("button", { name: "common:actions.retry" }),
+    ).toBeNull();
+  });
 });

@@ -1,5 +1,8 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
 import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
@@ -88,7 +91,7 @@ test("board drop stays in place through a real write and a refused move returns 
         });
         try {
           const page = await context.newPage();
-          await page.goto(setupUrl);
+          await navigateToSetup(page, setupUrl);
           await page.getByLabel("Full name").fill("Board Journey Admin");
           await page.getByLabel("Email").fill(email);
           await page

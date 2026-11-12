@@ -8,6 +8,7 @@ import {
   SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { TerminologyEditor } from "@/components/settings/terminology-editor";
 import { getTerminology } from "@/fetchers/terminology";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -31,7 +32,13 @@ function WorkspaceTerminology() {
     enabled: access === "allowed" && Boolean(workspace?.id),
   });
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="settings:terminology.title"
+        descriptionKey="settings:terminology.description"
+      />
+    );
   if (isForbiddenError(terminology.error)) return <NoAccessPage />;
   return (
     <>

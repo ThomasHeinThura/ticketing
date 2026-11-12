@@ -10,6 +10,7 @@ import {
   test,
 } from "@playwright/test";
 import {
+  navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
@@ -53,7 +54,7 @@ async function createAdminWorkspace(
 ) {
   await test.step("Setup diagnostic: sign-up page navigation", async () => {
     console.info("Setup diagnostic begin: sign-up page navigation");
-    await page.goto(setupUrl);
+    await navigateToSetup(page, setupUrl);
     console.info("Setup diagnostic completed: sign-up page navigation");
   });
   await test.step("Setup diagnostic: full-name field entry", async () => {

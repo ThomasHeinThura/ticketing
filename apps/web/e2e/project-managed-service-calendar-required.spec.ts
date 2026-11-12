@@ -10,7 +10,10 @@ import {
   type Request,
   test,
 } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
 import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
@@ -169,7 +172,7 @@ test("asks for a service calendar when none resolves, and creates with the chose
     const { origin, email, password, databaseUrl, setupUrl } = fixture;
     const at = (path: string) => new URL(path, origin).toString();
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(setupUrl);
+    await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Calendar Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);

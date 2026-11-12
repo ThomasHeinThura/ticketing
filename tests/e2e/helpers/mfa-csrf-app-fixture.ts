@@ -796,7 +796,7 @@ async function runMfaCsrfApp<T>(
         evidenceDir,
       );
       await waitForHealth(apiProcess, origin);
-      // Startup listens before publishing the private token. Never expose it in
+      // Startup publishes the private token before listening. Never expose it in
       // assertion output, including the journeys that discard child logs.
       const setupDeadline = Date.now() + 10_000;
       while (!existsSync(setupTokenPath)) {
@@ -875,4 +875,16 @@ async function runMfaCsrfApp<T>(
   cleanup.teardownComplete = true;
   if (outcome.status === "rejected") throw outcome.reason;
   return outcome.value;
+}
+
+/** Prevent Playwright navigation errors from echoing the single-use setup token. */
+export async function navigateToSetup(
+  page: { goto: (url: string) => Promise<unknown> },
+  setupUrl: string,
+) {
+  try {
+    await page.goto(setupUrl);
+  } catch {
+    throw new Error("First-run setup navigation failed (setup token redacted)");
+  }
 }

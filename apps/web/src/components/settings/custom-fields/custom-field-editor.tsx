@@ -37,9 +37,9 @@ import { CustomFieldValueInput } from "@/components/custom-field/custom-field-va
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   type CustomField,
   type CustomFieldInput,
@@ -751,7 +751,12 @@ function NewCustomField() {
     permission.canManageCustomFields(),
   );
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="customFields:editor.newTitle"
+      />
+    );
   return <CustomFieldEditorContent fieldId="new" />;
 }
 

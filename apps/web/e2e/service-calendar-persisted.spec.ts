@@ -1,5 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
@@ -39,7 +42,7 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
   test.setTimeout(90_000);
   page.setDefaultTimeout(8_000);
   await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
-    await page.goto(setupUrl);
+    await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Calendar Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);

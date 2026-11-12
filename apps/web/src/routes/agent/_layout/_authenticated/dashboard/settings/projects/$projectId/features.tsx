@@ -9,6 +9,7 @@ import {
   SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { type FeatureLevel, getFeatures } from "@/fetchers/feature-flags";
 
 export const Route = createFileRoute(
@@ -33,7 +34,13 @@ function RouteComponent() {
     retry: false,
   });
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="settings:projectFeatures.title"
+        descriptionKey="settings:projectFeatures.subtitle"
+      />
+    );
   if (isForbiddenError(features.error)) return <NoAccessPage />;
   return (
     <>

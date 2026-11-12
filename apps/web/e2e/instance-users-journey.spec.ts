@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import {
+  navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
@@ -44,7 +45,7 @@ async function createAdminWorkspace(
   password: string,
   setupUrl: string,
 ) {
-  await page.goto(setupUrl);
+  await navigateToSetup(page, setupUrl);
   await page.getByLabel("Full name").fill("Disposable Users Administrator");
   await page.getByLabel("Email").fill(email);
   await page.locator('input[autocomplete="new-password"]').fill(password);

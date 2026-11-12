@@ -6,7 +6,10 @@ import {
   type Request,
   test,
 } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
@@ -158,7 +161,7 @@ test("S5 creates managed services from the catalogue and filters them by kind on
     const at = (path: string) => new URL(path, origin).toString();
     await recordCreateProjectBodies(page);
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(setupUrl);
+    await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Service Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);
