@@ -7328,7 +7328,7 @@
 				"budget__read": "See budgets",
 				"budget__manage": "Create and edit budgets",
 				"report__read": "Reports for your reach",
-				"report__read_all": "Reports across all projects",
+				"report__read_all": "Reports across all projects the person can reach; this capability does not grant project reach",
 				"report__export": "Export a report",
 				"kb_article__read": "Read articles",
 				"kb_article__write": "Draft and edit articles",
