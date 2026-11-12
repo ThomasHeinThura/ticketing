@@ -1892,6 +1892,9 @@ project — `visibility`, `shared_with_team_id`, `name`, `query`, `layout`), `us
 
 - `SV-1` `⌘K` opens the command palette. It searches work items, projects, people, saved
   views, knowledge base articles — and also offers navigation destinations and actions.
+  "Create work item" (and its `t c` shortcut) is offered only on a project screen, for that
+  project (read from the route), and opens the same dialog as the board and the Overview
+  Create button, for actors who may create work items there. "Projects" goes to `/agent`.
   Agent-side only: the portal has no command palette, and `GET /api/search` is not exposed
   through `/api/portal/*` ([rbac.md](permissions.md)).
 - `SV-2` Results are grouped by kind, with the best match first, and are keyboard

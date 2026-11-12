@@ -32,9 +32,11 @@ import {
   Pencil,
   Plus,
 } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import WorkItemCreateDialogHost from "@/components/work-item/work-item-create-dialog-host";
+import { preloadWorkItemCreateDialogShell } from "@/components/work-item/work-item-create-dialog-shell-loader";
 import archiveProject from "@/fetchers/project/archive-project";
 import type getProject from "@/fetchers/project/get-project";
 import {
@@ -47,6 +49,7 @@ import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { HttpError } from "@/lib/http-error";
+import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { formatPortalDuration } from "@/lib/portal-duration";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
@@ -60,11 +63,6 @@ import {
   StatusBadge,
   useFailureMessage,
 } from "./overview-shared";
-
-// The existing create-work-item modal; loaded on first open so its editor stays out of this chunk.
-const CreateTaskModal = lazy(
-  () => import("@/components/shared/modals/create-task-modal"),
-);
 
 type ProjectDetail = Awaited<ReturnType<typeof getProject>>;
 
@@ -363,7 +361,9 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
   const canCreate = canCreateTasks();
   const [editingSummary, setEditingSummary] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [hasOpenedCreate, setHasOpenedCreate] = useState(false);
+  // The dialog code is still loading after the click; the button shows it is working.
+  const [createLoading, setCreateLoading] = useState(false);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   const failure = useFailureMessage();
   const cache = useQueryClient();
@@ -392,6 +392,18 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
     // (refetchOnMount: false) would keep showing the numbers from the first visit.
     refetchOnMount: "always",
   });
+  // The shared create dialog is not needed to paint, but Create should open without a network
+  // wait, so fetch it once the page has painted.
+  useEffect(() => {
+    if (!canCreate) return;
+    let cancelled = false;
+    void afterFirstPaint().then(() => {
+      if (!cancelled) preloadWorkItemCreateDialogShell();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canCreate]);
 
   if (isLoading || (project && overview.isLoading))
     return (
@@ -496,9 +508,12 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
             ) : null}
             {canCreate && !data.archived ? (
               <Button
+                ref={createButtonRef}
                 size="sm"
+                loading={createLoading}
+                aria-busy={createLoading || undefined}
                 onClick={() => {
-                  setHasOpenedCreate(true);
+                  setCreateLoading(true);
                   setCreating(true);
                 }}
                 data-testid="project-overview-new-item"
@@ -683,21 +698,25 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
           onClose={() => setEditingSummary(false)}
         />
       ) : null}
-      {hasOpenedCreate ? (
-        <Suspense fallback={null}>
-          <CreateTaskModal
-            open={creating}
-            projectId={project.id}
-            status="to-do"
-            onClose={() => {
-              setCreating(false);
-              // The modal only invalidates the task lists; refresh the counts here.
-              void cache.invalidateQueries({
-                queryKey: projectOverviewKeys.overview(project.id),
-              });
-            }}
-          />
-        </Suspense>
+      {creating ? (
+        <WorkItemCreateDialogHost
+          projectId={project.id}
+          workspaceId={workspaceId}
+          onReady={() => setCreateLoading(false)}
+          onClose={() => {
+            setCreating(false);
+            setCreateLoading(false);
+            // The dialog only invalidates the work-item lists; refresh the counts here.
+            void cache.invalidateQueries({
+              queryKey: projectOverviewKeys.overview(project.id),
+            });
+          }}
+          finalFocus={() =>
+            createButtonRef.current?.isConnected
+              ? createButtonRef.current
+              : false
+          }
+        />
       ) : null}
       <AlertDialog
         open={confirmingArchive}

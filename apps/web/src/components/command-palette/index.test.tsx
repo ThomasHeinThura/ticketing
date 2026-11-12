@@ -5,8 +5,16 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import type { ChangeEventHandler, PropsWithChildren } from "react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import type { ChangeEventHandler, PropsWithChildren, ReactNode } from "react";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import CommandPaletteLauncher from "./command-palette-launcher";
 
@@ -17,6 +25,19 @@ const mocks = vi.hoisted(() => ({
   search: vi.fn((_params: { q: string }) => ({
     data: { results: [] as Array<Record<string, string>> },
   })),
+  // The router match the palette reads the current project from.
+  params: {} as { projectKey?: string },
+  projectByKey: vi.fn(),
+  routeProject: undefined as
+    | { id: string; workspaceId: string; slug: string }
+    | undefined,
+  routeProjectLoading: false,
+  permissionTarget: vi.fn(),
+  canCreate: true,
+  checkingPermissions: false,
+  // What the mocked shared create dialog was last given.
+  createClose: undefined as undefined | (() => void),
+  createFinalFocus: undefined as undefined | (() => HTMLElement | false),
 }));
 
 /**
@@ -33,7 +54,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
-  useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
+  // The URL is deliberately not readable here: the project must come from the route match.
+  useParams: () => mocks.params,
   useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
 }));
 
@@ -70,8 +92,47 @@ vi.mock("@/store/user-preferences", () => ({
 }));
 
 vi.mock("@/components/search-command-menu", () => ({ default: () => null }));
-vi.mock("@/components/shared/modals/create-task-modal", () => ({
-  default: () => null,
+vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
+  default: (projectKey: string) => {
+    mocks.projectByKey(projectKey);
+    return {
+      project: mocks.routeProject,
+      workspaceId: "w1",
+      isLoading: mocks.routeProjectLoading,
+    };
+  },
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: (workspaceId?: string, projectId?: string) => {
+    mocks.permissionTarget(workspaceId, projectId);
+    return {
+      canCreateTasks: () => mocks.canCreate,
+      isCheckingPermissions: mocks.checkingPermissions,
+    };
+  },
+}));
+vi.mock("@/components/work-item/work-item-create-dialog-host", () => ({
+  default: ({
+    projectId,
+    workspaceId,
+    onClose,
+    finalFocus,
+  }: {
+    projectId: string;
+    workspaceId?: string;
+    onClose: () => void;
+    finalFocus: () => HTMLElement | false;
+  }) => {
+    mocks.createClose = onClose;
+    mocks.createFinalFocus = finalFocus;
+    return (
+      <div
+        data-testid="create-work-item-dialog-host"
+        data-project-id={projectId}
+        data-workspace-id={workspaceId}
+      />
+    );
+  },
 }));
 vi.mock("@/components/shared/modals/create-workspace-modal", () => ({
   default: () => null,
@@ -165,11 +226,62 @@ beforeAll(async () => {
   await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
 });
 
+beforeEach(() => {
+  mocks.params = {};
+  mocks.routeProject = undefined;
+  mocks.routeProjectLoading = false;
+  mocks.canCreate = true;
+  mocks.checkingPermissions = false;
+  mocks.createClose = undefined;
+  mocks.createFinalFocus = undefined;
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.restoreAllMocks();
 });
+
+function renderLauncher(extra?: ReactNode) {
+  const tree = (
+    <KeyboardShortcutsProvider>
+      {extra}
+      <CommandPaletteLauncher />
+    </KeyboardShortcutsProvider>
+  );
+  const view = render(tree);
+  return {
+    ...view,
+    // A fresh element with the same shape, so the palette re-reads the mocked hooks.
+    refresh: () =>
+      view.rerender(
+        <KeyboardShortcutsProvider>
+          {extra}
+          <CommandPaletteLauncher />
+        </KeyboardShortcutsProvider>,
+      ),
+  };
+}
+
+/** A two-key shortcut: the prefix is state, so each key is its own render, as for a person. */
+async function pressSequence(prefix: string, key: string) {
+  await act(async () => {
+    fireEvent.keyDown(document, { key: prefix });
+  });
+  await act(async () => {
+    fireEvent.keyDown(document, { key });
+    await vi.dynamicImportSettled();
+  });
+}
+
+const pressCreateWorkItemShortcut = () => pressSequence("t", "c");
+
+async function openPalette() {
+  fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+  await vi.waitFor(() =>
+    expect(screen.getByTestId("command-dialog")).toBeInTheDocument(),
+  );
+}
 
 describe("CommandPalette (#407)", () => {
   it("searches from Cmd+K while keeping the navigation and action commands available", async () => {
@@ -255,10 +367,32 @@ describe("CommandPalette (#407)", () => {
     await vi.waitFor(() =>
       expect(mocks.projectsPageModule).toHaveBeenCalledOnce(),
     );
-    expect(mocks.preloadRoute).toHaveBeenCalledWith({
-      to: "/dashboard/workspace/$workspaceId",
-      params: { workspaceId: "w1" },
-    });
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({ to: "/agent" });
+  });
+
+  it("opens the Projects command at /agent, not the old workspace list", async () => {
+    renderLauncher();
+
+    fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+    await vi.waitFor(() =>
+      expect(screen.getByTestId("command-dialog")).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByText("navigation:commandPalette.projects"));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+    expect(mocks.navigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/dashboard/workspace/$workspaceId" }),
+    );
+  });
+
+  it("opens Projects at /agent from the p l shortcut", async () => {
+    renderLauncher();
+
+    await pressSequence("p", "l");
+
+    await vi.waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" }),
+    );
   });
 
   it("opens the workspace members page that exists, not a missing settings URL", async () => {
@@ -277,5 +411,159 @@ describe("CommandPalette (#407)", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/dashboard/settings/workspace/members",
     });
+  });
+});
+
+describe("CommandPalette create work item (D-6)", () => {
+  const helpProject = { id: "p1", workspaceId: "w1", slug: "HELP" };
+
+  it("opens the shared work-item dialog for the project in the route from the t c shortcut", async () => {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    renderLauncher();
+
+    await pressCreateWorkItemShortcut();
+
+    const dialog = await screen.findByTestId("create-work-item-dialog-host");
+    expect(dialog).toHaveAttribute("data-project-id", "p1");
+    expect(dialog).toHaveAttribute("data-workspace-id", "w1");
+    // The project is found from the route key, then checked for permission in that project.
+    expect(mocks.projectByKey).toHaveBeenCalledWith("HELP");
+    expect(mocks.permissionTarget).toHaveBeenCalledWith("w1", "p1");
+  });
+
+  it("offers Create in the palette inside a project and opens the same dialog", async () => {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    renderLauncher();
+    await openPalette();
+
+    fireEvent.click(screen.getByText("navigation:commandPalette.createTask"));
+
+    expect(
+      await screen.findByTestId("create-work-item-dialog-host"),
+    ).toHaveAttribute("data-project-id", "p1");
+  });
+
+  it("closes the dialog through its own close callback", async () => {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    renderLauncher();
+    await pressCreateWorkItemShortcut();
+    await screen.findByTestId("create-work-item-dialog-host");
+
+    act(() => mocks.createClose?.());
+
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides Create outside a project and ignores the shortcut there", async () => {
+    renderLauncher();
+    await openPalette();
+    expect(
+      screen.queryByText("navigation:commandPalette.createTask"),
+    ).not.toBeInTheDocument();
+    // The palette's other actions are still offered.
+    expect(
+      screen.getByText("navigation:commandPalette.createProject"),
+    ).toBeInTheDocument();
+    cleanup();
+
+    renderLauncher();
+    await pressCreateWorkItemShortcut();
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides Create and ignores the shortcut when the actor cannot create work items", async () => {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    mocks.canCreate = false;
+    renderLauncher();
+    await openPalette();
+    expect(
+      screen.queryByText("navigation:commandPalette.createTask"),
+    ).not.toBeInTheDocument();
+    cleanup();
+
+    renderLauncher();
+    await pressCreateWorkItemShortcut();
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("ignores the shortcut on a project URL that matches no project", async () => {
+    mocks.params = { projectKey: "NOPE" };
+    renderLauncher();
+
+    await pressCreateWorkItemShortcut();
+
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("waits for a cold project and its permissions to load instead of dropping the shortcut", async () => {
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProjectLoading = true;
+    const view = renderLauncher();
+
+    await pressCreateWorkItemShortcut();
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
+
+    mocks.routeProject = helpProject;
+    mocks.checkingPermissions = true;
+    mocks.routeProjectLoading = false;
+    await act(async () => view.refresh());
+    expect(
+      screen.queryByTestId("create-work-item-dialog-host"),
+    ).not.toBeInTheDocument();
+
+    mocks.checkingPermissions = false;
+    await act(async () => view.refresh());
+    expect(
+      await screen.findByTestId("create-work-item-dialog-host"),
+    ).toHaveAttribute("data-project-id", "p1");
+  });
+
+  it("hands focus back to where the shortcut was used, and to nothing once that is gone", async () => {
+    const { Button } =
+      await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    const view = renderLauncher(<Button>Where I was</Button>);
+    const origin = screen.getByRole("button", { name: "Where I was" });
+    origin.focus();
+
+    await pressCreateWorkItemShortcut();
+    await screen.findByTestId("create-work-item-dialog-host");
+    expect(mocks.createFinalFocus?.()).toBe(origin);
+
+    view.unmount();
+    expect(mocks.createFinalFocus?.()).toBe(false);
+  });
+
+  it("hands focus back to where the palette was opened from", async () => {
+    const { Button } =
+      await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
+    mocks.params = { projectKey: "HELP" };
+    mocks.routeProject = helpProject;
+    renderLauncher(<Button>Where I was</Button>);
+    const origin = screen.getByRole("button", { name: "Where I was" });
+    origin.focus();
+    await openPalette();
+
+    // Moving focus into the palette must not change where the dialog returns it.
+    screen.getByLabelText("palette search query").focus();
+    fireEvent.click(screen.getByText("navigation:commandPalette.createTask"));
+
+    await screen.findByTestId("create-work-item-dialog-host");
+    expect(mocks.createFinalFocus?.()).toBe(origin);
   });
 });

@@ -20,7 +20,10 @@ const mocks = vi.hoisted(() => ({
   canManage: true,
   canCreate: true,
   canArchive: true,
-  closeCreateModal: undefined as undefined | (() => void),
+  closeCreateDialog: undefined as undefined | (() => void),
+  createFinalFocus: undefined as undefined | (() => HTMLElement | false),
+  preloadCreateDialog: vi.fn(),
+  loadCreateDialog: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -32,26 +35,34 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/fetchers/project/archive-project", () => ({
   default: (...args: unknown[]) => mocks.archiveProject(...args),
 }));
-vi.mock("@/components/shared/modals/create-task-modal", () => ({
-  default: ({
-    open,
-    projectId,
-    status,
-    onClose,
-  }: {
-    open: boolean;
-    projectId?: string;
-    status?: string;
-    onClose: () => void;
-  }) => {
-    mocks.closeCreateModal = onClose;
-    return open ? (
-      <div data-testid="create-task-modal">
-        {projectId}:{status}
-      </div>
-    ) : null;
-  },
+// The shared work-item create dialog (the one the work route and board open). Its loader is
+// stubbed so the test controls when the dialog code arrives.
+vi.mock("@/components/work-item/work-item-create-dialog-shell-loader", () => ({
+  loadWorkItemCreateDialogShell: () => mocks.loadCreateDialog(),
+  preloadWorkItemCreateDialogShell: () => mocks.preloadCreateDialog(),
 }));
+vi.mock("@/lib/i18n/after-first-paint", () => ({
+  afterFirstPaint: () => Promise.resolve(),
+}));
+function CreateDialogShellStub({
+  projectId,
+  workspaceId,
+  onClose,
+  finalFocus,
+}: {
+  projectId: string;
+  workspaceId?: string;
+  onClose: () => void;
+  finalFocus: () => HTMLElement | false;
+}) {
+  mocks.closeCreateDialog = onClose;
+  mocks.createFinalFocus = finalFocus;
+  return (
+    <div data-testid="create-work-item-dialog">
+      {projectId}:{workspaceId}
+    </div>
+  );
+}
 vi.mock("react-i18next", async () => ({
   ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
   useTranslation: () => ({
@@ -179,7 +190,11 @@ beforeEach(() => {
   mocks.archiveProject.mockReset();
   mocks.getProjectOverview.mockReset();
   mocks.getProjectContract.mockReset();
-  mocks.closeCreateModal = undefined;
+  mocks.closeCreateDialog = undefined;
+  mocks.createFinalFocus = undefined;
+  mocks.preloadCreateDialog.mockReset();
+  mocks.loadCreateDialog.mockReset();
+  mocks.loadCreateDialog.mockResolvedValue({ default: CreateDialogShellStub });
   mocks.navigate.mockReset();
   mocks.getProjectOverview.mockResolvedValue(overview());
   mocks.getProjectContract.mockResolvedValue({
@@ -327,15 +342,61 @@ describe("ProjectOverviewPage", () => {
     ).toBeNull();
   });
 
-  it("opens the existing create modal for this project from New item", async () => {
+  it("opens the shared work-item create dialog for this project from Create", async () => {
     renderPage();
     (await screen.findByTestId("project-overview-new-item")).click();
-    expect(await screen.findByTestId("create-task-modal")).toHaveTextContent(
-      "p1:to-do",
-    );
+    // The same dialog the work route opens: this project and its workspace, no status preset.
+    expect(
+      await screen.findByTestId("create-work-item-dialog"),
+    ).toHaveTextContent("p1:w1");
   });
 
-  it("refreshes the counts when the create modal opened from the Overview closes", async () => {
+  it("warms the dialog code after the page paints, only for someone who can create", async () => {
+    renderPage();
+    await screen.findByTestId("project-overview-new-item");
+    await waitFor(() => expect(mocks.preloadCreateDialog).toHaveBeenCalled());
+    cleanup();
+
+    mocks.preloadCreateDialog.mockReset();
+    mocks.canCreate = false;
+    renderPage();
+    await screen.findByTestId("project-overview-page");
+    expect(mocks.preloadCreateDialog).not.toHaveBeenCalled();
+  });
+
+  it("shows Create working until the dialog code arrives", async () => {
+    let arrive: (module: { default: unknown }) => void = () => {};
+    mocks.loadCreateDialog.mockReturnValue(
+      new Promise((resolve) => {
+        arrive = resolve;
+      }),
+    );
+    renderPage();
+    const button = await screen.findByTestId("project-overview-new-item");
+    expect(button).not.toHaveAttribute("aria-busy");
+
+    button.click();
+    await waitFor(() => expect(button).toHaveAttribute("aria-busy", "true"));
+    expect(screen.queryByTestId("create-work-item-dialog")).toBeNull();
+
+    await act(async () => arrive({ default: CreateDialogShellStub }));
+    await screen.findByTestId("create-work-item-dialog");
+    expect(button).not.toHaveAttribute("aria-busy");
+  });
+
+  it("returns focus to the Create button when the dialog closes", async () => {
+    renderPage();
+    const button = await screen.findByTestId("project-overview-new-item");
+    button.focus();
+    button.click();
+    await screen.findByTestId("create-work-item-dialog");
+
+    expect(mocks.createFinalFocus?.()).toBe(button);
+    act(() => mocks.closeCreateDialog?.());
+    expect(screen.queryByTestId("create-work-item-dialog")).toBeNull();
+  });
+
+  it("refreshes the counts when the create dialog opened from the Overview closes", async () => {
     renderPage();
     const header = await screen.findByTestId("project-overview-header-line");
     expect(header).toHaveTextContent('header.open {"count":4}');
@@ -345,8 +406,8 @@ describe("ProjectOverviewPage", () => {
       counts: { ...overview().counts, open: 5, total: 7 },
     });
     screen.getByTestId("project-overview-new-item").click();
-    await screen.findByTestId("create-task-modal");
-    act(() => mocks.closeCreateModal?.());
+    await screen.findByTestId("create-work-item-dialog");
+    act(() => mocks.closeCreateDialog?.());
     await waitFor(() =>
       expect(mocks.getProjectOverview).toHaveBeenCalledTimes(2),
     );
