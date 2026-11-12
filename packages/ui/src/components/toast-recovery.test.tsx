@@ -187,3 +187,90 @@ describe("deferred notification recovery", () => {
     expect(control.load).not.toHaveBeenCalled();
   });
 });
+
+it("pauses, resumes, restarts, persists and expires the real toast timer", async () => {
+  const closed = vi.fn();
+  render(<toast.ToastProvider />);
+  let id = "";
+  act(() => {
+    id = toast.toastManager.add({
+      title: "Counting",
+      type: "loading",
+      timeout: 0,
+      onClose: closed,
+    });
+  });
+  await finishLoad();
+  act(() => toast.toastManager.update(id, { type: "success", timeout: 4000 }));
+  fireEvent.focus(window, { relatedTarget: document.body });
+  const viewport = screen.getByRole("region", { name: "Notifications" });
+  const line = () =>
+    document.querySelector<HTMLElement>(".toast-progress-line");
+  expect(line()?.style.animationDuration).toBe("4000ms");
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  fireEvent.mouseEnter(viewport);
+  expect(viewport).toHaveAttribute("data-expanded");
+  expect(getComputedStyle(line() as HTMLElement).animationPlayState).toBe(
+    "paused",
+  );
+  await act(async () => vi.advanceTimersByTimeAsync(5000));
+  expect(closed).not.toHaveBeenCalled();
+  fireEvent.mouseLeave(viewport);
+  expect(viewport).not.toHaveAttribute("data-expanded");
+  expect(getComputedStyle(line() as HTMLElement).animationPlayState).not.toBe(
+    "paused",
+  );
+  act(() => toast.toastManager.update(id, { timeout: 6000 }));
+  expect(line()?.style.animationDuration).toBe("6000ms");
+  await act(async () => vi.advanceTimersByTimeAsync(5999));
+  expect(closed).not.toHaveBeenCalled();
+  act(() => toast.toastManager.update(id, { timeout: 0 }));
+  expect(line()).toBeNull();
+  await act(async () => vi.advanceTimersByTimeAsync(6000));
+  expect(closed).not.toHaveBeenCalled();
+  act(() => toast.toastManager.update(id, { timeout: 4000 }));
+  expect(line()?.style.animationDuration).toBe("4000ms");
+  await act(async () => vi.advanceTimersByTimeAsync(3999));
+  expect(closed).not.toHaveBeenCalled();
+  await act(async () => vi.advanceTimersByTimeAsync(1));
+  expect(closed).toHaveBeenCalledOnce();
+});
+
+it("keeps the reduced-motion spinner and toast rules in the rendered production CSS", async () => {
+  const { mountCompiledMotionStyles } = await import(
+    "../test/compile-motion-css"
+  );
+  const styles = await mountCompiledMotionStyles([
+    "animate-spin",
+    "motion-reduce:animate-none",
+  ]);
+  try {
+    expect(styles.css).toMatch(
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.motion-reduce\\:animate-none\s*\{\s*animation:\s*none/,
+    );
+    render(<toast.ToastProvider />);
+    let id = "";
+    act(() => {
+      id = toast.toastManager.add({
+        title: "Motion",
+        type: "loading",
+        timeout: 0,
+      });
+    });
+    await finishLoad();
+    act(() =>
+      toast.toastManager.update(id, { type: "success", timeout: 4000 }),
+    );
+    const track = document.querySelector('[data-slot="toast-progress"]');
+    expect(track).not.toBeNull();
+    const actualRules = track?.querySelector("style")?.textContent ?? "";
+    expect(actualRules).toMatch(
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*\.toast-progress-track\s*\{\s*display:\s*none/,
+    );
+    expect(actualRules).toMatch(
+      /\[data-expanded\][\s\S]*?\.toast-progress-line[\s\S]*?animation-play-state:\s*paused/,
+    );
+  } finally {
+    styles.cleanup();
+  }
+});
