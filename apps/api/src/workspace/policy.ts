@@ -354,6 +354,13 @@ export const workspacePolicies = {
   // `member:invite` is NOT in `AUTHORITY_GRANTING` (`elevated.ts`), so no `elevated` field is
   // declared -- this route mints no fresh authority the elevation-coverage test would demand
   // a written exemption for; it only creates a pending, revocable invitation row.
+  "GET /api/workspace/{workspaceId}/invitation-roles": {
+    capability: "member:invite",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+  },
   "POST /api/workspace/{workspaceId}/invitations": {
     capability: "member:invite",
     scope: "workspace",

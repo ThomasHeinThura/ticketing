@@ -12655,6 +12655,15 @@
 						"emailLabel": {
 							"type": "string"
 						},
+						"roleLabel": {
+							"type": "string"
+						},
+						"rolePlaceholder": {
+							"type": "string"
+						},
+						"rolesError": {
+							"type": "string"
+						},
 						"emailPlaceholder": {
 							"type": "string"
 						},
@@ -12680,6 +12689,9 @@
 					"required": [
 						"title",
 						"emailLabel",
+						"roleLabel",
+						"rolePlaceholder",
+						"rolesError",
 						"emailPlaceholder",
 						"sendInvitation",
 						"success",
