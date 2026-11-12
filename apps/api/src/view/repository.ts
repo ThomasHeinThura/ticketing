@@ -368,6 +368,10 @@ export async function togglePinnedView(
   workspaceId: string,
   viewId: string,
   actor: SavedViewEventActor,
+  assertQueryReach?: (
+    row: { workspaceId: string; query: unknown },
+    executor: Executor,
+  ) => Promise<void>,
 ) {
   return withSavedViewTransaction(async (tx) => {
     // Serialize on the preference identity, including when the row does not yet
@@ -379,7 +383,11 @@ export async function togglePinnedView(
       )
     `);
     const [view] = await tx
-      .select({ id: savedViewTable.id })
+      .select({
+        id: savedViewTable.id,
+        workspaceId: savedViewTable.workspaceId,
+        query: savedViewTable.query,
+      })
       .from(savedViewTable)
       .where(
         and(
@@ -391,6 +399,7 @@ export async function togglePinnedView(
       .limit(1);
     if (!view)
       throw new HTTPException(404, { message: "Saved view not found" });
+    await assertQueryReach?.(view, tx);
 
     const [existing] = await tx
       .select()

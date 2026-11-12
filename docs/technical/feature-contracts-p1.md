@@ -1502,7 +1502,8 @@ This document covers behaviour and interface.
 - `AT-2` Upload is direct to object storage via a presigned POST. The portal download
   exception to the API byte-proxy rule is defined in `AT-5` and `CP-19`.
 - `AT-3` Every attachment carries `customer_visible`. Staff uploads default to **not**
-  visible; customer uploads default to visible.
+  visible; customer uploads default to visible. Completed uploads from hidden form fields
+  retained on an accepted submission are staff-only (`IQ-9`).
 - `AT-4` An attachment on an internal comment is always internal, whatever its own flag
   says.
   Staff share a file with the customer by attaching it to a public comment with "Share these
@@ -1892,6 +1893,12 @@ project — `visibility`, `shared_with_team_id`, `name`, `query`, `layout`), `us
 
 - `SV-1` `⌘K` opens the command palette. It searches work items, projects, people, saved
   views, knowledge base articles — and also offers navigation destinations and actions.
+  "Create work item" (and its `t c` shortcut) is offered only on a project screen, for that
+  project (read from the route), and opens the same dialog as the board and the Overview
+  Create button, for actors who may create work items in that project (the Overview checks the
+  same project-scoped permission as the work page), and never stacks a second create dialog on
+  one already open. "Projects" goes to `/agent`. Letters typed into the palette search or any
+  other text field are text, never a shortcut.
   Agent-side only: the portal has no command palette, and `GET /api/search` is not exposed
   through `/api/portal/*` ([rbac.md](permissions.md)).
 - `SV-2` Results are grouped by kind, with the best match first, and are keyboard
@@ -1900,7 +1907,7 @@ project — `visibility`, `shared_with_team_id`, `name`, `query`, `layout`), `us
 - `SV-4` Typing a work item key jumps straight to it.
 - `SV-5` Results appear within 100 ms for typical queries. This is a hard requirement — a
   slow palette stops being used, and then the navigation depth becomes a real problem.
-- `SV-6` Recent items appear before any query is typed.
+- `SV-6` Recent items appear before any query is typed. Stored palette recents are rechecked through search on opening; only current, reachable search results and their current titles are shown. If a recent cannot be revalidated it is omitted.
 
 <a id="search-and-saved-views-search-backend"></a>
 ### Search backend
@@ -1978,6 +1985,11 @@ search validator, current viewer reach, and field permissions as direct work-ite
   it by id (get, update, delete request, pin, run, count) answers exactly like a missing view
   (404), before any capability gate, and writes nothing. Creating a view with a project scope
   needs reach to that project; an unreachable project gets the same 400 as a missing one.
+  A workspace-scoped view whose stored query names an unreachable project is likewise omitted
+  from lists and search, and its id routes return 404, because its query exposes that project.
+  This rule applies to project filter fields and project ID properties, not to unrelated text
+  values that happen to match a project identifier. ID routes check the materialized view
+  against current reach before using it, and mutations recheck the locked view.
   Workspace-scoped views are unaffected.
 - `SV-21` Duplicating a view is one click, which is how most views actually get made.
 

@@ -24,7 +24,7 @@ export function PortalFeatureOff({ state }: { state: PortalStateMarker }) {
       <div className="w-full max-w-lg">
         <Empty data-testid={`portal-feature-off-${state}`}>
           <EmptyHeader>
-            <EmptyTitle>{t(`${key}.title`)}</EmptyTitle>
+            <EmptyTitle level={1}>{t(`${key}.title`)}</EmptyTitle>
             <EmptyDescription>{t(`${key}.description`)}</EmptyDescription>
           </EmptyHeader>
           {state === "unavailable" ? (

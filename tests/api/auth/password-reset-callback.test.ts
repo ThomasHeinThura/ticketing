@@ -53,7 +53,10 @@ describe("reset mail callback", () => {
       await vi.waitFor(() => expect(mocks.send).toHaveBeenCalledOnce());
       const link = new URL(mocks.send.mock.calls[0]?.[2].resetLink);
       expect(`${link.origin}${link.pathname}`).toBe(expected);
-      expect(link.searchParams.get("token")).toMatch(/^token\./);
+      expect(link.search).toBe("");
+      expect(new URLSearchParams(link.hash.slice(1)).get("token")).toMatch(
+        /^token\./,
+      );
     },
   );
   it("does not build the link from a forged request Host", async () => {

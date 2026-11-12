@@ -1,7 +1,7 @@
 import { Empty, EmptyHeader, EmptyTitle, Skeleton } from "@taskdesk/ui";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { FeatureOff } from "@/components/agile/feature-off";
+import { ProjectFeatureOff } from "@/components/agile/feature-off";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import { useProjectFeatureState } from "@/hooks/queries/feature-flag/use-project-pages-feature";
 
@@ -47,7 +47,11 @@ export function PagesFeatureGate({
   if (!enabled)
     return (
       <div className="mx-auto max-w-4xl p-4">
-        <FeatureOff feature="pages" />
+        <ProjectFeatureOff
+          feature="pages"
+          headingLevel={1}
+          projectKey={projectKey}
+        />
       </div>
     );
   return <>{children}</>;

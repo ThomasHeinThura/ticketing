@@ -43,7 +43,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
+import {
+  ensureNotFirstSignup,
+  signUpInstanceAdmin,
+  signUpUser,
+} from "./helpers/organization-http";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   createWorkspaceNative,
@@ -545,6 +549,7 @@ describe("S4 native writes: the instance-admin boundary (A2-P16..A2-P17)", () =>
     // out of their own workspace.
     const { app } = createApp();
     const instanceAdminOwner = await signUpInstanceAdmin(app);
+    await ensureNotFirstSignup();
     const [adminRow] = await db
       .select({ role: schema.userTable.role })
       .from(schema.userTable)
@@ -720,6 +725,7 @@ describe("A2-P25/A2-P26 the evaluator refuses an ambiguous membership rather tha
 
     // The first user to sign up on a fresh instance becomes the instance admin.
     const instanceAdmin = await signUpInstanceAdmin(app);
+    await ensureNotFirstSignup();
     const [adminRow] = await db
       .select({ role: schema.userTable.role })
       .from(schema.userTable)

@@ -1,5 +1,7 @@
 import { HTTPException } from "hono/http-exception";
+import { auditRequestContext } from "../audit/request-context";
 import { runWithStepUp, stepUpTokenHeader } from "../auth/step-up-spend";
+import db from "../database";
 import {
   apiRouter,
   type BaseVariables,
@@ -34,6 +36,7 @@ import { invalidateNativeAuthorization } from "../ws";
 import activateWorkspaceCtrl from "./controllers/activate-workspace";
 import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
+  WorkspaceOwnerNotEligibleError,
   WorkspaceSlugTakenError,
 } from "./controllers/create-workspace";
 import getUserWorkspacesCtrl from "./controllers/get-user-workspaces";
@@ -88,6 +91,7 @@ import {
   workspaceSchema,
   workspaceSummaryListSchema,
 } from "./response";
+import { assertMayAssignRole } from "./role-assignment-guard";
 import type { RoleAuditActor } from "./role-governance";
 import { roleErrorToHttp } from "./role-http";
 import {
@@ -247,7 +251,7 @@ const createWorkspaceRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Create a workspace",
   description:
-    "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Native replacement for authClient.organization.create().",
+    "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Only a current instance administrator (checked against the database at request time, browser session only) may call this. The request names the workspace owner, an existing active staff user; the administrator becomes a member only by naming themselves. The creator and the named owner are recorded in the audit log.",
   middleware: [requireSessionOnly(), requireWorkspaceCreationAllowed] as const,
   request: {
     body: {
@@ -257,10 +261,12 @@ const createWorkspaceRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created workspace", workspaceSchema),
-    400: errorResponse("Invalid body, or the name was rejected"),
+    400: errorResponse(
+      "Invalid body, the name was rejected, or the named owner is not an existing, active, unsuspended staff user",
+    ),
     401: errorResponse("No credential at all"),
     403: errorResponse(
-      "An API key or impersonation session (session_required), or workspace creation is disabled on this instance",
+      "An API key or impersonation session (session_required), or the caller is not a current instance administrator",
     ),
     409: errorResponse("The requested slug is already taken"),
   },
@@ -629,6 +635,30 @@ const inviteWorkspaceMemberRoute = createRoute({
       "The target email is already a member, or already has a pending invitation and resend was not set",
     ),
     429: errorResponse("Too many invitations from this client recently"),
+  },
+});
+
+const assignableInvitationRolesRoute = createRoute({
+  method: "get",
+  operationId: "listAssignableInvitationRoles",
+  path: "/{workspaceId}/invitation-roles",
+  tags: ["Workspaces"],
+  summary: "List roles the caller may invite",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ invitation: ["create"] }),
+    requireWorkspaceRoleAuthority({ invitation: ["create"] }),
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse(
+      "Assignable roles",
+      z.array(z.object({ id: z.string(), name: z.string(), rank: z.number() })),
+    ),
+    401: errorResponse("No credential"),
+    403: errorResponse("Invitation permission required"),
   },
 });
 
@@ -1035,8 +1065,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         slug: body.slug,
         logo: body.logo,
         description: body.description,
-        ownerId: c.get("userId"),
+        ownerId: body.ownerUserId,
+        creatorId: c.get("userId"),
         sessionId: requireSessionId(c),
+        audit: auditRequestContext(c),
       });
       return c.json(created, 200);
     } catch (error) {
@@ -1044,6 +1076,9 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         throw new HTTPException(409, {
           message: "That workspace slug is already taken",
         });
+      }
+      if (error instanceof WorkspaceOwnerNotEligibleError) {
+        throw new HTTPException(400, { message: error.message });
       }
       throw error;
     }
@@ -1285,6 +1320,29 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       throw error;
     }
+  })
+  .openapi(assignableInvitationRolesRoute, async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const roles = await listRoles(workspaceId);
+    const allowed = [];
+    for (const role of roles) {
+      if (role.role === "owner") continue;
+      try {
+        await assertMayAssignRole(db, {
+          workspaceId,
+          actorUserId: c.get("userId"),
+          targetRoleKey: role.role,
+        });
+        allowed.push({ id: role.role, name: role.name, rank: role.rank });
+      } catch (error) {
+        if (
+          !(error instanceof RoleRankError) &&
+          !(error instanceof InsufficientPermissionToGrantError)
+        )
+          throw error;
+      }
+    }
+    return c.json(allowed, 200);
   })
   .openapi(listWorkspaceRolesRoute, async (c) =>
     c.json(await listRoles(c.get("workspaceId")), 200),

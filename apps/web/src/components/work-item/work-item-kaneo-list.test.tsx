@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   transition: vi.fn(),
   offers: vi.fn(),
   invalidate: vi.fn(),
+  toastError: vi.fn(),
   permission: vi.fn(),
   canRank: false,
   canTransition: false,
@@ -102,6 +103,10 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
       canCreateTasks: () => mocks.canCreate,
     };
   },
+}));
+// A refused move is explained in a library toast, not an inline alert.
+vi.mock("@/lib/toast", () => ({
+  toast: { error: (...args: unknown[]) => mocks.toastError(...args) },
 }));
 vi.mock("@/fetchers/work-item/rank-work-item", () => ({
   default: (...args: unknown[]) => mocks.rank(...args),
@@ -197,6 +202,7 @@ beforeEach(() => {
   mocks.offers.mockResolvedValue([]);
   mocks.invalidate.mockReset();
   mocks.invalidate.mockResolvedValue(undefined);
+  mocks.toastError.mockReset();
   mocks.permission.mockClear();
   preference.set.mockReset();
   preference.initial = undefined;
@@ -461,7 +467,7 @@ describe("canonical list uses the shared canonical DnD controller", () => {
   });
   it("ranks real rows in both directions only for ascending position", async () => {
     mocks.canRank = true;
-    render(
+    const view = render(
       <WorkItemKaneoList
         {...baseProps()}
         sort="position"
@@ -473,10 +479,22 @@ describe("canonical list uses the shared canonical DnD controller", () => {
       key: "WLP-1",
       beforeId: "id-WLP-2",
     });
-    await dragRow("WLP-2", "WLP-1");
+    // The reloaded rows arrive with the saved order before the next drag.
+    view.rerender(
+      <WorkItemKaneoList
+        {...baseProps()}
+        sort="position"
+        workItems={rankedRows().map((row) =>
+          row.key === "WLP-1"
+            ? { ...row, position: "3", version: row.version + 1 }
+            : row,
+        )}
+      />,
+    );
+    await dragRow("WLP-1", "WLP-2");
     expect(mocks.rank).toHaveBeenLastCalledWith({
-      key: "WLP-2",
-      afterId: "id-WLP-1",
+      key: "WLP-1",
+      afterId: "id-WLP-2",
     });
     expect(mocks.invalidate).toHaveBeenCalledWith({
       queryKey: ["work-items", "project-1"],
@@ -565,12 +583,8 @@ describe("canonical list uses the shared canonical DnD controller", () => {
       mocks.offers.mockResolvedValue(offers);
       render(<WorkItemKaneoList {...baseProps()} />);
       await dragRow("WLP-1", "done");
-      expect(screen.getByTestId("work-item-list-drag-error")).toHaveTextContent(
-        expected,
-      );
-      expect(
-        screen.getByTestId("work-item-list-drag-error"),
-      ).not.toHaveTextContent("cab.pending");
+      expect(mocks.toastError).toHaveBeenCalledOnce();
+      expect(mocks.toastError).toHaveBeenCalledWith(expected);
       expect(mocks.transition).not.toHaveBeenCalled();
       expect(mocks.rank).not.toHaveBeenCalled();
     },

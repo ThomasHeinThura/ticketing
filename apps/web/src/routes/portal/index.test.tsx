@@ -73,6 +73,7 @@ vi.mock("@tanstack/react-query", () => ({
             project: null,
             createdBy: { name: null, isYou: true },
             isRequester: true,
+            raisedBySupport: false,
             customerVisibility: "private",
             sla: null,
           },

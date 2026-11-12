@@ -236,6 +236,10 @@ describe("A-05 password sign-in on the wrong host", () => {
 });
 
 describe("password recovery portal and credential boundaries", () => {
+  function linkToken(link: URL) {
+    expect(link.searchParams.has("token")).toBe(false);
+    return new URLSearchParams(link.hash.slice(1)).get("token") ?? "";
+  }
   async function requestReset(door: Door, email: string) {
     return sharedApp().request(
       `${base(door)}/api/auth/request-password-reset`,
@@ -322,7 +326,7 @@ describe("password recovery portal and credential boundaries", () => {
     if (!message) throw new Error("Reset email not delivered");
     const link = new URL(message.resetLink);
     expect(link.origin).toBe(new URL(getConfiguredAgentOrigin()).origin);
-    const token = link.searchParams.get("token") as string;
+    const token = linkToken(link);
     expect((await complete("agent", token)).status).toBe(200);
     expect(await sessionCount(staff.user.id)).toBe(0);
     expect((await complete("agent", token)).status).toBe(400);
@@ -346,9 +350,7 @@ describe("password recovery portal and credential boundaries", () => {
     const link = new URL(message.resetLink);
     expect(link.origin).toBe(new URL(getConfiguredCustomerOrigin()).origin);
     expect(link.pathname).toBe("/reset-password");
-    expect(
-      (await complete("portal", link.searchParams.get("token") ?? "")).status,
-    ).toBe(200);
+    expect((await complete("portal", linkToken(link))).status).toBe(200);
   });
   it("limits repeated requests for the same address across IPs", async () => {
     const staff = await staffUser();
@@ -368,7 +370,7 @@ describe("password recovery portal and credential boundaries", () => {
     await requestReset("agent", staff.user.email);
     await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
     const first = new URL(sentPasswordResetEmails[0]?.resetLink ?? "");
-    const earlier = first.searchParams.get("token") ?? "";
+    const earlier = linkToken(first);
     const raw = earlier.split(".")[0] ?? "";
     const rows = await db
       .select()
@@ -382,10 +384,9 @@ describe("password recovery portal and credential boundaries", () => {
     );
     await requestReset("agent", staff.user.email);
     await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(2));
-    const newer =
-      new URL(sentPasswordResetEmails[1]?.resetLink ?? "").searchParams.get(
-        "token",
-      ) ?? "";
+    const newer = linkToken(
+      new URL(sentPasswordResetEmails[1]?.resetLink ?? ""),
+    );
     expect((await complete("agent", earlier)).status).toBe(400);
     expect((await complete("agent", newer)).status).toBe(200);
     expect((await complete("agent", earlier)).status).toBe(400);
@@ -395,10 +396,9 @@ describe("password recovery portal and credential boundaries", () => {
     const staff = await staffUser();
     await requestReset("agent", staff.user.email);
     await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
-    const token =
-      new URL(sentPasswordResetEmails[0]?.resetLink ?? "").searchParams.get(
-        "token",
-      ) ?? "";
+    const token = linkToken(
+      new URL(sentPasswordResetEmails[0]?.resetLink ?? ""),
+    );
     const results = await Promise.all([
       complete("agent", token),
       complete("agent", token),
@@ -419,10 +419,9 @@ describe("password recovery portal and credential boundaries", () => {
     if (!cookie) throw new Error("Session cookie missing");
     await requestReset("agent", staff.user.email);
     await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
-    const token =
-      new URL(sentPasswordResetEmails[0]?.resetLink ?? "").searchParams.get(
-        "token",
-      ) ?? "";
+    const token = linkToken(
+      new URL(sentPasswordResetEmails[0]?.resetLink ?? ""),
+    );
     const change = await csrfRequest(
       sharedApp(),
       "/api/auth/change-password",

@@ -21,6 +21,7 @@ import apiKey from "./api-key";
 import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
+import { appendAuditLog } from "./audit/audit-writer";
 import {
   assertCookieDomainIsNotConfiguredForHostIsolation,
   authForHost,
@@ -38,6 +39,7 @@ import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
 } from "./auth/local-factor-service";
+import { isIncompleteBootstrapSession } from "./auth/repository";
 import stepUp from "./auth/step-up-api";
 import automation from "./automation";
 import cannedResponse from "./canned-response";
@@ -55,7 +57,7 @@ import {
 import portalAuthMethods from "./customer-invitation/auth-methods";
 import { customerInvitationDeliveryKeyring } from "./customer-invitation/delivery/keyring";
 import { purgeExpiredCustomerInvitationEnvelopes } from "./customer-invitation/delivery/repository";
-import {
+import db, {
   closeMigrationPool,
   getDatabase,
   getMigrationDatabase,
@@ -100,6 +102,7 @@ import instanceJobs from "./instance/jobs";
 import localFactorPolicy from "./instance/local-factor-policy";
 import instanceMcpUsage from "./instance/mcp-usage";
 import observability from "./instance/observability";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
 import {
   logDatabaseFailure,
   logHttpLifecycleFailure,
@@ -110,6 +113,7 @@ import {
   beginObservedRequest,
   logTaskDesk,
   observeRequest,
+  recordAuditWriteFailure,
   startObservabilityRuntime,
   stopObservabilityRuntime,
 } from "./instance/observability/runtime";
@@ -121,7 +125,7 @@ import hardPurge from "./instance/purge";
 import resetMfa from "./instance/reset-mfa";
 import rotateSecrets from "./instance/secrets/rotate-secrets";
 import instanceSettings from "./instance/settings";
-import { ensureSetupToken } from "./instance/setup-token";
+import { ensureSetupToken, isSetupCompleted } from "./instance/setup-token";
 import instanceStorage from "./instance/storage";
 import users from "./instance/users";
 import intake from "./intake";
@@ -164,6 +168,7 @@ import {
   isCredentialRevocationFailure,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
+  withFirstUserAdmissionTransaction,
   withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
@@ -351,7 +356,7 @@ type ApiVariables = {
   };
 };
 
-async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
+export async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
   if (c.req.path === "/api/me/security/factors") return;
   const userId = c.get("userId");
   const session = c.get("session") as (Session & { portal?: string }) | null;
@@ -369,7 +374,10 @@ async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
     }
     throw new HTTPException(503, { message: "factor_policy_unavailable" });
   }
-  if (state.required && !state.enabled) {
+  // A signed-in user whose first-run setup is unfinished is the pending first
+  // administrator. The marker comes from the same row read as the policy, so a
+  // database failure is already the 503 above and no extra query is added.
+  if (!state.setupCompleted || (state.required && !state.enabled)) {
     throw new HTTPException(403, { message: "mfa_enrollment_required" });
   }
 }
@@ -443,6 +451,8 @@ const CUSTOMER_AUTH_ENDPOINTS = new Set([
   "POST /api/auth/sign-out",
   "POST /api/auth/request-password-reset",
   "POST /api/auth/reset-password",
+  "POST /api/auth/change-password",
+  "GET /api/me/security/factors",
   "POST /api/auth/two-factor/verify-totp",
   "POST /api/auth/two-factor/verify-backup-code",
   "POST /api/portal/sign-in/home-realm",
@@ -548,6 +558,15 @@ async function handleAuthRequest(
   const selected = authForRequest(c);
   if (!portal) throw new HTTPException(403, { message: "Forbidden" });
 
+  // The body-limit middleware counts unknown-length streams only when read.
+  // Read a clone of agent signup before any session or setup-marker query;
+  // the original request remains available to Better Auth unchanged.
+  const agentEmailSignup =
+    portal === "agent" &&
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/sign-up/email";
+  if (agentEmailSignup) await c.req.raw.clone().arrayBuffer();
+
   const session = await selected.api.getSession({
     headers: c.req.raw.headers,
   });
@@ -558,6 +577,34 @@ async function handleAuthRequest(
         !(await hasCustomerPortalIdentity(session.user.id))))
   ) {
     throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  if (
+    portal === "customer" &&
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/change-password" &&
+    !session?.session
+  ) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  // The enrollment routes stay open to a pending first administrator, so they
+  // skip the marker read; the frequently polled get-session is one of them.
+  const enrollmentRoute =
+    (c.req.method === "GET" && c.req.path === "/api/auth/get-session") ||
+    (c.req.method === "POST" &&
+      [
+        "/api/auth/sign-out",
+        "/api/auth/two-factor/enable",
+        "/api/auth/two-factor/verify-totp",
+      ].includes(c.req.path));
+  if (
+    portal === "agent" &&
+    session?.user.id &&
+    !enrollmentRoute &&
+    (await isIncompleteBootstrapSession(session.user.id))
+  ) {
+    throw new HTTPException(403, { message: "mfa_enrollment_required" });
   }
 
   // GM-9: an impersonation session may not change credentials, factors, keys or the account
@@ -599,15 +646,45 @@ async function handleAuthRequest(
       throw error;
     }
   }
-  if (!mutation) return selected.handler(authRequest);
-
-  const outcome = await withExplicitCredentialMutation(mutation, () =>
-    selected.handler(authRequest),
-  );
-  if (outcome.state.deleteFailure) {
-    return c.json({ error: "credential_revocation_failed" }, 503);
+  if (agentEmailSignup && !(await isSetupCompleted())) {
+    return withFirstUserAdmissionTransaction(() =>
+      selected.handler(authRequest),
+    );
   }
-  return outcome.result;
+  let result: Response;
+  if (!mutation) {
+    result = await selected.handler(authRequest);
+  } else {
+    const outcome = await withExplicitCredentialMutation(mutation, () =>
+      selected.handler(authRequest),
+    );
+    if (outcome.state.deleteFailure) {
+      return c.json({ error: "credential_revocation_failed" }, 503);
+    }
+    result = outcome.result;
+  }
+  if (
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/change-password" &&
+    result.ok &&
+    session?.user
+  ) {
+    try {
+      await db.transaction((tx) =>
+        appendAuditLog(tx, {
+          action: "auth.password_changed",
+          actorId: session.user.id,
+          actorType: "person",
+          entityType: "person",
+          entityId: session.user.id,
+        }),
+      );
+    } catch {
+      recordAuditWriteFailure("mutation");
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    }
+  }
+  return result;
 }
 
 function explicitAuthCredentialMutation(

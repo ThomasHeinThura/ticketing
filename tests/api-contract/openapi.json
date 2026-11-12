@@ -11264,7 +11264,7 @@
           "Projects"
         ],
         "summary": "Reorder projects",
-        "description": "Set the sidebar order of a workspace's projects. The given positions express relative order only -- the workspace is renumbered to 0..n-1.",
+        "description": "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
         "parameters": [
           {
             "schema": {
@@ -11339,6 +11339,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A project is missing or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -20898,6 +20908,16 @@
           },
           "403": {
             "description": "Missing time_entry:create",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Scope not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -33380,7 +33400,7 @@
           "Workspaces"
         ],
         "summary": "Create a workspace",
-        "description": "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Native replacement for authClient.organization.create().",
+        "description": "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Only a current instance administrator (checked against the database at request time, browser session only) may call this. The request names the workspace owner, an existing active staff user; the administrator becomes a member only by naming themselves. The creator and the named owner are recorded in the audit log.",
         "requestBody": {
           "required": true,
           "content": {
@@ -33413,10 +33433,16 @@
                       "null"
                     ],
                     "maxLength": 2000
+                  },
+                  "ownerUserId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The existing, active, unsuspended staff user who becomes the workspace owner. The instance administrator creating the workspace becomes a member only by naming themselves."
                   }
                 },
                 "required": [
-                  "name"
+                  "name",
+                  "ownerUserId"
                 ]
               }
             }
@@ -33434,7 +33460,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or the name was rejected",
+            "description": "Invalid body, the name was rejected, or the named owner is not an existing, active, unsuspended staff user",
             "content": {
               "text/plain": {
                 "schema": {
@@ -33454,7 +33480,7 @@
             }
           },
           "403": {
-            "description": "An API key or impersonation session (session_required), or workspace creation is disabled on this instance",
+            "description": "An API key or impersonation session (session_required), or the caller is not a current instance administrator",
             "content": {
               "text/plain": {
                 "schema": {
@@ -34006,23 +34032,53 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "role": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "resend": {
+                        "type": "boolean",
+                        "enum": [
+                          false
+                        ]
+                      }
+                    },
+                    "required": [
+                      "email",
+                      "role"
+                    ]
                   },
-                  "role": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "resend": {
-                    "type": "boolean"
+                  {
+                    "type": "object",
+                    "properties": {
+                      "email": {
+                        "type": "string",
+                        "format": "email"
+                      },
+                      "role": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "resend": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      }
+                    },
+                    "required": [
+                      "email",
+                      "resend"
+                    ]
                   }
-                },
-                "required": [
-                  "email",
-                  "role"
                 ]
               }
             }
@@ -34495,6 +34551,76 @@
           },
           "409": {
             "description": "The new owner has more than one membership row in this workspace, so no single role can be trusted; repair the duplicate first",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/{workspaceId}/invitation-roles": {
+      "get": {
+        "operationId": "listAssignableInvitationRoles",
+        "tags": [
+          "Workspaces"
+        ],
+        "summary": "List roles the caller may invite",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assignable roles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "rank": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "rank"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invitation permission required",
             "content": {
               "text/plain": {
                 "schema": {
@@ -58235,6 +58361,9 @@
                           "isRequester": {
                             "type": "boolean"
                           },
+                          "raisedBySupport": {
+                            "type": "boolean"
+                          },
                           "customerVisibility": {
                             "type": "string",
                             "enum": [
@@ -58292,6 +58421,7 @@
                           "project",
                           "createdBy",
                           "isRequester",
+                          "raisedBySupport",
                           "customerVisibility",
                           "sla"
                         ]
@@ -58822,6 +58952,9 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "customerVisibility": {
                       "type": "string",
                       "enum": [
@@ -58971,6 +59104,7 @@
                     "project",
                     "createdBy",
                     "isRequester",
+                    "raisedBySupport",
                     "customerVisibility",
                     "sla",
                     "description",
@@ -59522,6 +59656,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -59803,6 +59958,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -60120,6 +60277,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -60401,6 +60579,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -60523,6 +60703,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -60804,6 +61005,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -60942,6 +61145,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -61223,6 +61447,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -65166,6 +65392,9 @@
                     "passwordRequiredForEnrollment": {
                       "type": "boolean"
                     },
+                    "hasLocalPassword": {
+                      "type": "boolean"
+                    },
                     "policyMode": {
                       "type": "string",
                       "enum": [
@@ -65193,6 +65422,7 @@
                     "enabled",
                     "required",
                     "passwordRequiredForEnrollment",
+                    "hasLocalPassword",
                     "policyMode",
                     "availableMethods"
                   ]
@@ -65201,7 +65431,22 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "A session is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
           },
           "403": {
             "description": "The caller's identity is inactive",
@@ -111024,7 +111269,7 @@
           "Teams"
         ],
         "summary": "Add a staff member to a team",
-        "description": "workspace:manage_settings, or a lead of this team. Customer-side people are refused (TM-2).",
+        "description": "workspace:manage_settings, or a lead of this team. Customer-side people and self-adds are refused (TM-2, TM-3).",
         "parameters": [
           {
             "schema": {
@@ -111102,7 +111347,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not permitted to edit this roster",
+            "description": "Not permitted to edit this roster, or team_self_add_forbidden",
             "content": {
               "text/plain": {
                 "schema": {
@@ -117758,7 +118003,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118083,7 +118328,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118313,7 +118558,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118534,6 +118779,16 @@
           },
           "403": {
             "description": "Not staff, or missing report:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118808,7 +119063,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {
@@ -119891,6 +120146,16 @@
               }
             }
           },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
             "description": "feature.reports is off",
             "content": {
@@ -120368,6 +120633,16 @@
           },
           "403": {
             "description": "Workspace dashboards need workspace:manage_settings",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Widget target not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -122043,7 +122318,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project or cycle",
             "content": {
               "text/plain": {
                 "schema": {

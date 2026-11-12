@@ -243,6 +243,24 @@
 		"retry": "Retry",
 		"navigation": {
 			"auditLog": "Audit log"
+		},
+		"boolean": {
+			"false": "False",
+			"true": "True"
+		},
+		"featureOff": {
+			"turnOn": "Activer dans Fonctionnalités"
+		},
+		"states": {
+			"back": "Back",
+			"noAccess": {
+				"title": "You don't have access",
+				"description": "Ask a workspace admin."
+			},
+			"error": {
+				"title": "This could not be loaded",
+				"description": "Check your connection and try again."
+			}
 		}
 	},
 	"auth": {
@@ -405,6 +423,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Le nom de l'espace de travail est requis"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -492,6 +515,35 @@
 			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
 			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
 			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
+		},
+		"changePassword": {
+			"confirmPassword": "Confirm new password",
+			"currentPassword": "Current password",
+			"failed": "Could not change your password. Please try again.",
+			"mismatch": "Passwords do not match.",
+			"newPassword": "New password",
+			"required": "Enter your current password.",
+			"revoke": "Sign out of other sessions",
+			"saving": "Changing password…",
+			"submit": "Change password",
+			"success": "Password changed.",
+			"title": "Change password",
+			"tooLong": "Password must be at most 128 characters.",
+			"wrongCurrent": "Your current password is incorrect."
+		},
+		"passwordRecovery": {
+			"forgot": "Forgot password?",
+			"requestTitle": "Reset your password",
+			"confirmation": "If an account exists for that address, we sent a link",
+			"send": "Send reset link",
+			"back": "Back to sign in",
+			"resetTitle": "Choose a new password",
+			"newPassword": "New password",
+			"confirmPassword": "Confirm new password",
+			"mismatch": "Passwords do not match",
+			"invalid": "This link is invalid, expired, or already used. Request a new link.",
+			"success": "Your password has been reset.",
+			"reset": "Reset password"
 		}
 	},
 	"settings": {
@@ -3048,7 +3100,14 @@
 			"creating": "Création...",
 			"submit": "Créer un workspace",
 			"success": "Workspace créé avec succès",
-			"error": "Échec de la création du workspace"
+			"error": "Échec de la création du workspace",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {
@@ -3075,6 +3134,9 @@
 		"inviteModal": {
 			"title": "Inviter un membre de l'équipe",
 			"emailLabel": "Email",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "collegue@entreprise.fr",
 			"sendInvitation": "Envoyer l'invitation",
 			"success": "Invitation envoyée avec succès",
@@ -3537,6 +3599,7 @@
 				"invalid": "The {{term_work_item_other}} around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"rejected": "{{key}} can't be moved right now because a rule blocks it. The board was refreshed.",
 				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"network": "Couldn't confirm the move for {{key}}. Check your connection and refresh.",
 				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"loadErrorDescription": "The board's states or {{term_work_item_other}} failed to load.",
@@ -3544,6 +3607,8 @@
 			"loadingMore": "Loading…",
 			"loadingTransitions": "Loading state changes…",
 			"loadMore": "Load more",
+			"moveRefusedReturned": "Move refused. {{key}} is back in {{state}}.",
+			"moveCancelledReturned": "Move cancelled. {{key}} is back in {{state}}.",
 			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
 			"moveDown": "Move down: {{key}} in {{state}}",
 			"moveDownShort": "Move down",
@@ -3975,7 +4040,8 @@
 			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
-			"reject": "Reject"
+			"reject": "Reject",
+			"emptyDescription": "Les demandes d’approbation de l’équipe d’assistance apparaissent ici."
 		},
 		"unavailable": {
 			"title": "Portail client indisponible",
@@ -3992,6 +4058,7 @@
 			"description": "La page n’a pas pu être chargée. Réessayez."
 		},
 		"intake": {
+			"invalidNumber": "Enter a valid number.",
 			"answers": "Your answers",
 			"attachments": "Attachments",
 			"backToCatalogue": "Back to catalogue",
@@ -4281,9 +4348,12 @@
 			"window": "{{start}} – {{end}}"
 		},
 		"cases": {
+			"raisedBy": "Raised by",
+			"supportTeam": "Support team",
 			"columns": {
 				"assignedTo": "Assigned to",
 				"created": "Created",
+				"requester": "Requester",
 				"createdBy": "Created by",
 				"details": "Details",
 				"project": "Project",
@@ -4975,7 +5045,8 @@
 		"noAccessTitle": "You cannot triage {{term_submission_other}}",
 		"featureOff": {
 			"title": "Intake is off for this workspace",
-			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
+			"manageDescription": "Activez Intake dans les paramètres des fonctionnalités de l’espace de travail. Les {{term_submission_other}} existants réapparaîtront après son activation."
 		}
 	},
 	"requestTypes": {
@@ -5048,7 +5119,16 @@
 		"moveGroupDown": "Move {{group}} down",
 		"moveGroupUp": "Move {{group}} up",
 		"saveGroupOrder": "Save group order",
-		"savingGroupOrder": "Saving group order…"
+		"savingGroupOrder": "Saving group order…",
+		"choosePriority": "Choose priority",
+		"priorityValueMapping": "Priority value mapping",
+		"removeField": "Remove {{name}}",
+		"defaultGroup": "General",
+		"defaultSummary": "Summary",
+		"newQuestion": "New question",
+		"priorityMappingInvalid": "Every priority option must map to low, medium, high, or urgent before publishing.",
+		"requiredFileInvalid": "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish.",
+		"requiredFileUnavailable": "Required is unavailable for file uploads until the submission file contract is defined."
 	},
 	"slaPolicies": {
 		"editor": {
@@ -7159,32 +7239,40 @@
 		"featureOff": {
 			"cycles": {
 				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
-				"title": "{{term_cycle_other}} are off for this {{term_project_one}}"
+				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
+				"manageDescription": "Activez {{term_cycle_other}} dans les paramètres des fonctionnalités de ce {{term_project_one}}. Les {{term_cycle_other}} existants réapparaîtront après activation."
 			},
 			"estimates": {
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
-				"title": "Estimates are off for this {{term_project_one}}"
+				"title": "Estimates are off for this {{term_project_one}}",
+				"manageDescription": "Turn on Estimates in this {{term_project_one}}'s feature settings. Existing estimates come back when it is switched on."
 			},
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
-				"title": "{{term_module_other}} are off for this {{term_project_one}}"
+				"title": "{{term_module_other}} are off for this {{term_project_one}}",
+				"manageDescription": "Activez {{term_module_other}} dans les paramètres des fonctionnalités de ce {{term_project_one}}. Les {{term_module_other}} existants réapparaîtront après activation."
 			},
 			"calendar": {
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "Calendar is off for this {{term_project_one}}"
+				"title": "Calendar is off for this {{term_project_one}}",
+				"manageDescription": "Turn on Calendar in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"timeline": {
 				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "The timeline is off for this {{term_project_one}}"
+				"title": "The timeline is off for this {{term_project_one}}",
+				"manageDescription": "Turn on the timeline in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
-				"title": "SLAs are off for this workspace"
+				"title": "SLAs are off for this workspace",
+				"manageDescription": "Activez les niveaux de service dans les paramètres des fonctionnalités de l’espace de travail pour utiliser les politiques SLA et les calendriers de service."
 			},
 			"pages": {
 				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
-				"title": "Pages are off for this {{term_project_one}}"
-			}
+				"title": "Pages are off for this {{term_project_one}}",
+				"manageDescription": "Turn on Pages in this {{term_project_one}}'s feature settings. Existing pages come back when it is switched on."
+			},
+			"openSettings": "Ouvrir les paramètres des fonctionnalités"
 		},
 		"modules": {
 			"create": "Create {{term_module_one}}",
@@ -7632,7 +7720,8 @@
 		},
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
-			"title": "{{term_service_one}} catalogue is off"
+			"title": "{{term_service_one}} catalogue is off",
+			"manageDescription": "Activez le catalogue {{term_service_one}} dans les paramètres des fonctionnalités de l’espace de travail."
 		},
 		"freezes": {
 			"affected_many": "{{count}} planned {{term_change_other}} now fall inside this freeze and cannot be approved without an override.",
@@ -8753,7 +8842,8 @@
 		"errors": {
 			"disabled": {
 				"description": "An administrator can turn this feature on in the workspace feature settings.",
-				"title": "Reports are off"
+				"title": "Reports are off",
+				"manageDescription": "Activez les rapports dans les paramètres des fonctionnalités de l’espace de travail pour voir les rapports et les tableaux de bord."
 			},
 			"failed": {
 				"description": "Try again in a moment.",

@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, ErrorBoundary } from "@taskdesk/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CREATE_TASK_DIALOG_CLASS,
@@ -13,6 +13,7 @@ import {
 } from "./create-work-item-dialog";
 
 import type { CreateWorkItemDraftState } from "./create-work-item-dialog-form";
+import { markWorkItemCreateDialogOpen } from "./work-item-create-dialog-open";
 
 export default function WorkItemCreateDialogShell({
   projectId,
@@ -29,6 +30,8 @@ export default function WorkItemCreateDialogShell({
   initialState?: { id: string; name: string };
 }) {
   const { t } = useTranslation();
+  // Visible to the create shortcut for as long as this dialog is mounted.
+  useEffect(() => markWorkItemCreateDialogOpen(), []);
   const [draft, setDraft] = useState<CreateWorkItemDraftState>({
     dirty: false,
     busy: false,

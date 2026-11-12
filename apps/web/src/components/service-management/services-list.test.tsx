@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   services: {
@@ -11,15 +12,16 @@ const mocks = vi.hoisted(() => ({
     error: null as unknown,
     refetch: vi.fn(),
   },
-  status: { data: undefined as unknown },
+  status: { data: undefined as unknown, isLoading: false, isError: false },
   canCreateProjects: true,
+  canManageSettings: false,
   modalProps: vi.fn(),
   servicesWorkspace: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children?: React.ReactNode }) => (
-    <a href="/">{children}</a>
+  Link: ({ to, children }: { to?: string; children?: React.ReactNode }) => (
+    <a href={to ?? "/"}>{children}</a>
   ),
   useNavigate: () => vi.fn(),
 }));
@@ -53,6 +55,7 @@ vi.mock("@/hooks/queries/service-management", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canBindProjectOrganisation: () => mocks.canCreateProjects,
+    canManageWorkspaceSettings: () => mocks.canManageSettings,
   }),
 }));
 vi.mock("@/components/shared/modals/create-project-modal", () => ({
@@ -86,16 +89,23 @@ function setup(
     canManageReleases: false,
     ...status,
   };
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <ServicesList />
-    </QueryClientProvider>,
-  );
+  mocks.status.isLoading = false;
+  mocks.status.isError = false;
+  const client = new QueryClient();
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    ),
+  };
 }
 
 afterEach(() => {
   cleanup();
   mocks.canCreateProjects = true;
+  mocks.canManageSettings = false;
   mocks.modalProps.mockClear();
 });
 
@@ -183,13 +193,65 @@ describe("ServicesList", () => {
       }),
     ).toBeNull();
   });
+
+  it("offers no create action while catalogue status is unresolved or resolves off", () => {
+    mocks.status.data = undefined;
+    mocks.status.isLoading = true;
+    const client = new QueryClient();
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("create-managed-service")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /services.list.new/u }),
+    ).toBeNull();
+
+    mocks.status.data = { enabled: false, canManageServices: true };
+    mocks.status.isLoading = false;
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("create-managed-service")).toBeNull();
+    expect(screen.getByTestId("service-catalogue-off")).toBeInTheDocument();
+  });
+
+  it("closes a managed-service dialog when the catalogue switches off", async () => {
+    const { client, rerender } = setup({ data: [service()] });
+    fireEvent.click(screen.getByTestId("create-managed-service"));
+    expect(
+      await screen.findByTestId("create-project-modal"),
+    ).toBeInTheDocument();
+
+    mocks.status.data = { enabled: false, canManageServices: true };
+    rerender(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("create-project-modal")).toBeNull();
+    expect(screen.queryByTestId("create-managed-service")).toBeNull();
+
+    mocks.status.data = { enabled: true, canManageServices: true };
+    rerender(
+      <QueryClientProvider client={client}>
+        <ServicesList />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByTestId("create-project-modal")).toBeNull();
+  });
 });
 
 describe("ServicesList with the catalogue off (UAT re-audit)", () => {
-  it("shows the off state once, offers no New Service, search or tabs, and asks for no list", () => {
+  it("shows the off state once, offers no New Service or search, and asks for no list", () => {
     mocks.servicesWorkspace.mockClear();
     setup({}, { enabled: false });
     expect(screen.getAllByTestId("service-catalogue-off")).toHaveLength(1);
+    // One h1, the page title; the off state's title sits under it as h2.
+    expect(headingLevels()).toEqual([1, 2]);
     expect(screen.getAllByText("disabled.description")).toHaveLength(1);
     expect(
       screen.queryByRole("button", { name: /services.list.new/u }),
@@ -199,6 +261,29 @@ describe("ServicesList with the catalogue off (UAT re-audit)", () => {
     expect(mocks.servicesWorkspace).toHaveBeenCalled();
     for (const [workspaceId] of mocks.servicesWorkspace.mock.calls)
       expect(workspaceId).toBe("");
+  });
+
+  // UX-1a (SR-04): the section tabs stay, the managed-service action into the off feature goes,
+  // and only a settings manager is offered the way to switch the catalogue on.
+  it("keeps the section tabs and hides Create managed service while off", () => {
+    setup({}, { enabled: false });
+    expect(
+      screen.getByRole("navigation", { name: "nav.title" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("create-managed-service")).toBeNull();
+    expect(screen.getByText("disabled.description")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "common:featureOff.turnOn" }),
+    ).toBeNull();
+  });
+
+  it("offers a settings manager Turn on in Features while off", () => {
+    mocks.canManageSettings = true;
+    setup({}, { enabled: false });
+    expect(screen.getByText("disabled.manageDescription")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "common:featureOff.turnOn" }),
+    ).toHaveAttribute("href", "/dashboard/settings/workspace/features");
   });
 
   it("asks for the list once the catalogue is on", () => {

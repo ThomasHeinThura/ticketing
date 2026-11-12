@@ -28,7 +28,10 @@ const nextClientIp = () => `198.51.100.${(++clientIpCounter % 250) + 1}`;
 
 beforeEach(async () => {
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db.insert(schema.instanceSettingTable).values({
+    id: "singleton",
+    setupCompletedAt: new Date(),
+  });
 });
 
 async function createUser(id: string, role: "admin" | "user") {

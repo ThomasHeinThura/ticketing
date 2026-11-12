@@ -6197,6 +6197,7 @@ async function installAuthenticatedFixture(page: Page) {
     } else if (path.endsWith("/api/portal/requests")) {
       const visualCase = {
         source: "submission",
+        raisedBySupport: false,
         requestTypeName: "Access request",
         createdAt: "2026-09-15T00:00:00.000Z",
         updatedAt: "2026-09-16T09:30:00.000Z",
@@ -6226,6 +6227,7 @@ async function installAuthenticatedFixture(page: Page) {
             createdBy: { name: "Dana Customer", isYou: false },
             isRequester: false,
             customerVisibility: "organisation",
+            raisedBySupport: true,
           },
         ],
         page: { hasMore: false, nextCursor: null },
@@ -7559,6 +7561,11 @@ test("project timeline screen @visual", async ({ page }) => {
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId("feature-off-timeline")).toBeVisible();
+  // The owner's "Open feature settings" action arrives with the project's capabilities; wait for
+  // it so the screenshot never catches the state before it.
+  await expect(
+    page.getByRole("link", { name: "Open feature settings" }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("project-timeline.png", {
     animations: "disabled",
     caret: "hide",

@@ -40,11 +40,12 @@ export function PortalKpiCard({
 }) {
   return (
     <Card
+      interactive={Boolean(to)}
       render={to ? <Link to={to} search={search} /> : undefined}
       className={cn(
         "flex-row items-start gap-3 p-4",
         to &&
-          "outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring",
+          "outline-none hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring",
       )}
       data-slot="portal-kpi-card"
     >

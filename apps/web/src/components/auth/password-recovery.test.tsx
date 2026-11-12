@@ -53,11 +53,12 @@ describe.each([false, true])("password recovery portal=%s", (portal) => {
     window.history.replaceState(
       {},
       "",
-      `${portal ? "/reset-password" : "/auth/reset-password"}?token=raw.${"a".repeat(43)}`,
+      `${portal ? "/reset-password" : "/auth/reset-password"}#token=raw.${"a".repeat(43)}`,
     );
     reset.mockRejectedValueOnce(new Error("invalid"));
     render(<ResetPassword portal={portal} />);
     expect(window.location.search).not.toContain("token");
+    expect(window.location.hash).not.toContain("token");
     fireEvent.change(
       screen.getByLabelText("auth:passwordRecovery.newPassword"),
       { target: { value: "long-password" } },
@@ -73,17 +74,19 @@ describe.each([false, true])("password recovery portal=%s", (portal) => {
       await screen.findByText("auth:passwordRecovery.invalid"),
     ).toBeInTheDocument();
     expect(window.location.search).not.toContain("token");
+    expect(window.location.hash).not.toContain("token");
     expect(readPasswordResetToken()).toBe("");
   });
   it("focuses mismatched confirmation and submits valid passwords", async () => {
     window.history.replaceState(
       {},
       "",
-      `${portal ? "/reset-password" : "/auth/reset-password"}?token=raw.${"a".repeat(43)}`,
+      `${portal ? "/reset-password" : "/auth/reset-password"}#token=raw.${"a".repeat(43)}`,
     );
     reset.mockResolvedValueOnce({});
     render(<ResetPassword portal={portal} />);
     expect(window.location.search).not.toContain("token");
+    expect(window.location.hash).not.toContain("token");
     const password = screen.getByLabelText("auth:passwordRecovery.newPassword");
     const confirm = screen.getByLabelText(
       "auth:passwordRecovery.confirmPassword",
@@ -108,6 +111,7 @@ describe.each([false, true])("password recovery portal=%s", (portal) => {
       await screen.findByText("auth:passwordRecovery.success"),
     ).toBeInTheDocument();
     expect(window.location.search).not.toContain("token");
+    expect(window.location.hash).not.toContain("token");
     expect(readPasswordResetToken()).toBe("");
   });
 });

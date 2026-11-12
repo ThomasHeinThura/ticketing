@@ -328,7 +328,10 @@ async function state(grantId: string, personId: string) {
 beforeEach(async () => {
   vi.restoreAllMocks();
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db.insert(schema.instanceSettingTable).values({
+    id: "singleton",
+    setupCompletedAt: new Date(),
+  });
   process.env.TASKDESK_ENCRYPTION_KEY = ENCRYPTION_KEY;
   vi.spyOn(
     nativeAuthorization,

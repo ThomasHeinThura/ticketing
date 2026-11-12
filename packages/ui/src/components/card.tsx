@@ -4,23 +4,34 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 
 import { cn } from "../lib/cn";
+import { useKeyboardPress } from "../lib/use-keyboard-press";
 
 function Card({
   className,
+  interactive = false,
   render,
   ...props
-}: useRender.ComponentProps<"div">) {
+}: useRender.ComponentProps<"div"> & {
+  interactive?: boolean;
+}) {
+  const keyboardPressProps = useKeyboardPress({
+    enabled: interactive,
+  });
+
   const defaultProps = {
     className: cn(
       "relative flex flex-col rounded-2xl border bg-card not-dark:bg-clip-padding text-card-foreground shadow-xs/5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-2xl)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+      interactive &&
+        "cursor-pointer transition-[color,background-color,border-color,box-shadow,scale] press-feedback [--press-scale:0.98]",
       className,
     ),
+    "data-interactive": interactive ? "" : undefined,
     "data-slot": "card",
   };
 
   return useRender({
     defaultTagName: "div",
-    props: mergeProps<"div">(defaultProps, props),
+    props: mergeProps<"div">(defaultProps, props, keyboardPressProps),
     render,
   });
 }

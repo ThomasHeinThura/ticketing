@@ -98,7 +98,9 @@ vi.mock("@taskdesk/email", () => ({
 
 beforeEach(async () => {
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", setupCompletedAt: new Date() });
 });
 
 async function prepareTotpEnrollmentFailureFixture(id: string) {

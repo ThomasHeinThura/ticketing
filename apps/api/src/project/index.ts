@@ -27,12 +27,12 @@ import {
 } from "../utils/has-project-reach";
 import {
   listReachOf,
+  requireReachContext,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
 import { apiKeyScopeSatisfies } from "../utils/require-api-key-permission-scope";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
-import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
 import { compositionWarnings } from "./composition";
@@ -359,10 +359,11 @@ const reorderProjectsRoute = createRoute({
   tags: ["Projects"],
   summary: "Reorder projects",
   description:
-    "Set the sidebar order of a workspace's projects. The given positions express relative order only -- the workspace is renumbered to 0..n-1.",
+    "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
   middleware: [
     workspaceAccess.fromQuery(),
-    requireWorkspacePermission({ project: ["update"] }),
+    requireWorkspaceCapability("project:update"),
+    requireReachContext,
   ] as const,
   request: {
     query: workspaceIdQuery,
@@ -379,6 +380,7 @@ const reorderProjectsRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("A project is missing or out of reach"),
   },
 });
 
@@ -395,11 +397,7 @@ const updateProjectRoute = createRoute({
     "(PR-6, PR-10, AS-11) are optional and each needs project:manage_settings. " +
     "parentId is never accepted here: re-parenting is PATCH /api/projects/{id}/ownership.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: projectParam,
@@ -452,11 +450,7 @@ const updateProjectHealthRoute = createRoute({
   tags: ["Projects"],
   summary: "Set project health",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: projectParam,
@@ -488,11 +482,7 @@ const deleteProjectRoute = createRoute({
     "browser session by typing the exact project name and completing step-up.",
   middleware: [
     requireSessionOnly(),
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["delete"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: { params: projectParam },
   responses: {
@@ -520,7 +510,6 @@ const archiveProjectRoute = createRoute({
     "Hide a project from the default list without deleting it. Reversible with unarchive.",
   middleware: [
     workspaceAccess.fromProject("id", { requireProjectReach: true }),
-    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
@@ -542,7 +531,6 @@ const unarchiveProjectRoute = createRoute({
   description: "Return an archived project to the default list.",
   middleware: [
     workspaceAccess.fromProject("id", { requireProjectReach: true }),
-    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
@@ -567,7 +555,6 @@ const restoreProjectRoute = createRoute({
     "archive state is preserved.",
   middleware: [
     workspaceAccess.fromProject("id", { requireProjectReach: true }),
-    requireWorkspacePermission({ project: ["update"] }),
   ] as const,
   request: { params: projectParam },
   responses: {
@@ -581,14 +568,7 @@ const restoreProjectRoute = createRoute({
   },
 });
 
-// ── Issue #25's bounded slice: milestones, prerequisites, stakeholders, document ───────
-// links (`docs/03-features/projects-and-engagements.md` § API). Project members,
-// ownership (parent_id/owner_team_id) and health are NOT part of this slice -- see the
-// PR description for the three tracked gaps that block them. Every route below shares
-// `project:update`'s enforcement (`requireWorkspacePermission({ project: ["update"] })`)
-// -- the spec's own permission table: "Manage stakeholders, milestones, prerequisites,
-// document links; set health | project:update" -- and `workspaceAccess.fromProject()`
-// against the same `{id}` path param the parent project routes already use.
+// Project-scoped writes resolve reach and the registered capability, including API-key scope.
 
 const listMilestonesRoute = createRoute({
   method: "get",
@@ -615,11 +595,7 @@ const createMilestoneRoute = createRoute({
   tags: ["Projects"],
   summary: "Create a milestone",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: projectParam,
@@ -645,11 +621,7 @@ const updateMilestoneRoute = createRoute({
   description:
     "Partial update. `reached: true` marks it reached now; `reached: false` clears it.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: milestoneParam,
@@ -673,11 +645,7 @@ const deleteMilestoneRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a milestone",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: { params: milestoneParam },
   responses: {
@@ -721,11 +689,7 @@ const createPrerequisiteRoute = createRoute({
   tags: ["Projects"],
   summary: "Create a prerequisite",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: projectParam,
@@ -753,11 +717,7 @@ const updatePrerequisiteRoute = createRoute({
     "`PR-11`: there is no portal route onto this table, so ticking off is staff-only " +
     "structurally, not by an application-level check here.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: prerequisiteParam,
@@ -781,11 +741,7 @@ const deletePrerequisiteRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a prerequisite",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: { params: prerequisiteParam },
   responses: {
@@ -827,11 +783,7 @@ const addStakeholderRoute = createRoute({
   tags: ["Projects"],
   summary: "Add a stakeholder",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: projectParam,
@@ -855,11 +807,7 @@ const updateStakeholderRoute = createRoute({
   tags: ["Projects"],
   summary: "Update a stakeholder",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: stakeholderParam,
@@ -885,11 +833,7 @@ const standDownStakeholderRoute = createRoute({
   description:
     "PR-12: stood down, never deleted -- removed from counts and pickers, keeps history.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: { params: stakeholderParam },
   responses: {
@@ -933,11 +877,7 @@ const addDocumentLinkRoute = createRoute({
     "(contract, sow, design, handover or other) and an optional description. Customer " +
     "visibility is off by default. Audited as document_link.created.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: projectParam,
@@ -964,11 +904,7 @@ const updateDocumentLinkRoute = createRoute({
     "Edits the title, address, type, description or customer visibility of one Documents " +
     "entry of this project. Audited as document_link.updated.",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: {
     params: documentLinkParam,
@@ -992,11 +928,7 @@ const deleteDocumentLinkRoute = createRoute({
   tags: ["Projects"],
   summary: "Delete a document link",
   middleware: [
-    workspaceAccess.fromProject("id", {
-      requireProjectReach: true,
-      deferApiKeyCapability: true,
-    }),
-    requireWorkspacePermission({ project: ["update"] }),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
   ] as const,
   request: { params: documentLinkParam },
   responses: {
@@ -1197,7 +1129,12 @@ const project = apiRouter<
   .openapi(reorderProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     const { projects } = c.req.valid("json");
-    const reordered = await reorderProjectsCtrl(workspaceId, projects);
+    const reachable = await listReachOf(c).reachableProjectIds([workspaceId]);
+    const reordered = await reorderProjectsCtrl(
+      workspaceId,
+      projects,
+      reachable,
+    );
     return c.json(reordered, 200);
   })
   .openapi(updateProjectRoute, async (c) => {

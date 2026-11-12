@@ -25,6 +25,10 @@ export const createWorkspaceBody = z.object({
     }),
   logo: z.string().max(2048).nullable().optional(),
   description: z.string().max(2000).nullable().optional(),
+  ownerUserId: z.string().min(1).openapi({
+    description:
+      "The existing, active, unsuspended staff user who becomes the workspace owner. The instance administrator creating the workspace becomes a member only by naming themselves.",
+  }),
 });
 
 export const updateWorkspaceBody = z
@@ -76,11 +80,18 @@ export const transferWorkspaceOwnershipBody = z.object({
 // `role` is a plain string for the same reason as `addWorkspaceMemberBody`:
 // validated against this workspace's OWN `workspace_role` rows in the
 // controller, not a fixed enum.
-export const inviteWorkspaceMemberBody = z.object({
-  email: z.string().email(),
-  role: z.string().min(1),
-  resend: z.boolean().optional(),
-});
+export const inviteWorkspaceMemberBody = z.union([
+  z.object({
+    email: z.string().email(),
+    role: z.string().min(1),
+    resend: z.literal(false).optional(),
+  }),
+  z.object({
+    email: z.string().email(),
+    role: z.string().min(1).optional(),
+    resend: z.literal(true),
+  }),
+]);
 
 // S7 -- native role list/write routes (issue #6, retrofit plan §3, S7 row).
 
