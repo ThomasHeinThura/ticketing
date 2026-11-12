@@ -100,6 +100,7 @@ import {
   PREREQUISITE_DELETION_ROUTE,
   PROJECT_DELETION_ROUTE,
 } from "./project-deletion-target";
+import { projectServesCustomer } from "./repository";
 import {
   customerOrganisationListSchema,
   documentLinkSchema,
@@ -288,7 +289,7 @@ const listCustomerOrganisationsRoute = createRoute({
   description:
     "Active, live customer organisations (never the internal one), for the create-project " +
     "selector, each with the service calendar a new project for it inherits in this " +
-    "workspace. Instance admins see all; other callers see only organisations served by a non-deleted project in this workspace. Requires project:create in the workspace.",
+    "workspace. Instance admins see all; other callers see only organisations served by a live or recoverable project in this workspace. Requires project:create in the workspace.",
   middleware: [
     workspaceAccess.fromQuery(),
     // STRICT capability check, not the legacy `requireWorkspacePermission`: the legacy
@@ -1071,7 +1072,7 @@ const project = apiRouter<
                     and(
                       eq(projectTable.workspaceId, workspaceId),
                       eq(projectTable.organisationId, organisationTable.id),
-                      isNull(projectTable.deletedAt),
+                      projectServesCustomer(),
                     ),
                   ),
               ),

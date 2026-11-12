@@ -6,12 +6,13 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { acceptSubmission } from "../../apps/api/src/intake/repository";
+import { purgeSoftDeletedProject } from "../../apps/api/src/scheduler/soft-delete-purge";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -76,6 +77,28 @@ async function projectOrganisation(projectId: string) {
     where: eq(schema.projectTable.id, projectId),
   });
   return row?.organisationId;
+}
+
+async function waitForBlockedConnections(
+  observer: Client,
+  blockerPid: number,
+  expected: number,
+) {
+  const deadline = Date.now() + 10000;
+  while (Date.now() < deadline) {
+    await observer.query("SELECT pg_stat_clear_snapshot()");
+    const result = await observer.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM pg_stat_activity
+       WHERE datname = current_database() AND wait_event_type = 'Lock'
+       AND $1 = ANY (pg_blocking_pids(pid))`,
+      [blockerPid],
+    );
+    if (Number(result.rows[0]?.count) >= expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(
+    `Expected ${expected} database connections waiting on test blocker`,
+  );
 }
 
 describe("API integration: project customer-organisation binding", () => {
@@ -166,12 +189,40 @@ describe("API integration: project customer-organisation binding", () => {
     ).toHaveLength(1);
     await db
       .update(schema.projectTable)
-      .set({ deletedAt: new Date() })
+      .set({
+        deletedAt: new Date(),
+        purgeAfter: new Date(Date.now() + 86400000),
+      })
       .where(eq(schema.projectTable.organisationId, served.id));
     const afterDeletion = await app.request(
       `/api/project/organisations?workspaceId=${caller.workspace.id}`,
     );
-    expect(await afterDeletion.json()).toEqual([]);
+    expect(
+      ((await afterDeletion.json()) as { id: string }[]).map((row) => row.id),
+    ).toEqual([served.id]);
+    // A manager can still create against the recoverable project.
+    expect(
+      (
+        await createProjectRequest(caller.workspace.id, {
+          organisationId: served.id,
+        })
+      ).status,
+    ).toBe(200);
+    // Expire and purge every project, including the one just created by the manager.
+    const rows = await db
+      .update(schema.projectTable)
+      .set({
+        deletedAt: new Date(Date.now() - 86400000),
+        purgeAfter: new Date(Date.now() - 1000),
+      })
+      .where(eq(schema.projectTable.organisationId, served.id))
+      .returning({ id: schema.projectTable.id });
+    for (const row of rows)
+      expect((await purgeSoftDeletedProject(row.id)).result).toBe("purged");
+    const afterPurge = await app.request(
+      `/api/project/organisations?workspaceId=${caller.workspace.id}`,
+    );
+    expect(await afterPurge.json()).toEqual([]);
     expect(
       (
         await createProjectRequest(caller.workspace.id, {
@@ -179,6 +230,225 @@ describe("API integration: project customer-organisation binding", () => {
         })
       ).status,
     ).toBe(403);
+  });
+
+  it("does not reveal whether an unserved organisation ID exists", async () => {
+    const caller = await createWorkspaceMember({
+      role: "manager",
+      seedDefaultRoleRow: false,
+    });
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: caller.workspace.id,
+      role: "manager",
+      permission: JSON.stringify({ project: ["create", "read"] }),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const existing = await makeOrganisation();
+    const inactive = await makeOrganisation({ active: false });
+    const deleted = await makeOrganisation({ deletedAt: new Date() });
+    const internal = requireRow(
+      await db
+        .select()
+        .from(schema.organisationTable)
+        .where(eq(schema.organisationTable.isInternal, true)),
+      "internal organisation",
+    );
+    mockAuthenticatedSession(caller.user);
+    const responses = await Promise.all(
+      [
+        existing.id,
+        inactive.id,
+        deleted.id,
+        internal.id,
+        `missing-${randomUUID()}`,
+      ].map((organisationId) =>
+        createProjectRequest(caller.workspace.id, { organisationId }),
+      ),
+    );
+    const bodies = await Promise.all(
+      responses.map((response) => response.text()),
+    );
+    expect(responses.map((response) => response.status)).toEqual([
+      403, 403, 403, 403, 403,
+    ]);
+    expect(new Set(bodies).size).toBe(1);
+    expect(bodies[0]).toContain(
+      "instance_admin_required_for_new_customer_organisation",
+    );
+  });
+
+  it("serializes concurrent first links and writes one link audit", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    const organisation = await makeOrganisation();
+    mockAuthenticatedSession(admin.user);
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const observer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await blocker.connect();
+    await observer.connect();
+    let open = false;
+    try {
+      await blocker.query("BEGIN");
+      open = true;
+      await blocker.query("SELECT pg_advisory_xact_lock(1524, hashtext($1))", [
+        admin.workspace.id,
+      ]);
+      const pid = Number(
+        (await blocker.query("SELECT pg_backend_pid() AS pid")).rows[0].pid,
+      );
+      const requests = [
+        createProjectRequest(admin.workspace.id, {
+          organisationId: organisation.id,
+        }),
+        createProjectRequest(admin.workspace.id, {
+          organisationId: organisation.id,
+        }),
+      ];
+      await waitForBlockedConnections(observer, pid, 2);
+      await blocker.query("COMMIT");
+      open = false;
+      const results = await Promise.all(requests);
+      expect(results.map((result) => result.status)).toEqual([200, 200]);
+      const audit = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          eq(
+            schema.auditLogTable.action,
+            "project.customer_organisation_linked",
+          ),
+        );
+      expect(audit).toHaveLength(1);
+      expect(audit[0]).toMatchObject({
+        workspaceId: admin.workspace.id,
+        organisationId: organisation.id,
+      });
+    } finally {
+      if (open) await blocker.query("ROLLBACK");
+      await blocker.end();
+      await observer.end();
+    }
+  });
+
+  it("refuses an ordinary create racing the permanent deletion of its last serving project", async () => {
+    const caller = await createWorkspaceMember({
+      role: "manager",
+      seedDefaultRoleRow: false,
+    });
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: caller.workspace.id,
+      role: "manager",
+      permission: JSON.stringify({ project: ["create", "read"] }),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const organisation = await makeOrganisation();
+    const project = requireRow(
+      await db
+        .insert(schema.projectTable)
+        .values({
+          workspaceId: caller.workspace.id,
+          organisationId: organisation.id,
+          name: "Existing",
+          slug: projectKey(),
+        })
+        .returning(),
+      "existing project",
+    );
+    mockAuthenticatedSession(caller.user);
+    const writer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const observer = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await writer.connect();
+    await observer.connect();
+    let open = false;
+    try {
+      await writer.query("BEGIN");
+      open = true;
+      await writer.query('DELETE FROM "project" WHERE id = $1', [project.id]);
+      const pid = Number(
+        (await writer.query("SELECT pg_backend_pid() AS pid")).rows[0].pid,
+      );
+      const request = createProjectRequest(caller.workspace.id, {
+        organisationId: organisation.id,
+      });
+      await waitForBlockedConnections(observer, pid, 1);
+      await writer.query("COMMIT");
+      open = false;
+      const response = await request;
+      expect(response.status).toBe(403);
+      expect(await response.text()).toContain(
+        "instance_admin_required_for_new_customer_organisation",
+      );
+      expect(
+        await db
+          .select()
+          .from(schema.projectTable)
+          .where(eq(schema.projectTable.workspaceId, caller.workspace.id)),
+      ).toHaveLength(0);
+    } finally {
+      if (open) await writer.query("ROLLBACK");
+      await writer.end();
+      await observer.end();
+    }
+  });
+
+  it("rolls back project creation when the first-link audit insert fails", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    const organisation = await makeOrganisation();
+    mockAuthenticatedSession(admin.user);
+    const tables = [
+      schema.projectTable,
+      schema.projectSlugClaimTable,
+      schema.columnTable,
+      schema.stateTable,
+      schema.membershipTable,
+      schema.membershipGrantTable,
+      schema.auditLogTable,
+      schema.outboxTable,
+    ] as const;
+    const counts = async () =>
+      Promise.all(
+        tables.map(async (table) => (await db.select().from(table)).length),
+      );
+    const before = await counts();
+    await db.execute(
+      sql.raw(
+        `CREATE FUNCTION td_test_fail_customer_link_audit() RETURNS trigger AS $$ BEGIN IF NEW.action = 'project.customer_organisation_linked' THEN RAISE EXCEPTION 'injected link audit failure'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql`,
+      ),
+    );
+    try {
+      await db.execute(
+        sql.raw(
+          "CREATE TRIGGER td_test_fail_customer_link_audit BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION td_test_fail_customer_link_audit()",
+        ),
+      );
+      const response = await createProjectRequest(admin.workspace.id, {
+        organisationId: organisation.id,
+      });
+      expect(response.status).toBe(500);
+      expect(await counts()).toEqual(before);
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS td_test_fail_customer_link_audit ON audit_log",
+        ),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS td_test_fail_customer_link_audit()"),
+      );
+    }
   });
 
   it("does not let an impersonated instance admin extend workspace reach", async () => {

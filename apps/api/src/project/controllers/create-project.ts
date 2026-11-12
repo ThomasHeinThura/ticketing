@@ -146,6 +146,24 @@ async function createProjectRow(
     let inheritedSlaPolicyId: string | null = null;
     let hasOrganisationDefaults = false;
     if (configuration.organisationId !== null) {
+      const instanceAdmin =
+        eligibleAdminSession &&
+        (await isCurrentInstanceAdmin(creatorUserId, tx));
+      // Check reach without exposing validity; recheck under row locks after locking the
+      // organisation, matching purge's organisation-before-project lock order.
+      if (
+        !instanceAdmin &&
+        !(await workspaceServesOrganisation(
+          tx,
+          workspaceId,
+          configuration.organisationId,
+          false,
+        ))
+      ) {
+        throw new HTTPException(403, {
+          message: "instance_admin_required_for_new_customer_organisation",
+        });
+      }
       const servable = await isServableCustomerOrganisation(
         tx,
         workspaceId,
@@ -157,11 +175,7 @@ async function createProjectRow(
         workspaceId,
         configuration.organisationId,
       ));
-      if (
-        firstLink &&
-        (!eligibleAdminSession ||
-          !(await isCurrentInstanceAdmin(creatorUserId, tx)))
-      ) {
+      if (firstLink && !instanceAdmin) {
         throw new HTTPException(403, {
           message: "instance_admin_required_for_new_customer_organisation",
         });
