@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CycleList } from "@/fetchers/agile";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({ getCycles: vi.fn() }));
 
@@ -19,6 +20,9 @@ vi.mock("react-i18next", async () => ({
   }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("./use-can-manage-project-features", () => ({
+  useCanManageProjectFeatures: () => false,
+}));
 vi.mock("@/fetchers/agile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/fetchers/agile")>()),
   getCycles: (...args: unknown[]) => mocks.getCycles(...args),
@@ -150,5 +154,7 @@ describe("CyclesList", () => {
     mocks.getCycles.mockRejectedValue(new FeatureDisabledError());
     renderList();
     expect(await screen.findByTestId("feature-off-cycles")).toBeTruthy();
+    // The off state is the whole page, so its title is the page's one h1.
+    expect(headingLevels()).toEqual([1]);
   });
 });

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { FeatureOff } from "@/components/agile/feature-off";
+import { ProjectIdFeatureOff } from "@/components/agile/feature-off";
 import ProjectLayout from "@/components/common/project-layout";
 import { useProjectFeatureState } from "@/hooks/queries/feature-flag/use-project-pages-feature";
 
@@ -31,7 +31,12 @@ export default function ProjectViewFeatureGate({
     >
       {enabled === false ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <FeatureOff feature={view === "calendar" ? "calendar" : "timeline"} />
+          <ProjectIdFeatureOff
+            feature={view === "calendar" ? "calendar" : "timeline"}
+            headingLevel={1}
+            projectId={projectId}
+            workspaceId={workspaceId}
+          />
         </div>
       ) : null}
     </ProjectLayout>

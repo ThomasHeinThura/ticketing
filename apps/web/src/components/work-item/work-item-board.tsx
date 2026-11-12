@@ -39,6 +39,7 @@ import { ActionTooltip } from "@/components/common/action-tooltip";
 import { ColumnShell } from "@/components/kanban-board/column/column-shell";
 import TaskCard from "@/components/kanban-board/task-card";
 import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
+import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
 import {
   routes,
@@ -166,7 +167,7 @@ export default function WorkItemBoard({
   const combined = Boolean(combinedColumns);
   const {
     dragged,
-    busy,
+    pendingItemIds,
     notice,
     canReorder,
     itemsByState,
@@ -177,6 +178,7 @@ export default function WorkItemBoard({
     endDrag,
     cancelDrag,
     childrenDialog,
+    noteDialog,
   } = useWorkItemDragDrop({
     projectId,
     states,
@@ -271,15 +273,6 @@ export default function WorkItemBoard({
           <p className="sr-only" role="status" aria-live="polite">
             {notice?.kind === "status" ? notice.text : ""}
           </p>
-          {notice?.kind === "error" ? (
-            <Alert
-              variant="error"
-              role="alert"
-              data-testid="work-item-board-error"
-            >
-              <AlertDescription>{notice.text}</AlertDescription>
-            </Alert>
-          ) : null}
           {/* Below md one column fits the screen and the board snaps to column starts; md and
               up keep Kaneo's widths and free scrolling. Proximity snapping never fights the
               drag autoscroll. */}
@@ -302,7 +295,7 @@ export default function WorkItemBoard({
                     key={state.id}
                     state={state}
                     headingId={headingId}
-                    disabled={busy || (!canTransition && !canReorder)}
+                    disabled={!canTransition && !canReorder}
                     combined={combined}
                     header={
                       <div className="flex items-center justify-between gap-2">
@@ -382,7 +375,8 @@ export default function WorkItemBoard({
                                   key={item.id}
                                   item={item}
                                   stateName={state.name}
-                                  busy={busy}
+                                  busy={pendingItemIds.has(item.id)}
+                                  pending={pendingItemIds.has(item.id)}
                                   canSelect={
                                     combined
                                       ? canSelect &&
@@ -436,7 +430,8 @@ export default function WorkItemBoard({
                                 key={item.id}
                                 item={item}
                                 stateName={state.name}
-                                busy={busy}
+                                busy={pendingItemIds.has(item.id)}
+                                pending={pendingItemIds.has(item.id)}
                                 canSelect={
                                   combined
                                     ? canSelect &&
@@ -480,7 +475,8 @@ export default function WorkItemBoard({
                               key={item.id}
                               item={item}
                               stateName={state.name}
-                              busy={busy}
+                              busy={pendingItemIds.has(item.id)}
+                              pending={pendingItemIds.has(item.id)}
                               canSelect={
                                 combined
                                   ? canSelect &&
@@ -564,6 +560,7 @@ export default function WorkItemBoard({
         ) : null}
       </DragOverlay>
       {childrenDialog}
+      {noteDialog}
     </DndContext>
   );
 }
@@ -614,6 +611,7 @@ export const BoardCard = memo(function BoardCard({
   sortableId,
   stateName,
   busy,
+  pending = false,
   canSelect,
   canTransition,
   canRank,
@@ -628,7 +626,10 @@ export const BoardCard = memo(function BoardCard({
   /** DnD-only identifier for a card rendered in more than one group. */
   sortableId?: string;
   stateName: string;
+  /** Disables dragging this card. */
   busy: boolean;
+  /** This card's own move is waiting for the server; the rest of the board stays usable. */
+  pending?: boolean;
   canSelect: boolean;
   canTransition: boolean;
   canRank: boolean;
@@ -706,8 +707,13 @@ export const BoardCard = memo(function BoardCard({
         overlay ? "work-item-drag-overlay-card" : "work-item-board-card"
       }
       data-work-item-key={item.key}
+      data-pending={pending ? "true" : undefined}
+      aria-busy={pending ? true : undefined}
       style={virtualItem?.style as CSSProperties | undefined}
-      className="group/board-card flex flex-col gap-2"
+      className={cn(
+        "group/board-card flex flex-col gap-2",
+        pending && "opacity-70",
+      )}
     >
       {sourceProject ? (
         <span

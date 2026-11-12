@@ -9,6 +9,7 @@ import type {
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { and, eq, inArray, ne, type SQL } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
+import { lockFirstUserPromotion } from "../auth/repository";
 import db, { schema as importedSchema } from "../database";
 import {
   apikeyTable,
@@ -42,13 +43,72 @@ type PendingActionInvalidationReason =
   | "version_changed"
   | "scope_changed";
 
+type PasswordSessionSource = {
+  id: string;
+  userId: string;
+  portal: "agent" | "customer";
+  identityConnectionId: string | null;
+  activeOrganizationId: string | null;
+  activeTeamId: string | null;
+};
 type ExplicitCredentialMutationState = ExplicitCredentialMutation & {
   deleteFailure: unknown | null;
+  passwordSessionSource?: PasswordSessionSource;
 };
+
+export function setPasswordSessionSource(source: PasswordSessionSource) {
+  const state = explicitMutationStorage.getStore();
+  if (state?.route !== "/change-password")
+    throw new Error("Password change transaction required");
+  state.passwordSessionSource = source;
+}
+
+export function getPasswordSessionSource() {
+  const state = explicitMutationStorage.getStore();
+  return state?.route === "/change-password"
+    ? state.passwordSessionSource
+    : undefined;
+}
 
 const explicitMutationStorage =
   new AsyncLocalStorage<ExplicitCredentialMutationState>();
 const transactionStorage = new AsyncLocalStorage<PendingActionTransaction>();
+const firstUserAdmissionStorage =
+  new AsyncLocalStorage<PendingActionTransaction>();
+
+class FirstUserAdmissionRollback extends Error {
+  constructor(readonly response: Response) {
+    super("First-user signup did not succeed");
+  }
+}
+
+/** Enlist every Better Auth signup write and hook in the promotion-lock transaction. */
+export async function withFirstUserAdmissionTransaction<T>(
+  callback: () => Promise<T>,
+): Promise<T> {
+  if (firstUserAdmissionStorage.getStore()) return callback();
+  try {
+    return await db.transaction(async (tx) => {
+      await lockFirstUserPromotion(tx);
+      return transactionStorage.run(tx, () =>
+        firstUserAdmissionStorage.run(tx, async () => {
+          const result = await callback();
+          if (result instanceof Response && result.status >= 400) {
+            throw new FirstUserAdmissionRollback(result);
+          }
+          return result;
+        }),
+      );
+    });
+  } catch (error) {
+    if (error instanceof FirstUserAdmissionRollback) return error.response as T;
+    throw error;
+  }
+}
+
+export function currentFirstUserAdmissionTransaction() {
+  return firstUserAdmissionStorage.getStore() ?? null;
+}
 
 type TotpEnrollmentContext = {
   pendingActionAuditFailures: number;
@@ -71,11 +131,49 @@ export class AccountDeletionRetryError extends Error {
   }
 }
 
+class PasswordChangeResponseRollback extends Error {
+  constructor(
+    readonly outcome: {
+      result: unknown;
+      state: ExplicitCredentialMutationState;
+    },
+  ) {
+    super("Password change failed; transaction rolled back");
+  }
+}
+
 /** The route marker is server-owned and exists only around the Better Auth handler. */
 export async function withExplicitCredentialMutation<T>(
   mutation: ExplicitCredentialMutation,
   callback: () => Promise<T>,
 ): Promise<{ result: T; state: ExplicitCredentialMutationState }> {
+  if (mutation.route === "/change-password" && !transactionStorage.getStore()) {
+    try {
+      return await withTotpSessionEnrollment(
+        async () => {
+          const outcome = await withExplicitCredentialMutation(
+            mutation,
+            callback,
+          );
+          if (
+            outcome.state.deleteFailure ||
+            (outcome.result instanceof Response && !outcome.result.ok)
+          ) {
+            throw new PasswordChangeResponseRollback(outcome);
+          }
+          return outcome;
+        },
+        { markExplicitSessionMutation: false },
+      );
+    } catch (error) {
+      if (error instanceof PasswordChangeResponseRollback)
+        return error.outcome as {
+          result: T;
+          state: ExplicitCredentialMutationState;
+        };
+      throw error;
+    }
+  }
   const state: ExplicitCredentialMutationState = {
     ...mutation,
     deleteFailure: null,
@@ -141,7 +239,7 @@ class TotpResponseRollback extends Error {
   }
 }
 
-/** Run the installed TOTP API operation and all adapter/hook writes atomically. */
+/** Run a factor enrollment or password-session rotation with lifecycle writes atomically. */
 export async function withTotpSessionEnrollment<T>(
   callback: (executor: PendingActionTransaction) => Promise<T>,
   options: { markExplicitSessionMutation?: boolean } = {},

@@ -325,7 +325,9 @@ Board. Team membership and ownership participate in the existing [reach contract
   refused.
 - `TM-3` A team may have zero or more leads. A lead may add and remove members; editing
   the team's shared saved views is held for a later release. A lead may not change capacity
-  or the CAB flag — that is `workspace:manage_settings`.
+  or the CAB flag — that is `workspace:manage_settings`. No actor may add themselves to a
+  team, including through their API key; self-add returns `403 team_self_add_forbidden`.
+  An otherwise authorised actor can still remove themselves.
 - `TM-4` `owner_team_id` on a project grants **reach only** to the team's members — step 5
   of the reach resolution in [RBAC](permissions.md). It grants no capability.
   Because it *is* a reach grant, setting or changing it requires `project:manage_members`

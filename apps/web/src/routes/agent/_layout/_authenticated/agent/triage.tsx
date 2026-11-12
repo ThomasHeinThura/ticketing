@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -12,6 +12,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  FeatureOff,
 } from "@taskdesk/ui";
 import { Filter } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -162,6 +163,7 @@ function IntakeRoute() {
     void navigate({ search: searchWith({ ...patch, cursor: undefined }) });
   const deniedByServer =
     queue.error instanceof HttpError && queue.error.status === 403;
+  const canManageFeatures = permissions.canManageWorkspaceSettings();
   if (workspace.data?.id && !intakeOn)
     return (
       <div className="flex h-full w-full min-w-0 flex-col">
@@ -185,15 +187,24 @@ function IntakeRoute() {
                 </Button>
               </Alert>
             ) : (
-              // The same empty state as the other switched-off features (`FeatureOff`).
-              <Empty data-testid="feature-off-intake">
-                <EmptyHeader>
-                  <EmptyTitle>{t("featureOff.title")}</EmptyTitle>
-                  <EmptyDescription>
-                    {t("featureOff.description")}
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
+              // The same empty state as the other switched-off features (UX-1a, SR-02).
+              <FeatureOff
+                data-testid="feature-off-intake"
+                title={t("featureOff.title")}
+                description={
+                  canManageFeatures
+                    ? t("featureOff.manageDescription")
+                    : t("featureOff.description")
+                }
+                action={
+                  canManageFeatures
+                    ? {
+                        label: t("common:featureOff.turnOn"),
+                        render: <Link to={routes.workspaceFeatures.path} />,
+                      }
+                    : undefined
+                }
+              />
             )}
           </div>
         </Layout.Content>

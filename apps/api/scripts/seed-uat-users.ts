@@ -15,6 +15,7 @@ import bcrypt from "bcryptjs";
 import { config } from "dotenv-mono";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
+import { completeFirstUserSetup } from "../src/auth/repository";
 import db, { getDatabasePool, schema } from "../src/database";
 import { resolveDatabaseConfig } from "../src/database/resolve-database-url";
 import { kbArticleTable, kbCategoryTable } from "../src/database/schema-p5-kb";
@@ -60,7 +61,10 @@ import {
  * - every row it writes directly has a `uat-` id; rows written by domain helpers (state
  *   templates, types, teams' defaults, request types, submissions, KB, Pages) carry generated
  *   ids but live only inside `uat-ws` or its projects;
- * - it never updates or deletes a row it did not create, and on a rerun it updates nothing;
+ * - it never updates or deletes a row it did not create, and on a rerun it updates nothing,
+ *   except that it marks first-run setup complete when the marker is unset (seeded accounts never
+ *   go through first sign-up, and without the marker every staff session answers 403
+ *   `mfa_enrollment_required`); an existing marker, including the SIT seed's, is left as it is;
  * - a `uat-` row (or a reserved email, slug or key) that exists but does not match what this
  *   seed would write is a conflict: the seed throws before writing anything.
  */
@@ -1595,7 +1599,10 @@ type Seeded = {
   typeIds: Map<string, string>;
 };
 
-async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
+export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
+  // Seeded accounts skip first sign-up, so mark setup complete here, in the seed transaction.
+  // Sets the marker only while it is unset; never overwrites it or touches the setup row otherwise.
+  await completeFirstUserSetup(tx);
   const date = (days: number) => new Date(now.getTime() + days * 86_400_000);
   const internalOrg = await ensureInternalOrganisation(tx);
 

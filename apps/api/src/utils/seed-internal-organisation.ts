@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import db, { schema } from "../database";
-import { executorOrDefault } from "../database/executor";
+import { type Executor, executorOrDefault } from "../database/executor";
 import { isUniqueViolation } from "./is-unique-violation";
 import {
   findInternalOrganisationId,
@@ -111,7 +111,7 @@ export async function ensureInternalOrganisation(
 /** Ensure an ordinary registered user has the same internal staff identity as boot users. */
 export async function ensureStaffPersonForUser(
   userId: string,
-  executor = executorOrDefault(),
+  executor: Executor = executorOrDefault(),
 ): Promise<void> {
   const internalOrganisation = await ensureInternalOrganisation(executor);
   const now = new Date();

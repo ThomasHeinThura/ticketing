@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
 import {
   fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
@@ -166,8 +167,23 @@ async function signUpStaff(page: Page, fixture: MfaCsrfAppFixture) {
 
 async function createStaffWorkspace(page: Page, origin: string) {
   const api = page.context().request;
+  // D-A: only an instance administrator creates a workspace, and the request names its owner.
+  // The signed-in user here is the bootstrap administrator, so they name themselves.
+  const sessionResponse = await api.get(
+    new URL("/api/auth/get-session", origin).toString(),
+    { headers: { Origin: origin } },
+  );
+  expect(sessionResponse.status()).toBe(200);
+  const ownerUserId =
+    (
+      (await sessionResponse.json()) as {
+        user?: { id?: string };
+      } | null
+    )?.user?.id ?? "";
+  expect(ownerUserId).toBeTruthy();
   const workspaceResponse = await postWithCsrf(api, origin, "/api/workspace", {
     name: `Portal conversation ${randomUUID().slice(0, 8)}`,
+    ownerUserId,
   });
   expect(workspaceResponse.status()).toBe(200);
   const workspace = (await workspaceResponse.json()) as { id?: string };
@@ -269,6 +285,7 @@ async function runJourney(
   try {
     const staffPage = await staffContext.newPage();
     await signUpStaff(staffPage, fixture);
+    await completePendingFirstAdminInBrowser(staffPage, fixture);
     const support = await createStaffWorkspace(staffPage, fixture.origin);
     const tenant = (await seedScript(
       fixture,

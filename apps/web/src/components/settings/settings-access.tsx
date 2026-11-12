@@ -41,14 +41,31 @@ type Permission = ReturnType<typeof useWorkspacePermission>;
 export function useSettingsAccess(
   allows: (permission: Permission) => boolean,
   projectId?: string,
+  options?: { refreshOnMount?: boolean },
 ): SettingsAccess {
   const { data: workspace } = useActiveWorkspace();
-  const permission = useWorkspacePermission(workspace?.id, projectId);
+  const permission = useWorkspacePermission(
+    workspace?.id,
+    projectId,
+    ...(options ? ([options] as const) : ([] as const)),
+  );
   const checkFailed = useCapabilityCheckFailed(
     permission.isCheckingPermissions ? workspace?.id : undefined,
     projectId,
   );
   if (!workspace?.id) return "checking";
+  // Sensitive settings need a fresh check even when the shared cache has data, but only until
+  // the first fresh read after mount has settled: a later background refetch must not send an
+  // open editor back to "checking" and drop its unsaved draft.
+  if (permission.isPermissionRefreshPending) {
+    if (
+      permission.isPermissionError &&
+      !permission.isRefetchingPermissions &&
+      !permission.isPermissionCheckPaused
+    )
+      return "error";
+    return "checking";
+  }
   if (permission.isCheckingPermissions)
     return checkFailed ? "error" : "checking";
   return allows(permission) ? "allowed" : "denied";

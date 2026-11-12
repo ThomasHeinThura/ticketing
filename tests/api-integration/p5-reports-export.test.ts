@@ -365,8 +365,8 @@ describe("synchronous and queued exports (RP-10)", () => {
       sql`DELETE FROM membership WHERE person_id = ${personId} AND scope = 'project' AND scope_id = ${w.projectA.id}`,
     );
     const refused = await w.get(w.lead.user, path);
-    expect(refused.status).toBe(403);
-    expect(await refused.text()).toContain("reach_revoked");
+    expect(refused.status).toBe(404);
+    expect(await refused.text()).toContain("Export not found");
   });
 
   it("limits a person to three exports in flight", async () => {

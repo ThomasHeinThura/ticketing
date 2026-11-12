@@ -3,6 +3,7 @@
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 
 import { cn } from "../lib/cn";
+import { useKeyboardPress } from "../lib/use-keyboard-press";
 
 type TabsVariant = "default" | "underline";
 
@@ -43,7 +44,7 @@ function TabsList({
       {children}
       <TabsPrimitive.Indicator
         className={cn(
-          "-translate-y-(--active-tab-bottom) absolute bottom-0 left-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) transition-[width,translate] duration-200 ease-in-out",
+          "-translate-y-(--active-tab-bottom) absolute bottom-0 left-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) transition-[width,translate] duration-base ease-in-out",
           variant === "underline"
             ? "data-[orientation=vertical]:-translate-x-px z-10 bg-primary data-[orientation=horizontal]:h-0.5 data-[orientation=vertical]:w-0.5 data-[orientation=horizontal]:translate-y-px"
             : "-z-1 rounded-md bg-background shadow-sm/5 dark:bg-input",
@@ -54,15 +55,52 @@ function TabsList({
   );
 }
 
-function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
+function TabsTab({
+  className,
+  onBlur,
+  onKeyDown,
+  onKeyUp,
+  onPointerCancel,
+  onPointerDown,
+  ...props
+}: TabsPrimitive.Tab.Props) {
+  const keyboardPressProps = useKeyboardPress({
+    disabled: Boolean(props.disabled),
+  });
+  const externalDataPressed = (props as Record<string, unknown>)[
+    "data-pressed"
+  ] as string | undefined;
+
   return (
     <TabsPrimitive.Tab
+      {...props}
       className={cn(
-        "[&_svg]:-mx-0.5 relative flex h-9 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-[calc(--spacing(2.5)-1px)] font-medium text-base outline-none transition-[color,background-color,box-shadow] hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring data-disabled:pointer-events-none data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-foreground data-disabled:opacity-64 sm:h-8 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "[&_svg]:-mx-0.5 relative flex h-9 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-[calc(--spacing(2.5)-1px)] font-medium text-base outline-none transition-[color,background-color,box-shadow,scale] press-feedback [--press-scale:0.98] hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring data-disabled:pointer-events-none data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-foreground data-disabled:opacity-64 sm:h-8 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
       )}
       data-slot="tabs-tab"
-      {...props}
+      data-pressed={keyboardPressProps["data-pressed"] ?? externalDataPressed}
+      data-keyboard-press={keyboardPressProps["data-keyboard-press"]}
+      onBlur={(event) => {
+        onBlur?.(event);
+        keyboardPressProps.onBlur(event);
+      }}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        keyboardPressProps.onKeyDown(event);
+      }}
+      onKeyUp={(event) => {
+        onKeyUp?.(event);
+        keyboardPressProps.onKeyUp(event);
+      }}
+      onPointerCancel={(event) => {
+        onPointerCancel?.(event);
+        keyboardPressProps.onPointerCancel(event);
+      }}
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        keyboardPressProps.onPointerDown(event);
+      }}
     />
   );
 }

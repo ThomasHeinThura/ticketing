@@ -91,6 +91,39 @@ describe("ConnectedAccountsPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("retries a failed load and shows the connected account", async () => {
+    let resolveRetry!: (value: unknown) => void;
+    mocks.list
+      .mockRejectedValueOnce(new HttpError(500, "boom"))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRetry = resolve;
+          }),
+      );
+    renderPanel();
+
+    const retry = await screen.findByRole("button", {
+      name: translate("common:actions.tryAgain"),
+    });
+    fireEvent.click(retry);
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      translate("auth:accountSecurity.identityLinks.loading"),
+    );
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+
+    resolveRetry({
+      source: { connectionId: "source", displayName: "Work SSO" },
+      targets: [],
+    });
+    expect(await screen.findByText("Work SSO")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: translate("common:actions.tryAgain"),
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("requires explicit confirmation, then clears the intent after the API confirms", async () => {
     mocks.list.mockResolvedValue({
       source: { connectionId: "source", displayName: "Work SSO" },

@@ -10,6 +10,7 @@ import {
 import { useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { shortcuts } from "@/constants/shortcuts";
+import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
 
 type ShortcutItem = {
   keys: string[];
@@ -24,6 +25,8 @@ type ShortcutCategory = {
 
 function useShortcutCategories(): ShortcutCategory[] {
   const { t } = useTranslation();
+  // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
+  const canCreateWorkspace = useCanCreateWorkspace();
 
   return useMemo(
     () => [
@@ -65,12 +68,19 @@ function useShortcutCategories(): ShortcutCategory[] {
             keys: [shortcuts.project.prefix, shortcuts.project.create],
             description: t("navigation:keyboardShortcuts.items.createProject"),
           },
-          {
-            keys: [shortcuts.workspace.prefix, shortcuts.workspace.create],
-            description: t(
-              "navigation:keyboardShortcuts.items.createWorkspace",
-            ),
-          },
+          ...(canCreateWorkspace
+            ? [
+                {
+                  keys: [
+                    shortcuts.workspace.prefix,
+                    shortcuts.workspace.create,
+                  ],
+                  description: t(
+                    "navigation:keyboardShortcuts.items.createWorkspace",
+                  ),
+                },
+              ]
+            : []),
         ],
       },
       {
@@ -123,7 +133,7 @@ function useShortcutCategories(): ShortcutCategory[] {
         ],
       },
     ],
-    [t],
+    [t, canCreateWorkspace],
   );
 }
 

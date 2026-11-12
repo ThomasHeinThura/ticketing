@@ -81,9 +81,17 @@ function EmptyMedia({
   );
 }
 
-function EmptyTitle({ className, ...props }: React.ComponentProps<"div">) {
+function EmptyTitle({
+  className,
+  level,
+  ...props
+}: React.ComponentProps<"div"> & {
+  /** Renders the title as a real heading of this level; without it the title is a plain block. */
+  level?: 1 | 2 | 3 | 4 | 5 | 6;
+}) {
+  const Title: React.ElementType = level ? `h${level}` : "div";
   return (
-    <div
+    <Title
       className={cn("font-heading font-semibold text-xl", className)}
       data-slot="empty-title"
       {...props}

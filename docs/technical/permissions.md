@@ -2,6 +2,10 @@
 
 Reach and authority are separate checks. Membership determines reachable resources; scoped roles supply capabilities. Authentication alone grants neither. Every route declares one policy. No provider claim grants instance administration or unrestricted reach.
 
+A team that owns a project grants its members reach to that project. No person may add themselves to a team, including through a personal API key; an otherwise authorised person can remove themselves.
+
+Project reordering returns and updates only projects the caller reaches. Unreachable, missing, and deleted project IDs receive the same 404; the positions of unreachable projects are not changed.
+
 ## Capabilities
 
 | Group | Capability | Implies | Description |
@@ -16,7 +20,7 @@ Reach and authority are separate checks. Membership determines reachable resourc
 | | `workspace:delete` | `workspace:update` | Delete the workspace |
 | | `workspace:manage_members` | `workspace:read` | Add and remove workspace members |
 | | `workspace:manage_roles` | `workspace:read` | Create and edit roles |
-| | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, request types, custom fields, labels, estimates, automations, canned responses, workspace terminology |
+| | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, workspace terminology |
 | | `workspace:transfer_ownership` | `workspace:read` | Transfer ownership of the workspace to another existing member |
 | **Projects** | `project:create` | | Create a project or managed service |
 | | `project:read` | | See a project in reach |
@@ -100,6 +104,8 @@ Reach and authority are separate checks. Membership determines reachable resourc
 
 `project-lead` is the project-scope counterpart of `lead` (rank 50). Project authority overrides workspace authority for that project; it does not grant workspace-wide authority. The customer role is outside the staff ladder and stays portal-bound. Self-assignment and customer exceptions require their declared row predicate, not a role-name shortcut.
 
+**Creating a workspace** is an instance action, not a workspace role capability (owner decision D-A, 12 November 2026). `POST /api/workspace` requires a current instance administrator, confirmed against the database on each request, through a browser session only; no workspace role, API key, MCP key or impersonation session qualifies. The request names the owner, who must be an existing active, unsuspended staff user and receives the normal owner membership and reach. The creating administrator is not made a member unless they name themselves. Creator and owner are written to the audit log. `DISABLE_WORKSPACE_CREATION` no longer changes this.
+
 Capability names persist in roles and credentials. Rename/removal requires a compatibility migration; adding a capability does not expand existing API-key ceilings. MCP uses ordinary capabilities intersected with the credential ceiling. Never add MCP-only capabilities.
 
 ## Policy kinds
@@ -160,8 +166,8 @@ Reach is evaluated for the loaded resource from current persisted memberships an
 
 Tenant reach, API-key ceilings, self/owner predicates, agent/customer separation, audit records and concurrency checks remain mandatory. Instance actions and authority-minting routes need elevation or a registered exemption. User deletion is a durable pending action. Impersonation cannot satisfy an elevated/session-only action.
 
+Staff invitation role options require `member:invite` and return only assignable role keys, labels and ranks; they do not expose capabilities or holders. Role assignment and resend recheck the current inviter’s rank and capabilities, and never assign owner.
 
 The session-only instance-admin `PUT /api/instance/auth/local-methods` uses the `auth_local_methods_update` step-up proof for changes to staff self-registration and records its old and new values in the audit log.
-
 
 D-B (Thomas, 12 Nov 2026): changing staff self-registration requires an enrolled local second factor and a fresh TOTP or backup-code proof at issuance and consumption. Other changes to sign-in methods retain their existing PA-15 proof rules.

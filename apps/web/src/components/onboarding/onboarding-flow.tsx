@@ -1,6 +1,6 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Navigate, useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Form,
@@ -18,10 +18,16 @@ import { useForm } from "react-hook-form";
 import { Trans, useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import { Logo } from "@/components/common/logo";
+import { ErrorDisplay } from "@/components/errors/error-display";
+import { NoWorkspaceEmpty } from "@/components/onboarding/no-workspace-empty";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { WorkspaceOwnerPicker } from "@/components/workspace/workspace-owner-picker";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import useCreateWorkspace from "@/hooks/queries/workspace/use-create-workspace";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
+import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
+import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 
 type OnboardingStep = "workspace" | "success";
@@ -48,7 +54,17 @@ export function OnboardingFlow() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { mutateAsync: createWorkspace, isPending } = useCreateWorkspace();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const {
+    data: workspaces,
+    isLoading: workspacesLoading,
+    isFetching: workspacesFetching,
+    error: workspacesError,
+    refetch,
+  } = useGetWorkspaces(true);
+  // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
+  const canCreateWorkspace = useCanCreateWorkspace();
+  const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
 
   const workspaceSchema = useMemo(
     () =>
@@ -70,14 +86,22 @@ export function OnboardingFlow() {
   });
 
   const onSubmit = async (data: WorkspaceFormValues) => {
+    if (!ownerUserId) return;
     try {
       const workspace = await createWorkspace({
         name: data.name.trim(),
         description: data.description?.trim() || "",
-        userId: user?.id,
+        ownerUserId,
       });
 
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      // The administrator is a member only if they named themselves. Handed to someone else,
+      // the workspace is not theirs to open: leave them in God Mode rather than activating it.
+      if (ownerUserId !== user?.id) {
+        toast.success(t("workspace:create.successHandedOver"));
+        navigate({ to: routes.godModeHealth.path, replace: true });
+        return;
+      }
       // S8a: native replacement for authClient.organization.setActive().
       await activateWorkspace(workspace.id);
       setCreatedWorkspaceName(data.name);
@@ -168,9 +192,27 @@ export function OnboardingFlow() {
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium">
+                  {t("workspace:create.ownerLabel")}
+                </p>
+                <WorkspaceOwnerPicker
+                  value={ownerUserId}
+                  onChange={setOwnerUserId}
+                  disabled={isPending}
+                />
+                <p className="text-muted-foreground text-sm">
+                  {t("workspace:create.ownerHelp")}
+                </p>
+              </div>
             </div>
 
-            <Button type="submit" disabled={isPending} className="w-full mt-4">
+            <Button
+              type="submit"
+              disabled={isPending || !ownerUserId}
+              className="w-full mt-4"
+            >
               {isPending
                 ? t("auth:onboarding.creating")
                 : t("auth:onboarding.createWorkspace")}
@@ -224,10 +266,21 @@ export function OnboardingFlow() {
     <>
       <PageTitle title={t("auth:onboarding.workspacePageTitle")} />
       <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4">
-        <AnimatePresence mode="wait">
-          {step === "workspace" && renderWorkspaceStep()}
-          {step === "success" && renderSuccessStep()}
-        </AnimatePresence>
+        {isLoading ? null : canCreateWorkspace ? (
+          <AnimatePresence mode="wait">
+            {step === "workspace" && renderWorkspaceStep()}
+            {step === "success" && renderSuccessStep()}
+          </AnimatePresence>
+        ) : workspacesLoading || workspacesFetching ? null : workspacesError ? (
+          <ErrorDisplay
+            error={workspacesError}
+            onRetry={() => void refetch()}
+          />
+        ) : workspaces?.length ? (
+          <Navigate to="/agent" replace />
+        ) : (
+          <NoWorkspaceEmpty />
+        )}
       </div>
     </>
   );

@@ -1,6 +1,10 @@
+"use client";
+
+import { mergeProps } from "@base-ui/react/merge-props";
 import type * as React from "react";
 
 import { cn } from "../lib/cn";
+import { useKeyboardPress } from "../lib/use-keyboard-press";
 import { ScrollArea } from "./scroll-area";
 
 function Table({
@@ -88,17 +92,30 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   );
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
-  return (
-    <tr
-      className={cn(
-        "td-density-row border-b transition-colors hover:bg-muted/72 in-data-[slot=frame]:hover:bg-transparent data-[state=selected]:bg-muted/72 in-data-[slot=frame]:data-[state=selected]:bg-transparent",
-        className,
-      )}
-      data-slot="table-row"
-      {...props}
-    />
-  );
+function TableRow({
+  className,
+  interactive = false,
+  ...props
+}: React.ComponentProps<"tr"> & {
+  interactive?: boolean;
+}) {
+  const keyboardPressProps = useKeyboardPress({
+    enabled: interactive,
+  });
+
+  const defaultProps = {
+    className: cn(
+      "td-density-row border-b hover:bg-muted/72 in-data-[slot=frame]:hover:bg-transparent data-[state=selected]:bg-muted/72 in-data-[slot=frame]:data-[state=selected]:bg-transparent",
+      interactive
+        ? "cursor-pointer transition-[color,background-color,border-color,scale] press-feedback [--press-scale:0.99]"
+        : "transition-colors",
+      className,
+    ),
+    "data-interactive": interactive ? "" : undefined,
+    "data-slot": "table-row",
+  };
+
+  return <tr {...mergeProps<"tr">(defaultProps, props, keyboardPressProps)} />;
 }
 
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {

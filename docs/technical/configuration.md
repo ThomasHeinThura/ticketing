@@ -27,7 +27,7 @@ This maintained contract registers bootstrap environment names for `check:env` a
 | `TASKDESK_TRUST_PROXY` | `1` | Exact trusted reverse-proxy hop count; `0` uses the socket address. Measure the deployed topology. Expose the application through the trusted proxy network only. |
 | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` | unset | Headless first-administrator setup. Normal empty-database setup uses the one-time setup page and token. |
 | `NODE_ENV` | `production` | Development permits HTTP webhook targets; production must be explicit. |
-| `DISABLE_WORKSPACE_CREATION` | unset | Literal `true` restricts workspace creation to instance administrators; current authority is read from the database at request time. |
+| `DISABLE_WORKSPACE_CREATION` | unset | Retained name only. Since 12 November 2026 (D-A) workspace creation is always limited to a current instance administrator, read from the database at request time, so this variable no longer widens or narrows anything. |
 | `TASKDESK_STORAGE_DRIVER` | `filesystem` | Interim `filesystem` or `s3` bootstrap selection. Invalid values fail startup. Do not switch existing bytes between backends without a migration plan; deletion cannot clean up a backend that is no longer selected. |
 | `TASKDESK_STORAGE_FILESYSTEM_ROOT` | `/app/data/attachments` | Writable filesystem-storage root; mount persistent storage for durable bytes. |
 | `TASKDESK_POLICY_SHADOW` | `off` | Interim `on`/`off` policy comparison. Records disagreements without changing responses; invalid values fail startup. |

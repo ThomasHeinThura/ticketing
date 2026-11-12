@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { client } from "@taskdesk/libs";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUser } from "@/hooks/queries/workspace-users/use-active-workspace-user";
 
@@ -37,6 +37,7 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   // Strict per-area settings capabilities (workspace:manage_roles, webhook:manage,
   // custom_field:manage), exactly what each settings API enforces. Optional so an older server
   // fails closed; never inferred from `manageWorkspaceSettings`.
+  manageRequestTypes?: boolean;
   manageRoles?: boolean;
   manageWebhooks?: boolean;
   manageCustomFields?: boolean;
@@ -86,10 +87,17 @@ const EMPTY_CAPABILITIES = {
 export function useWorkspacePermission(
   targetWorkspaceId?: string,
   targetProjectId?: string,
+  /**
+   * `refreshOnMount` trusts the capabilities only after a fresh read since the screen mounted.
+   * `enabled: false` asks the server nothing and grants nothing (every `can*` is false and
+   * `isCheckingPermissions` is false), for a caller that only sometimes has something to check.
+   */
+  options?: { refreshOnMount?: boolean; enabled?: boolean },
 ) {
+  const enabled = options?.enabled ?? true;
   const { data: activeWorkspace } = useActiveWorkspace();
   const { data: activeMember, isLoading: isActiveMemberLoading } =
-    useGetActiveWorkspaceUser();
+    useGetActiveWorkspaceUser({ enabled });
   const isTargetScoped = targetWorkspaceId !== undefined;
   const workspaceId = targetWorkspaceId ?? activeWorkspace?.id;
   const activeRole = activeMember?.role as string | undefined;
@@ -117,27 +125,31 @@ export function useWorkspacePermission(
   // ["workspace-capabilities", workspaceId] on role changes, and keep doing
   // so unmodified: this key's first two elements are unchanged, so those
   // existing invalidations still match this query.
+  const queryKey = sharesActiveRead
+    ? ["workspace-capabilities", workspaceId, activeRole]
+    : isTargetScoped
+      ? [
+          "workspace-capabilities",
+          workspaceId,
+          "work-item-target",
+          ...(targetProjectId ? [targetProjectId] : []),
+        ]
+      : ["workspace-capabilities", workspaceId, role];
   const {
     data: capabilities,
     isLoading,
     isFetching,
+    isPaused,
     isError,
     fetchStatus,
+    isFetchedAfterMount,
   } = useQuery({
-    queryKey: sharesActiveRead
-      ? ["workspace-capabilities", workspaceId, activeRole]
-      : isTargetScoped
-        ? [
-            "workspace-capabilities",
-            workspaceId,
-            "work-item-target",
-            ...(targetProjectId ? [targetProjectId] : []),
-          ]
-        : ["workspace-capabilities", workspaceId, role],
-    enabled: Boolean(
-      workspaceId && (isTargetScoped ? !awaitsActiveRead : role),
-    ),
-    staleTime: 5 * 60 * 1000,
+    queryKey,
+    enabled:
+      enabled &&
+      Boolean(workspaceId && (isTargetScoped ? !awaitsActiveRead : role)),
+    staleTime: options?.refreshOnMount ? 0 : 5 * 60 * 1000,
+    ...(options?.refreshOnMount ? { refetchOnMount: "always" as const } : {}),
     queryFn: async (): Promise<CapabilityMap> => {
       const response = await client.capabilities.$get({
         query: {
@@ -153,6 +165,24 @@ export function useWorkspacePermission(
       return response.json();
     },
   });
+
+  // `refreshOnMount` screens trust the capabilities only after a fresh read of this exact query
+  // has settled since they mounted. Once it has, later refetches (reconnect, invalidation, a
+  // failed retry) keep the last answer instead of sending the screen back to "checking", which
+  // would unmount an open editor and drop its unsaved draft. A changed query (another workspace
+  // or role) needs its own fresh read.
+  const freshQuery = useRef<string | undefined>(undefined);
+  const queryId = JSON.stringify(queryKey);
+  if (
+    options?.refreshOnMount &&
+    capabilities &&
+    isFetchedAfterMount &&
+    !isFetching &&
+    !isError
+  )
+    freshQuery.current = queryId;
+  const isPermissionRefreshPending =
+    Boolean(options?.refreshOnMount) && freshQuery.current !== queryId;
 
   const can: CapabilityMap = capabilities ?? EMPTY_CAPABILITIES;
 
@@ -189,6 +219,7 @@ export function useWorkspacePermission(
       canSetPriorityTasks: () => can.setPriorityTasks === true,
       canManageProjectSettings: () => can.manageProjectSettings === true,
       canArchiveProjects: () => can.archiveProjects === true,
+      canManageRequestTypes: () => can.manageRequestTypes === true,
       canManageRoles: () => can.manageRoles === true,
       canManageWebhooks: () => can.manageWebhooks === true,
       canManageCustomFields: () => can.manageCustomFields === true,
@@ -211,10 +242,13 @@ export function useWorkspacePermission(
     // action UI during the initial render instead of flashing it on then
     // off when the server check resolves.
     isCheckingPermissions:
+      enabled &&
       Boolean(workspaceId && (isTargetScoped || role)) &&
-      (isLoading || !capabilities),
+      (awaitsActiveRead || isLoading || !capabilities),
     isRefetchingPermissions: isFetching,
+    isPermissionCheckPaused: isPaused,
     isPermissionError: isError,
     permissionFetchStatus: fetchStatus,
+    isPermissionRefreshPending,
   };
 }

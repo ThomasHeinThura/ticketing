@@ -2,6 +2,7 @@ import {
   type FormSchema,
   type FormValue,
   validateSubmissionData,
+  visibleSubmissionAnswers,
 } from "@taskdesk/domain/intake";
 
 /**
@@ -26,26 +27,33 @@ export function missingRequiredIntakeFields(
 }
 
 /**
- * The answers in the order the form asked them (the version's field order), then any answer
- * the version no longer names (a legacy key), labelled by its key.
+ * The answers to show, in the order the form asked them (the version's field order). The same
+ * rule as the server's read-time projection: only a declared field that is visible for these
+ * answers shows, so a hidden-field answer, a key the version never declared (a legacy or
+ * forged key) and a file field never appear, even if an older response still carried them.
+ * Fields from the portal payload are already the visible ones and carry no `showIf`.
  */
 export function submissionAnswerRows(
-  fields: readonly { key: string; label: string }[] | undefined,
+  fields:
+    | readonly {
+        key: string;
+        label: string;
+        type?: string;
+        showIf?: unknown;
+      }[]
+    | undefined,
   answers: Readonly<Record<string, unknown>> | undefined,
 ) {
-  const given = answers ?? {};
-  const known = (fields ?? []).filter((field) =>
-    Object.hasOwn(given, field.key),
+  const declared = fields ?? [];
+  const shown = visibleSubmissionAnswers(
+    { fields: declared } as unknown as FormSchema,
+    answers,
   );
-  const knownKeys = new Set(known.map((field) => field.key));
-  return [
-    ...known.map((field) => ({
+  return declared
+    .filter((field) => Object.hasOwn(shown, field.key))
+    .map((field) => ({
       key: field.key,
       label: field.label || field.key,
-      value: String(given[field.key]),
-    })),
-    ...Object.entries(given)
-      .filter(([key]) => !knownKeys.has(key))
-      .map(([key, value]) => ({ key, label: key, value: String(value) })),
-  ];
+      value: String(shown[field.key]),
+    }));
 }

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import {
   cleanup,
   fireEvent,
@@ -9,12 +10,16 @@ import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./security";
 
+const testPassword =
+  randomBytes(24).toString("hex") + String.fromCharCode(65, 97, 49, 33);
+
 const fixture = vi.hoisted(() => ({
   search: {
     enrollmentRequired: true,
     identityLinkIntent: undefined as string | undefined,
   },
   enable: vi.fn(),
+  verifyTotp: vi.fn(),
   navigate: vi.fn(),
 }));
 
@@ -44,21 +49,36 @@ vi.mock("@/components/settings/connected-accounts-panel", async () => {
 vi.mock("@/fetchers/get-api-url", () => ({
   getApiUrl: (path: string) => `/api/${path}`,
 }));
+vi.mock("@/hooks/mutations/use-change-password", () => ({
+  default: () => ({ mutateAsync: vi.fn() }),
+}));
 vi.mock("@/lib/auth-client", () => ({
-  authClient: { twoFactor: { enable: fixture.enable, verifyTotp: vi.fn() } },
+  authClient: {
+    twoFactor: { enable: fixture.enable, verifyTotp: fixture.verifyTotp },
+  },
 }));
 
 const SecurityPage = (Route as unknown as { component: ComponentType })
   .component;
 
-function factorStatus(passwordRequiredForEnrollment: boolean) {
+function factorStatus(
+  passwordRequiredForEnrollment: boolean,
+  overrides: {
+    enabled?: boolean;
+    required?: boolean;
+    hasLocalPassword?: boolean;
+    policyMode?: string;
+  } = {},
+) {
   return new Response(
     JSON.stringify({
       enabled: false,
       required: true,
       passwordRequiredForEnrollment,
+      hasLocalPassword: false,
       policyMode: "required_staff",
       availableMethods: [],
+      ...overrides,
     }),
     { status: 200, headers: { "content-type": "application/json" } },
   );
@@ -71,6 +91,7 @@ describe("account security factor enrollment", () => {
       identityLinkIntent: undefined,
     };
     fixture.enable.mockReset();
+    fixture.verifyTotp.mockReset();
     fixture.navigate.mockReset();
     fixture.enable.mockResolvedValue({
       data: {
@@ -80,6 +101,7 @@ describe("account security factor enrollment", () => {
       },
       error: null,
     });
+    fixture.verifyTotp.mockResolvedValue({ data: {}, error: null });
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => factorStatus(false)),
@@ -123,15 +145,108 @@ describe("account security factor enrollment", () => {
     });
     expect(start).toBeDisabled();
 
-    fireEvent.change(password, { target: { value: "current-password" } });
+    fireEvent.change(password, { target: { value: testPassword } });
     fireEvent.click(start);
 
     await waitFor(() =>
       expect(fixture.enable).toHaveBeenCalledWith({
-        password: "current-password",
+        password: testPassword,
         issuer: "TaskDesk",
       }),
     );
+  });
+
+  it("allows required bootstrap enrollment when the stored policy is off", async () => {
+    fixture.search.enrollmentRequired = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => factorStatus(true, { policyMode: "off" })),
+    );
+    render(<SecurityPage />);
+
+    expect(
+      await screen.findByText("auth:accountSecurity.required"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("auth:accountSecurity.enrollmentDisabled"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: testPassword },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+    );
+    await waitFor(() =>
+      expect(fixture.enable).toHaveBeenCalledWith({
+        password: testPassword,
+        issuer: "TaskDesk",
+      }),
+    );
+    expect(
+      await screen.findByText("auth:accountSecurity.scanTitle"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps enrollment disabled when policy is off and enrollment is not required", async () => {
+    fixture.search.enrollmentRequired = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        factorStatus(false, { policyMode: "off", required: false }),
+      ),
+    );
+    render(<SecurityPage />);
+
+    expect(
+      await screen.findByText("auth:accountSecurity.enrollmentDisabled"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "auth:accountSecurity.setupButton",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("waits to load connected accounts and change-password until required enrollment is verified", async () => {
+    let enabled = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        factorStatus(false, { enabled, hasLocalPassword: true }),
+      ),
+    );
+    fixture.verifyTotp.mockImplementation(async () => {
+      enabled = true;
+      return { data: {}, error: null };
+    });
+    render(<SecurityPage />);
+
+    expect(
+      await screen.findByText("auth:accountSecurity.required"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clear connected identity intent" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "auth:changePassword.submit" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+    );
+    const code = await screen.findByLabelText("auth:accountSecurity.codeLabel");
+    fireEvent.change(code, { target: { value: "123456" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.verify" }),
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Clear connected identity intent",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "auth:changePassword.submit" }),
+    ).toBeInTheDocument();
   });
 
   it("clears the callback intent while preserving the TOTP enrollment query", async () => {
@@ -139,10 +254,16 @@ describe("account security factor enrollment", () => {
       enrollmentRequired: true,
       identityLinkIntent: "i".repeat(43),
     };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => factorStatus(false, { enabled: true })),
+    );
     render(<SecurityPage />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Clear connected identity intent" }),
+      await screen.findByRole("button", {
+        name: "Clear connected identity intent",
+      }),
     );
 
     expect(fixture.navigate).toHaveBeenCalledWith({
@@ -151,4 +272,39 @@ describe("account security factor enrollment", () => {
       replace: true,
     });
   });
+});
+
+describe("account security password visibility", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+  it.each([true, false])(
+    "shows the card only when local password is %s",
+    async (hasLocalPassword) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                enabled: true,
+                required: false,
+                passwordRequiredForEnrollment: false,
+                hasLocalPassword,
+                policyMode: "optional",
+              }),
+              { status: 200 },
+            ),
+        ),
+      );
+      render(<SecurityPage />);
+      await screen.findByText("auth:accountSecurity.enabled");
+      expect(
+        Boolean(
+          screen.queryByRole("button", { name: "auth:changePassword.submit" }),
+        ),
+      ).toBe(hasLocalPassword);
+    },
+  );
 });

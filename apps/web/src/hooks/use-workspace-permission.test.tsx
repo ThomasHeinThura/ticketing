@@ -110,6 +110,24 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canDeleteLabels()).toBe(false);
   });
 
+  it("asks the server nothing and grants nothing when disabled", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ createTasks: true }),
+    });
+
+    const { result } = renderHook(
+      () =>
+        useWorkspacePermission("workspace-1", "project-1", { enabled: false }),
+      { wrapper: createWrapper() },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(capabilitiesGet).not.toHaveBeenCalled();
+    expect(result.current.isCheckingPermissions).toBe(false);
+    expect(result.current.canCreateTasks()).toBe(false);
+  });
+
   it("reads manageProjectSettings strictly, independent of the legacy project flags", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,
@@ -513,6 +531,36 @@ describe("useWorkspacePermission", () => {
     );
     expect(result.current.canTriageIntake()).toBe(true);
   });
+  it("uses request_type:manage independently and fails closed when absent", async () => {
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () =>
+        fullCapabilityMap({
+          manageRequestTypes: true,
+          manageWorkspaceSettings: false,
+        }),
+    });
+    const allowed = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(allowed.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(allowed.result.current.canManageRequestTypes()).toBe(true);
+    expect(allowed.result.current.canManageWorkspaceSettings()).toBe(false);
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () => fullCapabilityMap({ manageWorkspaceSettings: true }),
+    });
+    const absent = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(absent.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(absent.result.current.canManageRequestTypes()).toBe(false);
+  });
+
   it("exposes the saved-view audience capabilities from their exact canonical keys", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,

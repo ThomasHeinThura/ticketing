@@ -4,6 +4,7 @@ import db, { schema } from "../../database";
 import { resolveIdentity } from "../../permissions/resolve-identity";
 import { findPendingInvitation } from "../../utils/registration.repository";
 import { ensureStaffPersonForUser } from "../../utils/seed-internal-organisation";
+import { roleGrantsOwner } from "../../utils/workspace-member-roles";
 import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
 import {
   InsufficientPermissionToGrantError,
@@ -147,7 +148,10 @@ async function acceptInvitation(
       throw new AlreadyWorkspaceMemberError();
     }
 
-    const role = invitation.role ?? "member";
+    const role = invitation.role;
+    if (!role || roleGrantsOwner(role)) {
+      throw new InvitationRoleNotAssignableError();
+    }
     const roleRow = await findWorkspaceRoleId(tx, invitation.workspaceId, role);
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(role);
