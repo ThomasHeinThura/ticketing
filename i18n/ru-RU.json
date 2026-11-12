@@ -3315,6 +3315,7 @@
 		}
 	},
 	"workItems": {
+		"listChanged": "This list has changed.",
 		"parent": {
 			"label": "Parent",
 			"none": "No parent",
