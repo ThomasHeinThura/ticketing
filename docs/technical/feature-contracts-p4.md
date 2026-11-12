@@ -1839,7 +1839,8 @@ durable delivery children make candidate creation and provider outcomes inspecta
 - `NO-13` The inbox is a screen, not only a dropdown, with filters for unread, mentions
   and assignments.
 - `NO-14` Every notification deep-links to the exact thing — the comment, not the work
-  item.
+  item. A notification about a row of the retired Kaneo task table has no work item to
+  open: it is shown as unavailable with a clear message and never opens an old task URL.
 - `NO-15` Mark one read, mark all read, and mark unread again.
   The agent inbox and its unread badges show these changes immediately; a refused write rolls
   back the pending change and displays a translated error. Realtime reads cannot replace a

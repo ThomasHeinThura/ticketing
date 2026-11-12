@@ -4847,25 +4847,10 @@
 						"subtitle": {
 							"type": "string"
 						},
-						"columnsTitle": {
-							"type": "string"
-						},
-						"columnsDescription": {
-							"type": "string"
-						},
-						"automationTitle": {
-							"type": "string"
-						},
-						"automationDescription": {
-							"type": "string"
-						},
 						"statesTitle": {
 							"type": "string"
 						},
 						"statesDescription": {
-							"type": "string"
-						},
-						"columnsNote": {
 							"type": "string"
 						}
 					},
@@ -4873,13 +4858,8 @@
 						"pageTitle",
 						"title",
 						"subtitle",
-						"columnsTitle",
-						"columnsDescription",
-						"automationTitle",
-						"automationDescription",
 						"statesTitle",
-						"statesDescription",
-						"columnsNote"
+						"statesDescription"
 					]
 				},
 				"projectMembers": {
@@ -8543,6 +8523,12 @@
 						},
 						"backToProjects": {
 							"type": "string"
+						},
+						"shadowedKeyUnavailable": {
+							"type": "string"
+						},
+						"keyUnavailable": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8561,7 +8547,9 @@
 						"documents",
 						"moreLabel",
 						"notFound",
-						"backToProjects"
+						"backToProjects",
+						"shadowedKeyUnavailable",
+						"keyUnavailable"
 					]
 				},
 				"commandPalette": {
@@ -8923,6 +8911,9 @@
 						},
 						"selectWorkspace": {
 							"type": "string"
+						},
+						"switchFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -8931,7 +8922,8 @@
 						"addWorkspace",
 						"workspaceSettings",
 						"instanceUsers",
-						"selectWorkspace"
+						"selectWorkspace",
+						"switchFailed"
 					]
 				},
 				"page": {
@@ -9302,6 +9294,12 @@
 				"emptySubtitle": {
 					"type": "string"
 				},
+				"unavailable": {
+					"type": "string"
+				},
+				"unavailableMessage": {
+					"type": "string"
+				},
 				"clearAll": {
 					"type": "string"
 				},
@@ -9524,6 +9522,8 @@
 				"title",
 				"emptyTitle",
 				"emptySubtitle",
+				"unavailable",
+				"unavailableMessage",
 				"clearAll",
 				"clearDialogTitle",
 				"clearDialogDescription",
@@ -12639,9 +12639,6 @@
 						"pageTitle": {
 							"type": "string"
 						},
-						"backToDashboard": {
-							"type": "string"
-						},
 						"placeholder": {
 							"type": "string"
 						},
@@ -12710,11 +12707,16 @@
 						},
 						"scopeProjects": {
 							"type": "string"
+						},
+						"unavailableTitle": {
+							"type": "string"
+						},
+						"unavailableDescription": {
+							"type": "string"
 						}
 					},
 					"required": [
 						"pageTitle",
-						"backToDashboard",
 						"placeholder",
 						"hint",
 						"searching",
@@ -12731,7 +12733,9 @@
 						"scopeLabel",
 						"scopeAll",
 						"scopeWorkItems",
-						"scopeProjects"
+						"scopeProjects",
+						"unavailableTitle",
+						"unavailableDescription"
 					]
 				},
 				"create": {

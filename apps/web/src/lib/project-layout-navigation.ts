@@ -123,6 +123,14 @@ export function buildProjectViewSwitchUrl(
       query.set("layout", "board");
       break;
     case "calendar":
+      // The canonical /agent Calendar when the project key is known; Kaneo's calendar URL otherwise.
+      if (params.projectKey) {
+        const suffix = query.toString();
+        const calendar = routes.projectCalendar.build({
+          projectKey: params.projectKey,
+        });
+        return suffix ? `${calendar}?${suffix}` : calendar;
+      }
       path = PROJECT_CALENDAR_PATH;
       break;
     case "gantt":

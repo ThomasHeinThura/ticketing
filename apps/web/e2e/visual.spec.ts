@@ -531,6 +531,10 @@ const visualResolvedFeatures = [
   { key: "feature.dev_links", enabled: false },
 ];
 
+const visualCalendarResolvedFeatures = visualResolvedFeatures.map((feature) =>
+  feature.key === "feature.calendar" ? { ...feature, enabled: true } : feature,
+);
+
 const visualCannedResponses = [
   {
     id: "visual-snippet",
@@ -7605,6 +7609,167 @@ test("project timeline screen @visual", async ({ page }) => {
   });
 });
 
+test("project calendar screen @visual", async ({ page }) => {
+  await page.route("**/api/**", async (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    let body: unknown = [];
+
+    if (path.endsWith("/api/auth/get-session")) {
+      body = session;
+    } else if (path === "/api/me/settings") {
+      body = { settings: {} };
+    } else if (
+      path === "/api/public/terminology" ||
+      path === "/api/workspaces/visual-workspace/terminology/runtime"
+    ) {
+      body = visualAgentTerminology;
+    } else if (
+      path === "/api/workspaces/visual-workspace/features/resolved" ||
+      path === "/api/features/resolved"
+    ) {
+      body = { features: visualCalendarResolvedFeatures };
+    } else if (path === "/api/portal/feature-state") {
+      body = { state: "on" };
+    } else if (path === "/api/notification/inbox") {
+      body = { data: [], unreadCount: 0, hasMore: false, nextCursor: null };
+    } else if (path === "/api/invitation/pending") {
+      body = [];
+    } else if (path === "/api/service-catalogue/status") {
+      body = {
+        enabled: true,
+        canManageServices: true,
+        canManageChanges: true,
+        canManageReleases: true,
+      };
+    } else if (path === "/api/views/team-audiences") {
+      body = { data: [] };
+    } else if (
+      path === "/api/canned-responses/manage" ||
+      path === "/api/canned-responses"
+    ) {
+      body = visualCannedResponses;
+    } else if (path === "/api/announcements") {
+      body = vExAnnouncements;
+    } else if (path === "/api/time-entries/timer") {
+      body = vRepTimer;
+    } else if (path === "/api/workspace/visual-workspace") {
+      body = vExWorkspaceDetail;
+    } else if (path === "/api/label/workspace/visual-workspace") {
+      body = vExWorkspaceLabels;
+    } else if (path === "/api/projects/visual-project/members") {
+      body = vExProjectMembers;
+    } else if (path.endsWith("/api/config")) {
+      body = {
+        disableRegistration: true,
+        disablePasswordRegistration: false,
+        disableEmailOtpSignIn: true,
+        disableWorkspaceCreation: true,
+        hasSmtp: false,
+        hasGithubSignIn: false,
+        hasGoogleSignIn: false,
+        hasDiscordSignIn: false,
+        hasCustomOAuth: false,
+        disableLoginForm: false,
+        customOAuthAutoLogin: false,
+        customOAuthLogoutUrl: null,
+      };
+    } else if (path.endsWith("/api/workspace")) {
+      body = [workspace];
+    } else if (path.endsWith("/api/project")) {
+      body = [project];
+    } else if (path.endsWith("/api/project/visual-project")) {
+      body = { ...project, ...visualProjectSummary };
+    } else if (path.endsWith("/api/workspace/visual-workspace/members")) {
+      body = vExWorkspaceMembers;
+    } else if (path.endsWith("/api/capabilities")) {
+      body = visualOwnerCapabilities;
+    } else if (path.endsWith("/api/label/project/visual-project/catalogue")) {
+      body = [
+        {
+          id: "visual-project-label",
+          name: "Project priority",
+          color: "teal",
+          projectId: "visual-project",
+          workspaceId: "visual-workspace",
+          taskId: null,
+          createdAt: "2026-10-21T00:00:00.000Z",
+        },
+      ];
+    } else if (
+      path.endsWith("/api/workspace/visual-workspace/work-item-types")
+    ) {
+      body = [
+        {
+          id: "visual-type",
+          key: "incident",
+          name: "Incident",
+          category: "service",
+        },
+      ];
+    } else if (path.endsWith("/api/projects/visual-project/states")) {
+      body = [
+        {
+          id: "visual-backlog",
+          stateTemplateId: "visual-backlog-template",
+          name: "Backlog",
+          group: "backlog",
+          position: 0,
+          isDefault: true,
+        },
+        {
+          id: "visual-state",
+          stateTemplateId: "visual-state-template",
+          name: "In progress",
+          group: "started",
+          position: 1,
+          isDefault: false,
+        },
+        {
+          id: "visual-done",
+          stateTemplateId: "visual-done-template",
+          name: "Done",
+          group: "completed",
+          position: 2,
+          isDefault: false,
+        },
+      ];
+    } else if (path.endsWith("/api/projects/visual-project/work-items")) {
+      body = {
+        data: [workItem],
+        page: { hasMore: false, nextCursor: null },
+        meta: {},
+      };
+    } else if (path.endsWith("/api/views")) {
+      body = [visualSavedView];
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { date: "Wed, 21 Oct 2026 12:00:00 GMT" },
+      body: JSON.stringify(body),
+    });
+  });
+  await page.goto("/agent/projects/help/calendar");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("October 2026", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Customer cannot reset their password", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("project-calendar.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("profile settings general screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/dashboard/settings/account/information");
@@ -7810,8 +7975,15 @@ test("project settings states screen @visual", async ({ page }) => {
   await page.goto("/agent/projects/help/settings/states");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
-    page.getByRole("heading", { level: 1, name: "Workflow" }),
+    page.getByRole("heading", { level: 1, name: "Workflow", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "States", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Enabled state set", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("In progress", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-states.png", {
     animations: "disabled",
     caret: "hide",

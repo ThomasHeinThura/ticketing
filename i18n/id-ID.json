@@ -1059,14 +1059,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Pengaturan Alur Kerja",
 			"title": "Alur Kerja",
-			"subtitle": "Konfigurasikan kolom papan dan aturan otomatisasi untuk {{term_project_other}} ini.",
-			"columnsTitle": "Kolom",
-			"columnsDescription": "Kelola kolom yang muncul di papan Anda. Seret untuk mengurutkan ulang. Aktifkan \"Kolom selesai\" untuk tahap yang mewakili pekerjaan selesai.",
-			"automationTitle": "Aturan Otomatisasi",
-			"automationDescription": "Petakan event integrasi ke kolom. Saat event terjadi, {{term_work_item_one}} tertaut berpindah ke kolom yang ditentukan.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Pilih {{term_project_other}}",
@@ -2104,7 +2099,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Saran",
@@ -2199,7 +2196,8 @@
 			"addWorkspace": "Tambah ruang kerja",
 			"workspaceSettings": "Pengaturan Ruang Kerja",
 			"instanceUsers": "Pengguna instans",
-			"selectWorkspace": "Pilih ruang kerja"
+			"selectWorkspace": "Pilih ruang kerja",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2283,6 +2281,8 @@
 		"newCount_other": "{{count}} baru",
 		"emptyTitle": "Belum ada notifikasi",
 		"emptySubtitle": "Pembaruan dan aktivitas akan muncul di sini.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Hapus semua notifikasi",
 		"clearDialogTitle": "Hapus semua notifikasi?",
 		"clearDialogDescription": "Ini akan menghapus semua notifikasi secara permanen. Anda tidak dapat membatalkan tindakan ini.",
@@ -3056,7 +3056,6 @@
 		},
 		"search": {
 			"pageTitle": "Cari",
-			"backToDashboard": "Kembali ke Dasbor",
 			"placeholder": "Cari {{term_work_item_other}} berdasarkan judul atau ID pendek (mis. DEP-23)...",
 			"hint": "Cari di semua {{term_project_other}} dalam ruang kerja ini. Gunakan ID pendek seperti DEP-23 untuk menemukan {{term_work_item_other}} tertentu.",
 			"searching": "Mencari...",
@@ -3074,7 +3073,9 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Buat Ruang Kerja",

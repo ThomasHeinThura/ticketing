@@ -1449,6 +1449,11 @@ deployment does not use.
 Tabs across the top of the project surface. Which tabs appear depends on the project's
 feature flags and its kind — a managed service has no cycles.
 
+Slug-based project views opened from another workspace activate that workspace and wait for
+the session to confirm it before navigating. A missing or ambiguous project key disables those
+views with an explanation. If workspace activation or session refresh fails, the current route
+and search query remain in place and a translated error is shown.
+
 ```
 Overview │ Work │ Backlog │ Cycles │ Modules │ Timeline │ Calendar │ Pages │ Settings
 ```

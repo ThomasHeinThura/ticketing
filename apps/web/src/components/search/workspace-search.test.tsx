@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspaceSearch from "./workspace-search";
@@ -15,6 +16,12 @@ const mocks = vi.hoisted(() => ({
     isFetching: false,
   })),
   navigate: vi.fn(),
+  activateWorkspace: vi.fn((_workspaceId: string) =>
+    Promise.resolve({ id: "w2" }),
+  ),
+  toastError: vi.fn(),
+  activeOrganizationId: "w1" as string | null,
+  workspaces: [{ id: "w1" }, { id: "w2" }] as Array<{ id: string }>,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -28,6 +35,27 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("@/hooks/queries/search/use-global-search", () => ({
   default: (params: Record<string, unknown>) => mocks.search(params),
+}));
+vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
+  default: () => ({ data: mocks.workspaces }),
+}));
+vi.mock("@/lib/activate-workspace-for-navigation", () => ({
+  activateWorkspaceForNavigation: (workspaceId: string) =>
+    mocks.activateWorkspace(workspaceId),
+}));
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    error: mocks.toastError,
+  },
+}));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: mocks.activeOrganizationId
+        ? { session: { activeOrganizationId: mocks.activeOrganizationId } }
+        : { session: {} },
+    }),
+  },
 }));
 
 const results = [
@@ -48,6 +76,12 @@ const results = [
 
 beforeEach(() => {
   vi.useFakeTimers();
+  mocks.activeOrganizationId = "w1";
+  mocks.workspaces = [{ id: "w1" }, { id: "w2" }];
+  mocks.activateWorkspace.mockImplementation(() =>
+    Promise.resolve({ id: "w2" }),
+  );
+  mocks.toastError.mockReset();
   mocks.search.mockImplementation((params) => ({
     data: params.q ? { results, totalCount: 3 } : undefined,
     isLoading: false,
@@ -103,6 +137,75 @@ describe("WorkspaceSearch (P1R1-1)", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/agent/work-items/HELP-24",
     });
+  });
+
+  it("opens /agent directly for the active workspace, shows a toast when activation is refused or rejects, and navigates after activation succeeds", async () => {
+    vi.useRealTimers();
+    const onSearchChange = vi.fn();
+    mocks.search.mockImplementation(() => ({
+      data: {
+        results: [
+          { id: "w1", type: "workspace", title: "Active Workspace" },
+          { id: "w2", type: "workspace", title: "Ops Workspace" },
+          { id: "w-denied", type: "workspace", title: "Denied Workspace" },
+        ],
+        totalCount: 3,
+      },
+      isLoading: false,
+      isFetching: false,
+    }));
+
+    render(
+      <WorkspaceSearch
+        workspaceId="w2"
+        search={{ q: "workspace" }}
+        onSearchChange={onSearchChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Active Workspace"));
+    expect(mocks.activateWorkspace).not.toHaveBeenCalled();
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+    mocks.navigate.mockClear();
+
+    fireEvent.click(screen.getByText("Denied Workspace"));
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "navigation:workspaceSwitcher.switchFailed",
+      );
+    });
+    expect(mocks.activateWorkspace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(onSearchChange).not.toHaveBeenCalled();
+    expect(
+      screen.getByPlaceholderText("workspace:search.placeholder"),
+    ).toHaveValue("workspace");
+
+    mocks.toastError.mockClear();
+    mocks.activateWorkspace.mockRejectedValueOnce(new Error("403 Forbidden"));
+
+    fireEvent.click(screen.getByText("Ops Workspace"));
+    await waitFor(() => {
+      expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "navigation:workspaceSwitcher.switchFailed",
+      );
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(onSearchChange).not.toHaveBeenCalled();
+    expect(
+      screen.getByPlaceholderText("workspace:search.placeholder"),
+    ).toHaveValue("workspace");
+
+    mocks.activateWorkspace.mockClear();
+    fireEvent.click(screen.getByText("Ops Workspace"));
+    await waitFor(() => {
+      expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+    });
+    expect(mocks.activateWorkspace.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.navigate.mock.invocationCallOrder[0],
+    );
   });
 
   it("P1R2-10: a work-item row shows Kaneo's priority icon, key chip, project and status", () => {

@@ -1059,14 +1059,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Workflow-Einstellungen",
 			"title": "Workflow",
-			"subtitle": "Konfiguriere Board-Spalten und Automatisierungsregeln für dieses {{term_project_one}}.",
-			"columnsTitle": "Spalten",
-			"columnsDescription": "Verwalte die Spalten, die auf deinem Board erscheinen. Ziehe sie, um sie neu anzuordnen. Aktiviere „Fertige Spalte“ für Phasen, die abgeschlossene Arbeit darstellen.",
-			"automationTitle": "Automatisierungsregeln",
-			"automationDescription": "Ordne Integrationsereignisse Spalten zu. Wenn ein Ereignis eintritt, wird die verknüpfte {{term_work_item_one}} in die angegebene Spalte verschoben.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_one}} auswählen",
@@ -2109,7 +2104,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Vorschläge",
@@ -2204,7 +2201,8 @@
 			"addWorkspace": "Workspace hinzufügen",
 			"workspaceSettings": "Workspace-Einstellungen",
 			"instanceUsers": "Instanzbenutzer",
-			"selectWorkspace": "Workspace auswählen"
+			"selectWorkspace": "Workspace auswählen",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2289,6 +2287,8 @@
 		"newCount_other": "{{count}} neu",
 		"emptyTitle": "Noch keine Benachrichtigungen",
 		"emptySubtitle": "Hier erscheinen Updates und Aktivitäten.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Alle Benachrichtigungen löschen",
 		"clearDialogTitle": "Alle Benachrichtigungen löschen?",
 		"clearDialogDescription": "Dadurch werden alle Benachrichtigungen dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
@@ -3066,7 +3066,6 @@
 		},
 		"search": {
 			"pageTitle": "Suche",
-			"backToDashboard": "Zurück zum Dashboard",
 			"placeholder": "Suche nach {{term_work_item_other}} nach Titel oder Kurz-ID (z. B. DEP-23)...",
 			"hint": "Suche über alle {{term_project_other}} in diesem Workspace. Nutze Kurz-IDs wie DEP-23, um bestimmte {{term_work_item_other}} zu finden.",
 			"searching": "Suche läuft...",
@@ -3085,7 +3084,9 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Workspace erstellen",

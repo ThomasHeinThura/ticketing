@@ -1059,14 +1059,9 @@
 		"projectWorkflow": {
 			"pageTitle": "워크플로 설정",
 			"title": "워크플로",
-			"subtitle": "이 프로젝트의 보드 컬럼 및 자동화 규칙을 구성합니다.",
-			"columnsTitle": "컬럼",
-			"columnsDescription": "보드에 표시되는 컬럼을 관리합니다. 드래그하여 순서를 바꿉니다. 완료된 작업을 나타내는 단계의 경우 \"완료 컬럼\"을 켜세요.",
-			"automationTitle": "자동화 규칙",
-			"automationDescription": "연동 이벤트를 컬럼에 매핑합니다. 이벤트가 발생하면 연결된 작업이 지정된 컬럼으로 이동합니다.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_other}} 선택",
@@ -2104,7 +2099,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "추천",
@@ -2199,7 +2196,8 @@
 			"addWorkspace": "워크스페이스 추가",
 			"workspaceSettings": "워크스페이스 설정",
 			"instanceUsers": "인스턴스 사용자",
-			"selectWorkspace": "워크스페이스 선택"
+			"selectWorkspace": "워크스페이스 선택",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2283,6 +2281,8 @@
 		"newCount_other": "새 알림 {{count}}개",
 		"emptyTitle": "아직 알림이 없습니다",
 		"emptySubtitle": "여기서 업데이트와 활동을 확인할 수 있습니다.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "모든 알림 지우기",
 		"clearDialogTitle": "모든 알림을 지우시겠습니까?",
 		"clearDialogDescription": "모든 알림이 영구적으로 제거됩니다. 이 작업은 취소할 수 없습니다.",
@@ -3056,7 +3056,6 @@
 		},
 		"search": {
 			"pageTitle": "검색",
-			"backToDashboard": "대시보드로 돌아가기",
 			"placeholder": "제목 또는 짧은 ID로 {{term_work_item_other}} 검색 (예: DEP-23)...",
 			"hint": "이 워크스페이스의 모든 프로젝트에서 검색합니다. DEP-23과 같은 짧은 ID를 사용하여 특정 작업을 찾으세요.",
 			"searching": "검색 중...",
@@ -3074,7 +3073,9 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "워크스페이스 만들기",

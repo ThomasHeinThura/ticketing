@@ -1224,14 +1224,9 @@
 		"projectWorkflow": {
 			"pageTitle": "ワークフロー設定",
 			"title": "ワークフロー",
-			"subtitle": "この{{term_project_other}}のボードカラムと自動化ルールを設定します。",
-			"columnsTitle": "カラム",
-			"columnsDescription": "ボードに表示されるカラムを管理します。ドラッグして並べ替えます。完了した作業を表すステージには「完了カラム」をオンにしてください。",
-			"automationTitle": "自動化ルール",
-			"automationDescription": "連携イベントをカラムにマッピングします。イベントが発生すると、リンクされた{{term_work_item_one}}が指定されたカラムに移動します。",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_other}}を選択",
@@ -2104,7 +2099,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "候補",
@@ -2199,7 +2196,8 @@
 			"addWorkspace": "ワークスペースを追加",
 			"workspaceSettings": "ワークスペース設定",
 			"instanceUsers": "インスタンスユーザー",
-			"selectWorkspace": "ワークスペースを選択"
+			"selectWorkspace": "ワークスペースを選択",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2283,6 +2281,8 @@
 		"newCount_other": "{{count}} 件の新着",
 		"emptyTitle": "通知はまだありません",
 		"emptySubtitle": "更新やアクティビティがここに表示されます。",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "すべての通知を消去",
 		"clearDialogTitle": "すべての通知を消去しますか？",
 		"clearDialogDescription": "これにより、すべての通知が完全に削除されます。この操作は取り消せません。",
@@ -3056,7 +3056,6 @@
 		},
 		"search": {
 			"pageTitle": "検索",
-			"backToDashboard": "ダッシュボードに戻る",
 			"placeholder": "タイトルまたはID (例: DEP-23) で{{term_work_item_other}}を検索...",
 			"hint": "このワークスペース内のすべての{{term_project_other}}を検索します。特定の{{term_work_item_other}}を見つけるには DEP-23 のような{{term_work_item_other}}IDを使用してください。",
 			"searching": "検索中...",
@@ -3074,7 +3073,9 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "ワークスペースを作成",

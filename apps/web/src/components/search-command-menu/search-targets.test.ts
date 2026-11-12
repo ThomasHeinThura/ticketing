@@ -57,4 +57,36 @@ describe("shared palette search projection", () => {
     ]);
     expect(projectSearchGroups("P", [], [recent], (key) => key)).toEqual([]);
   });
+
+  it("points workspace search results and stored recent workspace entries to /agent", () => {
+    expect(
+      searchResultHref({
+        id: "ws-2",
+        type: "workspace",
+        title: "Ops Workspace",
+      }),
+    ).toBe("/agent");
+    expect(
+      searchResultHref({
+        id: "",
+        type: "workspace",
+        title: "Missing ID",
+      }),
+    ).toBeNull();
+
+    const staleRecent = {
+      id: "ws-2",
+      type: "workspace" as const,
+      title: "Ops Workspace",
+      href: "/dashboard/workspace/ws-2",
+    };
+    expect(
+      projectSearchGroups("", [], [staleRecent], (key) => key),
+    ).toMatchObject([
+      {
+        value: "recent",
+        items: [{ id: "ws-2", type: "workspace", href: "/agent" }],
+      },
+    ]);
+  });
 });

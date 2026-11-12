@@ -35,8 +35,11 @@ import { useTranslation } from "react-i18next";
 import { shortcuts } from "@/constants/shortcuts";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
+import { openPaletteEntry } from "./open-search-entry";
 import { pushRecentItem } from "./recent-items";
 import {
   type PaletteEntry,
@@ -74,7 +77,9 @@ function SearchCommandMenu({
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data: workspace } = useActiveWorkspace();
+  const { data: workspaces } = useGetWorkspaces();
   const { data: session } = authClient.useSession();
+  const activeWorkspaceId = getActiveOrganizationId(session);
   const userId = session?.user?.id;
   const navigate = useNavigate();
 
@@ -107,20 +112,37 @@ function SearchCommandMenu({
 
   const recentItems = useRecentItems(open, userId, workspace?.id);
 
-  const handleSelect = (entry: PaletteEntry) => {
-    if (workspace?.id && userId) {
-      pushRecentItem(userId, workspace.id, {
-        type: entry.type,
-        id: entry.id,
-        title: entry.title,
-        description: entry.description,
-        href: entry.href,
+  const selectingRef = useRef(false);
+
+  const handleSelect = async (entry: PaletteEntry) => {
+    if (selectingRef.current) return;
+    selectingRef.current = true;
+    try {
+      const opened = await openPaletteEntry({
+        entry,
+        activeWorkspaceId,
+        workspaces,
+        navigate,
+        errorMessage: t("navigation:workspaceSwitcher.switchFailed"),
       });
+      if (!opened) {
+        return;
+      }
+      navigatedRef.current = true;
+      setOpen(false);
+      setQuery("");
+      if (workspace?.id && userId) {
+        pushRecentItem(userId, workspace.id, {
+          type: entry.type,
+          id: entry.id,
+          title: entry.title,
+          description: entry.description,
+          href: entry.href,
+        });
+      }
+    } finally {
+      selectingRef.current = false;
     }
-    navigatedRef.current = true;
-    setOpen(false);
-    setQuery("");
-    navigate({ to: entry.href as never });
   };
 
   const getItemIcon = (type: string) => {

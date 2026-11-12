@@ -570,7 +570,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Sugestie",
@@ -665,7 +667,8 @@
 			"addWorkspace": "Dodaj obszar roboczy",
 			"workspaceSettings": "Ustawienia obszaru roboczego",
 			"instanceUsers": "Użytkownicy instancji",
-			"selectWorkspace": "Wybierz obszar roboczy"
+			"selectWorkspace": "Wybierz obszar roboczy",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -752,6 +755,8 @@
 		"newCount_other": "{{count}} nowych",
 		"emptyTitle": "Brak powiadomień",
 		"emptySubtitle": "Tutaj zobaczysz aktualizacje i aktywność.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Wyczyść wszystkie powiadomienia",
 		"clearDialogTitle": "Wyczyścić wszystkie powiadomienia?",
 		"clearDialogDescription": "To trwale usunie wszystkie powiadomienia. Nie można tego cofnąć.",
@@ -858,7 +863,6 @@
 		},
 		"search": {
 			"pageTitle": "Szukaj",
-			"backToDashboard": "Wróć do pulpitu",
 			"placeholder": "Szukaj {{term_work_item_other}} po tytule lub krótkim ID (np. DEP-23)...",
 			"hint": "Przeszukaj wszystkie {{term_project_other}} w tym obszarze roboczym. Użyj krótkich ID, takich jak DEP-23, aby znaleźć konkretne {{term_work_item_other}}.",
 			"searching": "Wyszukiwanie...",
@@ -879,7 +883,9 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Utwórz obszar roboczy",
@@ -1952,16 +1958,11 @@
 			"toastUpdateError": "Nie udało się zaktualizować widoczności"
 		},
 		"projectWorkflow": {
-			"automationDescription": "Mapuj zdarzenia integracji na kolumny. Gdy wystąpi zdarzenie, powiązane {{term_work_item_one}} zostanie przeniesione do wybranej kolumny.",
-			"automationTitle": "Reguły automatyzacji",
-			"columnsDescription": "Zarządzaj kolumnami wyświetlanymi na tablicy. Przeciągaj, aby zmieniać kolejność. Włącz „Kolumna ukończona” dla etapów oznaczających wykonaną pracę.",
-			"columnsTitle": "Kolumny",
 			"pageTitle": "Ustawienia obiegu pracy",
-			"subtitle": "Skonfiguruj kolumny tablicy i reguły automatyzacji dla tego projektu.",
 			"title": "Obieg pracy",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"repositoryBrowser": {
 			"description": "Wybierz repozytorium, w którym zainstalowano aplikację GitHub, aby włączyć synchronizację zgłoszeń.",

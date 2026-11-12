@@ -1224,14 +1224,9 @@
 		"projectWorkflow": {
 			"pageTitle": "工作流设置",
 			"title": "工作流",
-			"subtitle": "配置此{{term_project_other}}的看板列和自动化规则。",
-			"columnsTitle": "列",
-			"columnsDescription": "管理看板上显示的列，可拖拽排序。打开“完成列”以表示已完成阶段。",
-			"automationTitle": "自动化规则",
-			"automationDescription": "将集成事件映射到列。当事件发生时，关联的{{term_work_item_one}}会移动到指定的列。",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "选择{{term_project_other}}",
@@ -2104,7 +2099,9 @@
 			"overview": "Overview",
 			"prerequisites": "Prerequisites",
 			"team": "Team",
-			"timeline": "Timeline"
+			"timeline": "Timeline",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "建议",
@@ -2199,7 +2196,8 @@
 			"addWorkspace": "添加工作区",
 			"workspaceSettings": "工作区设置",
 			"instanceUsers": "实例用户",
-			"selectWorkspace": "选择工作区"
+			"selectWorkspace": "选择工作区",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2283,6 +2281,8 @@
 		"newCount_other": "{{count}} 条新通知",
 		"emptyTitle": "暂无通知",
 		"emptySubtitle": "更新和活动将显示在这里。",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "清空所有通知",
 		"clearDialogTitle": "清空所有通知？",
 		"clearDialogDescription": "这将永久删除所有通知，此操作不可撤销。",
@@ -3056,7 +3056,6 @@
 		},
 		"search": {
 			"pageTitle": "搜索",
-			"backToDashboard": "返回控制台",
 			"placeholder": "按{{term_work_item_other}}标题或短 ID 搜索（例如 DEP-23）…",
 			"hint": "在此工作区的所有{{term_project_other}}中搜索。使用类似 DEP-23 的短 ID 来定位{{term_work_item_other}}。",
 			"searching": "搜索中…",
@@ -3074,7 +3073,9 @@
 			"scopeAll": "Everything",
 			"scopeLabel": "Search in",
 			"scopeProjects": "{{term_project_other}}",
-			"scopeWorkItems": "{{term_work_item_other}}"
+			"scopeWorkItems": "{{term_work_item_other}}",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "创建工作区",

@@ -1938,9 +1938,9 @@ export const routes = {
       return suffix ? `/agent/search?${suffix}` : "/agent/search";
     },
   },
-  // Kaneo's workspace search screen for one named workspace, kept so old links still open it.
-  // /agent/search (above) is the canonical address and shows the same search for the active
-  // workspace. `q` and `scope` live in the URL on both.
+  // Kaneo's workspace search address for one named workspace, kept so old links still work: it
+  // redirects to /agent/search (above), the canonical address, which searches the active
+  // workspace. `q` and `scope` live in the URL on both and carry over.
   workspaceSearch: {
     path: "/dashboard/workspace/$workspaceId/search" as const,
     build: (
@@ -2228,6 +2228,12 @@ export const routes = {
     path: "/agent/projects/$projectKey/timeline" as const,
     build: (params: { projectKey: string }) =>
       `/agent/projects/${encodeURIComponent(params.projectKey)}/timeline`,
+  },
+  /** The project Calendar (Kaneo's calendar) at its canonical address, gated by `feature.calendar`; the old dashboard calendar URL redirects here. Its view state (`month`, `calendarView`, filters, open item) is the query, parsed by `parseProjectCalendarSearch`. */
+  projectCalendar: {
+    path: "/agent/projects/$projectKey/calendar" as const,
+    build: (params: { projectKey: string }) =>
+      `/agent/projects/${encodeURIComponent(params.projectKey)}/calendar`,
   },
   /** `ES-1`..`ES-3`: estimate system and cycle completion default (redirects to Kaneo's project settings). */
   projectEstimates: {

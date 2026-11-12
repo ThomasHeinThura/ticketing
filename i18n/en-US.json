@@ -1225,14 +1225,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Workflow Settings",
 			"title": "Workflow",
-			"subtitle": "Configure board columns and automation rules for this {{term_project_one}}.",
-			"columnsTitle": "Columns",
-			"columnsDescription": "Manage the columns that appear on your board. Drag to reorder. Turn on \"Done column\" for stages that represent completed work.",
-			"automationTitle": "Automation Rules",
-			"automationDescription": "Map integration events to columns. When an event occurs, the linked {{term_work_item_one}} moves to the specified column.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesTitle": "States",
-			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template."
 		},
 		"projectMembers": {
 			"pageTitle": "{{term_project_one}} Members",
@@ -2109,7 +2104,9 @@
 			"documents": "Documents",
 			"moreLabel": "More {{term_project_one}} views",
 			"notFound": "This {{term_project_one}} does not exist or is out of reach.",
-			"backToProjects": "Back to {{term_project_other}}"
+			"backToProjects": "Back to {{term_project_other}}",
+			"shadowedKeyUnavailable": "Unavailable because another {{term_project_one}} in this workspace shares this key.",
+			"keyUnavailable": "Unavailable until this {{term_project_one}} key is resolved."
 		},
 		"commandPalette": {
 			"suggestions": "Suggestions",
@@ -2204,7 +2201,8 @@
 			"addWorkspace": "Add workspace",
 			"workspaceSettings": "Workspace settings",
 			"instanceUsers": "Instance users",
-			"selectWorkspace": "Select workspace"
+			"selectWorkspace": "Select workspace",
+			"switchFailed": "Could not switch workspace. Check your access and try again."
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -2289,6 +2287,8 @@
 		"newCount_other": "{{count}} new",
 		"emptyTitle": "No notifications yet",
 		"emptySubtitle": "You'll see updates and activity here.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Clear all notifications",
 		"clearDialogTitle": "Clear all notifications?",
 		"clearDialogDescription": "This will permanently remove all notifications. You can't undo this action.",
@@ -3066,7 +3066,6 @@
 		},
 		"search": {
 			"pageTitle": "Search",
-			"backToDashboard": "Back to Dashboard",
 			"placeholder": "Search {{term_work_item_other}} by key, title, description or comment text...",
 			"hint": "Search across all {{term_project_other}} you can reach. Use keys like DEP-23 to find a specific {{term_work_item_other}}, or text from a description or comment.",
 			"searching": "Searching...",
@@ -3085,7 +3084,9 @@
 			"scopeLabel": "Search in",
 			"scopeAll": "Everything",
 			"scopeWorkItems": "{{term_work_item_other}}",
-			"scopeProjects": "{{term_project_other}}"
+			"scopeProjects": "{{term_project_other}}",
+			"unavailableTitle": "Workspace unavailable",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it."
 		},
 		"create": {
 			"pageTitle": "Create Workspace",
