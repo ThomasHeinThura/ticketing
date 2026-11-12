@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { randomUUID } from "node:crypto";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -10,6 +11,7 @@ import * as taskRepository from "../../apps/api/src/task/repository";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
   grantWorkItemProjectAccess,
@@ -95,9 +97,13 @@ async function waitForBlockedPid(client: Client, blockerPid: number) {
   throw new Error(`No PostgreSQL session blocked by pid ${blockerPid}`);
 }
 
-async function seed() {
-  const a = await createWorkspaceMember({ role: "admin" });
-  const b = await createWorkspaceMember({ role: "admin" });
+async function seed(projectLimited = false) {
+  const a = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "admin" });
+  const b = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "admin" });
   const { project: p1, columns: c1 } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
@@ -637,7 +643,7 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   });
 
   it("rejects unreachable or mismatched task and asset move destinations", async () => {
-    const actor = await createWorkspaceMember({ role: "admin" });
+    const actor = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project: source } = await createProjectFixture({
       workspaceId: actor.workspace.id,
     });
@@ -770,7 +776,7 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   });
 
   it("moves the task and assets under one authorization snapshot during revocation", async () => {
-    const { a, p1, p2, t1 } = await seed();
+    const { a, p1, p2, t1 } = await seed(true);
     const [taskAsset] = await db
       .insert(schema.assetTable)
       .values({

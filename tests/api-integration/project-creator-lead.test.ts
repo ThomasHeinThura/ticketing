@@ -426,7 +426,8 @@ describe("a project's creator holds a project-lead membership", () => {
     const bystander = await addMember(world, "member");
     const project = await createProject(world, manager);
     expect(project.status).toBe(200);
-    expect(await projectStatus(world, other, project.id)).toBe(404);
+    // D-E (12 Nov): the other validated system manager also sees the project.
+    expect(await projectStatus(world, other, project.id)).toBe(200);
     expect(await projectStatus(world, bystander, project.id)).toBe(404);
     expect(await creatorGrants(await personIdOf(other.user.id))).toEqual([]);
   });
@@ -446,7 +447,8 @@ describe("a project's creator holds a project-lead membership", () => {
     expect(mine.status).toBe(200);
     expect(theirs.status).toBe(200);
     expect(await projectStatus(world, manager, mine.id)).toBe(200);
-    expect(await projectStatus(world, manager, theirs.id)).toBe(404);
+    // D-E: membership as manager in both workspaces grants reach in both.
+    expect(await projectStatus(world, manager, theirs.id)).toBe(200);
     const personId = await personIdOf(manager.user.id);
     expect((await creatorGrants(personId)).map((g) => g.scopeId)).toEqual([
       mine.id,
@@ -462,6 +464,7 @@ describe("a project's creator holds a project-lead membership", () => {
         )
       ).status,
     ).toBe(200);
+    expect(await projectStatus(world, manager, theirs.id)).toBe(404);
     const after = await creatorGrants(personId, mine.id);
     expect(after[0]?.revokedAt).toBeNull();
     expect(await projectStatus(world, manager, mine.id)).toBe(200);
@@ -949,7 +952,8 @@ describe("the project-lead role row", () => {
     ).toBe(true);
     warn.mockRestore();
     expect(await creatorGrants(await personIdOf(manager.user.id))).toEqual([]);
-    expect(await projectStatus(world, manager, project.id)).toBe(404);
+    // D-E: failed creator-grant backfill does not remove system manager visibility.
+    expect(await projectStatus(world, manager, project.id)).toBe(200);
   });
 });
 

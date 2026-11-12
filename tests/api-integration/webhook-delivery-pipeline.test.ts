@@ -7,7 +7,7 @@
  * are covered by `tests/api/webhook/*` without a database.
  */
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
@@ -138,7 +138,7 @@ async function deliveries(webhookId: string) {
 async function makeDue(webhookId: string) {
   await db
     .update(webhookDeliveryTable)
-    .set({ nextAttemptAt: new Date(Date.now() - 1_000) })
+    .set({ nextAttemptAt: sql`now() - interval '1 second'` })
     .where(eq(webhookDeliveryTable.webhookId, webhookId));
 }
 
@@ -412,6 +412,8 @@ describe("webhook pipeline", () => {
       redeliveryOf: original?.id,
       state: "pending",
     });
+    // Manual redelivery schedules with the host clock; the claim uses PostgreSQL now().
+    await makeDue(webhook.id);
     await processNextWebhookDelivery(deps, queued.id);
     expect(sent).toHaveLength(2);
     expect(JSON.parse((sent[1] as Sent).rawBody).id).toBe(id);

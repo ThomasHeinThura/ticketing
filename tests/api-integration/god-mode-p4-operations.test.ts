@@ -25,6 +25,7 @@ import {
 } from "./helpers/fixtures";
 import { makeTeam, workItemWorld } from "./helpers/p4-closeout";
 import { approvePendingDeletionAsCookie } from "./helpers/pending-deletion";
+import { assignLimitedWebhookRole } from "./helpers/webhook-operator";
 
 // The destination guard resolves DNS; the SSRF client has its own suite (`tests/api/webhook`).
 vi.mock("../../apps/api/src/webhook/safe-http", async (importOriginal) => ({
@@ -715,7 +716,8 @@ describe("secrets re-encryption trigger (GM-13)", () => {
 
 describe("webhook step-up and deletion (WH-15, AK-11)", () => {
   async function webhookWorld() {
-    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
+    const { user, workspace } = await createWorkspaceMember({ role: "member" });
+    await assignLimitedWebhookRole(user.id, workspace.id);
     await db.insert(schema.accountTable).values({
       id: `${user.id}-account`,
       accountId: user.id,
@@ -949,7 +951,8 @@ describe("step-up proofs are spent with the write (P4 review M1)", () => {
   }
 
   it("a rejected sign-in method does not spend the webhook-create proof", async () => {
-    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
+    const { user, workspace } = await createWorkspaceMember({ role: "member" });
+    await assignLimitedWebhookRole(user.id, workspace.id);
     await db.insert(schema.accountTable).values({
       id: `${user.id}-account`,
       accountId: user.id,
@@ -998,7 +1001,8 @@ describe("step-up proofs are spent with the write (P4 review M1)", () => {
   });
 
   it("a stale-version URL change does not spend its proof, and the retry does", async () => {
-    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
+    const { user, workspace } = await createWorkspaceMember({ role: "member" });
+    await assignLimitedWebhookRole(user.id, workspace.id);
     await db.insert(schema.accountTable).values({
       id: `${user.id}-account`,
       accountId: user.id,

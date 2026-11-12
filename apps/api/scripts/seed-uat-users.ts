@@ -2655,6 +2655,8 @@ async function seedIntake(seeded: Seeded) {
             description: def.description,
             group: def.group,
             workItemTypeId: typeId,
+            // These shared forms serve both organisations. Staff choose the authorised
+            // destination during triage; a Contoso default would exclude Fabrikam (CP-1).
             defaultProjectId: null,
             formSchema: { fields: def.fields.map((field) => ({ ...field })) },
             autoAccept: false,

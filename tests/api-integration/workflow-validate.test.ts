@@ -12,6 +12,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
   requireRow,
@@ -51,7 +52,9 @@ describe("API integration: workflow version validation (#442)", () => {
   ])(
     "returns a generic refusal when an inaccessible $label workspace project exists",
     async ({ archived }) => {
-      const owner = await createWorkspaceMember({ role: "owner" });
+      const owner = await createProjectLimitedWorkspaceMember({
+        role: "owner",
+      });
       mockAuthenticatedSession(owner.user);
       const { app } = createApp();
       const backlog = await seedStateTemplate(owner.workspace.id, "backlog");

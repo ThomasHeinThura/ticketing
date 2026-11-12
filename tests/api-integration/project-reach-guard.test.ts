@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project-reach denials.
 import { randomUUID } from "node:crypto";
 import { can, defaultRolePayloads } from "@taskdesk/permissions";
 import { eq, sql } from "drizzle-orm";
@@ -9,7 +10,9 @@ import { policyShadowTallyTable } from "../../apps/api/src/permissions/shadow-sc
 import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { resetTestDatabase } from "./helpers/database";
 import {
+  assignProjectLimitedRole,
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
@@ -196,7 +199,8 @@ const WORK_ITEM_READ_ROUTE_KEYS = new Set([
 
 async function addWorkspaceActor(
   workspaceId: string,
-  role: "admin" | "member" | "project-reader-custom",
+  role: "owner" | "admin" | "manager" | "member" | "project-reader-custom",
+  projectLimited = true,
 ) {
   const actor = await createWorkspaceMember({
     role: role === "project-reader-custom" ? "member" : role,
@@ -213,7 +217,11 @@ async function addWorkspaceActor(
       workspaceId,
       role,
       permission: JSON.stringify(
-        role === "project-reader-custom" ? {} : defaultRolePayloads[role],
+        role === "project-reader-custom"
+          ? {}
+          : defaultRolePayloads[
+              role === "manager" || role === "owner" ? "admin" : role
+            ],
       ),
       isSystem: role !== "project-reader-custom",
       createdAt: new Date(),
@@ -225,6 +233,8 @@ async function addWorkspaceActor(
         schema.workspaceRoleTable.role,
       ],
     });
+  if (projectLimited && role === "admin")
+    await assignProjectLimitedRole(actor.user.id, workspaceId);
   return actor;
 }
 
@@ -264,7 +274,7 @@ describe("native project read reach", () => {
   });
 
   it("requires persisted project reach on every project-scoped GET without changing capability gates", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -375,7 +385,9 @@ describe("native project read reach", () => {
       owner.workspace.id,
       "admin",
     );
-    const globalAdmin = await createWorkspaceMember({ role: "member" });
+    const globalAdmin = await createWorkspaceMember({
+      role: "member",
+    });
     await db
       .update(schema.userTable)
       .set({ role: "admin" })
@@ -534,7 +546,13 @@ describe("native project read reach", () => {
       }
     }
 
-    for (const actor of [directMember, seesAllMember]) {
+    const systemActors = [];
+    for (const role of ["owner", "admin", "manager"] as const) {
+      systemActors.push(
+        await addWorkspaceActor(owner.workspace.id, role, false),
+      );
+    }
+    for (const actor of [directMember, seesAllMember, ...systemActors]) {
       fresh.mockUser(actor.user);
       const readPaths = [...targets, ...resourceReads];
       const baseline = new Map<string, number>();
@@ -630,7 +648,9 @@ describe("native project read reach", () => {
       ).toBe(true);
     }
 
-    const foreignWorkspace = await createWorkspaceMember({ role: "owner" });
+    const foreignWorkspace = await createWorkspaceMember({
+      role: "owner",
+    });
     const { project: foreignProject } = await createProjectFixture({
       workspaceId: foreignWorkspace.workspace.id,
     });

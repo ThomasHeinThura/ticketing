@@ -3747,3 +3747,5 @@ Owner, admin and manager always keep their workspace rights on every project; a 
 
 
 **12 Nov 2026, Thomas — local SIT clean installation.** The approved local SIT wipe after a verified backup reverses the earlier preserve-only rule for that disposable environment. The protected native PostgreSQL on port 62870 remains outside the wipe, and fresh SIT seeding is limited to the newly created database.
+
+Owner, admin and manager always keep their workspace rights on every project; a project role only adds. This reverses the project-scope override rule for these three validated system roles only: joining as project-member or assigning project-viewer must never silently remove manager or administrator rights (archive/settings). Other roles retain project overrides, tier clamping and key scopes remain unchanged. D-E self-join uses the default project-member role and never permits team self-enrolment. D-E also reverses WH-14’s earlier project-limited manager example: these system roles now receive every workspace project. WH-15 still requires instance admin for a full-reach webhook; ownership and second-factor rules are unchanged.

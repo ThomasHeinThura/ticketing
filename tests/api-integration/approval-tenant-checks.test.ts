@@ -28,7 +28,10 @@ import {
 } from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
+} from "./helpers/fixtures";
 
 describe("approvals: 0120 tenant runtime checks (S3)", () => {
   beforeEach(async () => {
@@ -242,20 +245,24 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
     expect(row?.requestedBy).toBe(a.requesterPerson.id);
 
     // A caller without the request capability in this workspace cannot request at all.
-    const stranger = await createWorkspaceMember({ role: "member" });
+    const stranger = await createWorkspaceMember({
+      role: "member",
+    });
     const denied = await request(a, stranger);
     expect(denied.status, await denied.clone().text()).toBe(404);
     expect(await approvalRows(a.workItem.id)).toHaveLength(1);
   });
 
   it("check 6: only the named, current approver may decide a pending, unexpired approval, once", async () => {
-    const a = await buildTenant("a");
+    const a = await buildTenant("a", { projectLimitedApprover: true });
     const approval = await createApproval(a);
 
     // Not the approver (the requester, and a workspace outsider).
     const asRequester = await decide(a, a.requester, approval.id);
     expect(asRequester.status).toBe(403);
-    const outsider = await createWorkspaceMember({ role: "owner" });
+    const outsider = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     const asOutsider = await decide(a, outsider, approval.id);
     expect(asOutsider.status).toBe(404);
     expect((await approvalRows(a.workItem.id))[0]?.state).toBe("pending");

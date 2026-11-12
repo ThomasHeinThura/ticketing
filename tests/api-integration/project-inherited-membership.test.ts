@@ -1,3 +1,4 @@
+// D-E (12 Nov): project-limited denial actors use custom roles.
 /**
  * P1 PR-2..PR-4 inherited project membership (WRITTEN, NOT RUN by its author -- the
  * coordinator runs DB integration tests).
@@ -27,7 +28,7 @@ import {
   grantProjectRole,
 } from "./helpers/fixtures";
 import { projectKey } from "./helpers/project-key";
-import { addMember } from "./helpers/reach-world";
+import { addMember, addProjectLimitedMember } from "./helpers/reach-world";
 
 async function world() {
   const owner = await createWorkspaceMember({ role: "admin" });
@@ -227,7 +228,7 @@ describe("API integration: inherited project membership (PR-2..PR-4)", () => {
   it("inherited authority: a parent viewer is a viewer on the child, a child grant overrides (PR-3, P1-1)", async () => {
     const w = await world();
     const { can } = await import("@taskdesk/permissions");
-    const member = await addMember(w.workspaceId, "admin");
+    const member = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(member.user.id, w.parent.id, [
       "project:read",
       "work_item:read",

@@ -4623,8 +4623,8 @@ export const workItemTable = pgTable(
     //   update would otherwise re-run the full locking walk for a write that never
     //   touches `parent_id`.
     parentId: text("parent_id"),
-    // `service` (data-model.md §7) is P5/later scope and does not exist yet -- plain
-    // nullable column, NO foreign key constraint, until it lands.
+    // work_item_workspace_service_fk is DEFERRABLE INITIALLY DEFERRED via migration 0223
+    // so workspace cascades do not depend on FK trigger order (FK added in 0151).
     serviceId: text("service_id"),
     startDate: timestamp("start_date", { mode: "date" }),
     dueDate: timestamp("due_date", { mode: "date" }),
@@ -4632,11 +4632,13 @@ export const workItemTable = pgTable(
     position: numeric("position", { precision: 20, scale: 10 })
       .notNull()
       .default("0"),
-    // `estimate_point`, `cycle`, `module` (data-model.md §8/§9) are P5/later scope and do
-    // not exist yet -- plain nullable columns, NO foreign key constraint, until they
-    // land.
+    // estimate_point remains a nullable identifier; cycle/module FKs are migration-managed.
     estimatePointId: text("estimate_point_id"),
+    // work_item_project_cycle_fk is DEFERRABLE INITIALLY DEFERRED via migration 0223
+    // so workspace cascades do not depend on FK trigger order (FK added in 0148).
     cycleId: text("cycle_id"),
+    // work_item_project_module_fk is DEFERRABLE INITIALLY DEFERRED via migration 0223
+    // so workspace cascades do not depend on FK trigger order (FK added in 0148).
     moduleId: text("module_id"),
     slaStartedAt: timestamp("sla_started_at", { mode: "date" }),
     slaPolicyVersionId: text("sla_policy_version_id"),

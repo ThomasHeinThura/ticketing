@@ -717,6 +717,9 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         roleId: role.id,
         seesAll: false,
       });
+      await db
+        .insert(schema.customerProjectAccessTable)
+        .values({ personId: person.id, projectId: a.world.project.id });
       // Bind the VISIBLE project to the organisation; the other project stays internal.
       await db
         .update(schema.projectTable)

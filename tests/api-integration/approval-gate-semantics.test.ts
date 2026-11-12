@@ -171,7 +171,7 @@ describe("approvals: request-time and read-time validation", () => {
   });
 
   it("the approver's reach on the work item is checked when the request is made", async () => {
-    const t = await buildTenant("reach");
+    const t = await buildTenant("reach", { projectLimitedApprover: true });
     const approverMembership = await revokeProjectMembership(
       t.approverPerson.id,
       t.project.id,

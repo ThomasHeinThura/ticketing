@@ -13,7 +13,11 @@ import { createApp } from "../../apps/api/src/index";
 import { setProjectParent } from "../../apps/api/src/project/hierarchy.repository";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
-import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
+import {
+  assignProjectLimitedRole,
+  createProjectFixture,
+  grantProjectRole,
+} from "./helpers/fixtures";
 import { signUpUser } from "./helpers/organization-http";
 import { projectKey } from "./helpers/project-key";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
@@ -48,7 +52,7 @@ function call(
   );
 }
 
-async function world() {
+async function world(projectLimited = false) {
   const { app } = createApp();
   const owner = await signUpUser(app);
   const workspace = await createWorkspaceNative(app, owner.cookie, {
@@ -85,6 +89,8 @@ async function world() {
     workspaceId,
     "admin",
   );
+  if (projectLimited)
+    await assignProjectLimitedRole(admin.user.id, workspaceId);
   return { app, owner, admin, workspaceId, parent, child, adminRole };
 }
 
@@ -180,13 +186,13 @@ async function expectCeiling(w: World, project: { slug: string }) {
 
 describe("project rule author ceiling follows the evaluator's scope resolution (P4R4-M1)", () => {
   it("a project override with automation:manage but no comment:create cannot save, enable or dry-run an admin-role project rule", async () => {
-    const w = await world();
+    const w = await world(true);
     await narrow(w, w.parent.id);
     await expectCeiling(w, w.parent);
   });
 
   it("a child project inheriting a narrowed parent override is held to the same ceiling", async () => {
-    const w = await world();
+    const w = await world(true);
     await narrow(w, w.parent.id);
     await expectCeiling(w, w.child);
   });

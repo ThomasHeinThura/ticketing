@@ -17,6 +17,7 @@ import {
 import { exportReadyMailer } from "../../apps/api/src/report/export-notify";
 import { runReportExport } from "../../apps/api/src/scheduler/report-jobs";
 import { resetTestDatabase } from "./helpers/database";
+import { assignProjectLimitedRole } from "./helpers/fixtures";
 import { type ReportsWorld, reportsWorld } from "./helpers/p5-reports";
 
 let w: ReportsWorld;
@@ -257,6 +258,8 @@ describe("report rate visibility follows project role overrides (P5-R2-03)", () 
   }
 
   it("a project-filtered report resolves rates at that project; a workspace report fails closed", async () => {
+    // D-E: only a custom role can lose workspace rights through a project override.
+    await assignProjectLimitedRole(w.owner.user.id, w.workspaceId, "owner");
     const costVisible = async (query = "") => {
       const { response, body } = await w.report(
         w.owner.user,
@@ -277,6 +280,8 @@ describe("report rate visibility follows project role overrides (P5-R2-03)", () 
   });
 
   it("a synchronous CSV export carries no cost columns once a project override removes rates", async () => {
+    // D-E: only a custom role can lose workspace rights through a project override.
+    await assignProjectLimitedRole(w.owner.user.id, w.workspaceId, "owner");
     const exported = async (filters: Record<string, string> = {}) => {
       const response = await w.get(
         w.owner.user,

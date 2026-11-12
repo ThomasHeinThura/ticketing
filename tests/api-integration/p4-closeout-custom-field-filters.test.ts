@@ -11,6 +11,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
@@ -21,8 +22,10 @@ import {
 } from "./helpers/p4-closeout";
 import { addMember } from "./helpers/reach-world";
 
-async function world() {
-  const actor = await createWorkspaceMember({ role: "owner" });
+async function world(projectLimited = false) {
+  const actor = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "owner" });
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
@@ -201,7 +204,7 @@ describe("CF-10 cf.<key> filters", () => {
   });
 
   it("never matches another workspace's field of the same key and never widens reach", async () => {
-    const w = await world();
+    const w = await world(true);
     // A second workspace defines the same key and holds values on its own item.
     const other = await createWorkspaceMember({ role: "owner" });
     const otherProject = await createProjectFixture({
