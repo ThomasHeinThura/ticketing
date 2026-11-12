@@ -337,6 +337,10 @@
               "statistics": {
                 "$ref": "#/components/schemas/ProjectStatistics"
               },
+              "canJoin": {
+                "type": "boolean",
+                "description": "Eligible non-impersonated owner/admin/manager session may join this project."
+              },
               "seenOnlyViaWorkspaceRole": {
                 "type": "boolean",
                 "description": "The caller reaches this project only through owner, admin or manager workspace-wide visibility."
@@ -14266,6 +14270,184 @@
           },
           "404": {
             "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/join": {
+      "post": {
+        "operationId": "joinProject",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Join a project as the current workspace owner, admin or manager",
+        "description": "Session only. Adds the default project-member direct grant without changing workspace authority. Idempotent; audited as membership.changed only on insertion.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The updated roster",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "personId": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "active": {
+                        "type": "boolean"
+                      },
+                      "jobTitle": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "roleId": {
+                        "type": "string"
+                      },
+                      "roleKey": {
+                        "type": "string"
+                      },
+                      "roleName": {
+                        "type": "string"
+                      },
+                      "roleRank": {
+                        "type": "integer"
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "direct",
+                          "inherited"
+                        ]
+                      },
+                      "inheritedFrom": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "projectId": {
+                            "type": "string"
+                          },
+                          "projectName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "projectId",
+                          "projectName"
+                        ],
+                        "description": "PR-2: the nearest ancestor project holding this person (inherited rows, and direct rows that override it)."
+                      },
+                      "overridesInherited": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "properties": {
+                          "roleKey": {
+                            "type": "string"
+                          },
+                          "roleName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "roleKey",
+                          "roleName"
+                        ],
+                        "description": "PR-3: the inherited role this explicit row replaces."
+                      },
+                      "managedExternally": {
+                        "type": "boolean",
+                        "description": "Held by an identity-provider mapping, so not removable here."
+                      },
+                      "removable": {
+                        "type": "boolean",
+                        "description": "PR-4: false for an inherited row, which is removed at the parent."
+                      }
+                    },
+                    "required": [
+                      "personId",
+                      "displayName",
+                      "active",
+                      "jobTitle",
+                      "roleId",
+                      "roleKey",
+                      "roleName",
+                      "roleRank",
+                      "source",
+                      "inheritedFrom",
+                      "overridesInherited",
+                      "managedExternally",
+                      "removable"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed project ID",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Only workspace owner, admin or manager sessions may join",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Person or default role not eligible",
             "content": {
               "text/plain": {
                 "schema": {

@@ -1,7 +1,8 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
-  render,
+  render as rtlRender,
   screen,
   waitFor,
 } from "@testing-library/react";
@@ -36,6 +37,8 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
+      if (key.startsWith("projects."))
+        return translate(`workspace:${key}`, options);
       if (key === "workspace:projects.actions") return "Actions";
       return translate(key, options);
     },
@@ -116,6 +119,14 @@ const deletedProject = {
   plannedTasks: [],
   columns: [],
 };
+
+function render(element: React.ReactNode) {
+  return rtlRender(
+    <QueryClientProvider client={new QueryClient()}>
+      {element}
+    </QueryClientProvider>,
+  );
+}
 
 describe("ProjectsPage recovery mode", () => {
   it("shows the see-all hint only on the matching project", () => {

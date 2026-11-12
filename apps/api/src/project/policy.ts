@@ -108,6 +108,13 @@ export const projectPolicies = {
     elevationExemptionReason:
       "customer access revocations are audited as membership.changed",
   },
+  "POST /api/projects/{projectId}/join": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
   "GET /api/projects/{projectId}/members": {
     capability: "project:read",
     scope: "project",

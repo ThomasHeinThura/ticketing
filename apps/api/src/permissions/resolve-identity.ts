@@ -572,6 +572,14 @@ export function resolveIdentityFromFacts(
   // organisation grants, and also carry current workspace `sees_all` facts. Never translate
   // a role name from `workspace_member`; accept only a joined, scope-consistent role row.
   for (const row of facts.scopedRoleMemberships ?? []) {
+    // D-E uses validated system workspace roles, including generic persisted grants.
+    // A custom row bearing a reserved role key must not acquire see-all or additive rights.
+    if (
+      row.scope === "workspace" &&
+      workspaceRoleSeesAllProjects(row.roleKey) &&
+      !row.roleIsSystem
+    )
+      continue;
     if (
       !ROLE_SCOPES.includes(row.scope as (typeof ROLE_SCOPES)[number]) ||
       row.scope !== row.roleScope ||
