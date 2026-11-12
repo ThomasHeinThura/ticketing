@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   pathname: "/dashboard/settings/account/information",
   projects: [] as Array<{ id: string; slug: string }>,
+  useIsMobile: vi.fn((_breakpoint?: number) => true),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -27,7 +28,7 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("@taskdesk/ui", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@taskdesk/ui")>();
-  return { ...actual, useIsMobile: () => true };
+  return { ...actual, useIsMobile: mocks.useIsMobile };
 });
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" } }),
@@ -157,5 +158,21 @@ describe("SettingsShell landmarks (a11y #11, #13)", () => {
     expect(banner).toContainElement(
       screen.getByRole("button", { name: "Open settings menu" }),
     );
+  });
+});
+
+// UX-10: at a 768 px tablet the settings menu column took 280 px beside the page.
+describe("SettingsShell below lg", () => {
+  it("uses the compact settings menu below lg (1024 px)", () => {
+    renderSettings("/dashboard/settings/workspace/members");
+    expect(mocks.useIsMobile).toHaveBeenCalledWith(1024);
+    const menuButton = screen.getByRole("button", {
+      name: "Open settings menu",
+    });
+    expect(menuButton).toHaveClass("lg:hidden");
+    expect(menuButton).not.toHaveClass("md:hidden");
+    expect(
+      screen.getByRole("button", { name: "Back to Workspace" }),
+    ).toHaveClass("hidden", "lg:inline-flex");
   });
 });
