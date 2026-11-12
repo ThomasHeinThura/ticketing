@@ -96,7 +96,10 @@ beforeEach(async () => {
   // The setup's restoreAllMocks does not reset this module-level vi.fn implementation.
   resetEntraTokenValidatorMock();
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db.insert(schema.instanceSettingTable).values({
+    id: "singleton",
+    setupCompletedAt: new Date(),
+  });
   await db
     .insert(schema.instanceFeatureFlagTable)
     .values({ featureKey: "feature.customer_portal", enabled: true })
@@ -430,6 +433,53 @@ async function expectJitIdentity(
 }
 
 describe("OIDC JIT first login (IP-9, IP-10)", () => {
+  it.each([
+    ["agent", "zero"],
+    ["agent", "pending"],
+    ["customer", "zero"],
+    ["customer", "pending"],
+  ] as const)(
+    "refuses direct %s OIDC user creation while bootstrap is %s",
+    async (portal, bootstrapState) => {
+      const connectionId = `jit-bootstrap-${portal}-${bootstrapState}`;
+      if (portal === "agent") await seedAgent(connectionId);
+      else await seedCustomer(connectionId);
+      await db
+        .update(schema.instanceSettingTable)
+        .set({ setupCompletedAt: null });
+      if (bootstrapState === "zero") {
+        await db.delete(schema.userTable);
+      } else {
+        await db.update(schema.userTable).set({ role: "admin" });
+      }
+      const usersBefore = await db.select().from(schema.userTable);
+
+      const response = await signIn(connectionId, portal);
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(
+        portal === "agent"
+          ? "/auth/sign-in?identity_error=sign_in_failed"
+          : "/sign-in?identity_error=sign_in_failed",
+      );
+      const usersAfter = await db.select().from(schema.userTable);
+      expect(usersAfter.map((user) => user.id)).toEqual(
+        usersBefore.map((user) => user.id),
+      );
+      expect(await db.select().from(schema.externalIdentityTable)).toHaveLength(
+        0,
+      );
+      expect(
+        response.headers
+          .getSetCookie()
+          .some(
+            (cookie) =>
+              cookie.includes("tdk_agent_session=") ||
+              cookie.includes("tdk_portal_session="),
+          ),
+      ).toBe(false);
+    },
+  );
+
   it("creates the user, person, account, identity and default grant for an agent", async () => {
     const target = await seedAgent("jit-agent-connection");
     const response = await signIn("jit-agent-connection", "agent");
@@ -1313,6 +1363,67 @@ async function personById(id: string) {
 }
 
 describe("first OIDC login of a SCIM-provisioned identity (IP-19, IP-30)", () => {
+  it.each([
+    ["agent", "zero"],
+    ["agent", "pending"],
+    ["customer", "zero"],
+    ["customer", "pending"],
+  ] as const)(
+    "does not link a %s SCIM placeholder while bootstrap is %s",
+    async (portal, bootstrapState) => {
+      const connectionId = `scim-bootstrap-${portal}-${bootstrapState}`;
+      if (portal === "agent") await seedAgent(connectionId);
+      else await seedCustomer(connectionId);
+      const organisationId =
+        portal === "agent"
+          ? (await ensureInternalOrganisation()).id
+          : CUSTOMER_ORG_ID;
+      const { person, identity } = await scimIdentity({
+        connectionId,
+        organisationId,
+        side: portal === "agent" ? "staff" : "customer",
+      });
+      await db
+        .update(schema.instanceSettingTable)
+        .set({ setupCompletedAt: null });
+      if (bootstrapState === "zero") {
+        await db.delete(schema.userTable);
+      } else {
+        await db.update(schema.userTable).set({ role: "admin" });
+      }
+      const usersBefore = await db.select().from(schema.userTable);
+      const accountsBefore = await db.select().from(schema.accountTable);
+
+      const response = await signIn(connectionId, portal);
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(
+        portal === "agent"
+          ? "/auth/sign-in?identity_error=sign_in_failed"
+          : "/sign-in?identity_error=sign_in_failed",
+      );
+      expect(
+        (await db.select().from(schema.userTable)).map((user) => user.id),
+      ).toEqual(usersBefore.map((user) => user.id));
+      expect(
+        (await db.select().from(schema.accountTable)).map((row) => row.id),
+      ).toEqual(accountsBefore.map((row) => row.id));
+      expect(await personById(person.id)).toMatchObject({
+        userId: null,
+        isPlaceholder: true,
+        active: true,
+      });
+      const [stillUnlinked] = await db
+        .select()
+        .from(schema.externalIdentityTable)
+        .where(eq(schema.externalIdentityTable.id, identity.id));
+      expect(stillUnlinked).toMatchObject({
+        userId: null,
+        active: true,
+        provisionedVia: "scim",
+      });
+    },
+  );
+
   it("links the user-less identity by exact connection and subject, clears the placeholder, then logs in normally (agent)", async () => {
     await seedAgent("scim-agent-connection");
     const internal = await ensureInternalOrganisation();

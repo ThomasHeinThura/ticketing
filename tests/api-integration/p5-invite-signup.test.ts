@@ -77,8 +77,11 @@ beforeEach(async () => {
   acceptService.failNext = false;
   await db
     .insert(schema.instanceSettingTable)
-    .values({ id: "singleton" })
-    .onConflictDoNothing();
+    .values({ id: "singleton", setupCompletedAt: new Date() })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: { setupCompletedAt: new Date() },
+    });
   w = await inviteWorld();
   await setCustomerPassword(true);
 });
@@ -225,6 +228,18 @@ async function expectUntouched(
 }
 
 describe("a new invitee signs up with the credential", () => {
+  it("refuses a valid customer invitation while first-user setup is incomplete", async () => {
+    const email = "pending.bootstrap.invitee@example.test";
+    const invited = await w.invite(email);
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ setupCompletedAt: null });
+
+    const response = await signUp(bodyFor(invited, email));
+    expect(response.status).toBe(403);
+    await expectUntouched(invited, email, response);
+  });
+
   it("rejects a continuation POST from a foreign origin before looking up the invitation", async () => {
     const invited = await w.invite("foreign.origin@example.test");
     const target = customerOrigin();

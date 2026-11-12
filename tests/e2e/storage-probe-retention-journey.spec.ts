@@ -4,6 +4,7 @@ import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
 import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -98,6 +99,8 @@ test("storage probe retains a diagnostic object on the real filesystem @a11y", a
         );
         await page.getByRole("button", { name: "Create account" }).click();
         expect((await signup).status()).toBe(200);
+        await completePendingFirstAdminInBrowser(page, fixture);
+        await page.goto(new URL("/onboarding", fixture.origin).toString());
         await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
         await page
           .getByLabel("Workspace name")

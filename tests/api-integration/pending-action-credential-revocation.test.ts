@@ -111,9 +111,10 @@ async function waitForDeletedUser(userId: string): Promise<void> {
 
 beforeEach(async () => {
   await resetTestDatabase();
-  await db
-    .insert(schema.instanceSettingTable)
-    .values({ id: "singleton", setupCompletedAt: new Date() });
+  await db.insert(schema.instanceSettingTable).values({
+    id: "singleton",
+    setupCompletedAt: new Date(),
+  });
 });
 
 async function setupCredentialOwner(app: ReturnType<typeof createApp>["app"]) {

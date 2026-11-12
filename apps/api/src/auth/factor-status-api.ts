@@ -7,7 +7,10 @@ import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
 } from "./local-factor-service";
-import { getPasswordCredential } from "./repository";
+import {
+  getPasswordCredential,
+  isIncompleteBootstrapSession,
+} from "./repository";
 
 const availableMethodSchema = z.enum([
   "password",
@@ -64,6 +67,8 @@ const factorStatus = apiRouter().openapi(statusRoute, async (c) => {
   setShadowLegacyAuthorization(c, "allowed");
   try {
     const state = await loadLocalFactorState(c.get("userId"));
+    const required =
+      state.required || (await isIncompleteBootstrapSession(c.get("userId")));
     const credentials = await getPasswordCredential(c.get("userId"));
     const hasLocalPassword = credentials.some((credential) =>
       Boolean(credential.password),
@@ -74,7 +79,7 @@ const factorStatus = apiRouter().openapi(statusRoute, async (c) => {
     > = [];
     if (state.enabled) {
       availableMethods.push("totp", "backup_code");
-    } else if (!state.required) {
+    } else if (!required) {
       if (passwordRequiredForEnrollment) availableMethods.push("password");
       const session = c.get("session") as { id?: string } | null;
       if (session?.id) {
@@ -130,7 +135,7 @@ const factorStatus = apiRouter().openapi(statusRoute, async (c) => {
     return c.json(
       {
         enabled: state.enabled,
-        required: state.required,
+        required,
         passwordRequiredForEnrollment,
         hasLocalPassword,
         policyMode: state.policy.mode,

@@ -9,6 +9,8 @@ import type {
   Page,
 } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
+import { fillSensitive } from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   withMfaCsrfApp,
@@ -99,6 +101,7 @@ async function signUpWithWorkspace(
   page: Page,
   origin: string,
   input: { name: string; email: string; password: string; workspace: string },
+  afterSignUp?: () => Promise<void>,
 ) {
   await page.goto(new URL("/auth/sign-up", origin).toString());
   await page.getByLabel("Full name").fill(input.name);
@@ -111,6 +114,7 @@ async function signUpWithWorkspace(
   );
   await page.getByRole("button", { name: "Create account" }).click();
   expect((await response).status()).toBe(200);
+  await afterSignUp?.();
   await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
   await page.getByLabel("Workspace name").fill(input.workspace);
   await page.getByRole("button", { name: "Create workspace" }).click();
@@ -172,16 +176,34 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
   await database.connect();
   const evidence: Record<string, NavigationEvidence[]> = {};
   try {
+    let takeAdminBackupCode: (() => string) | null = null;
+    const nextAdminBackupCode = () => {
+      if (!takeAdminBackupCode)
+        throw new Error(
+          "Administrator enrollment did not return backup codes.",
+        );
+      return takeAdminBackupCode();
+    };
     const adminContext = await browser.newContext({ locale: "en-GB" });
     contexts.push(adminContext);
     const adminPage = await adminContext.newPage();
     await test.step("create the bootstrap administrator", () =>
-      signUpWithWorkspace(adminPage, origin, {
-        name: "S7b administrator",
-        email: adminEmail,
-        password,
-        workspace: "S7b administrator workspace",
-      }));
+      signUpWithWorkspace(
+        adminPage,
+        origin,
+        {
+          name: "S7b administrator",
+          email: adminEmail,
+          password,
+          workspace: "S7b administrator workspace",
+        },
+        async () => {
+          takeAdminBackupCode = await completePendingFirstAdminInBrowser(
+            adminPage,
+            fixture,
+          );
+        },
+      ));
     const admin = adminContext.request;
 
     await test.step("revoked session: the cached shell leaves for sign-in", async () => {
@@ -301,7 +323,9 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       );
       await adminPage.locator("#confirm-current-email").fill(targetEmail);
       const secret = adminPage.locator("#pending-action-step-up-secret");
-      await secret.fill(password);
+      await adminPage.locator("#pending-action-step-up-method").click();
+      await adminPage.getByRole("option", { name: "Backup code" }).click();
+      await fillSensitive(secret, nextAdminBackupCode());
 
       // Hold the approval request until its freshly issued proof has expired in the database.
       const approvePattern = `**/api/me/pending-actions/${pendingActionId}/approve`;
@@ -343,7 +367,9 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       );
       expect(pending.rows).toEqual([{ state: "pending" }]);
 
-      await secret.fill(password);
+      await adminPage.locator("#pending-action-step-up-method").click();
+      await adminPage.getByRole("option", { name: "Backup code" }).click();
+      await fillSensitive(secret, nextAdminBackupCode());
       const approved = adminPage.waitForResponse(
         (response) =>
           new URL(response.url()).pathname ===

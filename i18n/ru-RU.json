@@ -243,6 +243,10 @@
 		"retry": "Retry",
 		"navigation": {
 			"auditLog": "Audit log"
+		},
+		"boolean": {
+			"false": "False",
+			"true": "True"
 		}
 	},
 	"auth": {
@@ -492,6 +496,21 @@
 			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
 			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
 			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
+		},
+		"changePassword": {
+			"confirmPassword": "Confirm new password",
+			"currentPassword": "Current password",
+			"failed": "Could not change your password. Please try again.",
+			"mismatch": "Passwords do not match.",
+			"newPassword": "New password",
+			"required": "Enter your current password.",
+			"revoke": "Sign out of other sessions",
+			"saving": "Changing password…",
+			"submit": "Change password",
+			"success": "Password changed.",
+			"title": "Change password",
+			"tooLong": "Password must be at most 128 characters.",
+			"wrongCurrent": "Your current password is incorrect."
 		}
 	},
 	"settings": {
@@ -4062,6 +4081,7 @@
 			"description": "Не удалось загрузить страницу. Попробуйте ещё раз."
 		},
 		"intake": {
+			"invalidNumber": "Enter a valid number.",
 			"answers": "Your answers",
 			"attachments": "Attachments",
 			"backToCatalogue": "Back to catalogue",
@@ -5126,7 +5146,16 @@
 		"moveGroupDown": "Move {{group}} down",
 		"moveGroupUp": "Move {{group}} up",
 		"saveGroupOrder": "Save group order",
-		"savingGroupOrder": "Saving group order…"
+		"savingGroupOrder": "Saving group order…",
+		"choosePriority": "Choose priority",
+		"priorityValueMapping": "Priority value mapping",
+		"removeField": "Remove {{name}}",
+		"defaultGroup": "General",
+		"defaultSummary": "Summary",
+		"newQuestion": "New question",
+		"priorityMappingInvalid": "Every priority option must map to low, medium, high, or urgent before publishing.",
+		"requiredFileInvalid": "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish.",
+		"requiredFileUnavailable": "Required is unavailable for file uploads until the submission file contract is defined."
 	},
 	"slaPolicies": {
 		"editor": {

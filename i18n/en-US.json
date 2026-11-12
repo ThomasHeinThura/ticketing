@@ -21,6 +21,10 @@
 			"search": "Search options",
 			"noResults": "No matching options"
 		},
+		"boolean": {
+			"true": "True",
+			"false": "False"
+		},
 		"actions": {
 			"cancel": "Cancel",
 			"close": "Close",
@@ -3997,6 +4001,7 @@
 			"description": "The page could not be loaded. Try again."
 		},
 		"intake": {
+			"invalidNumber": "Enter a valid number.",
 			"catalogueTitle": "{{term_request_one}} catalogue",
 			"catalogueDescription": "Choose a {{term_request_one}} type and tell us what you need.",
 			"loadError": "Could not load the catalogue.",
@@ -5006,11 +5011,14 @@
 		"titleMapping": "{{term_work_item_one}} title",
 		"descriptionMapping": "{{term_work_item_one}} description",
 		"priorityMapping": "{{term_work_item_one}} priority",
+		"priorityValueMapping": "Priority value mapping",
+		"choosePriority": "Choose priority",
 		"showWhen": "Show when",
 		"always": "Always visible",
 		"equals": "Equals value",
 		"multiple": "Allow multiple files",
 		"remove": "Remove",
+		"removeField": "Remove {{name}}",
 		"moveUp": "Move {{name}} up",
 		"moveDown": "Move {{name}} down",
 		"preview": "Customer preview",
@@ -5041,7 +5049,13 @@
 		"groupOrderSaved": "Group order saved.",
 		"saveGroupOrder": "Save group order",
 		"savingGroupOrder": "Saving group order…",
-		"catalogueOrder": "Catalogue order within group"
+		"catalogueOrder": "Catalogue order within group",
+		"newQuestion": "New question",
+		"defaultGroup": "General",
+		"defaultSummary": "Summary",
+		"requiredFileInvalid": "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish.",
+		"requiredFileUnavailable": "Required is unavailable for file uploads until the submission file contract is defined.",
+		"priorityMappingInvalid": "Every priority option must map to low, medium, high, or urgent before publishing."
 	},
 	"slaPolicies": {
 		"list": {

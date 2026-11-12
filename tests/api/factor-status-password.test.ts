@@ -1,7 +1,11 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const fixtures = vi.hoisted(() => ({ state: vi.fn(), credential: vi.fn() }));
+const fixtures = vi.hoisted(() => ({
+  state: vi.fn(),
+  credential: vi.fn(),
+  incompleteBootstrap: vi.fn(),
+}));
 vi.mock("../../apps/api/src/auth/local-factor-service", () => ({
   loadLocalFactorState: fixtures.state,
   InactiveFactorIdentityError: class InactiveFactorIdentityError extends Error {},
@@ -12,6 +16,7 @@ vi.mock("../../apps/api/src/permissions/strict-policy-enforcement", () => ({
 }));
 vi.mock("../../apps/api/src/auth/repository", () => ({
   getPasswordCredential: fixtures.credential,
+  isIncompleteBootstrapSession: fixtures.incompleteBootstrap,
 }));
 
 import factorStatus from "../../apps/api/src/auth/factor-status-api";
@@ -37,9 +42,11 @@ beforeEach(() => {
   fixtures.state.mockReset().mockResolvedValue({
     enabled: true,
     required: false,
+    setupCompleted: true,
     policy: { mode: "optional" },
   });
   fixtures.credential.mockReset();
+  fixtures.incompleteBootstrap.mockReset().mockResolvedValue(false);
 });
 describe("factor status local password", () => {
   it("requires a session and rejects API keys", async () => {
@@ -63,9 +70,30 @@ describe("factor status local password", () => {
       expect(await response.json()).toMatchObject({
         hasLocalPassword,
         enabled: true,
+        required: false,
         passwordRequiredForEnrollment: false,
       });
       expect(fixtures.credential).toHaveBeenCalledWith("caller");
     },
   );
+  it("marks enrollment required for an incomplete bootstrap session even when policy is off", async () => {
+    fixtures.state.mockResolvedValue({
+      enabled: false,
+      required: false,
+      setupCompleted: false,
+      policy: { mode: "off" },
+    });
+    fixtures.incompleteBootstrap.mockResolvedValue(true);
+    fixtures.credential.mockResolvedValue([{ password: "hash" }]);
+    const response = await appFor(true).request("/security/factors");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      enabled: false,
+      required: true,
+      passwordRequiredForEnrollment: true,
+      hasLocalPassword: true,
+      policyMode: "off",
+      availableMethods: [],
+    });
+  });
 });

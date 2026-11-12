@@ -475,6 +475,7 @@ const visualOwnerCapabilities = {
   createSavedViews: true,
   shareSavedViews: true,
   manageWorkspaceSettings: true,
+  manageRequestTypes: true,
   createPublicComments: true,
   createInternalComments: true,
   transitionTasks: true,

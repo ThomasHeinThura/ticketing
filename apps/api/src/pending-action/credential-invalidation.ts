@@ -9,6 +9,7 @@ import type {
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { and, eq, inArray, ne, type SQL } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
+import { lockFirstUserPromotion } from "../auth/repository";
 import db, { schema as importedSchema } from "../database";
 import {
   apikeyTable,
@@ -72,6 +73,42 @@ export function getPasswordSessionSource() {
 const explicitMutationStorage =
   new AsyncLocalStorage<ExplicitCredentialMutationState>();
 const transactionStorage = new AsyncLocalStorage<PendingActionTransaction>();
+const firstUserAdmissionStorage =
+  new AsyncLocalStorage<PendingActionTransaction>();
+
+class FirstUserAdmissionRollback extends Error {
+  constructor(readonly response: Response) {
+    super("First-user signup did not succeed");
+  }
+}
+
+/** Enlist every Better Auth signup write and hook in the promotion-lock transaction. */
+export async function withFirstUserAdmissionTransaction<T>(
+  callback: () => Promise<T>,
+): Promise<T> {
+  if (firstUserAdmissionStorage.getStore()) return callback();
+  try {
+    return await db.transaction(async (tx) => {
+      await lockFirstUserPromotion(tx);
+      return transactionStorage.run(tx, () =>
+        firstUserAdmissionStorage.run(tx, async () => {
+          const result = await callback();
+          if (result instanceof Response && result.status >= 400) {
+            throw new FirstUserAdmissionRollback(result);
+          }
+          return result;
+        }),
+      );
+    });
+  } catch (error) {
+    if (error instanceof FirstUserAdmissionRollback) return error.response as T;
+    throw error;
+  }
+}
+
+export function currentFirstUserAdmissionTransaction() {
+  return firstUserAdmissionStorage.getStore() ?? null;
+}
 
 type TotpEnrollmentContext = {
   pendingActionAuditFailures: number;

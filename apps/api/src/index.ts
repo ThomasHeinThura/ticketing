@@ -39,6 +39,7 @@ import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
 } from "./auth/local-factor-service";
+import { isIncompleteBootstrapSession } from "./auth/repository";
 import stepUp from "./auth/step-up-api";
 import automation from "./automation";
 import cannedResponse from "./canned-response";
@@ -124,7 +125,7 @@ import hardPurge from "./instance/purge";
 import resetMfa from "./instance/reset-mfa";
 import rotateSecrets from "./instance/secrets/rotate-secrets";
 import instanceSettings from "./instance/settings";
-import { ensureSetupToken } from "./instance/setup-token";
+import { ensureSetupToken, isSetupCompleted } from "./instance/setup-token";
 import instanceStorage from "./instance/storage";
 import users from "./instance/users";
 import intake from "./intake";
@@ -167,6 +168,7 @@ import {
   isCredentialRevocationFailure,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
+  withFirstUserAdmissionTransaction,
   withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
@@ -354,7 +356,7 @@ type ApiVariables = {
   };
 };
 
-async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
+export async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
   if (c.req.path === "/api/me/security/factors") return;
   const userId = c.get("userId");
   const session = c.get("session") as (Session & { portal?: string }) | null;
@@ -372,7 +374,10 @@ async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
     }
     throw new HTTPException(503, { message: "factor_policy_unavailable" });
   }
-  if (state.required && !state.enabled) {
+  // A signed-in user whose first-run setup is unfinished is the pending first
+  // administrator. The marker comes from the same row read as the policy, so a
+  // database failure is already the 503 above and no extra query is added.
+  if (!state.setupCompleted || (state.required && !state.enabled)) {
     throw new HTTPException(403, { message: "mfa_enrollment_required" });
   }
 }
@@ -551,6 +556,15 @@ async function handleAuthRequest(
   const selected = authForRequest(c);
   if (!portal) throw new HTTPException(403, { message: "Forbidden" });
 
+  // The body-limit middleware counts unknown-length streams only when read.
+  // Read a clone of agent signup before any session or setup-marker query;
+  // the original request remains available to Better Auth unchanged.
+  const agentEmailSignup =
+    portal === "agent" &&
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/sign-up/email";
+  if (agentEmailSignup) await c.req.raw.clone().arrayBuffer();
+
   const session = await selected.api.getSession({
     headers: c.req.raw.headers,
   });
@@ -570,6 +584,25 @@ async function handleAuthRequest(
     !session?.session
   ) {
     throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  // The enrollment routes stay open to a pending first administrator, so they
+  // skip the marker read; the frequently polled get-session is one of them.
+  const enrollmentRoute =
+    (c.req.method === "GET" && c.req.path === "/api/auth/get-session") ||
+    (c.req.method === "POST" &&
+      [
+        "/api/auth/sign-out",
+        "/api/auth/two-factor/enable",
+        "/api/auth/two-factor/verify-totp",
+      ].includes(c.req.path));
+  if (
+    portal === "agent" &&
+    session?.user.id &&
+    !enrollmentRoute &&
+    (await isIncompleteBootstrapSession(session.user.id))
+  ) {
+    throw new HTTPException(403, { message: "mfa_enrollment_required" });
   }
 
   // GM-9: an impersonation session may not change credentials, factors, keys or the account
@@ -609,6 +642,11 @@ async function handleAuthRequest(
       }
       throw error;
     }
+  }
+  if (agentEmailSignup && !(await isSetupCompleted())) {
+    return withFirstUserAdmissionTransaction(() =>
+      selected.handler(authRequest),
+    );
   }
   let result: Response;
   if (!mutation) {

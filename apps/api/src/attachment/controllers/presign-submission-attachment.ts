@@ -1,4 +1,10 @@
 import { createId } from "@paralleldrive/cuid2";
+import {
+  type FormSchema,
+  type FormValue,
+  isFieldVisible,
+  normalizeFormSchema,
+} from "@taskdesk/domain";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -25,6 +31,46 @@ import {
   lockSubmissionForPresign,
 } from "../repository";
 import { assertOrganisationStorageQuota } from "../storage-quota";
+
+function isFormValue(value: unknown): value is FormValue {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value)) ||
+    (Array.isArray(value) && value.every(isFormValue))
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Read a stored form version for the attachment visibility check. It accepts what
+ * `resolveFormVisibility` accepts (any stored version: no strict property, label or option
+ * rules, since versions published by older builds were never held to today's editor schema),
+ * runs the same `normalizeFormSchema` repair, and refuses only a snapshot the resolver could
+ * not read at all: no `fields` list, a non-object field, a field without a string `key`/`type`,
+ * a non-object condition, or a condition value that is not a plain form value.
+ */
+export function parseAttachmentFormSchema(value: unknown): FormSchema | null {
+  if (!isRecord(value) || !Array.isArray(value.fields)) return null;
+  for (const field of value.fields) {
+    if (
+      !isRecord(field) ||
+      typeof field.key !== "string" ||
+      typeof field.type !== "string"
+    )
+      return null;
+    const condition = field.showIf;
+    if (condition === undefined || condition === null) continue;
+    if (!isRecord(condition)) return null;
+    if (condition.value !== undefined && !isFormValue(condition.value))
+      return null;
+  }
+  return normalizeFormSchema(value as unknown as FormSchema);
+}
 
 /**
  * A customer upload on their own request (AT-3: customer uploads are customer-visible). While the
@@ -209,23 +255,20 @@ export async function presignSubmissionAttachment(input: {
         tx,
         locked.requestTypeVersionId,
       );
-      const fields =
-        (
-          snapshot?.formSchema as
-            | {
-                fields?: Array<{
-                  key?: string;
-                  type?: string;
-                  multiple?: boolean;
-                }>;
-              }
-            | undefined
-        )?.fields ?? [];
-      const field = fields.find(
+      const formSchema = parseAttachmentFormSchema(snapshot?.formSchema);
+      const field = formSchema?.fields.find(
         (candidate) =>
           candidate.key === input.fieldKey && candidate.type === "file",
       );
-      if (!field)
+      if (
+        !formSchema ||
+        !field ||
+        !isFieldVisible(
+          formSchema,
+          field,
+          (locked.formData ?? {}) as Record<string, FormValue>,
+        )
+      )
         throw new HTTPException(400, {
           message: "The attachment field is not part of this submitted form.",
         });

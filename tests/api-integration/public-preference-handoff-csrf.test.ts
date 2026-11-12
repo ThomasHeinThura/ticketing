@@ -30,7 +30,9 @@ const sessionName = (audience: Audience) =>
     : "__Host-tdk_portal_session";
 beforeEach(async () => {
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", setupCompletedAt: new Date() });
   await db.insert(schema.instancePluginConfigTable).values({
     id: randomUUID(),
     pluginId: "auth.password",

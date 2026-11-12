@@ -7,6 +7,7 @@ import {
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -53,41 +54,11 @@ async function createAdminWorkspace(
   );
   await page.getByRole("button", { name: "Create account" }).click();
   expect((await signUpPromise).status()).toBe(200);
-  await expect(page).toHaveURL(/\/onboarding(?:\?|$)/u);
+  const factor = await enrollFirstAdmin(page, origin, password);
   await page.getByLabel("Workspace name").fill("Disposable Users Workspace");
   await page.getByRole("button", { name: "Create workspace" }).click();
   await expect(page).toHaveURL(/\/dashboard\/workspace\//u);
-}
-
-async function enrollFactor(page: Page, origin: string, password: string) {
-  await page.goto(
-    new URL("/dashboard/settings/account/security", origin).toString(),
-  );
-  await page.locator("#factor-password").fill(password);
-  await page.getByRole("button", { name: "Set up authenticator" }).click();
-  const provisioningUri =
-    (await page.locator("code").textContent())?.trim() ?? "";
-  expect(provisioningUri.startsWith("otpauth://totp/")).toBe(true);
-  await page.locator("#enrollment-code").fill(totpForUri(provisioningUri));
-  await page.getByRole("button", { name: "Verify and enable" }).click();
-  const saveCodesButton = page.getByRole("button", {
-    name: "I saved these codes",
-  });
-  await expect(saveCodesButton).toBeVisible();
-  const backupCodeItems = page.locator('[role="alert"] li');
-  await expect
-    .poll(() => backupCodeItems.count(), {
-      message: "Authenticator enrollment backup codes were not rendered",
-    })
-    .toBeGreaterThanOrEqual(3);
-  const backupCodes = await backupCodeItems.allTextContents();
-  expect(backupCodes.length).toBeGreaterThanOrEqual(3);
-  await saveCodesButton.click();
-  await expect(saveCodesButton).toBeHidden();
-  return {
-    provisioningUri,
-    backupCodes: backupCodes.map((code) => code.trim()),
-  };
+  return factor;
 }
 
 test.afterEach(({ page: _page }, testInfo) => {
@@ -375,14 +346,9 @@ test("real Users UI binds delayed proof and approval to its current route intent
   test.setTimeout(240_000);
 
   await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
-    await test.step("sign up, enroll MFA, and sign in through the UI", async () => {
-      await createAdminWorkspace(page, origin, email, password);
-    });
-    const { provisioningUri, backupCodes } = await enrollFactor(
-      page,
-      origin,
-      password,
-    );
+    const { provisioningUri, backupCodes } =
+      await test.step("sign up, enroll MFA, and create the workspace through the UI", () =>
+        createAdminWorkspace(page, origin, email, password));
     await signInWithTotp(page, origin, email, password, provisioningUri);
     const users = await seedTargets(databaseUrl, email);
     const client = new Client({ connectionString: databaseUrl });

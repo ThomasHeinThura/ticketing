@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, count, eq, gt, isNull } from "drizzle-orm";
+import { lockFirstUserPromotion } from "../auth/repository";
 import db from "../database";
-import { instanceSettingTable } from "../database/schema";
+import type { Executor } from "../database/executor";
+import { instanceSettingTable, userTable } from "../database/schema";
 
 /**
  * Issue #18 — the setup-token flow specified in
@@ -53,15 +55,14 @@ export async function isSetupCompleted(): Promise<boolean> {
 }
 
 /**
- * Called once at server boot (runStartupTasks). While the instance is
- * unclaimed, every start generates a fresh token and invalidates whatever
+ * Called once at server boot (runStartupTasks). While the instance has zero
+ * users and no completion marker, every start generates a fresh token and invalidates whatever
  * token was printed before -- so an operator who lost the first one just
  * restarts the container (runbook.md's "First run" symptom row) rather than
  * needing a separate recovery path.
  *
- * A no-op once setup_completed_at is set: the `WHERE ... IS NULL` guard on
- * the upsert means a completed instance's row is never touched here, even if
- * this is called again (e.g. a future restart).
+ * A no-op once the first user exists, even while TOTP is pending. The
+ * promotion lock serializes issuance with first-user admission.
  *
  * Returns the raw token when one was (re)generated, or `null` when the
  * instance is already set up. The real entrypoint (runStartupTasks) only
@@ -70,41 +71,36 @@ export async function isSetupCompleted(): Promise<boolean> {
  * hashing to seed a row directly.
  */
 export async function ensureSetupToken(): Promise<string | null> {
-  if (await isSetupCompleted()) {
-    return null;
-  }
-
   const rawToken = generateRawSetupToken();
   const tokenHash = hashSetupToken(rawToken);
   const expiresAt = new Date(Date.now() + SETUP_TOKEN_TTL_MS);
 
-  const written = await db
-    .insert(instanceSettingTable)
-    .values({
-      id: SETUP_TOKEN_SINGLETON_ID,
-      setupTokenHash: tokenHash,
-      setupTokenExpiresAt: expiresAt,
-    })
-    .onConflictDoUpdate({
-      target: instanceSettingTable.id,
-      set: {
+  const written = await db.transaction(async (tx) => {
+    await lockFirstUserPromotion(tx);
+    const [users] = await tx.select({ value: count() }).from(userTable);
+    if ((users?.value ?? 0) !== 0) return [];
+    return tx
+      .insert(instanceSettingTable)
+      .values({
+        id: SETUP_TOKEN_SINGLETON_ID,
         setupTokenHash: tokenHash,
         setupTokenExpiresAt: expiresAt,
-        updatedAt: new Date(),
-      },
-      // Defense in depth: even if isSetupCompleted() above raced with a
-      // concurrent completion, never overwrite a completed instance's row.
-      where: isNull(instanceSettingTable.setupCompletedAt),
-    })
-    .returning({ id: instanceSettingTable.id });
+      })
+      .onConflictDoUpdate({
+        target: instanceSettingTable.id,
+        set: {
+          setupTokenHash: tokenHash,
+          setupTokenExpiresAt: expiresAt,
+          updatedAt: new Date(),
+        },
+        // A completed marker is permanent even if all users were removed.
+        where: isNull(instanceSettingTable.setupCompletedAt),
+      })
+      .returning({ id: instanceSettingTable.id });
+  });
 
   if (written.length === 0) {
-    // #18 security review (F5): the WHERE guard above fired, meaning a
-    // concurrent completion raced us between isSetupCompleted() and here.
-    // Nothing was actually stored -- printing and returning the token anyway
-    // would advertise a credential that can never verify. Silence is correct:
-    // the instance is now claimed, and the caller (runStartupTasks) has
-    // nothing to print.
+    // A pending user or completed marker leaves no usable token to print.
     return null;
   }
 
@@ -131,6 +127,7 @@ export async function ensureSetupToken(): Promise<string | null> {
  */
 export async function verifyAndConsumeSetupToken(
   candidate: string | null | undefined,
+  executor: Executor = db,
 ): Promise<boolean> {
   if (!candidate) {
     return false;
@@ -138,7 +135,7 @@ export async function verifyAndConsumeSetupToken(
 
   const candidateHash = hashSetupToken(candidate);
 
-  const result = await db
+  const result = await executor
     .update(instanceSettingTable)
     .set({ setupTokenHash: null, setupTokenExpiresAt: null })
     .where(
@@ -146,6 +143,7 @@ export async function verifyAndConsumeSetupToken(
         eq(instanceSettingTable.id, SETUP_TOKEN_SINGLETON_ID),
         eq(instanceSettingTable.setupTokenHash, candidateHash),
         gt(instanceSettingTable.setupTokenExpiresAt, new Date()),
+        isNull(instanceSettingTable.setupCompletedAt),
       ),
     )
     .returning({ id: instanceSettingTable.id });
