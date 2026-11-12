@@ -1,20 +1,8 @@
-import { resolve } from "node:path";
-import { defineConfig } from "vitest/config";
-export default defineConfig({
-  test: {
-    environment: "node",
-    include: ["../../tests/api-integration/uat-seed.test.ts"],
-    fileParallelism: false,
-    maxWorkers: 1,
-    hookTimeout: 180000,
-    testTimeout: 180000,
-  },
-  resolve: {
-    alias: {
-      "@taskdesk/permissions": resolve(
-        import.meta.dirname,
-        "../../packages/permissions/src/index.ts",
-      ),
-    },
-  },
-});
+import { defineConfig, mergeConfig } from "vitest/config";
+import integration from "./vitest.integration.config";
+export default mergeConfig(
+  integration,
+  defineConfig({
+    test: { include: ["../../tests/api-integration/uat-seed.test.ts"] },
+  }),
+);

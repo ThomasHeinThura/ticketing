@@ -162,7 +162,8 @@ async function createWorkspace(input: CreateWorkspaceInput) {
   }
 }
 
-/** Shared atomic writer; deterministic ids are used by the opt-in demo seed only. */
+/** Shared atomic writer; callers must have verified instance-admin authority.
+ * Deterministic ids are used by the opt-in demo seed only. */
 export async function createWorkspaceInTransaction(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   input: CreateWorkspaceInput & { slug: string },

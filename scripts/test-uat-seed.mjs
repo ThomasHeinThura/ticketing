@@ -70,10 +70,11 @@ try {
         "vitest",
         "run",
         "--config",
-        process.argv.includes("--plain")
+        !process.argv.includes("--private")
           ? "vitest.integration.config.ts"
           : "vitest.uat-seed.config.ts",
         "../../tests/api-integration/uat-seed.test.ts",
+        "--reporter=verbose",
       ],
       { env, stdio: "pipe", timeout: 240000 },
     )

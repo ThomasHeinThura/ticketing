@@ -735,7 +735,11 @@ repair or overwrite an existing environment. No email provider is configured by 
 Staff logins use their role key at `uat.taskdesk.test` (`agent1` for Marcus, `agent2` for
 Sofia); customer emails and all passwords are in the private credentials file. Staff
 invitation history records the chosen role for other staff; the instance administrator
-names Olivia as owner at workspace creation, without an owner invitation. The workspace
+names Olivia as owner at workspace creation, without an owner invitation. Customers receive
+and accept real product invitations with their per-person project selection; the pending
+invitee remains pending. Planning creation audits use the project manager, while private
+views and time entries use their member creator. Announcements are created as drafts
+and then published with separate audit rows. The workspace
 includes planning, time, budgets, reports, documents, attachments, intake, SLA, useful
 portal articles and a pending CAB
 change. The example webhook is disabled. The demo export follows the normal 24-hour

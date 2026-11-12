@@ -1,13 +1,15 @@
-import { execFile } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 import { can, reaches } from "@taskdesk/permissions";
 import { and, eq, sql } from "drizzle-orm";
-import { afterAll, describe, expect, it } from "vitest";
-import { UAT_ACCOUNTS } from "../../apps/api/scripts/seed-uat-users";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import {
+  assertUatSeedDatabase,
+  UAT_ACCOUNTS,
+} from "../../apps/api/scripts/seed-uat-users";
 import {
   G1_AUTOMATIONS,
   G1_PENDING_CUSTOMER,
@@ -32,7 +34,54 @@ import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
 
-const execute = promisify(execFile);
+const children = new Set<ChildProcess>();
+function killChild(child: ChildProcess) {
+  if (!child.pid) return;
+  try {
+    process.kill(-child.pid, "SIGKILL");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+  }
+}
+afterEach(() => {
+  for (const child of children) killChild(child);
+  children.clear();
+});
+function execute(
+  command: string,
+  args: string[],
+  options: { cwd: string; env: NodeJS.ProcessEnv },
+) {
+  return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+    const child = spawn(command, args, {
+      ...options,
+      detached: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    const timer = setTimeout(() => killChild(child), 44_000);
+    children.add(child);
+    child.on("error", reject);
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      children.delete(child);
+      if (code !== 0)
+        reject(
+          new Error(
+            `Seed child failed (${code ?? signal}): ${stdout}\n${stderr}`,
+          ),
+        );
+      else resolve({ stdout, stderr });
+    });
+  });
+}
 let directory: string;
 let first: { stdout: string; stderr: string };
 async function snapshot() {
@@ -72,7 +121,6 @@ async function run(args?: string[], env?: NodeJS.ProcessEnv) {
         TASKDESK_STORAGE_FILESYSTEM_ROOT: path.join(directory, "storage"),
         ...env,
       },
-      timeout: 120000,
     },
   );
 }
@@ -388,6 +436,121 @@ describe("clean-install seed on a disposable migrated database", () => {
         );
       expect(rows.length, kind).toBeGreaterThan(0);
     }
+    const required = {
+      workspace: ["instance:admin", "instance"],
+      request_type: ["request_type:manage", "workspace"],
+      kb_article: ["kb_article:write", "workspace"],
+      kb_category: ["kb_article:publish", "workspace"],
+      project_page: ["project:update", "project"],
+      automation: ["automation:manage", "workspace"],
+      cycle: ["project:manage_settings", "project"],
+      module: ["project:manage_settings", "project"],
+      custom_field_section: ["custom_field:manage", "workspace"],
+      custom_field: ["custom_field:manage", "workspace"],
+      time_activity: ["workspace:manage_settings", "workspace"],
+      time_entry: ["time_entry:create", "project"],
+      budget: ["budget:manage", "project"],
+      dashboard: ["workspace:manage_settings", "workspace"],
+      saved_view: ["saved_view:create", "project"],
+      document_link: ["project:update", "project"],
+      webhook: ["webhook:manage", "workspace"],
+      announcement: ["service:manage", "workspace"],
+    } as const;
+    const creationAudits = (
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.workspaceId, "uat-ws"))
+    ).filter((a) => a.action.endsWith(".created"));
+    for (const audit of creationAudits) {
+      const requirement = required[audit.entityType as keyof typeof required];
+      if (!requirement)
+        throw new Error(`No capability assertion for ${audit.action}`);
+      const [capability, scope] = requirement;
+      const [person] = await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.id, audit.actorId ?? ""));
+      const identity = await resolveIdentity({
+        userId: person?.userId ?? audit.actorId ?? "",
+        credential: "session",
+      });
+      if (!identity) throw new Error(`Missing actor for ${audit.action}`);
+      expect(
+        can(identity, capability, scope, {
+          workspaceId: audit.workspaceId ?? "",
+          projectId: audit.projectId ?? undefined,
+        }),
+        audit.action,
+      ).toBe(true);
+      if (
+        ["cycle", "module", "budget", "saved_view"].includes(audit.entityType)
+      ) {
+        const row = await db.execute<{ created_by: string }>(
+          sql`select created_by from ${sql.identifier(audit.entityType)} where id = ${audit.entityId}`,
+        );
+        expect([audit.actorId, identity.personId], audit.action).toContain(
+          row.rows[0]?.created_by,
+        );
+      }
+    }
+    const announcements = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, "uat-announcement"));
+    expect(
+      announcements.find((a) => a.action === "announcement.created")?.after,
+    ).toMatchObject({ publishedAt: null });
+    expect(
+      announcements.find((a) => a.action === "announcement.published")?.before,
+    ).toMatchObject({ publishedAt: null });
+    for (const account of UAT_ACCOUNTS.filter((a) => a.side === "customer")) {
+      const invitations = await db
+        .select()
+        .from(schema.invitationTable)
+        .where(eq(schema.invitationTable.acceptedPersonId, account.personId));
+      expect(invitations).toHaveLength(1);
+      const invitation = invitations[0];
+      if (!invitation) throw new Error("Missing accepted invitation");
+      expect(invitation).toMatchObject({
+        status: "accepted",
+        scope: "customer",
+        inviterId: "uat-user-owner",
+        workspaceId: "uat-ws",
+      });
+      const memberships = await db
+        .select()
+        .from(schema.membershipTable)
+        .where(
+          and(
+            eq(schema.membershipTable.personId, account.personId),
+            eq(schema.membershipTable.scope, "organisation"),
+          ),
+        );
+      expect(memberships).toHaveLength(1);
+      expect(invitation.organisationId).toBe(memberships[0]?.scopeId);
+      const access = await db
+        .select()
+        .from(schema.customerProjectAccessTable)
+        .where(
+          eq(schema.customerProjectAccessTable.personId, account.personId),
+        );
+      expect([...(invitation.validatedProjectIds as string[])].sort()).toEqual(
+        access.map((a) => a.projectId).sort(),
+      );
+      const grants = await db
+        .select()
+        .from(schema.membershipGrantTable)
+        .where(
+          and(
+            eq(schema.membershipGrantTable.personId, account.personId),
+            eq(schema.membershipGrantTable.scope, "organisation"),
+          ),
+        );
+      expect(
+        grants.every((g) => g.grantedByPersonId === "uat-person-owner"),
+      ).toBe(true);
+    }
     expect(
       await db
         .select()
@@ -398,7 +561,7 @@ describe("clean-install seed on a disposable migrated database", () => {
       await db
         .select()
         .from(schema.notificationTable)
-        .where(eq(schema.notificationTable.eventId, "uat-approval-requested")),
+        .where(eq(schema.notificationTable.kind, "approval.requested")),
     ).toHaveLength(1);
     const grants = await db
       .select()
@@ -421,18 +584,29 @@ describe("clean-install seed on a disposable migrated database", () => {
     await expect(run(["--credentials-file", credentials])).rejects.toThrow(
       /--uat/,
     );
-    await expect(
-      run(undefined, {
-        TASKDESK_DATABASE_URL:
-          "postgresql://invalid:invalid@127.0.0.1:1/taskdesk_browser_journey_1022_test",
-      }),
-    ).rejects.toThrow(/protected|live/i);
-    await expect(
-      run(undefined, {
-        TASKDESK_DATABASE_URL:
-          "postgresql://invalid:invalid@127.0.0.1:62870/unused_test",
-      }),
-    ).rejects.toThrow(/protected|62870/i);
+    const connect = vi.spyOn(getDatabasePool(), "connect");
+    try {
+      expect(() =>
+        assertUatSeedDatabase({ port: 62870, database: "unused_test" }),
+      ).toThrowError(
+        new Error(
+          "UAT seed refused: native PostgreSQL port 62870 is protected.",
+        ),
+      );
+      expect(() =>
+        assertUatSeedDatabase({
+          port: 1,
+          database: "taskdesk_browser_journey_1022_test",
+        }),
+      ).toThrowError(
+        new Error(
+          "UAT seed refused: taskdesk_browser_journey_1022_test is the live database and must never be seeded.",
+        ),
+      );
+      expect(connect).not.toHaveBeenCalled();
+    } finally {
+      connect.mockRestore();
+    }
     await expect(
       run([
         "--uat",

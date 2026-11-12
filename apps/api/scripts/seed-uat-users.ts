@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createId } from "@paralleldrive/cuid2";
 import { formatSubmissionReference } from "@taskdesk/domain";
 import {
   BUILT_IN_ROLES,
@@ -14,7 +15,11 @@ import { config } from "dotenv-mono";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { appendAuditLog } from "../src/audit/audit-writer";
-import { ensureCustomerMembershipGrant } from "../src/customer-invitation/repository";
+import {
+  acceptCustomerInvitation,
+  copyCustomerInvitationLink,
+  createCustomerInvitation,
+} from "../src/customer-invitation/service";
 import db, { getDatabasePool, schema } from "../src/database";
 import { resolveDatabaseConfig } from "../src/database/resolve-database-url";
 import { kbArticleTable, kbCategoryTable } from "../src/database/schema-p5-kb";
@@ -36,8 +41,8 @@ import { lockWorkspaceLabelNames } from "../src/label/repository";
 import { enqueueNotificationEvent } from "../src/notification/fanout";
 import { resolveApprovalEventRecipients } from "../src/notification/recipient-resolvers";
 import { createPage } from "../src/pages/repository";
+import { resolveIdentity } from "../src/permissions/resolve-identity";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
-import { changeProjectCustomerAccess } from "../src/project/members/customer-access";
 import { insertAdminProjectGrant } from "../src/project/members/roster.repository";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seedProjectStates } from "../src/utils/seed-project-states";
@@ -1630,7 +1635,6 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     return id;
   };
 
-  // Customers: organisation membership with the global customer role (read, never rewritten).
   const [customerRole] = await tx
     .select({ id: schema.roleTable.id })
     .from(schema.roleTable)
@@ -1643,13 +1647,12 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       ),
     )
     .limit(1);
-  const customerRoleId =
-    customerRole?.id ??
-    (await ensureSystemRole(
+  if (!customerRole)
+    await ensureSystemRole(
       tx,
       { roleKey: "customer", workspaceId: null, now },
       "uat",
-    ));
+    );
 
   const [workspace] = await tx
     .select()
@@ -1674,32 +1677,6 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
         now,
       },
     );
-
-  for (const account of UAT_ACCOUNTS.filter((row) => row.side === "customer")) {
-    const organisationId =
-      CUSTOMER_ORGS[account.org as "contoso" | "fabrikam"].id;
-    if (
-      !(await membershipExists(
-        tx,
-        account.personId,
-        "organisation",
-        organisationId,
-      ))
-    )
-      await upsertScopedMembership(
-        tx,
-        {
-          personId: account.personId,
-          scope: "organisation",
-          scopeId: organisationId,
-          roleId: customerRoleId,
-          seesAll: false,
-          now,
-          grantedByPersonId: person("owner"),
-        },
-        "uat",
-      );
-  }
 
   for (const account of UAT_ACCOUNTS) {
     if (!account.workspaceRole) continue;
@@ -2509,7 +2486,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       requestedBy: person("agent1"),
       approverId: person("lead"),
       state: "pending",
-      createdAt: new Date(now.getTime() - 4 * 3_600_000),
+      createdAt: now,
       // Stays open for the whole UAT window: the reminder scan expires approvals
       // past expiresAt and decisions are refused after it.
       expiresAt: date(UAT_APPROVAL_EXPIRY_DAYS),
@@ -2519,7 +2496,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
   );
 
   if (approvalCreated) {
-    const createdAt = new Date(now.getTime() - 4 * 3_600_000).toISOString();
+    const createdAt = now.toISOString();
     const expiresAt = date(UAT_APPROVAL_EXPIRY_DAYS).toISOString();
     await appendAuditLog(tx, {
       actorId: person("agent1"),
@@ -2544,7 +2521,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     await enqueueNotificationEvent(
       tx,
       {
-        id: "uat-approval-requested",
+        id: `evt_${createId()}`,
         kind: "approval.requested",
         occurredAt: createdAt,
         actor: {
@@ -2581,7 +2558,7 @@ async function upsertScopedMembership(
   tx: Tx,
   input: {
     personId: string;
-    scope: "organisation" | "project";
+    scope: "project";
     scopeId: string;
     roleId: string;
     seesAll: boolean;
@@ -2590,21 +2567,12 @@ async function upsertScopedMembership(
   },
   _prefix: string,
 ) {
-  if (input.scope === "organisation") {
-    await ensureCustomerMembershipGrant(tx, {
-      personId: input.personId,
-      organisationId: input.scopeId,
-      roleId: input.roleId,
-      grantedByPersonId: input.grantedByPersonId,
-    });
-  } else {
-    await insertAdminProjectGrant(tx, {
-      personId: input.personId,
-      projectId: input.scopeId,
-      roleId: input.roleId,
-      grantedByPersonId: input.grantedByPersonId,
-    });
-  }
+  await insertAdminProjectGrant(tx, {
+    personId: input.personId,
+    projectId: input.scopeId,
+    roleId: input.roleId,
+    grantedByPersonId: input.grantedByPersonId,
+  });
   await projectMembershipKeys(tx, [
     { personId: input.personId, scope: input.scope, scopeId: input.scopeId },
   ]);
@@ -2626,24 +2594,14 @@ async function upsertScopedMembership(
     entityType: "membership",
     entityId: input.personId,
     before: null,
-    after:
-      input.scope === "project"
-        ? {
-            source: "project_roster",
-            change: "added",
-            scope: "project",
-            scopeId: input.scopeId,
-            role: role?.key ?? null,
-            granted: true,
-          }
-        : {
-            source: "customer_invitation",
-            scope: "organisation",
-            scopeId: input.scopeId,
-            roleId: input.roleId,
-            grantedByPersonId: input.grantedByPersonId,
-            granted: true,
-          },
+    after: {
+      source: "project_roster",
+      change: "added",
+      scope: "project",
+      scopeId: input.scopeId,
+      role: role?.key ?? null,
+      granted: true,
+    },
   });
 }
 
@@ -2914,15 +2872,85 @@ async function signInReport() {
   return { mode, requiredRoleId, passwordSignIn: Boolean(passwordPlugin) };
 }
 
-export async function runUatSeed(argv: readonly string[] = process.argv) {
-  const { credentialsFile } = parseArgs(argv);
-  config();
-  const database = resolveDatabaseConfig();
+export function assertUatSeedDatabase(database: {
+  port: number;
+  database: string;
+}) {
   if (database.port === 62870)
     throw new Error(
       "UAT seed refused: native PostgreSQL port 62870 is protected.",
     );
   assertNotLiveDatabase(database.database);
+}
+
+async function seedCustomerInvitations() {
+  const actor = {
+    userId: "uat-user-owner",
+    actorType: "person" as const,
+    apiKeyId: null,
+  };
+  const identity = await resolveIdentity({
+    userId: actor.userId,
+    credential: "session",
+  });
+  if (!identity) throw new Error("Missing demo inviter");
+  for (const account of UAT_ACCOUNTS.filter((a) => a.side === "customer")) {
+    const scope = {
+      workspaceId: UAT_WORKSPACE_ID,
+      organisationId: CUSTOMER_ORGS[account.org as "contoso" | "fabrikam"].id,
+    };
+    const existing = await db
+      .select()
+      .from(schema.invitationTable)
+      .where(
+        and(
+          eq(schema.invitationTable.workspaceId, scope.workspaceId),
+          eq(schema.invitationTable.email, account.email),
+          eq(schema.invitationTable.scope, "customer"),
+        ),
+      );
+    if (
+      existing.some(
+        (row) =>
+          row.status === "accepted" &&
+          row.acceptedPersonId === account.personId,
+      )
+    )
+      continue;
+    const invitation =
+      existing.find((row) => row.status === "pending") ??
+      (await createCustomerInvitation({
+        actor,
+        identity,
+        scope,
+        email: account.email,
+        projectIds: uatCustomerProjectSeedPlan()
+          .filter((g) => g.personId === account.personId)
+          .map((g) => g.projectId),
+      }));
+    const { link } = await copyCustomerInvitationLink({
+      actor,
+      identity,
+      scope,
+      invitationId: invitation.id,
+    });
+    const credential = new URLSearchParams(new URL(link).hash.slice(1)).get(
+      "t",
+    );
+    if (!credential) throw new Error("Missing demo invitation credential");
+    await acceptCustomerInvitation({
+      userId: account.id,
+      invitationId: invitation.id,
+      credential,
+    });
+  }
+}
+
+export async function runUatSeed(argv: readonly string[] = process.argv) {
+  const { credentialsFile } = parseArgs(argv);
+  config();
+  const database = resolveDatabaseConfig();
+  assertUatSeedDatabase(database);
   const destination = resolveCredentialsDestination(credentialsFile);
   const credentialsLoaded = loadExistingCredentials(destination);
   const now = new Date();
@@ -2949,14 +2977,7 @@ export async function runUatSeed(argv: readonly string[] = process.argv) {
       );
     const seeded = await db.transaction((tx) => seedCore(tx, now));
     await seedG1AttachmentObject();
-    for (const grant of uatCustomerProjectSeedPlan())
-      await changeProjectCustomerAccess({
-        ...grant,
-        workspaceId: UAT_WORKSPACE_ID,
-        actorId: "uat-user-owner",
-        actorPersonId: "uat-person-owner",
-        granted: true,
-      });
+    await seedCustomerInvitations();
     await seedG1PendingCustomer();
     await seedG1Automations();
     const accepted = await seedIntake(seeded);

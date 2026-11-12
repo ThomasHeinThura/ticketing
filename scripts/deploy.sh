@@ -463,17 +463,35 @@ seed_if_permitted() (
   local credentials="$HOME/.taskdesk/demo-credentials.json"
   mkdir -p "$(dirname "$credentials")"
   chmod 700 "$(dirname "$credentials")"
-  # Always recover credentials, including when a post-commit seed step fails.
+  local had_credentials=0
+  [ ! -f "$credentials" ] || { had_credentials=1; chmod 600 "$credentials"; }
+  # Preserve existing credentials; recover a newly generated file only after verification.
   recover_demo_credentials() {
     local rc=$? copy_rc=0
     trap - EXIT
-    if dc exec -T taskdesk test -f "$in_container"; then
-      (umask 077; dc exec -T taskdesk cat "$in_container" > "$credentials.pending") &&
-        chmod 600 "$credentials.pending" && mv -f "$credentials.pending" "$credentials" || copy_rc=$?
+    if [ "$had_credentials" -eq 0 ] && dc exec -T taskdesk test -f "$in_container"; then
+      local pending="" source_hash="" copied_hash=""
+      pending=$(mktemp "$credentials.pending.XXXXXX") || copy_rc=1
+      source_hash=$(dc exec -T taskdesk sha256sum "$in_container") || copy_rc=1
+      if [ "$copy_rc" -eq 0 ]; then
+        (umask 077; dc exec -T taskdesk cat "$in_container" > "$pending") &&
+          chmod 600 "$pending" || copy_rc=1
+        if command -v sha256sum >/dev/null 2>&1; then
+          copied_hash=$(sha256sum "$pending") || copy_rc=1
+        else
+          copied_hash=$(shasum -a 256 "$pending") || copy_rc=1
+        fi
+        if [ "$copy_rc" -eq 0 ] && [ "${source_hash%% *}" = "${copied_hash%% *}" ]; then
+          mv -f "$pending" "$credentials" || copy_rc=1
+        else
+          copy_rc=1
+        fi
+      fi
+      [ -z "$pending" ] || rm -f "$pending"
     fi
     dc exec -T taskdesk rm -f "$in_container" || copy_rc=1
     if [ "$copy_rc" -ne 0 ]; then
-      warn "could not recover demo credentials; check $credentials.pending"
+      warn "could not verify and recover demo credentials"
       exit 1
     fi
     exit "$rc"

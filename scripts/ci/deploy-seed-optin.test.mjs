@@ -64,9 +64,10 @@ dc() {
   case "$1" in
     node) printf '%s' 'private fixture' > "$HOME/container/credentials"; return 1 ;;
     test) test -f "$HOME/container/credentials" ;;
-    cat) cat "$HOME/container/credentials" ;;
+    cat) if [ "\${PARTIAL_COPY:-0}" = 1 ]; then head -c 3 "$HOME/container/credentials"; else cat "$HOME/container/credentials"; fi ;;
+    sha256sum) shasum -a 256 "$HOME/container/credentials" ;;
     rm) rm -f "$HOME/container/credentials" ;;
-    sh) cat > "$HOME/container/credentials" ;;
+    sh) if [ "\${PARTIAL_RESTORE:-0}" = 1 ]; then head -c 3 > "$HOME/container/credentials"; return 1; else cat > "$HOME/container/credentials"; fi ;;
     *) return 2 ;;
   esac
 }
@@ -75,10 +76,14 @@ seed_if_permitted
 `;
     const filename = path.join(directory, "test.sh");
     writeFileSync(filename, mock);
-    for (let run = 0; run < 2; run++) {
+    for (let run = 0; run < 3; run++) {
       assert.throws(() =>
         execFileSync("bash", [filename], {
-          env: { ...process.env, HOME: directory },
+          env: {
+            ...process.env,
+            HOME: directory,
+            PARTIAL_RESTORE: run === 2 ? "1" : "0",
+          },
           stdio: "pipe",
         }),
       );
@@ -95,6 +100,19 @@ seed_if_permitted
       const { chmodSync } = await import("node:fs");
       chmodSync(credentials, 0o644);
     }
+    // A successful but truncated copy must fail its digest check, never be promoted.
+    const credentials = path.join(directory, ".taskdesk/demo-credentials.json");
+    rmSync(credentials);
+    assert.throws(() =>
+      execFileSync("bash", [filename], {
+        env: { ...process.env, HOME: directory, PARTIAL_COPY: "1" },
+        stdio: "pipe",
+      }),
+    );
+    assert.throws(() => statSync(credentials));
+    assert.throws(() =>
+      statSync(path.join(directory, "container/credentials")),
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

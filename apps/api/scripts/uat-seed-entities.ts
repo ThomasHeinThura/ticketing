@@ -50,7 +50,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     name: "Launch readiness",
     startDate: day(-2),
     endDate: day(12),
-    createdBy: "uat-user-agent2",
+    createdBy: "uat-user-manager",
   });
   await tx.insert(moduleTable).values({
     id: "uat-module",
@@ -61,7 +61,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     leadId: "uat-person-lead",
     state: "in_progress",
     targetDate: day(12),
-    createdBy: "uat-user-agent2",
+    createdBy: "uat-user-manager",
   });
   await tx
     .update(schema.workItemTable)
@@ -178,7 +178,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     currency: "USD",
     periodStart: day(-15),
     periodEnd: day(30),
-    createdBy: "uat-user-agent2",
+    createdBy: "uat-user-manager",
   });
   await tx.insert(announcementTable).values({
     id: "uat-announcement",
@@ -188,7 +188,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     severity: "info",
     audience: "workspace",
     startsAt: now,
-    publishedAt: now,
+    publishedAt: null,
     createdBy: "uat-user-owner",
   });
   const bytes = Buffer.from(
@@ -279,7 +279,10 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     if (entityType === "time_entry") after.workItemKey = "WEB-3";
     if (entityType === "dashboard") after.widgets = 1;
     await appendAuditLog(tx, {
-      actorId: "uat-user-agent2",
+      actorId:
+        entityType === "time_entry" || entityType === "saved_view"
+          ? "uat-user-agent2"
+          : "uat-user-manager",
       actorType: "person",
       workspaceId,
       projectId: scoped ? projectId : null,
@@ -336,10 +339,42 @@ export async function seedG1Entities(tx: Tx, now: Date) {
       projectIds: [],
       startsAt: now.toISOString(),
       endsAt: null,
-      publishedAt: now.toISOString(),
+      publishedAt: null,
       bodyLength:
         "Review the launch checklist and use the portal to raise support requests. Include the affected service and the impact on your work."
           .length,
+    },
+  });
+  const [createdAudit] = await tx
+    .select()
+    .from(schema.auditLogTable)
+    .where(
+      and(
+        eq(schema.auditLogTable.entityId, "uat-announcement"),
+        eq(schema.auditLogTable.action, "announcement.created"),
+      ),
+    );
+  await tx
+    .update(announcementTable)
+    .set({
+      publishedAt: now,
+      updatedBy: "uat-user-owner",
+      updatedAt: now,
+      version: 2,
+    })
+    .where(eq(announcementTable.id, "uat-announcement"));
+  await appendAuditLog(tx, {
+    actorId: "uat-user-owner",
+    actorType: "person",
+    workspaceId,
+    action: "announcement.published",
+    entityType: "announcement",
+    entityId: "uat-announcement",
+    before:
+      (createdAudit?.after as Record<string, string | number | null>) ?? null,
+    after: {
+      ...(createdAudit?.after as Record<string, string | number | null>),
+      publishedAt: now.toISOString(),
     },
   });
 }
