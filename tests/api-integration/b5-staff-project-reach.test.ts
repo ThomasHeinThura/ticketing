@@ -62,6 +62,57 @@ import {
 } from "./helpers/reach-world";
 import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 
+async function projectManagementSnapshot(projectId: string) {
+  const [
+    projects,
+    milestones,
+    prerequisites,
+    stakeholders,
+    documentLinks,
+    audit,
+    pending,
+  ] = await Promise.all([
+    db
+      .select()
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, projectId)),
+    db
+      .select()
+      .from(schema.milestoneTable)
+      .where(eq(schema.milestoneTable.projectId, projectId))
+      .orderBy(schema.milestoneTable.id),
+    db
+      .select()
+      .from(schema.prerequisiteTable)
+      .where(eq(schema.prerequisiteTable.projectId, projectId))
+      .orderBy(schema.prerequisiteTable.id),
+    db
+      .select()
+      .from(schema.stakeholderTable)
+      .where(eq(schema.stakeholderTable.projectId, projectId))
+      .orderBy(schema.stakeholderTable.id),
+    db
+      .select()
+      .from(schema.documentLinkTable)
+      .where(eq(schema.documentLinkTable.projectId, projectId))
+      .orderBy(schema.documentLinkTable.id),
+    db.select().from(schema.auditLogTable).orderBy(schema.auditLogTable.id),
+    db
+      .select()
+      .from(schema.pendingActionTable)
+      .orderBy(schema.pendingActionTable.id),
+  ]);
+  return {
+    projects,
+    milestones,
+    prerequisites,
+    stakeholders,
+    documentLinks,
+    audit,
+    pending,
+  };
+}
+
 describe("B-5: staff project reach", () => {
   let mixedStorageRoot: string | undefined;
   beforeEach(async () => {
@@ -2274,6 +2325,57 @@ describe("B-5: staff project reach", () => {
         })
         .returning();
       if (!milestone) throw new Error("milestone missing");
+      const people = await db
+        .insert(schema.personTable)
+        .values([
+          {
+            organisationId: caller.workspace.organisationId,
+            side: "staff",
+            isPlaceholder: true,
+          },
+          {
+            organisationId: caller.workspace.organisationId,
+            side: "staff",
+            isPlaceholder: true,
+          },
+        ])
+        .returning();
+      const [existingPerson, newPerson] = people;
+      if (!existingPerson || !newPerson)
+        throw new Error("stakeholder people missing");
+      const [prerequisite] = await db
+        .insert(schema.prerequisiteTable)
+        .values({
+          projectId: project.id,
+          title: "Original prerequisite",
+          ownerSide: "us",
+        })
+        .returning();
+      const [stakeholder] = await db
+        .insert(schema.stakeholderTable)
+        .values({
+          projectId: project.id,
+          personId: existingPerson.id,
+          role: "Contact",
+          escalationOrder: 1,
+        })
+        .returning();
+      const [documentLink] = await db
+        .insert(schema.documentLinkTable)
+        .values({
+          projectId: project.id,
+          title: "Original document",
+          url: "https://example.com/original",
+        })
+        .returning();
+      if (!prerequisite || !stakeholder || !documentLink)
+        throw new Error("project fixtures missing");
+      const initial = await projectManagementSnapshot(project.id);
+      expect(initial.projects).toHaveLength(1);
+      expect(initial.milestones).toHaveLength(1);
+      expect(initial.prerequisites).toHaveLength(1);
+      expect(initial.stakeholders).toHaveLength(1);
+      expect(initial.documentLinks).toHaveLength(1);
       const { app } = createApp();
       mockAuthenticatedSession(caller.user);
       const projectPath = `/api/project/${project.id}`;
@@ -2303,17 +2405,67 @@ describe("B-5: staff project reach", () => {
         ["PATCH", milestonePath, { reached: true }],
         ["DELETE", milestonePath, undefined],
         [
+          "POST",
+          `${projectPath}/prerequisites`,
+          { title: "New prerequisite", ownerSide: "us" },
+        ],
+        [
+          "PATCH",
+          `${projectPath}/prerequisites/${prerequisite.id}`,
+          { title: "Changed prerequisite" },
+        ],
+        [
+          "DELETE",
+          `${projectPath}/prerequisites/${prerequisite.id}`,
+          undefined,
+        ],
+        [
+          "POST",
+          `${projectPath}/stakeholders`,
+          { personId: newPerson.id, role: "New contact", escalationOrder: 2 },
+        ],
+        [
+          "PATCH",
+          `${projectPath}/stakeholders/${stakeholder.id}`,
+          { role: "Changed contact" },
+        ],
+        [
+          "POST",
+          `${projectPath}/stakeholders/${stakeholder.id}/stand-down`,
+          undefined,
+        ],
+        [
+          "POST",
+          `${projectPath}/document-links`,
+          { title: "New document", url: "https://example.com/new" },
+        ],
+        [
+          "PATCH",
+          `${projectPath}/document-links/${documentLink.id}`,
+          { title: "Changed document" },
+        ],
+        [
+          "DELETE",
+          `${projectPath}/document-links/${documentLink.id}`,
+          undefined,
+        ],
+        [
           "PUT",
           `/api/project/reorder?workspaceId=${caller.workspace.id}`,
           { projects: [{ id: project.id, position: 0 }] },
         ],
       ] as const;
       for (const [method, url, body] of cases) {
+        const before = await projectManagementSnapshot(project.id);
         const response = await json(app, method, url, body);
         expect(
           response.status,
           `${method} ${url}: ${await response.clone().text()}`,
         ).toBe(403);
+        expect(
+          await projectManagementSnapshot(project.id),
+          `${method} ${url} changed persisted state`,
+        ).toEqual(before);
       }
       // Restore is exercised against an actually deleted row, not a no-op on a live one.
       await db
@@ -2323,8 +2475,12 @@ describe("B-5: staff project reach", () => {
           purgeAfter: new Date(Date.now() + 30 * 86_400_000),
         })
         .where(eq(schema.projectTable.id, project.id));
+      const beforeRestore = await projectManagementSnapshot(project.id);
       const restore = await json(app, "PUT", `${projectPath}/restore`);
       expect(restore.status, await restore.clone().text()).toBe(403);
+      expect(await projectManagementSnapshot(project.id)).toEqual(
+        beforeRestore,
+      );
       const [savedProject] = await db
         .select()
         .from(schema.projectTable)
@@ -2368,6 +2524,7 @@ describe("B-5: staff project reach", () => {
           })
           .where(eq(schema.projectTable.id, project.id));
       }
+      const before = await projectManagementSnapshot(project.id);
       setAmbientHeaders({ "x-api-key": archiveOnly });
       const denied = await json(
         app,
@@ -2376,6 +2533,10 @@ describe("B-5: staff project reach", () => {
       );
       expect(denied.status, action).toBe(403);
       expect(await denied.text()).toContain("Insufficient API key scope");
+      expect(
+        await projectManagementSnapshot(project.id),
+        `${action} denial changed persisted state`,
+      ).toEqual(before);
       setAmbientHeaders({ "x-api-key": both });
       const allowed = await json(
         app,
@@ -2385,6 +2546,22 @@ describe("B-5: staff project reach", () => {
       expect(allowed.status, `${action}: ${await allowed.clone().text()}`).toBe(
         200,
       );
+      const after = await projectManagementSnapshot(project.id);
+      expect(after.projects).toHaveLength(1);
+      if (action === "archive") {
+        expect(before.projects[0]?.archivedAt).toBeNull();
+        expect(after.projects[0]?.archivedAt).not.toBeNull();
+      } else if (action === "unarchive") {
+        expect(before.projects[0]?.archivedAt).not.toBeNull();
+        expect(after.projects[0]?.archivedAt).toBeNull();
+      } else {
+        expect(before.projects[0]?.deletedAt).not.toBeNull();
+        expect(after.projects[0]?.deletedAt).toBeNull();
+        expect(after.projects[0]?.purgeAfter).toBeNull();
+        expect(after.projects[0]?.archivedAt).toEqual(
+          before.projects[0]?.archivedAt,
+        );
+      }
     }
     const [persisted] = await db
       .select()
