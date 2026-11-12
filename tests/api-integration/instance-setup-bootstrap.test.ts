@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { count, eq, sql } from "drizzle-orm";
 import { Client } from "pg";
@@ -1002,5 +1003,99 @@ describe("issue #18: instance_setting table invariants (security review findings
     // is on the wrapped cause, not the top-level message.
     const cause = (thrown as { cause?: { message?: string } })?.cause;
     expect(cause?.message).toMatch(/instance_setting_id_singleton/);
+  });
+});
+
+describe("upgrade: migration 0218 marks a database that already has users as set up", () => {
+  // resetTestDatabase() has already applied every migration to an empty database, so each case
+  // arranges the state an older instance would be in and re-runs exactly the statement 0218
+  // ships, as the (F2) case above does for migration 0061.
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  async function runSetupMarkerBackfill() {
+    const statements = readFileSync(
+      new URL(
+        "../../apps/api/drizzle/0218_backfill_setup_marker.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+      .split("--> statement-breakpoint")
+      .map((statement) => statement.trim())
+      .filter(Boolean);
+    expect(statements).toHaveLength(1);
+    await db.execute(sql.raw(statements[0] as string));
+  }
+
+  async function insertExistingUser() {
+    await db.insert(schema.userTable).values({
+      name: "Existing User",
+      email: `existing-${randomUUID()}@example.com`,
+      emailVerified: true,
+    });
+  }
+
+  async function settingRow() {
+    const [row] = await db
+      .select()
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    return row;
+  }
+
+  it("sets the marker and clears the setup token when users exist and the marker is unset", async () => {
+    // A seeded database: the boot-time token row exists, then users arrive without a first sign-up.
+    expect(await ensureSetupToken()).not.toBeNull();
+    await insertExistingUser();
+    expect(await isSetupCompleted()).toBe(false);
+
+    await runSetupMarkerBackfill();
+
+    expect(await isSetupCompleted()).toBe(true);
+    expect(await settingRow()).toMatchObject({
+      setupTokenHash: null,
+      setupTokenExpiresAt: null,
+    });
+  });
+
+  it("creates the setting row when users exist and there is no row at all", async () => {
+    await db
+      .delete(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    await insertExistingUser();
+
+    await runSetupMarkerBackfill();
+
+    expect(await isSetupCompleted()).toBe(true);
+  });
+
+  it("leaves a database with no users alone, so the verified first-run flow still applies", async () => {
+    const token = await ensureSetupToken();
+    expect(token).not.toBeNull();
+
+    await runSetupMarkerBackfill();
+
+    expect(await isSetupCompleted()).toBe(false);
+    expect(await verifyAndConsumeSetupToken(token)).toBe(true);
+  });
+
+  it("never rewrites a marker that is already set", async () => {
+    const earlier = new Date("2026-01-02T03:04:05.000Z");
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", setupCompletedAt: earlier })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { setupCompletedAt: earlier },
+      });
+    await insertExistingUser();
+
+    await runSetupMarkerBackfill();
+
+    expect((await settingRow())?.setupCompletedAt?.getTime()).toBe(
+      earlier.getTime(),
+    );
   });
 });

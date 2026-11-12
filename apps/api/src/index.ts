@@ -353,7 +353,7 @@ type ApiVariables = {
   };
 };
 
-async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
+export async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
   if (c.req.path === "/api/me/security/factors") return;
   const userId = c.get("userId");
   const session = c.get("session") as (Session & { portal?: string }) | null;
@@ -371,10 +371,10 @@ async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
     }
     throw new HTTPException(503, { message: "factor_policy_unavailable" });
   }
-  if (
-    (await isIncompleteBootstrapSession(userId)) ||
-    (state.required && !state.enabled)
-  ) {
+  // A signed-in user whose first-run setup is unfinished is the pending first
+  // administrator. The marker comes from the same row read as the policy, so a
+  // database failure is already the 503 above and no extra query is added.
+  if (!state.setupCompleted || (state.required && !state.enabled)) {
     throw new HTTPException(403, { message: "mfa_enrollment_required" });
   }
 }
@@ -572,22 +572,23 @@ async function handleAuthRequest(
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
+  // The enrollment routes stay open to a pending first administrator, so they
+  // skip the marker read; the frequently polled get-session is one of them.
+  const enrollmentRoute =
+    (c.req.method === "GET" && c.req.path === "/api/auth/get-session") ||
+    (c.req.method === "POST" &&
+      [
+        "/api/auth/sign-out",
+        "/api/auth/two-factor/enable",
+        "/api/auth/two-factor/verify-totp",
+      ].includes(c.req.path));
   if (
     portal === "agent" &&
     session?.user.id &&
+    !enrollmentRoute &&
     (await isIncompleteBootstrapSession(session.user.id))
   ) {
-    const enrollmentRoute =
-      (c.req.method === "GET" && c.req.path === "/api/auth/get-session") ||
-      (c.req.method === "POST" &&
-        [
-          "/api/auth/sign-out",
-          "/api/auth/two-factor/enable",
-          "/api/auth/two-factor/verify-totp",
-        ].includes(c.req.path));
-    if (!enrollmentRoute) {
-      throw new HTTPException(403, { message: "mfa_enrollment_required" });
-    }
+    throw new HTTPException(403, { message: "mfa_enrollment_required" });
   }
 
   // GM-9: an impersonation session may not change credentials, factors, keys or the account

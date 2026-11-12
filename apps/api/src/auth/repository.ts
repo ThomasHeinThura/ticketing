@@ -301,7 +301,10 @@ export async function getLocalFactorPolicySetting(
   executor: typeof db | StepUpExecutor = db,
 ) {
   return await executor
-    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+    .select({
+      policy: schema.instanceSettingTable.localFactorPolicy,
+      setupCompletedAt: schema.instanceSettingTable.setupCompletedAt,
+    })
     .from(schema.instanceSettingTable)
     .where(eq(schema.instanceSettingTable.id, "singleton"))
     .limit(1);
