@@ -28,6 +28,17 @@ async function loadSearchWorkItems() {
   return searchWorkItems;
 }
 
+/** Ignore object key order while comparing all displayed row data. */
+function rowFingerprint(value: unknown): string {
+  return JSON.stringify(value, (_key, entry: unknown) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry))
+      return entry;
+    return Object.fromEntries(
+      Object.entries(entry).sort(([a], [b]) => a.localeCompare(b)),
+    );
+  });
+}
+
 /** Canonical list and structured search retain independent cursor caches beneath the
  * project invalidation prefix. Previous ordering is a same-project placeholder only;
  * it must never become a writable rank ordering or appear under a different project. */
@@ -78,8 +89,8 @@ function useGetWorkItems({
   const listQuery = useInfiniteQuery({
     queryKey: listQueryKey,
     initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) =>
-      fetchWorkItemsListPage(projectId as string, sort, dir, pageParam),
+    queryFn: ({ pageParam, signal }) =>
+      fetchWorkItemsListPage(projectId as string, sort, dir, pageParam, signal),
     getNextPageParam: (last, _pages, _lastParam, pageParams) =>
       last.hasMore && last.nextCursor && !pageParams.includes(last.nextCursor)
         ? last.nextCursor
@@ -109,8 +120,9 @@ function useGetWorkItems({
   const searchQuery = useInfiniteQuery({
     queryKey: searchQueryKey,
     initialPageParam: undefined as string | undefined,
-    queryFn: async ({ pageParam }) => {
+    queryFn: async ({ pageParam, signal }) => {
       const searchWorkItems = await loadSearchWorkItems();
+      signal.throwIfAborted();
       return searchWorkItems({
         workspaceId: workspaceId as string,
         projectSlug: projectSlug as string,
@@ -120,6 +132,7 @@ function useGetWorkItems({
         sorts: effectiveSorts,
         columns,
         cursor: pageParam,
+        signal,
       });
     },
     getNextPageParam: (last) =>
@@ -201,6 +214,7 @@ function useGetWorkItems({
     if (!pollingEnabled) return;
     let disposed = false;
     let inFlight = false;
+    let coldFetch = false;
     const timer = setInterval(async () => {
       if (disposed || inFlight || !focusManager.isFocused()) return;
       const input = pollRef.current;
@@ -219,9 +233,17 @@ function useGetWorkItems({
       const oldData = before.data as
         | InfiniteData<WorkItemsResult, string | undefined>
         | undefined;
-      if (!oldData?.pages.length) return;
       inFlight = true;
       try {
+        if (!oldData?.pages.length) {
+          // Use the observed query's lifecycle, but disable retries for this tick only.
+          coldFetch = true;
+          const options = query.options;
+          const request = query.fetch({ ...options, retry: false });
+          query.setOptions(options);
+          await request;
+          return;
+        }
         const first = await queryClient.fetchQuery({
           queryKey: ["work-list-outage-poll", ...input.activeKey],
           gcTime: 0,
@@ -259,29 +281,19 @@ function useGetWorkItems({
             .find({ queryKey: input.activeKey, exact: true }) !== query
         )
           return;
-        const firstIds = first.items.map((item) => item.id);
-        const previousIds =
-          oldData.pages[0]?.items.map((item) => item.id) ?? [];
+        const previousItems = oldData.pages[0]?.items ?? [];
         if (
-          firstIds.length !== previousIds.length ||
-          firstIds.some((id, index) => id !== previousIds[index])
+          first.items.length !== previousItems.length ||
+          first.items.some(
+            (item, index) =>
+              item.id !== previousItems[index]?.id ||
+              rowFingerprint(item) !== rowFingerprint(previousItems[index]),
+          )
         ) {
           setChangedKey(activeKeyId);
         }
-        const updates = new Map(first.items.map((item) => [item.id, item]));
-        queryClient.setQueryData<
-          InfiniteData<WorkItemsResult, string | undefined>
-        >(input.activeKey, (current) => {
-          if (!current) return current;
-          return {
-            ...current,
-            pages: current.pages.map((page) => ({
-              ...page,
-              items: page.items.map((item) => updates.get(item.id) ?? item),
-            })),
-          };
-        });
       } catch (error) {
+        if (coldFetch) return; // The normal query has already handled the error.
         // fetchQuery has already invoked the cache's normal error callback.
         if (
           disposed ||
@@ -302,12 +314,19 @@ function useGetWorkItems({
           });
         }
       } finally {
+        coldFetch = false;
         inFlight = false;
       }
     }, 30_000);
     return () => {
       disposed = true;
       clearInterval(timer);
+      if (coldFetch) {
+        void queryClient.cancelQueries({
+          queryKey: JSON.parse(activeKeyId),
+          exact: true,
+        });
+      }
       void queryClient.cancelQueries({
         queryKey: ["work-list-outage-poll", ...JSON.parse(activeKeyId)],
         exact: true,

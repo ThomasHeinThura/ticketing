@@ -68,6 +68,7 @@ function setup(
     client?: QueryClient;
     selected?: string[];
     sort?: "key" | "title";
+    cold?: boolean;
   } = {},
 ) {
   const client =
@@ -97,7 +98,8 @@ function setup(
   const sort = options.sort ?? "key";
   const selectedKey =
     sort === "key" ? activeKey : ["work-items", "p", "list", sort, "asc"];
-  client.setQueryData(selectedKey, options.cached ?? initial());
+  if (!options.cold)
+    client.setQueryData(selectedKey, options.cached ?? initial());
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -175,6 +177,7 @@ describe("work list fallback polling", () => {
           signal: expect.any(AbortSignal),
         });
       expect(view.client.getQueryData(view.activeKey)).toEqual(initial());
+      expect(view.result.current.hasNewerChanges).toBe(false);
     },
   );
 
@@ -213,24 +216,147 @@ describe("work list fallback polling", () => {
     expect(view.client.getQueryData(key)).toEqual(initial());
   });
 
-  it("updates a row cached on page two in place without changing cursors or selection", async () => {
-    const view = setup("unavailable", false, { selected: ["c", "f"] });
-    const updated = page(["c", "new"], "new-cursor");
-    updated.items[0] = { ...updated.items[0], title: "updated" };
-    mocks.list.mockResolvedValue(updated);
-    await advance();
+  it.each([false, true])(
+    "detects a page-one field change without mutating any of three pages (search: %s)",
+    async (search) => {
+      const cached = initial();
+      const view = setup("unavailable", search, {
+        cached,
+        selected: ["c", "f"],
+      });
+      const updated = page(["a", "b"], "c1");
+      updated.items[0] = { ...updated.items[0], title: "updated" };
+      const fetcher = search ? mocks.search : mocks.list;
+      fetcher.mockResolvedValue(updated);
+      await advance();
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cached);
+      expect(view.client.getQueryData(view.activeKey)).toEqual(initial());
+      expect(view.result.current.selected).toEqual(["c", "f"]);
+      expect(view.result.current.hasNewerChanges).toBe(true);
+    },
+  );
+
+  it.each([false, true])(
+    "recovers a failed cold read with one request per tick (search: %s)",
+    async (search) => {
+      const fetcher = search ? mocks.search : mocks.list;
+      const client = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: (_count, error) => error.message !== "unavailable",
+            retryDelay: 10,
+          },
+        },
+      });
+      fetcher.mockRejectedValueOnce(new HttpError(500, "unavailable"));
+      fetcher.mockRejectedValueOnce(new HttpError(500, "still unavailable"));
+      fetcher.mockResolvedValue(page(["recovered"], null));
+      const view = setup("unavailable", search, { cold: true, client });
+      await advance(10);
+      expect(view.result.current.isError).toBe(true);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      await advance(29_990);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      await advance(29_999);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      await advance(1);
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+      expect(view.result.current.data?.items.map((item) => item.id)).toEqual([
+        "recovered",
+      ]);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+    },
+  );
+
+  it.each(["reconnect", "unmount"])(
+    "aborts a cold recovery on %s and ignores a late result",
+    async (action) => {
+      let resolve!: (value: WorkItemsResult) => void;
+      mocks.list
+        .mockRejectedValueOnce(new HttpError(500, "unavailable"))
+        .mockReturnValueOnce(
+          new Promise<WorkItemsResult>((r) => {
+            resolve = r;
+          }),
+        );
+      const view = setup("unavailable", false, { cold: true });
+      await advance(30_000);
+      const signal: AbortSignal = mocks.list.mock.calls[1]?.[3].signal;
+      expect(signal.aborted).toBe(false);
+      if (action === "reconnect")
+        view.rerender({ realtimeStatus: "available" });
+      else view.unmount();
+      expect(signal.aborted).toBe(true);
+      await act(async () => {
+        resolve(page(["late"], null));
+        await Promise.resolve();
+      });
+      await advance(90_000);
+      expect(mocks.list).toHaveBeenCalledTimes(2);
+      expect(view.client.getQueryData(key)).toBeUndefined();
+    },
+  );
+
+  it("aborts a cold search recovery when the filter changes", async () => {
+    let resolve!: (value: WorkItemsResult) => void;
+    mocks.search
+      .mockRejectedValueOnce(new HttpError(500, "unavailable"))
+      .mockReturnValueOnce(
+        new Promise<WorkItemsResult>((r) => {
+          resolve = r;
+        }),
+      )
+      .mockResolvedValue(page(["new-filter"], null));
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Number.POSITIVE_INFINITY },
+      },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const view = renderHook(
+      ({ filter }) =>
+        useGetWorkItems({
+          projectId: "p",
+          projectSlug: "P",
+          workspaceId: "ws",
+          filter,
+          sort: "key",
+          dir: "asc",
+          realtimeStatus: "unavailable",
+        }),
+      { wrapper, initialProps: { filter: "priority:high" } },
+    );
+    await advance(30_000);
+    const signal: AbortSignal = mocks.search.mock.calls[1]?.[0].signal;
+    view.rerender({ filter: "priority:low" });
+    expect(signal.aborted).toBe(true);
+    await act(async () => {
+      resolve(page(["late"], null));
+      await Promise.resolve();
+    });
     await advance(10);
-    const cached = view.client.getQueryData<ReturnType<typeof initial>>(key);
-    expect(cached?.pages.map((p) => p.items.map((item) => item.id))).toEqual([
-      ["a", "b"],
-      ["c", "d"],
-      ["e", "f"],
+    expect(mocks.search).toHaveBeenCalledTimes(3);
+    expect(view.result.current.data?.items.map((item) => item.id)).toEqual([
+      "new-filter",
     ]);
-    expect(cached?.pages[1]?.items[0]?.title).toBe("updated");
-    expect(cached?.pageParams).toEqual(initial().pageParams);
-    expect(cached?.pages.map((p) => p.nextCursor)).toEqual(["c1", "c2", null]);
-    expect(view.result.current.selected).toEqual(["c", "f"]);
-    expect(view.result.current.hasNewerChanges).toBe(true);
+    expect(view.result.current.hasNewerChanges).toBe(false);
+  });
+
+  it("stops cold recovery after an access denial", async () => {
+    mocks.list
+      .mockRejectedValueOnce(new HttpError(500, "unavailable"))
+      .mockRejectedValueOnce(new HttpError(403, "denied"));
+    const view = setup("unavailable", false, { cold: true });
+    await advance(30_010);
+    expect(view.result.current.error).toBeInstanceOf(HttpError);
+    await advance(90_000);
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+    expect(view.result.current.data).toBeUndefined();
   });
 
   it("shows one polite notice with a keyboard reachable refresh that performs a full refresh", async () => {
