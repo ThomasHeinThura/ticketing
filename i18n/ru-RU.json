@@ -2538,7 +2538,14 @@
 			"addInternalNote": "Add internal note",
 			"onlyTeamSeesThis": "Only your team sees this",
 			"visibleToCustomer": "Visible to the customer",
-			"customerVisibilityLostFallback": "No longer visible to a customer — switched to an internal note."
+			"customerVisibilityLostFallback": "No longer visible to a customer — switched to an internal note.",
+			"internalVisibilityUnavailableCanReply": "Internal notes are unavailable for your permissions. This draft will not be sent unless you switch to Reply to customer.",
+			"publicVisibilityUnavailableCanNote": "Customer replies are unavailable for your permissions. This draft will not be sent unless you switch to Internal note.",
+			"commentVisibilityUnavailableNone": "You can no longer post comments on this item. Your draft has been kept.",
+			"switchToReplyToCustomer": "Switch to Reply to customer",
+			"switchToInternalNote": "Switch to Internal note",
+			"cannedResponseSwitchedToInternal": "Switched to an internal note for this canned response.",
+			"cannedResponsePublicChoiceNotice": "This canned response defaults to a customer reply. Kept as an internal note until you choose Reply to customer."
 		}
 	},
 	"tasks": {

@@ -238,6 +238,8 @@ function WorkItemDetailWithProject({
               name: project.name,
               slug: project.slug,
               organisationId: project.organisationId,
+              archivedAt: project.archivedAt,
+              deletedAt: project.deletedAt,
             }
           : undefined
       }

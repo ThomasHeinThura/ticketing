@@ -285,7 +285,7 @@ function WorkItemActivity({
   workspaceId,
   projectId,
   defaultVisibility,
-  isCustomerVisible = true,
+  isCustomerVisible = false,
   isCustomerVisibilityPending = false,
   filter,
   focusedComment,

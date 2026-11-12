@@ -18,6 +18,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 const mocks = vi.hoisted(() => ({
   createComment: vi.fn(),
+  createCommentState: { isError: false },
+  listCannedResponses: vi.fn(),
+  getMentionCandidates: vi.fn(),
+  preflightMentions: vi.fn(),
   presign: vi.fn(),
   permissionCalls: [] as Array<[string | undefined, string | undefined]>,
   permissions: {
@@ -75,17 +79,17 @@ vi.mock("@/hooks/mutations/work-item/use-create-work-item-comment", () => ({
   default: () => ({
     mutateAsync: mocks.createComment,
     isPending: false,
-    isError: false,
+    isError: mocks.createCommentState.isError,
   }),
 }));
 vi.mock("@/fetchers/canned-response/list-canned-responses", () => ({
-  default: async () => [],
+  default: (key: string) => mocks.listCannedResponses(key),
 }));
 vi.mock("@/fetchers/work-item/get-comment-mention-candidates", () => ({
-  default: async () => [],
+  default: (input: unknown) => mocks.getMentionCandidates(input),
 }));
 vi.mock("@/fetchers/work-item/preflight-comment-mentions", () => ({
-  default: async () => ({ reachablePersonIds: [], unreachablePersonIds: [] }),
+  default: (input: unknown) => mocks.preflightMentions(input),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => mocks.workspace,
@@ -112,6 +116,7 @@ const SEND_BUTTON_PATTERN =
 function renderComposer(
   defaultVisibility: "public" | "internal" = "public",
   options: {
+    workItemKey?: string;
     projectId?: string;
     isCustomerVisible?: boolean;
     isCustomerVisibilityPending?: boolean;
@@ -126,11 +131,11 @@ function renderComposer(
   ) => (
     <QueryClientProvider client={queryClient}>
       <WorkItemCommentComposer
-        workItemKey="OPS-17"
+        workItemKey={nextOptions.workItemKey ?? "OPS-17"}
         workspaceId="workspace-1"
         projectId={nextOptions.projectId}
         defaultVisibility={nextDefault}
-        isCustomerVisible={nextOptions.isCustomerVisible}
+        isCustomerVisible={nextOptions.isCustomerVisible ?? true}
         isCustomerVisibilityPending={nextOptions.isCustomerVisibilityPending}
       />
     </QueryClientProvider>
@@ -140,6 +145,7 @@ function renderComposer(
   return {
     composer,
     container: view.container,
+    queryClient,
     rerender(
       nextDefault: "public" | "internal" = defaultVisibility,
       nextOptions: typeof options = options,
@@ -188,6 +194,14 @@ function renderComposer(
         }),
       );
     },
+    async pickCanned(optionLabel: string) {
+      const trigger = await within(composer).findByRole("button", {
+        name: "activity:timeline.cannedResponses",
+      });
+      await waitFor(() => expect(trigger).toBeEnabled());
+      fireEvent.click(trigger);
+      fireEvent.click(await screen.findByRole("button", { name: optionLabel }));
+    },
     async send() {
       const send = within(composer).getByRole("button", {
         name: SEND_BUTTON_PATTERN,
@@ -207,6 +221,12 @@ function presignBodies() {
 
 function resetPermissionState() {
   mocks.permissionCalls = [];
+  mocks.createCommentState.isError = false;
+  mocks.listCannedResponses.mockReset().mockResolvedValue([]);
+  mocks.getMentionCandidates.mockReset().mockResolvedValue([]);
+  mocks.preflightMentions
+    .mockReset()
+    .mockResolvedValue({ reachablePersonIds: [], unreachablePersonIds: [] });
   mocks.permissions = {
     public: true,
     internal: true,
@@ -627,5 +647,684 @@ describe("F-11 unmistakable customer reply vs internal note composer", () => {
     );
     await waitFor(() => expect(mocks.presign).toHaveBeenCalledTimes(1));
     expect(presignBodies()[0]).not.toHaveProperty("customerVisible");
+  });
+
+  it("fails closed to internal mode when isCustomerVisible is omitted", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <WorkItemCommentComposer
+          workItemKey="OPS-17"
+          workspaceId="workspace-1"
+          defaultVisibility="public"
+        />
+      </QueryClientProvider>,
+    );
+    const composer = screen.getByTestId("work-item-comment-composer");
+    expect(within(composer).queryByRole("tablist")).toBeNull();
+    expect(shownCard(composer)).toHaveAttribute("data-visibility", "internal");
+  });
+
+  it("aborts public submission, prevents duplicate submits, and retains draft and staged files when customer visibility is lost during deferred mention preflight", async () => {
+    const mentionDocument = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Looping in " },
+            {
+              type: "taskdeskMention",
+              attrs: { id: "person-mention", label: "Reachable teammate" },
+            },
+          ],
+        },
+      ],
+    };
+    window.localStorage.setItem(
+      "taskdesk:comment-draft:user-1:OPS-17",
+      JSON.stringify({
+        text: "Looping in @Reachable teammate",
+        document: mentionDocument,
+        visibility: "public",
+      }),
+    );
+
+    const ui = renderComposer("public", { isCustomerVisible: true });
+    await waitFor(() =>
+      expect(mocks.preflightMentions).toHaveBeenCalledTimes(1),
+    );
+    const editorNode = await ui.editor();
+    ui.stage("report.pdf");
+    const share = await within(ui.composer).findByRole("switch", {
+      name: SHARE,
+    });
+    fireEvent.click(share);
+    expect(share).toBeChecked();
+
+    let resolveSubmitPreflight: (value: {
+      reachablePersonIds: string[];
+      unreachablePersonIds: string[];
+    }) => void = () => undefined;
+    mocks.preflightMentions.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSubmitPreflight = resolve;
+        }),
+    );
+
+    await ui.send();
+    await waitFor(() =>
+      expect(mocks.preflightMentions).toHaveBeenCalledTimes(2),
+    );
+
+    const sendingButton = within(ui.composer).getByRole("button", {
+      name: "activity:timeline.sending",
+    });
+    expect(sendingButton).toBeDisabled();
+    expect(sendingButton).toHaveAttribute("aria-busy", "true");
+
+    // Second submit via click or keyboard shortcuts while in-flight is impossible.
+    fireEvent.click(sendingButton);
+    fireEvent.keyDown(editorNode, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(editorNode, { key: "Enter", metaKey: true });
+    expect(mocks.preflightMentions).toHaveBeenCalledTimes(2);
+    expect(mocks.createComment).not.toHaveBeenCalled();
+
+    // Work item refetch removes customer visibility before mention preflight resolves.
+    ui.rerender("public", { isCustomerVisible: false });
+    await waitFor(() =>
+      expect(shownCard(ui.composer)).toHaveAttribute(
+        "data-visibility",
+        "internal",
+      ),
+    );
+    expect(
+      within(ui.composer).getByTestId("comment-visibility-fallback-notice"),
+    ).toHaveAttribute("role", "status");
+
+    // Resolving preflight must NOT post publicly (or at all) and must keep the draft + files.
+    resolveSubmitPreflight({
+      reachablePersonIds: ["person-mention"],
+      unreachablePersonIds: [],
+    });
+    await waitFor(() =>
+      expect(
+        within(ui.composer).getByRole("button", {
+          name: "activity:timeline.addInternalNote",
+        }),
+      ).toBeEnabled(),
+    );
+    expect(mocks.createComment).not.toHaveBeenCalled();
+    expect(mocks.presign).not.toHaveBeenCalled();
+    expect(screen.getByText("report.pdf")).toBeVisible();
+    expect(
+      JSON.parse(
+        window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17") ??
+          "{}",
+      ),
+    ).toMatchObject({
+      text: expect.stringContaining("Looping in"),
+      visibility: "internal",
+    });
+
+    // Only an explicit send in the new visible mode posts an internal note.
+    await ui.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ visibility: "internal" }),
+    );
+    await waitFor(() => expect(mocks.presign).toHaveBeenCalledTimes(1));
+    expect(presignBodies()[0]).not.toHaveProperty("customerVisible");
+  });
+
+  it("aborts submission during deferred mention preflight if public capability is revoked or the item changes, and blocks duplicate submits during mutateAsync", async () => {
+    const mentionDocument = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Ping " },
+            {
+              type: "taskdeskMention",
+              attrs: { id: "person-mention", label: "Reachable teammate" },
+            },
+          ],
+        },
+      ],
+    };
+    window.localStorage.setItem(
+      "taskdesk:comment-draft:user-1:OPS-17",
+      JSON.stringify({
+        text: "Ping @Reachable teammate",
+        document: mentionDocument,
+        visibility: "public",
+      }),
+    );
+
+    const ui = renderComposer("public", { isCustomerVisible: true });
+    await waitFor(() =>
+      expect(mocks.preflightMentions).toHaveBeenCalledTimes(1),
+    );
+
+    let resolveSubmitPreflight: (value: {
+      reachablePersonIds: string[];
+      unreachablePersonIds: string[];
+    }) => void = () => undefined;
+    mocks.preflightMentions.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSubmitPreflight = resolve;
+        }),
+    );
+
+    await ui.send();
+    await waitFor(() =>
+      expect(mocks.preflightMentions).toHaveBeenCalledTimes(2),
+    );
+
+    // Revoke public capability while preflight is still awaiting.
+    mocks.permissions.public = false;
+    ui.rerender("public", { isCustomerVisible: true });
+
+    resolveSubmitPreflight({
+      reachablePersonIds: ["person-mention"],
+      unreachablePersonIds: [],
+    });
+    await waitFor(() =>
+      expect(
+        within(ui.composer).getByTestId(
+          "comment-visibility-unavailable-notice",
+        ),
+      ).toHaveAttribute("role", "status"),
+    );
+    expect(mocks.createComment).not.toHaveBeenCalled();
+
+    // Explicitly switch to internal note, then verify createComment in-flight lock.
+    let resolveCreate: (value: { id: string }) => void = () => undefined;
+    mocks.createComment.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    fireEvent.click(
+      within(ui.composer).getByRole("button", {
+        name: "activity:timeline.switchToInternalNote",
+      }),
+    );
+    expect(shownCard(ui.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+
+    const editorNode = await ui.editor();
+    await ui.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    fireEvent.keyDown(editorNode, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(editorNode, { key: "Enter", metaKey: true });
+    expect(mocks.createComment).toHaveBeenCalledTimes(1);
+
+    resolveCreate({ id: "comment-internal" });
+    await waitFor(() =>
+      expect(
+        within(ui.composer).getByRole("button", {
+          name: "activity:timeline.addInternalNote",
+        }),
+      ).toBeDisabled(),
+    );
+  });
+
+  it("blocks sending and requires an explicit choice with status notice when internal capability is revoked mid-draft (text or attachments) or when restoring an internal draft under public-only permission", async () => {
+    const ui = renderComposer("internal");
+    const editorNode = await ui.type("Confidential incident details");
+    expect(shownCard(ui.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+
+    // Capability refresh removes internal note permission while retaining public reply permission.
+    mocks.permissions.internal = false;
+    mocks.permissions.public = true;
+    ui.rerender("internal");
+
+    // Audience intent stays internal (tinted); composer never silently flips to public.
+    expect(shownCard(ui.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    expect(shownCard(ui.composer)).toHaveClass(
+      "border-warning/32",
+      "bg-warning/4",
+    );
+    const notice = within(ui.composer).getByTestId(
+      "comment-visibility-unavailable-notice",
+    );
+    expect(notice).toHaveAttribute("role", "status");
+    expect(notice).toHaveTextContent(
+      "activity:timeline.internalVisibilityUnavailableCanReply",
+    );
+
+    const disabledSend = within(ui.composer).getByRole("button", {
+      name: "activity:timeline.addInternalNote",
+    });
+    expect(disabledSend).toBeDisabled();
+    fireEvent.keyDown(editorNode, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(editorNode, { key: "Enter", metaKey: true });
+    expect(mocks.createComment).not.toHaveBeenCalled();
+
+    // Explicit choice unlocks sending as a public reply.
+    fireEvent.click(
+      within(notice).getByRole("button", {
+        name: "activity:timeline.switchToReplyToCustomer",
+      }),
+    );
+    expect(
+      within(ui.composer).queryByTestId(
+        "comment-visibility-unavailable-notice",
+      ),
+    ).toBeNull();
+    expect(shownCard(ui.composer)).toHaveAttribute("data-visibility", "public");
+    await ui.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ visibility: "public" }),
+    );
+    cleanup();
+    window.localStorage.clear();
+    mocks.createComment.mockReset().mockResolvedValue({ id: "comment-2" });
+
+    // Attachments-only internal draft also stays internal and blocks sending if internal capability is revoked.
+    resetPermissionState();
+    const attachDraft = renderComposer("internal");
+    attachDraft.stage("internal-logs.pdf");
+    expect(await screen.findByText("internal-logs.pdf")).toBeVisible();
+    mocks.permissions.internal = false;
+    mocks.permissions.public = true;
+    attachDraft.rerender("internal");
+    expect(shownCard(attachDraft.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    expect(
+      within(attachDraft.composer).getByTestId(
+        "comment-visibility-unavailable-notice",
+      ),
+    ).toHaveAttribute("role", "status");
+    expect(
+      within(attachDraft.composer).getByRole("button", {
+        name: "activity:timeline.addInternalNote",
+      }),
+    ).toBeDisabled();
+    cleanup();
+    window.localStorage.clear();
+
+    // Restoring a saved internal draft for a public-only caller preserves internal intent and blocks send until chosen.
+    resetPermissionState();
+    mocks.permissions.public = true;
+    mocks.permissions.internal = false;
+    window.localStorage.setItem(
+      "taskdesk:comment-draft:user-1:OPS-17",
+      JSON.stringify({
+        text: "Saved staff-only note",
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Saved staff-only note" }],
+            },
+          ],
+        },
+        visibility: "internal",
+      }),
+    );
+    const restored = renderComposer("public");
+    const restoredEditor = await restored.editor();
+    expect(shownCard(restored.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    const restoredNotice = within(restored.composer).getByTestId(
+      "comment-visibility-unavailable-notice",
+    );
+    expect(restoredNotice).toHaveAttribute("role", "status");
+    expect(restoredNotice).toHaveTextContent(
+      "activity:timeline.internalVisibilityUnavailableCanReply",
+    );
+    expect(
+      within(restored.composer).getByRole("button", {
+        name: "activity:timeline.addInternalNote",
+      }),
+    ).toBeDisabled();
+    fireEvent.keyDown(restoredEditor, { key: "Enter", ctrlKey: true });
+    expect(mocks.createComment).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(restoredNotice).getByRole("button", {
+        name: "activity:timeline.switchToReplyToCustomer",
+      }),
+    );
+    expect(shownCard(restored.composer)).toHaveAttribute(
+      "data-visibility",
+      "public",
+    );
+    await restored.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ visibility: "public" }),
+    );
+    cleanup();
+    window.localStorage.clear();
+
+    // Revoking both capabilities mid-draft keeps the draft visible and blocks sending.
+    resetPermissionState();
+    const bothRevoked = renderComposer("internal");
+    await bothRevoked.type("Do not lose my work");
+    mocks.permissions.public = false;
+    mocks.permissions.internal = false;
+    bothRevoked.rerender("internal");
+    expect(bothRevoked.composer).not.toHaveAttribute("hidden");
+    expect(
+      within(bothRevoked.composer).getByTestId(
+        "comment-visibility-unavailable-notice",
+      ),
+    ).toHaveTextContent("activity:timeline.commentVisibilityUnavailableNone");
+    expect(
+      within(bothRevoked.composer).getByRole("button", {
+        name: "activity:timeline.addInternalNote",
+      }),
+    ).toBeDisabled();
+  });
+
+  it("preserves mode on canned-response insertion for any in-progress draft (text or staged attachments) in both directions, announces empty-composer changes, and supports retry after insertion or send errors", async () => {
+    const doc = (text: string) => ({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+    });
+    const templates = [
+      {
+        id: "tpl-public",
+        name: "Public greeting",
+        body: doc("Hello from support"),
+        visibilityDefault: "public",
+      },
+      {
+        id: "tpl-internal",
+        name: "Internal checklist",
+        body: doc("Escalation checklist"),
+        visibilityDefault: "internal",
+      },
+    ];
+    mocks.listCannedResponses.mockResolvedValue(templates);
+
+    // 1. Internal attachments-only draft + public template -> stays internal, no silent upgrade.
+    const internalAttach = renderComposer("internal");
+    internalAttach.stage("diagnostics.pdf");
+    expect(await screen.findByText("diagnostics.pdf")).toBeVisible();
+    await internalAttach.pickCanned("Public greeting");
+    await waitFor(() =>
+      expect(internalAttach.container.textContent).toContain(
+        "Hello from support",
+      ),
+    );
+    expect(shownCard(internalAttach.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    expect(
+      within(internalAttach.composer).queryByTestId(
+        "comment-canned-visibility-notice",
+      ),
+    ).toBeNull();
+    cleanup();
+    window.localStorage.clear();
+
+    // 2. Public attachments-only draft + internal template -> stays public, no silent downgrade.
+    resetPermissionState();
+    mocks.listCannedResponses.mockResolvedValue(templates);
+    const publicAttach = renderComposer("public");
+    publicAttach.stage("invoice.pdf");
+    expect(await screen.findByText("invoice.pdf")).toBeVisible();
+    await publicAttach.pickCanned("Internal checklist");
+    await waitFor(() =>
+      expect(publicAttach.container.textContent).toContain(
+        "Escalation checklist",
+      ),
+    );
+    expect(shownCard(publicAttach.composer)).toHaveAttribute(
+      "data-visibility",
+      "public",
+    );
+    expect(
+      within(publicAttach.composer).queryByTestId(
+        "comment-canned-visibility-notice",
+      ),
+    ).toBeNull();
+    cleanup();
+    window.localStorage.clear();
+
+    // 3. Public text draft + internal template -> stays public, no silent flip.
+    resetPermissionState();
+    mocks.listCannedResponses.mockResolvedValue(templates);
+    const publicText = renderComposer("public");
+    await publicText.type("Initial reply");
+    await publicText.pickCanned("Internal checklist");
+    await waitFor(() =>
+      expect(publicText.container.textContent).toContain(
+        "Escalation checklist",
+      ),
+    );
+    expect(shownCard(publicText.composer)).toHaveAttribute(
+      "data-visibility",
+      "public",
+    );
+    cleanup();
+    window.localStorage.clear();
+
+    // 4. Internal text draft + public template -> stays internal, plus retry after insertion and send failures.
+    resetPermissionState();
+    mocks.listCannedResponses
+      .mockResolvedValueOnce(templates)
+      .mockRejectedValueOnce(new Error("Temporary network error"))
+      .mockResolvedValue(templates);
+    const retryFlow = renderComposer("internal");
+    await retryFlow.type("Draft before error");
+
+    await retryFlow.pickCanned("Public greeting");
+    expect(
+      await within(retryFlow.composer).findByRole("alert"),
+    ).toHaveTextContent("activity:timeline.cannedResponseInsertFailed");
+    expect(shownCard(retryFlow.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    expect(retryFlow.container.textContent).toContain("Draft before error");
+
+    // Retry insertion succeeds and preserves internal mode.
+    await retryFlow.pickCanned("Public greeting");
+    await waitFor(() =>
+      expect(retryFlow.container.textContent).toContain("Hello from support"),
+    );
+    expect(within(retryFlow.composer).queryByRole("alert")).toBeNull();
+    expect(shownCard(retryFlow.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+
+    // Send fails once -> draft and internal mode stay intact -> retry succeeds.
+    mocks.createComment
+      .mockReset()
+      .mockRejectedValueOnce(new Error("500"))
+      .mockResolvedValueOnce({ id: "comment-recovered" });
+    mocks.createCommentState.isError = true;
+    await retryFlow.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(shownCard(retryFlow.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    expect(retryFlow.container.textContent).toContain("Hello from support");
+
+    mocks.createCommentState.isError = false;
+    retryFlow.rerender("internal");
+    await retryFlow.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(2));
+    expect(mocks.createComment).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ visibility: "internal" }),
+    );
+    cleanup();
+    window.localStorage.clear();
+
+    // 5. Empty composer: internal template on public composer announces downgrade; public template on internal composer stays internal and offers explicit switch.
+    resetPermissionState();
+    mocks.listCannedResponses.mockResolvedValue(templates);
+    const emptyPublic = renderComposer("public");
+    await emptyPublic.pickCanned("Internal checklist");
+    await waitFor(() =>
+      expect(shownCard(emptyPublic.composer)).toHaveAttribute(
+        "data-visibility",
+        "internal",
+      ),
+    );
+    const downgradeNotice = within(emptyPublic.composer).getByTestId(
+      "comment-canned-visibility-notice",
+    );
+    expect(downgradeNotice).toHaveAttribute("role", "status");
+    expect(downgradeNotice).toHaveTextContent(
+      "activity:timeline.cannedResponseSwitchedToInternal",
+    );
+    cleanup();
+    window.localStorage.clear();
+
+    resetPermissionState();
+    mocks.listCannedResponses.mockResolvedValue(templates);
+    const emptyInternal = renderComposer("internal");
+    await emptyInternal.pickCanned("Public greeting");
+    await waitFor(() =>
+      expect(emptyInternal.container.textContent).toContain(
+        "Hello from support",
+      ),
+    );
+    expect(shownCard(emptyInternal.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    const choiceNotice = within(emptyInternal.composer).getByTestId(
+      "comment-canned-visibility-notice",
+    );
+    expect(choiceNotice).toHaveAttribute("role", "status");
+    expect(choiceNotice).toHaveTextContent(
+      "activity:timeline.cannedResponsePublicChoiceNotice",
+    );
+    fireEvent.click(
+      within(choiceNotice).getByRole("button", {
+        name: "activity:timeline.switchToReplyToCustomer",
+      }),
+    );
+    expect(shownCard(emptyInternal.composer)).toHaveAttribute(
+      "data-visibility",
+      "public",
+    );
+    expect(
+      within(emptyInternal.composer).queryByTestId(
+        "comment-canned-visibility-notice",
+      ),
+    ).toBeNull();
+  });
+
+  it("stays hidden across permission-loading and customer-visibility-loading transitions and supports keyboard/focus navigation on the audience segmented control", async () => {
+    mocks.permissions.checking = true;
+    const loading = renderComposer("public", {
+      isCustomerVisible: false,
+      isCustomerVisibilityPending: true,
+    });
+    expect(loading.composer).toHaveAttribute("hidden");
+
+    // Permissions settle first while project customer-visibility is still loading -> still hidden.
+    mocks.permissions.checking = false;
+    loading.rerender("public", {
+      isCustomerVisible: false,
+      isCustomerVisibilityPending: true,
+    });
+    expect(loading.composer).toHaveAttribute("hidden");
+
+    // Project resolves as internal-only -> initializes directly into internal mode with no fallback warning.
+    loading.rerender("public", {
+      isCustomerVisible: false,
+      isCustomerVisibilityPending: false,
+    });
+    await waitFor(() => expect(loading.composer).not.toHaveAttribute("hidden"));
+    expect(shownCard(loading.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    expect(
+      within(loading.composer).queryByTestId(
+        "comment-visibility-fallback-notice",
+      ),
+    ).toBeNull();
+    cleanup();
+    window.localStorage.clear();
+
+    // Keyboard & focus navigation across the two-option segmented control:
+    // Arrow/Home/End move focus without accidentally flipping to public; Space activates the focused tab without submitting.
+    resetPermissionState();
+    const kb = renderComposer("internal", { isCustomerVisible: true });
+    await kb.type("Keyboard navigation check");
+
+    const publicTab = within(kb.composer).getByRole("tab", {
+      name: "activity:timeline.replyToCustomer",
+    });
+    const internalTab = within(kb.composer).getByRole("tab", {
+      name: "activity:timeline.internalNote",
+    });
+
+    internalTab.focus();
+    expect(internalTab).toHaveFocus();
+    expect(internalTab).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.keyDown(internalTab, { key: "ArrowLeft" });
+    await waitFor(() => expect(publicTab).toHaveFocus());
+    expect(publicTab).toHaveAttribute("aria-selected", "false");
+    expect(shownCard(kb.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+
+    fireEvent.keyDown(publicTab, { key: " " });
+    expect(publicTab).toHaveAttribute("aria-selected", "true");
+    expect(shownCard(kb.composer)).toHaveAttribute("data-visibility", "public");
+
+    fireEvent.keyDown(publicTab, { key: "ArrowRight" });
+    await waitFor(() => expect(internalTab).toHaveFocus());
+    expect(internalTab).toHaveAttribute("aria-selected", "false");
+
+    fireEvent.keyDown(internalTab, { key: " " });
+    expect(internalTab).toHaveAttribute("aria-selected", "true");
+    expect(shownCard(kb.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+
+    fireEvent.keyDown(internalTab, { key: "Home" });
+    await waitFor(() => expect(publicTab).toHaveFocus());
+
+    fireEvent.keyDown(publicTab, { key: "End" });
+    await waitFor(() => expect(internalTab).toHaveFocus());
+
+    // Navigating or activating tabs via keyboard never submits the comment.
+    fireEvent.keyDown(internalTab, { key: "Enter" });
+    fireEvent.keyUp(internalTab, { key: "Enter" });
+    fireEvent.keyDown(internalTab, { key: " " });
+    fireEvent.keyUp(internalTab, { key: " " });
+    expect(mocks.createComment).not.toHaveBeenCalled();
   });
 });

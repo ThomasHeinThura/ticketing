@@ -10157,6 +10157,27 @@
 						},
 						"customerVisibilityLostFallback": {
 							"type": "string"
+						},
+						"internalVisibilityUnavailableCanReply": {
+							"type": "string"
+						},
+						"publicVisibilityUnavailableCanNote": {
+							"type": "string"
+						},
+						"commentVisibilityUnavailableNone": {
+							"type": "string"
+						},
+						"switchToReplyToCustomer": {
+							"type": "string"
+						},
+						"switchToInternalNote": {
+							"type": "string"
+						},
+						"cannedResponseSwitchedToInternal": {
+							"type": "string"
+						},
+						"cannedResponsePublicChoiceNotice": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10210,7 +10231,14 @@
 						"addInternalNote",
 						"onlyTeamSeesThis",
 						"visibleToCustomer",
-						"customerVisibilityLostFallback"
+						"customerVisibilityLostFallback",
+						"internalVisibilityUnavailableCanReply",
+						"publicVisibilityUnavailableCanNote",
+						"commentVisibilityUnavailableNone",
+						"switchToReplyToCustomer",
+						"switchToInternalNote",
+						"cannedResponseSwitchedToInternal",
+						"cannedResponsePublicChoiceNotice"
 					]
 				}
 			},

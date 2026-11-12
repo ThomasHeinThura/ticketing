@@ -305,6 +305,9 @@ async function seedReachableMentionRecipient(
   const authorMembershipId = `comments-author-membership-${randomUUID()}`;
   const customerOrgId = `comments-cust-org-${randomUUID()}`;
   const customerOrgKey = `cust-${randomUUID().slice(0, 8)}`;
+  const customerUserId = `cust-user-${randomUUID()}`;
+  const customerPersonId = `cust-person-${randomUUID()}`;
+  const customerRequesterName = "Portal Customer Requester";
   const recipientName = "Comments Mention Recipient";
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
@@ -319,18 +322,26 @@ async function seedReachableMentionRecipient(
     expect(organisation.rowCount).toBe(1);
     const organisationId = organisation.rows[0]?.organisation_id;
     expect(organisationId).toBeTruthy();
-    // F-11: public customer replies are offered only on customer-visible items.
+    // F-11: public customer replies require actual portal reach (customer org project + customer requester).
     await client.query(
       "INSERT INTO organisation (id, key, name, is_internal) VALUES ($1, $2, $3, false)",
       [customerOrgId, customerOrgKey, "Comments Customer Org"],
+    );
+    await client.query(
+      'INSERT INTO "user" (id, name, email, email_verified) VALUES ($1, $2, $3, true)',
+      [customerUserId, customerRequesterName, `${customerUserId}@example.test`],
+    );
+    await client.query(
+      "INSERT INTO person (id, user_id, organisation_id, side, display_name) VALUES ($1, $2, $3, 'customer', $4)",
+      [customerPersonId, customerUserId, customerOrgId, customerRequesterName],
     );
     await client.query(
       "UPDATE project SET organisation_id = $1 WHERE id = $2",
       [customerOrgId, projectId],
     );
     await client.query(
-      "UPDATE work_item SET customer_visibility = 'organisation' WHERE id = $1",
-      [workItemId],
+      "UPDATE work_item SET requester_id = $1, customer_visibility = 'organisation' WHERE id = $2",
+      [customerPersonId, workItemId],
     );
     const author = await client.query<{ user_id: string; person_id: string }>(
       `SELECT u.id AS user_id, p.id AS person_id
@@ -726,9 +737,33 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     const visibility = page.getByRole("tablist", {
       name: "Who can see this comment?",
     });
+    const publicTab = visibility.getByRole("tab", {
+      name: "Reply to customer",
+      exact: true,
+    });
+    const internalTab = visibility.getByRole("tab", {
+      name: "Internal note",
+      exact: true,
+    });
+    await expect(internalTab).toHaveAttribute("aria-selected", "true");
+    await internalTab.focus();
+    await expect(internalTab).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(publicTab).toBeFocused();
+    await expect(publicTab).toHaveAttribute("aria-selected", "false");
+    await page.keyboard.press("Space");
+    await expect(publicTab).toHaveAttribute("aria-selected", "true");
     await expect(
-      visibility.getByRole("tab", { name: "Internal note", exact: true }),
-    ).toHaveAttribute("aria-selected", "true");
+      activity.getByRole("button", { name: "Send to customer" }),
+    ).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(internalTab).toBeFocused();
+    await expect(internalTab).toHaveAttribute("aria-selected", "false");
+    await page.keyboard.press("Enter");
+    await expect(internalTab).toHaveAttribute("aria-selected", "true");
+    await expect(
+      activity.getByRole("button", { name: "Add internal note" }),
+    ).toBeVisible();
     const composer = commentEditor(activity);
     await expect(composer).toBeVisible();
 

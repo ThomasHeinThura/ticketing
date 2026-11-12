@@ -66,7 +66,13 @@ export type WorkItemDetailProps = {
    * that list loads; the details section simply omits the row rather than showing a raw
    * project id. */
   project:
-    | { name: string; slug: string; organisationId?: string | null }
+    | {
+        name: string;
+        slug: string;
+        organisationId?: string | null;
+        archivedAt?: string | null;
+        deletedAt?: string | null;
+      }
     | undefined;
   isProjectLoading?: boolean;
   isLoading: boolean;
@@ -402,16 +408,20 @@ function WorkItemDetail({
             projectId={item.projectId}
             defaultVisibility={item.defaultCommentVisibility}
             isCustomerVisible={
-              project?.organisationId === null
-                ? false
-                : Boolean(item.requesterId) ||
-                  (Boolean(project?.organisationId) &&
-                    item.customerVisibility === "organisation")
+              Boolean(item.requesterId) &&
+              !item.archivedAt &&
+              !item.deletedAt &&
+              project !== undefined &&
+              Boolean(project.organisationId) &&
+              !project.archivedAt &&
+              !project.deletedAt
             }
             isCustomerVisibilityPending={
-              isProjectLoading &&
-              !item.requesterId &&
-              item.customerVisibility === "organisation"
+              Boolean(item.requesterId) &&
+              !item.archivedAt &&
+              !item.deletedAt &&
+              project === undefined &&
+              isProjectLoading
             }
             focusedComment={focusedComment}
             filter={activityFilter}

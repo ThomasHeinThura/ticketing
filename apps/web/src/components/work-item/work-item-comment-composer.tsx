@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
+  AlertAction,
   AlertDescription,
   Badge,
   Button,
@@ -100,6 +101,9 @@ function useStagedCommentFiles(scope: string) {
   }, [scope]);
   return {
     rows,
+    hasFiles() {
+      return latest.current.length > 0;
+    },
     stage(files: File[]) {
       publish([
         ...latest.current,
@@ -136,15 +140,17 @@ function useStagedCommentFiles(scope: string) {
  *   with a library segmented control, matching submit button text, audience line, and a
  *   warning-tinted surface in internal mode.
  * - Offers no public mode when the item is not visible to a customer or the caller lacks
- *   `comment:create`; falls back to internal with a status notice if customer visibility is
- *   lost while composing; never silently flips mode across refetches or project-default edits.
+ *   `comment:create`; keeps the draft's audience intent separate from permitted options so a
+ *   capability change or restored draft never silently flips mode; re-verifies captured intent
+ *   after every async pre-send step; and falls back to internal with a status notice if
+ *   customer visibility is lost while composing.
  */
 export default function WorkItemCommentComposer({
   workItemKey,
   workspaceId,
   projectId,
   defaultVisibility,
-  isCustomerVisible = true,
+  isCustomerVisible = false,
   isCustomerVisibilityPending = false,
 }: {
   workItemKey: string;
@@ -175,28 +181,41 @@ export default function WorkItemCommentComposer({
   });
   const draftText = draft.text;
   const draftDocument = draft.document;
-  const [visibility, setVisibility] = useState<"public" | "internal">(
-    isCustomerVisible ? defaultVisibility : "internal",
-  );
-  const [customerVisibilityFallback, setCustomerVisibilityFallback] =
-    useState(false);
 
-  const canPostPublic = isCustomerVisible && canCreatePublicComments();
-  const canPostInternal = canCreateInternalComments();
-  const allowedCommentVisibilities = [
+  const isReady = !isCheckingPermissions && !isCustomerVisibilityPending;
+  const canPostPublic =
+    isReady && isCustomerVisible && canCreatePublicComments();
+  const canPostInternal = isReady && canCreateInternalComments();
+  const allowedCommentVisibilities: Array<"public" | "internal"> = [
     ...(canPostPublic ? (["public"] as const) : []),
     ...(canPostInternal ? (["internal"] as const) : []),
   ];
-  const selectedCommentVisibility: "public" | "internal" =
-    allowedCommentVisibilities.includes(visibility)
-      ? visibility
+
+  const [visibility, setVisibility] = useState<"public" | "internal">(() => {
+    const preferred = isCustomerVisible ? defaultVisibility : "internal";
+    if (!isReady) return preferred;
+    return allowedCommentVisibilities.includes(preferred)
+      ? preferred
       : (allowedCommentVisibilities[0] ?? "internal");
+  });
+  const [customerVisibilityFallback, setCustomerVisibilityFallback] =
+    useState(false);
+  const [cannedVisibilityNotice, setCannedVisibilityNotice] = useState<
+    "switched_to_internal" | "public_choice_available" | null
+  >(null);
 
   const [submitInProgress, setSubmitInProgress] = useState(false);
   const submitInProgressRef = useRef(false);
   const [insertingSnippet, setInsertingSnippet] = useState(false);
   const [snippetInsertFailed, setSnippetInsertFailed] = useState(false);
   const snippetInsertPending = useRef(false);
+  const unmountedRef = useRef(false);
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+    };
+  }, []);
   const currentItemKey = useRef(workItemKey);
   currentItemKey.current = workItemKey;
   const composerBusy = submitInProgress || insertingSnippet;
@@ -208,27 +227,44 @@ export default function WorkItemCommentComposer({
   const staged = useStagedCommentFiles(workItemKey);
   const canAttach =
     !isCheckingPermissions && permissions.canCreateAttachments();
+
+  const draftStorageKey = `taskdesk:comment-draft:${user?.id ?? ""}:${workItemKey}`;
+  const [loadedDraftKey, setLoadedDraftKey] = useState<string | null>(null);
+  const initializedDraftKeyRef = useRef<string | null>(null);
+  // Reset initialization guard immediately when switching work items or users.
+  const lastDraftStorageKeyRef = useRef(draftStorageKey);
+  if (lastDraftStorageKeyRef.current !== draftStorageKey) {
+    lastDraftStorageKeyRef.current = draftStorageKey;
+    initializedDraftKeyRef.current = null;
+  }
+
+  const isInitialized = isReady && loadedDraftKey === draftStorageKey;
+  // Draft audience intent (`visibility`) stays separate from `allowedCommentVisibilities`:
+  // when a capability is revoked or a saved draft's audience is disallowed, we block sending
+  // and ask for an explicit choice instead of silently flipping to another audience.
+  const isAudienceUnavailable =
+    isInitialized && !allowedCommentVisibilities.includes(visibility);
+
   // A-07 / AT-3: files on a public comment stay internal unless staff choose to share them.
   // The choice is per comment; it never applies to an internal comment (AT-4).
   const shareSwitchId = useId();
   const [shareFiles, setShareFiles] = useState(false);
-  const sharesFiles = selectedCommentVisibility === "public" && shareFiles;
+  const sharesFiles =
+    visibility === "public" && !isAudienceUnavailable && shareFiles;
 
-  const isReady = !isCheckingPermissions && !isCustomerVisibilityPending;
   const mentionCandidates = useQuery({
     queryKey: [
       "work-items",
       "comment-mention-candidates",
       workItemKey,
-      selectedCommentVisibility,
+      visibility,
     ],
     queryFn: () =>
       getCommentMentionCandidates({
         key: workItemKey,
-        visibility: selectedCommentVisibility,
+        visibility,
       }),
-    enabled:
-      Boolean(workItemKey) && isReady && allowedCommentVisibilities.length > 0,
+    enabled: Boolean(workItemKey) && isInitialized && !isAudienceUnavailable,
   });
   const mentionPersonIds = useMemo(
     () => collectMentionPersonIds(draftDocument),
@@ -239,43 +275,42 @@ export default function WorkItemCommentComposer({
       "work-items",
       "comment-mention-preflight",
       workItemKey,
-      selectedCommentVisibility,
+      visibility,
       mentionPersonIds,
     ],
     queryFn: () =>
       preflightCommentMentions({
         key: workItemKey,
         personIds: mentionPersonIds,
-        visibility: selectedCommentVisibility,
+        visibility,
       }),
     enabled:
       Boolean(workItemKey) &&
-      isReady &&
-      allowedCommentVisibilities.length > 0 &&
+      isInitialized &&
+      !isAudienceUnavailable &&
       mentionPersonIds.length > 0,
   });
-  const activityKey = ["work-items", "activity", workItemKey] as const;
-  const draftStorageKey = `taskdesk:comment-draft:${user?.id ?? ""}:${workItemKey}`;
-  const [loadedDraftKey, setLoadedDraftKey] = useState<string | null>(null);
-  const initializedDraftKeyRef = useRef<string | null>(null);
+
   const defaultVisibilityRef = useRef(defaultVisibility);
   defaultVisibilityRef.current = defaultVisibility;
   const isCustomerVisibleRef = useRef(isCustomerVisible);
   isCustomerVisibleRef.current = isCustomerVisible;
   const wasCustomerVisibleRef = useRef(isCustomerVisible);
+  const isReadyRef = useRef(isReady);
+  isReadyRef.current = isReady;
   const persistedDraftRef = useRef(draft);
   const visibilityRef = useRef(visibility);
   visibilityRef.current = visibility;
-  const selectedVisibilityRef = useRef(selectedCommentVisibility);
-  selectedVisibilityRef.current = selectedCommentVisibility;
   const allowedVisibilitiesRef = useRef(allowedCommentVisibilities);
   allowedVisibilitiesRef.current = allowedCommentVisibilities;
+  const isAudienceUnavailableRef = useRef(isAudienceUnavailable);
+  isAudienceUnavailableRef.current = isAudienceUnavailable;
   const sharesFilesRef = useRef(sharesFiles);
   sharesFilesRef.current = sharesFiles;
 
   const persistDraft = (
     snapshot: CommentContentSnapshot,
-    nextVisibility = selectedVisibilityRef.current,
+    nextVisibility = visibilityRef.current,
   ) => {
     persistedDraftRef.current = snapshot;
     if (loadedDraftKey !== draftStorageKey) return;
@@ -296,20 +331,24 @@ export default function WorkItemCommentComposer({
   };
 
   const updateVisibility = (nextVisibility: "public" | "internal") => {
-    if (!allowedVisibilitiesRef.current.includes(nextVisibility)) return;
+    if (
+      submitInProgressRef.current ||
+      snippetInsertPending.current ||
+      !allowedVisibilitiesRef.current.includes(nextVisibility)
+    ) {
+      return;
+    }
     visibilityRef.current = nextVisibility;
-    selectedVisibilityRef.current = nextVisibility;
+    isAudienceUnavailableRef.current = false;
     setVisibility(nextVisibility);
-    if (nextVisibility === "internal") setShareFiles(false);
+    setCustomerVisibilityFallback(false);
+    setCannedVisibilityNotice(null);
+    if (nextVisibility === "internal") {
+      sharesFilesRef.current = false;
+      setShareFiles(false);
+    }
     persistDraft(persistedDraftRef.current, nextVisibility);
   };
-
-  // Reset initialization guard immediately when switching work items or users.
-  const lastDraftStorageKeyRef = useRef(draftStorageKey);
-  if (lastDraftStorageKeyRef.current !== draftStorageKey) {
-    lastDraftStorageKeyRef.current = draftStorageKey;
-    initializedDraftKeyRef.current = null;
-  }
 
   // Initialize once per (user, workItem) once permissions and customer visibility settle.
   // Deliberately excludes `defaultVisibility` so background refetches or project-default
@@ -318,6 +357,7 @@ export default function WorkItemCommentComposer({
     if (initializedDraftKeyRef.current !== draftStorageKey && !isReady) {
       setLoadedDraftKey(null);
       setCustomerVisibilityFallback(false);
+      setCannedVisibilityNotice(null);
       return;
     }
     if (initializedDraftKeyRef.current === draftStorageKey) return;
@@ -327,9 +367,13 @@ export default function WorkItemCommentComposer({
 
     const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
     let nextDraft: CommentContentSnapshot = emptyDraft;
-    let nextVisibility: "public" | "internal" = isCustomerVisibleRef.current
+    const preferredDefault: "public" | "internal" = isCustomerVisibleRef.current
       ? defaultVisibilityRef.current
       : "internal";
+    let nextVisibility: "public" | "internal" =
+      allowedVisibilitiesRef.current.includes(preferredDefault)
+        ? preferredDefault
+        : (allowedVisibilitiesRef.current[0] ?? "internal");
     let fallbackOnRestore = false;
 
     try {
@@ -346,14 +390,17 @@ export default function WorkItemCommentComposer({
                 : EMPTY_COMMENT_DOCUMENT,
           };
           nextDraft = savedDraft;
-          // An empty saved draft keeps the project default (CA-2).
+          // An empty saved draft keeps the project default (CA-2). A non-empty saved draft
+          // preserves its recorded audience intent even if that capability is missing so an
+          // internal draft is never silently promoted to public on restore.
           if (
             savedDraft.text.trim() &&
             (record.visibility === "public" || record.visibility === "internal")
           ) {
             if (
               record.visibility === "public" &&
-              !isCustomerVisibleRef.current
+              !isCustomerVisibleRef.current &&
+              allowedVisibilitiesRef.current.includes("internal")
             ) {
               nextVisibility = "internal";
               fallbackOnRestore = true;
@@ -374,9 +421,13 @@ export default function WorkItemCommentComposer({
     persistedDraftRef.current = nextDraft;
     setDraft(nextDraft);
     visibilityRef.current = nextVisibility;
+    isAudienceUnavailableRef.current =
+      !allowedVisibilitiesRef.current.includes(nextVisibility);
     setVisibility(nextVisibility);
+    sharesFilesRef.current = false;
     setShareFiles(false);
     setCustomerVisibilityFallback(fallbackOnRestore);
+    setCannedVisibilityNotice(null);
     setLoadedDraftKey(draftStorageKey);
 
     if (fallbackOnRestore && nextDraft.text.trim()) {
@@ -391,126 +442,165 @@ export default function WorkItemCommentComposer({
     }
   }, [draftStorageKey, isReady]);
 
-  // F-11 Rule 3: if the item stops being customer-visible while the composer is open,
-  // fall back to an internal note immediately and tell the user.
+  // F-11 Rule 3: if the item stops being customer-visible while the composer is open in
+  // public mode, fall back to an internal note immediately (when allowed) and announce it.
   useEffect(() => {
     if (!isReady || initializedDraftKeyRef.current !== draftStorageKey) return;
     const wasVisible = wasCustomerVisibleRef.current;
     wasCustomerVisibleRef.current = isCustomerVisible;
 
-    if (wasVisible && !isCustomerVisible) {
-      const hadPublicOrDraft =
-        visibilityRef.current === "public" ||
-        Boolean(persistedDraftRef.current.text.trim()) ||
-        staged.rows.length > 0;
-      visibilityRef.current = "internal";
-      selectedVisibilityRef.current = "internal";
-      setVisibility("internal");
-      setShareFiles(false);
-      if (persistedDraftRef.current.text.trim()) {
-        try {
-          window.localStorage.setItem(
-            draftStorageKey,
-            JSON.stringify({
-              ...persistedDraftRef.current,
-              visibility: "internal",
-            }),
-          );
-        } catch {
-          // Storage failure does not block fallback to internal mode.
-        }
-      }
-      if (hadPublicOrDraft && canPostInternal) {
+    if (
+      wasVisible &&
+      !isCustomerVisible &&
+      visibilityRef.current === "public"
+    ) {
+      if (canPostInternal) {
+        visibilityRef.current = "internal";
+        isAudienceUnavailableRef.current = false;
+        setVisibility("internal");
+        sharesFilesRef.current = false;
+        setShareFiles(false);
+        setCannedVisibilityNotice(null);
         setCustomerVisibilityFallback(true);
+        if (persistedDraftRef.current.text.trim()) {
+          try {
+            window.localStorage.setItem(
+              draftStorageKey,
+              JSON.stringify({
+                ...persistedDraftRef.current,
+                visibility: "internal",
+              }),
+            );
+          } catch {
+            // Storage failure does not block fallback to internal mode.
+          }
+        }
+      } else {
+        isAudienceUnavailableRef.current = true;
+        sharesFilesRef.current = false;
+        setShareFiles(false);
       }
-    } else if (!wasVisible && isCustomerVisible) {
-      setCustomerVisibilityFallback(false);
     }
-  }, [
-    canPostInternal,
-    draftStorageKey,
-    isCustomerVisible,
-    isReady,
-    staged.rows.length,
-  ]);
+  }, [canPostInternal, draftStorageKey, isCustomerVisible, isReady]);
 
   const hasContent = Boolean(draftText.trim()) || staged.rows.length > 0;
 
   const submit = async () => {
-    const modeToSend = selectedVisibilityRef.current;
+    const capturedItemKey = currentItemKey.current;
+    const capturedDraftStorageKey = draftStorageKey;
+    const modeToSend = visibilityRef.current;
+    const bodyToSend = persistedDraftRef.current.document;
+    const textToSend = persistedDraftRef.current.text;
+    const hasContentToSend = Boolean(textToSend.trim()) || staged.hasFiles();
     if (
       submitInProgressRef.current ||
+      createComment.isPending ||
       snippetInsertPending.current ||
-      !hasContent ||
-      !draftDocument ||
+      !isReadyRef.current ||
+      isAudienceUnavailableRef.current ||
+      !hasContentToSend ||
+      !bodyToSend ||
       !allowedVisibilitiesRef.current.includes(modeToSend)
     )
       return;
     const shouldShareFiles = modeToSend === "public" && sharesFilesRef.current;
+    const mentionIdsToCheck = collectMentionPersonIds(bodyToSend);
+    const stillMatchesCapturedIntent = () =>
+      !unmountedRef.current &&
+      currentItemKey.current === capturedItemKey &&
+      isReadyRef.current &&
+      !isAudienceUnavailableRef.current &&
+      allowedVisibilitiesRef.current.includes(modeToSend) &&
+      visibilityRef.current === modeToSend;
+
     submitInProgressRef.current = true;
     setSubmitInProgress(true);
     try {
-      if (mentionPersonIds.length > 0) {
+      if (mentionIdsToCheck.length > 0) {
         await mentionPreflight.refetch();
+        if (!stillMatchesCapturedIntent()) {
+          return;
+        }
+      }
+      if (!stillMatchesCapturedIntent()) {
+        return;
       }
       const created = await createComment.mutateAsync({
-        key: workItemKey,
-        body: draftDocument,
+        key: capturedItemKey,
+        body: bodyToSend,
         visibility: modeToSend,
       });
       // AT-1: the comment now exists, so its files can attach to it. Each file reports its
       // own progress under the comment's card and fails on its own.
-      const files = staged.take();
+      const files =
+        currentItemKey.current === capturedItemKey ? staged.take() : [];
       const commentId =
         created && typeof created === "object" && "id" in created
           ? String((created as { id: unknown }).id)
           : "";
       if (files.length > 0 && commentId) {
         enqueueWorkItemUploads({
-          itemKey: workItemKey,
+          itemKey: capturedItemKey,
           commentId,
           customerVisible: shouldShareFiles,
           files,
           onDone: () => {
             void queryClient.invalidateQueries({
-              queryKey: ["work-items", "attachments", workItemKey],
+              queryKey: ["work-items", "attachments", capturedItemKey],
             });
           },
         });
       }
-      const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
-      persistedDraftRef.current = emptyDraft;
-      setDraft(emptyDraft);
-      setShareFiles(false);
-      setCustomerVisibilityFallback(false);
-      // The next comment starts from the project's default visibility when allowed (CA-2).
-      const nextDefault: "public" | "internal" = isCustomerVisibleRef.current
-        ? defaultVisibilityRef.current
-        : "internal";
-      visibilityRef.current = nextDefault;
-      setVisibility(nextDefault);
-      await queryClient.invalidateQueries({
-        queryKey: ["work-items", "comment-mention-candidates", workItemKey],
-      });
       try {
-        window.localStorage.removeItem(draftStorageKey);
+        window.localStorage.removeItem(capturedDraftStorageKey);
       } catch {
         // A successful post is not undone when storage is disabled.
       }
-      await queryClient.invalidateQueries({ queryKey: activityKey });
+      if (currentItemKey.current === capturedItemKey && !unmountedRef.current) {
+        const emptyDraft = { text: "", document: EMPTY_COMMENT_DOCUMENT };
+        persistedDraftRef.current = emptyDraft;
+        setDraft(emptyDraft);
+        sharesFilesRef.current = false;
+        setShareFiles(false);
+        setCustomerVisibilityFallback(false);
+        setCannedVisibilityNotice(null);
+        // The next comment starts from the project's default visibility when allowed (CA-2).
+        const preferredDefault: "public" | "internal" =
+          isCustomerVisibleRef.current
+            ? defaultVisibilityRef.current
+            : "internal";
+        const nextDefault: "public" | "internal" =
+          allowedVisibilitiesRef.current.includes(preferredDefault)
+            ? preferredDefault
+            : (allowedVisibilitiesRef.current[0] ?? "internal");
+        visibilityRef.current = nextDefault;
+        isAudienceUnavailableRef.current =
+          !allowedVisibilitiesRef.current.includes(nextDefault);
+        setVisibility(nextDefault);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["work-items", "comment-mention-candidates", capturedItemKey],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["work-items", "activity", capturedItemKey],
+      });
     } catch {
       // Server capability checks are authoritative; the composer remains intact on 403/422.
     } finally {
       submitInProgressRef.current = false;
-      setSubmitInProgress(false);
+      if (!unmountedRef.current) {
+        setSubmitInProgress(false);
+      }
     }
   };
 
-  const isInternalMode = selectedCommentVisibility === "internal";
+  const isInternalMode = visibility === "internal";
+  const shouldHideComposer =
+    !isInitialized || (allowedCommentVisibilities.length === 0 && !hasContent);
 
   return (
     <div
-      hidden={!isReady || allowedCommentVisibilities.length === 0}
+      hidden={shouldHideComposer}
       className="w-full"
       data-testid="work-item-comment-composer"
     >
@@ -524,6 +614,72 @@ export default function WorkItemCommentComposer({
           <AlertDescription>
             {t("activity:timeline.customerVisibilityLostFallback")}
           </AlertDescription>
+        </Alert>
+      ) : null}
+      {isAudienceUnavailable ? (
+        <Alert
+          variant="warning"
+          role="status"
+          className="mb-2"
+          data-testid="comment-visibility-unavailable-notice"
+        >
+          <AlertDescription>
+            {visibility === "internal" && canPostPublic
+              ? t("activity:timeline.internalVisibilityUnavailableCanReply")
+              : visibility === "public" && canPostInternal
+                ? t("activity:timeline.publicVisibilityUnavailableCanNote")
+                : t("activity:timeline.commentVisibilityUnavailableNone")}
+          </AlertDescription>
+          {visibility === "internal" && canPostPublic ? (
+            <AlertAction>
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={composerBusy}
+                onClick={() => updateVisibility("public")}
+              >
+                {t("activity:timeline.switchToReplyToCustomer")}
+              </Button>
+            </AlertAction>
+          ) : visibility === "public" && canPostInternal ? (
+            <AlertAction>
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={composerBusy}
+                onClick={() => updateVisibility("internal")}
+              >
+                {t("activity:timeline.switchToInternalNote")}
+              </Button>
+            </AlertAction>
+          ) : null}
+        </Alert>
+      ) : null}
+      {!isAudienceUnavailable && cannedVisibilityNotice ? (
+        <Alert
+          variant="warning"
+          role="status"
+          className="mb-2"
+          data-testid="comment-canned-visibility-notice"
+        >
+          <AlertDescription>
+            {cannedVisibilityNotice === "switched_to_internal"
+              ? t("activity:timeline.cannedResponseSwitchedToInternal")
+              : t("activity:timeline.cannedResponsePublicChoiceNotice")}
+          </AlertDescription>
+          {cannedVisibilityNotice === "public_choice_available" &&
+          canPostPublic ? (
+            <AlertAction>
+              <Button
+                variant="outline"
+                size="xs"
+                disabled={composerBusy}
+                onClick={() => updateVisibility("public")}
+              >
+                {t("activity:timeline.switchToReplyToCustomer")}
+              </Button>
+            </AlertAction>
+          ) : null}
         </Alert>
       ) : null}
       {mentionPreflight.data?.unreachablePersonIds.length ? (
@@ -554,13 +710,13 @@ export default function WorkItemCommentComposer({
         </Alert>
       ) : null}
       <CommentComposerPresentation
-        data-visibility={selectedCommentVisibility}
+        data-visibility={visibility}
         tinted={isInternalMode}
         header={
           <>
             {allowedCommentVisibilities.length > 1 ? (
               <Tabs
-                value={selectedCommentVisibility}
+                value={visibility}
                 onValueChange={(next) => {
                   if (
                     !composerBusy &&
@@ -642,13 +798,16 @@ export default function WorkItemCommentComposer({
                 onRemove={staged.remove}
                 disabled={composerBusy}
               />
-              {selectedCommentVisibility === "public" ? (
+              {visibility === "public" && !isAudienceUnavailable ? (
                 <div className="flex items-center gap-2">
                   <Switch
                     id={shareSwitchId}
                     checked={shareFiles}
                     disabled={composerBusy}
-                    onCheckedChange={(checked) => setShareFiles(checked)}
+                    onCheckedChange={(checked) => {
+                      sharesFilesRef.current = checked;
+                      setShareFiles(checked);
+                    }}
                   />
                   <Label
                     htmlFor={shareSwitchId}
@@ -665,7 +824,7 @@ export default function WorkItemCommentComposer({
           cannedResponses.data && cannedResponses.data.length > 0 ? (
             <PickerPopover
               value={undefined}
-              disabled={composerBusy}
+              disabled={composerBusy || isAudienceUnavailable}
               ariaLabel={t("activity:timeline.cannedResponses")}
               placeholder={t("activity:timeline.insertCannedResponse")}
               className="h-7 w-auto min-w-0 text-xs"
@@ -677,10 +836,15 @@ export default function WorkItemCommentComposer({
                 if (
                   !id ||
                   snippetInsertPending.current ||
-                  submitInProgressRef.current
+                  submitInProgressRef.current ||
+                  isAudienceUnavailableRef.current
                 )
                   return;
                 const key = workItemKey;
+                const modeAtRequest = visibilityRef.current;
+                const hadDraftAtRequest =
+                  Boolean(persistedDraftRef.current.text.trim()) ||
+                  staged.hasFiles();
                 snippetInsertPending.current = true;
                 setInsertingSnippet(true);
                 setSnippetInsertFailed(false);
@@ -688,38 +852,61 @@ export default function WorkItemCommentComposer({
                 // revalidate item reach at the moment the agent chooses a template.
                 void listCannedResponses(key)
                   .then((responses) => {
-                    if (currentItemKey.current !== key) return;
+                    if (
+                      unmountedRef.current ||
+                      currentItemKey.current !== key ||
+                      !isReadyRef.current ||
+                      isAudienceUnavailableRef.current
+                    )
+                      return;
                     const response = responses.find((entry) => entry.id === id);
                     if (!response || !isTiptapDocument(response.body)) {
                       setSnippetInsertFailed(true);
                       return;
                     }
-                    const hadDraftText = Boolean(
-                      persistedDraftRef.current.text.trim(),
-                    );
+                    const hasDraftNow =
+                      hadDraftAtRequest ||
+                      Boolean(persistedDraftRef.current.text.trim()) ||
+                      staged.hasFiles();
+                    if (
+                      !hasDraftNow &&
+                      visibilityRef.current === modeAtRequest
+                    ) {
+                      if (
+                        response.visibilityDefault === "internal" &&
+                        visibilityRef.current === "public" &&
+                        allowedVisibilitiesRef.current.includes("internal")
+                      ) {
+                        visibilityRef.current = "internal";
+                        isAudienceUnavailableRef.current = false;
+                        setVisibility("internal");
+                        sharesFilesRef.current = false;
+                        setShareFiles(false);
+                        setCannedVisibilityNotice("switched_to_internal");
+                      } else if (
+                        response.visibilityDefault === "public" &&
+                        visibilityRef.current === "internal" &&
+                        allowedVisibilitiesRef.current.includes("public")
+                      ) {
+                        setCannedVisibilityNotice("public_choice_available");
+                      } else {
+                        setCannedVisibilityNotice(null);
+                      }
+                    }
                     setDraft((current) => ({
                       ...current,
                       document: response.body,
                     }));
-                    // Never silently flip an in-progress internal draft to public (F-11 Rule 3).
-                    if (
-                      (response.visibilityDefault === "internal" ||
-                        (response.visibilityDefault === "public" &&
-                          !hadDraftText)) &&
-                      allowedVisibilitiesRef.current.includes(
-                        response.visibilityDefault,
-                      )
-                    ) {
-                      updateVisibility(response.visibilityDefault);
-                    }
                   })
                   .catch(() => {
-                    if (currentItemKey.current === key)
+                    if (!unmountedRef.current && currentItemKey.current === key)
                       setSnippetInsertFailed(true);
                   })
                   .finally(() => {
                     snippetInsertPending.current = false;
-                    setInsertingSnippet(false);
+                    if (!unmountedRef.current) {
+                      setInsertingSnippet(false);
+                    }
                   });
               }}
             />
@@ -741,11 +928,16 @@ export default function WorkItemCommentComposer({
             ) : null}
             <Button
               size="xs"
-              aria-busy={createComment.isPending}
-              disabled={!hasContent || createComment.isPending || composerBusy}
+              aria-busy={createComment.isPending || submitInProgress}
+              disabled={
+                !hasContent ||
+                isAudienceUnavailable ||
+                createComment.isPending ||
+                composerBusy
+              }
               onClick={() => void submit()}
             >
-              {createComment.isPending
+              {createComment.isPending || submitInProgress
                 ? t("activity:timeline.sending")
                 : isInternalMode
                   ? t("activity:timeline.addInternalNote")

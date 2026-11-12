@@ -53,7 +53,20 @@ const { mocks, translate } = vi.hoisted(() => ({
         "activity:timeline.onlyTeamSeesThis": "Only your team sees this",
         "activity:timeline.visibleToCustomer": "Visible to the customer",
         "activity:timeline.customerVisibilityLostFallback":
-          "This item is no longer visible to a customer — switched to an internal note.",
+          "No longer visible to a customer — switched to an internal note.",
+        "activity:timeline.internalVisibilityUnavailableCanReply":
+          "Internal notes are unavailable for your permissions. This draft will not be sent unless you switch to Reply to customer.",
+        "activity:timeline.publicVisibilityUnavailableCanNote":
+          "Customer replies are unavailable for your permissions. This draft will not be sent unless you switch to Internal note.",
+        "activity:timeline.commentVisibilityUnavailableNone":
+          "You can no longer post comments on this item. Your draft has been kept.",
+        "activity:timeline.switchToReplyToCustomer":
+          "Switch to Reply to customer",
+        "activity:timeline.switchToInternalNote": "Switch to Internal note",
+        "activity:timeline.cannedResponseSwitchedToInternal":
+          "Switched to an internal note for this canned response.",
+        "activity:timeline.cannedResponsePublicChoiceNotice":
+          "This canned response defaults to a customer reply. Kept as an internal note until you choose Reply to customer.",
         "activity:timeline.cannedResponses": "Canned response",
         "activity:timeline.heading": "Activity & comments",
         "activity:comment.leavePlaceholder": "Leave a comment",
@@ -285,12 +298,14 @@ import WorkItemActivity from "./work-item-activity";
 function renderActivity(
   workspaceId = "workspace-1",
   defaultVisibility: "public" | "internal" = "internal",
+  isCustomerVisible = true,
 ) {
   return render(
     <WorkItemActivity
       workItemKey="OPS-17"
       workspaceId={workspaceId}
       defaultVisibility={defaultVisibility}
+      isCustomerVisible={isCustomerVisible}
       filter="everything"
       onFilterChange={() => undefined}
     />,
