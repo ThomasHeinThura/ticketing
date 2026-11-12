@@ -13,6 +13,7 @@ import {
   createPendingAction,
   requirePendingActionRequesterIdentity,
 } from "../pending-action/service";
+import { callerReach } from "../utils/caller-reach";
 import {
   listReachOf,
   requireReachContext,
@@ -22,6 +23,7 @@ import type { ApiKeyPermissionScope } from "../utils/require-api-key-permission-
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { workItemListResponseSchema } from "../work-item/response";
+import { assertCanEditView } from "./assert-can-edit-view";
 import type { SavedViewAuditActor } from "./audit";
 import createView from "./controllers/create-view";
 import getView from "./controllers/get-view";
@@ -30,12 +32,14 @@ import pinView from "./controllers/pin-view";
 import { countSavedView, runSavedView } from "./controllers/run-view";
 import updateView from "./controllers/update-view";
 import {
+  assertSavedViewQueryReach,
   requireSavedViewQueryReach,
   savedViewQueryFilter,
 } from "./query-reach";
 import {
   findSavedViewById,
   listShareableViewTeamsForWorkspace,
+  lockSavedViewByIdInTransaction,
 } from "./repository";
 import { requireSavedViewEditAccess } from "./require-saved-view-edit-access";
 import { resolveCallerPersonId } from "./resolve-person-id";
@@ -344,9 +348,17 @@ const view = apiRouter()
         c.get("userId"),
         await reach.reachableProjectIds([workspaceId]),
       );
-    const visible = await savedViewQueryFilter(reach, workspaceId);
+    const freshReach = await callerReach(c, c.get("userId") as string);
+    const currentIds = new Set(
+      await freshReach.reachableProjectIds([workspaceId]),
+    );
+    const visible = await savedViewQueryFilter(freshReach, workspaceId);
     return c.json(
-      response.filter((row) => visible(row.query)),
+      response.filter(
+        (row) =>
+          (row.scope !== "project" || currentIds.has(row.scopeId)) &&
+          visible(row.query),
+      ),
       200,
     );
   })
@@ -374,6 +386,7 @@ const view = apiRouter()
       personId,
       userId,
     );
+    await assertSavedViewQueryReach(c, response);
     return c.json(response, 200);
   })
   .openapi(updateViewRoute, async (c) => {
@@ -389,6 +402,7 @@ const view = apiRouter()
       userId,
       actor,
       c.get("apiKey") as ApiKeyPermissionScope | undefined,
+      (row, tx) => assertSavedViewQueryReach(c, row, tx),
     );
     return c.json(response, 200);
   })
@@ -397,7 +411,12 @@ const view = apiRouter()
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
     const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
-    return c.json(await pinView(id, personId, userId, actor), 200);
+    return c.json(
+      await pinView(id, personId, userId, actor, (row, tx) =>
+        assertSavedViewQueryReach(c, row, tx),
+      ),
+      200,
+    );
   })
   .openapi(runViewRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -414,6 +433,7 @@ const view = apiRouter()
         userId,
         apiKey: c.get("apiKey") as ApiKey | undefined,
         impersonatedBy: session?.impersonatedBy,
+        assertQueryReach: (row) => assertSavedViewQueryReach(c, row),
         limit: query.limit,
         cursor: query.cursor,
       });
@@ -432,12 +452,14 @@ const view = apiRouter()
       userId,
       apiKey: c.get("apiKey") as ApiKey | undefined,
       impersonatedBy: session?.impersonatedBy,
+      assertQueryReach: (row) => assertSavedViewQueryReach(c, row),
     });
     return c.json(result, 200);
   })
   .openapi(deleteViewRoute, async (c) => {
     const { id } = c.req.valid("param");
     const existing = await findSavedViewById(id);
+    if (existing) await assertSavedViewQueryReach(c, existing);
     if (existing?.queuePairId) {
       throw new HTTPException(409, {
         message:
@@ -451,25 +473,34 @@ const view = apiRouter()
       userId,
       apiKey,
     );
-    const created = await createPendingAction({
-      requesterPersonId,
-      credentialType: apiKey ? "api_key" : "session",
-      credentialId: apiKey?.id ?? session?.id ?? null,
-      origin: apiKey ? "api" : "web",
-      action: "delete",
-      routeKey: "DELETE /api/views/{id}",
-      targetType: "saved_view",
-      targetIds: [id],
-      workspaceId: (c as unknown as { get(key: "workspaceId"): string }).get(
-        "workspaceId",
-      ),
-      projectId: null,
-      organisationId: null,
-      actorId: userId,
-      actorType: apiKey ? "api_key" : "person",
-      actorIp: clientIpForContext(c),
-      userAgent: c.req.header("user-agent") ?? null,
-    });
+    const created = await createPendingAction(
+      {
+        requesterPersonId,
+        credentialType: apiKey ? "api_key" : "session",
+        credentialId: apiKey?.id ?? session?.id ?? null,
+        origin: apiKey ? "api" : "web",
+        action: "delete",
+        routeKey: "DELETE /api/views/{id}",
+        targetType: "saved_view",
+        targetIds: [id],
+        workspaceId: (c as unknown as { get(key: "workspaceId"): string }).get(
+          "workspaceId",
+        ),
+        projectId: null,
+        organisationId: null,
+        actorId: userId,
+        actorType: apiKey ? "api_key" : "person",
+        actorIp: clientIpForContext(c),
+        userAgent: c.req.header("user-agent") ?? null,
+      },
+      async (tx) => {
+        const locked = await lockSavedViewByIdInTransaction(tx, id);
+        if (!locked)
+          throw new HTTPException(404, { message: "Saved view not found" });
+        await assertCanEditView(locked, requesterPersonId, userId, apiKey, tx);
+        await assertSavedViewQueryReach(c, locked, tx);
+      },
+    );
     return c.json(
       z
         .object({

@@ -1980,6 +1980,9 @@ search validator, current viewer reach, and field permissions as direct work-ite
   needs reach to that project; an unreachable project gets the same 400 as a missing one.
   A workspace-scoped view whose stored query names an unreachable project is likewise omitted
   from lists and search, and its id routes return 404, because its query exposes that project.
+  This rule applies to project filter fields and project ID properties, not to unrelated text
+  values that happen to match a project identifier. ID routes check the materialized view
+  against current reach before using it, and mutations recheck the locked view.
   Workspace-scoped views are unaffected.
 - `SV-21` Duplicating a view is one click, which is how most views actually get made.
 

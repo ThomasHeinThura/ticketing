@@ -32,11 +32,13 @@ import {
 } from "../../apps/api/src/database/schema-p5-time";
 import { createApp } from "../../apps/api/src/index";
 import { putAttachmentObject } from "../../apps/api/src/storage";
+import * as viewRepository from "../../apps/api/src/view/repository";
 import { TaskDeskClient } from "../../packages/mcp/src/taskdesk/client";
 import { registerTools } from "../../packages/mcp/src/tools/register";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createProjectFixture, grantProjectRole } from "./helpers/fixtures";
+import { makeCustomField, setCustomValue } from "./helpers/p4-closeout";
 import { setAgileFlags } from "./helpers/p5-agile";
 import { setPagesFlag } from "./helpers/p5-pages";
 import { setFeature } from "./helpers/p5-reports";
@@ -388,6 +390,63 @@ describe("B-5: staff project reach", () => {
         })
         .returning();
       if (!hiddenFilterView) throw new Error("hidden filter view missing");
+      const department = await makeCustomField(
+        world.workspaceId,
+        world.type.id,
+        { key: "department", format: "text" },
+      );
+      await setCustomValue(
+        world.workspaceId,
+        department.id,
+        { id: allowed.id, projectId: visible.project.id },
+        world.project.slug,
+      );
+      const [collisionView] = await db
+        .insert(schema.savedViewTable)
+        .values({
+          workspaceId: world.workspaceId,
+          createdBy: caller.personId,
+          name: "Department collision",
+          scope: "workspace",
+          scopeId: world.workspaceId,
+          visibility: "workspace",
+          layout: "list",
+          query: {
+            entity: "work_item",
+            filter: {
+              field: "cf.department",
+              op: "eq",
+              value: world.project.slug,
+            },
+          },
+        })
+        .returning();
+      if (!collisionView) throw new Error("collision view missing");
+      const [arrayView] = await db
+        .insert(schema.savedViewTable)
+        .values({
+          workspaceId: world.workspaceId,
+          createdBy: caller.personId,
+          name: "Nested project array",
+          scope: "workspace",
+          scopeId: world.workspaceId,
+          visibility: "workspace",
+          layout: "list",
+          query: {
+            entity: "work_item",
+            filter: {
+              and: [
+                {
+                  field: "project",
+                  op: "in",
+                  value: [visible.project.slug, world.project.slug],
+                },
+              ],
+            },
+          },
+        })
+        .returning();
+      if (!arrayView) throw new Error("array view missing");
       const [mixedDashboard] = await db
         .insert(dashboardTable)
         .values({
@@ -397,28 +456,40 @@ describe("B-5: staff project reach", () => {
         })
         .returning();
       if (!mixedDashboard) throw new Error("dashboard missing");
-      const [allowedWidget, hiddenWidget, hiddenViewWidget] = await db
-        .insert(dashboardWidgetTable)
-        .values([
-          {
-            dashboardId: mixedDashboard.id,
-            reportKey: "work_mix",
-            filters: { projectId: visible.project.id },
-          },
-          {
-            dashboardId: mixedDashboard.id,
-            reportKey: "work_mix",
-            filters: { projectId: world.project.id },
-            x: 6,
-          },
-          {
-            dashboardId: mixedDashboard.id,
-            savedViewId: hiddenFilterView.id,
-            y: 4,
-          },
-        ])
-        .returning();
-      if (!allowedWidget || !hiddenWidget || !hiddenViewWidget)
+      const [allowedWidget, hiddenWidget, hiddenViewWidget, collisionWidget] =
+        await db
+          .insert(dashboardWidgetTable)
+          .values([
+            {
+              dashboardId: mixedDashboard.id,
+              reportKey: "work_mix",
+              filters: { projectId: visible.project.id },
+            },
+            {
+              dashboardId: mixedDashboard.id,
+              reportKey: "work_mix",
+              filters: { projectId: world.project.id },
+              x: 6,
+            },
+            {
+              dashboardId: mixedDashboard.id,
+              savedViewId: hiddenFilterView.id,
+              y: 4,
+            },
+            {
+              dashboardId: mixedDashboard.id,
+              savedViewId: collisionView.id,
+              x: 6,
+              y: 4,
+            },
+          ])
+          .returning();
+      if (
+        !allowedWidget ||
+        !hiddenWidget ||
+        !hiddenViewWidget ||
+        !collisionWidget
+      )
         throw new Error("widgets missing");
       mockAuthenticatedSession(world.admin.user);
       expect(
@@ -587,13 +658,57 @@ describe("B-5: staff project reach", () => {
       expect(views.status).toBe(200);
       const viewsText = await views.text();
       expect(viewsText).not.toContain(world.project.id);
-      expect(viewsText).not.toContain(world.project.slug);
+      expect(viewsText).not.toContain(hiddenFilterView.id);
+      expect(viewsText).toContain(collisionView.id);
       const hiddenFilteredView = await json(
         app,
         "GET",
         `/api/views/${hiddenFilterView.id}`,
       );
       expect(hiddenFilteredView.status).toBe(404);
+      expect(
+        (await json(app, "GET", `/api/views/${arrayView.id}`)).status,
+      ).toBe(404);
+      const arraySearch = await json(
+        app,
+        "GET",
+        `/api/search?workspaceId=${world.workspaceId}&q=Nested%20project%20array&type=views`,
+      );
+      expect(
+        ((await arraySearch.json()) as { totalCount: number }).totalCount,
+      ).toBe(0);
+      expect(
+        (await json(app, "GET", `/api/views/${collisionView.id}`)).status,
+      ).toBe(200);
+      const collisionCount = await json(
+        app,
+        "GET",
+        `/api/views/${collisionView.id}/count`,
+      );
+      expect(collisionCount.status, await collisionCount.clone().text()).toBe(
+        200,
+      );
+      expect(await collisionCount.json()).toEqual({
+        count: role === "lead" ? 0 : 1,
+      });
+      const collisionRun = await json(
+        app,
+        "POST",
+        `/api/views/${collisionView.id}/run`,
+      );
+      expect(collisionRun.status, await collisionRun.clone().text()).toBe(200);
+      expect(
+        ((await collisionRun.json()) as { meta: { total: number } }).meta.total,
+      ).toBe(role === "lead" ? 0 : 1);
+      const collisionSearch = await json(
+        app,
+        "GET",
+        `/api/search?workspaceId=${world.workspaceId}&q=Department%20collision&type=views`,
+      );
+      expect(collisionSearch.status).toBe(200);
+      expect(
+        ((await collisionSearch.json()) as { totalCount: number }).totalCount,
+      ).toBe(1);
       for (const [method, suffix] of [
         ["GET", "count"],
         ["POST", "run"],
@@ -630,7 +745,7 @@ describe("B-5: staff project reach", () => {
       expect(
         dashboardRows.data.find((row) => row.id === mixedDashboard.id)
           ?.widgetCount,
-      ).toBe(role === "lead" ? 0 : 1);
+      ).toBe(role === "lead" ? 1 : 2);
       const dashboard = await json(
         app,
         "GET",
@@ -640,6 +755,7 @@ describe("B-5: staff project reach", () => {
       const dashboardText = await dashboard.text();
       expect(dashboardText).not.toContain(hiddenWidget.id);
       expect(dashboardText).not.toContain(hiddenViewWidget.id);
+      expect(dashboardText).toContain(collisionWidget.id);
       expect(dashboardText.includes(allowedWidget.id)).toBe(role !== "lead");
       const widgetExport = await json(
         app,
@@ -1001,6 +1117,10 @@ describe("B-5: staff project reach", () => {
         .select()
         .from(schema.workItemTable)
         .where(eq(schema.workItemTable.id, hidden.id));
+      const [beforeAllowed] = await db
+        .select()
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, allowed.id));
       for (const [kind, target] of [
         ["cycles", visibleCycleId],
         ["modules", visibleModuleId],
@@ -1015,9 +1135,27 @@ describe("B-5: staff project reach", () => {
           role === "lead" ? 404 : role === "viewer" ? 403 : 200,
         );
         if (assignment.status === 200) {
-          const payload = await assignment.text();
-          expect(payload).toContain(allowed.key);
-          expect(payload).toContain(hidden.key);
+          const payload = (await assignment.json()) as {
+            added: string[];
+            refused: Array<{ key: string; reason: string }>;
+          };
+          expect(payload.added).toEqual([allowed.key]);
+          expect(payload.refused).toEqual([
+            { key: hidden.key, reason: "not_found" },
+          ]);
+          const [updated] = await db
+            .select()
+            .from(schema.workItemTable)
+            .where(eq(schema.workItemTable.id, allowed.id));
+          expect(kind === "cycles" ? updated?.cycleId : updated?.moduleId).toBe(
+            target,
+          );
+        } else {
+          const [unchanged] = await db
+            .select()
+            .from(schema.workItemTable)
+            .where(eq(schema.workItemTable.id, allowed.id));
+          expect(unchanged).toEqual(beforeAllowed);
         }
       }
       const bulk = await json(app, "POST", "/api/work-items/bulk", {
@@ -1026,11 +1164,37 @@ describe("B-5: staff project reach", () => {
         operation: "set_due_date",
         dueDate: "2030-01-01T00:00:00Z",
       });
-      expect([200, 403]).toContain(bulk.status);
+      expect(bulk.status).toBe(role === "viewer" ? 403 : 200);
       if (bulk.status === 200) {
-        const result = (await bulk.json()) as { succeeded: string[] };
-        expect(result.succeeded).not.toContain(hidden.key);
-        expect(result.succeeded.includes(allowed.key)).toBe(role === "member");
+        const result = (await bulk.json()) as {
+          succeeded: string[];
+          failed: Array<{ id: string; reason: string }>;
+        };
+        expect(result.succeeded).toEqual(
+          role === "member" ? [allowed.key] : [],
+        );
+        expect(result.failed).toEqual(
+          role === "member"
+            ? [{ id: hidden.key, reason: "Work item not found" }]
+            : [
+                { id: allowed.key, reason: "Work item not found" },
+                { id: hidden.key, reason: "Work item not found" },
+              ],
+        );
+        const [updated] = await db
+          .select()
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.id, allowed.id));
+        expect(updated?.dueDate?.toISOString() ?? null).toBe(
+          role === "member" ? "2030-01-01T00:00:00.000Z" : null,
+        );
+      }
+      if (role === "viewer") {
+        const [unchanged] = await db
+          .select()
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.id, allowed.id));
+        expect(unchanged).toEqual(beforeAllowed);
       }
       expect(
         await db
@@ -1930,6 +2094,160 @@ describe("B-5: staff project reach", () => {
       }
     });
   }
+
+  it("rechecks the materialized view after concurrent query changes for read and edit", async () => {
+    const world = await setupWorld();
+    const { app } = createApp();
+    const caller = await addMember(world.workspaceId, "member");
+    const [saved] = await db
+      .insert(schema.savedViewTable)
+      .values({
+        workspaceId: world.workspaceId,
+        createdBy: caller.personId,
+        name: "Race view",
+        scope: "workspace",
+        scopeId: world.workspaceId,
+        visibility: "private",
+        layout: "list",
+        query: { entity: "work_item" },
+      })
+      .returning();
+    if (!saved) throw new Error("view missing");
+    await db
+      .insert(schema.sessionTable)
+      .values({
+        id: `session-${caller.user.id}`,
+        userId: caller.user.id,
+        token: `race-${caller.user.id}`,
+        expiresAt: new Date(Date.now() + 3_600_000),
+      })
+      .onConflictDoNothing();
+    const hiddenQuery = {
+      entity: "work_item",
+      filter: { field: "project", op: "eq", value: world.project.slug },
+    };
+    mockAuthenticatedSession(caller.user);
+    const original = viewRepository.findSavedViewById;
+    for (const method of ["GET", "PATCH", "DELETE"] as const) {
+      await db
+        .update(schema.savedViewTable)
+        .set({ query: { entity: "work_item" }, name: "Race view" })
+        .where(eq(schema.savedViewTable.id, saved.id));
+      let changed = false;
+      const spy = vi
+        .spyOn(viewRepository, "findSavedViewById")
+        .mockImplementation(async (id) => {
+          const row = await original(id);
+          if (!changed && id === saved.id) {
+            changed = true;
+            await db
+              .update(schema.savedViewTable)
+              .set({ query: hiddenQuery })
+              .where(eq(schema.savedViewTable.id, saved.id));
+          }
+          return row;
+        });
+      const response = await json(
+        app,
+        method,
+        `/api/views/${saved.id}`,
+        method === "PATCH" ? { name: "Should not be saved" } : undefined,
+      );
+      expect(changed).toBe(true);
+      expect(
+        response.status,
+        `${method}: ${await response.clone().text()}`,
+      ).toBe(404);
+      expect(await response.text()).not.toContain(world.project.slug);
+      spy.mockRestore();
+      const [persisted] = await db
+        .select()
+        .from(schema.savedViewTable)
+        .where(eq(schema.savedViewTable.id, saved.id));
+      expect(persisted?.name).toBe("Race view");
+      expect(persisted?.query).toEqual(hiddenQuery);
+      if (method === "DELETE")
+        expect(await db.select().from(schema.pendingActionTable)).toHaveLength(
+          0,
+        );
+    }
+    await db
+      .update(schema.savedViewTable)
+      .set({ query: { entity: "work_item" } })
+      .where(eq(schema.savedViewTable.id, saved.id));
+    const inject = await json(app, "PATCH", `/api/views/${saved.id}`, {
+      query: hiddenQuery,
+    });
+    expect(inject.status).toBe(404);
+    const [unchanged] = await db
+      .select()
+      .from(schema.savedViewTable)
+      .where(eq(schema.savedViewTable.id, saved.id));
+    expect(unchanged?.query).toEqual({ entity: "work_item" });
+  });
+
+  it("rechecks project membership after saved-view admission", async () => {
+    const world = await setupWorld();
+    const { app } = createApp();
+    const caller = await addMember(world.workspaceId, "member");
+    const [saved] = await db
+      .insert(schema.savedViewTable)
+      .values({
+        workspaceId: world.workspaceId,
+        createdBy: caller.personId,
+        name: "Membership race",
+        scope: "workspace",
+        scopeId: world.workspaceId,
+        visibility: "private",
+        layout: "list",
+        query: {
+          entity: "work_item",
+          filter: { field: "project", op: "eq", value: world.project.slug },
+        },
+      })
+      .returning();
+    if (!saved) throw new Error("view missing");
+    mockAuthenticatedSession(caller.user);
+    const original = viewRepository.findSavedViewById;
+    for (const method of ["GET", "PATCH"] as const) {
+      await grantProjectRole(caller.user.id, world.project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+      let calls = 0;
+      const spy = vi
+        .spyOn(viewRepository, "findSavedViewById")
+        .mockImplementation(async (id) => {
+          const row = await original(id);
+          if (id === saved.id && ++calls === 2)
+            await db
+              .delete(schema.membershipTable)
+              .where(
+                and(
+                  eq(schema.membershipTable.personId, caller.personId),
+                  eq(schema.membershipTable.scope, "project"),
+                  eq(schema.membershipTable.scopeId, world.project.id),
+                ),
+              );
+          return row;
+        });
+      const response = await json(
+        app,
+        method,
+        `/api/views/${saved.id}`,
+        method === "PATCH" ? { name: "Forbidden change" } : undefined,
+      );
+      expect(calls).toBeGreaterThanOrEqual(2);
+      expect(response.status).toBe(404);
+      expect(await response.text()).not.toContain(world.project.slug);
+      spy.mockRestore();
+      const [current] = await db
+        .select()
+        .from(schema.savedViewTable)
+        .where(eq(schema.savedViewTable.id, saved.id));
+      expect(current?.name).toBe("Membership race");
+    }
+  });
 
   it("reorder returns only reachable projects and never renumbers hidden rows", async () => {
     const world = await setupWorld();

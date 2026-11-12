@@ -20,7 +20,10 @@ import { requireReachFilteredList } from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import getView from "../view/controllers/get-view";
-import { savedViewQueryFilter } from "../view/query-reach";
+import {
+  assertSavedViewQueryReach,
+  savedViewQueryFilter,
+} from "../view/query-reach";
 import { auditReport } from "./audit";
 import { buildContext, cleanFilters } from "./context";
 import {
@@ -683,29 +686,19 @@ async function visibleWidgets<
     );
     for (const id of cycleIds) if (!permitted.has(id)) hidden.add(id);
   }
-  const containsHidden = (value: unknown): boolean => {
-    if (typeof value === "string") return hidden.has(value);
-    if (Array.isArray(value)) return value.some(containsHidden);
-    if (value && typeof value === "object") {
-      const record = value as Record<string, unknown>;
-      if (
-        typeof record.projectId === "string" &&
-        !allowed.has(record.projectId)
-      )
-        return true;
-      return Object.values(record).some(containsHidden);
-    }
-    return false;
-  };
   const result: T[] = [];
-  const visibleViewQuery =
-    readAll || !widgets.some((widget) => widget.savedViewId)
-      ? () => true
-      : await savedViewQueryFilter(reach, workspaceId);
+  const visibleViewQuery = readAll
+    ? () => true
+    : await savedViewQueryFilter(reach, workspaceId);
   for (const widget of widgets) {
     const projectId = widget.filters?.projectId;
     if (typeof projectId === "string" && !allowed.has(projectId)) continue;
-    if (containsHidden(widget.filters)) continue;
+    if (!visibleViewQuery(widget.filters)) continue;
+    if (
+      typeof widget.filters?.cycle === "string" &&
+      hidden.has(widget.filters.cycle)
+    )
+      continue;
     if (widget.savedViewId) {
       try {
         const view = await getView(
@@ -713,11 +706,19 @@ async function visibleWidgets<
           personId,
           c.get("userId") as string,
         );
+        const currentReach = readAll
+          ? null
+          : await callerReach(c, c.get("userId") as string);
+        const currentIds = currentReach
+          ? new Set(await currentReach.reachableProjectIds([workspaceId]))
+          : allowed;
+        const currentQueryVisible = currentReach
+          ? await savedViewQueryFilter(currentReach, workspaceId)
+          : visibleViewQuery;
         if (
           view.workspaceId !== workspaceId ||
-          (view.scope === "project" && !allowed.has(view.scopeId)) ||
-          containsHidden(view.query) ||
-          !visibleViewQuery(view.query)
+          (view.scope === "project" && !currentIds.has(view.scopeId)) ||
+          !currentQueryVisible(view.query)
         )
           continue;
       } catch (error) {
@@ -980,6 +981,8 @@ async function widgetSpec(
     personId,
     c.get("userId") as string,
   );
+  if (!(await holds(c, "report:read_all")))
+    await assertSavedViewQueryReach(c, view);
   const parsed = customQuerySchema.safeParse(view.query);
   if (!parsed.success || validateCustomQuery(parsed.data))
     throw new HTTPException(422, { message: "saved_view_not_runnable" });
@@ -1488,6 +1491,8 @@ router
       identity.personId,
       c.get("userId") as string,
     );
+    if (!(await holds(c, "report:read_all")))
+      await assertSavedViewQueryReach(c, view);
     const parsed = customQuerySchema.safeParse(view.query);
     if (!parsed.success || validateCustomQuery(parsed.data))
       throw new HTTPException(422, { message: "saved_view_not_runnable" });
