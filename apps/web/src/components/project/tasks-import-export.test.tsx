@@ -7,7 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProjectWithTasks } from "@/types/project";
+import type { Project } from "@/types/project";
 
 const mocks = vi.hoisted(() => ({
   exportWorkItems: vi.fn(),
@@ -39,7 +39,7 @@ const project = {
   id: "proj-help",
   slug: "HELP",
   workspaceId: "ws-1",
-} as unknown as ProjectWithTasks;
+} as unknown as Project;
 
 function renderPanel() {
   return render(

@@ -4622,25 +4622,10 @@
 						"subtitle": {
 							"type": "string"
 						},
-						"columnsTitle": {
-							"type": "string"
-						},
-						"columnsDescription": {
-							"type": "string"
-						},
-						"automationTitle": {
-							"type": "string"
-						},
-						"automationDescription": {
-							"type": "string"
-						},
 						"statesTitle": {
 							"type": "string"
 						},
 						"statesDescription": {
-							"type": "string"
-						},
-						"columnsNote": {
 							"type": "string"
 						}
 					},
@@ -4648,13 +4633,8 @@
 						"pageTitle",
 						"title",
 						"subtitle",
-						"columnsTitle",
-						"columnsDescription",
-						"automationTitle",
-						"automationDescription",
 						"statesTitle",
-						"statesDescription",
-						"columnsNote"
+						"statesDescription"
 					]
 				},
 				"projectMembers": {
@@ -9069,6 +9049,12 @@
 				"emptySubtitle": {
 					"type": "string"
 				},
+				"unavailable": {
+					"type": "string"
+				},
+				"unavailableMessage": {
+					"type": "string"
+				},
 				"clearAll": {
 					"type": "string"
 				},
@@ -9291,6 +9277,8 @@
 				"title",
 				"emptyTitle",
 				"emptySubtitle",
+				"unavailable",
+				"unavailableMessage",
 				"clearAll",
 				"clearDialogTitle",
 				"clearDialogDescription",
@@ -12402,9 +12390,6 @@
 						"pageTitle": {
 							"type": "string"
 						},
-						"backToDashboard": {
-							"type": "string"
-						},
 						"placeholder": {
 							"type": "string"
 						},
@@ -12477,7 +12462,6 @@
 					},
 					"required": [
 						"pageTitle",
-						"backToDashboard",
 						"placeholder",
 						"hint",
 						"searching",

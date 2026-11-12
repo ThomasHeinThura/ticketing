@@ -7569,6 +7569,24 @@ test("project timeline screen @visual", async ({ page }) => {
   });
 });
 
+test("project calendar screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/calendar");
+  await expect(
+    page.getByRole("button", { name: "Help Desk", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByTestId("feature-off-calendar")).toBeVisible();
+  await expect(page).toHaveScreenshot("project-calendar.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("profile settings general screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/dashboard/settings/account/information");

@@ -1000,14 +1000,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Ρυθμίσεις ροής εργασίας",
 			"title": "Ροή εργασίας",
-			"subtitle": "Ρυθμίστε τις στήλες του πίνακα και τους κανόνες αυτοματοποίησης για αυτό το {{term_project_one}}.",
-			"columnsTitle": "Στήλες",
-			"columnsDescription": "Διαχειριστείτε τις στήλες που εμφανίζονται στον πίνακά σας. Σύρετε για αναδιάταξη. Ενεργοποιήστε τη \"Στήλη ολοκλήρωσης\" για στάδια που αντιπροσωπεύουν ολοκληρωμένη {{term_work_item_one}}.",
-			"automationTitle": "Κανόνες αυτοματοποίησης",
-			"automationDescription": "Αντιστοιχίστε γεγονότα ενσωμάτωσης σε στήλες. Όταν συμβαίνει ένα γεγονός, η συνδεδεμένη {{term_work_item_one}} μετακινείται στην καθορισμένη στήλη.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Επιλέξτε {{term_project_one}}",
@@ -2228,6 +2223,8 @@
 		"newCount_other": "{{count}} νέα",
 		"emptyTitle": "Δεν υπάρχουν ακόμα ειδοποιήσεις",
 		"emptySubtitle": "Θα βλέπετε εδώ ενημερώσεις και δραστηριότητα.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Εκκαθάριση όλων των ειδοποιήσεων",
 		"clearDialogTitle": "Εκκαθάριση όλων των ειδοποιήσεων;",
 		"clearDialogDescription": "Αυτό θα αφαιρέσει οριστικά όλες τις ειδοποιήσεις. Δεν μπορείτε να αναιρέσετε αυτήν την ενέργεια.",
@@ -3004,7 +3001,6 @@
 		},
 		"search": {
 			"pageTitle": "Αναζήτηση",
-			"backToDashboard": "Επιστροφή στον πίνακα ελέγχου",
 			"placeholder": "Αναζήτηση εργασιών με βάση τον τίτλο ή το σύντομο ID (π.χ. DEP-23)...",
 			"hint": "Αναζητήστε σε όλα τα {{term_project_other}} αυτού του χώρου εργασίας. Χρησιμοποιήστε σύντομα IDs όπως DEP-23 για να βρείτε συγκεκριμένες {{term_work_item_other}}.",
 			"searching": "Γίνεται αναζήτηση...",

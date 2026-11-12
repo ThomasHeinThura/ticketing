@@ -1167,14 +1167,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Impostazioni Flusso di Lavoro",
 			"title": "Flusso di Lavoro",
-			"subtitle": "Configura le colonne della board e le regole di automazione per questo {{term_project_one}}.",
-			"columnsTitle": "Colonne",
-			"columnsDescription": "Gestisci le colonne che appaiono sulla tua board. Trascina per riordinare. Attiva \"Colonna completata\" per le fasi che rappresentano lavoro concluso.",
-			"automationTitle": "Regole di Automazione",
-			"automationDescription": "Mappa eventi di integrazione alle colonne. Quando si verifica un evento, l'{{term_work_item_one}} collegata si sposta nella colonna specificata.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Seleziona {{term_project_one}}",
@@ -2233,6 +2228,8 @@
 		"newCount_other": "{{count}} nuove",
 		"emptyTitle": "Nessuna notifica ancora",
 		"emptySubtitle": "Vedrai aggiornamenti e {{term_work_item_other}} qui.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Cancella tutte le notifiche",
 		"clearDialogTitle": "Cancellare tutte le notifiche?",
 		"clearDialogDescription": "Questo rimuoverà permanentemente tutte le notifiche. Non puoi annullare questa azione.",
@@ -3014,7 +3011,6 @@
 		},
 		"search": {
 			"pageTitle": "Cerca",
-			"backToDashboard": "Torna alla Dashboard",
 			"placeholder": "Cerca {{term_work_item_other}} per titolo o ID breve (es. DEP-23)...",
 			"hint": "Cerca in tutti i {{term_project_other}} di questo workspace. Usa ID brevi come DEP-23 per trovare {{term_work_item_other}} specifiche.",
 			"searching": "Ricerca in corso...",

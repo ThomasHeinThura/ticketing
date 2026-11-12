@@ -38,7 +38,7 @@ import { TasksImportExport } from "@/components/project/tasks-import-export.tsx"
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
-import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
+import useGetProject from "@/hooks/queries/project/use-get-project";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -80,12 +80,18 @@ function normalizeProjectValues(
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { projectId: routeProjectId } = useParams({ strict: false });
-  const { project: storedProject } = useProjectStore();
+  const { projectId: rawProjectId } = useParams({ strict: false });
+  const projectId = rawProjectId ?? "";
+  const { data: workspace } = useActiveWorkspace();
+  // The project itself (`GET /project/:id`), not the legacy board payload: this page needs
+  // only its metadata, so it never loads or polls the old column and task data.
+  const { data: project } = useGetProject({
+    id: projectId,
+    workspaceId: workspace?.id ?? "",
+  });
   // PR-13: a key is 2-8 uppercase letters. The project's own stored key stays valid while
   // unchanged (legacy keys predate the rule); the server applies the same exemption.
-  const storedKey =
-    storedProject?.id === routeProjectId ? (storedProject?.slug ?? null) : null;
+  const storedKey = project?.slug ?? null;
   const projectSchema = useMemo(
     () =>
       z.object({
@@ -125,18 +131,6 @@ function RouteComponent() {
   const [iconSearch, setIconSearch] = useState("");
   const [renameKeyOpen, setRenameKeyOpen] = useState(false);
   const [isRenamingKey, setIsRenamingKey] = useState(false);
-
-  const { data: workspace } = useActiveWorkspace();
-  const { projectId: rawProjectId } = useParams({ strict: false });
-  const projectId = rawProjectId ?? "";
-  const { data: fetchedProject } = useGetTasks(projectId);
-  const { project, setProject } = useProjectStore();
-
-  useEffect(() => {
-    if (fetchedProject) {
-      setProject(fetchedProject);
-    }
-  }, [fetchedProject, setProject]);
 
   const { mutateAsync: updateProject } = useUpdateProject();
   const { mutateAsync: deleteProject, isPending: isDeleting } =
@@ -289,15 +283,17 @@ function RouteComponent() {
       });
       lastSavedRef.current = next;
       projectForm.reset(next, { keepDirty: false });
-      // The store is fed by the legacy board query; update it now so nothing keeps using the
-      // old key until that query refetches.
-      setProject({
-        ...project,
-        name: next.name,
-        slug: next.slug,
-        description: next.description,
-        icon: next.icon,
-      });
+      // The store is fed by the legacy board query, not by this page. If it holds this
+      // project, update it now so nothing keeps using the old key until that query refetches.
+      const { project: boardProject, setProject } = useProjectStore.getState();
+      if (boardProject?.id === project.id)
+        setProject({
+          ...boardProject,
+          name: next.name,
+          slug: next.slug,
+          description: next.description,
+          icon: next.icon,
+        });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["tasks", project.id] }),
         queryClient.invalidateQueries({ queryKey: ["projects"] }),
@@ -332,7 +328,6 @@ function RouteComponent() {
     projectForm,
     updateProject,
     queryClient,
-    setProject,
     workspace?.id,
     t,
   ]);

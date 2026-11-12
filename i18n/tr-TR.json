@@ -1000,14 +1000,9 @@
 		"projectWorkflow": {
 			"pageTitle": "İş Akışı Ayarları",
 			"title": "İş Akışı",
-			"subtitle": "Bu {{term_project_one}} için pano sütunlarını ve otomasyon kurallarını yapılandırın.",
-			"columnsTitle": "Sütunlar",
-			"columnsDescription": "Panonuzda görünecek sütunları yönetin. Yeniden sıralamak için sürükleyin. Tamamlanmış işleri temsil eden aşamalar için \"Tamamlandı sütunu\"nu açın.",
-			"automationTitle": "Otomasyon Kuralları",
-			"automationDescription": "Entegrasyon olaylarını sütunlarla eşleştirin. Bir olay gerçekleştiğinde, bağlı talep belirtilen sütuna taşınır.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_one}} seç",
@@ -2228,6 +2223,8 @@
 		"newCount_other": "{{count}} yeni",
 		"emptyTitle": "Henüz bildirim yok",
 		"emptySubtitle": "Güncellemeleri ve aktiviteleri burada göreceksiniz.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Tüm bildirimleri temizle",
 		"clearDialogTitle": "Tüm bildirimler temizlensin mi?",
 		"clearDialogDescription": "Bu, tüm bildirimleri kalıcı olarak kaldıracak. Bu işlemi geri alamazsınız.",
@@ -3004,7 +3001,6 @@
 		},
 		"search": {
 			"pageTitle": "Ara",
-			"backToDashboard": "Panele Dön",
 			"placeholder": "Talepleri başlığa veya kısa kimlikle ara (örn. DEP-23)...",
 			"hint": "Bu çalışma alanındaki tüm projelerde arayın. Belirli talepleri bulmak için DEP-23 gibi kısa kimlikler kullanın.",
 			"searching": "Aranıyor...",

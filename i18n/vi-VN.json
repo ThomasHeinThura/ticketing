@@ -1165,14 +1165,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Cài đặt quy trình làm việc",
 			"title": "Quy trình làm việc",
-			"subtitle": "Cấu hình các cột trên bảng và quy tắc tự động hóa cho {{term_project_other}} này.",
-			"columnsTitle": "Cột",
-			"columnsDescription": "Quản lý các cột xuất hiện trên bảng của bạn. Kéo để sắp xếp lại. Bật \"Cột hoàn thành\" cho các giai đoạn thể hiện công việc đã hoàn tất.",
-			"automationTitle": "Quy tắc tự động hóa",
-			"automationDescription": "Ánh xạ sự kiện tích hợp với các cột. Khi một sự kiện xảy ra, công việc liên kết sẽ chuyển sang cột được chỉ định.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Chọn {{term_project_other}}",
@@ -2222,6 +2217,8 @@
 		"newCount_other": "{{count}} mới",
 		"emptyTitle": "Chưa có thông báo nào",
 		"emptySubtitle": "Bạn sẽ thấy các cập nhật và hoạt động ở đây.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Xóa tất cả thông báo",
 		"clearDialogTitle": "Xóa tất cả thông báo?",
 		"clearDialogDescription": "Thao tác này sẽ xóa vĩnh viễn tất cả thông báo. Bạn không thể hoàn tác hành động này.",
@@ -2994,7 +2991,6 @@
 		},
 		"search": {
 			"pageTitle": "Tìm kiếm",
-			"backToDashboard": "Quay lại bảng điều khiển",
 			"placeholder": "Tìm công việc theo tiêu đề hoặc mã ngắn (ví dụ: DEP-23)...",
 			"hint": "Tìm kiếm trong tất cả {{term_project_other}} của không gian làm việc này. Dùng mã ngắn như DEP-23 để tìm công việc cụ thể.",
 			"searching": "Đang tìm kiếm...",

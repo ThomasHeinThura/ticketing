@@ -30,6 +30,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Team (stakeholders and roster) | `/agent/projects/{key}/team` | route | P2 | 🟡 |
 | Documents (document links, link to Pages) | `/agent/projects/{key}/documents` | route | P2 | 🟡 |
 | Timeline (opens the Kaneo Gantt, `feature.timeline`) | `/agent/projects/{key}/timeline` | route | P5 | 🟡 |
+| Calendar (opens the Kaneo calendar, `feature.calendar`; the old `/dashboard/workspace/{id}/project/{id}/calendar` link redirects here) | `/agent/projects/{key}/calendar` | route | P5 | 🟡 |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
 | Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
 | Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
@@ -146,7 +147,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **154** (138 routes + 16 overlays, dialogs and sections) |
+| **Total** | **155** (139 routes + 16 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

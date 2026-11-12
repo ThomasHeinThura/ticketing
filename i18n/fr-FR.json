@@ -1000,14 +1000,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Paramètres du flux de travail",
 			"title": "Flux de travail",
-			"subtitle": "Configurez les colonnes du tableau et les règles d'automatisation pour ce {{term_project_one}}.",
-			"columnsTitle": "Colonnes",
-			"columnsDescription": "Gérez les colonnes qui apparaissent sur votre tableau. Faites glisser pour réorganiser. Activez \"Colonne terminée\" pour les étapes qui représentent le travail terminé.",
-			"automationTitle": "Règles d'automatisation",
-			"automationDescription": "Mappez les événements d'intégration aux colonnes. Lorsqu'un événement se produit, la {{term_work_item_one}} liée se déplace vers la colonne spécifiée.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Sélectionner un {{term_project_one}}",
@@ -2233,6 +2228,8 @@
 		"newCount_other": "{{count}} nouvelles",
 		"emptyTitle": "Aucune notification pour le moment",
 		"emptySubtitle": "Vous verrez les mises à jour et l'activité ici.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Effacer toutes les notifications",
 		"clearDialogTitle": "Effacer toutes les notifications?",
 		"clearDialogDescription": "Cela supprimera définitivement toutes les notifications. Vous ne pouvez pas annuler cette action.",
@@ -3014,7 +3011,6 @@
 		},
 		"search": {
 			"pageTitle": "Rechercher",
-			"backToDashboard": "Retour au tableau de bord",
 			"placeholder": "Rechercher des {{term_work_item_other}} par titre ou ID court (ex: DEP-23)...",
 			"hint": "Rechercher dans tous les {{term_project_other}} de ce workspace. Utilisez des ID courts comme DEP-23 pour trouver des {{term_work_item_other}} spécifiques.",
 			"searching": "Recherche...",

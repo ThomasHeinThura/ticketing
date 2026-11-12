@@ -216,10 +216,12 @@ function AgentRootRoute() {
   if (location.pathname === "/agent" || location.pathname === "/agent/") {
     return <AgentHome />;
   }
-  // Settings use kaneo's full-page settings shell, as /dashboard/settings does.
+  // Settings use kaneo's full-page settings shell, as /dashboard/settings does. A work item's
+  // full page and a project's Calendar bring their own header, so they get no frame here.
   if (
     location.pathname.startsWith("/agent/settings") ||
-    /^\/agent\/work-items\/[^/]+\/?$/u.test(location.pathname)
+    /^\/agent\/work-items\/[^/]+\/?$/u.test(location.pathname) ||
+    /^\/agent\/projects\/[^/]+\/calendar\/?$/u.test(location.pathname)
   ) {
     return <Outlet />;
   }

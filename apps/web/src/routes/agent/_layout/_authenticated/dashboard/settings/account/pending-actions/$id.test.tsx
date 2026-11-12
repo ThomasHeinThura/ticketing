@@ -926,7 +926,7 @@ describe("pending action detail intent lifecycle", () => {
     expect(useProjectStore.getState().project).toBeUndefined();
   });
 
-  it("leaves a deleted project for its workspace and clears the active project", async () => {
+  it("leaves a deleted project for the projects list and clears the active project", async () => {
     mocks.registered = "project";
     mocks.proof.mockResolvedValue("proof");
     mocks.approve.mockResolvedValue({ id: "action-a", state: "executed" });
@@ -937,10 +937,7 @@ describe("pending action detail intent lifecycle", () => {
       screen.getByRole("button", { name: "common:actions.delete" }),
     );
     await waitFor(() =>
-      expect(mocks.navigate).toHaveBeenCalledWith({
-        to: "/dashboard/workspace/$workspaceId",
-        params: { workspaceId: "workspace-1" },
-      }),
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" }),
     );
     expect(useProjectStore.getState().project).toBeUndefined();
   });

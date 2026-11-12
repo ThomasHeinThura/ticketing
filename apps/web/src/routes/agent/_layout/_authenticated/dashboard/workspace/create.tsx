@@ -44,13 +44,7 @@ function RouteComponent() {
       // S8a: native replacement for authClient.organization.setActive().
       await activateWorkspace(createdWorkspace.id);
 
-      navigate({
-        to: "/dashboard/workspace/$workspaceId",
-        params: {
-          workspaceId: createdWorkspace.id,
-        },
-        replace: true,
-      });
+      navigate({ to: "/agent", replace: true });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t("workspace:create.error"),

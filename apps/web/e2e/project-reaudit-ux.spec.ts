@@ -12,8 +12,9 @@ import { installProjectOverviewFixture } from "./helpers/project-overview-fixtur
 
 // UAT re-audit (3 Nov 2026) on the project screens, against the mocked API at the network
 // edge: the project tab strip at tablet and desktop widths, not-found Project URLs, the board
-// at phone width, the triage queue, the contract card, Documents and workflow rules for a
-// caller without project:update (the fixture's default capabilities).
+// at phone width, the triage queue, the contract card, Documents for a caller without
+// project:update (the fixture's default capabilities), and the project workflow settings,
+// which show only the States editor.
 
 /** Saves review evidence in the test's own output folder (test-results/…). */
 async function shot(page: Page, name: string) {
@@ -255,28 +256,28 @@ test("Documents empty state does not ask a reader to add documents", async ({
   await shot(page, "documents-empty-reader");
 });
 
-test("workflow automation rules are read-only without project:update", async ({
+test("project workflow settings show the States editor, not the old board columns or GitHub automation rules", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await installPerformanceApiFixture(page);
-  const writes: string[] = [];
-  await page.route(`**/api/workflow-rule/${PROJECT_ID}**`, (route) => {
-    if (route.request().method() !== "GET") writes.push(route.request().url());
+  const workflowRuleReads: string[] = [];
+  await page.route("**/api/workflow-rule/**", (route) => {
+    workflowRuleReads.push(route.request().url());
     return json(route, []);
   });
   await page.goto(`/dashboard/settings/projects/${PROJECT_ID}/workflow`);
   await expect(
-    page.getByText(
-      "Only people who can manage this Project's settings can change automation rules.",
-    ),
+    page.getByRole("heading", { name: "States", exact: true }),
   ).toBeVisible();
-  const pickers = page.getByRole("combobox", { name: /^(GitHub|Gitea) / });
-  await expect(pickers).toHaveCount(10);
-  for (const picker of await pickers.all())
-    await expect(picker).toHaveAttribute("data-disabled", "");
-  expect(writes).toEqual([]);
-  await shot(page, "workflow-rules-reader");
+  await expect(
+    page.getByRole("heading", { name: "Columns", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Automation Rules", exact: true }),
+  ).toHaveCount(0);
+  expect(workflowRuleReads).toEqual([]);
+  await shot(page, "workflow-settings-states-only");
 });
 
 for (const scheme of ["light", "dark"] as const) {

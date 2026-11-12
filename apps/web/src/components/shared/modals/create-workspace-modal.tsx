@@ -60,12 +60,7 @@ function CreateWorkspaceModal({ open, onClose }: CreateWorkspaceModalProps) {
       // S8a: native replacement for authClient.organization.setActive().
       await activateWorkspace(createdWorkspace.id);
 
-      navigate({
-        to: "/dashboard/workspace/$workspaceId",
-        params: {
-          workspaceId: createdWorkspace.id,
-        },
-      });
+      navigate({ to: "/agent" });
 
       handleClose();
     } catch (error) {

@@ -1000,14 +1000,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Поставки на работен тек",
 			"title": "Работен тек",
-			"subtitle": "Конфигурирај ги колоните на таблата и правилата за автоматизација за овој {{term_project_one}}.",
-			"columnsTitle": "Колони",
-			"columnsDescription": "Управувај со колоните што се прикажуваат на таблата. Повлечи за да ги преуредиш. Вклучи \"Завршна колона\" за фази што претставуваат завршена работа.",
-			"automationTitle": "Правила за автоматизација",
-			"automationDescription": "Поврзи настани од интеграции со колони. Кога ќе се случи настан, поврзаната {{term_work_item_one}} се преместува во одредената колона.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Избери {{term_project_one}}",
@@ -2228,6 +2223,8 @@
 		"newCount_other": "{{count}} нови",
 		"emptyTitle": "Нема известувања засега",
 		"emptySubtitle": "Тука ќе ги гледаш ажурирањата и активностите.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Исчисти ги сите известувања",
 		"clearDialogTitle": "Исчисти ги сите известувања?",
 		"clearDialogDescription": "Ова трајно ќе ги отстрани сите известувања. Не можеш да ја вратиш оваа акција.",
@@ -3004,7 +3001,6 @@
 		},
 		"search": {
 			"pageTitle": "Пребарување",
-			"backToDashboard": "Назад кон контролна табла",
 			"placeholder": "Пребарај {{term_work_item_other}} по наслов или краток ID (пр. DEP-23)...",
 			"hint": "Пребарај низ сите {{term_project_other}} во овој работен простор. Користи кратки ID како DEP-23 за да најдеш конкретни {{term_work_item_other}}.",
 			"searching": "Се пребарува...",

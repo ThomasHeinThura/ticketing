@@ -1000,14 +1000,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Настройки рабочего процесса",
 			"title": "Рабочий процесс",
-			"subtitle": "Настройте колонки доски и правила автоматизации для этого проекта.",
-			"columnsTitle": "Колонки",
-			"columnsDescription": "Управляйте колонками на доске. Перетаскивайте для изменения порядка. Включите «Колонка завершения» для этапов, обозначающих выполненную работу.",
-			"automationTitle": "Правила автоматизации",
-			"automationDescription": "Привяжите события интеграций к колонкам. При наступлении события связанная {{term_work_item_one}} перемещается в указанную колонку.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Выберите {{term_project_one}}",
@@ -2248,6 +2243,8 @@
 		"newCount_other": "{{count}} новых",
 		"emptyTitle": "Уведомлений пока нет",
 		"emptySubtitle": "Здесь будут отображаться обновления и активность.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Очистить все уведомления",
 		"clearDialogTitle": "Очистить все уведомления?",
 		"clearDialogDescription": "Все уведомления будут безвозвратно удалены. Это действие нельзя отменить.",
@@ -3080,7 +3077,6 @@
 		},
 		"search": {
 			"pageTitle": "Поиск",
-			"backToDashboard": "Вернуться к панели управления",
 			"placeholder": "Поиск {{term_work_item_other}} по названию или короткому ID (например, DEP-23)...",
 			"hint": "Поиск по всем проектам в этой рабочей области. Используйте короткие ID, такие как DEP-23, чтобы найти конкретные {{term_work_item_other}}.",
 			"searching": "Поиск...",

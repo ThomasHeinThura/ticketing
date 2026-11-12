@@ -154,7 +154,7 @@ for (const [name, path] of [
       ).toBeVisible();
     if (name.endsWith("workflow"))
       await expect(
-        page.locator('ul > li [data-slot="input"]').first(),
+        page.locator("ul > li[data-state-id]").first(),
       ).toBeVisible();
     if (name === "calendar") {
       const viewport = page

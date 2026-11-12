@@ -311,13 +311,14 @@ export default function ProjectLayoutControls({
       });
   };
   const handleNavigateToCalendar = () => {
-    void navigate({
-      to: buildProjectViewSwitchUrl(
-        "calendar",
-        { workspaceId, projectId },
-        location.searchStr,
-      ),
-    });
+    // The view state carries over to the canonical `/agent` Calendar when the project key is
+    // known, and to Kaneo's calendar URL otherwise.
+    const calendarUrl = buildProjectViewSwitchUrl(
+      "calendar",
+      { workspaceId, projectId, projectKey: projectSlug },
+      location.searchStr,
+    );
+    void navigate(projectSlug ? { href: calendarUrl } : { to: calendarUrl });
   };
   const handleNavigateToGantt = () => {
     // The view state carries over to the canonical `/agent` Timeline when the project key is
@@ -348,6 +349,12 @@ export default function ProjectLayoutControls({
       });
       return;
     }
+    if (resolvedView === "calendar") {
+      void navigate({
+        href: routes.projectCalendar.build({ projectKey: nextProject.slug }),
+      });
+      return;
+    }
     if (
       resolvedView === "board" ||
       resolvedView === "backlog" ||
@@ -374,10 +381,6 @@ export default function ProjectLayoutControls({
       });
       return;
     }
-    void navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
-      params: { workspaceId, projectId: nextProjectId },
-    });
   };
 
   // One list drives the strip and its "More" menu, in the strip's order.

@@ -889,14 +889,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Ajustes del Flujo de trabajo",
 			"title": "Flujo de trabajo",
-			"subtitle": "Configura las columnas del tablero y las reglas de automatización para este {{term_project_one}}.",
-			"columnsTitle": "Columnas",
-			"columnsDescription": "Gestiona las columnas de tu tablero. Arrastra para reordenar. Activa la columna  \"Hecho\" para representar el trabajo completado.",
-			"automationTitle": "Reglas de automatización",
-			"automationDescription": "Mapea eventos de integración y columnas integration. Cuando un evento ocurre, la {{term_work_item_one}} vinculada se moverá a la columna especificada.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Selecciona {{term_project_one}}",
@@ -2233,6 +2228,8 @@
 		"newCount_other": "{{count}} nuevas",
 		"emptyTitle": "Ninguna notificación todavía",
 		"emptySubtitle": "Aquí verás tus actualizaciones y actividad.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Borrar todas las notificaciones",
 		"clearDialogTitle": "¿Borrar notificaciones?",
 		"clearDialogDescription": "Esto eliminará todas las notificaciones. Esta acción no puede deshacerse.",
@@ -3014,7 +3011,6 @@
 		},
 		"search": {
 			"pageTitle": "Buscar",
-			"backToDashboard": "Volver al panel de control",
 			"placeholder": "Busca {{term_work_item_other}} por título o identificador (e.g. DEP-23)...",
 			"hint": "Buscar en todos los {{term_project_other}} de este espacio de trabajo. Usa identificadores como DEP-23 para encontrar {{term_work_item_other}} específicas.",
 			"searching": "Buscando...",

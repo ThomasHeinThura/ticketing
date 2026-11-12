@@ -1166,14 +1166,9 @@
 		"projectWorkflow": {
 			"pageTitle": "वर्कफ़्लो सेटिंग",
 			"title": "वर्कफ़्लो",
-			"subtitle": "इस {{term_project_one}} के लिए बोर्ड कॉलम और ऑटोमेशन नियम कॉन्फ़िगर करें।",
-			"columnsTitle": "कॉलम",
-			"columnsDescription": "अपने बोर्ड पर दिखाई देने वाले कॉलम प्रबंधित करें। पुनर्क्रम के लिए खींचें। पूर्ण {{term_work_item_other}} को दर्शाने वाले चरणों के लिए \"Done column\" चालू करें।",
-			"automationTitle": "ऑटोमेशन नियम",
-			"automationDescription": "एकीकरण इवेंट को कॉलम से मैप करें। जब कोई इवेंट होता है, तो लिंक किया गया {{term_work_item_one}} निर्दिष्ट कॉलम में चला जाता है।",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_one}} चुनें",
@@ -2228,6 +2223,8 @@
 		"newCount_other": "{{count}} नई",
 		"emptyTitle": "अभी तक कोई सूचना नहीं",
 		"emptySubtitle": "आप यहाँ अपडेट और गतिविधि देखेंगे।",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "सभी सूचनाएँ साफ़ करें",
 		"clearDialogTitle": "सभी सूचनाएँ साफ़ करें?",
 		"clearDialogDescription": "यह सभी सूचनाओं को स्थायी रूप से हटा देगा। यह कार्रवाई पूर्ववत नहीं की जा सकती।",
@@ -3004,7 +3001,6 @@
 		},
 		"search": {
 			"pageTitle": "खोजें",
-			"backToDashboard": "डैशबोर्ड पर वापस जाएँ",
 			"placeholder": "शीर्षक या शॉर्ट ID (जैसे DEP-23) से {{term_work_item_other}} खोजें...",
 			"hint": "इस वर्कस्पेस के सभी {{term_project_other}} में खोजें। विशिष्ट {{term_work_item_other}} खोजने के लिए DEP-23 जैसे शॉर्ट ID उपयोग करें।",
 			"searching": "खोज रहे हैं...",

@@ -15,10 +15,7 @@ export default function WorkspaceCrumbSelect() {
       size="xs"
       className="h-7 min-w-0 max-w-32 shrink justify-between px-2 text-xs text-foreground"
       onClick={() => {
-        navigate({
-          to: "/dashboard/workspace/$workspaceId",
-          params: { workspaceId: workspace?.id },
-        });
+        navigate({ to: "/agent" });
       }}
     >
       <span className="min-w-0 truncate text-left">

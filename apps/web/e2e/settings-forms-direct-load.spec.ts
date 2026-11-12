@@ -127,6 +127,24 @@ async function mockBackend(page: Page) {
         ]),
       );
     }
+    // The project's own record (`GET /api/project/:id`), which project General settings read.
+    if (path === `/api/project/${projectId}`) {
+      return route.fulfill(
+        json({
+          id: projectId,
+          workspaceId,
+          name: "Persisted Project",
+          slug: "PERSIST",
+          description: "Persisted project description",
+          icon: "Layout",
+          createdAt: now,
+          updatedAt: now,
+          archivedAt: null,
+          deletedAt: null,
+          compositionWarnings: [],
+        }),
+      );
+    }
     if (path === `/api/task/tasks/${projectId}`) {
       return route.fulfill(
         json({
@@ -177,6 +195,11 @@ test.describe("settings forms show persisted values on direct load", () => {
   });
 
   test("project general", async ({ page }) => {
+    const legacyBoardReads: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === `/api/task/tasks/${projectId}`)
+        legacyBoardReads.push(request.url());
+    });
     await page.goto(`/dashboard/settings/projects/${projectId}/general`);
     await expect(page.locator('input[name="name"]')).toHaveValue(
       "Persisted Project",
@@ -185,5 +208,7 @@ test.describe("settings forms show persisted values on direct load", () => {
     await expect(page.locator('input[name="description"]')).toHaveValue(
       "Persisted project description",
     );
+    // The page reads the project itself, not the old board payload.
+    expect(legacyBoardReads).toEqual([]);
   });
 });

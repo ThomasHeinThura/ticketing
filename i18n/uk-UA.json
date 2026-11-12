@@ -1000,14 +1000,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Налаштування робочого процесу",
 			"title": "Робочий процес",
-			"subtitle": "Налаштуйте колонки дошки та правила автоматизації для цього проєкту.",
-			"columnsTitle": "Колонки",
-			"columnsDescription": "Керуйте колонками, які відображаються на вашій дошці. Перетягуйте для зміни порядку. Увімкніть «Колонка готовності» для етапів, які означають завершену роботу.",
-			"automationTitle": "Правила автоматизації",
-			"automationDescription": "Зіставте події інтеґрацій із колонками. Коли подія відбувається, пов'язане {{term_work_item_one}} переміщується до вказаної колонки.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Обрати {{term_project_one}}",
@@ -2240,6 +2235,8 @@
 		"newCount_other": "{{count}} нових",
 		"emptyTitle": "Сповіщень ще немає",
 		"emptySubtitle": "Тут з'являтимуться оновлення та активність.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Очистити всі сповіщення",
 		"clearDialogTitle": "Очистити всі сповіщення?",
 		"clearDialogDescription": "Це назавжди видалить усі сповіщення. Цю дію неможливо скасувати.",
@@ -3024,7 +3021,6 @@
 		},
 		"search": {
 			"pageTitle": "Пошук",
-			"backToDashboard": "Повернутися до панелі керування",
 			"placeholder": "Пошук завдань за назвою або коротким ID (напр. DEP-23)...",
 			"hint": "Пошук по всіх проєктах у цьому робочому просторі. Використовуйте короткі ID, як DEP-23, щоб знайти конкретні {{term_work_item_other}}.",
 			"searching": "Пошук...",

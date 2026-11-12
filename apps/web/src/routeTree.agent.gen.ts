@@ -81,6 +81,7 @@ import { Route as LayoutAuthenticatedGodModeImportsIdRouteImport } from './route
 import { Route as LayoutAuthenticatedGodModeOrganisationsIndexRouteImport } from './routes/agent/_layout/_authenticated/god-mode/organisations/index'
 import { Route as LayoutAuthenticatedAgentKbIdEditRouteImport } from './routes/agent/_layout/_authenticated/agent/kb_.$id_.edit'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/backlog'
+import { Route as LayoutAuthenticatedAgentProjectsProjectKeyCalendarRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/calendar'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyCyclesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/documents'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyModulesRouteImport } from './routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules'
@@ -576,6 +577,12 @@ const LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute =
   LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport.update({
     id: '/backlog',
     path: '/backlog',
+    getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
+  } as any)
+const LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute =
+  LayoutAuthenticatedAgentProjectsProjectKeyCalendarRouteImport.update({
+    id: '/calendar',
+    path: '/calendar',
     getParentRoute: () => LayoutAuthenticatedAgentProjectsProjectKeyRoute,
   } as any)
 const LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute =
@@ -1188,6 +1195,7 @@ export interface FileRoutesByFullPath {
   '/god-mode/organisations/': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
   '/agent/kb/$id/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/agent/projects/$projectKey/calendar': typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute
   '/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
   '/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
@@ -1332,6 +1340,7 @@ export interface FileRoutesByTo {
   '/god-mode/organisations': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
   '/agent/kb/$id/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/agent/projects/$projectKey/calendar': typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute
   '/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
   '/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
@@ -1485,6 +1494,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/god-mode/organisations/': typeof LayoutAuthenticatedGodModeOrganisationsIndexRoute
   '/_layout/_authenticated/agent/kb_/$id_/edit': typeof LayoutAuthenticatedAgentKbIdEditRoute
   '/_layout/_authenticated/agent/projects/$projectKey/backlog': typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  '/_layout/_authenticated/agent/projects/$projectKey/calendar': typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute
   '/_layout/_authenticated/agent/projects/$projectKey/cycles': typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
   '/_layout/_authenticated/agent/projects/$projectKey/documents': typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   '/_layout/_authenticated/agent/projects/$projectKey/modules': typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
@@ -1637,6 +1647,7 @@ export interface FileRouteTypes {
     | '/god-mode/organisations/'
     | '/agent/kb/$id/edit'
     | '/agent/projects/$projectKey/backlog'
+    | '/agent/projects/$projectKey/calendar'
     | '/agent/projects/$projectKey/cycles'
     | '/agent/projects/$projectKey/documents'
     | '/agent/projects/$projectKey/modules'
@@ -1781,6 +1792,7 @@ export interface FileRouteTypes {
     | '/god-mode/organisations'
     | '/agent/kb/$id/edit'
     | '/agent/projects/$projectKey/backlog'
+    | '/agent/projects/$projectKey/calendar'
     | '/agent/projects/$projectKey/cycles'
     | '/agent/projects/$projectKey/documents'
     | '/agent/projects/$projectKey/modules'
@@ -1933,6 +1945,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/god-mode/organisations/'
     | '/_layout/_authenticated/agent/kb_/$id_/edit'
     | '/_layout/_authenticated/agent/projects/$projectKey/backlog'
+    | '/_layout/_authenticated/agent/projects/$projectKey/calendar'
     | '/_layout/_authenticated/agent/projects/$projectKey/cycles'
     | '/_layout/_authenticated/agent/projects/$projectKey/documents'
     | '/_layout/_authenticated/agent/projects/$projectKey/modules'
@@ -2527,6 +2540,13 @@ declare module '@tanstack/react-router' {
       path: '/backlog'
       fullPath: '/agent/projects/$projectKey/backlog'
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRouteImport
+      parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
+    }
+    '/_layout/_authenticated/agent/projects/$projectKey/calendar': {
+      id: '/_layout/_authenticated/agent/projects/$projectKey/calendar'
+      path: '/calendar'
+      fullPath: '/agent/projects/$projectKey/calendar'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyRoute
     }
     '/_layout/_authenticated/agent/projects/$projectKey/cycles': {
@@ -3130,6 +3150,7 @@ const LayoutAuthenticatedAgentProjectsProjectKeySettingsRouteWithChildren =
 
 interface LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren {
   LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute
+  LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute
   LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute
   LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute
   LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyModulesRoute
@@ -3148,6 +3169,8 @@ const LayoutAuthenticatedAgentProjectsProjectKeyRouteChildren: LayoutAuthenticat
   {
     LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyBacklogRoute,
+    LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute:
+      LayoutAuthenticatedAgentProjectsProjectKeyCalendarRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute:
       LayoutAuthenticatedAgentProjectsProjectKeyCyclesRoute,
     LayoutAuthenticatedAgentProjectsProjectKeyDocumentsRoute:

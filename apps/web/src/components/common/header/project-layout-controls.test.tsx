@@ -302,7 +302,48 @@ describe("ProjectLayoutControls permissions", () => {
     expect(lastNavigation.href).toContain("layout=board");
   });
 
-  it("keeps dashboard calendar project switches on the dashboard calendar route", () => {
+  it("opens the canonical /agent Calendar from the Calendar tab and keeps the view state", () => {
+    render(<ProjectLayoutControls {...props} showViewSwitcher />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/ENG/calendar?q=urgent",
+    });
+  });
+
+  it("falls back to Kaneo's calendar URL while the project key is unknown", () => {
+    routerState.searchStr = "";
+    render(
+      <ProjectLayoutControls
+        {...props}
+        projectSlug={undefined}
+        showViewSwitcher
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      to: "/dashboard/workspace/workspace-1/project/project-1/calendar",
+    });
+  });
+
+  it("keeps calendar project switches on the canonical calendar route", () => {
+    routerState.pathname = "/agent/projects/ENG/calendar";
+    render(
+      <ProjectLayoutControls
+        {...props}
+        activeView="calendar"
+        showViewSwitcher
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("switch-project"));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/OPS/calendar",
+    });
+  });
+
+  it("moves a project switch made on the old dashboard calendar URL to the canonical calendar", () => {
     routerState.pathname =
       "/dashboard/workspace/workspace-1/project/project-1/calendar";
     render(
@@ -314,9 +355,8 @@ describe("ProjectLayoutControls permissions", () => {
     );
 
     fireEvent.click(screen.getByTestId("switch-project"));
-    expect(routerState.navigate).toHaveBeenCalledWith({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
-      params: { workspaceId: "workspace-1", projectId: "project-2" },
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/agent/projects/OPS/calendar",
     });
   });
 

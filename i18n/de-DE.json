@@ -1000,14 +1000,9 @@
 		"projectWorkflow": {
 			"pageTitle": "Workflow-Einstellungen",
 			"title": "Workflow",
-			"subtitle": "Konfiguriere Board-Spalten und Automatisierungsregeln für dieses {{term_project_one}}.",
-			"columnsTitle": "Spalten",
-			"columnsDescription": "Verwalte die Spalten, die auf deinem Board erscheinen. Ziehe sie, um sie neu anzuordnen. Aktiviere „Fertige Spalte“ für Phasen, die abgeschlossene Arbeit darstellen.",
-			"automationTitle": "Automatisierungsregeln",
-			"automationDescription": "Ordne Integrationsereignisse Spalten zu. Wenn ein Ereignis eintritt, wird die verknüpfte {{term_work_item_one}} in die angegebene Spalte verschoben.",
+			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_one}} auswählen",
@@ -2228,6 +2223,8 @@
 		"newCount_other": "{{count}} neu",
 		"emptyTitle": "Noch keine Benachrichtigungen",
 		"emptySubtitle": "Hier erscheinen Updates und Aktivitäten.",
+		"unavailable": "Unavailable",
+		"unavailableMessage": "This {{term_work_item_one}} is no longer available to open.",
 		"clearAll": "Alle Benachrichtigungen löschen",
 		"clearDialogTitle": "Alle Benachrichtigungen löschen?",
 		"clearDialogDescription": "Dadurch werden alle Benachrichtigungen dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
@@ -3004,7 +3001,6 @@
 		},
 		"search": {
 			"pageTitle": "Suche",
-			"backToDashboard": "Zurück zum Dashboard",
 			"placeholder": "Suche nach {{term_work_item_other}} nach Titel oder Kurz-ID (z. B. DEP-23)...",
 			"hint": "Suche über alle {{term_project_other}} in diesem Workspace. Nutze Kurz-IDs wie DEP-23, um bestimmte {{term_work_item_other}} zu finden.",
 			"searching": "Suche läuft...",
