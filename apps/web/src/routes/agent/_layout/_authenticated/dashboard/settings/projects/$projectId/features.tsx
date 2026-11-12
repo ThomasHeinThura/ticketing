@@ -38,6 +38,7 @@ function RouteComponent() {
       <SettingsAccessPage
         access={access}
         titleKey="settings:projectFeatures.title"
+        pageTitleKey="settings:projectFeatures.pageTitle"
         descriptionKey="settings:projectFeatures.subtitle"
       />
     );

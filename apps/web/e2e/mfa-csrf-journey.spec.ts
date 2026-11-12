@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
+  navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
@@ -19,8 +20,7 @@ async function createAdminWorkspace(
   password: string,
   setupUrl: string,
 ) {
-  const signUp = setupUrl;
-  await page.goto(signUp);
+  await navigateToSetup(page, setupUrl);
   await page.getByLabel("Full name").fill("Disposable MFA Admin");
   await page.getByLabel("Email").fill(email);
   await page.locator('input[autocomplete="new-password"]').fill(password);

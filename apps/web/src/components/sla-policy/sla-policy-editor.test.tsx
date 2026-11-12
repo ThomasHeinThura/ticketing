@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   policy: null as Record<string, unknown> | null,
   policyError: null as unknown,
   checking: false,
+  failed: false,
   canManage: true,
 }));
 
@@ -99,6 +100,7 @@ beforeEach(() => {
   mocks.policy = null;
   mocks.policyError = null;
   mocks.checking = false;
+  mocks.failed = false;
   mocks.canManage = true;
 });
 afterEach(cleanup);
@@ -198,3 +200,28 @@ describe("SLA policy stable keys", () => {
     expect(mocks.update.mock.calls[0]?.[0].data).not.toHaveProperty("key");
   });
 });
+
+vi.mock("@/components/settings/settings-access", async (original) => ({
+  ...(await original<typeof import("@/components/settings/settings-access")>()),
+  useCapabilityCheckFailed: () => mocks.failed,
+}));
+it.each([false, true])(
+  "403 before capabilities retains the SLA heading (failed=%s)",
+  (failed) => {
+    mocks.policyError = { status: 403 };
+    mocks.checking = true;
+    mocks.failed = failed;
+    renderEditor("existing");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "slaPolicies:editor.title",
+    );
+    if (failed)
+      expect(
+        screen.getByRole("button", { name: "common:actions.retry" }),
+      ).toBeEnabled();
+    else expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  },
+);

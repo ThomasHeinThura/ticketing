@@ -130,7 +130,9 @@ export default function SavedViewDetail({
   const workspaceId = view?.workspaceId ?? search.workspaceId;
   const permissions = useWorkspacePermission(workspaceId);
   const capabilityCheckFailed = useCapabilityCheckFailed(
-    permissions.isCheckingPermissions ? workspaceId : undefined,
+    permissions.isCheckingPermissions
+      ? (workspaceId ?? permissions.workspace?.id)
+      : undefined,
   );
   const canShare = Boolean(workspaceId) && permissions.canShareSavedViews();
   const canManageSettings =
@@ -462,8 +464,20 @@ export default function SavedViewDetail({
     viewQuery.error.status === 403 &&
     !isFallback
   ) {
-    if (capabilityCheckFailed) return <SettingsAccessError />;
-    if (permissions.isCheckingPermissions) return <SettingsAccessChecking />;
+    if (capabilityCheckFailed || permissions.isCheckingPermissions)
+      return (
+        <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
+          <PageTitle title={title} />
+          <header className="space-y-1">
+            <h1 className="font-semibold text-2xl">{title}</h1>
+          </header>
+          {capabilityCheckFailed ? (
+            <SettingsAccessError />
+          ) : (
+            <SettingsAccessChecking />
+          )}
+        </div>
+      );
     return <NoAccessPage />;
   }
 

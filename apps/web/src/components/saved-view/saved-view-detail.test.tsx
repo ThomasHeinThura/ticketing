@@ -15,6 +15,9 @@ import { translate } from "@/test/en-translation";
 import SavedViewDetail from "./saved-view-detail";
 
 const mocks = vi.hoisted(() => ({
+  capabilityFailed: false,
+  checking: false,
+  checkScope: vi.fn(),
   getSavedView: vi.fn(),
   getSavedViews: vi.fn(),
   getShareableViewTeams: vi.fn(),
@@ -35,16 +38,18 @@ const mocks = vi.hoisted(() => ({
 vi.mock("react-i18next", () => ({
   useTranslation: (namespace?: string) => ({
     t: (key: string, options?: Record<string, unknown>) =>
-      namespace === "common"
-        ? translate(`common:${key}`, options)
-        : translate(
-            `savedViews:${
-              typeof options?.count === "number"
-                ? `${key}_${options.count === 1 ? "one" : "other"}`
-                : key
-            }`,
-            options,
-          ),
+      key.includes(":")
+        ? translate(key, options)
+        : namespace === "common"
+          ? translate(`common:${key}`, options)
+          : translate(
+              `savedViews:${
+                typeof options?.count === "number"
+                  ? `${key}_${options.count === 1 ? "one" : "other"}`
+                  : key
+              }`,
+              options,
+            ),
   }),
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -66,7 +71,8 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canShareSavedViews: () => mocks.canShare,
     canCreateSavedViews: () => mocks.canCreate,
-    isCheckingPermissions: false,
+    isCheckingPermissions: mocks.checking,
+    workspace: { id: "active-workspace" },
     canManageWorkspaceSettings: () => mocks.canManage,
   }),
 }));
@@ -233,6 +239,8 @@ const unreadable = (status: number) =>
   mocks.getSavedView.mockRejectedValue(new HttpError(status, "Unable"));
 
 beforeEach(() => {
+  mocks.checking = false;
+  mocks.capabilityFailed = false;
   mocks.canShare = false;
   mocks.canCreate = true;
   mocks.personId = "person-1";
@@ -696,3 +704,31 @@ describe("a refused run is explained in translated words", () => {
     },
   );
 });
+
+vi.mock("@/components/settings/settings-access", async (original) => ({
+  ...(await original<typeof import("@/components/settings/settings-access")>()),
+  useCapabilityCheckFailed: (workspaceId: string | undefined) => {
+    mocks.checkScope(workspaceId);
+    return mocks.capabilityFailed;
+  },
+}));
+it.each([false, true])(
+  "403 before capabilities keeps one heading (failed=%s)",
+  async (failed) => {
+    mocks.checking = true;
+    mocks.capabilityFailed = failed;
+    mocks.getSavedView.mockRejectedValue(new HttpError(403, "Forbidden"));
+    renderDetail({});
+    if (failed)
+      expect(
+        await screen.findByTestId("settings-access-error"),
+      ).toBeInTheDocument();
+    else
+      expect(
+        await screen.findByRole("status", { name: "Checking your access" }),
+      ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+    expect(mocks.checkScope).toHaveBeenCalledWith("active-workspace");
+  },
+);

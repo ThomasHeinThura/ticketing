@@ -24,9 +24,9 @@ import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   createTimeActivity,
   type TimeActivity,
@@ -281,7 +281,13 @@ function TimeActivitiesSettingsContent() {
 export function TimeActivitiesSettings() {
   const access = useSettingsAccess((permission) => permission.canLogTime());
   if (access === "allowed") return <TimeActivitiesSettingsContent />;
-  return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return (
+    <SettingsAccessPage
+      access={access}
+      titleKey="timeTracking:activities.title"
+      descriptionKey="timeTracking:activities.description"
+    />
+  );
 }
 
 function TimeActivitiesSettingsFrame({

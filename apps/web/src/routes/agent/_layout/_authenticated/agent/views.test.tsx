@@ -14,6 +14,7 @@ import { HttpError } from "@/lib/http-error";
 import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
+  capabilityFailed: false,
   pathname: "/agent/views",
   search: {} as { query?: string },
   navigate: vi.fn(),
@@ -183,6 +184,7 @@ function renderIndex() {
 }
 
 beforeEach(() => {
+  mocks.capabilityFailed = false;
   mocks.pathname = "/agent/views";
   mocks.search = {};
   mocks.canShare = false;
@@ -531,3 +533,27 @@ describe("deletion is a request (pending action)", () => {
     await act(async () => resolve({ pendingActionId: "pa-2" }));
   });
 });
+
+vi.mock("@/components/settings/settings-access", async (original) => ({
+  ...(await original<typeof import("@/components/settings/settings-access")>()),
+  useCapabilityCheckFailed: () => mocks.capabilityFailed,
+}));
+it.each([false, true])(
+  "403 before capabilities keeps one heading (failed=%s)",
+  async (failed) => {
+    mocks.checking = true;
+    mocks.capabilityFailed = failed;
+    mocks.getSavedViews.mockRejectedValue(new HttpError(403, "Forbidden"));
+    renderIndex();
+    if (failed)
+      expect(
+        await screen.findByTestId("settings-access-error"),
+      ).toBeInTheDocument();
+    else
+      expect(
+        await screen.findByRole("status", { name: "Checking your access" }),
+      ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+  },
+);

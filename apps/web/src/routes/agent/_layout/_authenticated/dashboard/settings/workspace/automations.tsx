@@ -1,12 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Skeleton } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AutomationRulesPanel } from "@/components/automation/automation-rules-panel";
-import {
-  SettingsAccessError,
-  SettingsAccessGate,
-  useSettingsAccess,
-} from "@/components/settings/settings-access";
+import { useSettingsAccess } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
 export const Route = createFileRoute(
@@ -25,21 +21,15 @@ function WorkspaceAutomationsRoute() {
   const access = useSettingsAccess((permission) =>
     permission.canManageWorkspaceSettings(),
   );
-  if (!workspace || access === "checking")
+  if (access !== "allowed")
     return (
-      <div className="p-6" role="status" aria-label={t("list.loading")}>
-        <Skeleton className="h-24 w-full" />
-      </div>
+      <SettingsAccessPage
+        access={access}
+        titleKey="automations:workspace.title"
+        descriptionKey="automations:workspace.description"
+      />
     );
-  if (access === "error")
-    return (
-      <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
-        <h1 className="text-2xl font-semibold">{t("workspace.title")}</h1>
-        <SettingsAccessError />
-      </div>
-    );
-  if (access === "denied")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  if (!workspace) return null;
   return (
     <div className="flex h-full w-full min-w-0 flex-col overflow-y-auto p-6">
       <AutomationRulesPanel

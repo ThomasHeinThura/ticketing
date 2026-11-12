@@ -49,7 +49,14 @@ vi.mock("@/fetchers/project-settings-inheritance", () => ({
   patchWorkspaceStateTemplate: vi.fn(),
   WorkspaceSettingsError: class extends Error {},
 }));
-vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/components/page-title", () => ({
+  default: ({ title }: { title: string }) => {
+    useEffect(() => {
+      document.title = title;
+    }, [title]);
+    return null;
+  },
+}));
 
 import { SettingsAccessGate, useSettingsAccess } from "./settings-access";
 import {
@@ -566,9 +573,13 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/fetchers/feature-flags", () => ({ getFeatures: vi.fn() }));
 vi.mock("@/fetchers/terminology", () => ({ getTerminology: vi.fn() }));
 
+import { RatesSettings } from "@/components/time-tracking/rates-settings";
+import { TimeActivitiesSettings } from "@/components/time-tracking/time-activities-settings";
 import { getFeatures } from "@/fetchers/feature-flags";
 import { getTerminology } from "@/fetchers/terminology";
+import { Route as TriageRoute } from "@/routes/agent/_layout/_authenticated/agent/triage";
 import { Route as ScreenRoute1 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features";
+import { Route as AutomationsRoute } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/automations";
 import { Route as ScreenRoute10 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars/$id";
 import { Route as ScreenRoute4 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses";
 import { Route as ScreenRoute0 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/features";
@@ -577,10 +588,47 @@ import { Route as ScreenRoute9 } from "@/routes/agent/_layout/_authenticated/das
 import { Route as ScreenRoute2 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/terminology";
 import { Route as ScreenRoute8 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/webhooks";
 import { Route as ScreenRoute5 } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/work-item-templates";
+import { Route as WorkflowsRoute } from "@/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows";
 import { CustomFieldEditor } from "./custom-fields/custom-field-editor";
 import { CustomerInvitations } from "./customer-invitations/customer-invitations";
 
+vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
+  default: () => ({ isOn: () => true }),
+}));
+vi.mock("@/hooks/queries/project/use-get-projects", () => ({
+  default: () => ({ data: [] }),
+}));
+vi.mock("@/hooks/queries/project/use-get-project-state-templates", () => ({
+  default: () => ({ data: [] }),
+}));
+vi.mock("@/hooks/queries/workspace/use-workspace-roles", () => ({
+  default: () => ({ data: [] }),
+}));
+
+import { Timesheet } from "@/components/time-tracking/timesheet";
+import { Route as BudgetRoute } from "@/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/budget";
+import { Route as EstimatesRoute } from "@/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/estimates";
+
 const settingsPages = [
+  ["states", WorkspaceStateTemplatesPage],
+  [
+    "timesheet",
+    () => <Timesheet search={{}} onSearchChange={() => undefined} />,
+  ],
+  [
+    "budget",
+    (BudgetRoute as unknown as { component: ComponentType }).component,
+  ],
+  ["rates", RatesSettings],
+  ["time activities", TimeActivitiesSettings],
+  [
+    "automations",
+    (AutomationsRoute as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "triage",
+    (TriageRoute as unknown as { component: ComponentType }).component,
+  ],
   [
     "routes/agent/_layout/_authenticated/dashboard/settings/workspace/features.tsx",
     (ScreenRoute0 as unknown as { component: ComponentType }).component,
@@ -630,6 +678,12 @@ describe.each(settingsPages)("%s heading", (_name, Page) => {
     const { container } = renderWithClient(<Page />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("status")).toBeInTheDocument();
+    if (_name.endsWith("/features.tsx"))
+      expect(document.title).toBe(
+        _name.includes("projects/")
+          ? "settings:projectFeatures.pageTitle"
+          : "settings:workspaceFeatures.pageTitle",
+      );
     expect(
       await screen.findByTestId("settings-access-error"),
     ).toBeInTheDocument();
@@ -657,3 +711,36 @@ describe.each(settingsPages)("%s heading", (_name, Page) => {
     ).toBeNull();
   });
 });
+
+describe.each([
+  [
+    "workflows",
+    (WorkflowsRoute as unknown as { component: ComponentType }).component,
+  ],
+  [
+    "estimates",
+    (EstimatesRoute as unknown as { component: ComponentType }).component,
+  ],
+])("%s heading", (_name, Page) => {
+  it("keeps one heading and Retry without protected reads", async () => {
+    mocks.capabilitiesGet.mockResolvedValue(respond(503));
+
+    renderWithClient(<Page />);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      await screen.findByTestId("settings-access-error"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "common:actions.retry" }),
+    ).toBeEnabled();
+    expect(mocks.protectedReads).not.toHaveBeenCalled();
+  });
+});
+
+vi.mock("@/components/intake/queue-panel", () => ({
+  IntakeQueuePanel: () => null,
+}));
+vi.mock("@/components/intake/queue-picker", () => ({
+  IntakeQueuePicker: () => null,
+}));

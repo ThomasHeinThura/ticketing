@@ -295,6 +295,58 @@ test.describe("settings when the capability read fails", () => {
   // The fixture role lacks `workspace:manage_settings` and `time_entry:create`, so once the
   // capability read succeeds each screen settles on its denial notice.
   for (const [url, name, width, settled] of [
+    ["/dashboard/settings/workspace/workflows", "workflows", 1280, "Workflows"],
+    ["/dashboard/settings/workspace/workflows", "workflows", 390, "Workflows"],
+    [
+      "/dashboard/settings/projects/project-g11/estimates",
+      "estimates",
+      1280,
+      "Estimates",
+    ],
+    [
+      "/dashboard/settings/projects/project-g11/estimates",
+      "estimates",
+      390,
+      "Estimates",
+    ],
+    [
+      "/dashboard/settings/projects/project-g11/budget",
+      "budget",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/projects/project-g11/budget",
+      "budget",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/rates",
+      "rates",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/rates",
+      "rates",
+      390,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/time-activities",
+      "time-activities",
+      1280,
+      "settings-access-denied",
+    ],
+    [
+      "/dashboard/settings/workspace/time-activities",
+      "time-activities",
+      390,
+      "settings-access-denied",
+    ],
+    ["/agent/triage", "triage", 1280, "settings-access-denied"],
+    ["/agent/triage", "triage", 390, "settings-access-denied"],
     [
       "/dashboard/settings/workspace/automations",
       "automations",
@@ -485,7 +537,7 @@ test.describe("settings when the capability read fails", () => {
         paths.filter(
           (p) =>
             !p.endsWith("/resolved") &&
-            /automations|state-templates|features$|terminology|request-types|canned-responses|work-item-templates|customer-invitations|custom-fields|webhooks|sla-policies\/|service-calendars\/|\/api\/time-/u.test(
+            /automations|rates|cost-types|submissions|state-templates|features$|terminology|request-types|canned-responses|work-item-templates|customer-invitations|custom-fields|webhooks|sla-policies\/|service-calendars\/|\/api\/time-/u.test(
               p,
             ),
         ),
@@ -504,7 +556,7 @@ test.describe("settings when the capability read fails", () => {
       await error.getByRole("button", { name: "Retry" }).click();
       const settledState = settled.startsWith("settings-")
         ? page.getByTestId(settled)
-        : page.getByText(settled);
+        : page.getByRole("heading", { level: 1, name: settled, exact: true });
       await expect(settledState).toBeVisible();
       await expect(error).toHaveCount(0);
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
@@ -533,3 +585,86 @@ test.describe("settings when the capability read fails", () => {
     await shot(page, "capabilities-404-project-features");
   });
 });
+
+// These reads are viewer-readable; the server may refuse an individual resource before
+// capabilities arrive. The refused response must not erase the page's heading.
+for (const [url, refused, name] of [
+  [
+    "/dashboard/settings/projects/project-g11/general",
+    /\/api\/project\/project-g11(?:\?|$)/u,
+    "project-general",
+  ],
+  [
+    "/dashboard/settings/workspace/general",
+    /\/api\/workspace\/[^/]+(?:\?|$)/u,
+    "workspace-general",
+  ],
+  ["/agent/views", /\/api\/views(?:\?|$)/u, "views"],
+  [
+    "/agent/views/refused-view",
+    /\/api\/views\/refused-view(?:\?|$)/u,
+    "saved-view",
+  ],
+  [
+    "/dashboard/settings/workspace/sla-policies/refused-policy",
+    /\/api\/sla-policies\/refused-policy(?:\?|$)/u,
+    "sla-detail",
+  ],
+  [
+    "/dashboard/settings/workspace/calendars/refused-calendar",
+    /\/api\/service-calendars\/refused-calendar(?:\?|$)/u,
+    "calendar-detail",
+  ],
+] as const) {
+  for (const width of [1280, 390]) {
+    test(`${name} at ${width}: early 403 keeps a heading through capability failure`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await installPerformanceApiFixture(page);
+      await page.route(
+        /\/api\/(?:workspaces\/[^/]+\/)?features\/resolved/u,
+        (route) =>
+          route.fulfill({
+            json: {
+              features: DEFAULT_RESOLVED_FEATURES.map((feature) =>
+                feature.key === "feature.sla"
+                  ? { ...feature, enabled: true }
+                  : feature,
+              ),
+            },
+          }),
+      );
+      await page.route(
+        /\/api\/(?:service-calendars|sla-policies)(?:\?|$)/u,
+        (route) => route.fulfill({ json: { data: [], nextCursor: null } }),
+      );
+      let release!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route("**/api/capabilities**", async (route) => {
+        await pending;
+        await route.fulfill({ status: 500, json: { message: "Unavailable" } });
+      });
+      await page.route(refused, (route) =>
+        route.fulfill({ status: 403, json: { message: "Forbidden" } }),
+      );
+      await page.goto(url);
+      try {
+        await expect(
+          page.getByRole("status", { name: "Checking your access" }),
+        ).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      } finally {
+        release();
+      }
+      const error = page.getByTestId("settings-access-error");
+      await expect(error).toBeVisible({ timeout: 15_000 });
+      await expect(error.getByRole("button", { name: "Retry" })).toBeEnabled();
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      await expect(page.locator("form")).toHaveCount(0);
+      await expect(page.getByTestId("settings-access-denied")).toHaveCount(0);
+    });
+  }
+}

@@ -38,6 +38,7 @@ function WorkspaceFeatures() {
       <SettingsAccessPage
         access={access}
         titleKey="settings:workspaceFeatures.title"
+        pageTitleKey="settings:workspaceFeatures.pageTitle"
         descriptionKey="settings:workspaceFeatures.subtitle"
       />
     );

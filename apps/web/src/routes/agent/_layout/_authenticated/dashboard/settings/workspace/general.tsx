@@ -37,10 +37,9 @@ import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
   isForbiddenError,
-  SettingsAccessChecking,
-  SettingsAccessError,
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { WorkspaceProjectDefaultsPanel } from "@/components/settings/workspace-project-defaults-panel";
 import useDeleteWorkspace from "@/hooks/mutations/workspace/use-delete-workspace";
 import useTransferWorkspaceOwnership from "@/hooks/mutations/workspace/use-transfer-workspace-ownership";
@@ -359,8 +358,15 @@ function RouteComponent() {
   }, []);
 
   if (isForbiddenError(workspaceError)) {
-    if (checkFailed) return <SettingsAccessError />;
-    if (isCheckingPermissions) return <SettingsAccessChecking />;
+    if (checkFailed || isCheckingPermissions)
+      return (
+        <SettingsAccessPage
+          access={checkFailed ? "error" : "checking"}
+          titleKey="settings:workspaceGeneral.title"
+          descriptionKey="settings:workspaceGeneral.subtitle"
+          pageTitleKey="settings:workspaceGeneral.pageTitle"
+        />
+      );
     return <NoAccessPage />;
   }
   return (
