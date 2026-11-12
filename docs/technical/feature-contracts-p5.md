@@ -539,7 +539,7 @@ Carried from v1's set, which was well chosen, grouped by the question being aske
 
 - `RP-17` Every report is filtered to the viewer's reach. Two people running the same
   report legitimately see different numbers, and the scope line explains why. An explicit
-  missing or unreachable project or cycle filter returns 404. `report:read_all` does not widen project reach. Stored export metadata and downloads are hidden when the
+  missing or unreachable project, cycle or team filter returns 404. `report:read_all` does not widen project reach. Stored export metadata and downloads are hidden when the
   requester no longer reaches a covered project; missing coverage fails closed.
 - `RP-18` **Customers see no reports.** *(v1's `/reports/*` had no access control at all,
   so customers could read the entire SLA portfolio across every customer. This is the

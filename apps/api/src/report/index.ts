@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import { cycleTable } from "../database/schema-p5-agile";
@@ -25,7 +25,12 @@ import {
   savedViewQueryFilter,
 } from "../view/query-reach";
 import { auditReport } from "./audit";
-import { buildContext, cleanFilters } from "./context";
+import {
+  buildContext,
+  cleanFilters,
+  reachPredicate,
+  selectRows,
+} from "./context";
 import {
   CUSTOM_CHART_TYPES,
   customQuerySchema,
@@ -104,6 +109,7 @@ import {
   widgetParam,
   workspaceIdQuery,
 } from "./schema";
+import { reachableTeam } from "./team-reach";
 import type { ReportDefinition } from "./types";
 
 type Vars = BaseVariables & { workspaceId: string };
@@ -184,7 +190,7 @@ const reportRoute = createRoute({
   responses: {
     200: jsonResponse("The report", reportEnvelopeSchema),
     403: errorResponse("Not staff, or missing report:read"),
-    404: errorResponse("Unknown report or inaccessible project or cycle"),
+    404: errorResponse("Unknown report or inaccessible project, cycle or team"),
     409: errorResponse("feature.reports (or the report's own feature) is off"),
     422: errorResponse("Invalid window"),
   },
@@ -208,7 +214,7 @@ const drillRoute = createRoute({
   responses: {
     200: jsonResponse("Items", drillResponseSchema),
     403: errorResponse("Not staff, or missing report:read"),
-    404: errorResponse("Unknown report or inaccessible project or cycle"),
+    404: errorResponse("Unknown report or inaccessible project, cycle or team"),
     409: errorResponse("Feature off"),
     422: errorResponse("Invalid window"),
   },
@@ -224,7 +230,7 @@ const exportResponses = {
     exportEnvelopeSchema,
   ),
   403: errorResponse("Not staff, or missing report:export"),
-  404: errorResponse("Unknown report or inaccessible project or cycle"),
+  404: errorResponse("Unknown report or inaccessible project, cycle or team"),
   409: errorResponse("Feature off"),
   422: errorResponse("Invalid window"),
   429: errorResponse("Too many exports queued or running for this person"),
@@ -656,6 +662,18 @@ async function visibleWidgets<
   const reach = await callerReach(c, c.get("userId") as string);
   const projects = await reach.projectFactsFor([workspaceId]);
   const allowed = new Set(await reach.reachableProjectIds([workspaceId]));
+  let teamsPromise: Promise<Set<string>> | undefined;
+  const visibleTeam = async (teamId: unknown) => {
+    if (typeof teamId !== "string") return true;
+    if (!reach.identity) return false;
+    const identity = reach.identity;
+    teamsPromise ??= selectRows<{ id: string }>(sql`SELECT t.id FROM team t
+      WHERE t.workspace_id = ${workspaceId}
+        AND ${reachableTeam({ workspaceId, identity, reach: reachPredicate(identity, false) })}`).then(
+      (rows) => new Set(rows.map((row) => row.id)),
+    );
+    return (await teamsPromise).has(teamId);
+  };
 
   const hidden = new Set(
     projects
@@ -687,6 +705,7 @@ async function visibleWidgets<
   for (const widget of widgets) {
     const projectId = widget.filters?.projectId;
     if (typeof projectId === "string" && !allowed.has(projectId)) continue;
+    if (!(await visibleTeam(widget.filters?.teamId))) continue;
     if (!visibleViewQuery(widget.filters)) continue;
     if (
       typeof widget.filters?.cycle === "string" &&
@@ -708,6 +727,12 @@ async function visibleWidgets<
           currentReach,
           workspaceId,
         );
+        const parsedView = customQuerySchema.safeParse(view.query);
+        if (
+          parsedView.success &&
+          !(await visibleTeam(parsedView.data.filter?.teamId))
+        )
+          continue;
         if (
           view.workspaceId !== workspaceId ||
           (view.scope === "project" && !currentIds.has(view.scopeId)) ||
@@ -739,14 +764,21 @@ async function requireReportScope(
   workspaceId: string,
   projectId: unknown,
   cycle: unknown,
+  teamId?: unknown,
 ) {
-  if (typeof projectId !== "string" && typeof cycle !== "string") return;
+  if (
+    typeof projectId !== "string" &&
+    typeof cycle !== "string" &&
+    typeof teamId !== "string"
+  )
+    return;
   const identity = await identityOf(c);
   const widgets = [
     {
       filters: {
         ...(typeof projectId === "string" ? { projectId } : {}),
         ...(typeof cycle === "string" ? { cycle } : {}),
+        ...(typeof teamId === "string" ? { teamId } : {}),
       },
     },
   ];
@@ -1035,7 +1067,13 @@ router
     const window = windowOrThrow(query, now);
     const identity = await identityOf(c);
     const workspaceId = c.get("workspaceId");
-    await requireReportScope(c, workspaceId, query.projectId, query.cycle);
+    await requireReportScope(
+      c,
+      workspaceId,
+      query.projectId,
+      query.cycle,
+      query.teamId,
+    );
     const caps = await callerCaps(c, filtersOf(query).projectId);
     try {
       const envelope = await runReport({
@@ -1072,6 +1110,7 @@ router
       c.get("workspaceId"),
       query.projectId,
       query.cycle,
+      query.teamId,
     );
     if (!drill) return c.json({ data: [] }, 200);
     const now = new Date();
@@ -1108,6 +1147,7 @@ router
       c.get("workspaceId"),
       body.query.filter?.projectId,
       undefined,
+      body.query.filter?.teamId,
     );
     return runExport(c, c.get("workspaceId"), {
       kind: "custom",
@@ -1123,6 +1163,7 @@ router
       c.get("workspaceId"),
       body.query.filter?.projectId,
       undefined,
+      body.query.filter?.teamId,
     );
     const problem = validateCustomQuery(body.query);
     if (problem) throw new HTTPException(422, { message: problem });
@@ -1148,6 +1189,7 @@ router
       c.get("workspaceId"),
       body.projectId,
       body.cycle,
+      body.teamId,
     );
     return runExport(c, c.get("workspaceId"), {
       kind: "report",
@@ -1249,6 +1291,7 @@ router
       c.get("workspaceId"),
       body.query.filter?.projectId,
       undefined,
+      body.query.filter?.teamId,
     );
     const problem = validateCustomQuery(body.query);
     if (problem) throw new HTTPException(422, { message: problem });

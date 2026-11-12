@@ -6,6 +6,7 @@ import {
 import { dayOf, itemFrom, num, OPEN, selectRows, tsn } from "../context";
 import { countValue, DAY_MS, minutesToHours, ratePercent, utc } from "../logic";
 import { loadFactRows } from "../snapshot.repository";
+import { reachableTeam } from "../team-reach";
 import type { ReportContext, ReportDefinition, Row } from "../types";
 import {
   cell,
@@ -192,20 +193,6 @@ const MINUTES_PER_DAY = WORKING_HOURS_PER_DAY * 60;
 
 function hoursOf(minutes: number): number {
   return Math.round((minutes / 60) * 10) / 10;
-}
-
-/**
- * R6-06: the teams a caller may see, as a predicate over alias `t` (team). Callers see
- * the teams they belong to and the teams that own
- * a project in their reach (owner-team reach, TM-4). A team outside both is not listed, and its
- * members do not appear in a capacity or utilisation row only because capacity is set.
- */
-function reachableTeam(ctx: ReportContext) {
-  return sql`(
-    EXISTS (SELECT 1 FROM team_member mine WHERE mine.team_id = t.id AND mine.user_id = ${ctx.identity.userId})
-    OR EXISTS (SELECT 1 FROM project p WHERE p.owner_team_id = t.id AND p.workspace_id = ${ctx.workspaceId}
-      AND p.deleted_at IS NULL AND ${ctx.reach})
-  )`;
 }
 
 type AvailableRow = {

@@ -118003,7 +118003,7 @@
             }
           },
           "404": {
-            "description": "Unknown report or inaccessible project or cycle",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118328,7 +118328,7 @@
             }
           },
           "404": {
-            "description": "Unknown report or inaccessible project or cycle",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118558,7 +118558,7 @@
             }
           },
           "404": {
-            "description": "Unknown report or inaccessible project or cycle",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -119063,7 +119063,7 @@
             }
           },
           "404": {
-            "description": "Unknown report or inaccessible project or cycle",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -122318,7 +122318,7 @@
             }
           },
           "404": {
-            "description": "Unknown report or inaccessible project or cycle",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {

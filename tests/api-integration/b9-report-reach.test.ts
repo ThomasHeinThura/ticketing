@@ -533,6 +533,7 @@ describe("B-9 report project reach", () => {
           billable: false,
         },
       ]);
+      await writeWorkspaceDays(world.workspaceId, ["2026-01-06"], new Date());
       const caller =
         role === "lead"
           ? await addCanonicalMember(world.workspaceId, role)
@@ -603,6 +604,67 @@ describe("B-9 report project reach", () => {
         if (!widget) throw new Error("widget missing");
         widgets.push(widget);
       }
+      const teamViewWidgets = [];
+      for (const teamId of [teamB.id, "b9-missing-team"]) {
+        const [view] = await db
+          .insert(schema.savedViewTable)
+          .values({
+            workspaceId: world.workspaceId,
+            createdBy: world.projectMember.personId,
+            name: "B9 team chart",
+            scope: "workspace",
+            scopeId: world.workspaceId,
+            visibility: "workspace",
+            layout: "chart",
+            query: {
+              entity: "work_item",
+              groupBy: "project",
+              filter: { teamId },
+            },
+          })
+          .returning();
+        if (!view) throw new Error("team view missing");
+        const [widget] = await db
+          .insert(dashboardWidgetTable)
+          .values({
+            dashboardId: dashboard.id,
+            savedViewId: view.id,
+            chartType: "table",
+          })
+          .returning();
+        if (!widget) throw new Error("team view widget missing");
+        teamViewWidgets.push(widget);
+      }
+      const [secretTeamView, missingTeamView] = teamViewWidgets;
+      if (!secretTeamView || !missingTeamView)
+        throw new Error("team views missing");
+      const teamWidgets = [];
+      for (const teamId of [teamB.id, "b9-missing-team"]) {
+        const [widget] = await db
+          .insert(dashboardWidgetTable)
+          .values({
+            dashboardId: dashboard.id,
+            reportKey: "workload",
+            chartType: "table",
+            filters: { teamId },
+          })
+          .returning();
+        if (!widget) throw new Error("team widget missing");
+        teamWidgets.push(widget);
+      }
+      const [secretTeamWidget, missingTeamWidget] = teamWidgets;
+      if (!secretTeamWidget || !missingTeamWidget)
+        throw new Error("team widgets missing");
+      const [capacityWidget] = await db
+        .insert(dashboardWidgetTable)
+        .values({
+          dashboardId: dashboard.id,
+          reportKey: "capacity",
+          chartType: "table",
+          filters: { window: "custom", from: "2026-01-05", to: "2026-01-11" },
+        })
+        .returning();
+      if (!capacityWidget) throw new Error("capacity widget missing");
       const [shared, hiddenView, unknownView] = widgets;
       if (!shared || !hiddenView || !unknownView)
         throw new Error("widgets missing");
@@ -618,6 +680,42 @@ describe("B-9 report project reach", () => {
       const dashboardBody = await dashboardResult.text();
       expect(dashboardBody.includes(hiddenView.id)).toBe(seesB);
       expect(dashboardBody).not.toContain(unknownView.id);
+      expect(dashboardBody.includes(secretTeamWidget.id)).toBe(seesB);
+      expect(dashboardBody).not.toContain(missingTeamWidget.id);
+      expect(dashboardBody.includes(secretTeamView.id)).toBe(seesB);
+      expect(dashboardBody).not.toContain(missingTeamView.id);
+      const secretSavedTeam = await json(
+        app,
+        "GET",
+        `/api/dashboards/${dashboard.id}/widgets/${secretTeamView.id}/data`,
+      );
+      const unknownSavedTeam = await json(
+        app,
+        "GET",
+        `/api/dashboards/${dashboard.id}/widgets/${missingTeamView.id}/data`,
+      );
+      expect(unknownSavedTeam.status).toBe(404);
+      expect(secretSavedTeam.status).toBe(seesB ? 200 : 404);
+      if (!seesB)
+        expect(await secretSavedTeam.text()).toBe(
+          await unknownSavedTeam.text(),
+        );
+      const hiddenTeamWidget = await json(
+        app,
+        "GET",
+        `/api/dashboards/${dashboard.id}/widgets/${secretTeamWidget.id}/data`,
+      );
+      const unknownTeamWidget = await json(
+        app,
+        "GET",
+        `/api/dashboards/${dashboard.id}/widgets/${missingTeamWidget.id}/data`,
+      );
+      expect(unknownTeamWidget.status).toBe(404);
+      expect(hiddenTeamWidget.status).toBe(seesB ? 200 : 404);
+      if (!seesB)
+        expect(await hiddenTeamWidget.text()).toBe(
+          await unknownTeamWidget.text(),
+        );
       for (const suffix of ["data", "items", "export"] as const) {
         const method = suffix === "export" ? "POST" : "GET";
         const result = await json(
@@ -689,6 +787,79 @@ describe("B-9 report project reach", () => {
         }
       }
       const period = "window=custom&from=2026-01-05&to=2026-01-11";
+      for (const report of ["workload", "time_logged"]) {
+        const base = `/api/reports/${report}?workspaceId=${world.workspaceId}&${period}`;
+        const hidden = await json(app, "GET", `${base}&teamId=${teamB.id}`);
+        const missing = await json(
+          app,
+          "GET",
+          `${base}&teamId=b9-missing-team`,
+        );
+        expect(missing.status).toBe(404);
+        expect(hidden.status).toBe(seesB ? 200 : 404);
+        if (!seesB) expect(await hidden.text()).toBe(await missing.text());
+        else
+          expect(
+            ((await hidden.json()) as { rows: unknown[] }).rows.length,
+          ).toBeGreaterThan(0);
+        const visible = await json(app, "GET", `${base}&teamId=${teamA.id}`);
+        expect(visible.status).toBe(seesA ? 200 : 404);
+        if (seesA) {
+          const payload = (await visible.json()) as {
+            rows: unknown[];
+            sources: { metricSnapshot: boolean };
+          };
+          expect(payload.rows.length).toBeGreaterThan(0);
+          if (report === "time_logged")
+            expect(payload.sources.metricSnapshot).toBe(true);
+        }
+      }
+      for (const base of [
+        `/api/reports/capacity/items?workspaceId=${world.workspaceId}&${period}`,
+        `/api/dashboards/${dashboard.id}/widgets/${capacityWidget.id}/items?workspaceId=${world.workspaceId}`,
+      ]) {
+        const getTeam = (name: string) =>
+          json(app, "GET", `${base}&handle=${encodeURIComponent(name)}`);
+        const visible = await getTeam("B9 Alpha team");
+        const hidden = await getTeam("B9 Secret team");
+        const missing = await getTeam("B9 Missing team");
+        expect([visible.status, hidden.status, missing.status]).toEqual([
+          200, 200, 200,
+        ]);
+        const visibleData = (await visible.json()) as {
+          data: Array<{ person: string; hours: number; workItemKey: string }>;
+        };
+        expect(
+          visibleData.data.map((row) => [
+            row.person,
+            row.hours,
+            row.workItemKey,
+          ]),
+        ).toEqual(seesA ? [["B9 Alice visible", 1, visibleItem.key]] : []);
+        const hiddenText = await hidden.text();
+        const missingText = await missing.text();
+        if (!seesB) expect(hiddenText).toBe(missingText);
+        else {
+          const rows = (
+            JSON.parse(hiddenText) as {
+              data: Array<{
+                person: string;
+                hours: number;
+                workItemKey: string;
+              }>;
+            }
+          ).data;
+          expect(
+            rows.map((row) => [row.person, row.hours, row.workItemKey]).sort(),
+          ).toEqual(
+            [
+              ["B9 Alice visible", 1, visibleItem.key],
+              ["B9 Bob secret", 7, hiddenItem.key],
+            ].sort(),
+          );
+        }
+        expect(JSON.parse(missingText)).toEqual({ data: [] });
+      }
       const capacityResponse = await json(
         app,
         "GET",
@@ -776,6 +947,160 @@ describe("B-9 report project reach", () => {
             "B9 Bob secret",
           ])
             expect(text).not.toContain(secret);
+      // Person handles may narrow only work or time already in reachable projects.
+      await db
+        .update(schema.workItemTable)
+        .set({ updatedAt: new Date("2025-12-01T00:00:00Z") })
+        .where(eq(schema.workItemTable.workspaceId, world.workspaceId));
+      await db
+        .update(schema.personTable)
+        .set({ active: false })
+        .where(eq(schema.personTable.id, bob.personId));
+      for (const report of [
+        "workload",
+        "stale_work",
+        "inactive_assignees",
+        "utilisation",
+        "time_logged",
+      ]) {
+        const personName = report === "utilisation" || report === "time_logged";
+        const base = `/api/reports/${report}/items?workspaceId=${world.workspaceId}&${period}${report === "time_logged" ? "&by=person" : ""}`;
+        const hiddenHandle = personName ? "B9 Bob secret" : bob.personId;
+        const unknownHandle = personName
+          ? "B9 Unknown person"
+          : "b9-unknown-person";
+        const hidden = await json(
+          app,
+          "GET",
+          `${base}&handle=${encodeURIComponent(hiddenHandle)}`,
+        );
+        const missing = await json(
+          app,
+          "GET",
+          `${base}&handle=${encodeURIComponent(unknownHandle)}`,
+        );
+        expect([hidden.status, missing.status]).toEqual([200, 200]);
+        const hiddenText = await hidden.text();
+        const missingText = await missing.text();
+        if (!seesB) expect(hiddenText).toBe(missingText);
+        else
+          expect(
+            (JSON.parse(hiddenText) as { data: unknown[] }).data.length,
+          ).toBeGreaterThan(0);
+      }
+      for (const path of ["preview", "items", "export"]) {
+        const customTeam = (teamId: string) =>
+          json(app, "POST", `/api/reports/custom/${path}`, {
+            workspaceId: world.workspaceId,
+            query: {
+              entity: "work_item",
+              groupBy: "project",
+              filter: { teamId },
+            },
+            chartType: "table",
+          });
+        const hidden = await customTeam(teamB.id);
+        const missing = await customTeam("b9-missing-team");
+        expect(missing.status).toBe(404);
+        expect(hidden.status).toBe(seesB ? 200 : 404);
+        if (!seesB) expect(await hidden.text()).toBe(await missing.text());
+        else if (path === "items")
+          expect(
+            ((await hidden.json()) as { data: unknown[] }).data,
+          ).toHaveLength(2);
+      }
+      // Queued jobs have no HTTP scope guard; the same checks must hold in SQL at run time.
+      const queueIdentity = await resolveRequestIdentity({
+        userId: caller.user.id,
+      });
+      if (!queueIdentity) throw new Error("queue identity missing");
+      for (const kind of ["report", "custom"] as const) {
+        const runQueued = async (teamId: string) => {
+          const spec =
+            kind === "report"
+              ? {
+                  kind,
+                  key: "time_logged",
+                  window: {
+                    window: "custom",
+                    from: "2026-01-05",
+                    to: "2026-01-11",
+                  },
+                  filters: { teamId },
+                  options: { by: "person" },
+                }
+              : {
+                  kind,
+                  name: "B9 team queued",
+                  query: {
+                    entity: "work_item",
+                    groupBy: "project",
+                    filter: { teamId },
+                  },
+                  chartType: "table",
+                };
+          const [row] = await db
+            .insert(reportExportTable)
+            .values({
+              workspaceId: world.workspaceId,
+              personId: queueIdentity.personId,
+              userId: caller.user.id,
+              kind,
+              reportKey: kind === "report" ? "time_logged" : null,
+              title: "B9 team queued",
+              spec,
+              caps: { readAll: true, showRates: false, readAnyTime: true },
+              status: "running",
+            })
+            .returning();
+          if (!row) throw new Error("queued team export missing");
+          expect(await processExport(row)).toBe("ready");
+          const chunks = await db
+            .select()
+            .from(reportExportChunkTable)
+            .where(eq(reportExportChunkTable.exportId, row.id));
+          const csv = chunks.map((chunk) => chunk.content).join("");
+          return csvRecords(csv)
+            .filter((record) => !record[0]?.startsWith("#"))
+            .slice(1);
+        };
+        const hidden = await runQueued(teamB.id);
+        const missing = await runQueued("b9-missing-team");
+        expect(missing).toEqual([]);
+        if (!seesB) expect(hidden).toEqual(missing);
+        else expect(hidden.length).toBeGreaterThan(0);
+      }
+      // Bob has visible-project time but belongs only to the hidden team.
+      await db.insert(timeEntryTable).values({
+        workspaceId: world.workspaceId,
+        projectId: visibleProject.project.id,
+        workItemId: visibleItem.id,
+        personId: bob.personId,
+        date: "2026-01-06",
+        minutes: 120,
+        activityId: activity.id,
+        billable: false,
+      });
+      const unqualified = await json(
+        app,
+        "GET",
+        `/api/reports/capacity/items?workspaceId=${world.workspaceId}&${period}`,
+      );
+      expect(unqualified.status).toBe(200);
+      const allRows = (await unqualified.json()) as {
+        data: Array<{ person: string; hours: number }>;
+      };
+      expect(allRows.data.map((row) => [row.person, row.hours]).sort()).toEqual(
+        [
+          ...(seesA ? [["B9 Alice visible", 1]] : []),
+          ...(seesB
+            ? [
+                ["B9 Bob secret", 2],
+                ["B9 Bob secret", 7],
+              ]
+            : []),
+        ].sort(),
+      );
     });
   }
 });

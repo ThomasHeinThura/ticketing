@@ -11,6 +11,7 @@ import {
   type WindowInput,
 } from "./logic";
 import { emptyUse } from "./snapshot.logic";
+import { reachableTeam } from "./team-reach";
 import { FILTER_KEYS, type ReportContext, type ReportFilters } from "./types";
 
 const reportExecutor = new AsyncLocalStorage<Executor>();
@@ -144,7 +145,7 @@ export function itemFilterSql(ctx: ReportContext): SQL {
       SELECT 1 FROM team_member tm
       JOIN team t ON t.id = tm.team_id AND t.workspace_id = ${ctx.workspaceId}
       JOIN person pe ON pe.user_id = tm.user_id
-      WHERE tm.team_id = ${teamId} AND pe.id = w.assignee_id)`);
+      WHERE tm.team_id = ${teamId} AND pe.id = w.assignee_id AND ${reachableTeam(ctx)})`);
   return parts.length ? sql.join(parts, sql` AND `) : sql`true`;
 }
 
@@ -180,7 +181,7 @@ export function timeFilterSql(ctx: ReportContext): SQL {
       SELECT 1 FROM team_member tm
       JOIN team t ON t.id = tm.team_id AND t.workspace_id = ${ctx.workspaceId}
       JOIN person pe2 ON pe2.user_id = tm.user_id
-      WHERE tm.team_id = ${teamId} AND pe2.id = te.person_id)`);
+      WHERE tm.team_id = ${teamId} AND pe2.id = te.person_id AND ${reachableTeam(ctx)})`);
   return parts.length ? sql.join(parts, sql` AND `) : sql`true`;
 }
 
