@@ -271,34 +271,70 @@ describe("work list fallback polling", () => {
     },
   );
 
-  it.each(["reconnect", "unmount"])(
-    "aborts a cold recovery on %s and ignores a late result",
-    async (action) => {
+  it.each([false, true])(
+    "lets an in-flight cold recovery finish when realtime connects before it resolves (search: %s)",
+    async (search) => {
+      const fetcher = search ? mocks.search : mocks.list;
       let resolve!: (value: WorkItemsResult) => void;
-      mocks.list
+      fetcher
         .mockRejectedValueOnce(new HttpError(500, "unavailable"))
         .mockReturnValueOnce(
           new Promise<WorkItemsResult>((r) => {
             resolve = r;
           }),
         );
-      const view = setup("unavailable", false, { cold: true });
-      await advance(30_000);
-      const signal: AbortSignal = mocks.list.mock.calls[1]?.[3].signal;
+      const view = setup("unavailable", search, { cold: true });
+      await advance(10);
+      expect(view.result.current.isError).toBe(true);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+
+      await advance(29_990);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      const signal: AbortSignal = search
+        ? fetcher.mock.calls[1]?.[0].signal
+        : fetcher.mock.calls[1]?.[3].signal;
       expect(signal.aborted).toBe(false);
-      if (action === "reconnect")
-        view.rerender({ realtimeStatus: "available" });
-      else view.unmount();
-      expect(signal.aborted).toBe(true);
+
+      view.rerender({ realtimeStatus: "available" });
+      expect(signal.aborted).toBe(false);
+
       await act(async () => {
-        resolve(page(["late"], null));
+        resolve(page(["recovered"], null));
         await Promise.resolve();
       });
       await advance(90_000);
-      expect(mocks.list).toHaveBeenCalledTimes(2);
-      expect(view.client.getQueryData(key)).toBeUndefined();
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(view.result.current.isError).toBe(false);
+      expect(view.result.current.data?.items.map((item) => item.id)).toEqual([
+        "recovered",
+      ]);
+      expect(view.result.current.hasNewerChanges).toBe(false);
     },
   );
+
+  it("aborts a cold recovery on unmount and ignores a late result", async () => {
+    let resolve!: (value: WorkItemsResult) => void;
+    mocks.list
+      .mockRejectedValueOnce(new HttpError(500, "unavailable"))
+      .mockReturnValueOnce(
+        new Promise<WorkItemsResult>((r) => {
+          resolve = r;
+        }),
+      );
+    const view = setup("unavailable", false, { cold: true });
+    await advance(30_000);
+    const signal: AbortSignal = mocks.list.mock.calls[1]?.[3].signal;
+    expect(signal.aborted).toBe(false);
+    view.unmount();
+    expect(signal.aborted).toBe(true);
+    await act(async () => {
+      resolve(page(["late"], null));
+      await Promise.resolve();
+    });
+    await advance(90_000);
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+    expect(view.client.getQueryData(key)).toBeUndefined();
+  });
 
   it("aborts a cold search recovery when the filter changes", async () => {
     let resolve!: (value: WorkItemsResult) => void;
@@ -658,6 +694,221 @@ describe("work list fallback polling", () => {
       expect(normalError.mock.calls[0]?.[0]).toBe(error);
       expect(normal.result.current.data).toBeUndefined();
       expect(normal.result.current.error).toBe(error);
+    },
+  );
+
+  it.each([false, true])(
+    "ignores clock-derived SLA progression across reads while catching real displayed row edits (search: %s)",
+    async (search) => {
+      const baseItem = {
+        id: "a",
+        projectId: "p",
+        number: 1,
+        key: "P-1",
+        title: "Investigate outage",
+        stateId: "s-open",
+        stateName: "In progress",
+        stateCategory: "started",
+        priority: "high" as const,
+        assigneeId: "person-1",
+        assigneeName: "Alice",
+        assigneeActive: true,
+        assigneeOnProject: true,
+        blockedByOpenCount: 0,
+        labels: [
+          { id: "l-2", name: "Urgent", color: "#f00" },
+          { id: "l-1", name: "Backend", color: "#00f" },
+        ],
+        dueDate: "2026-11-20T00:00:00.000Z",
+        archivedAt: null,
+        deletedAt: null,
+        unavailableFields: [],
+        customFieldValues: { tier: "gold", constructor: { rank: 1, tag: "x" } },
+        version: 4,
+        updatedAt: "2026-11-12T10:00:00.000Z",
+        sla: {
+          metric: "resolution" as const,
+          state: "ok" as const,
+          dueAt: "2026-11-12T12:00:00.000Z",
+          remainingMinutes: 45,
+          consumedPct: 25,
+        },
+      } as unknown as WorkItemsResult["items"][number];
+
+      const cached = {
+        pages: [
+          {
+            items: [baseItem],
+            hasPartialFailure: false,
+            hasMore: true,
+            nextCursor: "c1",
+          },
+          page(["c", "d"], null),
+        ],
+        pageParams: [undefined, "c1"],
+      };
+      const view = setup("unavailable", search, { cached });
+      const fetcher = search ? mocks.search : mocks.list;
+
+      // Read 1 (later wall clock): SLA remainingMinutes, consumedPct, state, and severity-picked metric/dueAt
+      // all advance with time, labels/customFieldValues keys arrive in a different order, and paging cursor/total
+      // vary, while rendered clock-independent row data is unchanged.
+      fetcher.mockResolvedValueOnce({
+        items: [
+          {
+            ...baseItem,
+            labels: [
+              { id: "l-1", name: "Backend", color: "#00f" },
+              { id: "l-2", name: "Urgent", color: "#f00" },
+            ],
+            customFieldValues: {
+              constructor: { tag: "x", rank: 1 },
+              tier: "gold",
+            },
+            sla: {
+              metric: "first_response" as const,
+              state: "breached" as const,
+              dueAt: "2026-11-12T10:30:00.000Z",
+              remainingMinutes: 0,
+              consumedPct: 140,
+            },
+          } as unknown as WorkItemsResult["items"][number],
+        ],
+        hasPartialFailure: false,
+        hasMore: false,
+        nextCursor: null,
+      });
+
+      await advance();
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cached);
+
+      // Read 2: a real edit to a displayed field (customFieldValues, assigneeName, or priority) raises the notice.
+      fetcher.mockResolvedValueOnce({
+        items: [
+          {
+            ...baseItem,
+            customFieldValues: {
+              tier: "platinum",
+              constructor: { rank: 1, tag: "x" },
+            },
+            sla: {
+              metric: "first_response" as const,
+              state: "breached" as const,
+              dueAt: "2026-11-12T10:30:00.000Z",
+              remainingMinutes: 0,
+              consumedPct: 155,
+            },
+          } as unknown as WorkItemsResult["items"][number],
+        ],
+        hasPartialFailure: false,
+        hasMore: true,
+        nextCursor: "c1",
+      });
+
+      await advance(29_990);
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(view.result.current.hasNewerChanges).toBe(true);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cached);
+    },
+  );
+
+  it.each([
+    {
+      label: "referenced custom-field person rename",
+      mutate: (next: WorkItemsResult) => ({
+        ...next,
+        customFieldPeople: [
+          { projectId: "p", personId: "person-2", name: "Bob" },
+          { projectId: "p", personId: "person-1", name: "Alice Rivera" },
+        ],
+      }),
+    },
+    {
+      label: "custom-field option label change",
+      mutate: (next: WorkItemsResult) => ({
+        ...next,
+        customFieldColumns: [
+          {
+            key: "tier",
+            name: "Support tier",
+            format: "select" as const,
+            options: [{ key: "gold", label: "Enterprise Gold" }],
+          },
+          {
+            key: "owner",
+            name: "Escalation owner",
+            format: "user" as const,
+            options: [],
+          },
+        ],
+      }),
+    },
+  ])(
+    "shows the notice when page-one envelope metadata changes ($label) with identical items",
+    async ({ mutate }) => {
+      const basePage: WorkItemsResult = {
+        items: [
+          {
+            id: "a",
+            projectId: "p",
+            number: 1,
+            key: "P-1",
+            title: "Customer ticket",
+            unavailableFields: [],
+            customFieldValues: { tier: "gold", owner: "person-1" },
+          } as unknown as WorkItemsResult["items"][number],
+        ],
+        hasPartialFailure: false,
+        hasMore: true,
+        nextCursor: "c1",
+        customFieldColumns: [
+          {
+            key: "owner",
+            name: "Escalation owner",
+            format: "user",
+            options: [],
+          },
+          {
+            key: "tier",
+            name: "Support tier",
+            format: "select",
+            options: [{ key: "gold", label: "Gold" }],
+          },
+        ],
+        customFieldPeople: [
+          { projectId: "p", personId: "person-1", name: "Alice" },
+          { projectId: "p", personId: "person-2", name: "Bob" },
+        ],
+      };
+      const cached = {
+        pages: [basePage, page(["c", "d"], null)],
+        pageParams: [undefined, "c1"],
+      };
+      const view = setup("unavailable", true, { cached });
+
+      // Reordered customFieldColumns / customFieldPeople with identical values produce no false notice.
+      mocks.search.mockResolvedValueOnce({
+        ...basePage,
+        customFieldColumns: [...(basePage.customFieldColumns ?? [])].reverse(),
+        customFieldPeople: [...(basePage.customFieldPeople ?? [])].reverse(),
+      });
+      await advance();
+      await advance(10);
+      expect(mocks.search).toHaveBeenCalledTimes(1);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cached);
+
+      // Renaming a referenced person or option label on page one raises the notice without writing to cache.
+      mocks.search.mockResolvedValueOnce(mutate(basePage));
+      await advance(29_990);
+      await advance(10);
+      expect(mocks.search).toHaveBeenCalledTimes(2);
+      expect(view.result.current.hasNewerChanges).toBe(true);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cached);
     },
   );
 });

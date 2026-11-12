@@ -14,6 +14,11 @@ import type {
   WorkItemSortDirection,
   WorkItemSortField,
 } from "@/lib/routes";
+import type {
+  WorkItemCustomFieldColumn,
+  WorkItemCustomFieldPerson,
+  WorkItemRow,
+} from "@/types/work-item";
 import {
   fetchWorkItemsListPage,
   usesWorkItemSearch,
@@ -28,14 +33,132 @@ async function loadSearchWorkItems() {
   return searchWorkItems;
 }
 
-/** Ignore object key order while comparing all displayed row data. */
-function rowFingerprint(value: unknown): string {
-  return JSON.stringify(value, (_key, entry: unknown) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry))
-      return entry;
-    return Object.fromEntries(
-      Object.entries(entry).sort(([a], [b]) => a.localeCompare(b)),
-    );
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/** Canonicalizes arbitrary JSON values (such as customFieldValues) independent of object key order. */
+function canonicalizeJson(value: unknown): unknown {
+  if (value === null || value === undefined || typeof value !== "object") {
+    return value ?? null;
+  }
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeJson);
+  }
+  return Object.entries(value as Record<string, unknown>)
+    .sort(([a], [b]) => compareStrings(a, b))
+    .map(([key, entry]) => [key, canonicalizeJson(entry)]);
+}
+
+/**
+ * Explicit, clock-independent display projection of a rendered work-list row.
+ *
+ * `version` and `updatedAt` catch direct `work_item` row writes, but `id + updatedAt/version`
+ * alone is insufficient because visible list data also comes from joined or batched records that
+ * can change without bumping `work_item.version` (custom-field values, label attachments or
+ * renames, workflow state renames, assignee display names/activity/project membership, and open
+ * blocker counts).
+ *
+ * Excluded on purpose: `item.sla` (`remainingMinutes`, `consumedPct`, `state`, `metric`, `dueAt`),
+ * which `apps/api/src/work-item/row-sla.ts` computes from `new Date()` on every read, so remaining
+ * minutes, consumed percentage, open risk/breach state, and severity tie-breaking change with the
+ * clock even when nothing was edited.
+ */
+function stableRowProjection(item: WorkItemRow) {
+  const customFieldValues =
+    item.customFieldValues && Object.keys(item.customFieldValues).length > 0
+      ? canonicalizeJson(item.customFieldValues)
+      : null;
+  return {
+    id: item.id,
+    projectId: item.projectId ?? null,
+    number: item.number ?? null,
+    key: item.key ?? "",
+    title: item.title ?? "",
+    stateId: item.stateId ?? null,
+    stateName: item.stateName ?? "",
+    stateCategory: item.stateCategory ?? null,
+    priority: item.priority ?? null,
+    assigneeId: item.assigneeId ?? null,
+    assigneeName: item.assigneeName ?? null,
+    assigneeActive: item.assigneeActive ?? null,
+    assigneeOnProject: item.assigneeOnProject ?? null,
+    isBlocked: (item.blockedByOpenCount ?? 0) > 0,
+    labels: [...(item.labels ?? [])]
+      .map(({ id, name, color }) => ({ id, name, color }))
+      .sort(
+        (a, b) => compareStrings(a.name, b.name) || compareStrings(a.id, b.id),
+      ),
+    dueDate: item.dueDate ?? null,
+    archivedAt: item.archivedAt ?? null,
+    deletedAt: item.deletedAt ?? null,
+    unavailableFields: [...(item.unavailableFields ?? [])].sort(compareStrings),
+    customFieldValues,
+    version: item.version ?? null,
+    updatedAt: item.updatedAt ?? null,
+  };
+}
+
+function stableColumnsProjection(
+  columns: readonly WorkItemCustomFieldColumn[] | undefined,
+) {
+  if (!columns?.length) return [];
+  const byKey = new Map<
+    string,
+    {
+      key: string;
+      name: string;
+      format: string;
+      options: { key: string; label: string }[];
+    }
+  >();
+  for (const column of columns) {
+    byKey.set(column.key, {
+      key: column.key,
+      name: column.name,
+      format: column.format,
+      options: (column.options ?? []).map((option) => ({
+        key: option.key,
+        label: option.label,
+      })),
+    });
+  }
+  return [...byKey.values()].sort((a, b) => compareStrings(a.key, b.key));
+}
+
+function stablePeopleProjection(
+  people: readonly WorkItemCustomFieldPerson[] | undefined,
+) {
+  if (!people?.length) return [];
+  const byPerson = new Map<
+    string,
+    { projectId: string; personId: string; name: string | null }
+  >();
+  for (const person of people) {
+    byPerson.set(`${person.projectId}\0${person.personId}`, {
+      projectId: person.projectId,
+      personId: person.personId,
+      name: person.name ?? null,
+    });
+  }
+  return [...byPerson.entries()]
+    .sort(([a], [b]) => compareStrings(a, b))
+    .map(([, person]) => person);
+}
+
+/**
+ * Clock-independent fingerprint of page one's rendered rows and envelope display metadata.
+ * Excludes paging cursors (`nextCursor`, `hasMore`) and search `total`.
+ */
+export function workListPageFingerprint(
+  page: WorkItemsResult | undefined,
+): string {
+  if (!page) return "";
+  return JSON.stringify({
+    hasPartialFailure: Boolean(page.hasPartialFailure),
+    items: page.items.map(stableRowProjection),
+    customFieldColumns: stableColumnsProjection(page.customFieldColumns),
+    customFieldPeople: stablePeopleProjection(page.customFieldPeople),
   });
 }
 
@@ -214,7 +337,7 @@ function useGetWorkItems({
     if (!pollingEnabled) return;
     let disposed = false;
     let inFlight = false;
-    let coldFetch = false;
+    let probeController: AbortController | undefined;
     const timer = setInterval(async () => {
       if (disposed || inFlight || !focusManager.isFocused()) return;
       const input = pollRef.current;
@@ -233,25 +356,26 @@ function useGetWorkItems({
       const oldData = before.data as
         | InfiniteData<WorkItemsResult, string | undefined>
         | undefined;
+      let controller: AbortController | undefined;
       inFlight = true;
       try {
         if (!oldData?.pages.length) {
           // Use the observed query's lifecycle, but disable retries for this tick only.
-          coldFetch = true;
+          // Cleanup must not cancel this normal query so an in-flight cold recovery can
+          // finish when realtime connects; unmount or filter changes still cancel via
+          // TanStack Query's own observer removal.
           const options = query.options;
           const request = query.fetch({ ...options, retry: false });
           query.setOptions(options);
           await request;
           return;
         }
-        const first = await queryClient.fetchQuery({
-          queryKey: ["work-list-outage-poll", ...input.activeKey],
-          gcTime: 0,
-          retry: false,
-          queryFn: async ({ signal }) => {
-            if (input.useSearch) {
+        controller = new AbortController();
+        probeController = controller;
+        const first = input.useSearch
+          ? await (async () => {
               const search = await loadSearchWorkItems();
-              signal.throwIfAborted();
+              controller.signal.throwIfAborted();
               return search({
                 workspaceId: input.workspaceId as string,
                 projectSlug: input.projectSlug as string,
@@ -261,40 +385,38 @@ function useGetWorkItems({
                 sorts: input.effectiveSorts,
                 columns: input.columns,
                 cursor: undefined,
-                signal,
+                signal: controller.signal,
               });
-            }
-            return fetchWorkItemsListPage(
+            })()
+          : await fetchWorkItemsListPage(
               input.projectId as string,
               input.sort,
               input.dir,
               undefined,
-              signal,
+              controller.signal,
             );
-          },
-        });
         if (
           disposed ||
+          controller.signal.aborted ||
           query.state !== before ||
           queryClient
             .getQueryCache()
             .find({ queryKey: input.activeKey, exact: true }) !== query
         )
           return;
-        const previousItems = oldData.pages[0]?.items ?? [];
         if (
-          first.items.length !== previousItems.length ||
-          first.items.some(
-            (item, index) =>
-              item.id !== previousItems[index]?.id ||
-              rowFingerprint(item) !== rowFingerprint(previousItems[index]),
-          )
+          workListPageFingerprint(first) !==
+          workListPageFingerprint(oldData.pages[0])
         ) {
           setChangedKey(activeKeyId);
         }
       } catch (error) {
-        if (coldFetch) return; // The normal query has already handled the error.
-        // fetchQuery has already invoked the cache's normal error callback.
+        if (!controller || controller.signal.aborted) return;
+        const onError = queryClient.getQueryCache().config.onError;
+        onError?.(
+          error as Error,
+          query as Parameters<NonNullable<typeof onError>>[1],
+        );
         if (
           disposed ||
           query.state !== before ||
@@ -314,23 +436,16 @@ function useGetWorkItems({
           });
         }
       } finally {
-        coldFetch = false;
+        if (probeController === controller) {
+          probeController = undefined;
+        }
         inFlight = false;
       }
     }, 30_000);
     return () => {
       disposed = true;
       clearInterval(timer);
-      if (coldFetch) {
-        void queryClient.cancelQueries({
-          queryKey: JSON.parse(activeKeyId),
-          exact: true,
-        });
-      }
-      void queryClient.cancelQueries({
-        queryKey: ["work-list-outage-poll", ...JSON.parse(activeKeyId)],
-        exact: true,
-      });
+      probeController?.abort();
     };
   }, [activeKeyId, pollingEnabled, queryClient]);
   const accessDenied =

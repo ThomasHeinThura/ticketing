@@ -3388,8 +3388,10 @@ all requested topics are acknowledged, but the unavailable indicator appears onl
 connection error, close, or denied subscription. After an outage, keep the indicator and
 polling active through reconnect until all requested topics are acknowledged again. During an outage,
 the agent work list polls only page one as a change detector and offers a manual full refresh when
-page-one rows or their order change; polling leaves cached pages and selection untouched. If the
-initial read failed with no cached pages, each tick instead retries the normal initial query once.
+stable rendered page-one row fields, row order, or page-one custom-field display metadata change
+(ignoring clock-derived SLA badge values); polling leaves cached pages and selection untouched. If
+the initial read failed with no cached pages, each tick instead retries the normal initial query once
+and lets an in-flight recovery finish if live updates reconnect before it resolves.
 
 If the WebSocket cannot connect — a proxy that strips upgrades, a hostile corporate
 network — the client falls back to polling active queries every 30 seconds and shows a
