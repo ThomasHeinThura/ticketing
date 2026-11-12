@@ -1,5 +1,6 @@
 import { HTTPException } from "hono/http-exception";
 import { runWithStepUp, stepUpTokenHeader } from "../auth/step-up-spend";
+import db from "../database";
 import {
   apiRouter,
   type BaseVariables,
@@ -88,6 +89,7 @@ import {
   workspaceSchema,
   workspaceSummaryListSchema,
 } from "./response";
+import { assertMayAssignRole } from "./role-assignment-guard";
 import type { RoleAuditActor } from "./role-governance";
 import { roleErrorToHttp } from "./role-http";
 import {
@@ -629,6 +631,30 @@ const inviteWorkspaceMemberRoute = createRoute({
       "The target email is already a member, or already has a pending invitation and resend was not set",
     ),
     429: errorResponse("Too many invitations from this client recently"),
+  },
+});
+
+const assignableInvitationRolesRoute = createRoute({
+  method: "get",
+  operationId: "listAssignableInvitationRoles",
+  path: "/{workspaceId}/invitation-roles",
+  tags: ["Workspaces"],
+  summary: "List roles the caller may invite",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromParam("workspaceId"),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ invitation: ["create"] }),
+    requireWorkspaceRoleAuthority({ invitation: ["create"] }),
+  ] as const,
+  request: { params: workspaceIdParam },
+  responses: {
+    200: jsonResponse(
+      "Assignable roles",
+      z.array(z.object({ id: z.string(), name: z.string(), rank: z.number() })),
+    ),
+    401: errorResponse("No credential"),
+    403: errorResponse("Invitation permission required"),
   },
 });
 
@@ -1285,6 +1311,29 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       throw error;
     }
+  })
+  .openapi(assignableInvitationRolesRoute, async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const roles = await listRoles(workspaceId);
+    const allowed = [];
+    for (const role of roles) {
+      if (role.role === "owner") continue;
+      try {
+        await assertMayAssignRole(db, {
+          workspaceId,
+          actorUserId: c.get("userId"),
+          targetRoleKey: role.role,
+        });
+        allowed.push({ id: role.role, name: role.name, rank: role.rank });
+      } catch (error) {
+        if (
+          !(error instanceof RoleRankError) &&
+          !(error instanceof InsufficientPermissionToGrantError)
+        )
+          throw error;
+      }
+    }
+    return c.json(allowed, 200);
   })
   .openapi(listWorkspaceRolesRoute, async (c) =>
     c.json(await listRoles(c.get("workspaceId")), 200),

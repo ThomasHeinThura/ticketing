@@ -502,5 +502,29 @@
 		"pr": 1103,
 		"reason": "The object key now comes from the attachment row after live reach; no storage key is exposed in a portal link, including prefixed S3 keys.",
 		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+	},
+	{
+		"operation": "POST /workspace/{workspaceId}/invitations",
+		"rule": "request-property-removed",
+		"fingerprint": "182b9f63544a",
+		"pr": 1128,
+		"reason": "The email property remains in the request alternatives; oasdiff reports it removed because the schema now uses anyOf to require role on creation and allow omission only on resend.",
+		"decision": "Coordinator-approved B-4 D-C clarification and PR #1128 independent review; invitation-body.test.ts covers both alternatives."
+	},
+	{
+		"operation": "POST /workspace/{workspaceId}/invitations",
+		"rule": "request-property-removed",
+		"fingerprint": "2980872159ee",
+		"pr": 1128,
+		"reason": "The resend property remains in the request alternatives; oasdiff reports it removed because the schema now uses anyOf to require role on creation and allow omission only on resend.",
+		"decision": "Coordinator-approved B-4 D-C clarification and PR #1128 independent review; invitation-body.test.ts covers both alternatives."
+	},
+	{
+		"operation": "POST /workspace/{workspaceId}/invitations",
+		"rule": "request-property-removed",
+		"fingerprint": "62e3f173a3f5",
+		"pr": 1128,
+		"reason": "The role property remains in the request alternatives; oasdiff reports it removed because the schema now uses anyOf to require role on creation and allow omission only on resend.",
+		"decision": "Coordinator-approved B-4 D-C clarification and PR #1128 independent review; invitation-body.test.ts covers both alternatives."
 	}
 ]

@@ -159,3 +159,5 @@ Reach is evaluated for the loaded resource from current persisted memberships an
 ## Safety invariants
 
 Tenant reach, API-key ceilings, self/owner predicates, agent/customer separation, audit records and concurrency checks remain mandatory. Instance actions and authority-minting routes need elevation or a registered exemption. User deletion is a durable pending action. Impersonation cannot satisfy an elevated/session-only action.
+
+Staff invitation role options require `member:invite` and return only assignable role keys, labels and ranks; they do not expose capabilities or holders. Role assignment and resend recheck the current inviter’s rank and capabilities, and never assign owner.
