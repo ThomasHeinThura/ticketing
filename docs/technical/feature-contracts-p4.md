@@ -2175,8 +2175,22 @@ Field comparisons using the same grammar as filters in
 [search-and-saved-views.md](feature-contracts-p1.md#search-and-saved-views): type, state, state group, priority,
 assignee, requester, label, organisation, project, custom field (`cf.<key>`), plus four
 automation-specific condition keys: `age` (integer minutes since `created_at` or
-`updated_at`), `sla_state` (`ok`|`at_risk`|`breached`|`met`|`missed`),
-`comment_visibility` (`public`|`internal`), and `actor_role` (role key or `customer`).
+`updated_at` or `resolved_at`), `sla_state` (`ok`|`at_risk`|`breached`|`met`|`missed`),
+`comment_visibility` (`public`|`internal`), and `actor_role` (only `eq customer` is backed,
+only on `work_item.commented`; other role values remain refused).
+
+- `AM-14` Plan G-1 schedules evaluate project items through the ordinary action executor.
+  UTC minute windows are not replayed after downtime. Scans are bounded and continue from a
+  durable cursor; concurrent scans cannot enqueue a candidate twice for one sweep. Disabled
+  rules, disabled feature scopes, and archived/deleted projects/items never act. Run claims,
+  effective-role checks, transition guards, audit attribution and loop suppression are shared
+  with event rules. Candidate version mismatch is skipped after a rule edit.
+- `AM-15` `actor_role eq customer` requires a persisted public comment with actor type
+  `person` whose author has `person.side = customer`. Staff, internal, API-key, system and
+  automation comments fail. `age` basis `resolved_at` derives the latest transition activity
+  entering the `completed` group from another group; moving within that group and later notes
+  preserve the clock, leaving and reentering restarts it. Missing history fails closed.
+  This basis does not reuse the SLA-effect-controlled `work_item.resolved_at` column.
 
 - `AM-1` Conditions combine with AND. An OR is expressed by writing two rules — which is
   simpler to read than nested logic, and reads better in a list.

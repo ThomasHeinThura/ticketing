@@ -19,7 +19,7 @@ import {
   isAutomationEventTrigger,
 } from "./constants";
 import { type EffectiveRole, roleMayAct } from "./effective-role";
-import { eventFacts, loadWorkItemsByKey } from "./facts";
+import { customerCommentFact, eventFacts, loadWorkItemsByKey } from "./facts";
 import type { AutomationRow } from "./repository";
 import { isVisibleTo, type ReaderVisibility } from "./visibility";
 
@@ -169,6 +169,12 @@ export async function dryRunRule(
         now,
         ...(item ? { workItem: item.facts } : {}),
         ...eventFacts(envelope.kind, envelope.payload),
+        customerAuthoredComment: await customerCommentFact(
+          rule.workspaceId,
+          item?.id,
+          envelope.kind,
+          envelope.payload,
+        ),
       });
       if (!evaluation.matched) continue;
       result.wouldFire++;

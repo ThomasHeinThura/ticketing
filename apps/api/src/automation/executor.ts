@@ -27,12 +27,13 @@ import {
   AUTOMATION_RUN_RETENTION_DAYS,
 } from "./constants";
 import { emitRunFailed } from "./consumer";
+import { ruleCoversProject } from "./dry-run";
 import {
   type EffectiveRole,
   loadRole,
   roleIsUsableForWorkspace,
 } from "./effective-role";
-import { eventFacts, loadWorkItemsByKey } from "./facts";
+import { customerCommentFact, eventFacts, loadWorkItemsByKey } from "./facts";
 import { automationsEnabled } from "./feature";
 import type { AutomationRow } from "./repository";
 
@@ -176,7 +177,7 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
     .from(automationTable)
     .where(eq(automationTable.id, run.automationId))
     .limit(1);
-  if (!rule || !rule.enabled) {
+  if (!rule?.enabled) {
     await finishRun(run, { state: "skipped", error: "rule_disabled" });
     return { state: "skipped", matched: null, stopGroup: false };
   }
@@ -184,11 +185,28 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
     await finishRun(run, { state: "skipped", error: "feature_disabled" });
     return { state: "skipped", matched: null, stopGroup: false };
   }
-  if (!run.eventId) {
+  if (!run.eventId && run.origin !== "schedule") {
     await finishRun(run, { state: "skipped", error: "no_event" });
     return { state: "skipped", matched: null, stopGroup: false };
   }
-  const envelope = await loadEnvelope(run.eventId);
+  const envelope =
+    run.origin === "schedule" && run.workItemKey
+      ? {
+          id: run.eventId ?? run.id,
+          kind: "schedule",
+          occurredAt: run.triggeredAt.toISOString(),
+          actor: { type: "system", id: null, name: "TaskDesk" },
+          scope: {
+            workspaceId: run.workspaceId,
+            ...(run.projectId ? { projectId: run.projectId } : {}),
+          },
+          payload: { key: run.workItemKey } as Record<string, unknown>,
+          depth: 0,
+          originAutomationId: null,
+        }
+      : run.eventId
+        ? await loadEnvelope(run.eventId)
+        : undefined;
   if (!envelope) {
     await finishRun(run, { state: "failed", error: "event_unavailable" });
     return { state: "failed", matched: null, stopGroup: false };
@@ -225,11 +243,29 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
 
   const key =
     typeof envelope.payload.key === "string" ? envelope.payload.key : null;
-  const loadItem = async () =>
-    key
-      ? ((await loadWorkItemsByKey(rule.workspaceId, [key])).get(key) ?? null)
+  const loadItem = async () => {
+    const item = key
+      ? (await loadWorkItemsByKey(rule.workspaceId, [key])).get(key)
       : null;
+    if (
+      !item ||
+      !ruleCoversProject(rule, item.projectId) ||
+      (run.projectId && item.projectId !== run.projectId) ||
+      !(await automationsEnabled(rule.workspaceId, item.projectId))
+    )
+      return null;
+    return item;
+  };
   const item = await loadItem();
+  if (
+    (key && !item) ||
+    (run.origin === "schedule" &&
+      (rule.trigger !== "schedule" ||
+        !run.eventId?.startsWith(`schedule:${rule.id}:${rule.version}:`)))
+  ) {
+    await finishRun(run, { state: "skipped", error: "candidate_unavailable" });
+    return { state: "skipped", matched: null, stopGroup: false };
+  }
 
   const conditions = (
     Array.isArray(rule.conditions) ? rule.conditions : []
@@ -238,6 +274,12 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
     now: new Date(),
     ...(item ? { workItem: item.facts } : {}),
     ...eventFacts(envelope.kind, envelope.payload),
+    customerAuthoredComment: await customerCommentFact(
+      rule.workspaceId,
+      item?.id,
+      envelope.kind,
+      envelope.payload,
+    ),
   });
   if (!evaluation.matched) {
     await finishRun(run, {

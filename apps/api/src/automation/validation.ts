@@ -55,7 +55,7 @@ const AVAILABLE_ACTION_TYPES: ReadonlySet<string> = new Set(
 export function validateRuleDefinition(
   input: RuleDefinitionInput,
   options: {
-    /** `schedule` has no executor in this build; when false it is refused as unavailable. */
+    /** The scheduler catalog owns availability; omitted/false fails closed. */
     scheduleAvailable?: boolean;
   } = {},
 ):
@@ -74,7 +74,8 @@ export function validateRuleDefinition(
       });
     } else {
       const cron = input.scheduleCron?.trim() ?? "";
-      let valid = cron.length > 0 && cron.length <= 100;
+      let valid =
+        cron.length > 0 && cron.length <= 100 && cron.split(/\s+/).length === 5;
       if (valid) {
         try {
           new Cron(cron, { paused: true });
@@ -87,7 +88,7 @@ export function validateRuleDefinition(
           code: "invalid",
           path: "scheduleCron",
           message:
-            "a valid cron expression is required for the schedule trigger",
+            "a valid five-field cron expression is required for the schedule trigger",
         });
       else scheduleCron = cron;
     }
@@ -175,12 +176,15 @@ export function validateRuleDefinition(
       if (
         record.basis !== undefined &&
         (field !== "age" ||
-          (record.basis !== "created_at" && record.basis !== "updated_at"))
+          (record.basis !== "created_at" &&
+            record.basis !== "updated_at" &&
+            record.basis !== "resolved_at"))
       ) {
         problems.push({
           code: "invalid",
           path: `${path}.basis`,
-          message: "basis applies only to age (created_at or updated_at)",
+          message:
+            "basis applies only to age (created_at, updated_at or resolved_at)",
         });
         return;
       }
@@ -189,10 +193,18 @@ export function validateRuleDefinition(
         op: op as ConditionOp,
         ...(record.value !== undefined ? { value: record.value } : {}),
         ...(record.basis !== undefined
-          ? { basis: record.basis as "created_at" | "updated_at" }
+          ? {
+              basis: record.basis as
+                | "created_at"
+                | "updated_at"
+                | "resolved_at",
+            }
           : {}),
       };
-      const problem = conditionValueProblem(condition);
+      const problem =
+        field === "actor_role" && input.trigger !== "work_item.commented"
+          ? "actor_role applies only to work_item.commented"
+          : conditionValueProblem(condition);
       if (problem) {
         problems.push({ code: "invalid", path, message: problem });
         return;

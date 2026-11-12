@@ -221,3 +221,25 @@ describe("validateDraft", () => {
     expect(validateDraft(draft)).toEqual([]);
   });
 });
+
+describe("service desk rule editing", () => {
+  it("round trips an hourly rule with resolved age and transition", () => {
+    const source: Automation = {
+      ...rule,
+      trigger: "schedule",
+      scheduleCron: "0 * * * *",
+      conditions: [
+        { field: "age", op: "gte", value: 4320, basis: "resolved_at" },
+      ],
+      actions: [{ type: "transition", toStateTemplateId: "closed" }],
+    };
+    expect(draftToInput(draftFromAutomation(source))).toMatchObject({
+      scheduleCron: "0 * * * *",
+      conditions: source.conditions,
+      actions: source.actions,
+    });
+  });
+  it("offers the supported customer value", () => {
+    expect(conditionDefaults("actor_role").value).toBe("customer");
+  });
+});

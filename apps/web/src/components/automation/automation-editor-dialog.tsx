@@ -26,6 +26,7 @@ import {
 import { getTeams } from "@/fetchers/team";
 import { listWebhooks } from "@/fetchers/webhook/webhooks";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
+import useGetProjectStateTemplates from "@/hooks/queries/project/use-get-project-state-templates";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetAssignablePeople from "@/hooks/queries/work-item/use-get-assignable-people";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
@@ -55,6 +56,7 @@ import { type PickerOption, PickerSelect } from "./picker-select";
 const NO_PRIORITY = "__none__";
 
 type Lists = {
+  states: PickerOption[];
   types: PickerOption[];
   labels: PickerOption[];
   labelNames: PickerOption[];
@@ -70,7 +72,9 @@ function ConditionRow({
   disabled,
   onChange,
   onRemove,
+  trigger,
 }: {
+  trigger: string;
   condition: ConditionDraft;
   lists: Lists;
   disabled: boolean;
@@ -78,9 +82,11 @@ function ConditionRow({
   onRemove: () => void;
 }) {
   const { t } = useTranslation("automations");
-  const fieldOptions: PickerOption[] = Object.keys(EDITABLE_CONDITIONS).map(
-    (field) => ({ value: field, label: t(`conditions.fields.${field}`) }),
-  );
+  const fieldOptions: PickerOption[] = Object.keys(EDITABLE_CONDITIONS)
+    .filter(
+      (field) => field !== "actor_role" || trigger === "work_item.commented",
+    )
+    .map((field) => ({ value: field, label: t(`conditions.fields.${field}`) }));
   if (condition.readOnly) {
     return (
       <div className="flex items-center justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
@@ -176,6 +182,17 @@ function ConditionRow({
             onChange={set}
           />
         );
+      case "actor_role":
+        return (
+          <PickerSelect
+            ariaLabel={t("conditions.value")}
+            value="customer"
+            options={[{ value: "customer", label: t("conditions.customer") }]}
+            placeholder={t("conditions.pickValue")}
+            disabled={disabled}
+            onChange={set}
+          />
+        );
       case "comment_visibility":
         return (
           <PickerSelect
@@ -226,13 +243,19 @@ function ConditionRow({
               options={[
                 { value: "created_at", label: t("conditions.basisCreated") },
                 { value: "updated_at", label: t("conditions.basisUpdated") },
+                { value: "resolved_at", label: t("conditions.basisResolved") },
               ]}
               placeholder={t("conditions.basis")}
               disabled={disabled}
               onChange={(basis) =>
                 onChange({
                   ...condition,
-                  basis: basis === "updated_at" ? "updated_at" : "created_at",
+                  basis:
+                    basis === "resolved_at"
+                      ? "resolved_at"
+                      : basis === "updated_at"
+                        ? "updated_at"
+                        : "created_at",
                 })
               }
             />
@@ -320,6 +343,17 @@ function ActionRow({
   const set = (value: string) => onChange({ ...action, value });
   const control = (() => {
     switch (action.type) {
+      case "transition":
+        return (
+          <PickerSelect
+            ariaLabel={t("actions.types.transition")}
+            value={action.value}
+            options={lists.states}
+            placeholder={t("conditions.pickValue")}
+            disabled={disabled}
+            onChange={set}
+          />
+        );
       case "assign":
       case "add_watcher":
         return (
@@ -498,11 +532,12 @@ export function AutomationEditorDialog({
   const [touched, setTouched] = useState(false);
   const [rosterProjectId, setRosterProjectId] = useState(scopeProjectId ?? "");
 
+  const states = useGetProjectStateTemplates(rosterProjectId || undefined);
   const types = useGetWorkItemTypes({ workspaceId });
   const labels = useGetLabelsByWorkspace(workspaceId);
   const projects = useGetProjects({ workspaceId });
-  const needsPeople = draft.actions.some((action) =>
-    actionNeedsPerson(action.type),
+  const needsPeople = draft.actions.some(
+    (action) => actionNeedsPerson(action.type) || action.type === "transition",
   );
   const people = useGetAssignablePeople({
     projectId: rosterProjectId || undefined,
@@ -529,6 +564,10 @@ export function AutomationEditorDialog({
     (label) => !("projectId" in label) || !label.projectId,
   );
   const lists: Lists = {
+    states: (states.data ?? []).map((state) => ({
+      value: state.id,
+      label: state.name,
+    })),
     types: (types.data ?? []).map((type) => ({
       value: type.key,
       label: type.name,
@@ -644,6 +683,25 @@ export function AutomationEditorDialog({
                   setDraft((current) => ({ ...current, trigger }))
                 }
               />
+              {draft.trigger === "schedule" ? (
+                <PickerSelect
+                  ariaLabel={t("editor.schedule")}
+                  value={draft.scheduleCron}
+                  options={[
+                    {
+                      value: "*/5 * * * *",
+                      label: t("editor.everyFiveMinutes"),
+                    },
+                    { value: "0 * * * *", label: t("editor.hourly") },
+                    { value: "0 0 * * *", label: t("editor.daily") },
+                  ]}
+                  placeholder={t("editor.schedule")}
+                  disabled={pending}
+                  onChange={(scheduleCron) =>
+                    setDraft((current) => ({ ...current, scheduleCron }))
+                  }
+                />
+              ) : null}
             </section>
 
             <section className="space-y-2" aria-labelledby="automation-if">
@@ -657,6 +715,7 @@ export function AutomationEditorDialog({
                 <ConditionRow
                   key={condition.key}
                   condition={condition}
+                  trigger={draft.trigger}
                   lists={lists}
                   disabled={pending}
                   onChange={(next) => updateCondition(condition.key, next)}

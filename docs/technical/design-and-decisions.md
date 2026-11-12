@@ -3733,3 +3733,15 @@ Reports, dashboards and exports use the reader’s project reach, including when
 ### 12 Nov 2026 — Thomas: workspace rights survive project roles
 
 Owner, admin and manager always keep their workspace rights on every project; a project role only adds. This reverses the project-scope override rule for these three validated system roles only: joining as project-member or assigning project-viewer must never silently remove manager or administrator rights (archive/settings). Other roles retain project overrides, tier clamping and key scopes remain unchanged. D-E self-join uses the default project-member role and never permits team self-enrolment.
+
+
+### 12 Nov 2026 — Thomas: plan G-1 service-desk automation support
+
+G-1 authorizes customer replies reopening resolved items and hourly closing after three days
+resolved. Make schedule rules executable, add `actor_role eq customer` for persisted public
+customer-person comments, and add `age.basis = resolved_at`. This supersedes the implementation's
+unavailable schedule/customer-role validation; it does not expand effective roles or transition
+authority. Resolved age comes from transition activity entering the completed category because
+the existing resolved timestamp belongs to SLA effects. No migration or dependency is needed.
+Scheduled candidates share the existing executor and fail-closed permission/loop checks; sweeps
+use durable cursors and skip missed cron windows. Browser and deployed acceptance remain gates.

@@ -13,6 +13,7 @@ import type {
  */
 
 export const TRIGGERS = [
+  "schedule",
   "work_item.created",
   "work_item.transitioned",
   "work_item.updated",
@@ -51,6 +52,7 @@ export const EDITABLE_CONDITIONS = {
   project: ["eq", "ne"],
   age: ["gte", "lte"],
   comment_visibility: ["eq"],
+  actor_role: ["eq"],
   field_changed: ["contains"],
   assignee: ["is_empty", "is_not_empty"],
 } as const;
@@ -64,6 +66,7 @@ export function isEditableCondition(
 }
 
 export const ACTION_TYPES = [
+  "transition",
   "assign",
   "set_priority",
   "set_due_date",
@@ -80,7 +83,7 @@ export type ConditionDraft = {
   field: string;
   op: string;
   value: string;
-  basis: "created_at" | "updated_at";
+  basis: "created_at" | "updated_at" | "resolved_at";
   /** True when the stored condition has a field this editor has no picker for. */
   readOnly: boolean;
   original?: AutomationCondition;
@@ -99,6 +102,7 @@ export type ActionDraft = {
 };
 
 export type RuleDraft = {
+  scheduleCron: string;
   name: string;
   trigger: string;
   conditions: ConditionDraft[];
@@ -135,6 +139,7 @@ export function emptyAction(): ActionDraft {
 
 export function emptyDraft(defaultRoleId: string): RuleDraft {
   return {
+    scheduleCron: "0 * * * *",
     name: "",
     trigger: "work_item.created",
     conditions: [],
@@ -152,6 +157,7 @@ function conditionValueToText(condition: AutomationCondition): string {
 
 export function draftFromAutomation(rule: Automation): RuleDraft {
   return {
+    scheduleCron: rule.scheduleCron ?? "0 * * * *",
     name: rule.name,
     trigger: rule.trigger,
     conditions: rule.conditions.map((condition) => ({
@@ -174,7 +180,10 @@ export function draftFromAutomation(rule: Automation): RuleDraft {
             body: String(action.body ?? ""),
           }
         : {}),
-      readOnly: !(ACTION_TYPES as readonly string[]).includes(action.type),
+      readOnly:
+        !(ACTION_TYPES as readonly string[]).includes(action.type) ||
+        (action.type === "transition" &&
+          typeof action.toStateTemplateId !== "string"),
       original: action,
     })),
     effectiveRoleId: rule.effectiveRoleId,
@@ -184,6 +193,8 @@ export function draftFromAutomation(rule: Automation): RuleDraft {
 
 function actionValueToText(action: AutomationAction): string {
   switch (action.type) {
+    case "transition":
+      return String(action.toStateTemplateId ?? "");
     case "assign":
       return String(action.assigneeId ?? "");
     case "set_priority":
@@ -221,6 +232,8 @@ export function conditionToJson(draft: ConditionDraft): AutomationCondition {
 export function actionToJson(draft: ActionDraft): AutomationAction {
   if (draft.readOnly && draft.original) return draft.original;
   switch (draft.type) {
+    case "transition":
+      return { type: "transition", toStateTemplateId: draft.value };
     case "assign":
       return { type: "assign", assigneeId: draft.value };
     case "set_priority":
@@ -252,6 +265,9 @@ export function actionToJson(draft: ActionDraft): AutomationAction {
 
 export function draftToInput(draft: RuleDraft): AutomationInput {
   return {
+    ...(draft.trigger === "schedule"
+      ? { scheduleCron: draft.scheduleCron }
+      : {}),
     name: draft.name.trim(),
     trigger: draft.trigger,
     conditions: draft.conditions.map(conditionToJson),
@@ -281,6 +297,7 @@ export function conditionDefaults(
     project: "",
     age: "60",
     comment_visibility: "public",
+    actor_role: "customer",
     field_changed: "priority",
     assignee: "",
   };

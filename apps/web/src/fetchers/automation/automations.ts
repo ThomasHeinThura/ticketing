@@ -12,7 +12,7 @@ export type AutomationCondition = {
   field: string;
   op: string;
   value?: unknown;
-  basis?: "created_at" | "updated_at";
+  basis?: "created_at" | "updated_at" | "resolved_at";
 };
 
 export type AutomationAction = { type: string } & Record<string, unknown>;
@@ -58,6 +58,7 @@ export type AutomationList = {
 };
 
 export type AutomationInput = {
+  scheduleCron?: string | null;
   name: string;
   trigger: string;
   conditions: AutomationCondition[];
