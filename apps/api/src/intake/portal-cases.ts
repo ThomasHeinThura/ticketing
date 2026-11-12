@@ -206,14 +206,46 @@ function customerStatusSql(submissionState: SQL): SQL {
   END`;
 }
 
-/** A form field mapped to `title` or `priority` on the pinned request-type version. */
-function mappedFormValue(field: "title" | "priority"): SQL {
-  return sql`btrim(s.form_data ->> (
+/**
+ * Snapshots of mapped answers shown by the pinned form. The SQL rechecks each snapshot so
+ * concurrent changes cannot cause a stale visibility decision to reveal an answer.
+ */
+type VisibleSnapshot = { id: string; data: unknown; schema: unknown };
+type HiddenMapped = { title: VisibleSnapshot[]; priority: VisibleSnapshot[] };
+
+/** The stored answer of the form field mapped to `title` or `priority` on the pinned version. */
+function mappedFormValue(
+  field: "title" | "priority",
+  visibleSnapshots?: readonly VisibleSnapshot[],
+): SQL {
+  const stored = sql`s.form_data ->> (
     SELECT f ->> 'key'
     FROM jsonb_array_elements(COALESCE(rtv.form_schema -> 'fields', '[]'::jsonb)) f
     WHERE f -> 'mapsTo' ->> 'field' = ${field}
     LIMIT 1
-  ))`;
+  )`;
+  if (!visibleSnapshots) return sql`btrim(${stored})`;
+  return sql`btrim(CASE
+    WHEN NOT ${mappedFieldNeedsCheck(field)} OR EXISTS (
+      SELECT 1 FROM jsonb_array_elements(${JSON.stringify(visibleSnapshots)}::jsonb) v
+      WHERE v ->> 'id' = s.id AND v -> 'data' = s.form_data
+        AND v -> 'schema' = rtv.form_schema
+    ) THEN ${stored} ELSE NULL
+  END)`;
+}
+
+/**
+ * Whether the pinned version's field mapped to `title`/`priority` could be hidden for some answers
+ * (it has a `showIf`) or never carries an answer (a file field). Only such submissions need the
+ * visibility check; an unconditional mapped field is always shown.
+ */
+function mappedFieldNeedsCheck(field: "title" | "priority"): SQL {
+  return sql`EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(COALESCE(rtv.form_schema -> 'fields', '[]'::jsonb)) f
+    WHERE f -> 'mapsTo' ->> 'field' = ${field}
+      AND (jsonb_typeof(f -> 'showIf') = 'object' OR f ->> 'type' = 'file')
+  )`;
 }
 
 function participantOf(column: SQL, viewer: PortalViewer): SQL {
@@ -228,6 +260,8 @@ type CaseSourceContext = {
   /** Workspaces where `feature.intake` is on; submissions elsewhere are not listed. */
   intakeWorkspaceIds: string[];
   portalScope: Awaited<ReturnType<typeof customerPortalScope>>;
+  /** Visible mapped answer snapshots; see {@link hiddenMappedValues}. */
+  hiddenMapped?: HiddenMapped;
 };
 
 /**
@@ -236,7 +270,7 @@ type CaseSourceContext = {
  * requester_id, customer_visibility, work_item_id.
  */
 function caseSourceSql(context: CaseSourceContext): SQL {
-  const { viewer, intakeWorkspaceIds, portalScope } = context;
+  const { viewer, intakeWorkspaceIds, portalScope, hiddenMapped } = context;
   const submissionOwnOrParticipant = sql`(
     s.requester_id = ${viewer.personId}
     OR ${participantOf(sql`rp.submission_id = s.id`, viewer)}
@@ -257,11 +291,11 @@ function caseSourceSql(context: CaseSourceContext): SQL {
       'submission'::text AS source,
       s.id AS id,
       'SUB-' || s.number::text AS ref,
-      COALESCE(NULLIF(wi.title, ''), NULLIF(${mappedFormValue("title")}, ''), '') AS title,
+      COALESCE(NULLIF(wi.title, ''), NULLIF(${mappedFormValue("title", hiddenMapped?.title)}, ''), '') AS title,
       rt.name AS request_type_name,
       CASE
         WHEN wi.id IS NOT NULL THEN wi.priority
-        ELSE ${mappedFormValue("priority")}
+        ELSE ${mappedFormValue("priority", hiddenMapped?.priority)}
       END AS priority,
       -- Whether title and priority came from the stored answers (not the work item): the rows
       -- {@link withVisibleMappedValues} must check against the form's visibility rules.
@@ -409,7 +443,10 @@ async function intakeWorkspaceIds(organisationId: string): Promise<string[]> {
   );
 }
 
-async function caseSource(viewer: PortalViewer): Promise<SQL> {
+async function caseSource(
+  viewer: PortalViewer,
+  hiddenMapped?: HiddenMapped,
+): Promise<SQL> {
   const [workspaceIds, portalScope] = await Promise.all([
     intakeWorkspaceIds(viewer.organisationId),
     customerPortalScope(),
@@ -418,6 +455,7 @@ async function caseSource(viewer: PortalViewer): Promise<SQL> {
     viewer,
     intakeWorkspaceIds: workspaceIds,
     portalScope,
+    ...(hiddenMapped ? { hiddenMapped } : {}),
   });
 }
 
@@ -559,7 +597,12 @@ function toDate(value: Date | string): Date {
 async function selectCases(
   viewer: PortalViewer,
   filters: PortalCaseFilters,
-  options: { limit: number; after?: CaseCursor; where?: SQL[] },
+  options: {
+    limit: number;
+    after?: CaseCursor;
+    where?: SQL[];
+    hiddenMapped?: HiddenMapped | undefined;
+  },
 ): Promise<CaseRow[]> {
   const sort = filters.sort ?? "updated_desc";
   const column = sort.startsWith("created")
@@ -580,7 +623,7 @@ async function selectCases(
     );
   }
   const direction = descending ? sql`DESC` : sql`ASC`;
-  const source = await caseSource(viewer);
+  const source = await caseSource(viewer, options.hiddenMapped);
   const result = await db.execute<CaseRow>(sql`
     WITH cases AS (${source})
     SELECT
@@ -643,32 +686,90 @@ async function withVisibleMappedValues(rows: CaseRow[]): Promise<CaseRow[]> {
     if (!fromForm.includes(row)) return row;
     const entry = byId.get(row.id);
     // The row was readable a moment ago; if it is gone, show nothing from the form.
-    const rawFields = (entry?.formSchema as { fields?: unknown } | null)
-      ?.fields;
-    const form = {
-      fields: Array.isArray(rawFields) ? rawFields : [],
-    } as FormSchema;
-    const shown = entry ? visibleSubmissionAnswers(form, entry.formData) : {};
-    const isShown = (target: "title" | "priority") => {
-      const key = form.fields.find(
-        (field) => field.mapsTo?.field === target,
-      )?.key;
-      return key !== undefined && Object.hasOwn(shown, key);
-    };
+    const shown = entry
+      ? shownMappedFields(entry.formSchema, entry.formData)
+      : { title: false, priority: false };
     return {
       ...row,
-      title: row.title_from_form && !isShown("title") ? "" : row.title,
-      priority:
-        row.priority_from_form && !isShown("priority") ? null : row.priority,
+      title: row.title_from_form && !shown.title ? "" : row.title,
+      priority: row.priority_from_form && !shown.priority ? null : row.priority,
     };
   });
+}
+
+/**
+ * Whether a submission's mapped title and priority answers belong to fields the pinned form
+ * shows for its stored answers (declared, visible, not a file field). The one rule behind both the
+ * masked rows and the search/filter/count exclusion.
+ */
+function shownMappedFields(formSchema: unknown, formData: unknown) {
+  const rawFields = (formSchema as { fields?: unknown } | null)?.fields;
+  const form = {
+    fields: Array.isArray(rawFields) ? rawFields : [],
+  } as FormSchema;
+  const shown = visibleSubmissionAnswers(form, formData);
+  const isShown = (target: "title" | "priority") => {
+    const key = form.fields.find(
+      (field) => field.mapsTo?.field === target,
+    )?.key;
+    return key !== undefined && Object.hasOwn(shown, key);
+  };
+  return { title: isShown("title"), priority: isShown("priority") };
+}
+
+/**
+ * Title search and priority filtering (and the totals and CSV built on them) match the case rows'
+ * `title` and `priority`, which for a submission without a work item come from a stored answer.
+ * When a request filters on either, find the readable submissions whose mapped field is
+ * conditionally shown and retain only visible snapshots. SQL matches each snapshot against the
+ * current data and version, failing closed if either changed after this query. Without a filter
+ * nothing depends on the mapped values and no work is done.
+ */
+async function hiddenMappedValues(
+  viewer: PortalViewer,
+  filters: PortalCaseFilters,
+): Promise<HiddenMapped | undefined> {
+  if (!filters.q && !filters.priority?.length) return undefined;
+  const source = await caseSource(viewer);
+  const result = await db.execute<{
+    id: string;
+    title_from_form: boolean;
+    priority_from_form: boolean;
+    form_data: unknown;
+    form_schema: unknown;
+  }>(sql`
+    WITH cases AS (${source})
+    SELECT c.id, c.title_from_form, c.priority_from_form, s.form_data, rtv.form_schema
+    FROM cases c
+    JOIN submission s ON s.id = c.id
+    JOIN request_type_version rtv ON rtv.id = s.request_type_version_id
+    WHERE c.source = 'submission'
+      AND (
+        (c.title_from_form AND ${mappedFieldNeedsCheck("title")})
+        OR (c.priority_from_form AND ${mappedFieldNeedsCheck("priority")})
+      )
+  `);
+  const title: VisibleSnapshot[] = [];
+  const priority: VisibleSnapshot[] = [];
+  for (const row of result.rows) {
+    const shown = shownMappedFields(row.form_schema, row.form_data);
+    const snapshot = {
+      id: row.id,
+      data: row.form_data,
+      schema: row.form_schema,
+    };
+    if (row.title_from_form && shown.title) title.push(snapshot);
+    if (row.priority_from_form && shown.priority) priority.push(snapshot);
+  }
+  return { title, priority };
 }
 
 async function countCases(
   viewer: PortalViewer,
   filters: PortalCaseFilters,
+  hiddenMapped?: HiddenMapped,
 ): Promise<number> {
-  const source = await caseSource(viewer);
+  const source = await caseSource(viewer, hiddenMapped);
   const result = await db.execute<{ total: number | string }>(sql`
     WITH cases AS (${source})
     SELECT count(*)::int AS total FROM cases c
@@ -746,12 +847,14 @@ export async function listPortalCases(
   );
   const scope = cursorScope(viewer, filters, limit);
   const after = decodeCursor(cursor, scope);
+  const hiddenMapped = await hiddenMappedValues(viewer, filters);
   const [rows, total] = await Promise.all([
     selectCases(viewer, filters, {
       limit: limit + 1,
       ...(after ? { after } : {}),
+      hiddenMapped,
     }),
-    countCases(viewer, filters),
+    countCases(viewer, filters, hiddenMapped),
   ]);
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
@@ -877,7 +980,8 @@ export async function exportPortalCases(
   filters: PortalCaseFilters,
 ) {
   const viewer = await loadPortalViewer(personId);
-  const total = await countCases(viewer, filters);
+  const hiddenMapped = await hiddenMappedValues(viewer, filters);
+  const total = await countCases(viewer, filters, hiddenMapped);
   const truncated = total > PORTAL_CASE_EXPORT_CAP;
   const encoder = new TextEncoder();
   let written = 0;
@@ -900,6 +1004,7 @@ export async function exportPortalCases(
         const rows = await selectCases(viewer, filters, {
           limit: Math.min(EXPORT_PAGE, remaining),
           ...(after ? { after } : {}),
+          hiddenMapped,
         });
         if (rows.length === 0) {
           controller.close();

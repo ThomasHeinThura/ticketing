@@ -386,9 +386,11 @@ export function resolveFormVisibility(
     // A cycle member stays fail-closed/visible even after recursion unwinds.
     if (cache.has(field.key)) return true;
 
-    // N1: a hidden controller's answer never decides another field's visibility.
+    // N1: a hidden controller's answer never decides another field's visibility. Neither does
+    // a stored key the form does not declare: with no declared controller the condition reads
+    // an absent answer, so a forged or legacy key cannot show or hide a field.
     let actual: FormValue = null;
-    if (controllerVisible) {
+    if (controllerVisible && controller !== undefined) {
       const raw = Object.hasOwn(normalizedData, condition.field_key)
         ? (normalizedData[condition.field_key] ?? null)
         : null;
@@ -441,44 +443,28 @@ export type VisibleSubmissionView = {
 /**
  * What a reader may be shown of a stored submission, from ONE visibility result (RT-5): the
  * fields the form version shows, and the answers of those fields in the form's field order with
- * each stored value unchanged. Only keys the version declares take part: an undeclared key (a
- * forged or legacy key) is neither returned nor allowed to decide whether a field is visible,
- * even when a condition names it. Hidden-field answers and file fields (their files never sit in
- * `form_data`, IQ-9) are left out of `answers`. A read-time projection for portal and triage
- * responses; stored history is never rewritten.
+ * each stored value unchanged. An undeclared key (a forged or legacy key) is neither returned nor
+ * allowed to decide whether a field is visible ({@link resolveFormVisibility} ignores it, so
+ * validation, sanitising, conversion and this view all agree). Hidden-field answers and file
+ * fields (their files never sit in `form_data`, IQ-9) are left out of `answers`. A read-time
+ * projection for portal and triage responses; stored history is never rewritten.
  */
 export function visibleSubmissionView(
   schema: FormSchema,
   data: unknown,
 ): VisibleSubmissionView {
   const answers: Record<string, unknown> = {};
-  if (data === null || typeof data !== "object" || Array.isArray(data)) {
-    // No usable answers: visibility is still resolved for the empty answer set.
-    const visibility = resolveFormVisibility(schema, {});
-    return {
-      fields: schema.fields.filter((f) => visibility.get(f.key) ?? true),
-      answers,
-    };
-  }
-  const declared = new Set(schema.fields.map((field) => field.key));
-  const stored: Record<string, unknown> = {};
-  for (const key of Object.getOwnPropertyNames(data)) {
-    if (!declared.has(key)) continue;
-    // `defineProperty`, not assignment: a field keyed `__proto__` is an own answer, and must
-    // not re-target the prototype of the copy.
-    Object.defineProperty(stored, key, {
-      value: (data as Record<string, unknown>)[key],
-      writable: true,
-      enumerable: true,
-      configurable: true,
-    });
-  }
-  const visibility = resolveFormVisibility(schema, stored);
+  const isObject =
+    data !== null && typeof data === "object" && !Array.isArray(data);
+  const visibility = resolveFormVisibility(schema, isObject ? data : {});
   const fields = schema.fields.filter((f) => visibility.get(f.key) ?? true);
+  if (!isObject) return { fields, answers };
   for (const field of fields) {
-    if (field.type === "file" || !Object.hasOwn(stored, field.key)) continue;
+    if (field.type === "file" || !Object.hasOwn(data, field.key)) continue;
+    // `defineProperty`, not assignment: a field keyed `__proto__` is an own answer, and must
+    // not re-target the prototype of the returned object.
     Object.defineProperty(answers, field.key, {
-      value: stored[field.key],
+      value: (data as Record<string, unknown>)[field.key],
       writable: true,
       enumerable: true,
       configurable: true,

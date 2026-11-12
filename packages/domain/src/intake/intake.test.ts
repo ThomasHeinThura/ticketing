@@ -2247,3 +2247,101 @@ describe("normalizeFormSchema repairs a condition left as the empty string on a 
     );
   });
 });
+
+// --- An undeclared stored key never decides visibility, on every path -------------
+describe("an undeclared controller key never decides visibility (write, conversion, presign)", () => {
+  // `ghost` is named by the conditions but the version never declares it (a version that
+  // skipped publish checks). Whatever a client or an old row stores under it is not an answer.
+  const ghostForm = (op: "eq" | "neq"): FormSchema => ({
+    fields: [
+      {
+        key: "summary",
+        type: "text",
+        label: "Summary",
+        required: true,
+        mapsTo: { field: "title" },
+      },
+      {
+        key: "detail",
+        type: "text",
+        label: "Detail",
+        required: true,
+        mapsTo: { field: "description" },
+        showIf: { field_key: "ghost", op, value: "yes" },
+      },
+      { key: "notes", type: "text", label: "Notes" },
+      {
+        key: "upload",
+        type: "file",
+        label: "Upload",
+        showIf: { field_key: "ghost", op, value: "yes" },
+      },
+    ],
+  });
+
+  it("resolves 'eq' as if the key were absent: the field stays hidden whatever is stored", () => {
+    const form = ghostForm("eq");
+    const data = { summary: "x", ghost: "yes", detail: "secret", notes: "n" };
+    const visibility = resolveFormVisibility(form, data);
+    expect(visibility.get("detail")).toBe(false);
+    expect(visibility.get("upload")).toBe(false);
+    expect(visibleFields(form, data).map((f) => f.key)).toEqual([
+      "summary",
+      "notes",
+    ]);
+    const upload = form.fields[3];
+    if (!upload) throw new Error("fixture");
+    expect(isFieldVisible(form, upload, data)).toBe(false);
+  });
+
+  it("validation does not require, and sanitising does not store, a field a forged key 'shows'", () => {
+    const form = ghostForm("eq");
+    // Before: ghost "yes" made `detail` visible and required.
+    expect(
+      validateSubmissionData(form, { summary: "x", ghost: "yes" }),
+    ).toEqual([]);
+    const forged = { summary: "x", ghost: "yes", detail: "secret", notes: "n" };
+    expect(validateSubmissionData(form, forged)).toEqual([]);
+    expect(sanitizeSubmissionData(form, forged)).toEqual({
+      summary: "x",
+      notes: "n",
+    });
+  });
+
+  it("'neq' keeps the field visible and required: a forged key cannot hide it", () => {
+    const form = ghostForm("neq");
+    expect(resolveFormVisibility(form, { ghost: "yes" }).get("detail")).toBe(
+      true,
+    );
+    // Before: ghost "yes" hid `detail`, so its required check was skipped.
+    expect(
+      validateSubmissionData(form, { summary: "x", ghost: "yes" }),
+    ).toEqual([{ key: "detail", problem: "required_missing" }]);
+    expect(
+      sanitizeSubmissionData(form, {
+        summary: "x",
+        ghost: "yes",
+        detail: "kept",
+      }),
+    ).toEqual({ summary: "x", detail: "kept" });
+  });
+
+  it("conversion mapping and the description ignore the hidden answer", () => {
+    const form = ghostForm("eq");
+    const stored = { summary: "x", ghost: "yes", detail: "secret", notes: "n" };
+    // translateMapsTo is what acceptance copies onto the work item's title and description.
+    expect(translateMapsTo(form, stored)).toEqual({ title: "x" });
+    const description = renderUnmappedIntoDescription(form, stored);
+    expect(description).toContain("Notes");
+    expect(description).not.toContain("secret");
+    expect(description).not.toContain("ghost");
+  });
+
+  it("the stored data under the undeclared key is untouched by the read view", () => {
+    const form = ghostForm("eq");
+    const stored = { summary: "x", ghost: "yes", detail: "secret" };
+    const view = visibleSubmissionView(form, stored);
+    expect(view.answers).toEqual({ summary: "x" });
+    expect(stored).toEqual({ summary: "x", ghost: "yes", detail: "secret" });
+  });
+});

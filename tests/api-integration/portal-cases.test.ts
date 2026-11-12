@@ -1116,6 +1116,30 @@ describe("portal cases (S4b)", () => {
     // Reference, blank title, request type, blank priority.
     expect(staleLine?.startsWith(`SUB-${stale.number},,Hardware,,`)).toBe(true);
 
+    // The hidden stored answers are no search or filter oracle either: matching them finds
+    // nothing, and the totals and the CSV agree with the rows.
+    const stalePage = await list(tenant, alice, "q=Stale");
+    expect(stalePage.cases).toEqual([]);
+    expect(stalePage.meta.total).toBe(0);
+    const urgentPage = await list(tenant, alice, "priority=urgent");
+    expect(urgentPage.cases).toEqual([]);
+    expect(urgentPage.meta.total).toBe(0);
+    const visibleSearch = await list(tenant, alice, "q=Visible");
+    expect(refs(visibleSearch)).toEqual([`SUB-${shown.number}`]);
+    expect(visibleSearch.meta.total).toBe(1);
+    const highPage = await list(tenant, alice, "priority=high");
+    expect(refs(highPage)).toEqual([`SUB-${shown.number}`]);
+    expect(highPage.meta.total).toBe(1);
+    for (const query of ["q=Stale", "priority=urgent"]) {
+      const filtered = await portalRequest(
+        tenant,
+        alice,
+        `/api/portal/requests/export.csv?scope=mine&${query}`,
+      );
+      expect(filtered.headers.get("x-export-total"), query).toBe("0");
+      expect((await filtered.text()).trimEnd().split("\r\n")).toHaveLength(1);
+    }
+
     // Ticking the box (the stored answers now show both fields) shows them again.
     await db
       .update(schema.submissionTable)
@@ -1130,6 +1154,13 @@ describe("portal cases (S4b)", () => {
     expect(
       rowOf(await list(tenant, alice), `SUB-${stale.number}`),
     ).toMatchObject({ title: "Stale hidden headline", priority: "urgent" });
+    // Visible again: the same search and filter now find it, and the total follows.
+    expect(refs(await list(tenant, alice, "q=Stale"))).toEqual([
+      `SUB-${stale.number}`,
+    ]);
+    const urgentAgain = await list(tenant, alice, "priority=urgent");
+    expect(refs(urgentAgain)).toEqual([`SUB-${stale.number}`]);
+    expect(urgentAgain.meta.total).toBe(1);
   });
 
   it("keeps a staff-raised case when a colleague's private duplicate is merged into it", async () => {

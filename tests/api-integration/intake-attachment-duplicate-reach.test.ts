@@ -240,6 +240,40 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
         .update(schema.submissionTable)
         .set({ formData: { summary: "Cannot sign in", gate: "off" } })
         .where(eq(schema.submissionTable.id, submission.id));
+      const beforeAcceptance = await portalRequest(s.t, s.customer, base);
+      expect(beforeAcceptance.status).toBe(200);
+      expect(await names(beforeAcceptance)).not.toContain("retained.pdf");
+      expect(
+        (await portalRequest(s.t, s.customer, `${base}/${ready.id}`)).status,
+      ).toBe(404);
+      expect(
+        (await portalRequest(s.t, s.customer, `${base}/${ready.id}/preview`))
+          .status,
+      ).toBe(404);
+      mockAuthenticatedSession(s.customer.user, { portal: "customer" });
+      const revoked = await s.t.app.request(
+        `http://${PORTAL_HOST}${target.pathname}${target.search}`,
+        { headers: { host: PORTAL_HOST } },
+      );
+      expect(revoked.status).toBe(404);
+      await db
+        .update(schema.attachmentTable)
+        .set({ submissionFieldKey: "undeclared" })
+        .where(eq(schema.attachmentTable.id, ready.id));
+      expect(
+        await names(await portalRequest(s.t, s.customer, base)),
+      ).not.toContain("retained.pdf");
+      expect(
+        (await portalRequest(s.t, s.customer, `${base}/${ready.id}/preview`))
+          .status,
+      ).toBe(404);
+      expect(
+        (await portalRequest(s.t, s.customer, `${base}/${ready.id}`)).status,
+      ).toBe(404);
+      await db
+        .update(schema.attachmentTable)
+        .set({ submissionFieldKey: "hidden" })
+        .where(eq(schema.attachmentTable.id, ready.id));
       const converted = await acceptSubmission(
         ref,
         s.t.workspaceId,

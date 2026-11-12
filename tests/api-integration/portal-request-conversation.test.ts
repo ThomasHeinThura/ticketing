@@ -1793,6 +1793,32 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
       );
     const accepted = await presign();
     expect(accepted.status, await accepted.clone().text()).toBe(200);
+    // Legacy versions can name a controller they do not declare. A stored forged answer
+    // must not make that file field eligible for a new upload.
+    await db
+      .update(schema.requestTypeVersionTable)
+      .set({
+        formSchema: {
+          fields: [
+            { key: "summary", type: "text", label: "Summary", required: true },
+            {
+              key: "evidence",
+              type: "file",
+              label: "Evidence",
+              showIf: { field_key: "ghost", op: "eq", value: "yes" },
+            },
+          ],
+        },
+      })
+      .where(eq(schema.requestTypeVersionTable.requestTypeId, requestType.id));
+    await db
+      .update(schema.submissionTable)
+      .set({ formData: { summary: "Logs", ghost: "yes" } })
+      .where(
+        eq(schema.submissionTable.number, Number(ref.replace("SUB-", ""))),
+      );
+    const forged = await presign();
+    expect(forged.status, await forged.clone().text()).toBe(400);
   });
 
   it("still presigns for a form version published by an older build that today's editor schema would refuse", async () => {
