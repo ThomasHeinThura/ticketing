@@ -17,6 +17,11 @@ export type LocalFactorState = {
   policy: LocalFactorPolicy;
   required: boolean;
   enabled: boolean;
+  /**
+   * First-run setup is marked complete. Read with the policy row, so the per-request
+   * staff check pays no extra query. The marker only ever goes from unset to set.
+   */
+  setupCompleted: boolean;
   personId: string;
   personSide: "staff" | "customer";
 };
@@ -72,6 +77,7 @@ export async function loadLocalFactorState(
       activeRoleIds: memberships.map(({ roleId }) => roleId),
     }),
     enabled: person.enabled === true,
+    setupCompleted: setting.setupCompletedAt != null,
     personId: person.id,
     personSide: person.side,
   };

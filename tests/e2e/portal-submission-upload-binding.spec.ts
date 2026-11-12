@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import type { APIRequestContext, Page, Route } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
+import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
 import {
   fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
@@ -131,6 +132,7 @@ async function setupStaff(page: Page, fixture: MfaCsrfAppFixture) {
   );
   await page.getByRole("button", { name: /^create account$/i }).click();
   expect((await signup).status()).toBe(200);
+  await completePendingFirstAdminInBrowser(page, fixture);
   const workspace = await postWithCsrf(
     page.context().request,
     fixture.origin,

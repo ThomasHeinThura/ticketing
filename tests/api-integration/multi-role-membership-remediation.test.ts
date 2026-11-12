@@ -37,7 +37,6 @@ import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
   plantLegacyMembershipRole,
-  signUpInstanceAdmin,
   signUpUser,
 } from "./helpers/organization-http";
 import { projectKey } from "./helpers/project-key";
@@ -86,9 +85,13 @@ async function workspaceWithMember(
   role: string,
   options?: { ownerIsInstanceAdmin?: boolean },
 ) {
-  const owner = options?.ownerIsInstanceAdmin
-    ? await signUpInstanceAdmin(app)
-    : await signUpUser(app);
+  const owner = await signUpUser(app);
+  if (options?.ownerIsInstanceAdmin) {
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, owner.user.id));
+  }
   const created = await createWorkspaceNative(app, owner.cookie);
   const workspace = (await created.json()) as { id: string };
   const member = await inviteAndAcceptAsNewMemberNative(
@@ -245,11 +248,8 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
 
   it("refuses an instance admin whose own workspace membership row is malformed", async () => {
     const { app } = createApp();
-    // #18: instance-admin bootstrap now requires a valid setup token, so this owner
-    // is deliberately signed up through the real bootstrap flow (`ownerIsInstanceAdmin`)
-    // rather than relying on "first user in an empty database" the way this test used
-    // to -- that is also the single most common real-world shape (the operator who set
-    // the instance up and created the first workspace).
+    // Use an established-instance admin fixture to exercise membership evaluation
+    // independently of the first-user bootstrap flow.
     const { owner, workspace } = await workspaceWithMember(app, "viewer", {
       ownerIsInstanceAdmin: true,
     });

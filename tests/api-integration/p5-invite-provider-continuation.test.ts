@@ -316,8 +316,11 @@ beforeEach(async () => {
   sentWorkspaceInvitationEmails.length = 0;
   await db
     .insert(schema.instanceSettingTable)
-    .values({ id: "singleton" })
-    .onConflictDoNothing();
+    .values({ id: "singleton", setupCompletedAt: new Date() })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: { setupCompletedAt: new Date() },
+    });
   world = await inviteWorld();
 });
 

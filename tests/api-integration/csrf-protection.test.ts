@@ -16,7 +16,10 @@ const PORTAL_ORIGIN = "http://portal.localhost:5174";
 
 beforeEach(async () => {
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db.insert(schema.instanceSettingTable).values({
+    id: "singleton",
+    setupCompletedAt: new Date(),
+  });
 });
 
 async function createAgentSession(id: string) {

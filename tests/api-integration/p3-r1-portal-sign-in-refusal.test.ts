@@ -235,8 +235,11 @@ beforeEach(async () => {
   await resetTestDatabase();
   await db
     .insert(schema.instanceSettingTable)
-    .values({ id: "singleton" })
-    .onConflictDoNothing();
+    .values({ id: "singleton", setupCompletedAt: new Date() })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: { setupCompletedAt: new Date() },
+    });
   await db
     .insert(schema.instanceFeatureFlagTable)
     .values({ featureKey: "feature.customer_portal", enabled: true })
@@ -360,6 +363,101 @@ describe("P3-R1-01 portal sign-in never deletes an existing account", () => {
     expect(response.status).not.toBe(200);
     expect(await userByEmail(email)).toBeUndefined();
   });
+
+  it.each(["email-otp", "magic-link"] as const)(
+    "refuses invited %s auto-creation while bootstrap is incomplete",
+    async (method) => {
+      const world = await import("./helpers/p5-invite").then((module) =>
+        module.inviteWorld(),
+      );
+      const invited = await world.invite(
+        `pending-${method}-${randomUUID()}@example.test`,
+      );
+      vi.restoreAllMocks();
+      const origin = getConfiguredCustomerOrigin();
+      const ip = nextClientIp();
+      const started = await world.app.request(
+        `${origin}/api/portal/invitations/${encodeURIComponent(invited.id)}/continuation`,
+        {
+          method: "POST",
+          headers: {
+            host: PORTAL_HOST,
+            origin,
+            "content-type": "application/json",
+            "x-forwarded-for": ip,
+          },
+          body: JSON.stringify({ credential: invited.credential }),
+        },
+      );
+      expect(started.status).toBe(204);
+      const cookie = started.headers
+        .getSetCookie()
+        .find((entry) => entry.startsWith("__Host-tdk_customer_invite_"))
+        ?.split(";", 1)[0];
+      expect(cookie).toBeTruthy();
+      const headers = {
+        host: PORTAL_HOST,
+        origin,
+        cookie: cookie as string,
+        "x-taskdesk-invitation-id": invited.id,
+        "x-forwarded-for": ip,
+        "content-type": "application/json",
+      };
+      await db
+        .update(schema.instanceSettingTable)
+        .set({ setupCompletedAt: null });
+
+      let refused: Response;
+      if (method === "email-otp") {
+        mailState.otp = null;
+        const sent = await world.app.request(
+          `${origin}/api/auth/email-otp/send-verification-otp`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ email: invited.email, type: "sign-in" }),
+          },
+        );
+        expect(sent.status).toBe(200);
+        expect(mailState.otp).toBeTruthy();
+        refused = await world.app.request(
+          `${origin}/api/auth/sign-in/email-otp`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ email: invited.email, otp: mailState.otp }),
+          },
+        );
+      } else {
+        mailState.magicLink = null;
+        const sent = await world.app.request(
+          `${origin}/api/auth/sign-in/magic-link`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ email: invited.email, callbackURL: "/" }),
+          },
+        );
+        expect(sent.status).toBe(200);
+        expect(mailState.magicLink).toBeTruthy();
+        const token = new URL(String(mailState.magicLink)).searchParams.get(
+          "token",
+        );
+        refused = await world.app.request(
+          `${origin}/api/auth/magic-link/verify?token=${encodeURIComponent(token as string)}&callbackURL=/`,
+          { headers, redirect: "manual" },
+        );
+      }
+      expect(refused.status).not.toBe(200);
+      expect(await userByEmail(invited.email)).toBeUndefined();
+      expect((await world.rowOf(invited.id))?.status).toBe("pending");
+      expect(
+        refused.headers
+          .getSetCookie()
+          .some((entry) => entry.startsWith("__Host-tdk_portal_session=")),
+      ).toBe(false);
+    },
+  );
 
   it("removes a row created by this very request when acceptance then fails", async () => {
     const world = await import("./helpers/p5-invite").then((m) =>

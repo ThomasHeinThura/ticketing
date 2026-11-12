@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { APIRequestContext, APIResponse } from "@playwright/test";
+import { completeFirstAdminViaApi } from "./complete-bootstrap-enrollment";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -48,6 +49,7 @@ function runPrivateSeeder(
   script: string,
   input: Record<string, string>,
   outputName: string,
+  outputPath?: string,
 ) {
   const inputPath = resolve(fixture.fixtureDir, `${outputName}-input.json`);
   writeFileSync(inputPath, JSON.stringify(input), { mode: 0o600 });
@@ -59,6 +61,7 @@ function runPrivateSeeder(
       resolve(repoRoot, "apps/api/tsconfig.tests.json"),
       resolve(repoRoot, "tests/e2e/scripts", script),
       inputPath,
+      ...(outputPath ? [outputPath] : []),
     ],
     {
       ...process.env,
@@ -86,12 +89,19 @@ function runPrivateSeeder(
   );
 }
 
-async function seedCustomerPasswordProvider(fixture: MfaCsrfAppFixtureSetup) {
+async function seedApprovalInstance(fixture: MfaCsrfAppFixtureSetup) {
   await runPrivateSeeder(
     fixture,
     "seed-approval-auth-provider.ts",
     {},
     "approval-auth-provider-seed",
+  );
+  await runPrivateSeeder(
+    fixture,
+    "seed-portal-projects.ts",
+    { phase: "instance" },
+    "approval-portal-instance-seed",
+    resolve(fixture.fixtureDir, "approval-portal-instance-output.json"),
   );
 }
 
@@ -121,8 +131,11 @@ export async function withApprovalRuntime(
   ) => Promise<void>,
 ) {
   await withMfaCsrfApp(
-    async (appFixture) => run(appFixture, await seedApprovalActors(appFixture)),
-    { beforeStart: seedCustomerPasswordProvider },
+    async (appFixture) => {
+      await completeFirstAdminViaApi(appFixture);
+      await run(appFixture, await seedApprovalActors(appFixture));
+    },
+    { beforeStart: seedApprovalInstance },
   );
 }
 

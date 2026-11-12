@@ -16,7 +16,10 @@ import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
 beforeEach(async () => {
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db.insert(schema.instanceSettingTable).values({
+    id: "singleton",
+    setupCompletedAt: new Date(),
+  });
 });
 
 function hashApiKeyForTest(key: string): string {
