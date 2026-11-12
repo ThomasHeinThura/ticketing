@@ -89,6 +89,7 @@ function SidebarProvider({
   style,
   children,
   skipLinkLabel,
+  mobileBreakpoint,
   ...props
 }: React.ComponentProps<"div"> & {
   defaultOpen?: boolean;
@@ -99,8 +100,13 @@ function SidebarProvider({
    * link to `SidebarInset`'s `main`; every shell with a sidebar should pass it.
    */
   skipLinkLabel?: string;
+  /**
+   * Viewport width (px) below which the sidebar is the off-canvas sheet instead of docked;
+   * defaults to 768. The sheet's open state is separate from the persisted docked state.
+   */
+  mobileBreakpoint?: number;
 }) {
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(mobileBreakpoint);
   const [openMobile, setOpenMobile] = React.useState(false);
 
   // This is the internal state of the sidebar.

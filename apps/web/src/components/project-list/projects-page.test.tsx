@@ -18,6 +18,20 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
+  Link: ({
+    children,
+    params,
+    ...props
+  }: React.PropsWithChildren<{
+    params: { projectKey: string };
+    to: string;
+    onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+    className?: string;
+  }>) => (
+    <a {...props} href={`/agent/projects/${params.projectKey}`}>
+      {children}
+    </a>
+  ),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -274,6 +288,31 @@ describe("ProjectsPage engagement kind (S5)", () => {
     supportLevel: "L2",
     position: 1,
   };
+
+  it("provides a named scroll region and a canonical link while preserving row navigation", () => {
+    mocks.projects = [delivery];
+    render(<ProjectsPage workspaceId="workspace-1" />);
+    const region = screen.getByRole("region", {
+      name: translate("workspace:projects.pageTitle"),
+    });
+    expect(
+      region.querySelector('[data-slot="scroll-area-viewport"]'),
+    ).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Portal build" });
+    expect(link).toHaveAttribute("href", "/agent/projects/BUILD");
+    link.focus();
+    expect(link).toHaveFocus();
+    fireEvent.click(link, { ctrlKey: true });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    const row = link.closest("tr");
+    expect(row).not.toBeNull();
+    if (!row) throw new Error("Project link has no row");
+    fireEvent.click(row);
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/agent/projects/$projectKey",
+      params: { projectKey: "BUILD" },
+    });
+  });
 
   it("badges managed services and leaves delivery projects unbadged", () => {
     mocks.projects = [delivery, managed];

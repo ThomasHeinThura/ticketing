@@ -120,6 +120,14 @@ describe("portal sign-in", () => {
     vi.unstubAllGlobals();
   });
 
+  it("exposes one page heading on the standalone portal sign-in screen", () => {
+    renderSignIn();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "auth:signIn.pageTitle" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
   it("keeps the email-first step local and moves the open stage into the URL", async () => {
     renderSignIn();
     fireEvent.change(screen.getByLabelText("auth:forms.email"), {
