@@ -41,6 +41,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 # Local SIT has its own fail-closed release path; do not load or generate root secrets.
+if [ "${1:-}" = local-fresh ]; then
+  shift
+  exec node "$REPO_ROOT/deploy/local-fresh.mjs" "$@"
+fi
+
 if [ "${1:-}" = local ]; then
   shift
   exec node "$REPO_ROOT/deploy/local-release.mjs" "$@"

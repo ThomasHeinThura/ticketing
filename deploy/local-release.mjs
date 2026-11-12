@@ -104,14 +104,17 @@ export function deployLocal(options = {}) {
   }
 }
 
-function deployLocalLocked({
+export function deployLocalLocked({
   args = process.argv.slice(2),
   env = process.env,
   run = spawnSync,
   exists = existsSync,
   realpath = realpathSync,
   report = console.log,
+  preflightOnly = false,
+  dryRun = false,
 } = {}) {
+  if (dryRun && !preflightOnly) fail("Dry run is restricted to preflight.");
   if (args.length === 1 && ["--help", "-h"].includes(args[0])) {
     return "Usage: scripts/deploy.sh local\nSet SIT_COMPOSE_ENV and SIT_PRIVATE_DIR to absolute private paths after independently verifying the pre-existing copied project and backup. No seeding or initial import is performed.";
   }
@@ -480,6 +483,38 @@ function deployLocalLocked({
   const dbName = decodeURIComponent(databases[0].slice(1));
   if (!dbName || dbName.includes("/") || dbName.includes("\0"))
     fail("Invalid database name.");
+  if (!dryRun) {
+    command(
+      "gh",
+      [
+        "attestation",
+        "verify",
+        `oci://${image}`,
+        "--owner",
+        "ThomasHeinThura",
+        "--signer-workflow",
+        "ThomasHeinThura/ticketing/.github/workflows/release.yml",
+        "--source-ref",
+        "refs/heads/main",
+      ],
+      "Release attestation verification",
+    );
+    command(
+      "cosign",
+      [
+        "verify",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-identity",
+        "https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main",
+        "--annotations",
+        `tag=${tag}`,
+        image,
+      ],
+      "Release signature verification",
+    );
+  }
+  if (preflightOnly) return { image, tag, dbName, config, prefix, composeEnv };
   dc(
     [
       "exec",
@@ -492,35 +527,6 @@ function deployLocalLocked({
       dbName,
     ],
     "Initialized database check",
-  );
-  command(
-    "gh",
-    [
-      "attestation",
-      "verify",
-      `oci://${image}`,
-      "--owner",
-      "ThomasHeinThura",
-      "--signer-workflow",
-      "ThomasHeinThura/ticketing/.github/workflows/release.yml",
-      "--source-ref",
-      "refs/heads/main",
-    ],
-    "Release attestation verification",
-  );
-  command(
-    "cosign",
-    [
-      "verify",
-      "--certificate-oidc-issuer",
-      "https://token.actions.githubusercontent.com",
-      "--certificate-identity",
-      "https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main",
-      "--annotations",
-      `tag=${tag}`,
-      image,
-    ],
-    "Release signature verification",
   );
   dc(["pull", "migrate", "taskdesk"], "Image pull");
   const imageDetails = json(

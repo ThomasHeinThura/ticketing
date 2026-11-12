@@ -455,6 +455,8 @@ Proxy startup and internal readiness do not establish public HTTPS or browser be
 Check readiness on both canonical hosts and run the signed-in release smoke before accepting
 the release. See [handover](../handover.md) and [testing](../testing.md).
 
+**Owner-approved fresh local SIT installation (12 Nov 2026).** With `SIT_COMPOSE_ENV` and `SIT_PRIVATE_DIR` set to existing private paths, inspect the plan with `scripts/deploy.sh local-fresh --confirm-wipe taskdesk-codex-testing --dry-run`; omit `--dry-run` to execute. Add `--dry-run-allow-open-registration` only to preview an environment whose switches are still open; the warning does not permit execution. Runtime-created container IDs are shown as tokens in the preview. The private app environment must set `DISABLE_REGISTRATION`, `DISABLE_PASSWORD_REGISTRATION` and `DISABLE_WORKSPACE_CREATION` to `true`. The command verifies the signed release, writes a timestamped private backup, removes inspected project containers and volumes, starts the fresh stack, seeds it, and runs release smoke. The backup and counts are taken while the old application is running, so concurrent changes can make database and attachment snapshots differ; quiesce users before running. The native database on port 62870 remains protected.
+
 For other installation modes, see [One-line install](#one-line-install) and the
 production guidance below; those modes have separate requirements.
 
