@@ -1,4 +1,10 @@
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  focusManager,
+  type InfiniteData,
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
@@ -57,7 +63,6 @@ function useGetWorkItems({
   const effectiveSorts = sorts?.length ? sorts : [{ field: sort, order: dir }];
   const useSearch = usesWorkItemSearch({ filter, columns, sort, dir, sorts });
   const readEnabled = !!projectId && enabled;
-  const refetchInterval = realtimeStatus === "available" ? false : 30_000;
   const listQueryKey = workItemsListQueryKey(projectId, sort, dir);
   const searchQueryKey = [
     "work-items",
@@ -95,8 +100,6 @@ function useGetWorkItems({
       };
     },
     enabled: readEnabled && !useSearch,
-    refetchInterval,
-    refetchIntervalInBackground: false,
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === projectId ? previousData : undefined,
   });
@@ -131,8 +134,15 @@ function useGetWorkItems({
           .flatMap((page) => page.customFieldPeople ?? [])
           .map((person) => [`${person.projectId}\0${person.personId}`, person]),
       );
+      const seen = new Set<string>();
       return {
-        items: data.pages.flatMap((page) => page.items),
+        items: data.pages
+          .flatMap((page) => page.items)
+          .filter((item) => {
+            if (seen.has(item.id)) return false;
+            seen.add(item.id);
+            return true;
+          }),
         hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
         hasMore: last?.hasMore ?? false,
         ...(customFieldColumns ? { customFieldColumns } : {}),
@@ -140,13 +150,122 @@ function useGetWorkItems({
       };
     },
     enabled: readEnabled && useSearch && !!workspaceId && !!projectSlug,
-    refetchInterval,
-    refetchIntervalInBackground: false,
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === projectId ? previousData : undefined,
   });
 
   const active = useSearch ? searchQuery : listQuery;
+  const activeKey = useSearch ? searchQueryKey : listQueryKey;
+  // A key's JSON representation is stable even when callers recreate their filter arrays.
+  const activeKeyId = JSON.stringify(activeKey);
+  const pollRef = useRef({
+    activeKey,
+    projectId,
+    sort,
+    dir,
+    workspaceId,
+    projectSlug,
+    structuredFilter,
+    effectiveSorts,
+    columns,
+    useSearch,
+  });
+  pollRef.current = {
+    activeKey,
+    projectId,
+    sort,
+    dir,
+    workspaceId,
+    projectSlug,
+    structuredFilter,
+    effectiveSorts,
+    columns,
+    useSearch,
+  };
+  const pollingEnabled =
+    readEnabled &&
+    realtimeStatus !== "available" &&
+    (!useSearch || Boolean(workspaceId && projectSlug));
+
+  useEffect(() => {
+    if (!pollingEnabled) return;
+    let disposed = false;
+    let inFlight = false;
+    const timer = setInterval(async () => {
+      if (disposed || inFlight || !focusManager.isFocused()) return;
+      const input = pollRef.current;
+      if (JSON.stringify(input.activeKey) !== activeKeyId) return;
+      const query = queryClient
+        .getQueryCache()
+        .find({ queryKey: input.activeKey, exact: true });
+      if (query?.state.fetchStatus !== "idle") return;
+      const before = query.state;
+      inFlight = true;
+      try {
+        const first = input.useSearch
+          ? await (await loadSearchWorkItems())({
+              workspaceId: input.workspaceId as string,
+              projectSlug: input.projectSlug as string,
+              filter: input.structuredFilter ?? "",
+              sort: input.sort,
+              dir: input.dir,
+              sorts: input.effectiveSorts,
+              columns: input.columns,
+              cursor: undefined,
+            })
+          : await fetchWorkItemsListPage(
+              input.projectId as string,
+              input.sort,
+              input.dir,
+              undefined,
+            );
+        // A manual refresh, pagination, realtime update, or mutation wins over this read.
+        if (
+          disposed ||
+          query.state !== before ||
+          queryClient
+            .getQueryCache()
+            .find({ queryKey: input.activeKey, exact: true }) !== query
+        )
+          return;
+        queryClient.setQueryData<
+          InfiniteData<WorkItemsResult, string | undefined>
+        >(input.activeKey, (current) => {
+          if (!current?.pages.length)
+            return { pages: [first], pageParams: [undefined] };
+          // Keep the original later pages: an overlapping item can leave page one on a
+          // later poll. The selected view deduplicates without discarding that cached row.
+          return { ...current, pages: [first, ...current.pages.slice(1)] };
+        });
+      } catch (error) {
+        if (
+          disposed ||
+          query.state !== before ||
+          queryClient
+            .getQueryCache()
+            .find({ queryKey: input.activeKey, exact: true }) !== query
+        )
+          return;
+        // Preserve the existing rule that a fresh authorization denial hides cached rows.
+        if (
+          error instanceof HttpError &&
+          [401, 403, 404].includes(error.status)
+        ) {
+          query.setState({
+            error,
+            errorUpdatedAt: Date.now(),
+            status: "error",
+          });
+        }
+      } finally {
+        inFlight = false;
+      }
+    }, 30_000);
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, [activeKeyId, pollingEnabled, queryClient]);
   const accessDenied =
     active.error instanceof HttpError &&
     [401, 403, 404].includes(active.error.status);

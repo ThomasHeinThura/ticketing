@@ -269,12 +269,81 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
 describe("work-item list realtime composition", () => {
+  it("refreshes every loaded page once on reconnect and stops fallback polling", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Number.POSITIVE_INFINITY,
+          gcTime: Number.POSITIVE_INFINITY,
+        },
+      },
+    });
+    const key = ["work-items", "project-1", "list", "key", "desc"];
+    const page = (id: string, nextCursor: string | null) => ({
+      ...makeResult(id),
+      hasMore: Boolean(nextCursor),
+      nextCursor,
+    });
+    client.setQueryData(key, {
+      pages: [page("a", "c1"), page("b", "c2"), page("c", null)],
+      pageParams: [undefined, "c1", "c2"],
+    });
+    mocks.getWorkItems.mockImplementation(
+      async (
+        _project: string,
+        _sort: string,
+        _dir: string,
+        options: { cursor?: string },
+      ) =>
+        options.cursor === "c1"
+          ? page("b-new", "c2")
+          : options.cursor === "c2"
+            ? page("c-new", null)
+            : page("a-new", "c1"),
+    );
+    const view = render(
+      <ComposedWorkItemList projectId="project-1" realtimeMounted />,
+      { wrapper: wrapperFor(client) },
+    );
+    const first = MockWebSocket.instances[0];
+    if (!first) throw new Error("Expected initial socket");
+    await act(async () => {
+      first.open();
+      first.frame({ type: "subscribed", topic: "project:project-1" });
+    });
+    mocks.getWorkItems.mockClear();
+    act(() => first.close());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    const second = MockWebSocket.instances[1];
+    if (!second) throw new Error("Expected reconnect socket");
+    await act(async () => {
+      second.open();
+      second.frame({ type: "subscribed", topic: "project:project-1" });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(mocks.getWorkItems.mock.calls.map((call) => call[3].cursor)).toEqual(
+      [undefined, "c1", "c2"],
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(mocks.getWorkItems).toHaveBeenCalledTimes(3);
+    view.unmount();
+    vi.useRealTimers();
+  });
+
   it.each(["project-first", "item-first"] as const)(
     "invalidates all affected query keys for a duplicate event in %s topic order",
     async (topicOrder) => {
@@ -690,7 +759,7 @@ describe("work-item list realtime composition", () => {
 
     expect(screen.getByTestId("query-state")).toHaveTextContent("loading");
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
-    expect(queryInterval(client, "project-early")).toBe(30_000);
+    expect(queryInterval(client, "project-early")).toBeUndefined();
 
     const socket = MockWebSocket.instances[0];
     if (!socket) throw new Error("Expected early work-item list socket");
@@ -699,7 +768,7 @@ describe("work-item list realtime composition", () => {
       "unavailable",
     );
     expect(screen.getByTestId("realtime-warning")).toBeInTheDocument();
-    expect(queryInterval(client, "project-early")).toBe(30_000);
+    expect(queryInterval(client, "project-early")).toBeUndefined();
 
     pendingItems.resolve(makeResult("project-early-item"));
     await waitFor(() =>
@@ -708,7 +777,7 @@ describe("work-item list realtime composition", () => {
       ),
     );
     expect(screen.getByTestId("realtime-warning")).toBeInTheDocument();
-    expect(queryInterval(client, "project-early")).toBe(30_000);
+    expect(queryInterval(client, "project-early")).toBeUndefined();
   });
 
   it("keeps foreground polling during lazy connection, stops only after subscription acknowledgement, recovers, and cleans up on project switch", async () => {
@@ -726,7 +795,7 @@ describe("work-item list realtime composition", () => {
         "project-1-item",
       ),
     );
-    expect(queryInterval(client, "project-1")).toBe(30_000);
+    expect(queryInterval(client, "project-1")).toBeUndefined();
     expect(MockWebSocket.instances).toHaveLength(0);
 
     view.rerender(
@@ -739,7 +808,7 @@ describe("work-item list realtime composition", () => {
       "connecting",
     );
     expect(screen.queryByTestId("realtime-warning")).not.toBeInTheDocument();
-    expect(queryInterval(client, "project-1")).toBe(30_000);
+    expect(queryInterval(client, "project-1")).toBeUndefined();
     const listReadsBeforeOpen = mocks.getWorkItems.mock.calls.length;
     act(() => {
       first.open();
@@ -753,7 +822,7 @@ describe("work-item list realtime composition", () => {
         "available",
       ),
     );
-    expect(queryInterval(client, "project-1")).toBe(false);
+    expect(queryInterval(client, "project-1")).toBeUndefined();
     // The first connection follows the page's own read: it does not refetch the list again.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(mocks.getWorkItems).toHaveBeenCalledTimes(listReadsBeforeOpen);
@@ -764,7 +833,7 @@ describe("work-item list realtime composition", () => {
       "unavailable",
     );
     expect(screen.getByTestId("realtime-warning")).toBeInTheDocument();
-    expect(queryInterval(client, "project-1")).toBe(30_000);
+    expect(queryInterval(client, "project-1")).toBeUndefined();
 
     await new Promise((resolve) => setTimeout(resolve, 550));
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
@@ -786,7 +855,7 @@ describe("work-item list realtime composition", () => {
         "available",
       ),
     );
-    expect(queryInterval(client, "project-1")).toBe(false);
+    expect(queryInterval(client, "project-1")).toBeUndefined();
     expect(screen.queryByTestId("realtime-warning")).not.toBeInTheDocument();
 
     mocks.getWorkItems.mockClear();
@@ -816,7 +885,7 @@ describe("work-item list realtime composition", () => {
     );
     expect(screen.queryByTestId("realtime-warning")).not.toBeInTheDocument();
     expect(screen.getByTestId("query-state")).toHaveTextContent("loading");
-    expect(queryInterval(client, "project-2")).toBe(30_000);
+    expect(queryInterval(client, "project-2")).toBeUndefined();
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(3));
     const projectTwoSocket = MockWebSocket.instances[2];
     if (!projectTwoSocket) throw new Error("Expected project-two socket");

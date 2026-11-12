@@ -3386,7 +3386,11 @@ An initial socket connection and its topic subscription acknowledgements are a p
 state, not an outage. Active queries keep the 30-second foreground polling fallback until
 all requested topics are acknowledged, but the unavailable indicator appears only after a
 connection error, close, or denied subscription. After an outage, keep the indicator and
-polling active through reconnect until all requested topics are acknowledged again.
+polling active through reconnect until all requested topics are acknowledged again. The agent
+project work list polls only its first page, merging it into loaded pages and hiding overlaps in the rendered list;
+other loaded pages retain their order and may remain stale until the full reconnect refresh.
+The same rule applies to filtered work-list searches. Manual and focus refreshes still read all
+loaded pages.
 
 If the WebSocket cannot connect — a proxy that strips upgrades, a hostile corporate
 network — the client falls back to polling active queries every 30 seconds and shows a
