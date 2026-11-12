@@ -8,6 +8,7 @@ import type {
   WorkItemSortDirection,
   WorkItemSortField,
 } from "@/lib/routes";
+import { sharePendingList } from "@/lib/work-item-pending";
 import {
   fetchWorkItemsListPage,
   usesWorkItemSearch,
@@ -72,6 +73,7 @@ function useGetWorkItems({
   ] as const;
   const listQuery = useInfiniteQuery({
     queryKey: listQueryKey,
+    structuralSharing: sharePendingList(queryClient),
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
       fetchWorkItemsListPage(projectId as string, sort, dir, pageParam),
@@ -105,6 +107,7 @@ function useGetWorkItems({
   // on demand, so a filter matching more than one page is never silently cut off.
   const searchQuery = useInfiniteQuery({
     queryKey: searchQueryKey,
+    structuralSharing: sharePendingList(queryClient),
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const searchWorkItems = await loadSearchWorkItems();

@@ -2,14 +2,20 @@ import {
   QueryClient,
   QueryClientProvider,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
+import { sharePendingDetail, sharePendingList } from "@/lib/work-item-pending";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemProperties from "./work-item-properties";
+import {
+  rollbackOptimisticWorkItemFields,
+  writeOptimisticWorkItemFields,
+} from "./work-item-save";
 
 const mocks = vi.hoisted(() => ({
   labels: vi.fn(),
@@ -1377,8 +1383,10 @@ describe("optimistic state and assignee changes", () => {
 
   /** The detail the screen reads from the cache, as the work-item page does. */
   function Live({ onAccessLost }: { onAccessLost: () => void }) {
+    const client = useQueryClient();
     const { data } = useQuery<WorkItemDetailRow>({
       queryKey: detailKey,
+      structuralSharing: sharePendingDetail(client, "HELP-7"),
       queryFn: () => mocks.reload(),
       staleTime: Number.POSITIVE_INFINITY,
     });
@@ -1394,6 +1402,9 @@ describe("optimistic state and assignee changes", () => {
         mutations: { retry: false },
       },
     });
+    client.setQueryDefaults(projectList, {
+      structuralSharing: sharePendingList(client),
+    });
     client.setQueryData(detailKey, seed);
     render(
       <QueryClientProvider client={client}>
@@ -1407,6 +1418,89 @@ describe("optimistic state and assignee changes", () => {
     fireEvent.click(screen.getByTestId("work-item-state-control"));
     fireEvent.click(await screen.findByRole("menuitem", { name }));
   }
+
+  it("preserves a queued assignee through a refused transition and later refetch", async () => {
+    const transition = deferred();
+    const assignment = deferred();
+    mocks.transition.mockReturnValue(transition.promise);
+    mocks.assign.mockReturnValue(assignment.promise);
+    mocks.reload.mockResolvedValue(liveRow());
+    mocks.transitions = [offer("In progress")];
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const client = renderLive(liveRow());
+    client.setQueryData(projectList, listData("HELP-7"));
+    await chooseState(/In progress/);
+    await waitFor(() => expect(mocks.transition).toHaveBeenCalled());
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    await waitFor(() =>
+      expect(listRow(client, projectList)?.assigneeName).toBe("Casey Ray"),
+    );
+    transition.reject(new HttpError(403, "refused"));
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.reload).toHaveBeenCalled());
+    expect(
+      client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+    ).toBe("Casey Ray");
+    // A list GET resolves while the assignment remains pending.
+    await client.fetchQuery({
+      queryKey: projectList,
+      queryFn: async () => listData("HELP-7"),
+      staleTime: 0,
+      structuralSharing: sharePendingList(client),
+    });
+    expect(listRow(client, projectList)?.assigneeName).toBe("Casey Ray");
+    assignment.resolve({ key: "HELP-7", version: 5 });
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    await waitFor(() =>
+      expect(
+        client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+      ).toBeNull(),
+    );
+    client.setQueryData(projectList, listData("HELP-7"));
+    expect(listRow(client, projectList)?.assigneeName).toBeNull();
+  });
+
+  it("keeps a pending state when an independent detail refetch lands, then accepts server data after settlement", async () => {
+    const transition = deferred();
+    mocks.transition.mockReturnValue(transition.promise);
+    mocks.reload.mockResolvedValue(liveRow({ title: "Fresh server title" }));
+    mocks.transitions = [offer("In progress")];
+    const client = renderLive(liveRow());
+    await chooseState(/In progress/);
+    await waitFor(() => expect(mocks.transition).toHaveBeenCalled());
+    await client.refetchQueries({ queryKey: detailKey });
+    expect(client.getQueryData<WorkItemDetailRow>(detailKey)).toMatchObject({
+      stateName: "In progress",
+      title: "Fresh server title",
+    });
+    transition.resolve({ key: "HELP-7", version: 5 });
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    await waitFor(() =>
+      expect(client.getQueryData<WorkItemDetailRow>(detailKey)?.stateName).toBe(
+        "To do",
+      ),
+    );
+  });
+
+  it("does not roll back a field owned by a newer pending write", async () => {
+    const client = renderLive(liveRow());
+    client.setQueryData(projectList, listData("HELP-7"));
+    const first = await writeOptimisticWorkItemFields(client, liveRow(), {
+      assigneeId: "person-1",
+      assigneeName: "Riley Fox",
+    });
+    const second = await writeOptimisticWorkItemFields(client, liveRow(), {
+      assigneeId: "person-2",
+      assigneeName: "Casey Ray",
+    });
+    rollbackOptimisticWorkItemFields(client, liveRow(), first);
+    expect(
+      client.getQueryData<WorkItemDetailRow>(detailKey)?.assigneeName,
+    ).toBe("Casey Ray");
+    expect(listRow(client, projectList)?.assigneeName).toBe("Casey Ray");
+    rollbackOptimisticWorkItemFields(client, liveRow(), second);
+  });
 
   it("shows the new state and closes the menu before the server answers", async () => {
     const server = deferred();

@@ -8,6 +8,15 @@ Product decisions and their rationale, original Kaneo design/token/motion contra
 - [Licensing/source boundary](#licensing-and-attribution) · [Risks and owner decisions](#risks)
 - [Precedence and source conflicts](#decision-provenance)
 
+<a id="2026-11-12-instant-change"></a>
+## 12 Nov 2026 — Thomas: instant change (D-H)
+
+Thomas's D-H decision in plan section 2 calls for instant feedback. For work-item
+state and assignee changes, the detail view shows the selection and closes the
+menu immediately, restoring the previous value on refusal. This replaces AS-19's
+prior conflict presentation with a toast and refresh; its assignment preconditions
+and prohibition on silent retry remain in force.
+
 <a id="0001-kaneo-as-foundation"></a>
 ## 0001 — kaneo as the foundation, taken once, not forked
 

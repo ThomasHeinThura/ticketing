@@ -1068,7 +1068,7 @@ Collaboration is expressed by watchers, sub-tasks and comments.
   `expectedCurrentAssigneeId`. Unassign accepts `expectedAssigneeId`; a mismatch is 409 and
   writes nothing. The precondition is optional on unassign so existing API-key and MCP
   callers keep working, but the web detail page always sends it. It shows the chosen
-  assignee and closes the picker at once (design principle 6); on a refusal it puts the
+  assignee and closes the picker at once ([12 Nov D-H decision](design-and-decisions.md#2026-11-12-instant-change)); on a refusal it puts the
   previous assignee back, and on a 409 says "the assignee changed" in a toast, refreshes,
   and never retries silently. **Bulk assign needs no
   separate precondition:** it sends no expected holder, so it only ever assigns items that

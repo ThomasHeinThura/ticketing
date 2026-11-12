@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
 import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
+import { sharePendingDetail } from "@/lib/work-item-pending";
 
 /**
  * How old a read of this item may be and still serve a mount without asking again: the read
@@ -78,6 +79,7 @@ function isReusableRefusal(
 export function prefetchWorkItemDetail(queryClient: QueryClient, key: string) {
   void queryClient.prefetchQuery({
     queryKey: workItemDetailQueryKey(key),
+    structuralSharing: sharePendingDetail(queryClient, key),
     queryFn: () => getWorkItem(key),
     staleTime: WORK_ITEM_READ_REUSE_MS,
   });
@@ -91,6 +93,7 @@ function useGetWorkItem({ key }: { key: string | undefined }) {
   const closedAt = () => (key ? (lastClosed(queryClient).get(key) ?? 0) : 0);
   const query = useQuery({
     queryKey: workItemDetailQueryKey(key),
+    structuralSharing: sharePendingDetail(queryClient, key),
     queryFn: () => getWorkItem(key as string),
     enabled: !!key,
     // The detail page and side pane re-read the item on mount (the app default is not to), so

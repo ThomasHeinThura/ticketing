@@ -1,4 +1,5 @@
 import { dayToIso, isoToDay } from "@/lib/work-item-date";
+import { endPendingWorkItem } from "@/lib/work-item-pending";
 
 export { dayToIso, isoToDay } from "@/lib/work-item-date";
 
@@ -271,7 +272,6 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       announce(
         t("workItems:journey.transitionDone", { state: input.toStateName }),
       );
-      void refresh();
     },
     onError: (mutationError, _input, optimistic) => {
       if (optimistic)
@@ -287,7 +287,10 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
             ? t("workItems:journey.transitionUnavailable")
             : t("workItems:journey.saveError"),
       );
-      // The offers may have changed under us, and the server's value wins over the cache.
+    },
+    onSettled: (_data, _error, _input, optimistic) => {
+      if (optimistic)
+        endPendingWorkItem(queryClient, item.key, optimistic.token);
       void refresh();
     },
   });
@@ -652,7 +655,6 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               name: person.name ?? t("workItems:journey.unnamedPerson"),
             }),
       );
-      void refresh();
     },
     onError: (mutationError, { person }, optimistic) => {
       if (optimistic)
@@ -668,7 +670,10 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
             ? t("workItems:journey.unassignmentError")
             : t("workItems:journey.assignmentError"),
       );
-      // The server's assignee wins over the cache.
+    },
+    onSettled: (_data, _error, _input, optimistic) => {
+      if (optimistic)
+        endPendingWorkItem(queryClient, item.key, optimistic.token);
       void refresh();
     },
   });

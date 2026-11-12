@@ -8,6 +8,11 @@ import updateWorkItem, {
   type UpdateWorkItemInput,
 } from "@/fetchers/work-item/update-work-item";
 import {
+  beginPendingWorkItem,
+  endPendingWorkItem,
+  pendingWorkItemFields,
+} from "@/lib/work-item-pending";
+import {
   parseWorkItemDetailRow,
   type WorkItemDetail,
   type WorkItemDetailRow,
@@ -171,6 +176,7 @@ export function useRefreshWorkItem(
 /** What `writeOptimisticWorkItemFields` changed, so a refusal can put exactly that back. */
 export type OptimisticWorkItemWrite = {
   fields: Partial<WorkItemDetail>;
+  token: symbol;
   /** The detail row's values for `fields` before the write. */
   detail: Partial<WorkItemDetail> | null;
   /** The cached list rows written, with their values for `fields` before the write. */
@@ -217,6 +223,7 @@ export async function writeOptimisticWorkItemFields(
   item: Pick<WorkItemDetailRow, "key" | "projectId">,
   fields: Partial<WorkItemDetail>,
 ): Promise<OptimisticWorkItemWrite> {
+  const token = beginPendingWorkItem(queryClient, item.key, fields);
   const detailKey = workItemDetailKey(item.key);
   const lists = listQueriesShowing(queryClient, item).filter(
     ({ queryKey }) => queryKey[2] !== "board" && queryKey[2] !== "combined",
@@ -247,6 +254,7 @@ export async function writeOptimisticWorkItemFields(
   }
   return {
     fields,
+    token,
     detail: previous ? pickFields(previous, fields) : null,
     lists: written,
   };
@@ -262,8 +270,14 @@ export function rollbackOptimisticWorkItemFields(
   item: Pick<WorkItemDetailRow, "key">,
   write: OptimisticWorkItemWrite,
 ) {
-  const { fields, detail, lists } = write;
-  if (detail) {
+  endPendingWorkItem(queryClient, item.key, write.token);
+  const pending = pendingWorkItemFields(queryClient, item.key);
+  const fields = Object.fromEntries(
+    Object.entries(write.fields).filter(([name]) => !(name in pending)),
+  );
+  const detail = write.detail && pickFields(write.detail, fields);
+  const lists = write.lists;
+  if (detail && Object.keys(fields).length) {
     queryClient.setQueryData<WorkItemDetailRow>(
       workItemDetailKey(item.key),
       (old) =>
@@ -274,9 +288,11 @@ export function rollbackOptimisticWorkItemFields(
   }
   for (const { queryKey, previous } of lists) {
     queryClient.setQueryData(queryKey, (data: unknown) =>
-      isListData(data)
+      Object.keys(fields).length && isListData(data)
         ? mapItemRows(data, item.key, (row) =>
-            stillHoldsFields(row, fields) ? { ...row, ...previous } : row,
+            stillHoldsFields(row, fields)
+              ? { ...row, ...pickFields(previous, fields) }
+              : row,
           )
         : data,
     );
