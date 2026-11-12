@@ -498,6 +498,45 @@ async function evidenceRequestType(
   return requestType;
 }
 
+/**
+ * A published request type for Alice's organisation. `versionSchema` is what its version
+ * stores: an older build's snapshot need not satisfy today's editor schema.
+ */
+async function formRequestType(
+  s: Awaited<ReturnType<typeof seed>>,
+  formSchema: Record<string, unknown>,
+  versionSchema: Record<string, unknown> = formSchema,
+) {
+  const requestType = requireRow(
+    await db
+      .insert(schema.requestTypeTable)
+      .values({
+        workspaceId: s.contoso.workspaceId,
+        key: `form-${randomUUID()}`,
+        name: "Conditional upload",
+        group: "General",
+        workItemTypeId: s.contoso.type.id,
+        formSchema,
+        published: true,
+        customerVisible: true,
+      })
+      .returning(),
+    "request type",
+  );
+  await db.insert(schema.requestTypeVersionTable).values({
+    workspaceId: s.contoso.workspaceId,
+    requestTypeId: requestType.id,
+    number: 1,
+    formSchema: versionSchema,
+    workItemTypeId: s.contoso.type.id,
+  });
+  await db.insert(schema.organisationRequestTypeTable).values({
+    organisationId: s.alice.orgId,
+    requestTypeId: requestType.id,
+  });
+  return requestType;
+}
+
 /** Alice's submission, accepted and converted into a work item she requests. */
 async function acceptedSubmission(s: Awaited<ReturnType<typeof seed>>) {
   const requestType = requireRow(
@@ -1691,6 +1730,118 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     expect(signed.searchParams.get("X-Amz-SignedHeaders")).toContain(
       "content-length",
     );
+  });
+
+  it("refuses an upload to a file field that is hidden for the submission, and accepts it once the field shows", async () => {
+    const s = await seed();
+    const requestType = await formRequestType(s, {
+      fields: [
+        { key: "summary", type: "text", label: "Summary", required: true },
+        { key: "gate", type: "checkbox", label: "Hardware involved?" },
+        {
+          key: "evidence",
+          type: "file",
+          label: "Evidence",
+          showIf: { field_key: "gate", op: "eq", value: true },
+        },
+      ],
+    });
+    const created = await portalRequest(
+      s.contoso,
+      s.alice,
+      "/api/portal/submissions",
+      {
+        method: "POST",
+        body: {
+          key: requestType.key,
+          formData: { summary: "Logs", gate: false },
+        },
+      },
+    );
+    expect(created.status, await created.clone().text()).toBe(200);
+    const { ref } = (await created.json()) as { ref: string };
+    const presign = () =>
+      portalRequest(
+        s.contoso,
+        s.alice,
+        `/api/portal/submissions/${ref}/attachments/presign`,
+        {
+          method: "POST",
+          body: {
+            filename: "logs.pdf",
+            contentType: "application/pdf",
+            size: PDF_BYTES.length,
+            fieldKey: "evidence",
+          },
+        },
+      );
+    // The box is unticked, so the form never showed the file field: no pending row either.
+    const refused = await presign();
+    expect(refused.status, await refused.clone().text()).toBe(400);
+    expect(
+      await db
+        .select({ id: schema.attachmentTable.id })
+        .from(schema.attachmentTable)
+        .where(eq(schema.attachmentTable.submissionFieldKey, "evidence")),
+    ).toEqual([]);
+    // Ticking it (the stored answers now show the field) opens the same upload.
+    await db
+      .update(schema.submissionTable)
+      .set({ formData: { summary: "Logs", gate: true } })
+      .where(
+        eq(schema.submissionTable.number, Number(ref.replace("SUB-", ""))),
+      );
+    const accepted = await presign();
+    expect(accepted.status, await accepted.clone().text()).toBe(200);
+  });
+
+  it("still presigns for a form version published by an older build that today's editor schema would refuse", async () => {
+    const s = await seed();
+    // Properties and a blank label the editor schema forbids, and the checkbox condition stored
+    // as the text "true": all readable by the visibility rules, so the upload must not fail.
+    const legacy = {
+      fields: [
+        { key: "summary", type: "text", label: "Summary", required: true },
+        { key: "gate", type: "checkbox", label: "", placeholder: "old" },
+        {
+          key: "evidence",
+          type: "file",
+          label: "Evidence",
+          description: "an older build's extra property",
+          showIf: { field_key: "gate", op: "eq", value: "true" },
+        },
+      ],
+    };
+    const requestType = await formRequestType(s, { fields: [] }, legacy);
+    const created = await portalRequest(
+      s.contoso,
+      s.alice,
+      "/api/portal/submissions",
+      {
+        method: "POST",
+        body: {
+          key: requestType.key,
+          formData: { summary: "Logs", gate: true },
+        },
+      },
+    );
+    expect(created.status, await created.clone().text()).toBe(200);
+    const { ref } = (await created.json()) as { ref: string };
+    const presign = await portalRequest(
+      s.contoso,
+      s.alice,
+      `/api/portal/submissions/${ref}/attachments/presign`,
+      {
+        method: "POST",
+        body: {
+          filename: "logs.pdf",
+          contentType: "application/pdf",
+          size: PDF_BYTES.length,
+          fieldKey: "evidence",
+        },
+      },
+    );
+    expect(presign.status, await presign.clone().text()).toBe(200);
   });
 
   it("binds a submission's own file download to the requester and refuses every other reader and unbound link (CP-19, AT-5)", async () => {

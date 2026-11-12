@@ -81,7 +81,7 @@ describe("portal required-field validation", () => {
 });
 
 describe("immutable submission answer labels", () => {
-  it("uses version labels and falls back to keys for legacy answers", () => {
+  it("uses the version's labels and never shows a key the version does not declare", () => {
     expect(
       submissionAnswerRows([{ key: "field_1", label: "New question" }], {
         field_1: "Printer jam",
@@ -89,7 +89,6 @@ describe("immutable submission answer labels", () => {
       }),
     ).toEqual([
       { key: "field_1", label: "New question", value: "Printer jam" },
-      { key: "legacy_key", label: "legacy_key", value: "Other" },
     ]);
   });
 
@@ -102,6 +101,71 @@ describe("immutable submission answer labels", () => {
         ],
         { details: "It stopped", legacy: "x", summary: "VPN down" },
       ).map((row) => row.label),
-    ).toEqual(["Short summary", "What happened?", "legacy"]);
+    ).toEqual(["Short summary", "What happened?"]);
+  });
+
+  it("falls back to the key when a declared field has no label", () => {
+    expect(
+      submissionAnswerRows([{ key: "field_1", label: "" }], { field_1: "x" }),
+    ).toEqual([{ key: "field_1", label: "field_1", value: "x" }]);
+  });
+
+  it("hides the answer of a field that is hidden for these answers", () => {
+    const fields = [
+      { key: "gate", label: "Hardware?", type: "checkbox" },
+      {
+        key: "serial",
+        label: "Serial",
+        type: "text",
+        showIf: { field_key: "gate", op: "eq", value: true },
+      },
+    ];
+    expect(
+      submissionAnswerRows(fields, { gate: false, serial: "smuggled" }).map(
+        (row) => row.key,
+      ),
+    ).toEqual(["gate"]);
+    expect(
+      submissionAnswerRows(fields, { gate: true, serial: "SN-1" }).map(
+        (row) => row.value,
+      ),
+    ).toEqual(["true", "SN-1"]);
+  });
+
+  it("repairs a checkbox condition stored as text, as the server does", () => {
+    const fields = [
+      { key: "gate", label: "Gate", type: "checkbox" },
+      {
+        key: "detail",
+        label: "Detail",
+        type: "text",
+        showIf: { field_key: "gate", op: "eq", value: "true" },
+      },
+    ];
+    expect(
+      submissionAnswerRows(fields, { gate: true, detail: "kept" }).map(
+        (row) => row.key,
+      ),
+    ).toEqual(["gate", "detail"]);
+    expect(
+      submissionAnswerRows(fields, { gate: false, detail: "hidden" }).map(
+        (row) => row.key,
+      ),
+    ).toEqual(["gate"]);
+  });
+
+  it("never shows a file field or a missing or non-object answer set", () => {
+    expect(
+      submissionAnswerRows([{ key: "upload", label: "Upload", type: "file" }], {
+        upload: "forged",
+      }),
+    ).toEqual([]);
+    expect(submissionAnswerRows([{ key: "a", label: "A" }], undefined)).toEqual(
+      [],
+    );
+    expect(submissionAnswerRows(undefined, { a: "x" })).toEqual([]);
+    expect(
+      submissionAnswerRows([{ key: "a", label: "A" }], "plain text" as never),
+    ).toEqual([]);
   });
 });

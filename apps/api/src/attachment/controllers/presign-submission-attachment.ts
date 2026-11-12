@@ -3,10 +3,10 @@ import {
   type FormSchema,
   type FormValue,
   isFieldVisible,
+  normalizeFormSchema,
 } from "@taskdesk/domain";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { formSchema as intakeFormSchema } from "../../intake/schema";
 import {
   buildAttachmentStorageKey,
   getFileExtension,
@@ -42,36 +42,34 @@ function isFormValue(value: unknown): value is FormValue {
   );
 }
 
-/** Reject malformed persisted snapshots before evaluating attachment visibility. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Read a stored form version for the attachment visibility check. It accepts what
+ * `resolveFormVisibility` accepts (any stored version: no strict property, label or option
+ * rules, since versions published by older builds were never held to today's editor schema),
+ * runs the same `normalizeFormSchema` repair, and refuses only a snapshot the resolver could
+ * not read at all: no `fields` list, a non-object field, a field without a string `key`/`type`,
+ * a non-object condition, or a condition value that is not a plain form value.
+ */
 export function parseAttachmentFormSchema(value: unknown): FormSchema | null {
-  const parsed = intakeFormSchema.safeParse(value);
-  if (!parsed.success) return null;
-  const fields: FormSchema["fields"][number][] = [];
-  for (const field of parsed.data.fields) {
-    const condition = field.showIf;
+  if (!isRecord(value) || !Array.isArray(value.fields)) return null;
+  for (const field of value.fields) {
     if (
-      condition &&
-      condition.value !== undefined &&
-      !isFormValue(condition.value)
+      !isRecord(field) ||
+      typeof field.key !== "string" ||
+      typeof field.type !== "string"
     )
       return null;
-    const { showIf: _showIf, ...rest } = field;
-    if (condition) {
-      const { value: conditionValue, ...restCondition } = condition;
-      if (conditionValue !== undefined && !isFormValue(conditionValue))
-        return null;
-      fields.push({
-        ...rest,
-        showIf:
-          conditionValue === undefined
-            ? restCondition
-            : { ...restCondition, value: conditionValue },
-      });
-    } else {
-      fields.push({ ...rest, showIf: condition });
-    }
+    const condition = field.showIf;
+    if (condition === undefined || condition === null) continue;
+    if (!isRecord(condition)) return null;
+    if (condition.value !== undefined && !isFormValue(condition.value))
+      return null;
   }
-  return { fields };
+  return normalizeFormSchema(value as unknown as FormSchema);
 }
 
 /**

@@ -170,6 +170,39 @@ export function validateFormSchema(
   return defects;
 }
 
+const NUMERIC_STRING = /^-?\d+(\.\d+)?$/u;
+
+/** A number that kept every digit: finite, and an integer only within the safe range. */
+function isUsableNumber(value: number): boolean {
+  return (
+    Number.isFinite(value) &&
+    (!Number.isInteger(value) || Number.isSafeInteger(value))
+  );
+}
+
+/**
+ * A string answer or condition value read as a number, only when it is plain decimal digits
+ * (`"50"`, `"-3"`, `"0.5"`). `Number()` alone also accepts `" "`, `"0x10"`, `"1e3"` and
+ * `"Infinity"`, and an integer beyond `Number.MAX_SAFE_INTEGER` silently loses digits, so
+ * those stay strings and fail as a wrong-typed answer instead.
+ */
+function parseNumericString(value: string): number | null {
+  if (!NUMERIC_STRING.test(value)) return null;
+  const num = Number(value);
+  return isUsableNumber(num) ? num : null;
+}
+
+/**
+ * A number answer as the form sends it: a real number, or plain decimal text; `null` for
+ * anything the server would refuse. The portal form uses this to convert what the customer
+ * typed and to flag a bad entry, so the browser and the server read a number the same way.
+ */
+export function parseNumberAnswer(value: unknown): number | null {
+  if (typeof value === "number") return isUsableNumber(value) ? value : null;
+  if (typeof value === "string") return parseNumericString(value);
+  return null;
+}
+
 function valuesEqual(a: FormValue, b: FormValue): boolean {
   if (a === b) return true;
   if (typeof a === "string" && typeof b === "string") {
@@ -185,13 +218,13 @@ function valuesEqual(a: FormValue, b: FormValue): boolean {
     if (trimmed === "true") return b === true;
     if (trimmed === "false") return b === false;
   }
-  if (typeof a === "number" && typeof b === "string" && b.trim() !== "") {
-    const num = Number(b);
-    if (Number.isFinite(num)) return a === num;
+  if (typeof a === "number" && typeof b === "string") {
+    const num = parseNumericString(b);
+    if (num !== null) return a === num;
   }
-  if (typeof a === "string" && typeof b === "number" && a.trim() !== "") {
-    const num = Number(a);
-    if (Number.isFinite(num)) return num === b;
+  if (typeof a === "string" && typeof b === "number") {
+    const num = parseNumericString(a);
+    if (num !== null) return num === b;
   }
   // Arrays compare structurally for visibility purposes.
   if (Array.isArray(a) && Array.isArray(b)) {
@@ -222,13 +255,9 @@ export function normalizeDraftAnswers(
   for (const key of Object.getOwnPropertyNames(data)) {
     const field = byKey.get(key);
     let value = (data as Record<string, unknown>)[key] as FormValue;
-    if (field?.type === "number") {
-      if (typeof value === "string" && value.trim() !== "") {
-        const num = Number(value);
-        if (Number.isFinite(num)) {
-          value = num;
-        }
-      }
+    if (field?.type === "number" && typeof value === "string") {
+      const num = parseNumericString(value);
+      if (num !== null) value = num;
     }
     Object.defineProperty(result, key, {
       value,
@@ -240,9 +269,23 @@ export function normalizeDraftAnswers(
   return result;
 }
 
+/** A checkbox condition value: `""`/`"false"` mean unchecked, `"true"` means checked. */
+function normalizeCheckboxConditionValue<T extends FormValue>(
+  value: T,
+): T | boolean {
+  if (typeof value !== "string") return value;
+  const lower = value.trim().toLowerCase();
+  if (lower === "true") return true;
+  if (lower === "false" || lower === "") return false;
+  return value;
+}
+
 /**
  * Normalise a form schema, repairing published versions whose checkbox conditions
- * stored boolean-like strings ("true"/"false") instead of boolean values (D4).
+ * stored boolean-like strings ("true"/"false") instead of boolean values (D4), and
+ * conditions left as `""` when the controlling field was later changed to a checkbox
+ * (a checkbox answer is never the empty string, so that condition could never match).
+ * Idempotent: a repaired schema normalises to itself.
  */
 export function normalizeFormSchema(schema: FormSchema): FormSchema {
   const checkboxKeys = new Set(
@@ -253,17 +296,14 @@ export function normalizeFormSchema(schema: FormSchema): FormSchema {
     fields: schema.fields.map((field) => {
       if (!field.showIf) return field;
       if (checkboxKeys.has(field.showIf.field_key)) {
-        let val = field.showIf.value;
-        if (typeof val === "string") {
-          const lower = val.trim().toLowerCase();
-          if (lower === "true") val = true;
-          else if (lower === "false") val = false;
-        }
+        const val = field.showIf.value;
         return {
           ...field,
           showIf: {
             ...field.showIf,
-            value: val,
+            value: Array.isArray(val)
+              ? val.map((item) => normalizeCheckboxConditionValue(item))
+              : normalizeCheckboxConditionValue(val as FormValue),
           },
         };
       }
@@ -387,6 +427,37 @@ export function visibleFields(
   return schema.fields.filter((f) => visibility.get(f.key) ?? true);
 }
 
+/**
+ * The stored answers a reader may be shown: only keys of fields the form version declares
+ * AND that are visible for these answers (RT-5), in the form's field order, with each stored
+ * value unchanged. Hidden-field answers, keys the version never declared (a forged or legacy
+ * key) and file fields (their files never sit in `form_data`, IQ-9) are left out. This is a
+ * read-time projection for portal and triage responses; stored history is never rewritten.
+ */
+export function visibleSubmissionAnswers(
+  schema: FormSchema,
+  data: unknown,
+): Record<string, unknown> {
+  const answers: Record<string, unknown> = {};
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return answers;
+  }
+  const visibility = resolveFormVisibility(schema, data);
+  for (const field of schema.fields) {
+    if (field.type === "file" || !(visibility.get(field.key) ?? true)) continue;
+    if (!Object.hasOwn(data, field.key)) continue;
+    // `defineProperty`, not assignment: a field keyed `__proto__` is an own answer, and must
+    // not re-target the prototype of the returned object.
+    Object.defineProperty(answers, field.key, {
+      value: (data as Record<string, unknown>)[field.key],
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return answers;
+}
+
 /** A validation failure against submitted data. */
 export type SubmissionDataError = {
   readonly key: string;
@@ -409,7 +480,8 @@ function isValueOfFieldType(
     case "checkbox":
       return typeof value === "boolean";
     case "number":
-      return typeof value === "number" && Number.isFinite(value);
+      // An integer beyond `Number.MAX_SAFE_INTEGER` has already lost digits: reject it.
+      return typeof value === "number" && isUsableNumber(value);
     case "text":
     case "textarea":
     case "date":

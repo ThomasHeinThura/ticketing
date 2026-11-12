@@ -629,6 +629,64 @@ describe("portal catalogue route", () => {
     );
   });
 
+  it.each(["16 ", "0x10", "1e1", "9007199254740993"])(
+    "refuses the number text %j instead of sending a value the server reads differently",
+    async (typed) => {
+      // The visibility rules read "16 " as text, so the dependent field stays hidden. Submitting
+      // would have sent 16 (Number("16 ")) and the server would then ask for the hidden field.
+      mocks.getRequestType.mockResolvedValue({
+        ...form,
+        formSchema: {
+          fields: [
+            { key: "title", label: "Summary", type: "text", required: true },
+            { key: "seat_count", label: "Seat count", type: "number" },
+            {
+              key: "volume_license",
+              label: "Volume license key",
+              type: "text",
+              required: true,
+              showIf: { field_key: "seat_count", op: "eq", value: 16 },
+            },
+          ],
+        },
+      });
+      mocks.submit.mockResolvedValue({ ref: "SUB-12", state: "new" });
+      renderCatalogue();
+      const seats = await screen.findByRole("textbox", { name: "Seat count" });
+      fireEvent.change(screen.getByRole("textbox", { name: "Summary" }), {
+        target: { value: "Order" },
+      });
+      fireEvent.change(seats, { target: { value: typed } });
+      const requestForm = seats.closest("form");
+      if (!requestForm) throw new Error("The request form is missing");
+      fireEvent.submit(requestForm);
+      expect(mocks.submit).not.toHaveBeenCalled();
+      expect(seats).toHaveAttribute("aria-invalid", "true");
+      expect(
+        screen.queryByRole("textbox", { name: "Volume license key" }),
+      ).toBeNull();
+
+      // Plain digits are one number everywhere: the dependent field appears and is required.
+      fireEvent.change(seats, { target: { value: "16" } });
+      const license = await screen.findByRole("textbox", {
+        name: "Volume license key",
+      });
+      fireEvent.change(license, { target: { value: "KEY-16" } });
+      fireEvent.submit(requestForm);
+      await waitFor(() =>
+        expect(mocks.submit).toHaveBeenCalledWith({
+          key: "access",
+          formData: {
+            title: "Order",
+            seat_count: 16,
+            volume_license: "KEY-16",
+          },
+          customerVisibility: "organisation",
+        }),
+      );
+    },
+  );
+
   it("shows false-conditional fields before a checkbox is touched", async () => {
     mocks.getRequestType.mockResolvedValue({
       ...form,

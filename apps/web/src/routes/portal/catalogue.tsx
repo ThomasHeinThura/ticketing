@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   type FormSchema,
   getConditionDrivingKeys,
+  parseNumberAnswer,
 } from "@taskdesk/domain/intake";
 import {
   Alert,
@@ -224,8 +225,9 @@ function PortalCatalogueContent() {
         }
 
         if (field.type === "number") {
-          const num = typeof val === "number" ? val : Number(val);
-          if (Number.isFinite(num)) {
+          // The same reading the server and the visibility rules use (RT-5).
+          const num = parseNumberAnswer(val);
+          if (num !== null) {
             Object.defineProperty(visibleFormData, field.key, {
               value: num,
               writable: true,
@@ -476,7 +478,7 @@ function PortalCatalogueContent() {
                     value !== undefined &&
                     value !== null &&
                     String(value).trim() !== "" &&
-                    !Number.isFinite(Number(value))
+                    parseNumberAnswer(value) === null
                   );
                 });
                 if (missingRequired.length > 0 || invalidNumbers.length > 0) {

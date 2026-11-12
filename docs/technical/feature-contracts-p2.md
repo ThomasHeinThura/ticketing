@@ -1055,7 +1055,15 @@ as the form itself.
 - `RT-4` `mapsTo` may translate values, as in the impact-to-priority example. This is how
   you avoid asking customers to choose a priority, which they always get wrong.
 - `RT-5` Fields support conditional visibility: show this field only when that field has
-  this value. See the `showIf` example in Data above.
+  this value. See the `showIf` example in Data above. A hidden field's answer is never
+  stored, and no response returns the answer of a hidden field or of a key the form version
+  does not declare, including for older submissions (the stored answers are not rewritten;
+  the portal detail and the triage detail return the visible answers only). On a checkbox
+  controller the condition value `""` or `"false"` means unchecked and `"true"` means
+  checked. A number answer given as text must be plain decimal digits (`-12`, `0.5`); other
+  text, and any integer beyond `Number.MAX_SAFE_INTEGER`, is refused with `422`; the portal
+  form flags it before sending. A number condition written as text matches only under the
+  same rule.
 - `RT-6` Publishing creates an immutable snapshot of the form schema, mapped work-item
   type, request-type SLA override and default assignee. Submissions record which version
   they used, so edits to the live request type cannot silently remap a queued submission.

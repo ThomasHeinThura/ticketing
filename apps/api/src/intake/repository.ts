@@ -11,6 +11,7 @@ import {
   validateFormSchema,
   validateSubmissionData,
   visibleFields,
+  visibleSubmissionAnswers,
 } from "@taskdesk/domain";
 import {
   type ResolvedIdentity,
@@ -155,10 +156,20 @@ function materializeRequestTypeVersion<T extends { formSchema: unknown }>(
   };
 }
 
+/**
+ * With `form`, `formData` is the read-time projection of the stored answers: only the answers
+ * of fields that version declares and shows (the stored row is never rewritten).
+ */
 function materializeSubmission<T extends { formData: unknown }>(
   row: T,
+  form?: FormSchema,
 ): MaterializedSubmission<T> {
-  return { ...row, formData: row.formData as JsonValue };
+  return {
+    ...row,
+    formData: (form
+      ? visibleSubmissionAnswers(form, row.formData)
+      : row.formData) as JsonValue,
+  };
 }
 
 function materializeWorkItemDescription<T extends { description: unknown }>(
@@ -180,11 +191,17 @@ function materializeSubmissionBundle<
   requestType: MaterializedRequestType<T["requestType"]>;
   version: MaterializedRequestTypeVersion<T["version"]>;
 } {
+  const version = materializeRequestTypeVersion(row.version);
   return {
     ...row,
-    submission: materializeSubmission(row.submission),
+    // A hidden-field answer, or a key this version never declared (old rows kept whatever was
+    // submitted), is not returned.
+    submission: materializeSubmission(
+      row.submission,
+      version.formSchema as unknown as FormSchema,
+    ),
     requestType: materializeRequestType(row.requestType),
-    version: materializeRequestTypeVersion(row.version),
+    version,
   };
 }
 
@@ -2001,9 +2018,15 @@ export async function findPortalSubmission(
   const portalRow: PortalSubmissionSource = row;
   const isRequester = portalRow.submission.requesterId === viewer.personId;
   const formSchema = portalRow.version.formSchema as FormSchema;
+  // The customer gets only the answers of fields this form shows for these answers, the same
+  // set as the `fields` list below; a hidden or undeclared stored key never leaves the server.
+  const answers = visibleSubmissionAnswers(
+    formSchema,
+    portalRow.submission.formData,
+  );
   const fields = visibleFields(
     formSchema,
-    portalRow.submission.formData as Record<string, FormValue>,
+    answers as Record<string, FormValue>,
   ).map((field) => ({
     key: field.key,
     type: field.type,
@@ -2116,7 +2139,7 @@ export async function findPortalSubmission(
     ref: portalRow.ref,
     submission: {
       state: portalRow.submission.state,
-      formData: row.submission.formData,
+      formData: answers,
       customerVisibility: portalRow.submission.customerVisibility,
       createdAt: portalRow.submission.createdAt.toISOString(),
     },
@@ -2344,19 +2367,21 @@ export async function listSubmissions(
     .where(and(...filterConditions));
   return {
     submissions: pageRows.map((row) => {
-      const form = row.version.formSchema as FormSchema;
+      // The summary reads the same visible answers the row returns.
+      const bundle = materializeSubmissionBundle(row);
+      const form = bundle.version.formSchema as unknown as FormSchema;
       const titleField = form.fields.find(
         (field) => field.mapsTo?.field === "title",
       );
       const summary = titleField
         ? String(
-            (row.submission.formData as Record<string, unknown>)[
+            (bundle.submission.formData as Record<string, unknown>)[
               titleField.key
             ] ?? "",
           )
         : "";
       return {
-        ...materializeSubmissionBundle(row),
+        ...bundle,
         summary,
         ref: formatSubmissionReference(row.submission.number),
       };

@@ -18,15 +18,18 @@ import {
   getConditionDrivingKeys,
   isFieldVisible,
   isRequestTypeVisible,
+  isVisibilityConditionSatisfied,
   MAX_TEXT_ANSWER_LENGTH,
   normalizeDraftAnswers,
   normalizeFormSchema,
+  parseNumberAnswer,
   resolveFormVisibility,
   sanitizeSubmissionData,
   translateMapsTo,
   validateFormSchema,
   validateSubmissionData,
   visibleFields,
+  visibleSubmissionAnswers,
 } from "./request-type.js";
 import {
   formatSubmissionReference,
@@ -1745,5 +1748,325 @@ describe("preservation of condition-driving blank values (showIf eq-empty)", () 
     const norm2 = normalizeDraftAnswers(schemaWithEqEmpty, draft2);
     const vis2 = resolveFormVisibility(schemaWithEqEmpty, norm2);
     expect(vis2.get("dependent_text")).toBe(true);
+  });
+});
+
+// --- Read-time answer projection (portal and triage views) -----------------------
+describe("visibleSubmissionAnswers", () => {
+  const schema: FormSchema = {
+    fields: [
+      { key: "summary", type: "text", label: "Summary" },
+      { key: "gate", type: "checkbox", label: "Hardware?" },
+      {
+        key: "serial",
+        type: "text",
+        label: "Serial",
+        showIf: { field_key: "gate", op: "eq", value: true },
+      },
+      {
+        key: "model",
+        type: "text",
+        label: "Model",
+        showIf: { field_key: "serial", op: "is_set" },
+      },
+      { key: "seats", type: "number", label: "Seats" },
+      { key: "upload", type: "file", label: "Upload" },
+    ],
+  };
+
+  it("keeps visible declared answers unchanged, in the form's field order", () => {
+    expect(
+      visibleSubmissionAnswers(schema, {
+        seats: "42",
+        gate: true,
+        serial: "SN-1",
+        summary: "Printer",
+      }),
+    ).toEqual({
+      summary: "Printer",
+      gate: true,
+      serial: "SN-1",
+      seats: "42",
+    });
+    expect(
+      Object.keys(
+        visibleSubmissionAnswers(schema, {
+          seats: 1,
+          summary: "x",
+          gate: false,
+        }),
+      ),
+    ).toEqual(["summary", "gate", "seats"]);
+  });
+
+  it("drops an answer whose field is hidden, and one hidden behind a hidden controller", () => {
+    expect(
+      visibleSubmissionAnswers(schema, {
+        summary: "Printer",
+        gate: false,
+        serial: "smuggled",
+        model: "smuggled too",
+      }),
+    ).toEqual({ summary: "Printer", gate: false });
+  });
+
+  it("drops keys the version never declared and file-field keys", () => {
+    const shown = visibleSubmissionAnswers(schema, {
+      summary: "Printer",
+      legacy_key: "old",
+      upload: "forged-file",
+      constructor: "inherited name",
+    });
+    expect(shown).toEqual({ summary: "Printer" });
+    expect(Object.hasOwn(shown, "legacy_key")).toBe(false);
+    expect(Object.hasOwn(shown, "upload")).toBe(false);
+  });
+
+  it.each([null, 7, "plain text", ["one", 2], undefined])(
+    "returns no answers for stored non-object data (%j)",
+    (stored) => {
+      expect(visibleSubmissionAnswers(schema, stored)).toEqual({});
+    },
+  );
+
+  it("does not rewrite or mutate the stored answers", () => {
+    const stored = { summary: "Printer", serial: "x", legacy: "y" };
+    const before = structuredClone(stored);
+    visibleSubmissionAnswers(schema, stored);
+    expect(stored).toEqual(before);
+  });
+
+  it("treats a declared __proto__ answer as an own property", () => {
+    const protoSchema: FormSchema = {
+      fields: [{ key: "__proto__", type: "text", label: "Odd key" }],
+    };
+    const stored = JSON.parse('{"__proto__":"value"}') as unknown;
+    const shown = visibleSubmissionAnswers(protoSchema, stored);
+    expect(Object.hasOwn(shown, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(shown)).toBe(Object.prototype);
+  });
+
+  it("shows a checkbox-conditioned answer for a version published with the text 'true' (D4)", () => {
+    const published: FormSchema = {
+      fields: [
+        { key: "gate", type: "checkbox", label: "Gate" },
+        {
+          key: "detail",
+          type: "text",
+          label: "Detail",
+          showIf: { field_key: "gate", op: "eq", value: "true" as never },
+        },
+      ],
+    };
+    expect(
+      visibleSubmissionAnswers(published, { gate: true, detail: "kept" }),
+    ).toEqual({ gate: true, detail: "kept" });
+    expect(
+      visibleSubmissionAnswers(published, { gate: false, detail: "hidden" }),
+    ).toEqual({ gate: false });
+  });
+});
+
+// --- Strict number conversion ---------------------------------------------------
+describe("number answers and number conditions accept only plain decimal strings", () => {
+  const schema: FormSchema = {
+    fields: [
+      { key: "seats", type: "number", label: "Seats" },
+      {
+        key: "license",
+        type: "text",
+        label: "License",
+        showIf: { field_key: "seats", op: "eq", value: 16 },
+      },
+    ],
+  };
+
+  it.each([
+    ["50", 50],
+    ["-3", -3],
+    ["0.5", 0.5],
+    ["007", 7],
+    [String(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER],
+  ])("converts the plain number string %j", (text, value) => {
+    expect(normalizeDraftAnswers(schema, { seats: text }).seats).toBe(value);
+    expect(validateSubmissionData(schema, { seats: text })).toEqual([]);
+  });
+
+  it.each([
+    "0x10",
+    "1e3",
+    " 5 ",
+    "5 ",
+    "+5",
+    ".5",
+    "5.",
+    "1,5",
+    "Infinity",
+    "NaN",
+    "",
+    "9007199254740993",
+    "-9007199254740993",
+    "123456789012345678901234567890",
+  ])("leaves %j a string and refuses it as a number answer", (text) => {
+    expect(normalizeDraftAnswers(schema, { seats: text }).seats).toBe(text);
+    if (text !== "")
+      expect(validateSubmissionData(schema, { seats: text })).toEqual([
+        { key: "seats", problem: "wrong_type" },
+      ]);
+  });
+
+  it("refuses a real number beyond the safe integer range, keeps real numbers below it", () => {
+    expect(
+      validateSubmissionData(schema, { seats: Number.MAX_SAFE_INTEGER + 2 }),
+    ).toEqual([{ key: "seats", problem: "wrong_type" }]);
+    expect(validateSubmissionData(schema, { seats: 1e21 })).toEqual([
+      { key: "seats", problem: "wrong_type" },
+    ]);
+    for (const seats of [0, -7, 12.5, Number.MAX_SAFE_INTEGER, -0.001])
+      expect(validateSubmissionData(schema, { seats })).toEqual([]);
+  });
+
+  it("parseNumberAnswer reads a real number or plain decimal text, and nothing else", () => {
+    expect(parseNumberAnswer(12.5)).toBe(12.5);
+    expect(parseNumberAnswer("-3")).toBe(-3);
+    expect(parseNumberAnswer("0.5")).toBe(0.5);
+    for (const refused of [
+      "16 ",
+      "0x10",
+      "1e3",
+      "",
+      "abc",
+      "9007199254740993",
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 2,
+      null,
+      undefined,
+      true,
+      ["1"],
+    ])
+      expect(parseNumberAnswer(refused)).toBeNull();
+  });
+
+  it("matches a number condition only against a plain number string", () => {
+    const eq = (value: string, actual: number | string) =>
+      isVisibilityConditionSatisfied(
+        { field_key: "n", op: "eq", value },
+        actual,
+      );
+    expect(eq("50", 50)).toBe(true);
+    expect(eq("0.5", 0.5)).toBe(true);
+    expect(eq("0x10", 16)).toBe(false);
+    expect(eq("1e3", 1000)).toBe(false);
+    expect(eq(" 50 ", 50)).toBe(false);
+    expect(eq("9007199254740993", 9007199254740992)).toBe(false);
+    expect(
+      isVisibilityConditionSatisfied(
+        { field_key: "n", op: "eq", value: 50 },
+        "50",
+      ),
+    ).toBe(true);
+    expect(
+      isVisibilityConditionSatisfied(
+        { field_key: "n", op: "eq", value: 16 },
+        "0x10",
+      ),
+    ).toBe(false);
+  });
+
+  it("evaluates the schema's number condition on a converted legacy string only", () => {
+    expect(resolveFormVisibility(schema, { seats: "16" }).get("license")).toBe(
+      true,
+    );
+    expect(
+      resolveFormVisibility(schema, { seats: "0x10" }).get("license"),
+    ).toBe(false);
+  });
+});
+
+// --- A checkbox condition left as "" after the controlling field changed type ----
+describe("normalizeFormSchema repairs a condition left as the empty string on a checkbox controller", () => {
+  const withCondition = (
+    op: "eq" | "neq" | "in" | "is_set",
+    value: unknown,
+    controllerType: "checkbox" | "text" = "checkbox",
+  ): FormSchema => ({
+    fields: [
+      { key: "agree", type: controllerType, label: "Agree" },
+      {
+        key: "reason",
+        type: "text",
+        label: "Reason",
+        showIf: { field_key: "agree", op, value: value as never },
+      },
+    ],
+  });
+
+  it.each([
+    ["", false],
+    ["  ", false],
+    ["false", false],
+    ["FALSE", false],
+    ["true", true],
+    [" True ", true],
+  ])("rewrites the condition value %j to %j", (stored, repaired) => {
+    expect(
+      normalizeFormSchema(withCondition("eq", stored)).fields[1]?.showIf?.value,
+    ).toBe(repaired);
+  });
+
+  it("leaves other strings, booleans and a missing value alone", () => {
+    for (const value of ["yes", true, false, undefined])
+      expect(
+        normalizeFormSchema(withCondition("eq", value)).fields[1]?.showIf
+          ?.value,
+      ).toBe(value);
+  });
+
+  it("repairs each entry of an 'in' list", () => {
+    expect(
+      normalizeFormSchema(withCondition("in", ["", "true", "maybe"])).fields[1]
+        ?.showIf?.value,
+    ).toEqual([false, true, "maybe"]);
+  });
+
+  it("is idempotent", () => {
+    for (const stored of ["", "false", "true", ["", "true"]]) {
+      const once = normalizeFormSchema(
+        withCondition(Array.isArray(stored) ? "in" : "eq", stored),
+      );
+      expect(normalizeFormSchema(once)).toEqual(once);
+    }
+  });
+
+  it("does not touch the empty string when the controller is not a checkbox", () => {
+    expect(
+      normalizeFormSchema(withCondition("eq", "", "text")).fields[1]?.showIf
+        ?.value,
+    ).toBe("");
+  });
+
+  it("now matches: an unchecked box shows a field conditioned on ''", () => {
+    const schema = withCondition("eq", "");
+    expect(resolveFormVisibility(schema, { agree: false }).get("reason")).toBe(
+      true,
+    );
+    expect(resolveFormVisibility(schema, {}).get("reason")).toBe(true);
+    expect(resolveFormVisibility(schema, { agree: true }).get("reason")).toBe(
+      false,
+    );
+    expect(
+      sanitizeSubmissionData(schema, { agree: true, reason: "smuggled" }),
+    ).toEqual({ agree: true });
+  });
+
+  it("'neq' on '' shows the field once the box is checked", () => {
+    const schema = withCondition("neq", "");
+    expect(resolveFormVisibility(schema, { agree: true }).get("reason")).toBe(
+      true,
+    );
+    expect(resolveFormVisibility(schema, { agree: false }).get("reason")).toBe(
+      false,
+    );
   });
 });

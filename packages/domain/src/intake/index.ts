@@ -5,9 +5,11 @@ export {
   isVisibilityConditionSatisfied,
   normalizeDraftAnswers,
   normalizeFormSchema,
+  parseNumberAnswer,
   resolveFormVisibility,
   sanitizeSubmissionData,
   validateSubmissionData,
   visibleFields,
+  visibleSubmissionAnswers,
 } from "./request-type.js";
 export type { FormSchema, FormValue, VisibilityCondition } from "./types.js";
