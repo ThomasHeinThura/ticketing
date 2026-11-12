@@ -1,3 +1,5 @@
+// D-E (12 Nov): limited custom actors preserve role-override and reach denials.
+// D-E (12 Nov): project-limited denial actors use custom roles.
 /**
  * P1 projects (WRITTEN, NOT RUN by its author -- the coordinator runs DB integration tests):
  * PR-1 hierarchy and ownership route, PR-6/PR-7/PR-10 composition warnings, PR-13 key
@@ -13,7 +15,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
@@ -48,7 +50,7 @@ async function projectWithManage(
 }
 
 async function setup() {
-  const owner = await createWorkspaceMember({ role: "admin" });
+  const owner = await createProjectLimitedWorkspaceMember({ role: "admin" });
   mockAuthenticatedSession(owner.user);
   return owner;
 }

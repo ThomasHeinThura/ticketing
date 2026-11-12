@@ -411,6 +411,7 @@ describe("UAT seed is strictly additive on top of the SIT seed", () => {
     expect(contoso.identity.reach).toEqual({
       kind: "organisation",
       ids: ["uat-org-contoso"],
+      projectIds: ["uat-proj-support"],
     });
     expect(reaches(contoso.identity, support)).toBe(true);
     expect(reaches(contoso.identity, web)).toBe(false);

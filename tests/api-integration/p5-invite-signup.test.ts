@@ -372,7 +372,12 @@ describe("a new invitee signs up with the credential", () => {
     const audit = await auditReasons(invited.id);
     expect(audit).toContainEqual({
       action: "invitation.redeemed",
-      after: { scope: "customer", via: "sign_up" },
+      after: {
+        scope: "customer",
+        via: "sign_up",
+        grantedProjectIds: [],
+        skippedProjectIds: [],
+      },
     });
     expect(JSON.stringify(audit)).not.toContain(invited.credential);
     expect(JSON.stringify(audit)).not.toContain(email);

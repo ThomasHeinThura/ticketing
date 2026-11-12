@@ -479,7 +479,9 @@ describe("portal accept route: portal host, customer session only", () => {
 
 describe("a caller reaches only the organisations it reaches (CP-20)", () => {
   async function rosteredOn(organisationId: string, role: "lead" | "owner") {
-    const { addMember } = await import("./helpers/reach-world");
+    const { addMember, addProjectLimitedMember } = await import(
+      "./helpers/reach-world"
+    );
     const { grantProjectRole } = await import("./helpers/fixtures");
     const { ensureAgentSession } = await import("./helpers/pending-deletion");
     const [project] = await db
@@ -487,7 +489,10 @@ describe("a caller reaches only the organisations it reaches (CP-20)", () => {
       .from(schema.projectTable)
       .where(eq(schema.projectTable.organisationId, organisationId));
     if (!project) throw new Error("no project for organisation");
-    const caller = await addMember(w.workspaceId, role);
+    const caller =
+      role === "owner"
+        ? await addProjectLimitedMember(w.workspaceId)
+        : await addMember(w.workspaceId, role);
     await grantProjectRole(caller.user.id, project.id, ["project:read"]);
     await ensureAgentSession(caller.user.id);
     return caller;

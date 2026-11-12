@@ -11,7 +11,8 @@ describe("API integration: config", () => {
     const payload = (await response.json()) as Record<string, unknown>;
 
     expect(payload).toMatchObject({
-      disableRegistration: false,
+      // D-B (12 Nov): invitation-only registration defaults off.
+      disableRegistration: true,
       disablePasswordRegistration: false,
       disableEmailOtpSignIn: false,
       disableLoginForm: false,

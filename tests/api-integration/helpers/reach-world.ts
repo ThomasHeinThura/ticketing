@@ -1,13 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { expect } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import type { createApp } from "../../../apps/api/src/index";
 import { seedWorkspaceBuiltInRoles } from "../../../apps/api/src/workspace/built-in-roles.repository";
 import { mockAuthenticatedSession } from "./auth";
 import {
+  assignProjectLimitedRole,
   createProjectFixture,
   createWorkspaceMember,
   grantProjectRole,
@@ -90,6 +91,13 @@ export async function addMember(workspaceId: string, role: string) {
   return { user, personId: person.id };
 }
 
+/** D-E (12 Nov): project-limited actors retain their custom workspace capabilities. */
+export async function addProjectLimitedMember(workspaceId: string) {
+  const actor = await addMember(workspaceId, "member");
+  await assignProjectLimitedRole(actor.user.id, workspaceId);
+  return actor;
+}
+
 /**
  * A `manager` or `lead` member as production creates one: canonical `role` rows only, no legacy
  * `workspace_role` statement row. `addMember` seeds an empty legacy row, which makes the legacy
@@ -160,7 +168,9 @@ export async function makeState(
   return { stateTemplate, state };
 }
 
-export async function setupWorld() {
+export async function setupWorld(
+  options: { systemAdminActors?: boolean } = {},
+) {
   const admin = await createWorkspaceMember({ role: "admin" });
   const workspaceId = admin.workspace.id;
   const { project } = await createProjectFixture({ workspaceId });
@@ -224,7 +234,7 @@ export async function setupWorld() {
   await grantProjectRole(admin.user.id, project.id, [
     ...WORK_ITEM_PROJECT_CAPABILITIES,
   ]);
-  const projectMember = await addMember(workspaceId, "admin");
+  const projectMember = await addProjectLimitedMember(workspaceId);
   await grantProjectRole(projectMember.user.id, project.id, [
     ...WORK_ITEM_PROJECT_CAPABILITIES,
   ]);
@@ -235,7 +245,21 @@ export async function setupWorld() {
   ]);
   const outsiderLead = await addMember(workspaceId, "lead");
   const outsiderMember = await addMember(workspaceId, "member");
-  const outsiderAdmin = await addMember(workspaceId, "admin");
+  const outsiderAdmin = await addProjectLimitedMember(workspaceId);
+  if (options.systemAdminActors) {
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "admin" })
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, workspaceId),
+          inArray(schema.workspaceUserTable.userId, [
+            projectMember.user.id,
+            outsiderAdmin.user.id,
+          ]),
+        ),
+      );
+  }
   const customerNoRole = await addMember(workspaceId, "customer");
   const customerWithRole = await addMember(workspaceId, "customer");
   await grantProjectRole(customerWithRole.user.id, project.id, [

@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * `POST /api/workflows/{id}/versions/{n}/validate` (issue #442, `workflows.md` §
  * Screens, "Workflow editor" validation panel) -- the thin wrapper around
@@ -12,7 +13,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -51,7 +52,9 @@ describe("API integration: workflow version validation (#442)", () => {
   ])(
     "returns a generic refusal when an inaccessible $label workspace project exists",
     async ({ archived }) => {
-      const owner = await createWorkspaceMember({ role: "owner" });
+      const owner = await createProjectLimitedWorkspaceMember({
+        role: "owner",
+      });
       mockAuthenticatedSession(owner.user);
       const { app } = createApp();
       const backlog = await seedStateTemplate(owner.workspace.id, "backlog");
@@ -109,7 +112,7 @@ describe("API integration: workflow version validation (#442)", () => {
   );
 
   it("reports an unreachable state template and a template with no outbound transition", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
 
@@ -194,8 +197,8 @@ describe("API integration: workflow version validation (#442)", () => {
   });
 
   it("rejects unauthenticated requests, and a workflow from another workspace 404s", async () => {
-    const ownerA = await createWorkspaceMember({ role: "owner" });
-    const ownerB = await createWorkspaceMember({ role: "owner" });
+    const ownerA = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const ownerB = await createProjectLimitedWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(ownerA.user);
     const { app } = createApp();
 

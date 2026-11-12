@@ -67,6 +67,7 @@ export function canonicalScopedRoleMembership(
   roleKey: SQLWrapper,
   roleRank: SQLWrapper,
   capabilities: SQLWrapper,
+  roleIsSystem: SQLWrapper,
   scopeWorkspaceId: SQLWrapper,
 ) {
   return and(
@@ -76,6 +77,12 @@ export function canonicalScopedRoleMembership(
     eq(roleWorkspaceId, scopeWorkspaceId),
     sql`length(${roleKey}) > 0`,
     wellFormedRoleRow(roleRank, capabilities),
+    // Match resolveIdentity: reserved workspace role keys require a genuine system row.
+    or(
+      ne(scope, "workspace"),
+      not(inArray(roleKey, [...WORKSPACE_PROJECT_SEE_ALL_ROLES])),
+      eq(roleIsSystem, true),
+    ),
   );
 }
 
@@ -210,6 +217,7 @@ export function currentProjectReachPredicate(
             roleTable.key,
             roleTable.rank,
             roleTable.capabilities,
+            roleTable.isSystem,
             projectWorkspaceId,
           ),
         ),
@@ -253,6 +261,7 @@ export function currentProjectReachPredicate(
             roleTable.key,
             roleTable.rank,
             roleTable.capabilities,
+            roleTable.isSystem,
             projectWorkspaceId,
           ),
         ),
@@ -277,6 +286,7 @@ export function currentProjectReachPredicate(
             roleTable.key,
             roleTable.rank,
             roleTable.capabilities,
+            roleTable.isSystem,
             projectWorkspaceId,
           ),
         ),
@@ -388,6 +398,7 @@ export function currentWorkspaceReachPredicate(
             roleTable.key,
             roleTable.rank,
             roleTable.capabilities,
+            roleTable.isSystem,
             workspaceId,
           ),
         ),

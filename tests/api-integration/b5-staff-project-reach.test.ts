@@ -195,7 +195,7 @@ describe("B-5: staff project reach", () => {
 
   for (const role of ["owner", "admin", "manager"] as const) {
     it(`${role} in workspace A cannot reach workspace B through either path or HTTP`, async () => {
-      const world = await setupWorld();
+      const world = await setupWorld({ systemAdminActors: true });
       const caller = await addMember(world.workspaceId, role);
       const foreign = await createWorkspaceMember({ role: "admin" });
       const projectB = (
@@ -246,7 +246,7 @@ describe("B-5: staff project reach", () => {
   }
 
   it("manager in A and member in B has see-all only in A", async () => {
-    const world = await setupWorld();
+    const world = await setupWorld({ systemAdminActors: true });
     const caller = await addMember(world.workspaceId, "manager");
     const foreign = await createWorkspaceMember({ role: "admin" });
     const projectB = (
@@ -285,7 +285,7 @@ describe("B-5: staff project reach", () => {
   });
 
   it("a removed or suspended manager loses reach through both paths", async () => {
-    const world = await setupWorld();
+    const world = await setupWorld({ systemAdminActors: true });
     const caller = await addMember(world.workspaceId, "manager");
     const foreign = await createWorkspaceMember({ role: "admin" });
     const projectB = (
@@ -342,7 +342,7 @@ describe("B-5: staff project reach", () => {
   });
 
   it("customer portal identity ignores forged manager workspace rows", async () => {
-    const world = await setupWorld();
+    const world = await setupWorld({ systemAdminActors: true });
     const foreign = await createWorkspaceMember({ role: "admin" });
     const projectB = (
       await createProjectFixture({ workspaceId: foreign.workspace.id })
@@ -370,6 +370,9 @@ describe("B-5: staff project reach", () => {
       .update(schema.projectTable)
       .set({ organisationId: customer.orgId })
       .where(eq(schema.projectTable.id, own.id));
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: customer.person.id, projectId: own.id });
     expect(
       (
         await reachPaths(
@@ -382,7 +385,7 @@ describe("B-5: staff project reach", () => {
   });
 
   it("cannot resolve owner, admin or manager as project roster roles on a fresh workspace", async () => {
-    const world = await setupWorld();
+    const world = await setupWorld({ systemAdminActors: true });
     for (const role of ["owner", "admin", "manager"]) {
       expect(await resolveRosterRole(db, world.workspaceId, role)).toBeNull();
     }
@@ -397,7 +400,7 @@ describe("B-5: staff project reach", () => {
     "viewer",
   ] as const) {
     it(`${role}: project list and SQL reach agree without a stored see-all flag`, async () => {
-      const world = await setupWorld();
+      const world = await setupWorld({ systemAdminActors: true });
       const caller = await addMember(world.workspaceId, role);
       await db
         .update(schema.membershipTable)
@@ -448,7 +451,7 @@ describe("B-5: staff project reach", () => {
   }
 
   it("manager reaches projects without project or team membership", async () => {
-    const world = await setupWorld();
+    const world = await setupWorld({ systemAdminActors: true });
     const caller = await addMember(world.workspaceId, "manager");
     const { app } = createApp();
     mockAuthenticatedSession(caller.user);
@@ -470,7 +473,7 @@ describe("B-5: staff project reach", () => {
       );
       vi.stubEnv("TASKDESK_STORAGE_FILESYSTEM_ROOT", mixedStorageRoot);
       vi.stubEnv("TASKDESK_STORAGE_DRIVER", undefined);
-      const world = await setupWorld();
+      const world = await setupWorld({ systemAdminActors: true });
       const { app } = createApp();
       const visible = await createProjectFixture({
         workspaceId: world.workspaceId,
@@ -1711,7 +1714,7 @@ describe("B-5: staff project reach", () => {
       }
     });
     it(`${role} cannot read the other managed service or its item`, async () => {
-      const world = await setupWorld();
+      const world = await setupWorld({ systemAdminActors: true });
       const { app } = createApp();
       const visible = await createProjectFixture({
         workspaceId: world.workspaceId,
@@ -2490,7 +2493,7 @@ describe("B-5: staff project reach", () => {
   }
 
   it("rechecks the materialized view after concurrent query changes for read and edit", async () => {
-    const world = await setupWorld();
+    const world = await setupWorld({ systemAdminActors: true });
     const { app } = createApp();
     const caller = await addMember(world.workspaceId, "member");
     const [saved] = await db
@@ -2581,7 +2584,7 @@ describe("B-5: staff project reach", () => {
   });
 
   it("rechecks project membership after saved-view admission", async () => {
-    const world = await setupWorld();
+    const world = await setupWorld({ systemAdminActors: true });
     const { app } = createApp();
     const caller = await addMember(world.workspaceId, "member");
     const [saved] = await db
@@ -2909,7 +2912,7 @@ describe("B-5: staff project reach", () => {
   });
 
   it("reorder returns only reachable projects and never renumbers hidden rows", async () => {
-    const world = await setupWorld();
+    const world = await setupWorld({ systemAdminActors: true });
     const { app } = createApp();
     const visible = await createProjectFixture({
       workspaceId: world.workspaceId,
@@ -3001,7 +3004,7 @@ describe("B-5: staff project reach", () => {
     vi.stubEnv("TASKDESK_STORAGE_FILESYSTEM_ROOT", root);
     vi.stubEnv("TASKDESK_STORAGE_DRIVER", undefined);
     try {
-      const world = await setupWorld();
+      const world = await setupWorld({ systemAdminActors: true });
       const { app } = createApp();
       const item = await createItem(app, world, "B5 private attachment");
       const caller = await addMember(world.workspaceId, "member");

@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * #580 batch 3 + P0R1-01: inline-asset reconciliation through the storage repository -- an
  * asset is only marked detached (never deleted by an edit) when no description, task comment
@@ -25,13 +26,13 @@ import { lockTaskAndAssertProjectLiveForIdentity } from "../../apps/api/src/task
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectAccessForWorkspaceRole,
   requireRow,
 } from "./helpers/fixtures";
 
 async function seed() {
-  const member = await createWorkspaceMember({ role: "owner" });
+  const member = await createProjectLimitedWorkspaceMember({ role: "owner" });
   const { project, columns } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });

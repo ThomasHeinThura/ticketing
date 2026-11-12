@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { createHash, randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as auditWriter from "../../apps/api/src/audit/audit-writer";
@@ -11,7 +12,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
 import {
@@ -83,7 +84,9 @@ describe("POST /api/work-items/export", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("requires work_item:export and records no audit row on denial", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
     const response = await app.request("/api/work-items/export", {
@@ -100,8 +103,12 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("masks a foreign workspace before checking export capability", async () => {
-    const caller = await createWorkspaceMember({ role: "member" });
-    const foreign = await createWorkspaceMember({ role: "owner" });
+    const caller = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
+    const foreign = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     mockAuthenticatedSession(caller.user);
     const { app } = createApp();
     const response = await app.request("/api/work-items/export", {
@@ -117,7 +124,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("exports only requested columns and audits the completed export", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
     const response = await app.request("/api/work-items/export", {
@@ -145,7 +152,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("streams registered custom columns with their labels and formula escaping", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -181,7 +188,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("exports an empty cell for hidden custom fields", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -218,7 +225,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("AU-14: preserves a completed CSV when its audit append fails", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     vi.spyOn(auditWriter, "appendAuditLog").mockRejectedValueOnce(
       new Error("audit unavailable"),
@@ -243,8 +250,10 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("exports real reached rows for an owner API key with an explicit export scope", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
-    const otherAdmin = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const otherAdmin = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: owner.workspace.id,
       userId: otherAdmin.user.id,
@@ -361,7 +370,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("requires project:read in key scope for a project-filtered export", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     const reachable = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -456,7 +465,9 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("keeps the key's export scope subordinate to the owner's current workspace role", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     const key = await createApiKeyFor(
       member.user.id,
       JSON.stringify({ work_item: ["export"], project: ["read"] }),
@@ -480,7 +491,9 @@ describe("POST /api/work-items/export", () => {
   ])(
     "denies an owner API key with %s scope without exporting",
     async (_label, permissions) => {
-      const owner = await createWorkspaceMember({ role: "owner" });
+      const owner = await createProjectLimitedWorkspaceMember({
+        role: "owner",
+      });
       const key = await createApiKeyFor(owner.user.id, permissions);
 
       const response = await exportWithKey(key, owner.workspace.id);
@@ -495,7 +508,7 @@ describe("POST /api/work-items/export", () => {
   );
 
   it("refuses an expired owner API key without exporting", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     const key = await createApiKeyFor(
       owner.user.id,
       JSON.stringify({ work_item: ["export"] }),
@@ -513,7 +526,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("rejects exports exceeding 10,000 rows with 422 export_limit_exceeded and records no audit row", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     vi.spyOn(searchWorkItemsModule, "searchWorkItems").mockResolvedValueOnce({
       data: [],
@@ -545,7 +558,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("enforces the 5 exports/min per-user rate limit with HTTP 429", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
 

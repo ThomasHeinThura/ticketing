@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * `docs/03-features/comments-and-activity.md` `CA-19`/`CA-20`: canned-response CRUD.
  */
@@ -20,7 +21,9 @@ import { evaluateProjectRead } from "../../apps/api/src/utils/has-project-reach"
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
+  assignProjectLimitedRole,
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
   grantWorkItemProjectAccess,
@@ -39,7 +42,7 @@ async function identityFor(userId: string) {
 }
 
 async function createWorkItem(
-  admin: Awaited<ReturnType<typeof createWorkspaceMember>>,
+  admin: Awaited<ReturnType<typeof createProjectLimitedWorkspaceMember>>,
   app: ReturnType<typeof createApp>["app"],
 ) {
   const { project } = await createProjectFixture({
@@ -140,6 +143,7 @@ async function addAdminWorkspaceMembership(
     role: "admin",
     joinedAt: new Date(),
   });
+  await assignProjectLimitedRole(userId, workspaceId);
 }
 
 async function removeProjectMembership(userId: string, projectId: string) {
@@ -179,7 +183,7 @@ describe("API integration: canned responses (#27)", () => {
   ] as const)(
     "management listing enforces %s authority without needing a work item",
     async (role, expected) => {
-      const member = await createWorkspaceMember({ role });
+      const member = await createProjectLimitedWorkspaceMember({ role });
       // The shared fixture seeds only the legacy default role rows. Reserved
       // TaskDesk roles need a genuine system row before canonical authority is
       // honored (rbac.md); a bare membership alias intentionally fails closed.
@@ -212,7 +216,9 @@ describe("API integration: canned responses (#27)", () => {
   );
 
   it("management listing refuses an unbacked reserved manager alias", async () => {
-    const member = await createWorkspaceMember({ role: "manager" });
+    const member = await createWorkspaceMember({
+      role: "manager",
+    });
     // Every workspace now has a genuine canonical `manager` row; remove it to model a bare
     // membership alias with nothing behind it.
     await db
@@ -233,7 +239,9 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("management listing refuses a customer-side person even with a legacy admin membership", async () => {
-    const customer = await createWorkspaceMember({ role: "admin" });
+    const customer = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     await db
       .update(schema.personTable)
       .set({ side: "customer" })
@@ -253,8 +261,10 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("management listing excludes other workspaces and clamps API keys", async () => {
-    const manager = await createWorkspaceMember({ role: "admin" });
-    const other = await createWorkspaceMember({ role: "admin" });
+    const manager = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
+    const other = await createProjectLimitedWorkspaceMember({ role: "admin" });
     await db.insert(schema.cannedResponseTable).values([
       {
         workspaceId: manager.workspace.id,
@@ -301,7 +311,9 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("CA-19: an admin creates, lists, updates and deletes a canned response", async () => {
-    const creator = await createWorkspaceMember({ role: "admin" });
+    const creator = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     mockAuthenticatedSession(creator.user);
     await ensureAgentSession(creator.user.id);
     const { app } = createApp();
@@ -365,7 +377,9 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("CA-19a resolves authorized item context without modifying reusable templates", async () => {
-    const creator = await createWorkspaceMember({ role: "admin" });
+    const creator = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
     const key = await createWorkItem(creator, app);
@@ -485,7 +499,9 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("403s a member without workspace:manage_settings", async () => {
-    const creator = await createWorkspaceMember({ role: "member" });
+    const creator = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
 
@@ -503,7 +519,9 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("409s a duplicate name within the same workspace", async () => {
-    const creator = await createWorkspaceMember({ role: "admin" });
+    const creator = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
 
@@ -530,7 +548,9 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("404s a PATCH against another tenant's canned response", async () => {
-    const creator = await createWorkspaceMember({ role: "admin" });
+    const creator = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
 
@@ -545,7 +565,9 @@ describe("API integration: canned responses (#27)", () => {
     });
     const { id } = (await created.json()) as { id: string };
 
-    const otherTenant = await createWorkspaceMember({ role: "admin" });
+    const otherTenant = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     mockAuthenticatedSession(otherTenant.user);
     const { app: otherApp } = createApp();
 
@@ -558,7 +580,7 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("DELETE against another tenant's canned response 404s and leaves the row", async () => {
-    const owner = await createWorkspaceMember({ role: "admin" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const created = await insertCannedResponse(
       await identityFor(owner.user.id),
       {
@@ -571,7 +593,9 @@ describe("API integration: canned responses (#27)", () => {
     );
     expect(created).toBeDefined();
 
-    const otherTenant = await createWorkspaceMember({ role: "admin" });
+    const otherTenant = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     mockAuthenticatedSession(otherTenant.user);
     const { app } = createApp();
 
@@ -589,7 +613,7 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("PATCH and DELETE of a canned response that does not exist 404", async () => {
-    const admin = await createWorkspaceMember({ role: "admin" });
+    const admin = await createProjectLimitedWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(admin.user);
     const { app } = createApp();
 
@@ -609,8 +633,8 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("lists only responses available to the requested work item, ordered by name", async () => {
-    const admin = await createWorkspaceMember({ role: "admin" });
-    const other = await createWorkspaceMember({ role: "admin" });
+    const admin = await createProjectLimitedWorkspaceMember({ role: "admin" });
+    const other = await createProjectLimitedWorkspaceMember({ role: "admin" });
     for (const [workspaceId, name, createdBy] of [
       [admin.workspace.id, "Zulu", admin.user.id],
       [admin.workspace.id, "Alpha", admin.user.id],
@@ -642,7 +666,7 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("HTTP listing requires a reachable item and the owner's project capability", async () => {
-    const admin = await createWorkspaceMember({ role: "admin" });
+    const admin = await createProjectLimitedWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(admin.user);
     const { app } = createApp();
     const key = await createWorkItem(admin, app);
@@ -664,7 +688,7 @@ describe("API integration: canned responses (#27)", () => {
       ).status,
     ).toBe(404);
 
-    const reader = await createWorkspaceMember({ role: "admin" });
+    const reader = await createProjectLimitedWorkspaceMember({ role: "admin" });
     await addAdminWorkspaceMembership(reader.user.id, admin.workspace.id);
     await grantProjectRole(reader.user.id, item.projectId, ["project:read"]);
     const readerIdentity = await identityFor(reader.user.id);
@@ -703,7 +727,9 @@ describe("API integration: canned responses (#27)", () => {
     ).toBe(403);
 
     mockAuthenticatedSession(admin.user);
-    const sameWorkspaceNoReach = await createWorkspaceMember({ role: "admin" });
+    const sameWorkspaceNoReach = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     await addAdminWorkspaceMembership(
       sameWorkspaceNoReach.user.id,
       admin.workspace.id,
@@ -770,7 +796,7 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("refuses a reachable customer-side principal before exposing internal snippets", async () => {
-    const owner = await createWorkspaceMember({ role: "admin" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
     const workItemKey = await createWorkItem(owner, app);
@@ -814,7 +840,9 @@ describe("API integration: canned responses (#27)", () => {
       "canned-response customer role",
     );
 
-    const reachableCustomer = await createWorkspaceMember({ role: "member" });
+    const reachableCustomer = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     const [customerPerson] = await db
       .update(schema.personTable)
       .set({
@@ -854,9 +882,13 @@ describe("API integration: canned responses (#27)", () => {
     );
     if (!snippet) throw new Error("Expected internal canned-response insert");
 
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: customerPerson.id, projectId: workItem.projectId });
     const reachableIdentity = await identityFor(reachableCustomer.user.id);
     expect(reachableIdentity.reach).toEqual({
       kind: "organisation",
+      projectIds: [workItem.projectId],
       ids: [customerOrganisation.id],
     });
     const policy = cannedResponsePolicies["GET /api/canned-responses"];
@@ -899,7 +931,9 @@ describe("API integration: canned responses (#27)", () => {
         .returning(),
       "unreachable canned-response customer organisation",
     );
-    const unreachableCustomer = await createWorkspaceMember({ role: "member" });
+    const unreachableCustomer = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     const [unreachablePerson] = await db
       .update(schema.personTable)
       .set({
@@ -930,7 +964,7 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("refuses a reachable workspace-customer principal on the agent snippet list", async () => {
-    const owner = await createWorkspaceMember({ role: "admin" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
     const workItemKey = await createWorkItem(owner, app);
@@ -955,7 +989,9 @@ describe("API integration: canned responses (#27)", () => {
     );
     if (!snippet) throw new Error("Expected internal canned-response insert");
 
-    const customer = await createWorkspaceMember({ role: "customer" });
+    const customer = await createProjectLimitedWorkspaceMember({
+      role: "customer",
+    });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: owner.workspace.id,
       userId: customer.user.id,
@@ -991,8 +1027,10 @@ describe("API integration: canned responses (#27)", () => {
   });
 
   it("list SQL enforces same-workspace project reach and live-item state at read time", async () => {
-    const admin = await createWorkspaceMember({ role: "admin" });
-    const unreachableMember = await createWorkspaceMember({ role: "admin" });
+    const admin = await createProjectLimitedWorkspaceMember({ role: "admin" });
+    const unreachableMember = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     await addAdminWorkspaceMembership(
       unreachableMember.user.id,
       admin.workspace.id,
@@ -1081,8 +1119,12 @@ describe("API integration: canned responses (#27)", () => {
 
   describe("repository tenant predicates", () => {
     it("foreign identity cannot bootstrap, insert, update or delete using the victim workspace", async () => {
-      const victim = await createWorkspaceMember({ role: "admin" });
-      const foreign = await createWorkspaceMember({ role: "admin" });
+      const victim = await createProjectLimitedWorkspaceMember({
+        role: "admin",
+      });
+      const foreign = await createProjectLimitedWorkspaceMember({
+        role: "admin",
+      });
       const victimIdentity = await identityFor(victim.user.id);
       const foreignIdentity = await identityFor(foreign.user.id);
       expect(
@@ -1144,8 +1186,12 @@ describe("API integration: canned responses (#27)", () => {
     });
 
     it("update and delete by id only act inside the supplied workspace", async () => {
-      const owner = await createWorkspaceMember({ role: "admin" });
-      const other = await createWorkspaceMember({ role: "admin" });
+      const owner = await createProjectLimitedWorkspaceMember({
+        role: "admin",
+      });
+      const other = await createProjectLimitedWorkspaceMember({
+        role: "admin",
+      });
       const ownerIdentity = await identityFor(owner.user.id);
       const otherIdentity = await identityFor(other.user.id);
       const created = await insertCannedResponse(ownerIdentity, {

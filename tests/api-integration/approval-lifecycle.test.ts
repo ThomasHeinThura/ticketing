@@ -1,3 +1,4 @@
+// D-E (12 Nov): limited custom actors preserve role-override and reach denials.
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -15,7 +16,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -99,7 +100,9 @@ describe("API integration: approval lifecycle", () => {
   });
 
   it("commits the request with its event, inbox, and audit rows; keeps the workflow gate while disabled; and flags then denies a no-longer-reachable approver", async () => {
-    const requester = await createWorkspaceMember({ role: "owner" });
+    const requester = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     const requesterPerson = requireRow(
       await db
         .select({ id: schema.personTable.id })
@@ -232,11 +235,13 @@ describe("API integration: approval lifecycle", () => {
       "approval lifecycle work item type",
     );
 
-    const approver = await createWorkspaceMember({ role: "owner" });
+    const approver = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: requester.workspace.id,
       userId: approver.user.id,
-      role: "owner",
+      role: "member",
       joinedAt: now,
     });
     await grantProjectRole(approver.user.id, project.id, [
@@ -701,7 +706,9 @@ describe("API integration: approval lifecycle", () => {
     );
     expect((await scopedWithdrawal.json()).state).toBe("withdrawn");
 
-    const outOfReachMember = await createWorkspaceMember({ role: "owner" });
+    const outOfReachMember = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     const outOfReachApproval = await createAdditionalApprovalAsRequester();
     const outOfReachKey = await createApprovalApiKey(outOfReachMember.user.id, {
       approval: ["request"],
@@ -728,7 +735,9 @@ describe("API integration: approval lifecycle", () => {
       outOfReachEffectsBeforeDenial,
     );
 
-    const instanceAdmin = await createWorkspaceMember({ role: "owner" });
+    const instanceAdmin = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     await db
       .update(schema.userTable)
       .set({ role: "admin" })
@@ -839,7 +848,9 @@ describe("API integration: approval lifecycle", () => {
     expect((await adminSessionWithdrawal.json()).state).toBe("withdrawn");
 
     const inactiveAdminApproval = await createAdditionalApprovalAsRequester();
-    const inactiveAdmin = await createWorkspaceMember({ role: "owner" });
+    const inactiveAdmin = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     await db
       .update(schema.userTable)
       .set({ role: "admin" })

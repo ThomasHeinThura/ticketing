@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * Issue #28 (`attachments.md`) -- the work-item attachment slice: presign, complete,
  * download and delete, end to end against the real `filesystem` storage driver and a
@@ -25,7 +26,7 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
@@ -129,9 +130,10 @@ async function makeDefaultState(workspaceId: string, projectId: string) {
 }
 
 async function setupProject() {
-  const { user: creator, workspace } = await createWorkspaceMember({
-    role: "admin",
-  });
+  const { user: creator, workspace } =
+    await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
   await grantWorkItemProjectAccess(creator.id, project.id);
   const type = await makeWorkItemType(workspace.id);
@@ -482,7 +484,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
 
     // This owner has workspace membership but no project membership: even a key whose
     // stored scope names work_item:read cannot exceed the owner's current project reach.
-    const nonOwner = await createWorkspaceMember({ role: "member" });
+    const nonOwner = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     const keyWithoutOwnerReach = await makeApiKey(nonOwner.user.id, {
       work_item: ["read"],
     });
@@ -1576,7 +1580,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     const { key: otherKey } = await createWorkItem(app, project.id, type.id);
 
     // A different person (own workspace is irrelevant: comment.author_id has no FK).
-    const other = await createWorkspaceMember({ role: "admin" });
+    const other = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const otherPerson = await addPersonForUser(other.user.id);
     const theirs = await insertComment({
       workspaceId: workspace.id,
@@ -1732,7 +1736,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       .where(eq(schema.workItemTable.key, key));
     if (!item) throw new Error("recovery fixture work item missing");
 
-    const actor = await createWorkspaceMember({ role: "member" });
+    const actor = await createProjectLimitedWorkspaceMember({ role: "member" });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: workspace.id,
       userId: actor.user.id,
@@ -1771,7 +1775,9 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       expect.objectContaining({ id: actorAttachmentId, canRestore: true }),
     );
 
-    const viewer = await createWorkspaceMember({ role: "member" });
+    const viewer = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: workspace.id,
       userId: viewer.user.id,
@@ -2050,7 +2056,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(response.headers.get("location")).toBeNull();
     expect(Buffer.from(await response.arrayBuffer())).toEqual(pdfBytes);
 
-    const foreignWorkspaceAdmin = await createWorkspaceMember({
+    const foreignWorkspaceAdmin = await createProjectLimitedWorkspaceMember({
       role: "admin",
     });
     mockAuthenticatedSession(foreignWorkspaceAdmin.user);

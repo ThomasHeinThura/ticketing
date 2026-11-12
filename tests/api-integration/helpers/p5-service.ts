@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve per-project override tests.
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import db, { schema } from "../../../apps/api/src/database";
@@ -10,7 +11,7 @@ import { createApp } from "../../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./auth";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectManageAccess,
   grantProjectRole,
   grantWorkItemProjectAccess,
@@ -50,7 +51,7 @@ export async function setServiceFlag(workspaceId: string, enabled: boolean) {
  * release authority), a viewer, a project, and a second tenant (workspace) for isolation checks.
  */
 export async function serviceWorld() {
-  const owner = await createWorkspaceMember({ role: "owner" });
+  const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
   const workspaceId = owner.workspace.id;
   await setServiceFlag(workspaceId, true);
   const { project } = await createProjectFixture({ workspaceId });
@@ -72,7 +73,7 @@ export async function serviceWorld() {
   });
   const member = await addMember(workspaceId, "member");
   const viewer = await addMember(workspaceId, "viewer");
-  const stranger = await createWorkspaceMember({ role: "owner" });
+  const stranger = await createProjectLimitedWorkspaceMember({ role: "owner" });
   await setServiceFlag(stranger.workspace.id, true);
   const { app } = createApp();
 

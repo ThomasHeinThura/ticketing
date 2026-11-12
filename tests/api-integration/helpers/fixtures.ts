@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  BUILT_IN_ROLES,
   DEFAULT_ROLE_NAMES,
   type DefaultRoleName,
   defaultRolePayloads,
@@ -12,6 +13,7 @@ import {
   ensureStaffPersonForUser,
 } from "../../../apps/api/src/utils/seed-internal-organisation";
 import { seedWorkspaceBuiltInRoles } from "../../../apps/api/src/workspace/built-in-roles.repository";
+import { syncWorkspaceAdminReach } from "../../../apps/api/src/workspace/workspace-admin-reach";
 
 export type SeededMemberContext = {
   user: typeof schema.userTable.$inferSelect;
@@ -151,6 +153,64 @@ export async function createWorkspaceMember(
   }
 
   return { user, workspace };
+}
+
+/** D-E (12 Nov): custom roles keep the same capabilities without system see-all or union rights. */
+export async function assignProjectLimitedRole(
+  userId: string,
+  workspaceId: string,
+  sourceRole: "owner" | "admin" | "manager" = "admin",
+) {
+  const key = `limited-${randomUUID()}`;
+  const source = BUILT_IN_ROLES[sourceRole];
+  await db.insert(schema.roleTable).values({
+    scope: "workspace",
+    workspaceId,
+    key,
+    name: "Project-limited operator",
+    rank: Math.min(source.rank, 99),
+    capabilities: [...source.capabilities],
+    isSystem: false,
+  });
+  await db.insert(schema.workspaceRoleTable).values({
+    workspaceId,
+    role: key,
+    permission: JSON.stringify(defaultRolePayloads.admin),
+    isSystem: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  await db
+    .update(schema.workspaceUserTable)
+    .set({ role: key })
+    .where(
+      and(
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+        eq(schema.workspaceUserTable.userId, userId),
+      ),
+    );
+  await db.transaction((tx) =>
+    syncWorkspaceAdminReach(tx, workspaceId, userId),
+  );
+  return key;
+}
+
+/** Explicit opt-in for fixtures testing project reach or project-role overrides. */
+export async function createProjectLimitedWorkspaceMember(
+  overrides?: Parameters<typeof createWorkspaceMember>[0],
+) {
+  const originalRole = overrides?.role ?? "member";
+  const actor = await createWorkspaceMember(overrides);
+  if (
+    overrides?.seedDefaultRoleRow !== false &&
+    ["owner", "admin", "manager"].includes(originalRole)
+  )
+    await assignProjectLimitedRole(
+      actor.user.id,
+      actor.workspace.id,
+      originalRole as "owner" | "admin" | "manager",
+    );
+  return actor;
 }
 
 export async function createProjectFixture({

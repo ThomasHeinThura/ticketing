@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -22,7 +23,7 @@ import { resolveRequestIdentity } from "../../apps/api/src/permissions/resolve-r
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -62,8 +63,8 @@ async function seedTask(userId: string, projectId: string, number = 1) {
  * it (issue #580: the statement itself must keep the predicate).
  */
 async function seedTwoWorkspaces() {
-  const a = await createWorkspaceMember({ role: "admin" });
-  const b = await createWorkspaceMember({ role: "admin" });
+  const a = await createProjectLimitedWorkspaceMember({ role: "admin" });
+  const b = await createProjectLimitedWorkspaceMember({ role: "admin" });
   const { project: projectA } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
@@ -152,7 +153,9 @@ describe("label repository (#580)", () => {
     const { a, b, taskA, taskA2 } = await seedTwoWorkspaces();
     const identityA = await identityFor(a.user.id);
     const identityB = await identityFor(b.user.id);
-    const workspaceOnly = await createWorkspaceMember({ role: "member" });
+    const workspaceOnly = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: a.workspace.id,
       userId: workspaceOnly.user.id,

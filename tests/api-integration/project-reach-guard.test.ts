@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project-reach denials.
 import { randomUUID } from "node:crypto";
 import { can, defaultRolePayloads } from "@taskdesk/permissions";
 import { eq, sql } from "drizzle-orm";
@@ -9,8 +10,9 @@ import { policyShadowTallyTable } from "../../apps/api/src/permissions/shadow-sc
 import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { resetTestDatabase } from "./helpers/database";
 import {
+  assignProjectLimitedRole,
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
 import { ensureCreationWorkflow } from "./helpers/workflow";
@@ -198,7 +200,7 @@ async function addWorkspaceActor(
   workspaceId: string,
   role: "admin" | "member" | "project-reader-custom",
 ) {
-  const actor = await createWorkspaceMember({
+  const actor = await createProjectLimitedWorkspaceMember({
     role: role === "project-reader-custom" ? "member" : role,
   });
   await db.insert(schema.workspaceUserTable).values({
@@ -225,6 +227,8 @@ async function addWorkspaceActor(
         schema.workspaceRoleTable.role,
       ],
     });
+  if (role === "admin")
+    await assignProjectLimitedRole(actor.user.id, workspaceId);
   return actor;
 }
 
@@ -264,7 +268,7 @@ describe("native project read reach", () => {
   });
 
   it("requires persisted project reach on every project-scoped GET without changing capability gates", async () => {
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -375,7 +379,9 @@ describe("native project read reach", () => {
       owner.workspace.id,
       "admin",
     );
-    const globalAdmin = await createWorkspaceMember({ role: "member" });
+    const globalAdmin = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     await db
       .update(schema.userTable)
       .set({ role: "admin" })
@@ -630,7 +636,9 @@ describe("native project read reach", () => {
       ).toBe(true);
     }
 
-    const foreignWorkspace = await createWorkspaceMember({ role: "owner" });
+    const foreignWorkspace = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     const { project: foreignProject } = await createProjectFixture({
       workspaceId: foreignWorkspace.workspace.id,
     });

@@ -32,6 +32,7 @@ import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
   grantWorkItemProjectAccess,
@@ -2144,7 +2145,7 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     timeout: 60_000,
   }, async () => {
     const fresh = await createAppWithShadow("on");
-    const owner = await createWorkspaceMember({ role: "owner" });
+    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
     await backfillPersons();
     fresh.mockUser(owner.user);
     const { project } = await createProjectFixture({

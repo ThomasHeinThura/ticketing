@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { randomUUID } from "node:crypto";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -10,7 +11,7 @@ import * as taskRepository from "../../apps/api/src/task/repository";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
@@ -96,8 +97,8 @@ async function waitForBlockedPid(client: Client, blockerPid: number) {
 }
 
 async function seed() {
-  const a = await createWorkspaceMember({ role: "admin" });
-  const b = await createWorkspaceMember({ role: "admin" });
+  const a = await createProjectLimitedWorkspaceMember({ role: "admin" });
+  const b = await createProjectLimitedWorkspaceMember({ role: "admin" });
   const { project: p1, columns: c1 } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
@@ -637,7 +638,7 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   });
 
   it("rejects unreachable or mismatched task and asset move destinations", async () => {
-    const actor = await createWorkspaceMember({ role: "admin" });
+    const actor = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project: source } = await createProjectFixture({
       workspaceId: actor.workspace.id,
     });

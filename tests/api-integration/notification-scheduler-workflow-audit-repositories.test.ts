@@ -40,7 +40,7 @@ import {
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
   grantProjectRole,
   requireRow,
@@ -78,8 +78,8 @@ describe("API integration: notification inbox repository", () => {
   });
 
   it("every statement is scoped to the owner's rows", async () => {
-    const a = await createWorkspaceMember({ role: "member" });
-    const b = await createWorkspaceMember({ role: "member" });
+    const a = await createProjectLimitedWorkspaceMember({ role: "member" });
+    const b = await createProjectLimitedWorkspaceMember({ role: "member" });
     const mine = await notification(a.user.id, { title: "mine" });
     const theirs = await notification(b.user.id, { title: "theirs" });
 
@@ -109,7 +109,7 @@ describe("API integration: notification inbox repository", () => {
   });
 
   it("hides audit_write_failed alerts unless the reader may read instance alerts, newest first", async () => {
-    const a = await createWorkspaceMember({ role: "member" });
+    const a = await createProjectLimitedWorkspaceMember({ role: "member" });
     await notification(a.user.id, {
       type: "audit_write_failed",
       personId: null,
@@ -146,7 +146,7 @@ describe("API integration: notification inbox repository", () => {
   });
 
   it("task notifications need current reach and a credential that may read tasks", async () => {
-    const a = await createWorkspaceMember({ role: "member" });
+    const a = await createProjectLimitedWorkspaceMember({ role: "member" });
     const { project, columns } = await createProjectFixture({
       workspaceId: a.workspace.id,
     });
@@ -244,8 +244,10 @@ describe("API integration: scheduler repository", () => {
   }
 
   it("overdue window: only assigned, non-final, unreminded, opted-in tasks inside the window", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
-    const other = await createWorkspaceMember({ role: "member" });
+    const member = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
+    const other = await createProjectLimitedWorkspaceMember({ role: "member" });
     const now = new Date();
     const inWindow = new Date(now.getTime() - 5 * 60 * 1000);
     const start = new Date(now.getTime() - 10 * 60 * 1000);
@@ -280,7 +282,9 @@ describe("API integration: scheduler repository", () => {
   });
 
   it("configured-before window honours the per-user lead time (default 24h)", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     const now = new Date();
     const start = new Date(now.getTime() - 5 * 60 * 1000);
     // Due in ~24h: default lead time puts its reminder instant at "now".
@@ -303,7 +307,9 @@ describe("API integration: scheduler repository", () => {
   });
 
   it("insertReminderSent records once per task and type", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createProjectLimitedWorkspaceMember({
+      role: "member",
+    });
     const task = await dueTask(member.workspace.id, member.user.id, new Date());
 
     expect(await insertReminderSent(task.id, "overdue")).toBeDefined();
@@ -339,8 +345,8 @@ describe("API integration: workflow repository", () => {
   });
 
   it("lists workflows per workspace, numbers versions and finds them by number", async () => {
-    const mine = await createWorkspaceMember({ role: "admin" });
-    const theirs = await createWorkspaceMember({ role: "admin" });
+    const mine = await createProjectLimitedWorkspaceMember({ role: "admin" });
+    const theirs = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const identity = await resolveRequestIdentity({ userId: mine.user.id });
     expect(identity).not.toBeNull();
     const wf = requireRow(
@@ -400,7 +406,7 @@ describe("API integration: workflow repository", () => {
   });
 
   it("a duplicate key within a workspace violates the unique constraint", async () => {
-    const mine = await createWorkspaceMember({ role: "admin" });
+    const mine = await createProjectLimitedWorkspaceMember({ role: "admin" });
     await insertWorkflow({
       workspaceId: mine.workspace.id,
       key: "dup",
@@ -412,8 +418,8 @@ describe("API integration: workflow repository", () => {
   });
 
   it("referenceable roles are the workspace's own plus the built-in ones, never another workspace's", async () => {
-    const mine = await createWorkspaceMember({ role: "admin" });
-    const theirs = await createWorkspaceMember({ role: "admin" });
+    const mine = await createProjectLimitedWorkspaceMember({ role: "admin" });
+    const theirs = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const identity = await resolveRequestIdentity({ userId: mine.user.id });
     expect(identity).not.toBeNull();
     const now = new Date();
@@ -453,8 +459,8 @@ describe("API integration: audit repository reach lookups", () => {
   });
 
   it("filters project rows by reach and ignores other workspaces", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
-    const other = await createWorkspaceMember({ role: "admin" });
+    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
+    const other = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project: p1 } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
@@ -553,8 +559,12 @@ describe("API integration: audit repository reach lookups", () => {
   });
 
   it("repository instance audit read requires resolved instance-admin authority", async () => {
-    const ordinary = await createWorkspaceMember({ role: "admin" });
-    const privileged = await createWorkspaceMember({ role: "admin" });
+    const ordinary = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
+    const privileged = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     await db
       .update(schema.userTable)
       .set({ role: "admin" })

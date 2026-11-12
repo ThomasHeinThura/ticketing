@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { and, eq, sql } from "drizzle-orm";
@@ -15,7 +16,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
@@ -28,7 +29,7 @@ const bcrypt = apiRequire("bcryptjs") as {
 };
 
 async function fixture(count = 2) {
-  const creator = await createWorkspaceMember({ role: "admin" });
+  const creator = await createProjectLimitedWorkspaceMember({ role: "admin" });
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });

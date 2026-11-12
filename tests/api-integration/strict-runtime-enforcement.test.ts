@@ -95,6 +95,7 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
   prepareAuthenticatedApiFixture,
@@ -248,7 +249,7 @@ describe("strict policy runtime enforcement against the production API graph", (
   });
 
   it("denies an API-key assignment at the terminal route boundary before any row or activity mutation", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
+    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });

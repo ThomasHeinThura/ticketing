@@ -2445,11 +2445,13 @@ does with a webhook is build a link back.
   is stamped with the creator's identity; at delivery time the event's entity is checked
   against that identity's reach, and an out-of-reach event is skipped (recorded as
   `skipped_out_of_reach`, not failed). A webhook whose owner has `sees_all` or
-  `instance:admin` therefore receives everything; a manager's webhook receives their
-  projects. When the owner leaves, the webhook is **paused** and must be re-owned by
+  `instance:admin` therefore receives everything. D-E (Thomas, 12 Nov 2026) also makes
+  validated system workspace owners, admins and managers receive every project;
+  a custom project-limited operator receives only their projects. When the owner leaves,
+  the webhook is **paused** and must be re-owned by
   someone with `webhook:manage` — it does not silently inherit anyone's reach. The same
   rule applies to the automation action "Call a webhook" ([automations.md](feature-contracts-p4.md#automations)),
-  which runs as the rule's `effective_role_id`. `webhook-delivery-reach.test.ts`: a manager
+  which runs as the rule's `effective_role_id`. A project-limited custom operator
   with membership in project A only never sees project B content via delivery or history.
 - `WH-15` **Creating a webhook is an elevated action**, and so is changing an existing one's
   `url`. A webhook is a standing outbound data channel: `data` carries work item titles,

@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /** Durable single-item deletion: request, persisted session approval, then soft delete. */
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
@@ -14,7 +15,7 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectAccessForWorkspaceRole,
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
@@ -108,7 +109,7 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
 async function setupProjectWithDefaultState(
   role: "member" | "admin" | "viewer" = "admin",
 ) {
-  const creator = await createWorkspaceMember({ role });
+  const creator = await createProjectLimitedWorkspaceMember({ role });
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
@@ -335,7 +336,9 @@ describe("API integration: work item delete (#23 fourth slice)", () => {
     });
     const { key } = (await created.json()) as { key: string };
 
-    const stranger = await createWorkspaceMember({ role: "admin" });
+    const stranger = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
     mockAuthenticatedSession(stranger.user);
 
     const response = await deleteWorkItemRequest(app, key);

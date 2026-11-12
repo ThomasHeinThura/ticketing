@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * Gate and request semantics for approvals (S3): the owner decisions of 2026-10-10 (approvals
  * are single use; withdrawn approvals are ignored), `requires_cab`, request-time validation,
@@ -26,7 +27,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -237,7 +238,7 @@ describe("approvals: request-time and read-time validation", () => {
   it("a second CAB member who holds approval:decide but is not the named approver cannot decide", async () => {
     const t = await buildTenant("not-named");
     const approval = await createApproval(t);
-    const other = await createWorkspaceMember({ role: "owner" });
+    const other = await createProjectLimitedWorkspaceMember({ role: "owner" });
     const now = new Date();
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: t.workspaceId,
@@ -389,7 +390,7 @@ describe("approvals: request-time and read-time validation", () => {
       (await withdrawAs(t, t.requester, requesterWithdrawn.id)).status,
     ).toBe(200);
     const adminWithdrawn = await createApproval(t);
-    const admin = await createWorkspaceMember({ role: "owner" });
+    const admin = await createProjectLimitedWorkspaceMember({ role: "owner" });
     await db
       .update(schema.userTable)
       .set({ role: "admin" })

@@ -58,11 +58,12 @@ export function handleServerError(
     });
   }
   c.header("x-taskdesk-request-id", requestId);
+  // These fixed public codes contain no exception details and are retained API contracts.
   const message =
     err instanceof HTTPException &&
-    status === 503 &&
-    err.message === "factor_policy_unavailable"
-      ? "factor_policy_unavailable"
+    ((status === 503 && err.message === "factor_policy_unavailable") ||
+      (status === 500 && err.message === "pending_action_failed"))
+      ? err.message
       : "Internal Server Error";
   if (
     err instanceof ImportConnectError &&

@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -7,7 +8,7 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   requireRow,
   WORK_ITEM_PROJECT_CAPABILITIES,
@@ -22,7 +23,7 @@ import { PROJECT_LABEL_ROUTE_KEYS } from "./helpers/project-reach-route-keys";
 import { makeApiKey } from "./helpers/reach-world";
 
 async function fixture(roleName = "owner") {
-  const actor = await createWorkspaceMember({ role: roleName });
+  const actor = await createProjectLimitedWorkspaceMember({ role: roleName });
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
@@ -157,7 +158,9 @@ describe("canonical work-item labels", () => {
   });
   it("rejects foreign and missing IDs atomically without changing title or version", async () => {
     const { app, item, label } = await fixture();
-    const foreign = await createWorkspaceMember({ role: "owner" });
+    const foreign = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     const other = requireRow(
       await db
         .insert(schema.labelTable)
@@ -319,7 +322,9 @@ describe("canonical work-item labels", () => {
 
   it("does not expose a foreign work item or catalogue", async () => {
     const { app, item } = await fixture();
-    const foreign = await createWorkspaceMember({ role: "owner" });
+    const foreign = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     mockAuthenticatedSession(foreign.user);
     const hidden = await app.request(`/api/work-items/${item.key}/labels`);
     const missing = await app.request("/api/work-items/ABSENT-123/labels");
@@ -551,7 +556,9 @@ describe("project label catalogues", () => {
 
   it("hides a foreign project and its label exactly like missing IDs", async () => {
     const { app } = await fixture();
-    const foreign = await createWorkspaceMember({ role: "owner" });
+    const foreign = await createProjectLimitedWorkspaceMember({
+      role: "owner",
+    });
     const { project } = await createProjectFixture({
       workspaceId: foreign.workspace.id,
     });

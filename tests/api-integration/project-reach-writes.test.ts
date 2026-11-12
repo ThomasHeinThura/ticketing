@@ -28,6 +28,7 @@ import {
 } from "./helpers/project-reach-world";
 import {
   addMember,
+  addProjectLimitedMember,
   json,
   makeApiKey,
   setAmbientHeaders,
@@ -244,13 +245,13 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         .set({ organisationId: s.customer.orgId })
         .where(eq(schema.projectTable.id, second.id));
       await makeSiblingStates(s.t, second.id);
-      const secondStaff = await addMember(wsId, "admin");
+      const secondStaff = await addProjectLimitedMember(wsId);
       await grantProjectRole(secondStaff.user.id, second.id, [
         "project:read",
         "work_item:read",
         "work_item:create",
       ]);
-      const seesAll = await addMember(wsId, "admin");
+      const seesAll = await addProjectLimitedMember(wsId);
       await grantSeesAll(wsId, seesAll.personId);
       // The tenant fixture already holds one work item; "created" means above this.
       const baseline = (await db.select().from(schema.workItemTable)).length;
@@ -392,13 +393,13 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         .set({ organisationId: s.customer.orgId })
         .where(eq(schema.projectTable.id, second.id));
       await makeSiblingStates(s.t, second.id);
-      const secondStaff = await addMember(wsId, "admin");
+      const secondStaff = await addProjectLimitedMember(wsId);
       await grantProjectRole(secondStaff.user.id, second.id, [
         "project:read",
         "work_item:read",
         "work_item:create",
       ]);
-      const seesAll = await addMember(wsId, "admin");
+      const seesAll = await addProjectLimitedMember(wsId);
       await grantSeesAll(wsId, seesAll.personId);
       const create = async (
         user: { id: string },
@@ -523,7 +524,7 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         .set({ organisationId: s.customer.orgId })
         .where(eq(schema.projectTable.id, second.id));
       await makeSiblingStates(s.t, second.id);
-      const secondStaff = await addMember(wsId, "admin");
+      const secondStaff = await addProjectLimitedMember(wsId);
       await grantProjectRole(secondStaff.user.id, second.id, [
         "project:read",
         "work_item:read",
@@ -603,13 +604,16 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         .set({ organisationId: s.customer.orgId })
         .where(eq(schema.projectTable.id, second.id));
       await makeSiblingStates(s.t, second.id);
-      const secondStaff = await addMember(wsId, "admin");
+      const secondStaff = await addProjectLimitedMember(wsId);
       await grantProjectRole(secondStaff.user.id, second.id, [
         "project:read",
         "work_item:read",
         "work_item:create",
       ]);
       const ref = await submitAs(s, s.customer, "Attachment probe");
+      await db
+        .insert(schema.customerProjectAccessTable)
+        .values({ personId: s.customer.person.id, projectId: second.id });
       const accepted = await staffRequest(
         s.t,
         secondStaff,

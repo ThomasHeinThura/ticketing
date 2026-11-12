@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * P1 wave 2: `POST /api/v2/work-items/{key}/move` (RH-12) and
  * `POST /api/v2/work-items/{key}/archive` (WI-20), driven through the real middleware chain.
@@ -11,7 +12,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   WORK_ITEM_PROJECT_CAPABILITIES,
 } from "./helpers/fixtures";
@@ -336,7 +337,7 @@ describe("API integration: move work item across projects (RH-12)", () => {
     );
     expect(unmappable.status).toBe(422);
 
-    const other = await createWorkspaceMember({ role: "admin" });
+    const other = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project: foreign } = await createProjectFixture({
       workspaceId: other.workspace.id,
     });

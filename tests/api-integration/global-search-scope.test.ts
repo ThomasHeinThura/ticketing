@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * #580 batch 2: behaviour pins for global search once its statements live in the search
  * repository -- tenant scoping (one workspace vs every workspace the caller belongs to),
@@ -12,7 +13,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectManageAccess,
 } from "./helpers/fixtures";
 import { createSeesAllWorkspaceMember } from "./helpers/project-reach-world";
@@ -256,7 +257,7 @@ describe("API integration: global search scope and ranking", () => {
   });
 
   it("rechecks persisted project reach in the actual search statement after a prior positive result", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
+    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
@@ -401,7 +402,7 @@ describe("API integration: global search scope and ranking", () => {
 
   it("scores and orders projects, workspaces and activity by their SQL relevance", async () => {
     const member = await createSeesAllWorkspaceMember({ role: "admin" });
-    const second = await createWorkspaceMember({ role: "admin" });
+    const second = await createProjectLimitedWorkspaceMember({ role: "admin" });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: second.workspace.id,
       userId: member.user.id,

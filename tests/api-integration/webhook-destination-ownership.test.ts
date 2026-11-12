@@ -2,7 +2,7 @@
  * P4 round-1 review fixes for webhook ownership (`P4R1-H1`, `P4R1-L1`; `WH-6`, `WH-8`, `WH-14`,
  * `WH-15`):
  *
- *  - A destination change is the owner's. A project-limited manager holding `webhook:manage`
+ *  - A destination change is the owner's. A project-limited operator holding `webhook:manage`
  *    cannot repoint an instance administrator's receives-everything webhook (or any webhook they
  *    do not own); the administrator may repoint a receives-everything webhook only.
  *  - A delivery created before the destination or owner changed is never replayed to the new
@@ -27,6 +27,7 @@ import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 import { addMember } from "./helpers/reach-world";
+import { assignLimitedWebhookRole } from "./helpers/webhook-operator";
 
 vi.mock("../../apps/api/src/webhook/safe-http", async (importOriginal) => ({
   ...(await importOriginal<
@@ -165,14 +166,16 @@ async function world() {
     role: "admin",
     joinedAt: new Date(),
   });
-  // A manager holds webhook:manage but has no project reach and does not see everything.
-  const manager = await addMember(workspace.id, "manager");
-  await withPassword(manager.user.id);
-  const otherManager = await addMember(workspace.id, "manager");
-  await withPassword(otherManager.user.id);
+  // D-E (12 Nov): custom operators retain the old project-limited webhook denial cases.
+  const operator = await addMember(workspace.id, "member");
+  await assignLimitedWebhookRole(operator.user.id, workspace.id);
+  await withPassword(operator.user.id);
+  const otherOperator = await addMember(workspace.id, "member");
+  await assignLimitedWebhookRole(otherOperator.user.id, workspace.id);
+  await withPassword(otherOperator.user.id);
   const { app } = createApp();
   const adminCookie = await signIn(app, adminUser.email);
-  const managerCookie = await signIn(app, manager.user.email);
+  const operatorCookie = await signIn(app, operator.user.email);
   const adminPersonId = await personOf(adminUser.id);
   return {
     workspace,
@@ -180,9 +183,9 @@ async function world() {
     adminUser,
     adminPersonId,
     adminCookie,
-    manager,
-    managerCookie,
-    otherManager,
+    operator,
+    operatorCookie,
+    otherOperator,
   };
 }
 
@@ -239,12 +242,40 @@ async function urlOf(id: string) {
 }
 
 describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
-  it("refuses a project-limited manager repointing an administrator's receives-everything webhook", async () => {
+  it.each(["owner", "admin", "manager"])(
+    "refuses a system workspace %s creating a full-reach webhook without instance admin",
+    async (role) => {
+      const w = await world();
+      const actor = await addMember(w.workspace.id, role);
+      await withPassword(actor.user.id);
+      const cookie = await signIn(w.app, actor.user.email);
+      // D-E (12 Nov) grants project visibility; WH-15 still requires instance admin.
+      const response = await send(
+        w.app,
+        cookie,
+        "/api/webhooks",
+        {
+          name: "Full workspace hook",
+          url: OLD_URL,
+          events: ["work_item.created"],
+          secret: SECRET,
+        },
+        { "x-workspace-id": w.workspace.id },
+      );
+      expect(response.status).toBe(403);
+      expect(await response.text()).toContain(
+        "webhook_owner_requires_instance_admin",
+      );
+      expect(await db.select().from(webhookTable)).toHaveLength(0);
+    },
+  );
+
+  it("refuses a project-limited operator repointing an administrator's receives-everything webhook", async () => {
     const w = await world();
     const hook = await makeWebhook(w.workspace.id, w.adminPersonId);
     const response = await patchUrl(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       w.workspace.id,
       hook.id,
       NEW_URL,
@@ -256,12 +287,12 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
     expect(row.destinationChangedAt).toBeNull();
   });
 
-  it("refuses a manager repointing another manager's webhook, even one that is not receives-everything", async () => {
+  it("refuses an operator repointing another operator's webhook, even one that is not receives-everything", async () => {
     const w = await world();
-    const hook = await makeWebhook(w.workspace.id, w.otherManager.personId);
+    const hook = await makeWebhook(w.workspace.id, w.otherOperator.personId);
     const response = await patchUrl(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       w.workspace.id,
       hook.id,
       NEW_URL,
@@ -272,10 +303,10 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
 
   it("lets the owner repoint their own webhook and stamps the destination change", async () => {
     const w = await world();
-    const hook = await makeWebhook(w.workspace.id, w.manager.personId);
+    const hook = await makeWebhook(w.workspace.id, w.operator.personId);
     const response = await patchUrl(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       w.workspace.id,
       hook.id,
       NEW_URL,
@@ -286,7 +317,7 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
     expect(row.destinationChangedAt).toBeInstanceOf(Date);
   });
 
-  it("lets an instance administrator repoint a receives-everything webhook but not a manager's", async () => {
+  it("lets an instance administrator repoint a receives-everything webhook but not an operator's", async () => {
     const w = await world();
     const mine = await makeWebhook(w.workspace.id, w.adminPersonId);
     const ok = await patchUrl(
@@ -299,21 +330,21 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
     expect(ok.status, await ok.clone().text()).toBe(200);
     expect((await urlOf(mine.id)).url).toBe(NEW_URL);
 
-    const managers = await makeWebhook(w.workspace.id, w.manager.personId);
+    const operators = await makeWebhook(w.workspace.id, w.operator.personId);
     const refused = await patchUrl(
       w.app,
       w.adminCookie,
       w.workspace.id,
-      managers.id,
+      operators.id,
       NEW_URL,
     );
     expect(refused.status, await refused.clone().text()).toBe(403);
-    expect((await urlOf(managers.id)).url).toBe(OLD_URL);
+    expect((await urlOf(operators.id)).url).toBe(OLD_URL);
   });
 
   it("refuses redelivery of a delivery created before the destination changed, and cancels a stored retry", async () => {
     const w = await world();
-    const hook = await makeWebhook(w.workspace.id, w.manager.personId);
+    const hook = await makeWebhook(w.workspace.id, w.operator.personId);
     const [before] = await db
       .insert(webhookDeliveryTable)
       .values({
@@ -329,7 +360,7 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
       .returning();
     const first = await send(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       `/api/webhooks/deliveries/${before?.id}/redeliver`,
       undefined,
       { "x-workspace-id": w.workspace.id },
@@ -339,7 +370,7 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
 
     const moved = await patchUrl(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       w.workspace.id,
       hook.id,
       NEW_URL,
@@ -350,7 +381,7 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
     const rowsBefore = await count();
     const refused = await send(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       `/api/webhooks/deliveries/${before?.id}/redeliver`,
       undefined,
       { "x-workspace-id": w.workspace.id },
@@ -398,17 +429,17 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
 });
 
 describe("webhook re-own (P4R1-L1, WH-14, WH-15)", () => {
-  it("refuses a manager taking over an active webhook, and a re-own without a proof", async () => {
+  it("refuses an operator taking over an active webhook, and a re-own without a proof", async () => {
     const w = await world();
     const active = await makeWebhook(w.workspace.id, w.adminPersonId);
-    const token = await stepUp(w.app, w.managerCookie, "webhook_update_url", {
+    const token = await stepUp(w.app, w.operatorCookie, "webhook_update_url", {
       workspaceId: w.workspace.id,
       webhookId: active.id,
       url: active.url,
     });
     const refused = await send(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       `/api/webhooks/${active.id}`,
       { reown: true },
       { "x-taskdesk-step-up-token": token },
@@ -418,14 +449,14 @@ describe("webhook re-own (P4R1-L1, WH-14, WH-15)", () => {
     expect(await refused.text()).toMatch(/webhook_reown_requires_owner_left/u);
     expect((await urlOf(active.id)).createdBy).toBe(w.adminPersonId);
 
-    const paused = await makeWebhook(w.workspace.id, w.otherManager.personId, {
+    const paused = await makeWebhook(w.workspace.id, w.otherOperator.personId, {
       active: false,
       disabledAt: new Date(),
       disabledReason: "owner_left",
     });
     const noProof = await send(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       `/api/webhooks/${paused.id}`,
       { reown: true, active: true },
       {},
@@ -433,24 +464,24 @@ describe("webhook re-own (P4R1-L1, WH-14, WH-15)", () => {
     );
     expect(noProof.status).toBe(403);
     expect(await noProof.text()).toMatch(/step_up_required/u);
-    expect((await urlOf(paused.id)).createdBy).toBe(w.otherManager.personId);
+    expect((await urlOf(paused.id)).createdBy).toBe(w.otherOperator.personId);
   });
 
   it("re-owns a webhook paused because its owner left, with a proof, and stamps the change", async () => {
     const w = await world();
-    const paused = await makeWebhook(w.workspace.id, w.otherManager.personId, {
+    const paused = await makeWebhook(w.workspace.id, w.otherOperator.personId, {
       active: false,
       disabledAt: new Date(),
       disabledReason: "owner_left",
     });
-    const token = await stepUp(w.app, w.managerCookie, "webhook_update_url", {
+    const token = await stepUp(w.app, w.operatorCookie, "webhook_update_url", {
       workspaceId: w.workspace.id,
       webhookId: paused.id,
       url: paused.url,
     });
     const response = await send(
       w.app,
-      w.managerCookie,
+      w.operatorCookie,
       `/api/webhooks/${paused.id}`,
       { reown: true, active: true },
       { "x-taskdesk-step-up-token": token },
@@ -458,14 +489,14 @@ describe("webhook re-own (P4R1-L1, WH-14, WH-15)", () => {
     );
     expect(response.status, await response.clone().text()).toBe(200);
     const row = await urlOf(paused.id);
-    expect(row.createdBy).toBe(w.manager.personId);
+    expect(row.createdBy).toBe(w.operator.personId);
     expect(row.active).toBe(true);
     expect(row.destinationChangedAt).toBeInstanceOf(Date);
   });
 
   it("lets an instance administrator take over an active webhook, with a proof", async () => {
     const w = await world();
-    const active = await makeWebhook(w.workspace.id, w.manager.personId);
+    const active = await makeWebhook(w.workspace.id, w.operator.personId);
     const token = await stepUp(w.app, w.adminCookie, "webhook_update_url", {
       workspaceId: w.workspace.id,
       webhookId: active.id,

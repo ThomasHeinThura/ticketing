@@ -1,3 +1,4 @@
+// D-E (12 Nov): approval actors use project-limited workspace roles.
 import { randomUUID } from "node:crypto";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, isNull } from "drizzle-orm";
@@ -6,14 +7,17 @@ import db, { schema } from "../../../apps/api/src/database";
 import { createApp } from "../../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./auth";
 import {
+  assignProjectLimitedRole,
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./fixtures";
 
 /** Shared fixtures for the approvals integration tests (S3). */
-export type Member = Awaited<ReturnType<typeof createWorkspaceMember>>;
+export type Member = Awaited<
+  ReturnType<typeof createProjectLimitedWorkspaceMember>
+>;
 
 export const json = { "content-type": "application/json" };
 
@@ -33,7 +37,9 @@ export async function buildTenant(
   label: string,
   options: { executable?: boolean } = {},
 ) {
-  const requester = await createWorkspaceMember({ role: "owner" });
+  const requester = await createProjectLimitedWorkspaceMember({
+    role: "owner",
+  });
   const requesterPerson = await personOf(requester.user.id);
   const { project } = await createProjectFixture({
     workspaceId: requester.workspace.id,
@@ -232,13 +238,14 @@ export async function buildTenant(
     "tenant type",
   );
 
-  const approver = await createWorkspaceMember({ role: "owner" });
+  const approver = await createProjectLimitedWorkspaceMember({ role: "owner" });
   await db.insert(schema.workspaceUserTable).values({
     workspaceId: wsId,
     userId: approver.user.id,
-    role: "owner",
+    role: "member",
     joinedAt: now,
   });
+  await assignProjectLimitedRole(approver.user.id, wsId, "owner");
   await grantProjectRole(approver.user.id, project.id, [
     "project:read",
     "work_item:read",

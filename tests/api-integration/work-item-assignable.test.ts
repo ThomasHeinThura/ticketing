@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * `GET /api/projects/{projectId}/assignable` (`docs/03-features/assignment.md` § API) --
  * the person-picker feed: the roster with open-work counts, filtered to the people the
@@ -9,7 +10,7 @@
  * would catch it.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -18,7 +19,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -98,7 +99,7 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
-    role,
+    role: role === "owner" ? "member" : role,
     joinedAt: new Date(),
   });
 
@@ -150,6 +151,16 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
       .returning(),
     "addWorkspaceMember: canonical authority role",
   );
+  if (role === "owner")
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: authorityRole.key })
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, workspaceId),
+          eq(schema.workspaceUserTable.userId, user.id),
+        ),
+      );
   await db.insert(schema.membershipTable).values({
     personId: person.id,
     scope: "workspace",
@@ -271,9 +282,10 @@ async function assignItemTo(
 }
 
 async function setup() {
-  const { user: creator, workspace } = await createWorkspaceMember({
-    role: "admin",
-  });
+  const { user: creator, workspace } =
+    await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
   const type = await makeWorkItemType(workspace.id);
   const backlog = await makeState(workspace.id, project.id, "backlog", true);
@@ -498,7 +510,9 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
       name: "Ada Lovelace",
       projectId: project.id,
     });
-    const outsider = await createWorkspaceMember({ role: "admin" });
+    const outsider = await createProjectLimitedWorkspaceMember({
+      role: "admin",
+    });
 
     mockAuthenticatedSession(outsider.user);
     const { app } = createApp();
@@ -541,7 +555,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     // ...and, as staff can be, loaded in a DIFFERENT workspace's project too. The
     // caller (a lead of this workspace) has no reach there; the count must not report
     // its activity (PR #362 review, L1).
-    const other = await createWorkspaceMember({ role: "admin" });
+    const other = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project: otherProject } = await createProjectFixture({
       workspaceId: other.workspace.id,
     });

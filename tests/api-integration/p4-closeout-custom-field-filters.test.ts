@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * CF-10: `cf.<key>` filters in the work-item search / saved-view query language, with reach
  * intact (a filter never widens what the caller may see) and VW-31 refusals for unknown keys.
@@ -11,7 +12,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createWorkspaceMember,
+  createProjectLimitedWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
 import {
@@ -22,7 +23,7 @@ import {
 import { addMember } from "./helpers/reach-world";
 
 async function world() {
-  const actor = await createWorkspaceMember({ role: "owner" });
+  const actor = await createProjectLimitedWorkspaceMember({ role: "owner" });
   const { project } = await createProjectFixture({
     workspaceId: actor.workspace.id,
   });
@@ -203,7 +204,7 @@ describe("CF-10 cf.<key> filters", () => {
   it("never matches another workspace's field of the same key and never widens reach", async () => {
     const w = await world();
     // A second workspace defines the same key and holds values on its own item.
-    const other = await createWorkspaceMember({ role: "owner" });
+    const other = await createProjectLimitedWorkspaceMember({ role: "owner" });
     const otherProject = await createProjectFixture({
       workspaceId: other.workspace.id,
     });
