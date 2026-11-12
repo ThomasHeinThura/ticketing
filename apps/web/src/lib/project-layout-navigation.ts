@@ -6,8 +6,8 @@ import {
   type ProjectRouteParams,
   routes,
 } from "@/lib/routes";
-import { translateLegacyProjectView } from "./legacy-project-view";
 import { parseProjectRouterSearch } from "./project-board-search";
+import { translateLegacyProjectView } from "./translate-legacy-project-view";
 import { parseWorkItemHierarchySearch } from "./work-item-hierarchy-search";
 import { isValidWorkItemKeyParam } from "./work-item-list-search";
 import { parseWorkItemRelationsSearch } from "./work-item-relations-search";
@@ -37,16 +37,6 @@ export function createProjectViewShortcutHandlers(
       },
     ]),
   ) as Record<ProjectView, () => void>;
-}
-
-/** A schedule selection is a permanent key; a legacy UUID is never treated as one. */
-export function normalizeCanonicalWorkItemSelection(raw: unknown) {
-  const candidate =
-    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  return !isValidWorkItemKeyParam(candidate.item) &&
-    isValidWorkItemKeyParam(candidate.taskId)
-    ? { ...candidate, item: candidate.taskId }
-    : candidate;
 }
 
 function bridgeProjectSelection(
@@ -161,3 +151,5 @@ export function buildProjectViewSwitchUrl(
   const suffix = query.toString();
   return `${pathname}${suffix ? `?${suffix}` : ""}`;
 }
+
+export { normalizeCanonicalWorkItemSelection } from "./normalize-canonical-work-item-selection";

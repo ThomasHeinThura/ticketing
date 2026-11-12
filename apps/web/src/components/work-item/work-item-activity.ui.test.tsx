@@ -59,7 +59,7 @@ const { mocks, translate } = vi.hoisted(() => ({
         "tasks:relations.title": "Relations",
         "workItems:relations.types.relates": "relates to",
         "workItems:relations.types.blocked_by": "blocked by",
-        "workItems:detail.unavailable": "Unavailable",
+        "workItemExtras:detail.unavailable": "Unavailable",
       }[key] ?? key
     );
   },
@@ -1072,7 +1072,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     const second = document.getElementById("comment-comment-2") as HTMLElement;
     expect(
       within(first).getByRole("button", {
-        name: "workItems:detail.attachments.preview",
+        name: "workItemExtras:detail.attachments.preview",
       }),
     ).toBeInTheDocument();
     expect(
@@ -1081,7 +1081,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     expect(within(second).queryByText("screen.png")).toBeNull();
     expect(
       within(second).getByRole("button", {
-        name: "workItems:detail.attachments.preview",
+        name: "workItemExtras:detail.attachments.preview",
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText("panel-only.pdf")).toBeNull();

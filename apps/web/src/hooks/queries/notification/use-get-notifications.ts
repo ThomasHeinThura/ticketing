@@ -3,26 +3,16 @@ import {
   useInfiniteQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import getNotifications, {
-  type NotificationInboxPage,
-} from "@/fetchers/notification/get-notifications";
+import type { NotificationInboxPage } from "@/fetchers/notification/get-notifications";
 import {
   projectNotifications,
   useNotificationOperations,
 } from "@/hooks/mutations/notification/optimistic-notifications";
 import type { AgentInboxFilter } from "@/lib/routes";
 
-export function notificationInboxOptions(filter: AgentInboxFilter = "all") {
-  return {
-    queryKey: ["notifications", "inbox", filter],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
-      getNotifications(filter, pageParam),
-    getNextPageParam: (
-      lastPage: Awaited<ReturnType<typeof getNotifications>>,
-    ) => lastPage.nextCursor ?? undefined,
-  };
-}
+import { notificationInboxOptions } from "./notification-inbox-options";
+
+export { notificationInboxOptions } from "./notification-inbox-options";
 
 function useGetNotifications(filter: AgentInboxFilter = "all") {
   const client = useQueryClient();

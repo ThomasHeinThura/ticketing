@@ -129,7 +129,7 @@ export default function WorkItemDescription({
           if (unsaved.current === document) unsaved.current = NOTHING_SAVED;
           setFailed(false);
           clearConflict();
-          announce(t("workItems:journey.editSaved"));
+          announce(t("workItemExtras:journey.editSaved"));
         },
       },
     );
@@ -180,7 +180,7 @@ export default function WorkItemDescription({
     >
       <CommentEditor
         key={generation}
-        ariaLabel={t("workItems:detail.descriptionHeading")}
+        ariaLabel={t("workItemExtras:detail.descriptionHeading")}
         showQuickAttachButton={false}
         value={typeof shown === "string" ? shown : ""}
         documentValue={isDocument ? shown : undefined}

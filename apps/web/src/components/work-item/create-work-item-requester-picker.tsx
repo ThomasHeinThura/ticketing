@@ -54,7 +54,7 @@ export default function CreateWorkItemRequesterPicker({
       )
     : people;
   const label = (person: (typeof people)[number]) =>
-    person.name ?? person.email ?? t("workItems:journey.unnamedPerson");
+    person.name ?? person.email ?? t("workItemExtras:journey.unnamedPerson");
   return (
     <Popover onOpenChange={(open) => (open ? undefined : setQuery(""))}>
       <PopoverTrigger asChild>

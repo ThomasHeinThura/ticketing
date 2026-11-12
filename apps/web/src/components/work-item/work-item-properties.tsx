@@ -143,7 +143,7 @@ export function useUpdateWorkItemFields(
   return useSaveWorkItemFields(item, {
     onSuccess: () => {
       clearConflict();
-      announce(t("workItems:journey.editSaved"));
+      announce(t("workItemExtras:journey.editSaved"));
     },
     onError,
   });
@@ -239,7 +239,9 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       setNote("");
       setError("");
       announce(
-        t("workItems:journey.transitionDone", { state: input.toStateName }),
+        t("workItemExtras:journey.transitionDone", {
+          state: input.toStateName,
+        }),
       );
       await refresh();
     },
@@ -254,10 +256,10 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       setOpen(true);
       setError(
         mutationError instanceof HttpError && mutationError.status === 409
-          ? t("workItems:journey.transitionConflict")
+          ? t("workItemExtras:journey.transitionConflict")
           : mutationError instanceof HttpError && mutationError.status === 422
-            ? t("workItems:journey.transitionUnavailable")
-            : t("workItems:journey.saveError"),
+            ? t("workItemExtras:journey.transitionUnavailable")
+            : t("workItemExtras:journey.saveError"),
       );
       // The offers may have changed under us; show the server's current ones.
       await refresh();
@@ -372,7 +374,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
             </p>
           ) : transitions.isError ? (
             <p className="p-2 text-muted-foreground text-sm" role="alert">
-              {t("workItems:journey.transitionsError")}
+              {t("workItemExtras:journey.transitionsError")}
             </p>
           ) : offers.length === 0 ? (
             <p className="p-2 text-muted-foreground text-sm">
@@ -391,7 +393,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
                 ? offer.blockedBy.map((reason) =>
                     t(workItemTransitionReasonKey(reason.reasonCode)),
                   )
-                : [t("workItems:journey.reasonUnknown")];
+                : [t("workItemExtras:journey.reasonUnknown")];
               return (
                 <DropdownMenuItem
                   key={offer.transitionId}
@@ -620,9 +622,9 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       setError("");
       announce(
         person === null
-          ? t("workItems:journey.unassignDone")
-          : t("workItems:journey.assignDone", {
-              name: person.name ?? t("workItems:journey.unnamedPerson"),
+          ? t("workItemExtras:journey.unassignDone")
+          : t("workItemExtras:journey.assignDone", {
+              name: person.name ?? t("workItemExtras:journey.unnamedPerson"),
             }),
       );
       await refresh();
@@ -635,10 +637,10 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       }
       setError(
         mutationError instanceof HttpError && mutationError.status === 409
-          ? t("workItems:journey.assignmentConflict")
+          ? t("workItemExtras:journey.assignmentConflict")
           : person === null
-            ? t("workItems:journey.unassignmentError")
-            : t("workItems:journey.assignmentError"),
+            ? t("workItemExtras:journey.unassignmentError")
+            : t("workItemExtras:journey.assignmentError"),
       );
       await queryClient.invalidateQueries({
         queryKey: workItemDetailKey(item.key),
@@ -654,8 +656,8 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     item.assigneeId === null
       ? null
       : assigneeDisplayText(resolveAssigneeDisplay(item), {
-          unassigned: t("workItems:detail.unassigned"),
-          inactive: t("workItems:detail.inactiveAssignee"),
+          unassigned: t("workItemExtras:detail.unassigned"),
+          inactive: t("workItemExtras:detail.inactiveAssignee"),
           notOnProject: t("workItems:list.assigneeNotOnProject"),
         });
   const canEdit = canUpdateTasks() || canAssignTasks();
@@ -679,7 +681,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
           !name && "text-muted-foreground",
         )}
       >
-        {name ?? t("workItems:detail.unassigned")}
+        {name ?? t("workItemExtras:detail.unassigned")}
       </span>
     </Button>
   );
@@ -764,10 +766,10 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
         {confirmPerson ? (
           <div className="flex flex-col gap-2 p-2" role="alert">
             <p className="font-medium text-sm">
-              {t("workItems:journey.confirmReassign")}
+              {t("workItemExtras:journey.confirmReassign")}
             </p>
             <p className="text-muted-foreground text-xs">
-              {t("workItems:journey.confirmReassignDescription")}
+              {t("workItemExtras:journey.confirmReassignDescription")}
             </p>
             <div className="flex gap-2">
               <Button
@@ -787,7 +789,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 variant="outline"
                 onClick={() => setConfirmFor(null)}
               >
-                {t("workItems:journey.cancel")}
+                {t("workItemExtras:journey.cancel")}
               </Button>
             </div>
           </div>
@@ -801,7 +803,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 disabled={assign.isPending}
                 onClick={() => choosePerson(null)}
               >
-                {t("workItems:detail.unassigned")}
+                {t("workItemExtras:detail.unassigned")}
                 {item.assigneeId === null ? (
                   <Check className="ml-auto h-4 w-4" />
                 ) : (
@@ -815,7 +817,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               </p>
             ) : people.isError && !isWorkItemAccessLost(people.error) ? (
               <p className="p-3 text-muted-foreground text-sm" role="alert">
-                {t("workItems:journey.peopleError")}
+                {t("workItemExtras:journey.peopleError")}
               </p>
             ) : (
               list.map((person, index) => (
@@ -835,7 +837,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                     </AvatarFallback>
                   </Avatar>
                   <span className="truncate text-sm">
-                    {person.name ?? t("workItems:journey.unnamedPerson")}
+                    {person.name ?? t("workItemExtras:journey.unnamedPerson")}
                   </span>
                   {item.assigneeId === person.personId ? (
                     <Check className="ml-auto h-4 w-4" />
@@ -875,7 +877,7 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
   useAccessLostOnQueryError(candidates.error, onAccessLost);
   const dispatching = useRef(false);
   const name = item.requesterId
-    ? (item.requesterName ?? t("workItems:journey.unnamedPerson"))
+    ? (item.requesterName ?? t("workItemExtras:journey.unnamedPerson"))
     : null;
   const trigger = (
     <Button
@@ -918,7 +920,7 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
       )
     : list;
   const label = (person: (typeof list)[number]) =>
-    person.name ?? person.email ?? t("workItems:journey.unnamedPerson");
+    person.name ?? person.email ?? t("workItemExtras:journey.unnamedPerson");
   const choose = (person: (typeof list)[number] | null) => {
     const next = person?.personId ?? null;
     if (update.isPending || dispatching.current || next === item.requesterId)
@@ -1059,7 +1061,7 @@ function DateControl({
   const emptyLabel =
     field === "startDate"
       ? t("workItems:properties.noStartDate")
-      : t("workItems:detail.noDueDate");
+      : t("workItemExtras:detail.noDueDate");
   const trigger = (
     <Button
       variant="ghost"

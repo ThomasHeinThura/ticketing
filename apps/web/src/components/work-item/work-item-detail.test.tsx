@@ -260,7 +260,7 @@ describe("WorkItemDetail", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("PROJ-123")).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:detail.notFoundDescription"),
+      screen.getByText("workItemExtras:detail.notFoundDescription"),
     ).toBeInTheDocument();
   });
 
@@ -295,7 +295,7 @@ describe("WorkItemDetail", () => {
     expect(propertiesScroll).toContainElement(properties);
     expect(
       screen.getByRole("separator", {
-        name: "workItems:detail.resizeProperties",
+        name: "workItemExtras:detail.resizeProperties",
       }),
     ).toHaveAttribute("aria-valuemin", "260");
   });
@@ -313,7 +313,7 @@ describe("WorkItemDetail", () => {
     expect(scroll).toHaveClass("min-h-0", "overflow-y-auto");
     expect(
       screen.getByRole("separator", {
-        name: "workItems:detail.resizeProperties",
+        name: "workItemExtras:detail.resizeProperties",
       }),
     ).toBeInTheDocument();
     expect(scroll).toContainElement(screen.getByTestId("work-item-properties"));
@@ -377,7 +377,7 @@ describe("WorkItemDetail", () => {
     expect(screen.queryByTestId("sla-section")).toBeNull();
     expect(screen.queryByTestId("work-item-approvals")).toBeNull();
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:detail.sla.heading" }),
+      screen.getByRole("button", { name: "workItemExtras:detail.sla.heading" }),
     );
     const call = navigate.mock.calls.at(-1)?.[0] as {
       href: string;
@@ -397,14 +397,18 @@ describe("WorkItemDetail", () => {
   it("offers the Time section only where feature.time_tracking is on, collapsed until opened", () => {
     render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
     expect(
-      screen.queryByRole("button", { name: "workItems:detail.time.heading" }),
+      screen.queryByRole("button", {
+        name: "workItemExtras:detail.time.heading",
+      }),
     ).toBeNull();
     cleanup();
     timeFeature.on = true;
     render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
     expect(screen.queryByTestId("time-section")).toBeNull();
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:detail.time.heading" }),
+      screen.getByRole("button", {
+        name: "workItemExtras:detail.time.heading",
+      }),
     );
     const call = navigate.mock.calls.at(-1)?.[0] as { href: string };
     const url = new URL(call.href, "https://taskdesk.example");
@@ -419,7 +423,9 @@ describe("WorkItemDetail", () => {
     timeFeature.logTime = false;
     render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
     expect(
-      screen.queryByRole("button", { name: "workItems:detail.time.heading" }),
+      screen.queryByRole("button", {
+        name: "workItemExtras:detail.time.heading",
+      }),
     ).toBeNull();
   });
 
@@ -476,7 +482,7 @@ describe("WorkItemDetail", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("work-item-title")).toBeNull();
     expect(
-      screen.getByText("workItems:detail.unavailable"),
+      screen.getByText("workItemExtras:detail.unavailable"),
     ).toBeInTheDocument();
   });
 
@@ -486,7 +492,7 @@ describe("WorkItemDetail", () => {
     );
     expect(screen.queryByTestId("work-item-description")).toBeNull();
     expect(
-      screen.getByText("workItems:detail.unavailable"),
+      screen.getByText("workItemExtras:detail.unavailable"),
     ).toBeInTheDocument();
   });
 });

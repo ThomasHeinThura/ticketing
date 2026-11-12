@@ -74,7 +74,7 @@ export default function MoveWorkItemDialog({
         client.invalidateQueries({ queryKey: ["work-items"] }),
         client.invalidateQueries({ queryKey: ["projects"] }),
       ]);
-      toast.success(t("workItems:move.success", { key: newKey }));
+      toast.success(t("workItemExtras:move.success", { key: newKey }));
       onOpenChange(false);
       onMoved?.(newKey);
     },
@@ -93,16 +93,16 @@ export default function MoveWorkItemDialog({
       <DialogContent closeLabel={t("common:actions.close")}>
         <DialogHeader>
           <DialogTitle>
-            {t("workItems:move.title", { key: item.key })}
+            {t("workItemExtras:move.title", { key: item.key })}
           </DialogTitle>
           <DialogDescription>
-            {t("workItems:move.description")}
+            {t("workItemExtras:move.description")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 px-6">
           <div className="space-y-2">
             <Label htmlFor="move-target-project">
-              {t("workItems:move.target")}
+              {t("workItemExtras:move.target")}
             </Label>
             <Select
               value={targetId}
@@ -111,7 +111,7 @@ export default function MoveWorkItemDialog({
             >
               <SelectTrigger id="move-target-project">
                 <SelectValue
-                  placeholder={t("workItems:move.targetPlaceholder")}
+                  placeholder={t("workItemExtras:move.targetPlaceholder")}
                 >
                   {target?.name}
                 </SelectValue>
@@ -126,7 +126,7 @@ export default function MoveWorkItemDialog({
             </Select>
             {projects.isError ? (
               <p className="text-sm text-destructive">
-                {t("workItems:move.projectsFailed")}
+                {t("workItemExtras:move.projectsFailed")}
               </p>
             ) : null}
           </div>
@@ -138,18 +138,18 @@ export default function MoveWorkItemDialog({
               onCheckedChange={(value) => setMoveChildren(Boolean(value))}
             />
             <Label htmlFor="move-children" className="font-normal">
-              {t("workItems:move.children")}
+              {t("workItemExtras:move.children")}
             </Label>
           </div>
           <p className="text-sm text-muted-foreground">
             {moveChildren
-              ? t("workItems:move.childrenMoveHelp")
-              : t("workItems:move.childrenDetachHelp", {
+              ? t("workItemExtras:move.childrenMoveHelp")
+              : t("workItemExtras:move.childrenDetachHelp", {
                   project: source?.name ?? "",
                 })}
           </p>
           <p className="text-sm text-muted-foreground">
-            {t("workItems:move.consequences")}
+            {t("workItemExtras:move.consequences")}
           </p>
           {error ? (
             <Alert variant="error">
@@ -157,10 +157,10 @@ export default function MoveWorkItemDialog({
                 {error instanceof WorkItemVersionConflictError
                   ? t("workItems:properties.conflict")
                   : error instanceof HttpError && error.status === 404
-                    ? t("workItems:move.notFound")
+                    ? t("workItemExtras:move.notFound")
                     : error instanceof Error && error.message
                       ? error.message
-                      : t("workItems:move.failed")}
+                      : t("workItemExtras:move.failed")}
               </AlertDescription>
             </Alert>
           ) : null}
@@ -177,7 +177,7 @@ export default function MoveWorkItemDialog({
             disabled={!targetId || mutation.isPending}
             onClick={() => mutation.mutate()}
           >
-            {t("workItems:move.confirm")}
+            {t("workItemExtras:move.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

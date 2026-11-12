@@ -46,29 +46,31 @@ describe("MoveWorkItemDialog", () => {
   it("states what happens to sub-items before confirming, and starts with moving them", () => {
     mount();
     expect(
-      screen.getByText(translate("workItems:move.childrenMoveHelp")),
+      screen.getByText(translate("workItemExtras:move.childrenMoveHelp")),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("checkbox", {
-        name: translate("workItems:move.children"),
+        name: translate("workItemExtras:move.children"),
       }),
     );
     expect(
       screen.getByText(
-        translate("workItems:move.childrenDetachHelp", {
+        translate("workItemExtras:move.childrenDetachHelp", {
           project: "Help desk",
         }),
       ),
     ).toBeTruthy();
     expect(
-      screen.getByText(translate("workItems:move.consequences")),
+      screen.getByText(translate("workItemExtras:move.consequences")),
     ).toBeTruthy();
   });
 
   it("cannot be confirmed until a target project is chosen", () => {
     mount();
     expect(
-      screen.getByRole("button", { name: translate("workItems:move.confirm") }),
+      screen.getByRole("button", {
+        name: translate("workItemExtras:move.confirm"),
+      }),
     ).toBeDisabled();
     expect(mocks.move).not.toHaveBeenCalled();
   });

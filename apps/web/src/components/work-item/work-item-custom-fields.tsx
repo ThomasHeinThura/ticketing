@@ -70,7 +70,7 @@ function FieldRow({
     onSuccess: () => {
       setError("");
       clearConflict();
-      announce(t("workItems:journey.editSaved"));
+      announce(t("workItemExtras:journey.editSaved"));
     },
     onError: (cause) => {
       if (isWorkItemAccessLost(cause)) {

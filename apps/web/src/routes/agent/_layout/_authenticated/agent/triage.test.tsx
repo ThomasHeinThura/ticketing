@@ -504,14 +504,16 @@ describe("intake triage route", () => {
     renderTriage();
 
     const preview = await screen.findByRole("button", {
-      name: "workItems:detail.attachments.pdfPreviewOpen",
+      name: "workItemExtras:detail.attachments.pdfPreviewOpen",
     });
     expect(
       screen.queryByRole("button", { name: /pdfPreviewOpen.*notes/ }),
     ).not.toBeInTheDocument();
     fireEvent.click(preview);
     expect(
-      await screen.findByTitle("workItems:detail.attachments.pdfPreviewTitle"),
+      await screen.findByTitle(
+        "workItemExtras:detail.attachments.pdfPreviewTitle",
+      ),
     ).toHaveAttribute("src", "/pdf-preview.html");
     expect(mocks.previewPath).toHaveBeenCalledWith("SUB-7", "pdf/1");
     expect(mocks.downloadPath).toHaveBeenCalledWith("SUB-7", "pdf/1");

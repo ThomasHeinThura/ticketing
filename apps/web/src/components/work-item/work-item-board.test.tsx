@@ -1561,8 +1561,10 @@ it.each(["offer", "write"])(
     const [shown] = toastError.mock.calls.map(([text]) => String(text));
     expect(shown).not.toContain("cab.pending");
     expect(shown).not.toContain("secret-account");
-    expect(shown).toContain(translate("workItems:journey.reasonCabPending"));
-    expect(shown).toContain(translate("workItems:journey.reasonUnknown"));
+    expect(shown).toContain(
+      translate("workItemExtras:journey.reasonCabPending"),
+    );
+    expect(shown).toContain(translate("workItemExtras:journey.reasonUnknown"));
     expect(rankWorkItem).not.toHaveBeenCalled();
   },
 );

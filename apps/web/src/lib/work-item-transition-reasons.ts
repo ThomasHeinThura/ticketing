@@ -13,7 +13,7 @@ const REASON_KEYS: Record<string, string> = {
 
 /** Translate known refusal codes; never render arbitrary server detail as UI text. */
 export function workItemTransitionReasonKey(code: string) {
-  return `workItems:journey.${REASON_KEYS[code] ?? "reasonUnknown"}`;
+  return `workItemExtras:journey.${REASON_KEYS[code] ?? "reasonUnknown"}`;
 }
 
 export class WorkItemTransitionBlockedError extends HttpError {

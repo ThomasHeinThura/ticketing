@@ -46,7 +46,7 @@ import {
 } from "@/hooks/use-project-view-preference";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
-import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
+import { normalizeCanonicalWorkItemSelection } from "@/lib/normalize-canonical-work-item-selection";
 import { waitForWorkListFirstPaint } from "@/lib/work-list-first-paint";
 import { prefetchWorkListData } from "@/lib/work-list-prefetch";
 

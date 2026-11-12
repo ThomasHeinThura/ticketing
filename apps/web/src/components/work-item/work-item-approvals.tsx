@@ -34,11 +34,11 @@ const STATE_BADGE_VARIANT = {
 /** Maps a failed withdrawal to the message the person can act on. */
 function withdrawErrorKey(error: unknown) {
   const status = error instanceof HttpError ? error.status : undefined;
-  if (status === 409) return "workItems:detail.approvals.withdrawConflict";
+  if (status === 409) return "workItemExtras:detail.approvals.withdrawConflict";
   if (status === 403 || status === 404) {
-    return "workItems:detail.approvals.withdrawForbidden";
+    return "workItemExtras:detail.approvals.withdrawForbidden";
   }
-  return "workItems:detail.approvals.withdrawFailed";
+  return "workItemExtras:detail.approvals.withdrawFailed";
 }
 
 /**
@@ -94,7 +94,7 @@ function WorkItemApprovals({
       { id, asInstanceAdmin: isInstanceAdmin },
       {
         onSuccess: () =>
-          setAnnouncement(t("workItems:detail.approvals.withdrawn")),
+          setAnnouncement(t("workItemExtras:detail.approvals.withdrawn")),
         onSettled: () => headingRef.current?.focus(),
       },
     );
@@ -114,7 +114,7 @@ function WorkItemApprovals({
         tabIndex={-1}
         className={compact ? "font-medium text-sm" : "font-medium text-lg"}
       >
-        {t("workItems:detail.approvals.heading")}
+        {t("workItemExtras:detail.approvals.heading")}
       </h2>
 
       <WorkItemApprovalRequest workItemKey={workItemKey} />
@@ -134,7 +134,7 @@ function WorkItemApprovals({
         >
           <TriangleAlert />
           <AlertTitle>
-            {t("workItems:detail.approvals.withdrawErrorTitle")}
+            {t("workItemExtras:detail.approvals.withdrawErrorTitle")}
           </AlertTitle>
           <AlertDescription>
             <p>{t(withdrawErrorKey(withdraw.error))}</p>
@@ -146,15 +146,15 @@ function WorkItemApprovals({
         <Alert variant="error" role="alert" data-testid="approval-decide-error">
           <TriangleAlert />
           <AlertTitle>
-            {t("workItems:detail.approvals.decideErrorTitle")}
+            {t("workItemExtras:detail.approvals.decideErrorTitle")}
           </AlertTitle>
           <AlertDescription>
             <p>
               {decide.error instanceof HttpError && decide.error.status === 409
-                ? t("workItems:detail.approvals.decideConflict")
+                ? t("workItemExtras:detail.approvals.decideConflict")
                 : decide.error instanceof Error && decide.error.message
                   ? decide.error.message
-                  : t("workItems:detail.approvals.decideFailed")}
+                  : t("workItemExtras:detail.approvals.decideFailed")}
             </p>
           </AlertDescription>
         </Alert>
@@ -163,15 +163,17 @@ function WorkItemApprovals({
       {approvalsQuery.isError ? (
         <Alert variant="error" data-testid="work-item-approvals-error">
           <TriangleAlert />
-          <AlertTitle>{t("workItems:detail.approvals.errorTitle")}</AlertTitle>
+          <AlertTitle>
+            {t("workItemExtras:detail.approvals.errorTitle")}
+          </AlertTitle>
           <AlertDescription>
-            <p>{t("workItems:detail.approvals.errorDescription")}</p>
+            <p>{t("workItemExtras:detail.approvals.errorDescription")}</p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => void approvalsQuery.refetch()}
             >
-              {t("workItems:detail.approvals.retry")}
+              {t("workItemExtras:detail.approvals.retry")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -183,7 +185,7 @@ function WorkItemApprovals({
           aria-live="polite"
         >
           <span className="sr-only">
-            {t("workItems:detail.approvals.loading")}
+            {t("workItemExtras:detail.approvals.loading")}
           </span>
           <Skeleton className="h-12 w-full" />
         </div>
@@ -192,7 +194,7 @@ function WorkItemApprovals({
           className="text-muted-foreground text-sm"
           data-testid="work-item-approvals-empty"
         >
-          {t("workItems:detail.approvals.empty")}
+          {t("workItemExtras:detail.approvals.empty")}
         </p>
       ) : (
         <ul
@@ -206,27 +208,27 @@ function WorkItemApprovals({
               data-testid={`approval-${approval.id}`}
             >
               <span className="font-medium">
-                {t(`workItems:detail.approvals.kind.${approval.kind}`)}
+                {t(`workItemExtras:detail.approvals.kind.${approval.kind}`)}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="text-muted-foreground">
-                  {t("workItems:detail.approvals.approverLabel")}
+                  {t("workItemExtras:detail.approvals.approverLabel")}
                 </span>
                 {approval.approver.displayName ??
-                  t("workItems:detail.approvals.unknownPerson")}
+                  t("workItemExtras:detail.approvals.unknownPerson")}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="text-muted-foreground">
-                  {t("workItems:detail.approvals.requesterLabel")}
+                  {t("workItemExtras:detail.approvals.requesterLabel")}
                 </span>
                 {approval.requester.displayName ??
-                  t("workItems:detail.approvals.unknownPerson")}
+                  t("workItemExtras:detail.approvals.unknownPerson")}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="text-muted-foreground">
                   {approval.state === "pending"
-                    ? t("workItems:detail.approvals.expiresLabel")
-                    : t("workItems:detail.approvals.decidedLabel")}
+                    ? t("workItemExtras:detail.approvals.expiresLabel")
+                    : t("workItemExtras:detail.approvals.decidedLabel")}
                 </span>
                 {formatDateTime(
                   approval.state === "pending" || !approval.decidedAt
@@ -235,11 +237,11 @@ function WorkItemApprovals({
                 )}
               </span>
               <Badge variant={STATE_BADGE_VARIANT[approval.state]}>
-                {t(`workItems:detail.approvals.state.${approval.state}`)}
+                {t(`workItemExtras:detail.approvals.state.${approval.state}`)}
               </Badge>
               {approval.approverReachLost && approval.state === "pending" && (
                 <span className="text-muted-foreground">
-                  {t("workItems:detail.approvals.reachLost")}
+                  {t("workItemExtras:detail.approvals.reachLost")}
                 </span>
               )}
               {approval.state === "pending" && decidable.has(approval.id) ? (
@@ -248,8 +250,12 @@ function WorkItemApprovals({
                     <Textarea
                       ref={rejectNoteRef}
                       maxLength={4000}
-                      aria-label={t("workItems:detail.approvals.rejectNote")}
-                      placeholder={t("workItems:detail.approvals.rejectNote")}
+                      aria-label={t(
+                        "workItemExtras:detail.approvals.rejectNote",
+                      )}
+                      placeholder={t(
+                        "workItemExtras:detail.approvals.rejectNote",
+                      )}
                       value={rejectNote}
                       onChange={(event) => setRejectNote(event.target.value)}
                     />
@@ -275,7 +281,7 @@ function WorkItemApprovals({
                           )
                         }
                       >
-                        {t("workItems:detail.approvals.confirmReject")}
+                        {t("workItemExtras:detail.approvals.confirmReject")}
                       </Button>
                       <Button
                         variant="ghost"
@@ -301,7 +307,7 @@ function WorkItemApprovals({
                         )
                       }
                     >
-                      {t("workItems:detail.approvals.approve")}
+                      {t("workItemExtras:detail.approvals.approve")}
                     </Button>
                     <Button
                       variant="outline"
@@ -312,7 +318,7 @@ function WorkItemApprovals({
                         setRejectNote("");
                       }}
                     >
-                      {t("workItems:detail.approvals.reject")}
+                      {t("workItemExtras:detail.approvals.reject")}
                     </Button>
                   </span>
                 )
@@ -330,15 +336,15 @@ function WorkItemApprovals({
                   aria-label={
                     withdraw.isPending && withdraw.variables?.id === approval.id
                       ? undefined
-                      : t("workItems:detail.approvals.withdrawFor", {
-                          label: `${t(`workItems:detail.approvals.kind.${approval.kind}`)}, ${approval.approver.displayName ?? t("workItems:detail.approvals.unknownPerson")}`,
+                      : t("workItemExtras:detail.approvals.withdrawFor", {
+                          label: `${t(`workItemExtras:detail.approvals.kind.${approval.kind}`)}, ${approval.approver.displayName ?? t("workItemExtras:detail.approvals.unknownPerson")}`,
                         })
                   }
                   onClick={() => startWithdraw(approval.id)}
                 >
                   {withdraw.isPending && withdraw.variables?.id === approval.id
-                    ? t("workItems:detail.approvals.withdrawing")
-                    : t("workItems:detail.approvals.withdraw")}
+                    ? t("workItemExtras:detail.approvals.withdrawing")
+                    : t("workItemExtras:detail.approvals.withdraw")}
                 </Button>
               )}
             </li>

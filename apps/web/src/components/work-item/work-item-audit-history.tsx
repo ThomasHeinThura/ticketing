@@ -67,12 +67,12 @@ export default function WorkItemAuditHistory({
             ] as const,
         ),
       ),
-      unknown: t("workItems:detail.unavailable"),
-      empty: t("workItems:auditHistory.emptyValue", {
+      unknown: t("workItemExtras:detail.unavailable"),
+      empty: t("workItemExtras:auditHistory.emptyValue", {
         defaultValue: "(empty)",
       }),
-      none: t("workItems:auditHistory.noValue", { defaultValue: "None" }),
-      unassigned: t("workItems:auditHistory.unassigned", {
+      none: t("workItemExtras:auditHistory.noValue", { defaultValue: "None" }),
+      unassigned: t("workItemExtras:auditHistory.unassigned", {
         defaultValue: "Unassigned",
       }),
       priority: (value: string) =>
@@ -87,7 +87,7 @@ export default function WorkItemAuditHistory({
         render={
           <Button variant="ghost" size="sm" className="gap-2">
             <History className="size-4" />
-            {t("workItems:auditHistory.title", {
+            {t("workItemExtras:auditHistory.title", {
               defaultValue: "Audit history",
             })}
             <ChevronDown className="size-4" />
@@ -100,7 +100,7 @@ export default function WorkItemAuditHistory({
           {history.isError && (
             <Alert variant="error">
               <AlertDescription>
-                {t("workItems:auditHistory.error", {
+                {t("workItemExtras:auditHistory.error", {
                   defaultValue: "The audit history could not be loaded.",
                 })}
               </AlertDescription>
@@ -108,7 +108,7 @@ export default function WorkItemAuditHistory({
           )}
           {history.data && history.data.rows.length === 0 && (
             <p className="text-muted-foreground text-sm">
-              {t("workItems:auditHistory.empty", {
+              {t("workItemExtras:auditHistory.empty", {
                 defaultValue: "No audited changes for this work item.",
               })}
             </p>
@@ -118,10 +118,12 @@ export default function WorkItemAuditHistory({
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    {t("workItems:auditHistory.when", { defaultValue: "When" })}
+                    {t("workItemExtras:auditHistory.when", {
+                      defaultValue: "When",
+                    })}
                   </TableHead>
                   <TableHead>
-                    {t("workItems:auditHistory.action", {
+                    {t("workItemExtras:auditHistory.action", {
                       defaultValue: "Action",
                     })}
                   </TableHead>
@@ -146,7 +148,7 @@ export default function WorkItemAuditHistory({
                         size="sm"
                         onClick={() => setAt(row.createdAt)}
                       >
-                        {t("workItems:auditHistory.stateThen", {
+                        {t("workItemExtras:auditHistory.stateThen", {
                           defaultValue: "State then",
                         })}
                       </Button>
@@ -159,7 +161,7 @@ export default function WorkItemAuditHistory({
           {at && (
             <div className="flex flex-col gap-2">
               <p className="font-medium text-sm">
-                {t("workItems:auditHistory.stateAt", {
+                {t("workItemExtras:auditHistory.stateAt", {
                   defaultValue: "Recorded values as of {{when}}",
                   when: formatDateTime(at),
                 })}
@@ -168,7 +170,7 @@ export default function WorkItemAuditHistory({
               {snapshot.isError && (
                 <Alert variant="error">
                   <AlertDescription>
-                    {t("workItems:auditHistory.reconstructError", {
+                    {t("workItemExtras:auditHistory.reconstructError", {
                       defaultValue: "This state could not be reconstructed.",
                     })}
                   </AlertDescription>
@@ -176,7 +178,7 @@ export default function WorkItemAuditHistory({
               )}
               {snapshot.data && fields.length === 0 && (
                 <p className="text-muted-foreground text-sm">
-                  {t("workItems:auditHistory.noFields", {
+                  {t("workItemExtras:auditHistory.noFields", {
                     defaultValue: "No field values were recorded by then.",
                   })}
                 </p>

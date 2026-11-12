@@ -591,7 +591,7 @@ it.each([
     () => mocks.offers.mockResolvedValue(blockedOffer("note.required")),
     translate("workItems:board.transitionBlocked", {
       key: "HELP-1",
-      reason: translate("workItems:journey.reasonNoteRequired"),
+      reason: translate("workItemExtras:journey.reasonNoteRequired"),
     }),
   ],
   [
@@ -602,7 +602,7 @@ it.each([
       ),
     translate("workItems:board.transitionBlocked", {
       key: "HELP-1",
-      reason: translate("workItems:journey.reasonApprovalPending"),
+      reason: translate("workItemExtras:journey.reasonApprovalPending"),
     }),
   ],
   [

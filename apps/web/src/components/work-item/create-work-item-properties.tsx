@@ -163,7 +163,7 @@ export default function CreateWorkItemProperties(props: Props) {
           {defaultState?.name ??
             t(
               options.statesError
-                ? "workItems:journey.transitionsError"
+                ? "workItemExtras:journey.transitionsError"
                 : "common:empty.loading",
             )}
         </div>
@@ -190,7 +190,7 @@ export default function CreateWorkItemProperties(props: Props) {
             },
             ...options.people.map((person) => ({
               value: person.personId,
-              label: person.name ?? t("workItems:journey.unnamedPerson"),
+              label: person.name ?? t("workItemExtras:journey.unnamedPerson"),
               disabled,
               content: (
                 <>
@@ -200,7 +200,7 @@ export default function CreateWorkItemProperties(props: Props) {
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm truncate">
-                    {person.name ?? t("workItems:journey.unnamedPerson")}
+                    {person.name ?? t("workItemExtras:journey.unnamedPerson")}
                   </span>
                 </>
               ),
@@ -234,7 +234,7 @@ export default function CreateWorkItemProperties(props: Props) {
                   </Avatar>
                   <span>
                     {selectedPerson.name ??
-                      t("workItems:journey.unnamedPerson")}
+                      t("workItemExtras:journey.unnamedPerson")}
                   </span>
                 </>
               ) : (
@@ -271,7 +271,7 @@ export default function CreateWorkItemProperties(props: Props) {
       </CreateTaskPropertyRow>
       {options.peopleError && (canAssign || canUpdate) ? (
         <p role="status" className="text-xs text-muted-foreground">
-          {t("workItems:journey.peopleError")}
+          {t("workItemExtras:journey.peopleError")}
         </p>
       ) : null}
       {options.labelsError && canUpdate ? (

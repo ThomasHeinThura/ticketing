@@ -103,7 +103,7 @@ export default function ProjectCalendarView({
     (task: Parameters<typeof reschedule.mutate>[0]["task"], dayShift: number) =>
       reschedule.mutate(
         { task, dayShift },
-        { onError: () => toast.error(t("workItems:journey.saveError")) },
+        { onError: () => toast.error(t("workItemExtras:journey.saveError")) },
       ),
     [reschedule, t],
   );

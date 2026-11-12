@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import NotificationInbox from "@/components/notification/notification-inbox";
-import { notificationInboxOptions } from "@/hooks/queries/notification/use-get-notifications";
+import { notificationInboxOptions } from "@/hooks/queries/notification/notification-inbox-options";
 import { type AgentInboxFilter, parseAgentInboxSearch } from "@/lib/routes";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/inbox")({

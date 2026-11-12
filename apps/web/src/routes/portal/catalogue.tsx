@@ -891,7 +891,7 @@ function CatalogueFileField({
           onClick={() => inputRef.current?.click()}
         >
           <Paperclip className="size-4" aria-hidden="true" />
-          {t("workItems:detail.attachments.add")}
+          {t("workItemExtras:detail.attachments.add")}
         </Button>
       ) : null}
       <Input
