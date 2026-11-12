@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 import SortableProjectList from "./nav-projects-sortable";
 
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: translate }),
 }));
 

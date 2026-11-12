@@ -22,7 +22,8 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: translate }),
   Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
 }));
