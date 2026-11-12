@@ -3852,6 +3852,22 @@
 			"target": "Target {{term_project_one}}",
 			"targetPlaceholder": "Choose a {{term_project_one}}",
 			"title": "Move {{key}} to another {{term_project_one}}"
+		},
+		"customFieldValue": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes",
+			"hour": "Година",
+			"minute": "Хвилина",
+			"invalidLocalTime": "Цей час пропускається під час переведення годинника. Виберіть інший час.",
+			"datetime": "Date and time"
 		}
 	},
 	"portal": {
@@ -6430,21 +6446,6 @@
 			"name": "Section name",
 			"rename": "Rename section",
 			"renameNamed": "Rename section {{name}}"
-		},
-		"value": {
-			"amount": "Amount",
-			"clear": "Clear",
-			"currencyCode": "Currency code",
-			"no": "No",
-			"noChoices": "Nothing to choose from",
-			"notOnProject": "(not on this project)",
-			"notSet": "Not set",
-			"optional": "optional",
-			"requiredHint": "Required before this item can start or finish",
-			"yes": "Yes",
-			"hour": "Година",
-			"minute": "Хвилина",
-			"invalidLocalTime": "Цей час пропускається під час переведення годинника. Виберіть інший час."
 		}
 	},
 	"teams": {

@@ -115,7 +115,7 @@ export function DateTimePicker({
           id={id}
           variant="outline"
           size="sm"
-          aria-label={label || t("customFields:formats.datetime")}
+          aria-label={label || t("workItems:customFieldValue.datetime")}
           className="w-full min-w-0 max-w-full justify-start font-normal"
           disabled={disabled}
         >
@@ -123,14 +123,14 @@ export function DateTimePicker({
           <span className="min-w-0 truncate">
             {current
               ? current.toLocaleString()
-              : t("customFields:value.notSet")}
+              : t("workItems:customFieldValue.notSet")}
           </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         className="w-auto p-0"
         align="start"
-        aria-label={label || t("customFields:formats.datetime")}
+        aria-label={label || t("workItems:customFieldValue.datetime")}
       >
         <Calendar
           mode="single"
@@ -155,7 +155,7 @@ export function DateTimePicker({
           ].map((part) => (
             <div className="flex flex-col gap-1" key={part.name}>
               <Label htmlFor={`${id}-${part.name}`}>
-                {t(`customFields:value.${part.name}`)}
+                {t(`workItems:customFieldValue.${part.name}`)}
               </Label>
               <Select
                 value={part.value}
@@ -184,7 +184,7 @@ export function DateTimePicker({
           <div className="px-3 pb-3">
             <Alert variant="error">
               <AlertDescription>
-                {t("customFields:value.invalidLocalTime")}
+                {t("workItems:customFieldValue.invalidLocalTime")}
               </AlertDescription>
             </Alert>
           </div>
@@ -201,7 +201,7 @@ export function DateTimePicker({
               onChange(null);
             }}
           >
-            {t("customFields:value.clear")}
+            {t("workItems:customFieldValue.clear")}
           </Button>
           <div className="flex items-center gap-2">
             <Button

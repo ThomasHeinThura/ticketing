@@ -195,8 +195,8 @@ function CreateReleaseDialog({
                 <DateField
                   id="release-date"
                   label={t("releases.fields.plannedDate")}
-                  placeholder={t("customFields:value.notSet")}
-                  clearLabel={t("customFields:value.clear")}
+                  placeholder={t("workItems:customFieldValue.notSet")}
+                  clearLabel={t("workItems:customFieldValue.clear")}
                   value={plannedDate}
                   disabled={mutation.isPending}
                   onChange={setPlannedDate}

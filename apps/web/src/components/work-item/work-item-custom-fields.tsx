@@ -136,7 +136,7 @@ function FieldRow({
             <ReadOnlyValue field={field} people={people} />
           ) : (
             <span className="font-normal text-muted-foreground">
-              {t("customFields:value.notSet")}
+              {t("workItems:customFieldValue.notSet")}
             </span>
           )}
         </p>
@@ -151,7 +151,7 @@ function FieldRow({
       ) : null}
       {field.required && !isValueSet(values[field.key]) ? (
         <p className="text-muted-foreground text-xs">
-          {t("customFields:value.requiredHint")}
+          {t("workItems:customFieldValue.requiredHint")}
         </p>
       ) : null}
     </div>
@@ -177,13 +177,19 @@ function ReadOnlyValue({
       return <>{(value as string[]).map(label).join(", ")}</>;
     case "user":
       return (
-        <>{names.get(String(value)) || t("customFields:value.notOnProject")}</>
+        <>
+          {names.get(String(value)) ||
+            t("workItems:customFieldValue.notOnProject")}
+        </>
       );
     case "multi_user":
       return (
         <>
           {(value as string[])
-            .map((id) => names.get(id) || t("customFields:value.notOnProject"))
+            .map(
+              (id) =>
+                names.get(id) || t("workItems:customFieldValue.notOnProject"),
+            )
             .join(", ")}
         </>
       );
@@ -191,8 +197,8 @@ function ReadOnlyValue({
       return (
         <>
           {value === true
-            ? t("customFields:value.yes")
-            : t("customFields:value.no")}
+            ? t("workItems:customFieldValue.yes")
+            : t("workItems:customFieldValue.no")}
         </>
       );
     case "currency": {

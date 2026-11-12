@@ -5,6 +5,7 @@ import { createInstance } from "i18next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemCustomFieldColumn, WorkItemRow } from "@/types/work-item";
+import { splitI18nNamespaces } from "../../../vite/i18n-namespace-groups";
 import TaskRow from "../list-view/task-row";
 import WorkItemInlineFields from "./work-item-inline-fields";
 
@@ -187,7 +188,7 @@ describe("WorkItemInlineFields", () => {
     const instance = createInstance();
     await instance.init({
       lng: "en-US",
-      resources: { "en-US": en },
+      resources: { "en-US": splitI18nNamespaces(en).slim as typeof en },
       defaultNS: "common",
       interpolation: { defaultVariables: { term_project_one: "Project" } },
     });
@@ -197,6 +198,7 @@ describe("WorkItemInlineFields", () => {
       expect(
         screen.getByTestId("work-item-inline-assignee"),
       ).toHaveAccessibleName("Assignee: Unassigned");
+      expect(document.body.textContent).not.toMatch(/\w+:[\w.]+/);
     } finally {
       human.translate = undefined;
     }

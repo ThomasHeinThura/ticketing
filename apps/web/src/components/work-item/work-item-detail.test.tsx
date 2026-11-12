@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createInstance } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemDetailRow } from "@/types/work-item";
+import { splitI18nNamespaces } from "../../../vite/i18n-namespace-groups";
 import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
 
 const device = vi.hoisted(() => ({ mobile: false }));
@@ -247,15 +248,19 @@ const baseProps: WorkItemDetailProps = {
 
 describe("WorkItemDetail", () => {
   it.each(["page", "pane"] as const)(
-    "renders translated %s detail labels",
+    "renders translated %s detail labels after deferred text is supplied",
     async (variant) => {
       const instance = createInstance();
       await instance.init({
         lng: "en-US",
-        resources: { "en-US": en },
+        resources: { "en-US": splitI18nNamespaces(en).slim as typeof en },
         defaultNS: "common",
         interpolation: { defaultVariables: { term_project_one: "Project" } },
       });
+      for (const [namespace, values] of Object.entries(
+        splitI18nNamespaces(en).rest,
+      ))
+        instance.addResourceBundle("en-US", namespace, values);
       human.translate = (key) => instance.t(key);
       try {
         if (variant === "pane")

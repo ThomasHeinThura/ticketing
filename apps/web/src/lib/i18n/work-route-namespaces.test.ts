@@ -73,7 +73,7 @@ describe("work route namespace groups", () => {
     }
   });
 
-  it("keeps every list row and detail label eager", () => {
+  it("keeps list row labels eager and detail extras deferred", () => {
     for (const file of locales) {
       const catalog = JSON.parse(
         readFileSync(path.join(i18nDir, file), "utf8"),
@@ -82,7 +82,7 @@ describe("work route namespace groups", () => {
       expect(slim).toHaveProperty("workItems.detail.unassigned");
       expect(slim).toHaveProperty("workItems.detail.inactiveAssignee");
       expect(slim).toHaveProperty("workItems.detail.editField");
-      expect(slim).toHaveProperty("customFields.value.notSet");
+      expect(slim).toHaveProperty("workItems.customFieldValue.notSet");
     }
   });
 

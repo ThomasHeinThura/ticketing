@@ -9,7 +9,6 @@ export const WORK_ROUTE_I18N_NAMESPACES = [
   "common",
   "navigation",
   "workItems",
-  "customFields",
   "tasks",
   "term",
 ] as const;

@@ -50,8 +50,8 @@ function fieldValue(
   value: unknown,
   t: ReturnType<typeof usePortalTranslation>["t"],
 ) {
-  if (value === true) return t("customFields:value.yes");
-  if (value === false) return t("customFields:value.no");
+  if (value === true) return t("workItems:customFieldValue.yes");
+  if (value === false) return t("workItems:customFieldValue.no");
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "object" && value !== null)
     return Object.values(value).join(" ");

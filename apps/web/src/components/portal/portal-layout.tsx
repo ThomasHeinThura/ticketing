@@ -1,16 +1,38 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@taskdesk/ui";
-import { type CSSProperties, lazy, type ReactNode, Suspense } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import PageTitle from "@/components/page-title";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { portalLazyContent } from "./portal-lazy-content";
 import type { PortalShellUser } from "./portal-user-menu";
 
-// Navigation and the top bar load separately from page content (G11 portal budget).
-const PortalSidebar = lazy(() => import("./portal-sidebar"));
-const PortalTopbar = lazy(() => import("./portal-topbar"));
-// D7: active incident and maintenance announcements, loaded after the shell.
-const PortalAnnouncementBanner = lazy(
-  () => import("./announcements/portal-announcement-banner"),
+const PortalSidebar = portalLazyContent(
+  () => import("./portal-sidebar"),
+  <div
+    aria-hidden="true"
+    className="peer hidden w-(--sidebar-width) shrink-0 md:block"
+    data-variant="inset"
+    data-state="expanded"
+  />,
 );
+const PortalTopbar = portalLazyContent<{ user: PortalShellUser }>(
+  () =>
+    import("./portal-topbar").then((module) => {
+      module.preloadPortalTopbarContent();
+      return module;
+    }),
+  <div className="h-9 flex-1" />,
+);
+const PortalAnnouncementBanner = portalLazyContent(
+  () => import("./announcements/portal-announcement-banner"),
+  null,
+);
+export function preloadPortalChrome() {
+  void Promise.allSettled([
+    PortalSidebar.preload(),
+    PortalTopbar.preload(),
+    PortalAnnouncementBanner.preload(),
+  ]);
+}
 
 /** Kaneo sidebar/inset shell with the customer top bar; the inset is the page's one `main`. */
 export default function PortalLayout({
@@ -32,28 +54,13 @@ export default function PortalLayout({
           { "--sidebar-width": "calc(var(--spacing) * 60)" } as CSSProperties
         }
       >
-        <Suspense
-          fallback={
-            <div
-              aria-hidden="true"
-              className="peer hidden w-(--sidebar-width) shrink-0 md:block"
-              data-variant="inset"
-              data-state="expanded"
-            />
-          }
-        >
-          <PortalSidebar />
-        </Suspense>
+        <PortalSidebar />
         <SidebarInset className="m-2 flex flex-1 flex-col overflow-auto rounded-xl border border-border/80 bg-background shadow-sm/5">
           <header className="sticky top-0 z-10 flex min-h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-2 py-1 sm:h-12 sm:py-0">
             <SidebarTrigger toggleLabel={t("common:a11y.toggleSidebar")} />
-            <Suspense fallback={<div className="h-9 flex-1" />}>
-              <PortalTopbar user={user} />
-            </Suspense>
+            <PortalTopbar user={user} />
           </header>
-          <Suspense fallback={null}>
-            <PortalAnnouncementBanner />
-          </Suspense>
+          <PortalAnnouncementBanner />
           {children}
         </SidebarInset>
       </SidebarProvider>

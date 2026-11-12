@@ -658,11 +658,11 @@ function PortalSubmissionContent() {
                       </dt>
                       <dd className="break-words text-sm">
                         {field.value === true
-                          ? t("customFields:value.yes", {
+                          ? t("workItems:customFieldValue.yes", {
                               defaultValue: "Yes",
                             })
                           : field.value === false
-                            ? t("customFields:value.no", {
+                            ? t("workItems:customFieldValue.no", {
                                 defaultValue: "No",
                               })
                             : Array.isArray(field.value)

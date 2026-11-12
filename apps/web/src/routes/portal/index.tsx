@@ -15,6 +15,7 @@ import {
   usePortalHome,
 } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { importWithRetry } from "@/lib/lazy-retry";
 import { routes } from "@/lib/portal-route-builders";
 import {
   type PortalHomeSearch,
@@ -33,16 +34,20 @@ export const Route = createFileRoute("/")({
     status: search.status,
     priority: search.priority,
   }),
-  loader: async ({ context, deps, cause }) => {
+  loader: ({ context, deps, cause }) => {
     const { portalUserId, portalState } = context as unknown as {
       portalUserId?: string;
       portalState?: unknown;
     };
     if (cause === "enter" && portalUserId && !portalState) {
-      const { prefetchPortalHome } = await import(
-        "@/hooks/queries/portal/prefetch-portal-home"
-      );
-      prefetchPortalHome(queryClient, portalUserId, deps);
+      // Prefetch is optional: the page queries fetch normally if its module is unavailable.
+      void importWithRetry(
+        () => import("@/hooks/queries/portal/prefetch-portal-home"),
+      )
+        .then(({ prefetchPortalHome }) =>
+          prefetchPortalHome(queryClient, portalUserId, deps),
+        )
+        .catch(() => undefined);
     }
   },
   component: PortalHome,

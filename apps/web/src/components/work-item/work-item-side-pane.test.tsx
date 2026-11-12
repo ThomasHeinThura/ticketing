@@ -16,6 +16,10 @@ const mocks = vi.hoisted(() => ({
   detail: vi.fn(),
   project: vi.fn(),
 }));
+vi.mock("@/lib/i18n", () => ({
+  areAllNamespacesLoaded: () => true,
+  whenAllNamespacesLoaded: () => Promise.resolve(),
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));

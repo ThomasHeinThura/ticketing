@@ -44,7 +44,6 @@ import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 import { WorkItemFeedbackProvider } from "./work-item-feedback";
 import WorkItemHierarchy from "./work-item-hierarchy";
-import WorkItemNamespaceBoundary from "./work-item-namespace-boundary";
 import WorkItemProperties from "./work-item-properties";
 import WorkItemRelations from "./work-item-relations";
 import WorkItemSla from "./work-item-sla";
@@ -81,7 +80,7 @@ export type WorkItemDetailProps = {
 };
 
 /** Original Kaneo task composition with canonical persisted controls and scoped access-loss states. */
-function WorkItemDetail({
+export default function WorkItemDetail({
   item,
   workItemKey,
   activityFilter,
@@ -546,13 +545,5 @@ function WorkItemDetailSections({
           );
         })}
     </div>
-  );
-}
-
-export default function TranslatedWorkItemDetail(props: WorkItemDetailProps) {
-  return (
-    <WorkItemNamespaceBoundary>
-      <WorkItemDetail {...props} />
-    </WorkItemNamespaceBoundary>
   );
 }

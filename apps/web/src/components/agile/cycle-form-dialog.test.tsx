@@ -166,7 +166,7 @@ describe("CycleFormDialog", () => {
     fireEvent.click(
       within(
         screen.getByRole("dialog", { name: "cycles.form.start" }),
-      ).getByRole("button", { name: "customFields:value.clear" }),
+      ).getByRole("button", { name: "workItems:customFieldValue.clear" }),
     );
     await waitFor(() => expect(submit).toBeDisabled());
     await chooseDate("cycles.form.start", "2024-02-29");

@@ -154,8 +154,8 @@ function DetailsCard({
               <DateField
                 id="release-edit-date"
                 label={t("releases.fields.plannedDate")}
-                placeholder={t("customFields:value.notSet")}
-                clearLabel={t("customFields:value.clear")}
+                placeholder={t("workItems:customFieldValue.notSet")}
+                clearLabel={t("workItems:customFieldValue.clear")}
                 value={plannedDate}
                 disabled={!canManage}
                 onChange={setPlannedDate}

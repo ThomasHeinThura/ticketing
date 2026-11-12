@@ -493,7 +493,7 @@ function Editor({
                 <DateField
                   id="kb-review-due"
                   label={t("kb:fields.reviewDue")}
-                  placeholder={t("customFields:value.notSet")}
+                  placeholder={t("workItems:customFieldValue.notSet")}
                   clearLabel={t("common:clearDate")}
                   value={draft.reviewDueAt}
                   dateEntry={{

@@ -121,6 +121,14 @@ function loadLocaleResources(
 }
 
 const allNamespaces = new Map<AppLocale, Promise<void>>();
+const loadedNamespaces = new Set<AppLocale>();
+
+export function areAllNamespacesLoaded(localeInput = i18n.language): boolean {
+  return (
+    !useNamespaceGroups ||
+    loadedNamespaces.has(resolveLocale(localeInput, getBrowserLocale()))
+  );
+}
 
 /**
  * Runtime-scoped instances (terminology clones) created in group mode. They are seeded with the
@@ -155,6 +163,7 @@ function ensureAllNamespaces(locale: AppLocale): Promise<void> {
         scoped.loadNamespaces(namespaces),
       ),
     );
+    loadedNamespaces.add(locale);
   })();
   allNamespaces.set(locale, pending);
   pending.catch(() => allNamespaces.delete(locale));

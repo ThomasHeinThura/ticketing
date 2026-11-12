@@ -1,7 +1,7 @@
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
-import { type ReactNode, useEffect, useState } from "react";
+import { Activity, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { whenAllNamespacesLoaded } from "@/lib/i18n";
+import { areAllNamespacesLoaded, whenAllNamespacesLoaded } from "@/lib/i18n";
 import { WORK_LIST_PATH_PATTERN } from "@/lib/i18n/work-route-namespaces";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 
@@ -19,16 +19,29 @@ function DeferredWorkItemNamespaces({ children }: { children: ReactNode }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
   const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<{
-    locale: string;
-    attempt: number;
-    failed: boolean;
-  }>();
+  const [result, setResult] = useState<
+    | {
+        locale: string;
+        attempt: number;
+        failed: boolean;
+      }
+    | undefined
+  >(() =>
+    areAllNamespacesLoaded(locale)
+      ? { locale, attempt: 0, failed: false }
+      : undefined,
+  );
+  const [revealed, setRevealed] = useState(() =>
+    areAllNamespacesLoaded(locale),
+  );
   useEffect(() => {
     let active = true;
     void whenAllNamespacesLoaded().then(
       () => {
-        if (active) setResult({ locale, attempt, failed: false });
+        if (active) {
+          setRevealed(true);
+          setResult({ locale, attempt, failed: false });
+        }
       },
       () => {
         if (active) setResult({ locale, attempt, failed: true });
@@ -38,21 +51,32 @@ function DeferredWorkItemNamespaces({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [locale, attempt]);
-  if (!result || result.locale !== locale || result.attempt !== attempt)
-    return <WorkItemDetailLoading />;
-  if (result.failed)
-    return (
-      <Alert variant="error">
-        <AlertDescription>
-          {t("common:error.messages.unknown")}
-        </AlertDescription>
-        <Button
-          variant="outline"
-          onClick={() => setAttempt((value) => value + 1)}
-        >
-          {t("common:actions.retry")}
-        </Button>
-      </Alert>
-    );
-  return children;
+  const pending =
+    !result || result.locale !== locale || result.attempt !== attempt;
+  const failed = !pending && result.failed;
+  return (
+    <>
+      {pending ? <WorkItemDetailLoading /> : null}
+      {failed ? (
+        <div className="bg-background p-4">
+          <Alert variant="error">
+            <AlertDescription>
+              {t("common:error.messages.unknown")}
+            </AlertDescription>
+            <Button
+              variant="outline"
+              onClick={() => setAttempt((value) => value + 1)}
+            >
+              {t("common:actions.retry")}
+            </Button>
+          </Alert>
+        </div>
+      ) : null}
+      {revealed ? (
+        <Activity mode={pending || failed ? "hidden" : "visible"}>
+          {children}
+        </Activity>
+      ) : null}
+    </>
+  );
 }

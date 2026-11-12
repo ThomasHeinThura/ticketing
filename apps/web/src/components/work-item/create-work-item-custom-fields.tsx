@@ -49,7 +49,7 @@ export default function CreateWorkItemCustomFields({
                 </span>
               ) : (
                 <span className="font-normal">
-                  {` (${t("customFields:value.optional")})`}
+                  {` (${t("workItems:customFieldValue.optional")})`}
                 </span>
               )}
             </Label>

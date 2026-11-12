@@ -3824,6 +3824,22 @@
 			"failed": "Unable to move this {{term_work_item_one}}.",
 			"confirm": "Move",
 			"success": "Moved as {{key}}."
+		},
+		"customFieldValue": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes",
+			"hour": "Hour",
+			"minute": "Minute",
+			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time.",
+			"datetime": "Date and time"
 		}
 	},
 	"portal": {
@@ -5846,21 +5862,6 @@
 			"name": "Section name",
 			"rename": "Rename section",
 			"renameNamed": "Rename section {{name}}"
-		},
-		"value": {
-			"amount": "Amount",
-			"clear": "Clear",
-			"currencyCode": "Currency code",
-			"no": "No",
-			"noChoices": "Nothing to choose from",
-			"notOnProject": "(not on this project)",
-			"notSet": "Not set",
-			"optional": "optional",
-			"requiredHint": "Required before this item can start or finish",
-			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time."
 		}
 	},
 	"savedViews": {

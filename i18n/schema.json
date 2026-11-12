@@ -15667,6 +15667,70 @@
 						"confirm",
 						"success"
 					]
+				},
+				"customFieldValue": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"amount": {
+							"type": "string"
+						},
+						"clear": {
+							"type": "string"
+						},
+						"currencyCode": {
+							"type": "string"
+						},
+						"no": {
+							"type": "string"
+						},
+						"noChoices": {
+							"type": "string"
+						},
+						"notOnProject": {
+							"type": "string"
+						},
+						"notSet": {
+							"type": "string"
+						},
+						"optional": {
+							"type": "string"
+						},
+						"requiredHint": {
+							"type": "string"
+						},
+						"yes": {
+							"type": "string"
+						},
+						"hour": {
+							"type": "string"
+						},
+						"minute": {
+							"type": "string"
+						},
+						"invalidLocalTime": {
+							"type": "string"
+						},
+						"datetime": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"amount",
+						"clear",
+						"currencyCode",
+						"no",
+						"noChoices",
+						"notOnProject",
+						"notSet",
+						"optional",
+						"requiredHint",
+						"yes",
+						"hour",
+						"minute",
+						"invalidLocalTime",
+						"datetime"
+					]
 				}
 			},
 			"required": [
@@ -15690,7 +15754,8 @@
 				"backlog",
 				"journey",
 				"auditHistory",
-				"move"
+				"move",
+				"customFieldValue"
 			]
 		},
 		"portal": {
@@ -24232,66 +24297,6 @@
 						"rename",
 						"renameNamed"
 					]
-				},
-				"value": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"amount": {
-							"type": "string"
-						},
-						"clear": {
-							"type": "string"
-						},
-						"currencyCode": {
-							"type": "string"
-						},
-						"no": {
-							"type": "string"
-						},
-						"noChoices": {
-							"type": "string"
-						},
-						"notOnProject": {
-							"type": "string"
-						},
-						"notSet": {
-							"type": "string"
-						},
-						"optional": {
-							"type": "string"
-						},
-						"requiredHint": {
-							"type": "string"
-						},
-						"yes": {
-							"type": "string"
-						},
-						"hour": {
-							"type": "string"
-						},
-						"minute": {
-							"type": "string"
-						},
-						"invalidLocalTime": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"amount",
-						"clear",
-						"currencyCode",
-						"no",
-						"noChoices",
-						"notOnProject",
-						"notSet",
-						"optional",
-						"requiredHint",
-						"yes",
-						"hour",
-						"minute",
-						"invalidLocalTime"
-					]
 				}
 			},
 			"required": [
@@ -24303,8 +24308,7 @@
 				"formats",
 				"list",
 				"operators",
-				"sections",
-				"value"
+				"sections"
 			]
 		},
 		"savedViews": {

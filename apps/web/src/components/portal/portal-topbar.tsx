@@ -6,19 +6,26 @@ import {
   InputGroupInput,
 } from "@taskdesk/ui";
 import { LifeBuoy, SearchIcon } from "lucide-react";
-import { type FormEvent, lazy, Suspense, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { ThemeToggleDropdown } from "@/components/theme-toggle-dropdown";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalCapabilities } from "@/lib/portal-capabilities";
 import { routes } from "@/lib/portal-route-builders";
 
+import { portalLazyContent } from "./portal-lazy-content";
 import PortalNotificationBell from "./portal-notification-bell";
 import PortalUserMenu, { type PortalShellUser } from "./portal-user-menu";
 
 // Loads only once `GET /api/portal/projects` exists (S4c turns the capability on).
-const PortalProjectSelector = lazy(() => import("./portal-project-selector"));
+const PortalProjectSelector = portalLazyContent(
+  () => import("./portal-project-selector"),
+  null,
+);
 // The help results load on first use (G11 portal budget).
-const PortalSearchDialog = lazy(() => import("./portal-search-dialog"));
+const PortalSearchDialog = portalLazyContent(
+  () => import("./portal-search-dialog"),
+  null,
+);
 
 /**
  * The customer top bar (WSO2-style): project scope, search, Get help, theme, inbox and the
@@ -48,11 +55,7 @@ export default function PortalTopbar({ user }: { user: PortalShellUser }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
-      {portalCapabilities.projects ? (
-        <Suspense fallback={null}>
-          <PortalProjectSelector />
-        </Suspense>
-      ) : null}
+      {portalCapabilities.projects ? <PortalProjectSelector /> : null}
       <search
         aria-label={t("shell.search.label")}
         className="hidden min-w-0 max-w-md flex-1 sm:block"
@@ -97,15 +100,18 @@ export default function PortalTopbar({ user }: { user: PortalShellUser }) {
         <PortalUserMenu user={user} />
       </div>
       {searchUsed ? (
-        <Suspense fallback={null}>
-          <PortalSearchDialog
-            open={searchOpen}
-            onOpenChange={setSearchOpen}
-            initialQuery={query.trim()}
-            returnFocusRef={searchFrom}
-          />
-        </Suspense>
+        <PortalSearchDialog
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          initialQuery={query.trim()}
+          returnFocusRef={searchFrom}
+        />
       ) : null}
     </div>
   );
+}
+
+export function preloadPortalTopbarContent() {
+  if (portalCapabilities.projects)
+    void PortalProjectSelector.preload().catch(() => undefined);
 }

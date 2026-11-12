@@ -3810,6 +3810,22 @@
 			"target": "Target {{term_project_one}}",
 			"targetPlaceholder": "Choose a {{term_project_one}}",
 			"title": "Move {{key}} to another {{term_project_one}}"
+		},
+		"customFieldValue": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes",
+			"hour": "时",
+			"minute": "分",
+			"invalidLocalTime": "此时间在时钟调整时被跳过。请选择其他时间。",
+			"datetime": "Date and time"
 		}
 	},
 	"portal": {
@@ -6355,21 +6371,6 @@
 			"name": "Section name",
 			"rename": "Rename section",
 			"renameNamed": "Rename section {{name}}"
-		},
-		"value": {
-			"amount": "Amount",
-			"clear": "Clear",
-			"currencyCode": "Currency code",
-			"no": "No",
-			"noChoices": "Nothing to choose from",
-			"notOnProject": "(not on this project)",
-			"notSet": "Not set",
-			"optional": "optional",
-			"requiredHint": "Required before this item can start or finish",
-			"yes": "Yes",
-			"hour": "时",
-			"minute": "分",
-			"invalidLocalTime": "此时间在时钟调整时被跳过。请选择其他时间。"
 		}
 	},
 	"teams": {

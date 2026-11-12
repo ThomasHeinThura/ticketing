@@ -3810,6 +3810,22 @@
 			"target": "Target {{term_project_one}}",
 			"targetPlaceholder": "Choose a {{term_project_one}}",
 			"title": "Move {{key}} to another {{term_project_one}}"
+		},
+		"customFieldValue": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes",
+			"hour": "시",
+			"minute": "분",
+			"invalidLocalTime": "이 시간은 시간 변경으로 건너뛰어집니다. 다른 시간을 선택하세요.",
+			"datetime": "Date and time"
 		}
 	},
 	"portal": {
@@ -6355,21 +6371,6 @@
 			"name": "Section name",
 			"rename": "Rename section",
 			"renameNamed": "Rename section {{name}}"
-		},
-		"value": {
-			"amount": "Amount",
-			"clear": "Clear",
-			"currencyCode": "Currency code",
-			"no": "No",
-			"noChoices": "Nothing to choose from",
-			"notOnProject": "(not on this project)",
-			"notSet": "Not set",
-			"optional": "optional",
-			"requiredHint": "Required before this item can start or finish",
-			"yes": "Yes",
-			"hour": "시",
-			"minute": "분",
-			"invalidLocalTime": "이 시간은 시간 변경으로 건너뛰어집니다. 다른 시간을 선택하세요."
 		}
 	},
 	"teams": {
