@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   renderHook,
   screen,
@@ -10,6 +11,8 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
+import { WorkItemTransitionBlockedError } from "@/lib/work-item-transition-reasons";
 import { translate } from "@/test/en-translation";
 import type { WorkItemRow } from "@/types/work-item";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
@@ -19,6 +22,11 @@ const mocks = vi.hoisted(() => ({
   transition: vi.fn(),
   rank: vi.fn(),
   children: vi.fn(),
+  toastError: vi.fn(),
+}));
+// A refused move is explained in a library toast.
+vi.mock("@/lib/toast", () => ({
+  toast: { error: (...args: unknown[]) => mocks.toastError(...args) },
 }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: translate }) }));
 vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
@@ -124,11 +132,17 @@ function start(hook: MountedDragHook, id = "one") {
     } satisfies DragStartEvent),
   );
 }
-function end(hook: MountedDragHook, target = "done") {
+function end(hook: MountedDragHook, target = "done", id = "one") {
   return hook.result.current.endDrag({
-    active: { id: "one" },
+    active: { id },
     over: { id: target },
   } as DragEndEvent);
+}
+function itemIds(
+  hook: Pick<ReturnType<typeof useWorkItemDragDrop>, "itemsByState">,
+  state: string,
+) {
+  return hook.itemsByState.get(state)?.map((row) => row.id);
 }
 function combinedRows(firstProjectId = "project", secondProjectId = "project") {
   const [first, second, third] = rows;
@@ -175,6 +189,7 @@ function mountCombined(projectId = "project", workItems = combinedRows()) {
   return hook;
 }
 beforeEach(() => {
+  mocks.toastError.mockReset();
   mocks.children.mockReset();
   mocks.children.mockResolvedValue({
     data: [],
@@ -218,7 +233,7 @@ it("does not POST an old project's offer after the route changes while reading i
   expect(mocks.transition).not.toHaveBeenCalled();
   expect(mocks.rank).not.toHaveBeenCalled();
   expect(hook.result.current.notice).toBeUndefined();
-  expect(hook.result.current.busy).toBe(false);
+  expect(hook.result.current.pendingItemIds.size).toBe(0);
 });
 it("refreshes a committed old-project transition but never starts its second rank after a route change", async () => {
   let resolve!: (value: unknown) => void;
@@ -243,7 +258,7 @@ it("refreshes a committed old-project transition but never starts its second ran
   });
   expect(mocks.rank).not.toHaveBeenCalled();
   expect(hook.invalidate).toHaveBeenCalledWith({
-    queryKey: ["work-items", "project"],
+    queryKey: ["work-items", "project", "board"],
   });
   expect(hook.result.current.notice).toBeUndefined();
 });
@@ -331,7 +346,9 @@ it("does not mutate a source that disappeared or changed state during a drag", a
   await act(async () => {
     await end(hook);
   });
-  expect(mocks.offers).not.toHaveBeenCalled();
+  // The offers are fetched when a drag starts (so the drop does not wait for them); what must
+  // never happen is a write for a source that is gone or changed.
+  expect(mocks.transition).not.toHaveBeenCalled();
   expect(mocks.rank).not.toHaveBeenCalled();
 });
 it("refuses rows outside the addressed project and loss of both capabilities mid-drag", async () => {
@@ -347,7 +364,7 @@ it("refuses rows outside the addressed project and loss of both capabilities mid
   await act(async () => {
     await end(hook);
   });
-  expect(mocks.offers).not.toHaveBeenCalled();
+  expect(mocks.transition).not.toHaveBeenCalled();
   expect(mocks.rank).not.toHaveBeenCalled();
 });
 
@@ -358,7 +375,12 @@ function Harness({
 }) {
   const hook = useWorkItemDragDrop(options());
   onReady(hook);
-  return <>{hook.childrenDialog}</>;
+  return (
+    <>
+      {hook.childrenDialog}
+      {hook.noteDialog}
+    </>
+  );
 }
 async function dropOnClosedColumn() {
   mocks.offers.mockResolvedValue([
@@ -397,7 +419,7 @@ async function dropOnClosedColumn() {
     over: { id: "done" },
   } as DragEndEvent);
   await screen.findByTestId("open-children-warning");
-  return { drop };
+  return { drop, hook: () => current };
 }
 it("RH-10: dropping a parent into a closed column waits for the open-children confirmation", async () => {
   const { drop } = await dropOnClosedColumn();
@@ -412,8 +434,419 @@ it("RH-10: dropping a parent into a closed column waits for the open-children co
   );
 });
 it("RH-10: cancelling the open-children warning leaves the card in place", async () => {
-  const { drop } = await dropOnClosedColumn();
-  act(() => screen.getByRole("button", { name: "Cancel" }).click());
-  await drop;
+  const { drop, hook } = await dropOnClosedColumn();
+  // While the question is open the card already waits in the column it was dropped on.
+  expect(itemIds(hook(), "done")).toEqual(["three", "one"]);
+  await act(async () => {
+    screen.getByRole("button", { name: "Cancel" }).click();
+    await drop;
+  });
   expect(mocks.transition).not.toHaveBeenCalled();
+  expect(itemIds(hook(), "open")).toEqual(["one", "two"]);
+  expect(itemIds(hook(), "done")).toEqual(["three"]);
+  expect(hook().pendingItemIds.size).toBe(0);
+  expect(mocks.toastError).not.toHaveBeenCalled();
+});
+
+it.each([true, false])(
+  "required transition note: cancel or submit (cancel=%s)",
+  async (cancel) => {
+    mocks.offers.mockResolvedValue([
+      {
+        ...offer[0],
+        notePolicy: "required",
+        available: false,
+        blockedBy: [{ reasonCode: "note.required" }],
+      },
+    ]);
+    let current!: ReturnType<typeof useWorkItemDragDrop>;
+    const client = new QueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <Harness
+          onReady={(hook) => {
+            current = hook;
+          }}
+        />
+      </QueryClientProvider>,
+    );
+    start({ result: { current } } as MountedDragHook);
+    let drop!: Promise<void>;
+    act(() => {
+      drop = current.endDrag({
+        active: { id: "one" },
+        over: { id: "done" },
+      } as DragEndEvent);
+    });
+    const input = await screen.findByRole("textbox", {
+      name: translate("workItems:properties.transitionNote"),
+    });
+    expect(itemIds(current, "done")).toContain("one");
+    expect(mocks.transition).not.toHaveBeenCalled();
+    if (cancel) {
+      await act(async () => {
+        screen
+          .getByRole("button", { name: translate("common:actions.cancel") })
+          .click();
+        await drop;
+      });
+      expect(itemIds(current, "open")).toContain("one");
+      expect(mocks.transition).not.toHaveBeenCalled();
+    } else {
+      fireEvent.change(input, { target: { value: "Approved" } });
+      await act(async () => {
+        screen
+          .getByRole("button", { name: translate("workItems:properties.move") })
+          .click();
+        await drop;
+      });
+      expect(mocks.transition).toHaveBeenCalledWith({
+        key: "HELP-1",
+        toStateTemplateId: "template",
+        note: "Approved",
+      });
+    }
+  },
+);
+
+function pendingTransition() {
+  let settle!: {
+    resolve: (value: unknown) => void;
+    reject: (e: unknown) => void;
+  };
+  mocks.transition.mockImplementationOnce(
+    () =>
+      new Promise((resolve, reject) => {
+        settle = { resolve, reject };
+      }),
+  );
+  return {
+    resolve: (value: unknown = {}) => settle.resolve(value),
+    reject: (e: unknown) => settle.reject(e),
+  };
+}
+
+it("shows the dropped card in the target column at once, before the server replies", async () => {
+  mocks.offers.mockReturnValue(new Promise(() => {}));
+  const hook = mount();
+  start(hook);
+  act(() => {
+    void end(hook, "done");
+  });
+  expect(itemIds(hook.result.current, "done")).toEqual(["three", "one"]);
+  expect(itemIds(hook.result.current, "open")).toEqual(["two"]);
+  expect(hook.result.current.pendingItemIds.has("one")).toBe(true);
+  expect(hook.result.current.pendingItemIds.has("two")).toBe(false);
+  // The persisted rows are untouched: the position is derived, never cached.
+  expect(rows.find((row) => row.id === "one")?.stateId).toBe("open");
+});
+it("places a same-column reorder at its slot at once", async () => {
+  const hook = mount();
+  const write = new Promise<unknown>(() => {});
+  mocks.rank.mockReturnValue(write);
+  start(hook);
+  act(() => {
+    void end(hook, "two");
+  });
+  expect(itemIds(hook.result.current, "open")).toEqual(["two", "one"]);
+});
+it("fetches the transitions when the drag starts, not when it ends", async () => {
+  const hook = mount();
+  start(hook);
+  expect(mocks.offers).toHaveBeenCalledOnce();
+  expect(mocks.offers).toHaveBeenCalledWith("HELP-1");
+  await act(async () => {
+    await end(hook, "done");
+  });
+  expect(mocks.offers).toHaveBeenCalledOnce();
+  expect(mocks.transition).toHaveBeenCalledOnce();
+});
+it("does not fetch transitions for a person who can only rank, and a viewer cannot drag", async () => {
+  const hook = mount();
+  hook.rerender({ ...options(), canTransition: false });
+  start(hook);
+  expect(mocks.offers).not.toHaveBeenCalled();
+  act(() => hook.result.current.cancelDrag());
+  hook.rerender({ ...options(), canRank: false, canTransition: false });
+  start(hook, "two");
+  expect(hook.result.current.dragged).toBeUndefined();
+  await act(async () => {
+    await end(hook, "done", "two");
+  });
+  expect(mocks.offers).not.toHaveBeenCalled();
+  expect(mocks.transition).not.toHaveBeenCalled();
+  expect(mocks.rank).not.toHaveBeenCalled();
+});
+const blockedOffer = (reasonCode: string) => [
+  { ...offer[0], available: false, blockedBy: [{ reasonCode }] },
+];
+it.each([
+  [
+    "a transition the workflow does not offer",
+    () => mocks.offers.mockResolvedValue([]),
+    translate("workItems:board.transitionUnavailable", { key: "HELP-1" }),
+  ],
+  [
+    "a transition blocked by a guard",
+    () => mocks.offers.mockResolvedValue(blockedOffer("note.required")),
+    translate("workItems:board.transitionBlocked", {
+      key: "HELP-1",
+      reason: translate("workItems:journey.reasonNoteRequired"),
+    }),
+  ],
+  [
+    "an approval that is still required",
+    () =>
+      mocks.transition.mockRejectedValue(
+        new WorkItemTransitionBlockedError(["approval.pending"]),
+      ),
+    translate("workItems:board.transitionBlocked", {
+      key: "HELP-1",
+      reason: translate("workItems:journey.reasonApprovalPending"),
+    }),
+  ],
+  [
+    "a 403",
+    () => mocks.transition.mockRejectedValue(new HttpError(403, "no")),
+    translate("workItems:board.failure.forbidden", { key: "HELP-1" }),
+  ],
+  [
+    "a 409 version conflict",
+    () => mocks.transition.mockRejectedValue(new HttpError(409, "conflict")),
+    translate("workItems:board.failure.conflict", { key: "HELP-1" }),
+  ],
+  [
+    "a network error",
+    () => mocks.transition.mockRejectedValue(new TypeError("Failed to fetch")),
+    translate("workItems:board.failure.network", { key: "HELP-1" }),
+  ],
+])(
+  "puts the card back and explains %s in a toast",
+  async (_name, arrange, text) => {
+    arrange();
+    const hook = mount();
+    start(hook);
+    await act(async () => {
+      await end(hook, "done");
+    });
+    expect(mocks.toastError).toHaveBeenCalledOnce();
+    expect(mocks.toastError).toHaveBeenCalledWith(text);
+    expect(itemIds(hook.result.current, "open")).toEqual(["one", "two"]);
+    expect(itemIds(hook.result.current, "done")).toEqual(["three"]);
+    expect(hook.result.current.pendingItemIds.size).toBe(0);
+    expect(mocks.rank).not.toHaveBeenCalled();
+    // The next drag is accepted straight away.
+    mocks.transition.mockResolvedValue({});
+    start(hook);
+    expect(hook.result.current.dragged?.id).toBe("one");
+  },
+);
+it("keeps the card where it landed when only its position could not be saved", async () => {
+  mocks.rank.mockRejectedValue(new HttpError(400, "neighbour left"));
+  const hook = mount();
+  start(hook);
+  await act(async () => {
+    await end(hook, "done");
+  });
+  expect(mocks.transition).toHaveBeenCalledOnce();
+  expect(mocks.toastError).toHaveBeenCalledOnce();
+  expect(mocks.toastError.mock.calls[0]?.[0]).toContain("moved to Done");
+  // The move itself stands, so the card stays in Done until fresh rows arrive.
+  expect(itemIds(hook.result.current, "done")).toContain("one");
+});
+it("sends two quick drops in order, the second placed against the first", async () => {
+  const first = pendingTransition();
+  const hook = mount();
+  start(hook, "one");
+  act(() => {
+    void end(hook, "done", "one");
+  });
+  // Another card is dragged and dropped on the unconfirmed one while the first write runs.
+  start(hook, "two");
+  expect(hook.result.current.dragged?.id).toBe("two");
+  let second!: Promise<void>;
+  act(() => {
+    second = end(hook, "one", "two");
+  });
+  expect(itemIds(hook.result.current, "done")).toEqual(["three", "two", "one"]);
+  await waitFor(() => expect(mocks.transition).toHaveBeenCalledOnce());
+  expect(mocks.transition).toHaveBeenCalledWith({
+    key: "HELP-1",
+    toStateTemplateId: "template",
+  });
+  // Nothing of the second move is sent until the first has finished.
+  expect(mocks.rank).not.toHaveBeenCalled();
+  await act(async () => {
+    first.resolve();
+    await second;
+  });
+  expect(mocks.transition.mock.calls.map(([input]) => input.key)).toEqual([
+    "HELP-1",
+    "HELP-2",
+  ]);
+  expect(mocks.rank.mock.calls.map(([input]) => input)).toEqual([
+    { key: "HELP-1", beforeId: "three" },
+    { key: "HELP-2", beforeId: "three", afterId: "one" },
+  ]);
+  const order = [
+    mocks.transition.mock.invocationCallOrder[0],
+    mocks.rank.mock.invocationCallOrder[0],
+    mocks.transition.mock.invocationCallOrder[1],
+    mocks.rank.mock.invocationCallOrder[1],
+  ];
+  expect(order).toEqual([...order].sort((a, b) => (a ?? 0) - (b ?? 0)));
+  expect(mocks.toastError).not.toHaveBeenCalled();
+});
+it("only the pending card refuses a drag, and it is released with fresh rows", async () => {
+  const write = pendingTransition();
+  const hook = mount();
+  start(hook, "one");
+  let pending!: Promise<void>;
+  act(() => {
+    pending = end(hook, "done", "one");
+  });
+  start(hook, "one");
+  expect(hook.result.current.dragged).toBeUndefined();
+  start(hook, "two");
+  expect(hook.result.current.dragged?.id).toBe("two");
+  act(() => hook.result.current.cancelDrag());
+  await waitFor(() => expect(mocks.transition).toHaveBeenCalledOnce());
+  await act(async () => {
+    write.resolve();
+    await pending;
+  });
+  // The writes are done, but the rows have not changed yet: the card holds its new place.
+  expect(itemIds(hook.result.current, "done")).toContain("one");
+  expect(hook.result.current.pendingItemIds.has("one")).toBe(true);
+  hook.rerender({
+    ...options(),
+    workItems: rows.map((row) =>
+      row.id === "one"
+        ? { ...row, stateId: "done", position: "2", version: 2 }
+        : row,
+    ),
+  });
+  await waitFor(() => expect(hook.result.current.pendingItemIds.size).toBe(0));
+  expect(itemIds(hook.result.current, "done")).toEqual(["three", "one"]);
+});
+it("keeps a saved placement until fresh rows arrive", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const hook = mount();
+    start(hook);
+    await act(async () => {
+      await end(hook, "done");
+    });
+    expect(hook.result.current.pendingItemIds.has("one")).toBe(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(hook.result.current.pendingItemIds.has("one")).toBe(true);
+    expect(itemIds(hook.result.current, "done")).toContain("one");
+    hook.rerender({ ...options(), workItems: rows.map((row) => ({ ...row })) });
+    expect(hook.result.current.pendingItemIds.has("one")).toBe(true);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("waits for the version returned by the final write", async () => {
+  mocks.transition.mockResolvedValue({ version: 4 });
+  mocks.rank.mockResolvedValue({ version: 5 });
+  const hook = mount();
+  start(hook);
+  await act(async () => {
+    await end(hook, "done");
+  });
+  hook.rerender({
+    ...options(),
+    workItems: rows.map((row) =>
+      row.id === "one"
+        ? { ...row, stateId: "done", position: "2", version: 4 }
+        : row,
+    ),
+  });
+  expect(hook.result.current.pendingItemIds.has("one")).toBe(true);
+  hook.rerender({
+    ...options(),
+    workItems: rows.map((row) =>
+      row.id === "one"
+        ? { ...row, stateId: "done", position: "2", version: 5 }
+        : row,
+    ),
+  });
+  await waitFor(() =>
+    expect(hook.result.current.pendingItemIds.has("one")).toBe(false),
+  );
+});
+
+it("accepts a newer realtime move after the write settles", async () => {
+  const hook = mount();
+  start(hook);
+  await act(async () => {
+    await end(hook, "done");
+  });
+  expect(hook.result.current.pendingItemIds.has("one")).toBe(true);
+  hook.rerender({
+    ...options(),
+    workItems: rows.map((row) =>
+      row.id === "one" ? { ...row, stateId: "open", version: 3 } : row,
+    ),
+  });
+  await waitFor(() =>
+    expect(hook.result.current.pendingItemIds.has("one")).toBe(false),
+  );
+  expect(itemIds(hook.result.current, "open")).toContain("one");
+});
+
+it("serializes writes for the same project across hook instances", async () => {
+  const client = new QueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  const firstHook = renderHook(() => useWorkItemDragDrop(options()), {
+    wrapper,
+  });
+  const secondHook = renderHook(() => useWorkItemDragDrop(options()), {
+    wrapper,
+  });
+  const first = pendingTransition();
+  start(firstHook, "one");
+  act(() => {
+    void end(firstHook, "done", "one");
+  });
+  start(secondHook, "two");
+  let second!: Promise<void>;
+  act(() => {
+    second = end(secondHook, "done", "two");
+  });
+  await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
+  await act(async () => {
+    first.resolve();
+    await second;
+  });
+  expect(mocks.transition.mock.calls.map(([input]) => input.key)).toEqual([
+    "HELP-1",
+    "HELP-2",
+  ]);
+});
+
+it("reloads without waiting for the reload", async () => {
+  const hook = mount();
+  let reloaded = false;
+  hook.invalidate.mockImplementation(
+    () =>
+      new Promise(() => {
+        reloaded = true;
+      }),
+  );
+  start(hook);
+  await act(async () => {
+    await end(hook, "done");
+  });
+  expect(reloaded).toBe(true);
+  expect(hook.invalidate).toHaveBeenCalledWith({
+    queryKey: ["work-items", "project", "board"],
+  });
+  expect(mocks.toastError).not.toHaveBeenCalled();
 });

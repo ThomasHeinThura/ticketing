@@ -74666,44 +74666,6 @@
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-muted/20", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
-					"jsx:div[0]/DndContext[0]/Alert[0]/AlertDescription[0]",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-muted/20", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
-					"jsx:div[0]/DndContext[0]/Alert[0]/AlertDescription[0]",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
 			}
 		],
 		"backdropLayers": ["bg-muted/20", "bg-background"]
@@ -79673,44 +79635,6 @@
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/Alert[0]/AlertDescription[0]",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-muted/20", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
-					"jsx:div[0]/DndContext[0]/Alert[0]/AlertDescription[0]",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-muted/20", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
-					"jsx:div[0]/DndContext[0]/Alert[0]/AlertDescription[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",

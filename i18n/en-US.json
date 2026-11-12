@@ -3572,6 +3572,7 @@
 				"invalid": "The {{term_work_item_other}} around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"forbidden": "You don't have permission to move {{key}}.",
 				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"network": "Couldn't confirm the move for {{key}}. Check your connection and refresh.",
 				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"groupUnassigned": "Unassigned",

@@ -14667,6 +14667,9 @@
 								"unknown": {
 									"type": "string"
 								},
+								"network": {
+									"type": "string"
+								},
 								"transitionInvalid": {
 									"type": "string"
 								}
@@ -14678,6 +14681,7 @@
 								"invalid",
 								"forbidden",
 								"unknown",
+								"network",
 								"transitionInvalid"
 							]
 						},
