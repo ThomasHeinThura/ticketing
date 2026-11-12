@@ -723,8 +723,8 @@ describe("work list fallback polling", () => {
           assigneeOnProject: true,
           blockedByOpenCount: 0,
           labels: [
-            { id: "l-2", name: "Urgent", color: "#f00" },
-            { id: "l-1", name: "Backend", color: "#00f" },
+            { id: "l-2", name: "Urgent", color: "red" },
+            { id: "l-1", name: "Backend", color: "blue" },
           ],
           dueDate: "2026-11-20T00:00:00.000Z",
           archivedAt: null,

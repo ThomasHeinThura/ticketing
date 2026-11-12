@@ -140,6 +140,8 @@
 }
 
 .dark {
+  /* Same in both themes: a progress clock tracks elapsed time. */
+  --ease-progress: linear;
   --accent: --alpha(var(--color-white) / 4%);
   --accent-foreground: var(--color-neutral-100);
   --background: color-mix(
