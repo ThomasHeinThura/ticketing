@@ -81,6 +81,18 @@ export function isSupportedPluginSettingsForm(
   });
 }
 
+/** How one field differs from the manifest's own description of it (key: `config.<name>`/`password`). */
+export type FieldPresentation = {
+  /** Another label in the same namespace. */
+  labelKey?: string;
+  /** Shown but not editable: a value the server derives. */
+  readOnly?: boolean;
+  /** Overrides the manifest's own `required`. */
+  required?: boolean;
+  /** An extra help line under the field. */
+  helpKey?: string;
+};
+
 type Props = {
   manifest: PluginSettingsFormManifest;
   enabled: boolean;
@@ -98,6 +110,7 @@ type Props = {
   passwordPreview: string | null;
   clearPassword: boolean;
   onClearPasswordChange: (value: boolean) => void;
+  presentation?: Partial<Record<string, FieldPresentation>>;
 };
 
 export function SchemaSettingsForm({
@@ -114,6 +127,7 @@ export function SchemaSettingsForm({
   passwordPreview,
   clearPassword,
   onClearPasswordChange,
+  presentation = {},
 }: Props) {
   const { t } = useTranslation("notificationProvider");
   if (!isSupportedPluginSettingsForm(manifest))
@@ -147,18 +161,20 @@ export function SchemaSettingsForm({
           .map((field) => {
             const key = field.key.slice("config.".length);
             const value = config[key];
+            const shown = presentation[field.key];
             if (field.control === "checkbox")
               return (
                 <div className="flex items-center gap-2" key={field.key}>
                   <Checkbox
                     id={`plugin-settings-${field.key}`}
                     checked={value === true}
+                    disabled={shown?.readOnly}
                     onCheckedChange={(checked) =>
                       onConfigChange(key, checked === true)
                     }
                   />
                   <Label htmlFor={`plugin-settings-${field.key}`}>
-                    {t(field.labelKey)}
+                    {t(shown?.labelKey ?? field.labelKey)}
                   </Label>
                 </div>
               );
@@ -171,10 +187,16 @@ export function SchemaSettingsForm({
             return (
               <div className="space-y-2" key={field.key}>
                 <Label htmlFor={`plugin-settings-${field.key}`}>
-                  {t(field.labelKey)}
+                  {t(shown?.labelKey ?? field.labelKey)}
                 </Label>
                 <Input
                   id={`plugin-settings-${field.key}`}
+                  readOnly={shown?.readOnly}
+                  aria-describedby={
+                    shown?.helpKey
+                      ? `plugin-settings-${field.key}-help`
+                      : undefined
+                  }
                   type={field.control === "number" ? "number" : field.control}
                   inputMode={field.control === "number" ? "numeric" : undefined}
                   autoComplete={field.control === "text" ? "off" : undefined}
@@ -183,7 +205,10 @@ export function SchemaSettingsForm({
                       ? value
                       : ""
                   }
-                  required={requireConfig && field.required && !field.nullable}
+                  required={
+                    shown?.required ??
+                    (requireConfig && field.required && !field.nullable)
+                  }
                   min={field.minimum}
                   max={field.maximum}
                   minLength={field.minLength}
@@ -197,6 +222,14 @@ export function SchemaSettingsForm({
                     onConfigChange(key, next);
                   }}
                 />
+                {shown?.helpKey ? (
+                  <p
+                    className="text-xs text-muted-foreground"
+                    id={`plugin-settings-${field.key}-help`}
+                  >
+                    {t(shown.helpKey)}
+                  </p>
+                ) : null}
               </div>
             );
           })}
@@ -205,7 +238,7 @@ export function SchemaSettingsForm({
           .map((field) => (
             <div className="space-y-2 sm:col-span-2" key={field.key}>
               <Label htmlFor={`plugin-settings-${field.key}`}>
-                {t(field.labelKey)}
+                {t(presentation[field.key]?.labelKey ?? field.labelKey)}
               </Label>
               <Input
                 id={`plugin-settings-${field.key}`}
@@ -214,14 +247,19 @@ export function SchemaSettingsForm({
                 disabled={disabled || clearPassword}
                 value={password}
                 placeholder={passwordConfigured ? (passwordPreview ?? "") : ""}
-                required={requireConfig && field.required}
+                required={
+                  presentation[field.key]?.required ??
+                  (requireConfig && field.required)
+                }
                 minLength={field.minLength}
                 maxLength={field.maxLength}
                 onChange={(event) => onPasswordChange(event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                {t("passwordHelp")}
-              </p>
+              {passwordConfigured ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("passwordHelp")}
+                </p>
+              ) : null}
               {passwordConfigured ? (
                 <div className="flex items-center gap-2">
                   <Checkbox

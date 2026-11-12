@@ -5,6 +5,7 @@ import "./send-email";
 export type {
   RuntimeSmtpResolver,
   SmtpConfiguration,
+  SmtpReply,
   SmtpSocket,
 } from "./smtp-execution";
 export {

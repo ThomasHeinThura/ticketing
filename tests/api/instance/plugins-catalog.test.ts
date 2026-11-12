@@ -12,6 +12,13 @@ function provider(overrides: Partial<Provider> = {}): Provider {
     localMailpitCaptureAvailable: false,
     passwordConfigured: false,
     passwordPreview: null,
+    testStatus: {
+      state: "never",
+      testedAt: null,
+      smtpCode: null,
+      category: null,
+    },
+    sesRegions: [],
     ...overrides,
   };
 }
@@ -79,6 +86,8 @@ describe("supported plugin catalog", () => {
     expect(fields.map(({ key, control }) => ({ key, control }))).toEqual([
       { key: "enabled", control: "switch" },
       { key: "config.captureToMailpit", control: "checkbox" },
+      { key: "config.provider", control: "text" },
+      { key: "config.region", control: "text" },
       { key: "config.host", control: "text" },
       { key: "config.port", control: "number" },
       { key: "config.secure", control: "checkbox" },

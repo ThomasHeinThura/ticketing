@@ -26431,15 +26431,6 @@
 				"save": {
 					"type": "string"
 				},
-				"test": {
-					"type": "string"
-				},
-				"testHelp": {
-					"type": "string"
-				},
-				"verified": {
-					"type": "string"
-				},
 				"saved": {
 					"type": "string"
 				},
@@ -26626,30 +26617,6 @@
 						"saveFailed"
 					]
 				},
-				"diagnostics": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"smtp_authentication_failed": {
-							"type": "string"
-						},
-						"smtp_connection_failed": {
-							"type": "string"
-						},
-						"smtp_tls_failed": {
-							"type": "string"
-						},
-						"smtp_timeout": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"smtp_authentication_failed",
-						"smtp_connection_failed",
-						"smtp_tls_failed",
-						"smtp_timeout"
-					]
-				},
 				"teamNotification": {
 					"type": "object",
 					"additionalProperties": false,
@@ -26711,6 +26678,383 @@
 				},
 				"captureUnavailable": {
 					"type": "string"
+				},
+				"provider": {
+					"type": "string"
+				},
+				"region": {
+					"type": "string"
+				},
+				"providerChoice": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"label": {
+							"type": "string"
+						},
+						"smtp": {
+							"type": "string"
+						},
+						"ses": {
+							"type": "string"
+						}
+					},
+					"required": ["label", "smtp", "ses"]
+				},
+				"ses": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"regionLabel": {
+							"type": "string"
+						},
+						"regionPlaceholder": {
+							"type": "string"
+						},
+						"regionOption": {
+							"type": "string"
+						},
+						"regionHelp": {
+							"type": "string"
+						},
+						"username": {
+							"type": "string"
+						},
+						"password": {
+							"type": "string"
+						},
+						"credentialsHelp": {
+							"type": "string"
+						},
+						"fromHelp": {
+							"type": "string"
+						},
+						"sandboxTitle": {
+							"type": "string"
+						},
+						"sandboxBody": {
+							"type": "string"
+						},
+						"dismiss": {
+							"type": "string"
+						},
+						"regions": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"us-east-1": {
+									"type": "string"
+								},
+								"us-east-2": {
+									"type": "string"
+								},
+								"us-west-1": {
+									"type": "string"
+								},
+								"us-west-2": {
+									"type": "string"
+								},
+								"ap-south-1": {
+									"type": "string"
+								},
+								"ap-northeast-1": {
+									"type": "string"
+								},
+								"ap-northeast-2": {
+									"type": "string"
+								},
+								"ap-northeast-3": {
+									"type": "string"
+								},
+								"ap-southeast-1": {
+									"type": "string"
+								},
+								"ap-southeast-2": {
+									"type": "string"
+								},
+								"ca-central-1": {
+									"type": "string"
+								},
+								"eu-central-1": {
+									"type": "string"
+								},
+								"eu-north-1": {
+									"type": "string"
+								},
+								"eu-west-1": {
+									"type": "string"
+								},
+								"eu-west-2": {
+									"type": "string"
+								},
+								"eu-west-3": {
+									"type": "string"
+								},
+								"sa-east-1": {
+									"type": "string"
+								},
+								"us-gov-east-1": {
+									"type": "string"
+								},
+								"us-gov-west-1": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"us-east-1",
+								"us-east-2",
+								"us-west-1",
+								"us-west-2",
+								"ap-south-1",
+								"ap-northeast-1",
+								"ap-northeast-2",
+								"ap-northeast-3",
+								"ap-southeast-1",
+								"ap-southeast-2",
+								"ca-central-1",
+								"eu-central-1",
+								"eu-north-1",
+								"eu-west-1",
+								"eu-west-2",
+								"eu-west-3",
+								"sa-east-1",
+								"us-gov-east-1",
+								"us-gov-west-1"
+							]
+						}
+					},
+					"required": [
+						"regionLabel",
+						"regionPlaceholder",
+						"regionOption",
+						"regionHelp",
+						"username",
+						"password",
+						"credentialsHelp",
+						"fromHelp",
+						"sandboxTitle",
+						"sandboxBody",
+						"dismiss",
+						"regions"
+					]
+				},
+				"status": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"never": {
+							"type": "string"
+						},
+						"verified": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						},
+						"stale": {
+							"type": "string"
+						},
+						"lastTested": {
+							"type": "string"
+						},
+						"resultVerified": {
+							"type": "string"
+						},
+						"resultFailed": {
+							"type": "string"
+						},
+						"resultFailedCode": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"never",
+						"verified",
+						"failed",
+						"stale",
+						"lastTested",
+						"resultVerified",
+						"resultFailed",
+						"resultFailedCode"
+					]
+				},
+				"testSend": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"button": {
+							"type": "string"
+						},
+						"recipientLabel": {
+							"type": "string"
+						},
+						"help": {
+							"type": "string"
+						},
+						"sending": {
+							"type": "string"
+						},
+						"recipientRequired": {
+							"type": "string"
+						},
+						"sent": {
+							"type": "string"
+						},
+						"notSaved": {
+							"type": "string"
+						},
+						"replyWithCode": {
+							"type": "string"
+						},
+						"replyCodeOnly": {
+							"type": "string"
+						},
+						"replyTextOnly": {
+							"type": "string"
+						},
+						"failedTitle": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"button",
+						"recipientLabel",
+						"help",
+						"sending",
+						"recipientRequired",
+						"sent",
+						"notSaved",
+						"replyWithCode",
+						"replyCodeOnly",
+						"replyTextOnly",
+						"failedTitle"
+					]
+				},
+				"failureShort": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"authentication": {
+							"type": "string"
+						},
+						"starttls_required": {
+							"type": "string"
+						},
+						"message_rejected": {
+							"type": "string"
+						},
+						"throttled": {
+							"type": "string"
+						},
+						"temporary": {
+							"type": "string"
+						},
+						"rejected": {
+							"type": "string"
+						},
+						"connection": {
+							"type": "string"
+						},
+						"tls": {
+							"type": "string"
+						},
+						"timeout": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"authentication",
+						"starttls_required",
+						"message_rejected",
+						"throttled",
+						"temporary",
+						"rejected",
+						"connection",
+						"tls",
+						"timeout",
+						"failed"
+					]
+				},
+				"failure": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"authentication": {
+							"type": "string"
+						},
+						"starttls_required": {
+							"type": "string"
+						},
+						"message_rejected": {
+							"type": "string"
+						},
+						"throttled": {
+							"type": "string"
+						},
+						"temporary": {
+							"type": "string"
+						},
+						"rejected": {
+							"type": "string"
+						},
+						"connection": {
+							"type": "string"
+						},
+						"tls": {
+							"type": "string"
+						},
+						"timeout": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"authentication",
+						"starttls_required",
+						"message_rejected",
+						"throttled",
+						"temporary",
+						"rejected",
+						"connection",
+						"tls",
+						"timeout",
+						"failed"
+					]
+				},
+				"failureSes": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"authentication": {
+							"type": "string"
+						},
+						"message_rejected": {
+							"type": "string"
+						},
+						"throttled": {
+							"type": "string"
+						},
+						"starttls_required": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"authentication",
+						"message_rejected",
+						"throttled",
+						"starttls_required"
+					]
+				},
+				"credentialsRequired": {
+					"type": "string"
+				},
+				"testDestinationPasswordRequired": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -26730,9 +27074,6 @@
 				"requireTLS",
 				"clearPassword",
 				"save",
-				"test",
-				"testHelp",
-				"verified",
 				"saved",
 				"conflict",
 				"rateLimited",
@@ -26743,11 +27084,21 @@
 				"mention",
 				"quietHours",
 				"comment",
-				"diagnostics",
 				"teamNotification",
 				"captureToMailpit",
 				"captureHelp",
-				"captureUnavailable"
+				"captureUnavailable",
+				"provider",
+				"region",
+				"providerChoice",
+				"ses",
+				"status",
+				"testSend",
+				"failureShort",
+				"failure",
+				"failureSes",
+				"credentialsRequired",
+				"testDestinationPasswordRequired"
 			]
 		},
 		"featureFlags": {

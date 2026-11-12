@@ -137,6 +137,7 @@ async function fixture() {
       },
     },
     { userId: actor.user.id, personId: actorPerson.id },
+    async () => undefined,
   );
   const comment = await createComment(
     item.id,
