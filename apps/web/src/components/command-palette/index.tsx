@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, useRouter } from "@tanstack/react-router";
+import { useNavigate, useParams, useRouter } from "@tanstack/react-router";
 import {
   Command,
   CommandCollection,
@@ -32,6 +32,7 @@ import {
 import {
   Fragment,
   lazy,
+  type RefObject,
   Suspense,
   useCallback,
   useEffect,
@@ -50,19 +51,20 @@ import {
   projectSearchGroups,
   type SearchResultItem,
 } from "@/components/search-command-menu/search-targets";
+import WorkItemCreateDialogHost from "@/components/work-item/work-item-create-dialog-host";
+import { isWorkItemCreateDialogOpen } from "@/components/work-item/work-item-create-dialog-open";
 import { shortcuts } from "@/constants/shortcuts";
+import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { authClient } from "@/lib/auth-client";
 import { routes } from "@/lib/routes";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 const SearchCommandMenu = lazy(
   () => import("@/components/search-command-menu"),
-);
-const CreateTaskModal = lazy(
-  () => import("@/components/shared/modals/create-task-modal"),
 );
 const CreateWorkspaceModal = lazy(
   () => import("@/components/shared/modals/create-workspace-modal"),
@@ -97,18 +99,29 @@ export type CommandPaletteRequest = {
   intent: CommandPaletteIntent;
 };
 
+const EDITABLE_TARGET =
+  'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+
+/** The target is, or sits inside, something the person types text into. */
+function isEditableTarget(target: EventTarget | null) {
+  return target instanceof Element && target.closest(EDITABLE_TARGET) !== null;
+}
+
 export function CommandPalette({
   open,
   onOpenChange,
   request,
   onRequestHandled,
   keepMounted,
+  focusOriginRef,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   request: CommandPaletteRequest | null;
   onRequestHandled: (id: number) => void;
   keepMounted: boolean;
+  /** What had focus when the palette or the shortcut was used; the create dialog returns it. */
+  focusOriginRef?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const { setTheme } = useUserPreferencesStore();
@@ -124,6 +137,26 @@ export function CommandPalette({
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
+  // Create work item acts on the project the router is showing (`/agent/projects/{key}/...`);
+  // the work-item dialog has no project picker, so it is offered only inside a project. Outside
+  // one, neither the project nor the permission read is enabled: the palette adds no requests.
+  const { projectKey } = useParams({ strict: false });
+  const inProject = Boolean(projectKey);
+  const { project: routeProject, isLoading: isRouteProjectLoading } =
+    useProjectByKey(projectKey ?? "", inProject);
+  const createProject = inProject ? routeProject : undefined;
+  const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission(
+    createProject?.workspaceId,
+    createProject?.id,
+    { enabled: Boolean(createProject) },
+  );
+  const canCreateWorkItem = Boolean(createProject) && canCreateTasks();
+  // One create dialog at a time: the Overview and the work route mount their own, which this
+  // component cannot see, so the shortcut and the palette item check the shared open flag.
+  const openCreateWorkItem = useCallback(() => {
+    if (isWorkItemCreateDialogOpen()) return;
+    setIsCreateTaskOpen(true);
+  }, []);
   const [query, setQuery] = useState("");
   const searchTerm = query.trim();
   const searchEnabled = open && searchTerm.length >= 1;
@@ -133,6 +166,10 @@ export function CommandPalette({
     workspaceId: workspace?.id,
     limit: 20,
   });
+  const getCreateFinalFocus = useCallback(() => {
+    const origin = focusOriginRef?.current;
+    return origin?.isConnected ? origin : false;
+  }, [focusOriginRef]);
   const handledRequest = useRef<number | null>(null);
   useEffect(() => {
     if (!request || handledRequest.current === request.id) return;
@@ -143,25 +180,27 @@ export function CommandPalette({
       !isAdmin
     )
       return;
-    if (request.intent === "projects" && !workspace?.id) return;
+    // A cold load of a project URL (or the shortcut pressed before the project and its
+    // permissions have loaded) waits for them instead of dropping the request.
+    if (
+      request.intent === "create-task" &&
+      projectKey &&
+      (isRouteProjectLoading || isCheckingPermissions)
+    )
+      return;
     handledRequest.current = request.id;
     switch (request.intent) {
       case "search":
         setIsSearchOpen(true);
         break;
       case "projects":
-        if (workspace?.id) {
-          navigate({
-            to: "/dashboard/workspace/$workspaceId",
-            params: { workspaceId: workspace.id },
-          });
-        }
+        navigate({ to: routes.agentHome.path });
         break;
       case "create-project":
         setIsCreateProjectOpen(true);
         break;
       case "create-task":
-        setIsCreateTaskOpen(true);
+        if (canCreateWorkItem) openCreateWorkItem();
         break;
       case "create-workspace":
         if (canCreateWorkspace) setIsCreateWorkspaceOpen(true);
@@ -173,9 +212,13 @@ export function CommandPalette({
     canCreateWorkspace,
     config,
     isAdmin,
-    workspace?.id,
     navigate,
     onRequestHandled,
+    projectKey,
+    isRouteProjectLoading,
+    isCheckingPermissions,
+    canCreateWorkItem,
+    openCreateWorkItem,
   ]);
 
   useEffect(() => {
@@ -183,17 +226,11 @@ export function CommandPalette({
   }, [open]);
 
   const preloadProjectsPage = useCallback(() => {
-    if (!workspace?.id) return;
     // TanStack's auto-split route component and its nested React.lazy page are
     // separate chunks; warm both as soon as keyboard or pointer intent is clear.
-    void router
-      .preloadRoute({
-        to: "/dashboard/workspace/$workspaceId",
-        params: { workspaceId: workspace.id },
-      })
-      .catch(() => {});
+    void router.preloadRoute({ to: routes.agentHome.path }).catch(() => {});
     void import("@/components/project-list/projects-page").catch(() => {});
-  }, [router, workspace?.id]);
+  }, [router]);
 
   const handleItemHighlighted = useCallback(
     (value: unknown, { reason }: { reason: string }) => {
@@ -286,13 +323,7 @@ export function CommandPalette({
             value: "projects",
             label: t("navigation:commandPalette.projects"),
             shortcut: `${shortcuts.project.prefix} ${shortcuts.project.list}`,
-            onRun: () => {
-              if (!workspace?.id) return;
-              navigate({
-                to: "/dashboard/workspace/$workspaceId",
-                params: { workspaceId: workspace.id },
-              });
-            },
+            onRun: () => navigate({ to: routes.agentHome.path }),
           },
           {
             value: "search",
@@ -309,12 +340,16 @@ export function CommandPalette({
               navigate({ to: routes.workspaceMembers.path });
             },
           },
-          {
-            value: "create-task",
-            label: t("navigation:commandPalette.createTask"),
-            shortcut: `${shortcuts.task.prefix} ${shortcuts.task.create}`,
-            onRun: () => setIsCreateTaskOpen(true),
-          },
+          ...(canCreateWorkItem
+            ? [
+                {
+                  value: "create-task",
+                  label: t("navigation:commandPalette.createTask"),
+                  shortcut: `${shortcuts.task.prefix} ${shortcuts.task.create}`,
+                  onRun: openCreateWorkItem,
+                },
+              ]
+            : []),
           {
             value: "create-project",
             label: t("navigation:commandPalette.createProject"),
@@ -367,7 +402,14 @@ export function CommandPalette({
         ],
       },
     ],
-    [navigate, setTheme, t, workspace?.id, canCreateWorkspace],
+    [
+      navigate,
+      setTheme,
+      t,
+      canCreateWorkspace,
+      canCreateWorkItem,
+      openCreateWorkItem,
+    ],
   );
 
   const paletteGroups = useMemo<PaletteGroup[]>(() => {
@@ -426,6 +468,13 @@ export function CommandPalette({
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // Typing in the palette's own search (or any editor) is text, never a shortcut, and
+      // it breaks a sequence already started on the way in.
+      if (isEditableTarget(event.target)) {
+        sequence = "";
+        clearTimeout(timeout);
+        return;
+      }
       if (
         event.metaKey ||
         event.ctrlKey ||
@@ -582,8 +631,13 @@ export function CommandPalette({
         {isSearchOpen ? (
           <SearchCommandMenu open setOpen={setIsSearchOpen} />
         ) : null}
-        {isCreateTaskOpen ? (
-          <CreateTaskRouteModal onClose={() => setIsCreateTaskOpen(false)} />
+        {isCreateTaskOpen && createProject ? (
+          <WorkItemCreateDialogHost
+            projectId={createProject.id}
+            workspaceId={createProject.workspaceId}
+            onClose={() => setIsCreateTaskOpen(false)}
+            finalFocus={getCreateFinalFocus}
+          />
         ) : null}
         {isCreateWorkspaceOpen ? (
           <CreateWorkspaceModal
@@ -599,21 +653,6 @@ export function CommandPalette({
         ) : null}
       </Suspense>
     </>
-  );
-}
-
-function CreateTaskRouteModal({ onClose }: { onClose: () => void }) {
-  const { pathname } = useLocation();
-  const projectId = pathname.match(/\/project\/([^/]+)/)?.[1] ?? undefined;
-  const status = pathname.endsWith("/backlog") ? "planned" : undefined;
-
-  return (
-    <CreateTaskModal
-      open
-      projectId={projectId}
-      status={status}
-      onClose={onClose}
-    />
   );
 }
 

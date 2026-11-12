@@ -7286,72 +7286,6 @@
 		"minRatio": 3,
 		"themes": ["dark"],
 		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-destructive-foreground",
-		"backgroundClass": {
-			"dark": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-destructive-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-destructive-foreground",
-		"backgroundClass": {
-			"light": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-destructive-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-destructive-foreground",
 		"backgroundClass": {
@@ -8141,76 +8075,6 @@
 				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/menu-content.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-destructive-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-destructive-foreground",
-		"backgroundClass": {
-			"dark": "hover:bg-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-destructive-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-destructive-foreground",
-		"backgroundClass": {
-			"light": "hover:bg-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
 			}
 		],
 		"backdropLayers": ["bg-popover"]
@@ -10265,7 +10129,6 @@
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/freeze-dialog.tsx::FreezeDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/create-work-item-label-picker.tsx::CreateWorkItemLabelPicker::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive-foreground#0",
-			"apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/p[0]::text-destructive-foreground#0",
@@ -10445,17 +10308,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
 					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
@@ -10497,17 +10349,6 @@
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalRaisePriority",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -10581,7 +10422,6 @@
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/service-management/freeze-dialog.tsx::FreezeDialog::Dialog[0]/DialogContent[0]/form[0]/div[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/create-work-item-label-picker.tsx::CreateWorkItemLabelPicker::Popover[0]/PopoverContent[0]/div[0]/p[0]::text-destructive-foreground#0",
-			"apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-attachments-uploads.tsx::UploadRow::li[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-attachments.tsx::WorkItemAttachments::section[0]/p[0]::text-destructive-foreground#0",
 			"apps/web/src/components/work-item/work-item-inline-fields.tsx::WorkItemInlineFields::Popover[0]/PopoverContent[0]/p[0]::text-destructive-foreground#0",
@@ -10761,17 +10601,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx::CreateWorkItemStagedAttachments::section[0]/div[0]/div[0]/span[1]/span[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/work-item/create-work-item-staged-attachments.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
 					"jsx:TaskDetailsSheetFrame[0]/Suspense[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
@@ -10813,17 +10642,6 @@
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalRaisePriority",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::CircleAlert[0]::text-destructive-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -24858,7 +24676,6 @@
 		"occurrenceIds": [
 			"apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
-			"apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[1]::text-foreground#0",
 			"apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/common/header/project-layout-controls-fallback.tsx::ProjectLayoutControlsFallback::div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbPresentation::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
@@ -24922,17 +24739,6 @@
 				"id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/auth/sign-up-form.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/backlog-list-view/index.tsx:BacklogListView",
-					"jsx:DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[1]>bg-card"
-				],
-				"id": "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[1]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/backlog-list-view/index.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -25302,7 +25108,6 @@
 		"occurrenceIds": [
 			"apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
-			"apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[1]::text-foreground#0",
 			"apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/common/header/project-layout-controls-fallback.tsx::ProjectLayoutControlsFallback::div[0]/div[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbPresentation::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
@@ -25366,17 +25171,6 @@
 				"id": "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/auth/sign-up-form.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/backlog-list-view/index.tsx:BacklogListView",
-					"jsx:DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[1]>bg-card"
-				],
-				"id": "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[1]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/backlog-list-view/index.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -26714,7 +26508,6 @@
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::div[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskHeader::DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:text-foreground#0",
@@ -27031,17 +26824,6 @@
 				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskHeader::DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/shared/modals/create-task-presentation.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -27413,7 +27195,6 @@
 			"apps/web/src/components/service-calendar/service-calendar-editor-view.tsx::ServiceCalendarEditorView::div[0]/AlertDialog[0]/AlertDialogPopup[0]/AlertDialogHeader[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskHeader::DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:text-foreground#0",
@@ -27730,17 +27511,6 @@
 				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Input[0]::[&_[data-slot=input]]:text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskHeader::DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[1]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/shared/modals/create-task-presentation.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -28983,72 +28753,6 @@
 		"minRatio": 3,
 		"themes": ["dark"],
 		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-info-foreground/85",
-		"backgroundClass": {
-			"dark": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-info-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-info-foreground/85",
-		"backgroundClass": {
-			"light": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-info-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-info-foreground/85",
 		"backgroundClass": {
@@ -29320,76 +29024,6 @@
 					"component-slot:packages/ui/src/components/context-menu.tsx:ContextMenuCheckboxItem.children",
 					"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx:TaskContextMenuPresentation",
 					"ContextMenuSubContent->packages/ui/src/components/context-menu.tsx:ContextMenuSubContent"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-info-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-info-foreground/85",
-		"backgroundClass": {
-			"dark": "hover:bg-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-info-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-info-foreground/85",
-		"backgroundClass": {
-			"light": "hover:bg-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
 				"surfaceContext": "caller-chain",
@@ -30283,17 +29917,6 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-inline-fields.tsx:WorkItemInlineFields",
 					"jsx:Popover[0]/PopoverContent[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
@@ -30400,17 +30023,6 @@
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalRaisePriority",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronDown[0]::text-info-foreground/85#0",
 				"surfaceContext": "caller-chain",
@@ -31377,100 +30989,6 @@
 			}
 		],
 		"backdropLayers": ["bg-background"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"dark": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"light": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
 	},
 	{
 		"fg": "--color-muted-foreground",
@@ -33136,9 +32654,7 @@
 		"occurrenceIds": [
 			"apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
 			"apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
+			"apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -33188,36 +32704,6 @@
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
 			}
 		],
 		"backdropLayers": ["bg-popover"]
@@ -33500,9 +32986,7 @@
 		"occurrenceIds": [
 			"apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
 			"apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1"
+			"apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -33552,36 +33036,6 @@
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
 			}
 		],
 		"backdropLayers": ["bg-popover"]
@@ -34427,8 +33881,6 @@
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/settings/teams/teams-list.tsx::TeamsList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/workspace-project-defaults-panel.tsx::WorkspaceProjectDefaultsPanel::section[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskFooter::DialogFooter[0]/div[0]/label[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -39489,30 +38941,6 @@
 				"id": "apps/web/src/components/settings/workspace-project-defaults-panel.tsx::WorkspaceProjectDefaultsPanel::section[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/workspace-project-defaults-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]",
-					"CreateTaskPropertyRow->apps/web/src/components/shared/modals/create-task-presentation.tsx:CreateTaskPropertyRow>bg-background"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]",
-					"CreateTaskPropertyRow->apps/web/src/components/shared/modals/create-task-presentation.tsx:CreateTaskPropertyRow>bg-background"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -46398,8 +45826,6 @@
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/settings/teams/teams-list.tsx::TeamsList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/workspace-project-defaults-panel.tsx::WorkspaceProjectDefaultsPanel::section[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskFooter::DialogFooter[0]/div[0]/label[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -51461,30 +50887,6 @@
 				"id": "apps/web/src/components/settings/workspace-project-defaults-panel.tsx::WorkspaceProjectDefaultsPanel::section[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/workspace-project-defaults-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]",
-					"CreateTaskPropertyRow->apps/web/src/components/shared/modals/create-task-presentation.tsx:CreateTaskPropertyRow>bg-background"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]",
-					"CreateTaskPropertyRow->apps/web/src/components/shared/modals/create-task-presentation.tsx:CreateTaskPropertyRow>bg-background"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -58817,8 +58219,6 @@
 			"apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]::text-muted-foreground#0",
 			"apps/web/src/components/automation/automation-rules-panel.tsx::RuleCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::div[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbPresentation::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::text-muted-foreground#0",
@@ -59427,28 +58827,6 @@
 				"id": "apps/web/src/components/automation/automation-rules-panel.tsx::RuleCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/automation/automation-rules-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/backlog-list-view/index.tsx:BacklogListView",
-					"jsx:div[0]/div[0]/div[0]>bg-card"
-				],
-				"id": "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::div[0]/div[0]/div[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/backlog-list-view/index.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/backlog-list-view/index.tsx:BacklogListView",
-					"jsx:DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]>bg-card"
-				],
-				"id": "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/backlog-list-view/index.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -64565,8 +63943,6 @@
 			"apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]::text-muted-foreground#0",
 			"apps/web/src/components/automation/automation-rules-panel.tsx::RuleCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::div[0]/div[0]/div[0]::text-muted-foreground#0",
-			"apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/project-header-menu.tsx::ProjectHeaderMenu::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbPresentation::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
 			"apps/web/src/components/common/project-task-search-header.tsx::ProjectTaskSearchHeader::Popover[0]/PopoverTrigger[0]/Button[0]::text-muted-foreground#0",
@@ -65175,28 +64551,6 @@
 				"id": "apps/web/src/components/automation/automation-rules-panel.tsx::RuleCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/automation/automation-rules-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/backlog-list-view/index.tsx:BacklogListView",
-					"jsx:div[0]/div[0]/div[0]>bg-card"
-				],
-				"id": "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::div[0]/div[0]/div[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/backlog-list-view/index.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/backlog-list-view/index.tsx:BacklogListView",
-					"jsx:DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]>bg-card"
-				],
-				"id": "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/backlog-list-view/index.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -84005,19 +83359,6 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-approval-request.tsx:ApprovalRequestForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-approval-request.tsx:ApprovalRequestForm",
@@ -85710,7 +85051,6 @@
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/div[0]/div[0]/Building2[0]::text-muted-foreground#0",
 			"packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
@@ -85764,17 +85104,6 @@
 				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project-list/projects-page.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
 			},
 			{
 				"backdropLayers": ["bg-background"],
@@ -86237,7 +85566,6 @@
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/subtask-assignee-popover.tsx::SubtaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0"
 		],
@@ -86252,17 +85580,6 @@
 				"id": "apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
 			},
 			{
 				"backdropLayers": ["bg-popover"],
@@ -86451,68 +85768,6 @@
 			}
 		],
 		"backdropLayers": ["dark:bg-card/90", "bg-background"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx",
-		"backdrop": "--color-background",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"dark": "bg-muted"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["hover:bg-accent/50", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			}
-		],
-		"backdropLayers": ["hover:bg-accent/50", "bg-background"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"dark": "bg-muted"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["hover:bg-accent/50", "bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			}
-		],
-		"backdropLayers": ["hover:bg-accent/50", "bg-popover"]
 	},
 	{
 		"fg": "--color-muted-foreground",
@@ -86712,7 +85967,6 @@
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/create.tsx::RouteComponent::div[0]/div[0]/Card[0]/CardContent[0]/div[0]/div[0]/div[0]/Building2[0]::text-muted-foreground#0",
 			"packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
@@ -86766,17 +86020,6 @@
 				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project-list/projects-page.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
 			},
 			{
 				"backdropLayers": ["bg-background"],
@@ -87383,7 +86626,6 @@
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
 			"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/task/subtask-assignee-popover.tsx::SubtaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0"
 		],
@@ -87398,17 +86640,6 @@
 				"id": "apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx::TaskContextMenuPresentation::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
 			},
 			{
 				"backdropLayers": ["bg-popover"],
@@ -87453,68 +86684,6 @@
 			}
 		],
 		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx",
-		"backdrop": "--color-background",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"light": "bg-muted"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["hover:bg-accent/50", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			}
-		],
-		"backdropLayers": ["hover:bg-accent/50", "bg-background"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-muted",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"light": "bg-muted"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["hover:bg-accent/50", "bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]>bg-muted"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[2]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			}
-		],
-		"backdropLayers": ["hover:bg-accent/50", "bg-popover"]
 	},
 	{
 		"fg": "--color-muted-foreground",
@@ -87819,9 +86988,6 @@
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#2",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskHeader::DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
@@ -90067,41 +89233,6 @@
 			},
 			{
 				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskHeader::DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/shared/modals/create-task-presentation.tsx"
-			},
-			{
-				"backdropLayers": [],
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-workspace-modal.tsx:CreateWorkspaceModal",
@@ -91788,17 +90919,6 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-inline-fields.tsx:WorkItemInlineFields",
 					"jsx:Popover[0]/PopoverContent[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
@@ -91840,17 +90960,6 @@
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalRaisePriority",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
@@ -92069,17 +91178,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-presentation.tsx:CreateTaskDiscardDialog",
-					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
-				],
-				"id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert-dialog.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/team/members-table.tsx:MembersTable",
 					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
 				],
@@ -92271,17 +91369,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/breadcrumb.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
@@ -92833,17 +91920,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/dialog.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
@@ -93409,9 +92485,6 @@
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#2",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskHeader::DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[0]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-workspace-modal.tsx::CreateWorkspaceModal::Dialog[0]/DialogContent[0]/form[0]/div[0]/Input[1]::[&_[data-slot=input]]:placeholder:text-muted-foreground#0",
@@ -95657,41 +94730,6 @@
 			},
 			{
 				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[0]/Search[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[4]/PopoverContent[0]/div[0]/div[1]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/shared/modals/create-task-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskHeader::DialogHeader[0]/DialogTitle[0]/Breadcrumb[0]/BreadcrumbList[0]/BreadcrumbItem[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/shared/modals/create-task-presentation.tsx"
-			},
-			{
-				"backdropLayers": [],
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-workspace-modal.tsx:CreateWorkspaceModal",
@@ -97378,17 +96416,6 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-inline-fields.tsx:WorkItemInlineFields",
 					"jsx:Popover[0]/PopoverContent[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
@@ -97430,17 +96457,6 @@
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalRaisePriority",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
@@ -97659,17 +96675,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-presentation.tsx:CreateTaskDiscardDialog",
-					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
-				],
-				"id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert-dialog.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/team/members-table.tsx:MembersTable",
 					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
 				],
@@ -97803,18 +96808,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup",
-					"transparent-wrapper:light"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-approval-request.tsx:ApprovalRequestForm",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup",
 					"transparent-wrapper:light"
@@ -97897,17 +96890,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/breadcrumb.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
@@ -98459,17 +97441,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/dialog.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
@@ -110447,138 +109418,6 @@
 		"minRatio": 3,
 		"themes": ["dark"],
 		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-warning-foreground",
-		"backgroundClass": {
-			"dark": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-warning-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-warning-foreground/80",
-		"backgroundClass": {
-			"dark": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-warning-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-warning-foreground",
-		"backgroundClass": {
-			"light": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-warning-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-warning-foreground/80",
-		"backgroundClass": {
-			"light": "bg-accent/30"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverTrigger[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-warning-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
 		"backdrop": "--color-card",
 		"foregroundClass": "text-warning-foreground",
 		"backgroundClass": {
@@ -111136,146 +109975,6 @@
 					"component-slot:packages/ui/src/components/context-menu.tsx:ContextMenuCheckboxItem.children",
 					"apps/web/src/components/kanban-board/task-card-context-menu/task-context-menu-presentation.tsx:TaskContextMenuPresentation",
 					"ContextMenuSubContent->packages/ui/src/components/context-menu.tsx:ContextMenuSubContent"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-warning-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-warning-foreground",
-		"backgroundClass": {
-			"dark": "hover:bg-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-warning-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-warning-foreground/80",
-		"backgroundClass": {
-			"dark": "hover:bg-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-warning-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-warning-foreground",
-		"backgroundClass": {
-			"light": "hover:bg-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			}
-		],
-		"backdropLayers": ["bg-popover"]
-	},
-	{
-		"fg": "--color-warning-foreground",
-		"bg": "--color-accent",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/priority.tsx",
-		"backdrop": "--color-popover",
-		"foregroundClass": "text-warning-foreground/80",
-		"backgroundClass": {
-			"light": "hover:bg-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/CreateTaskBody[0]/CreateTaskPropertyRow[0]/Popover[1]/PopoverContent[0]/div[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
 				"surfaceContext": "caller-chain",
@@ -112979,17 +111678,6 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-inline-fields.tsx:WorkItemInlineFields",
 					"jsx:Popover[0]/PopoverContent[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
@@ -113050,17 +111738,6 @@
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalRaisePriority",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
 				"surfaceContext": "caller-chain",
@@ -113195,17 +111872,6 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronsUp[0]::text-warning-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-inline-fields.tsx:WorkItemInlineFields",
 					"jsx:Popover[0]/PopoverContent[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
@@ -113266,17 +111932,6 @@
 					"apps/web/src/components/portal/portal-request-actions.tsx:PortalRaisePriority",
 					"jsx:Popover[0]/PopoverContent[0]/div[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children"
-				],
-				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/priority.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/create-task-modal.tsx:CreateTaskModal",
-					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/lib/priority.tsx::getPriorityIcon::ChevronUp[0]::text-warning-foreground/80#0",
 				"surfaceContext": "caller-chain",
