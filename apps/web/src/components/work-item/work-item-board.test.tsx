@@ -953,7 +953,7 @@ describe("DnD lifecycle, keyboard and concurrency", () => {
       within(screen.getByTestId("work-item-board")).getByRole("status"),
     ).toHaveTextContent("WLP-1 moved to position 2 of 3 in Open.");
     expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ["work-items", "proj_1", "board"],
+      queryKey: ["work-items", "proj_1"],
     });
   });
   it("never starts a write without capabilities or when cancelled/outside/same-item", async () => {

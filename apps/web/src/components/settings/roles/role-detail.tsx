@@ -20,7 +20,9 @@ import {
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import type { WorkspaceRoleDetail } from "@/fetchers/workspace-roles";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
@@ -161,6 +163,7 @@ export function RoleDetailView({
   const queryClient = useQueryClient();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const role = useRole(workspace?.id ?? "", roleId);
+  if (isForbiddenError(role.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={role.data?.name ?? t("roles:detail.pageTitle")} />

@@ -49,6 +49,19 @@ export function WindowFields({
   const left = (window.from / 1440) * 100;
   const width = Math.max(((window.to - window.from) / 1440) * 100, 0.2);
 
+  if (disabled)
+    return (
+      <div className="rounded-lg border border-border p-3">
+        <p>{timeLabel}</p>
+        <p>
+          {t("window.starts")}: {formatClockTime(window.from)}
+        </p>
+        <p>
+          {t("window.ends")}: {formatClockTime(window.to)}
+        </p>
+      </div>
+    );
+
   return (
     <div className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
       <div className="space-y-1.5 sm:col-span-3">

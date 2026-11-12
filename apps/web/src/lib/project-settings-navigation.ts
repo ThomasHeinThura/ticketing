@@ -14,7 +14,13 @@ type Translator = (key: string) => string;
 
 export function getProjectSettingsMenuItems(
   t: Translator,
-  access: { canManageProjectSettings: boolean; canReadBudgets?: boolean },
+  access: {
+    canManageProjectSettings: boolean;
+    canManageFeatures?: boolean;
+    canReadBudgets?: boolean;
+    canLogTime?: boolean;
+    canReadEstimates?: boolean;
+  },
 ): Array<{
   title: string;
   icon: LucideIcon;
@@ -50,28 +56,28 @@ export function getProjectSettingsMenuItems(
       segment: "workflow",
     },
   ];
-  // Features and Automations need project:manage_settings (the server refuses them otherwise), so
-  // the entries are not offered without it.
+  // Features uses the selected project's own settings grant. Keep the existing Automations
+  // navigation pending the separately tracked project-scoped automation capability.
+  if (access.canManageFeatures ?? access.canManageProjectSettings)
+    items.push({
+      title: t("settings:projectFeatures.title"),
+      icon: ToggleRight,
+      segment: "features",
+    });
   if (access.canManageProjectSettings)
-    items.push(
-      {
-        title: t("settings:projectFeatures.title"),
-        icon: ToggleRight,
-        segment: "features",
-      },
-      {
-        title: t("automations:project.navTitle"),
-        icon: Zap,
-        segment: "automations",
-      },
-      {
-        title: t("agile:estimates.navTitle"),
-        icon: Ruler,
-        segment: "estimates",
-      },
-    );
-  // Budget needs budget:read (members hold it, project settings rights are not required).
-  if (access.canReadBudgets)
+    items.push({
+      title: t("automations:project.navTitle"),
+      icon: Zap,
+      segment: "automations",
+    });
+  if (access.canReadEstimates || access.canManageProjectSettings)
+    items.push({
+      title: t("agile:estimates.navTitle"),
+      icon: Ruler,
+      segment: "estimates",
+    });
+  // The page also serves billable settings, which require workspace time_entry:create.
+  if (access.canReadBudgets || access.canLogTime)
     items.push({
       title: t("timeTracking:budget.navTitle"),
       icon: PiggyBank,

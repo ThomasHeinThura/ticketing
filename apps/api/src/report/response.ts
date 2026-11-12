@@ -143,7 +143,7 @@ export const reportEnvelopeSchema = z.object({
     .optional()
     .openapi({
       description:
-        "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's.",
+        "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's project reach. Never the internal organisation, never another workspace's.",
     }),
 });
 

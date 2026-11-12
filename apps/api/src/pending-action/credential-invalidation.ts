@@ -7,8 +7,9 @@ import type {
   Where,
 } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { and, eq, inArray, ne, type SQL } from "drizzle-orm";
+import { and, eq, inArray, like, ne, type SQL } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
+import { RESET_IDENTIFIER_PREFIX } from "../auth/password-reset";
 import { lockFirstUserPromotion } from "../auth/repository";
 import db, { schema as importedSchema } from "../database";
 import {
@@ -17,6 +18,7 @@ import {
   personTable,
   sessionTable,
   userTable,
+  verificationTable,
 } from "../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
@@ -583,6 +585,9 @@ function currentTransaction(): PendingActionTransaction {
 }
 
 type AdapterWhere = Where[];
+type AdapterUpdateManyInput = Parameters<
+  DBAdapter<BetterAuthOptions>["updateMany"]
+>[0];
 type AdapterUpdateInput = Parameters<DBAdapter<BetterAuthOptions>["update"]>[0];
 
 function exactSelector(where: AdapterWhere | undefined, allowedField: string) {
@@ -929,7 +934,102 @@ function withCredentialRevocationWrites<
 >(target: A, base: DBAdapter<BetterAuthOptions>): A {
   return {
     ...target,
+    create: async <T extends Record<string, unknown>, R = T>(input: {
+      model: string;
+      data: Omit<T, "id">;
+      select?: string[];
+      forceAllowId?: boolean;
+    }): Promise<R> => {
+      const data = input.data as Record<string, unknown>;
+      if (
+        input.model !== "verification" ||
+        typeof data.identifier !== "string" ||
+        !data.identifier.startsWith(RESET_IDENTIFIER_PREFIX) ||
+        typeof data.value !== "string"
+      )
+        return target.create<T, R>(input);
+      const userId = data.value;
+      return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+        await tx
+          .select({ id: userTable.id })
+          .from(userTable)
+          .where(eq(userTable.id, userId))
+          .for("update");
+        await tx
+          .delete(verificationTable)
+          .where(
+            and(
+              eq(verificationTable.value, userId),
+              like(verificationTable.identifier, `${RESET_IDENTIFIER_PREFIX}%`),
+            ),
+          );
+        return { result: await txAdapter.create<T, R>(input) };
+      });
+    },
+    updateMany: async (input: AdapterUpdateManyInput) => {
+      if (input.model !== "account" || input.update.password === undefined)
+        return target.updateMany(input);
+      const userId = input.where?.find(
+        (w) =>
+          w.field === "userId" && typeof w.value === "string" && !w.operator,
+      )?.value;
+      if (typeof userId !== "string")
+        throw new Error("Password update requires exact user selector");
+      return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+        await tx
+          .select({ id: userTable.id })
+          .from(userTable)
+          .where(eq(userTable.id, userId))
+          .for("update");
+        const result = await txAdapter.updateMany(input);
+        if (result > 0)
+          await tx
+            .delete(verificationTable)
+            .where(
+              and(
+                eq(verificationTable.value, userId),
+                like(
+                  verificationTable.identifier,
+                  `${RESET_IDENTIFIER_PREFIX}%`,
+                ),
+              ),
+            );
+        return { result };
+      });
+    },
     update: async <T>(input: AdapterUpdateInput) => {
+      if (input.model === "account" && input.update.password !== undefined) {
+        const selector = exactSelector(input.where, "id");
+        if (!selector || typeof selector.value !== "string")
+          throw new Error("Password update requires exact account selector");
+        return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+          const [account] = await tx
+            .select({ userId: importedSchema.accountTable.userId })
+            .from(importedSchema.accountTable)
+            .where(eq(importedSchema.accountTable.id, selector.value as string))
+            .limit(1);
+          if (account)
+            await tx
+              .select({ id: userTable.id })
+              .from(userTable)
+              .where(eq(userTable.id, account.userId))
+              .for("update");
+          const result = await txAdapter.update<T>(input);
+          if (account && result)
+            await tx
+              .delete(verificationTable)
+              .where(
+                and(
+                  eq(verificationTable.value, account.userId),
+                  like(
+                    verificationTable.identifier,
+                    `${RESET_IDENTIFIER_PREFIX}%`,
+                  ),
+                ),
+              );
+          return { result };
+        });
+      }
       if (input.model !== "apikey") {
         return target.update<T>(input);
       }

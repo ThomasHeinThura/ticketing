@@ -171,6 +171,36 @@ describe("project layout navigation", () => {
       "AND(state:started,priority:in(high))",
     );
   });
+  it("opens the Calendar on its canonical /agent route when the project key is known", () => {
+    const url = new URL(
+      buildProjectViewSwitchUrl(
+        "calendar",
+        canonical,
+        "?taskId=HELP-3&month=2026-10&q=urgent",
+      ),
+      "https://test.invalid",
+    );
+    expect(url.pathname).toBe("/agent/projects/HELP/calendar");
+    expect(url.searchParams.get("taskId")).toBe("HELP-3");
+    expect(url.searchParams.get("month")).toBe("2026-10");
+    expect(url.searchParams.get("q")).toBe("urgent");
+    expect(buildProjectViewSwitchUrl("calendar", canonical, "")).toBe(
+      "/agent/projects/HELP/calendar",
+    );
+  });
+
+  it("keeps Kaneo's calendar URL while the project key is unknown", () => {
+    expect(
+      buildProjectViewSwitchUrl(
+        "calendar",
+        { workspaceId: "workspace-1", projectId: "project-1" },
+        "?month=2026-10",
+      ),
+    ).toBe(
+      "/dashboard/workspace/workspace-1/project/project-1/calendar?month=2026-10",
+    );
+  });
+
   const params = { workspaceId: "workspace-1", projectId: "project-1" };
 
   it.each([

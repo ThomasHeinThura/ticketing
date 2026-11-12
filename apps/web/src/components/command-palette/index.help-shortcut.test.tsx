@@ -45,6 +45,9 @@ vi.mock("@/hooks/queries/config/use-get-config", () => ({
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: undefined }),
 }));
+vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
+  default: () => ({ data: undefined }),
+}));
 
 vi.mock("@/store/user-preferences", () => ({
   useUserPreferencesStore: () => ({ setTheme: vi.fn() }),
@@ -57,6 +60,7 @@ vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canCreateTasks: () => false,
+    canCreateProjects: () => false,
     isCheckingPermissions: false,
   }),
 }));

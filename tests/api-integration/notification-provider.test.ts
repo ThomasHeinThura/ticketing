@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import net, { type Socket } from "node:net";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,6 +34,17 @@ const config = {
   replyTo: null,
 };
 const route = "/api/instance/notification-providers/email";
+const recipient = "admin@example.test";
+const bcrypt = createRequire(
+  new URL("../../apps/api/package.json", import.meta.url),
+)("bcryptjs") as { hash(value: string, rounds: number): Promise<string> };
+const PASSWORD = "synthetic-email-provider-proof-password";
+/** Service-level tests exercise the write itself; the HTTP tests below prove the proof. */
+const noProof = async () => undefined;
+const saveProvider = (
+  input: Parameters<typeof updateEmailProvider>[0],
+  actor: Parameters<typeof updateEmailProvider>[1],
+) => updateEmailProvider(input, actor, noProof);
 async function administrator() {
   const owner = await createWorkspaceMember({ role: "admin" });
   const user = requireRow(
@@ -59,6 +71,13 @@ async function administrator() {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+  await db.insert(schema.accountTable).values({
+    id: `account-${user.id}`,
+    accountId: user.id,
+    providerId: "credential",
+    userId: user.id,
+    password: await bcrypt.hash(PASSWORD, 4),
+  });
   mockAuthenticatedSession(user);
   const { app } = createApp();
   return {
@@ -69,17 +88,83 @@ async function administrator() {
     cookie: `__Host-tdk_agent_session=token-${user.id}`,
   };
 }
+type Administrator = Awaited<ReturnType<typeof administrator>>;
+function serializeAuditRows(rows: unknown) {
+  return JSON.stringify(rows, (_key, value) =>
+    typeof value === "bigint" ? value.toString() : value,
+  );
+}
+/** One single-use proof bound to exactly this body; undefined when the body cannot be bound. */
+async function proofFor(f: Administrator, body: unknown) {
+  const binding = {
+    kind: "operation",
+    operation: "notification_provider_save",
+    request: body,
+  };
+  const challenge = await csrfRequest(
+    f.app,
+    "/api/me/step-up/challenges",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: f.cookie },
+      body: JSON.stringify(binding),
+    },
+    f.cookie,
+  );
+  if (challenge.status !== 200) return undefined;
+  const issued = (await challenge.json()) as {
+    challengeId: string;
+    nonce: string;
+  };
+  const response = await csrfRequest(
+    f.app,
+    "/api/me/step-up",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: f.cookie },
+      body: JSON.stringify({
+        ...binding,
+        challengeId: issued.challengeId,
+        nonce: issued.nonce,
+        method: "password",
+        password: PASSWORD,
+      }),
+    },
+    f.cookie,
+  );
+  if (response.status !== 200) return undefined;
+  return ((await response.json()) as { token: string }).token;
+}
+/** Saves with a fresh proof for the body, unless a token (or none) is passed explicitly. */
 async function patch(
-  f: Awaited<ReturnType<typeof administrator>>,
+  f: Administrator,
   body: unknown,
+  token: string | null | undefined = undefined,
 ) {
+  const proof = token === undefined ? await proofFor(f, body) : token;
   return csrfRequest(
     f.app,
     route,
     {
       method: "PATCH",
-      headers: { "content-type": "application/json", cookie: f.cookie },
+      headers: {
+        "content-type": "application/json",
+        cookie: f.cookie,
+        ...(proof ? { "x-taskdesk-step-up-token": proof } : {}),
+      },
       body: JSON.stringify(body),
+    },
+    f.cookie,
+  );
+}
+function testRequest(f: Administrator, body: Record<string, unknown>) {
+  return csrfRequest(
+    f.app,
+    `${route}/test`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: f.cookie },
+      body: JSON.stringify({ recipient, ...body }),
     },
     f.cookie,
   );
@@ -121,6 +206,45 @@ async function startPrivateSmtpEndpoint(
   };
 }
 
+/** A plain-text SMTP receiver that accepts and records every message it is given. */
+async function startMailReceiver() {
+  const messages: { recipients: string[]; data: string }[] = [];
+  const endpoint = await startPrivateSmtpEndpoint((socket) => {
+    let buffer = "";
+    let recipients: string[] = [];
+    let data: string | null = null;
+    socket.write("220 receiver.test ESMTP\r\n");
+    socket.on("data", (chunk) => {
+      buffer += chunk.toString();
+      let end = buffer.indexOf("\r\n");
+      while (end >= 0) {
+        const line = buffer.slice(0, end);
+        buffer = buffer.slice(end + 2);
+        if (data !== null) {
+          if (line === ".") {
+            messages.push({ recipients, data });
+            data = null;
+            recipients = [];
+            socket.write("250 queued\r\n");
+          } else data += `${line}\r\n`;
+        } else if (/^EHLO|^HELO/u.test(line))
+          socket.write("250-receiver.test\r\n250 8BITMIME\r\n");
+        else if (/^MAIL FROM/u.test(line)) socket.write("250 OK\r\n");
+        else if (/^RCPT TO/u.test(line)) {
+          recipients.push(/<([^>]*)>/u.exec(line)?.[1] ?? "");
+          socket.write("250 OK\r\n");
+        } else if (line === "DATA") {
+          data = "";
+          socket.write("354 go ahead\r\n");
+        } else if (line === "QUIT") socket.end("221 bye\r\n");
+        else if (line === "RSET") socket.write("250 OK\r\n");
+        end = buffer.indexOf("\r\n");
+      }
+    });
+  });
+  return { port: endpoint.port, messages, close: endpoint.close };
+}
+
 function useInjectedConnector(connect: SmtpConnector) {
   const original = providerRuntime.runtimeSmtpConfiguration;
   vi.spyOn(providerRuntime, "runtimeSmtpConfiguration").mockImplementation(
@@ -129,26 +253,17 @@ function useInjectedConnector(connect: SmtpConnector) {
 }
 
 async function verifyWithInjectedConnector(
-  f: Awaited<ReturnType<typeof administrator>>,
+  f: Administrator,
   configInput: Omit<typeof config, "username"> & { username: string | null },
   password: string | undefined,
   connect: SmtpConnector,
 ) {
   useInjectedConnector(connect);
-  return csrfRequest(
-    f.app,
-    `${route}/test`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: f.cookie },
-      body: JSON.stringify({
-        version: 0,
-        config: configInput,
-        ...(password === undefined ? {} : { password }),
-      }),
-    },
-    f.cookie,
-  );
+  return testRequest(f, {
+    version: 0,
+    config: configInput,
+    ...(password === undefined ? {} : { password }),
+  });
 }
 
 beforeEach(async () => {
@@ -219,13 +334,13 @@ describe("persisted SMTP provider backend", () => {
   });
   it("CAS permits exactly one concurrent update and does not leak or overwrite the winning secret", async () => {
     const f = await administrator();
-    await updateEmailProvider({ version: 0, enabled: false, config }, f.actor);
+    await saveProvider({ version: 0, enabled: false, config }, f.actor);
     const attempts = await Promise.allSettled([
-      updateEmailProvider(
+      saveProvider(
         { version: 1, enabled: true, password: "synthetic-choice-one" },
         f.actor,
       ),
-      updateEmailProvider(
+      saveProvider(
         { version: 1, enabled: true, password: "synthetic-choice-two" },
         f.actor,
       ),
@@ -244,7 +359,7 @@ describe("persisted SMTP provider backend", () => {
   it("previous-key reads work, wrong-row swapping fails, explicit replacement encrypts using current key", async () => {
     const f = await administrator();
     vi.stubEnv("TASKDESK_ENCRYPTION_KEY", "a".repeat(64));
-    await updateEmailProvider(
+    await saveProvider(
       { version: 0, enabled: true, config, password: "synthetic-old-secret" },
       f.actor,
     );
@@ -254,7 +369,7 @@ describe("persisted SMTP provider backend", () => {
     expect(
       (await providerRuntime.resolveRuntimeSmtp())?.options.auth,
     ).toMatchObject({ pass: "synthetic-old-secret" });
-    await updateEmailProvider(
+    await saveProvider(
       { version: 1, enabled: true, password: "synthetic-new-secret" },
       f.actor,
     );
@@ -273,11 +388,11 @@ describe("persisted SMTP provider backend", () => {
     vi.stubEnv("SMTP_FROM", "sender@example.test");
     expect(bootstrapSmtpConfiguration()).not.toBeNull();
     expect((await getEmailProvider()).source).toBe("bootstrap");
-    await updateEmailProvider({ version: 0, enabled: false }, f.actor);
+    await saveProvider({ version: 0, enabled: false }, f.actor);
     expect(await resolveSmtpConfiguration()).toBeNull();
     expect(await providerRuntime.resolveRuntimeSmtp()).toBeNull();
     // A wrong encryption key is a configuration-read failure, never a fallback to env.
-    await updateEmailProvider(
+    await saveProvider(
       { version: 1, enabled: true, config, password: "synthetic-password" },
       f.actor,
     );
@@ -296,7 +411,7 @@ describe("persisted SMTP provider backend", () => {
         state === "runtime" ? "" : "bootstrap.example.test",
       );
       vi.stubEnv("SMTP_FROM", state === "runtime" ? "" : "sender@example.test");
-      await updateEmailProvider(
+      await saveProvider(
         state === "disabled"
           ? { version: 0, enabled: false }
           : {
@@ -367,7 +482,7 @@ describe("persisted SMTP provider backend", () => {
         .where(eq(schema.instancePluginConfigTable.pluginId, "notify.email")),
     ).toHaveLength(0);
   });
-  it("refuses API-key mutations and customer-host access", async () => {
+  it("refuses API keys and customer-host access", async () => {
     const f = await administrator();
     const rawKey = `taskdesk_test_${randomUUID()}`;
     await db.insert(schema.apikeyTable).values({
@@ -381,6 +496,9 @@ describe("persisted SMTP provider backend", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    expect(
+      (await f.app.request(route, { headers: { "x-api-key": rawKey } })).status,
+    ).toBe(403);
     for (const [url, method] of [
       [route, "PATCH"],
       [`${route}/test`, "POST"],
@@ -397,22 +515,20 @@ describe("persisted SMTP provider backend", () => {
     });
     expect(portal.status).toBeGreaterThanOrEqual(400);
   });
-  it("blocks private runtime destinations and audits failed verification without saving unsaved inputs", async () => {
+  it("blocks private runtime destinations, reports a failed result and audits the attempt without saving unsaved inputs", async () => {
     const f = await administrator();
-    const response = await csrfRequest(
-      f.app,
-      `${route}/test`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json", cookie: f.cookie },
-        body: JSON.stringify({
-          version: 0,
-          config: { ...config, host: "127.0.0.1", username: null },
-        }),
-      },
-      f.cookie,
-    );
-    expect(response.status).toBe(502);
+    const response = await testRequest(f, {
+      version: 0,
+      config: { ...config, host: "127.0.0.1", username: null },
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      category: "failed",
+      smtpCode: null,
+      providerText: null,
+      persisted: false,
+    });
     expect(
       await db
         .select()
@@ -424,16 +540,17 @@ describe("persisted SMTP provider backend", () => {
       .from(schema.auditLogTable)
       .where(eq(schema.auditLogTable.action, "plugin.tested"));
     expect(audit).toHaveLength(1);
-    expect(
-      JSON.stringify(
-        audit.map((row) => ({ before: row.before, after: row.after })),
-      ),
-    ).not.toContain("pass:");
+    const serialised = JSON.stringify(
+      audit.map((row) => ({ before: row.before, after: row.after })),
+    );
+    expect(serialised).not.toContain("pass:");
+    expect(serialised).not.toContain(recipient);
+    expect(audit[0]?.after).toMatchObject({ recipientDomain: "example.test" });
   });
-  it("distinguishes a real SMTP 535 and redacts both provider reply and password", async () => {
+  it("reports a real SMTP 535 without returning authenticated provider text", async () => {
     const f = await administrator();
     const password = `synthetic-secret-${randomUUID()}`;
-    const providerReply = `535 5.7.8 invalid credentials ${password}`;
+    const providerReply = `535 5.7.8 invalid credentials for ${config.username} ${password} sent to ops@example.test via mail.provider.example`;
     const endpoint = await startPrivateSmtpEndpoint((socket) => {
       socket.write("220 synthetic.test ESMTP\r\n");
       let buffer = "";
@@ -458,19 +575,43 @@ describe("persisted SMTP provider backend", () => {
         password,
         (signal) =>
           openSmtpSocket(
-            {
-              host: "127.0.0.1",
-              port: endpoint.port,
-              secure: false,
-            },
+            { host: "127.0.0.1", port: endpoint.port, secure: false },
             signal,
           ),
       );
-      const body = await response.text();
-      expect(response.status).toBe(502);
-      expect(body).toContain("smtp_authentication_failed");
-      expect(body).not.toContain("535");
-      expect(body).not.toContain(password);
+      const text = await response.text();
+      expect(response.status).toBe(200);
+      const body = JSON.parse(text) as Record<string, unknown>;
+      expect(body).toMatchObject({
+        ok: false,
+        category: "authentication",
+        smtpCode: 535,
+        providerText: null,
+        persisted: false,
+      });
+      for (const leaked of [
+        password,
+        config.username,
+        Buffer.from(`\0${config.username}\0${password}`).toString("base64"),
+        "AUTH PLAIN",
+        "ops@example.test",
+        "mail.provider.example",
+        "synthetic.test",
+      ])
+        expect(text).not.toContain(leaked);
+      const audit = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "plugin.tested"));
+      expect(audit).toHaveLength(1);
+      const recorded = serializeAuditRows(audit);
+      for (const leaked of [
+        password,
+        config.username,
+        Buffer.from(`\0${config.username}\0${password}`).toString("base64"),
+        "AUTH PLAIN",
+      ])
+        expect(recorded).not.toContain(leaked);
       expect(
         await db
           .select()
@@ -480,6 +621,130 @@ describe("persisted SMTP provider backend", () => {
     } finally {
       await endpoint.close();
     }
+  });
+  it("binds saved credentials to the saved SMTP destination and accepts a freshly typed password", async () => {
+    const f = await administrator();
+    const saved = { ...config, requireTLS: false };
+    const savedPassword = "synthetic-stored-password";
+    await saveProvider(
+      { version: 0, enabled: true, config: saved, password: savedPassword },
+      f.actor,
+    );
+    const execute = vi
+      .spyOn(emailRuntime, "executeSmtp")
+      .mockResolvedValue(undefined);
+    const factory = vi.spyOn(providerRuntime, "runtimeSmtpConfiguration");
+    const ses = {
+      ...saved,
+      provider: "ses",
+      region: "eu-west-1",
+      host: "email-smtp.eu-west-1.amazonaws.com",
+      requireTLS: true,
+    };
+    for (const changed of [
+      { ...saved, host: "other.example.test" },
+      { ...saved, port: 2525 },
+      { ...saved, secure: true },
+      { ...saved, requireTLS: true },
+      { ...saved, username: "other-user" },
+      ses,
+    ]) {
+      const response = await testRequest(f, { version: 1, config: changed });
+      expect(response.status).toBe(400);
+      const body = await response.text();
+      expect(body).toContain(
+        "smtp_test_password_required_for_changed_destination",
+      );
+      expect(body).not.toContain(savedPassword);
+    }
+    const cleared = await testRequest(f, {
+      version: 1,
+      config: { ...saved, host: "other.example.test", username: null },
+      password: null,
+    });
+    expect(cleared.status).toBe(400);
+    expect(await cleared.text()).toContain(
+      "smtp_test_password_required_for_changed_destination",
+    );
+    expect(factory).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "plugin.tested")),
+    ).toHaveLength(0);
+
+    const same = await testRequest(f, { version: 1, config: saved });
+    expect(same.status).toBe(200);
+    expect(await same.json()).toMatchObject({ ok: true, persisted: true });
+    expect(execute.mock.calls[0]?.[0].options.auth).toMatchObject({
+      user: saved.username,
+      pass: savedPassword,
+    });
+
+    const replacement = "synthetic-new-password";
+    const changed = await testRequest(f, {
+      version: 1,
+      config: { ...saved, host: "other.example.test" },
+      password: replacement,
+    });
+    expect(changed.status).toBe(200);
+    expect(await changed.json()).toMatchObject({ ok: true, persisted: false });
+    expect(execute.mock.calls[1]?.[0].options.auth).toMatchObject({
+      user: saved.username,
+      pass: replacement,
+    });
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "plugin.tested"));
+    expect(audit).toHaveLength(2);
+    const recorded = serializeAuditRows(audit);
+    expect(recorded).not.toContain(savedPassword);
+    expect(recorded).not.toContain(replacement);
+  });
+  it("refuses to reuse an SES password for another region", async () => {
+    const f = await administrator();
+    const ses = {
+      ...config,
+      provider: "ses" as const,
+      region: "eu-west-1" as const,
+      host: "email-smtp.eu-west-1.amazonaws.com",
+    };
+    await saveProvider(
+      {
+        version: 0,
+        enabled: true,
+        config: ses,
+        password: "synthetic-ses-secret",
+      },
+      f.actor,
+    );
+    const execute = vi
+      .spyOn(emailRuntime, "executeSmtp")
+      .mockResolvedValue(undefined);
+    const factory = vi.spyOn(providerRuntime, "runtimeSmtpConfiguration");
+    const response = await testRequest(f, {
+      version: 1,
+      config: {
+        ...ses,
+        region: "us-east-1",
+        host: "email-smtp.us-east-1.amazonaws.com",
+      },
+    });
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain(
+      "smtp_test_password_required_for_changed_destination",
+    );
+    expect(factory).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "plugin.tested")),
+    ).toHaveLength(0);
   });
   it("reports a real connection refusal as a connection failure", async () => {
     const f = await administrator();
@@ -498,18 +763,18 @@ describe("persisted SMTP provider backend", () => {
       undefined,
       (signal) =>
         openSmtpSocket(
-          {
-            host: "127.0.0.1",
-            port: address.port,
-            secure: false,
-          },
+          { host: "127.0.0.1", port: address.port, secure: false },
           signal,
         ),
     );
-    const body = await response.text();
-    expect(response.status).toBe(502);
-    expect(body).toContain("smtp_connection_failed");
-    expect(body).not.toContain("ECONNREFUSED");
+    const text = await response.text();
+    expect(response.status).toBe(200);
+    expect(JSON.parse(text)).toMatchObject({
+      ok: false,
+      category: "connection",
+      smtpCode: null,
+    });
+    expect(text).not.toContain("ECONNREFUSED");
   });
   it("reports a real TLS handshake failure with its bounded category", async () => {
     const f = await administrator();
@@ -532,16 +797,16 @@ describe("persisted SMTP provider backend", () => {
             signal,
           ),
       );
-      const body = await response.text();
-      expect(response.status).toBe(502);
-      expect(body).toContain("smtp_tls_failed");
-      expect(body).not.toContain("plaintext is not TLS");
-      expect(body).not.toContain("ERR_SSL_");
+      const text = await response.text();
+      expect(response.status).toBe(200);
+      expect(JSON.parse(text)).toMatchObject({ ok: false, category: "tls" });
+      expect(text).not.toContain("plaintext is not TLS");
+      expect(text).not.toContain("ERR_SSL_");
     } finally {
       await endpoint.close();
     }
   });
-  it("maps unknown connector errors to the generic redacted verification failure", async () => {
+  it("maps unknown connector errors to the generic failure without provider text", async () => {
     const f = await administrator();
     const providerReply = "raw provider response synthetic-secret";
     const response = await verifyWithInjectedConnector(
@@ -552,12 +817,16 @@ describe("persisted SMTP provider backend", () => {
         throw new Error(providerReply);
       },
     );
-    const body = await response.text();
-    expect(response.status).toBe(502);
-    expect(body).toContain("smtp_verification_failed");
-    expect(body).not.toContain(providerReply);
+    const text = await response.text();
+    expect(response.status).toBe(200);
+    expect(JSON.parse(text)).toMatchObject({
+      ok: false,
+      category: "failed",
+      providerText: null,
+    });
+    expect(text).not.toContain(providerReply);
   });
-  it("maps the SMTP attempt deadline to the bounded timeout code", async () => {
+  it("maps the SMTP attempt deadline to the bounded timeout category", async () => {
     const f = await administrator();
     vi.spyOn(emailRuntime, "executeSmtp").mockRejectedValue(
       new emailRuntime.SmtpAttemptError("deadline"),
@@ -570,89 +839,267 @@ describe("persisted SMTP provider backend", () => {
         throw new Error("unused connector");
       },
     );
-    expect(response.status).toBe(502);
-    expect(await response.text()).toContain("smtp_timeout");
-  });
-  it("verifies through an injected private SMTP receiver with no message and enforces persisted rate limits", async () => {
-    const f = await administrator();
-    const sockets = new Set<Socket>();
-    let mailCommands = 0;
-    const server = net.createServer((socket) => {
-      sockets.add(socket);
-      socket.on("close", () => sockets.delete(socket));
-      socket.on("error", () => {});
-      socket.write("220 synthetic.test ESMTP\r\n");
-      socket.on("data", (chunk) => {
-        for (const line of chunk.toString().split("\r\n")) {
-          if (/^EHLO|^HELO/u.test(line)) socket.write("250 synthetic.test\r\n");
-          else if (line === "QUIT") socket.end("221 bye\r\n");
-          else if (/^MAIL FROM/u.test(line)) {
-            mailCommands++;
-            socket.write("250 OK\r\n");
-          }
-        }
-      });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      category: "timeout",
     });
-    await new Promise<void>((resolve) =>
-      server.listen(0, "127.0.0.1", resolve),
-    );
-    const address = server.address();
-    if (!address || typeof address === "string")
-      throw new Error("receiver address missing");
-    const original = providerRuntime.runtimeSmtpConfiguration;
-    vi.spyOn(providerRuntime, "runtimeSmtpConfiguration").mockImplementation(
-      (settings, password) => ({
-        ...original(settings, password),
-        connect: (signal) =>
-          openSmtpSocket(
-            { host: "127.0.0.1", port: address.port, secure: false },
-            signal,
-          ),
-      }),
+  });
+  it("sends a real message to the typed recipient through a private receiver and enforces persisted rate limits", async () => {
+    const f = await administrator();
+    const receiver = await startMailReceiver();
+    useInjectedConnector((signal) =>
+      openSmtpSocket(
+        { host: "127.0.0.1", port: receiver.port, secure: false },
+        signal,
+      ),
     );
     try {
       for (let index = 0; index < 5; index++) {
-        const response = await csrfRequest(
-          f.app,
-          `${route}/test`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json", cookie: f.cookie },
-            body: JSON.stringify({
-              version: 0,
-              config: { ...config, requireTLS: false, username: null },
-            }),
-          },
-          f.cookie,
-        );
+        const response = await testRequest(f, {
+          version: 0,
+          config: { ...config, requireTLS: false, username: null },
+        });
         expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({ verified: true });
+        expect(await response.json()).toMatchObject({
+          ok: true,
+          recipientDomain: "example.test",
+          persisted: false,
+        });
       }
-      const limited = await csrfRequest(
-        f.app,
-        `${route}/test`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json", cookie: f.cookie },
-          body: JSON.stringify({
-            version: 0,
-            config: { ...config, requireTLS: false, username: null },
-          }),
-        },
-        f.cookie,
-      );
+      const limited = await testRequest(f, {
+        version: 0,
+        config: { ...config, requireTLS: false, username: null },
+      });
       expect(limited.status).toBe(429);
-      expect(mailCommands).toBe(0);
+      // Five real messages were delivered; the refused sixth never reached the receiver.
+      expect(receiver.messages).toHaveLength(5);
+      expect(receiver.messages[0]).toMatchObject({
+        recipients: [recipient],
+      });
+      expect(receiver.messages[0]?.data).toContain(
+        "Subject: TaskDesk test email",
+      );
+      const audit = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "plugin.tested"));
+      expect(audit).toHaveLength(5);
+      expect(JSON.stringify(audit.map((row) => row.after))).not.toContain(
+        recipient,
+      );
+    } finally {
+      await receiver.close();
+    }
+  });
+  it("stores the test result against the saved settings, shows it, and resets it when the settings change", async () => {
+    const f = await administrator();
+    const receiver = await startMailReceiver();
+    useInjectedConnector((signal) =>
+      openSmtpSocket(
+        { host: "127.0.0.1", port: receiver.port, secure: false },
+        signal,
+      ),
+    );
+    const plain = { ...config, requireTLS: false, username: null };
+    try {
       expect(
+        (await patch(f, { version: 0, enabled: true, config: plain })).status,
+      ).toBe(200);
+      expect((await getEmailProvider()).testStatus.state).toBe("stale");
+
+      // Unsaved values that differ from the saved ones are shown, never stored.
+      const unsaved = await testRequest(f, {
+        version: 1,
+        config: { ...plain, fromAddress: "other@example.test" },
+      });
+      expect(await unsaved.json()).toMatchObject({
+        ok: true,
+        persisted: false,
+      });
+      expect((await getEmailProvider()).testStatus.state).toBe("stale");
+
+      const saved = await testRequest(f, { version: 1 });
+      expect(await saved.json()).toMatchObject({ ok: true, persisted: true });
+      const status = (await getEmailProvider()).testStatus;
+      expect(status).toMatchObject({ state: "verified", smtpCode: null });
+      expect(status.testedAt).not.toBeNull();
+      // Recording a result neither bumps the version nor disturbs the open form.
+      expect(await getEmailProvider()).toMatchObject({ version: 1 });
+      expect(
+        await (
+          await f.app.request(route, { headers: { cookie: f.cookie } })
+        ).json(),
+      ).toMatchObject({ testStatus: { state: "verified" } });
+
+      // Delivery on/off and changing the settings each reset the result.
+      expect((await patch(f, { version: 1, enabled: false })).status).toBe(200);
+      expect((await getEmailProvider()).testStatus.state).toBe("stale");
+      expect(
+        (
+          await patch(f, {
+            version: 2,
+            enabled: true,
+            config: { ...plain, fromAddress: "other@example.test" },
+          })
+        ).status,
+      ).toBe(200);
+      expect((await getEmailProvider()).testStatus).toEqual({
+        state: "stale",
+        testedAt: null,
+        smtpCode: null,
+        category: null,
+      });
+      // The stored status never reaches the transport: mail still resolves.
+      expect((await providerRuntime.resolveRuntimeSmtp())?.from).toBe(
+        "other@example.test",
+      );
+    } finally {
+      await receiver.close();
+    }
+  });
+  it("saves Amazon SES settings only when the connection is the region's, and never takes them from the client", async () => {
+    const f = await administrator();
+    const ses = {
+      provider: "ses",
+      region: "eu-west-1",
+      host: "email-smtp.eu-west-1.amazonaws.com",
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      username: "synthetic-ses-user",
+      fromAddress: "sender@example.test",
+      replyTo: null,
+    };
+    for (const bad of [
+      { ...ses, host: "smtp.example.test" },
+      { ...ses, port: 465 },
+      { ...ses, secure: true },
+      { ...ses, requireTLS: false },
+      { ...ses, region: null },
+      { ...ses, region: "af-south-1" },
+    ])
+      expect(
+        (
+          await patch(f, {
+            version: 0,
+            enabled: true,
+            config: bad,
+            password: "synthetic-ses-secret",
+          })
+        ).status,
+      ).toBe(400);
+    expect(
+      (
+        await patch(f, {
+          version: 0,
+          enabled: true,
+          config: ses,
+          password: "synthetic-ses-secret",
+        })
+      ).status,
+    ).toBe(200);
+    expect(await getEmailProvider()).toMatchObject({
+      version: 1,
+      config: { provider: "ses", region: "eu-west-1" },
+    });
+    expect((await providerRuntime.resolveRuntimeSmtp())?.options).toMatchObject(
+      {
+        host: "email-smtp.eu-west-1.amazonaws.com",
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        auth: { user: "synthetic-ses-user", pass: "synthetic-ses-secret" },
+      },
+    );
+  });
+  it("requires the administrator's second factor to save, bound to exactly that write, and spends it once", async () => {
+    const f = await administrator();
+    const body = {
+      version: 0,
+      enabled: true,
+      config,
+      password: "synthetic-first-secret",
+    };
+    // No proof, a made-up proof, and a proof minted for a different write are all refused.
+    expect((await patch(f, body, null)).status).toBe(403);
+    expect((await patch(f, body, "x".repeat(43))).status).toBe(403);
+    const other = await proofFor(f, {
+      ...body,
+      password: "synthetic-other-secret",
+    });
+    expect(other).toBeDefined();
+    expect((await patch(f, body, other)).status).toBe(403);
+    const proofRow = async (proof: string | undefined) => {
+      if (!proof) throw new Error("Fixture proof missing");
+      return requireRow(
         await db
           .select()
-          .from(schema.auditLogTable)
-          .where(eq(schema.auditLogTable.action, "plugin.tested")),
-      ).toHaveLength(5);
-    } finally {
-      for (const socket of sockets) socket.destroy();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-    }
+          .from(schema.stepUpConfirmationTable)
+          .where(
+            eq(
+              schema.stepUpConfirmationTable.tokenHash,
+              createHash("sha256")
+                .update(Buffer.from(proof, "base64url"))
+                .digest(),
+            ),
+          ),
+        "notification provider proof",
+      );
+    };
+    expect((await proofRow(other)).state).toBe("issued");
+    const hostSwap = await proofFor(f, {
+      ...body,
+      config: { ...config, host: "evil.example.test" },
+    });
+    expect((await patch(f, body, hostSwap)).status).toBe(403);
+    expect((await proofRow(hostSwap)).state).toBe("issued");
+    expect(
+      await db
+        .select()
+        .from(schema.instancePluginConfigTable)
+        .where(eq(schema.instancePluginConfigTable.pluginId, "notify.email")),
+    ).toHaveLength(0);
+
+    const token = await proofFor(f, body);
+    expect(token).toBeDefined();
+    expect((await patch(f, body, token)).status).toBe(200);
+    // New challenges invalidate prior proofs for this operation by marking them consumed.
+    // Check this exact token and the spend audit to distinguish execution from invalidation.
+    expect((await proofRow(token)).state).toBe("consumed");
+    const spends = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_consumed"));
+    expect(spends).toHaveLength(1);
+    expect((await providerRow()).configVersion).toBe(1);
+    expect((await patch(f, { ...body, version: 1 }, token)).status).toBe(403);
+    expect((await providerRow()).configVersion).toBe(1);
+    const audit = serializeAuditRows(
+      await db.select().from(schema.auditLogTable),
+    );
+    for (const secret of [PASSWORD, body.password, config.username])
+      expect(audit).not.toContain(secret);
+  });
+  it("keeps the proof unspent when the save is refused for a stale version", async () => {
+    const f = await administrator();
+    expect((await patch(f, { version: 0, enabled: false })).status).toBe(200);
+    const token = await proofFor(f, { version: 0, enabled: true });
+    expect((await patch(f, { version: 0, enabled: true }, token)).status).toBe(
+      409,
+    );
+    // Only the first (successful) save spent a proof; the refused one left its proof issued.
+    const proofs = await db.select().from(schema.stepUpConfirmationTable);
+    expect(proofs.filter((row) => row.state === "consumed")).toHaveLength(1);
+    expect(proofs.some((row) => row.state === "issued")).toBe(true);
+  });
+  it("does not need a second factor to send a test message", async () => {
+    const f = await administrator();
+    const response = await testRequest(f, {
+      version: 0,
+      config: { ...config, host: "127.0.0.1", username: null },
+    });
+    expect(response.status).toBe(200);
   });
   it("fails verification unavailable before networking when its audit reservation cannot persist", async () => {
     const f = await administrator();
@@ -664,19 +1111,10 @@ describe("persisted SMTP provider backend", () => {
       sql`CREATE TRIGGER smtp_test_audit_probe BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION smtp_test_audit_probe()`,
     );
     try {
-      const response = await csrfRequest(
-        f.app,
-        `${route}/test`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json", cookie: f.cookie },
-          body: JSON.stringify({
-            version: 0,
-            config: { ...config, username: null },
-          }),
-        },
-        f.cookie,
-      );
+      const response = await testRequest(f, {
+        version: 0,
+        config: { ...config, username: null },
+      });
       expect(response.status).toBe(503);
       expect(factory).not.toHaveBeenCalled();
       expect(
@@ -700,7 +1138,7 @@ describe("persisted SMTP provider backend", () => {
     );
     try {
       await expect(
-        updateEmailProvider({ version: 0, enabled: false }, f.actor),
+        saveProvider({ version: 0, enabled: false }, f.actor),
       ).resolves.toMatchObject({ version: 1, enabled: false });
       expect(
         await db

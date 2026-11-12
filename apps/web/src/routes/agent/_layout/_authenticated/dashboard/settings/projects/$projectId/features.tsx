@@ -1,11 +1,15 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import { FeatureFlagsPanel } from "@/components/settings/feature-flags-panel";
 import {
+  isForbiddenError,
   SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { type FeatureLevel, getFeatures } from "@/fetchers/feature-flags";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/projects/$projectId/features",
@@ -21,6 +25,16 @@ function RouteComponent() {
     projectId,
   );
 
+  const target: FeatureLevel = { level: "project", projectId };
+  const features = useQuery({
+    queryKey: ["feature-flags", target],
+    queryFn: () => getFeatures(target),
+    enabled: access === "allowed",
+    retry: false,
+  });
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  if (isForbiddenError(features.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("settings:projectFeatures.pageTitle")} />

@@ -70,17 +70,26 @@ export function BackdateLimitSetting() {
       }}
     >
       <div className="w-56 space-y-1">
-        <Label htmlFor="backdate-limit" className="text-xs">
-          {t("timeTracking:settings.backdateLimit")}
-        </Label>
-        <Input
-          id="backdate-limit"
-          inputMode="numeric"
-          value={value}
-          aria-invalid={!valid}
-          disabled={!settings.data.canManage || save.isPending}
-          onChange={(event) => setDraft(event.target.value)}
-        />
+        {settings.data.canManage ? (
+          <>
+            <Label htmlFor="backdate-limit" className="text-xs">
+              {t("timeTracking:settings.backdateLimit")}
+            </Label>
+            <Input
+              id="backdate-limit"
+              inputMode="numeric"
+              value={value}
+              aria-invalid={!valid}
+              disabled={save.isPending}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+          </>
+        ) : (
+          <p>
+            {t("timeTracking:settings.backdateLimit")}:{" "}
+            {settings.data.backdateLimitDays}
+          </p>
+        )}
       </div>
       {settings.data.canManage ? (
         <SaveButton
@@ -125,16 +134,30 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
   if (!settings.data || !project) return null;
   return (
     <div className="flex items-center gap-3">
-      <Switch
-        id="project-default-billable"
-        checked={project.defaultBillable}
-        disabled={!settings.data.canManage || save.isPending}
-        onCheckedChange={(next) => save.mutate(next)}
-      />
+      {settings.data.canManage ? (
+        <Switch
+          id="project-default-billable"
+          checked={project.defaultBillable}
+          disabled={save.isPending}
+          onCheckedChange={(next) => save.mutate(next)}
+        />
+      ) : (
+        <span>
+          {t(
+            project.defaultBillable
+              ? "featureFlags:stateOn"
+              : "featureFlags:stateOff",
+          )}
+        </span>
+      )}
       <div className="space-y-0.5">
-        <Label htmlFor="project-default-billable">
-          {t("timeTracking:settings.defaultBillable")}
-        </Label>
+        {settings.data.canManage ? (
+          <Label htmlFor="project-default-billable">
+            {t("timeTracking:settings.defaultBillable")}
+          </Label>
+        ) : (
+          <p>{t("timeTracking:settings.defaultBillable")}</p>
+        )}
         <p className="text-muted-foreground text-xs">
           {t("timeTracking:settings.defaultBillableHelp")}
         </p>

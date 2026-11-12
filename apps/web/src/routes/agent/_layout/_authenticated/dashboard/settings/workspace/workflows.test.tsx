@@ -14,6 +14,7 @@ import { Route } from "./workflows";
 const mocks = vi.hoisted(() => ({
   search: {} as { workflowId?: string },
   navigate: vi.fn(),
+  canManage: true,
   getWorkflows: vi.fn(),
   getWorkflow: vi.fn(),
   createWorkflow: vi.fn(),
@@ -23,6 +24,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     useSearch: () => mocks.search,
@@ -82,7 +87,7 @@ vi.mock("@/hooks/queries/workspace/use-workspace-roles", () => ({
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
-    canManageWorkspaceSettings: () => true,
+    canManageWorkflows: () => mocks.canManage,
     isCheckingPermissions: false,
   }),
 }));
@@ -169,6 +174,7 @@ function renderPage() {
 
 describe("workflow settings (WF-9)", () => {
   beforeEach(() => {
+    mocks.canManage = true;
     mocks.search = { workflowId: "wf-1" };
     mocks.navigate.mockReset();
     mocks.getWorkflows.mockReset().mockResolvedValue([workflow]);
@@ -193,6 +199,38 @@ describe("workflow settings (WF-9)", () => {
     mocks.publishWorkflowVersion.mockReset().mockResolvedValue({ number: 2 });
   });
   afterEach(() => cleanup());
+
+  it.each(["viewer", "member", "lead"])(
+    "keeps the workflow readable and hides editing from a %s",
+    async () => {
+      mocks.canManage = false;
+      renderPage();
+      await screen.findByRole("heading", { level: 1, name: "Service flow" });
+      expect(
+        screen.queryByRole("button", {
+          name: "settings:workflows.transitions.add",
+        }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole("button", {
+          name: "settings:workflows.versions.validate",
+        }),
+      ).toBeNull();
+    },
+  );
+
+  it("shows no access on a forbidden workflow read", async () => {
+    mocks.getWorkflow.mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { status: 403 }),
+    );
+    renderPage();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
+    ).toHaveFocus();
+  });
 
   it("lists the work items a publish would strand, each linking to the item", async () => {
     renderPage();

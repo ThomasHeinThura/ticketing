@@ -1,5 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ServiceCalendarEditorView } from "@/components/service-calendar/service-calendar-editor-view";
+import {
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import { useServiceCalendarEditor } from "@/hooks/use-service-calendar-editor";
 import { routes } from "@/lib/routes";
 import { useServerToday } from "@/lib/server-clock";
@@ -14,6 +18,23 @@ export const Route = createFileRoute(
 
 function ServiceCalendarEditorRoute() {
   const { id: calendarId } = Route.useParams();
+  return calendarId === "new" ? (
+    <NewServiceCalendar />
+  ) : (
+    <ServiceCalendarEditorContent calendarId={calendarId} />
+  );
+}
+
+function NewServiceCalendar() {
+  const access = useSettingsAccess((permission) =>
+    permission.canManageServiceCalendars(),
+  );
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return <ServiceCalendarEditorContent calendarId="new" />;
+}
+
+function ServiceCalendarEditorContent({ calendarId }: { calendarId: string }) {
   const search = Route.useSearch();
   // Without `?year=` the preview shows the server's current year, not the browser's.
   const serverYear = useServerToday().getFullYear();

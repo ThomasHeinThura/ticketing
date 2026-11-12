@@ -51,6 +51,11 @@ import {
   upsertScopedMembership,
   upsertUserAndPassword,
 } from "./seed-sit-users";
+import {
+  customerProjectSeedPlan,
+  UAT_SECOND_CONTOSO_ORGANISATION,
+  UAT_SECOND_CONTOSO_PROJECT_ID,
+} from "./uat-customer-project-plan";
 
 /**
  * UAT seed: one additional workspace, `uat-ws` ("Northwind Service Desk (UAT)"), with realistic
@@ -273,6 +278,27 @@ const PROJECTS: Record<
     sla: true,
   },
 };
+
+/** In-memory access assignments used by the UAT seed. */
+export function uatCustomerProjectSeedPlan() {
+  return customerProjectSeedPlan({
+    accounts: UAT_ACCOUNTS,
+    supportProjectId: PROJECTS.SUP.id,
+    secondContosoProjectId: UAT_SECOND_CONTOSO_PROJECT_ID,
+    fabrikamProjectId: PROJECTS.WEB.id,
+  });
+}
+
+export function uatCustomerEngagementSeedPlan() {
+  return [
+    { projectId: PROJECTS.SUP.id, organisation: PROJECTS.SUP.org },
+    {
+      projectId: UAT_SECOND_CONTOSO_PROJECT_ID,
+      organisation: UAT_SECOND_CONTOSO_ORGANISATION,
+    },
+    { projectId: PROJECTS.WEB.id, organisation: PROJECTS.WEB.org },
+  ];
+}
 
 /** Every workspace-level flag a UAT tester needs. Instance-only and locked flags are left alone. */
 export const UAT_FEATURE_FLAGS = [
@@ -1176,9 +1202,10 @@ You can follow progress and reply to the service desk from **My requests**.`,
     customerVisible: true,
     markdown: `# Reset your password
 
-If you have forgotten your password, use **Forgot password** on the sign-in page.
+On the customer portal sign-in page, choose **Forgot password?** and enter your email address. If an account exists, we send a link to that address. Open the link and enter and confirm a new password, then return to sign in.
 
-- The reset link is valid for one hour.
+- The reset link is valid for one hour and can be used once.
+- Accounts that use single sign-on should contact their identity provider or service desk.
 - Check your junk folder if the email does not arrive.
 - Contact the service desk if your account is locked.`,
   },
@@ -2096,6 +2123,73 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
           "uat",
         );
     }
+  }
+
+  // A second Contoso engagement makes per-person portal reach visible in UAT.
+  const secondContosoProjectId = UAT_SECOND_CONTOSO_PROJECT_ID;
+  const secondContosoCreated = await ensureById(
+    tx,
+    schema.projectTable,
+    {
+      id: secondContosoProjectId,
+      workspaceId: UAT_WORKSPACE_ID,
+      organisationId: CUSTOMER_ORGS[UAT_SECOND_CONTOSO_ORGANISATION].id,
+      kind: "project",
+      slug: "CMGT",
+      name: "Contoso Managed Service",
+      description: "Managed service for the second Contoso customer.",
+      icon: "Server",
+      position: 3,
+      lastTaskNumber: 0,
+      createdAt: date(-45),
+    },
+    ["workspaceId", "slug", "organisationId"],
+    "project",
+  );
+  if (secondContosoCreated) {
+    await tx.insert(schema.projectSlugClaimTable).values({
+      slug: "CMGT",
+      projectId: secondContosoProjectId,
+      createdAt: now,
+    });
+    await tx.insert(schema.columnTable).values(
+      DEFAULT_PROJECT_COLUMNS.map((column) => ({
+        projectId: secondContosoProjectId,
+        ...column,
+      })),
+    );
+    await seedProjectStates(secondContosoProjectId, UAT_WORKSPACE_ID, tx);
+  }
+  for (const account of UAT_ACCOUNTS) {
+    if (
+      !account.projectRole ||
+      (await membershipExists(
+        tx,
+        account.personId,
+        "project",
+        secondContosoProjectId,
+      ))
+    )
+      continue;
+    await upsertScopedMembership(
+      tx,
+      {
+        personId: account.personId,
+        scope: "project",
+        scopeId: secondContosoProjectId,
+        roleId: PROJECT_ROLES[account.projectRole].id,
+        seesAll: false,
+        now,
+      },
+      "uat",
+    );
+  }
+  const customerProjects = uatCustomerProjectSeedPlan();
+  for (const { personId, projectId } of customerProjects) {
+    await tx
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId, projectId })
+      .onConflictDoNothing();
   }
 
   await lockWorkspaceLabelNames(

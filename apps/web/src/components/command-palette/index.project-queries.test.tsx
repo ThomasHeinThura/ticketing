@@ -104,12 +104,14 @@ async function renderPalette() {
 }
 
 describe("CommandPalette project and permission reads", () => {
-  it("asks the server for no project, membership or capability outside a project", async () => {
+  it("reads workspace capabilities for project creation outside a project", async () => {
     await renderPalette();
 
     expect(mocks.getProjects).not.toHaveBeenCalled();
-    expect(mocks.getMembers).not.toHaveBeenCalled();
-    expect(mocks.capabilitiesGet).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.capabilitiesGet).toHaveBeenCalled());
+    expect(mocks.capabilitiesGet).toHaveBeenCalledWith({
+      query: { workspaceId: "w1" },
+    });
   });
 
   it("inside a project reads the project list, then only that project's capabilities", async () => {
@@ -120,10 +122,10 @@ describe("CommandPalette project and permission reads", () => {
     expect(mocks.getProjects).toHaveBeenCalledWith(
       expect.objectContaining({ workspaceId: "w1" }),
     );
-    // No workspace-wide capability read while the project was still loading.
-    for (const [call] of mocks.capabilitiesGet.mock.calls)
-      expect(call).toEqual({
+    await waitFor(() =>
+      expect(mocks.capabilitiesGet).toHaveBeenCalledWith({
         query: { workspaceId: "w1", projectId: "p1" },
-      });
+      }),
+    );
   });
 });

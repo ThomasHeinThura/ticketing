@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { useCapabilityCheckFailed } from "@/components/settings/settings-access";
 import type {
   CalendarWindow,
   Holiday,
@@ -68,10 +69,16 @@ export function useServiceCalendarEditor({
     data: calendar,
     isLoading: isCalendarLoading,
     isError: isCalendarError,
+    error: calendarError,
     refetch: refetchCalendar,
   } = useServiceCalendar(isNew ? "" : calendarId);
   const { canManageServiceCalendars, isCheckingPermissions } =
     useWorkspacePermission(isNew ? workspace?.id : calendar?.workspaceId);
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    isCheckingPermissions
+      ? (calendar?.workspaceId ?? workspace?.id)
+      : undefined,
+  );
   const preview = useServiceCalendarPreview(isNew ? "" : calendarId, year);
   const usage = useServiceCalendarUsage(isNew ? "" : calendarId);
   const createCalendar = useCreateServiceCalendar();
@@ -441,8 +448,10 @@ export function useServiceCalendarEditor({
     saveSucceeded: createCalendar.isSuccess || updateCalendar.isSuccess,
     canManageCalendars: canManageServiceCalendars(),
     isCheckingPermissions,
+    capabilityCheckFailed,
     loading,
     isCalendarError,
+    calendarError,
     refetchCalendar,
     handleSave,
     timezoneConfirmationOpen,

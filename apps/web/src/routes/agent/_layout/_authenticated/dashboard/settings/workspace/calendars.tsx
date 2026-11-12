@@ -28,8 +28,10 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import { CalendarSummaryCard } from "@/components/service-calendar/calendar-summary-card";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { WorkspaceFeatureGate } from "@/components/settings/workspace-feature-gate";
 import { useServiceCalendars } from "@/hooks/queries/service-calendar/use-service-calendars";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -69,6 +71,7 @@ function ServiceCalendarsRouteContent() {
     data: calendars,
     isLoading,
     isError,
+    error,
     refetch,
   } = useServiceCalendars(workspace?.id ?? "", cursor);
   const { canManageServiceCalendars, isCheckingPermissions } =
@@ -79,6 +82,7 @@ function ServiceCalendarsRouteContent() {
     return <Outlet />;
   }
 
+  if (isForbiddenError(error)) return <NoAccessPage />;
   const loading = isWorkspaceLoading || isLoading;
   const resetToFirstPage = () =>
     void navigate({

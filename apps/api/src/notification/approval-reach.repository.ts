@@ -1,6 +1,7 @@
 import { and, eq, exists, isNull, ne, or } from "drizzle-orm";
 import db, { schema } from "../database";
 import type { Executor } from "../database/executor";
+import { customerProjectAccessExists } from "../database/repositories/identity-scope.repository";
 import { notificationTable, projectTable } from "../database/schema";
 import { projectReachPredicate } from "./task-reach.repository";
 
@@ -11,9 +12,9 @@ import { projectReachPredicate } from "./task-reach.repository";
  * joined on `(workspace_id, work_item_id)`), its work item and project are live, the row's
  * recipient is the approval's requester or approver (or a watcher of the work item), a
  * private item is visible to that person, and the user still has staff project reach. A
- * customer row (AP-21, `P2R1-04`) is readable only by the active customer who is the addressed
- * approver of a `customer` approval on a project serving their own organisation. Anything else
- * fails closed.
+ * customer row (AP-21, `P2R1-04`, `D-D`) is readable only by the active customer who is the
+ * addressed approver of a `customer` approval on a project serving their own organisation to
+ * which they currently hold `customer_project_access`. Anything else fails closed.
  */
 function reachableApprovalNotificationPredicate(
   userId: string,
@@ -114,6 +115,12 @@ function reachableApprovalNotificationPredicate(
                       eq(person.active, true),
                       eq(person.side, "customer"),
                       eq(person.organisationId, projectTable.organisationId),
+                      customerProjectAccessExists(
+                        person.id,
+                        projectTable.organisationId,
+                        projectTable.id,
+                        executor,
+                      ),
                     ),
                   ),
               ),

@@ -3,6 +3,7 @@ import {
   agentLocalAuthMethods,
   isEmailOtpSignInDisabledByEnvironment,
 } from "../auth";
+import { staffSelfRegistrationEnabled } from "../auth/staff-registration";
 import { isRuntimeSmtpConfigured } from "../notification-provider/runtime";
 import { isGithubSsoConfigured } from "./github-sso-env";
 
@@ -10,7 +11,7 @@ config();
 
 async function getSettings() {
   return {
-    disableRegistration: process.env.DISABLE_REGISTRATION === "true",
+    disableRegistration: !staffSelfRegistrationEnabled(),
     disablePasswordRegistration:
       process.env.DISABLE_PASSWORD_REGISTRATION === "true",
     // Off when the environment switches it off or God Mode turned staff email code off: the

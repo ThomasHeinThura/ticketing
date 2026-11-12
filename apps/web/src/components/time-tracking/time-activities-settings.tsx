@@ -20,10 +20,10 @@ import {
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessDenied,
   SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
@@ -84,27 +84,35 @@ function ActivityRow({
     <TableRow data-testid="time-activity-row">
       <TableCell>
         <div className="flex items-center gap-2">
-          <Input
-            aria-label={t("timeTracking:activities.nameLabel", {
-              name: activity.name,
-            })}
-            maxLength={80}
-            value={name}
-            disabled={!canManage || save.isPending}
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (
-                event.key === "Enter" &&
-                dirty &&
-                !save.isPending &&
-                canManage
-              )
-                save.mutate({ name: name.trim() });
-            }}
-          />
-          {dirty ||
-          nameSaved ||
-          (save.isPending && save.variables?.name !== undefined) ? (
+          {canManage ? (
+            <Input
+              aria-label={t("timeTracking:activities.nameLabel", {
+                name: activity.name,
+              })}
+              maxLength={80}
+              value={name}
+              disabled={save.isPending}
+              onChange={(event) => {
+                setNameSaved(false);
+                setName(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  dirty &&
+                  !save.isPending &&
+                  canManage
+                )
+                  save.mutate({ name: name.trim() });
+              }}
+            />
+          ) : (
+            <span>{activity.name}</span>
+          )}
+          {canManage &&
+          (dirty ||
+            nameSaved ||
+            (save.isPending && save.variables?.name !== undefined)) ? (
             <SaveButton
               size="sm"
               pending={save.isPending && save.variables?.name !== undefined}
@@ -132,15 +140,30 @@ function ActivityRow({
       </TableCell>
       <TableCell className="w-40">
         <div className="flex items-center gap-2">
-          <Switch
-            id={`activity-active-${activity.id}`}
-            checked={!activity.archived}
-            disabled={!canManage || save.isPending}
-            onCheckedChange={(active) => save.mutate({ archived: !active })}
-          />
-          <Label htmlFor={`activity-active-${activity.id}`} className="text-xs">
-            {t("timeTracking:activities.active")}
-          </Label>
+          {canManage ? (
+            <>
+              <Switch
+                id={`activity-active-${activity.id}`}
+                checked={!activity.archived}
+                disabled={save.isPending}
+                onCheckedChange={(active) => save.mutate({ archived: !active })}
+              />
+              <Label
+                htmlFor={`activity-active-${activity.id}`}
+                className="text-xs"
+              >
+                {t("timeTracking:activities.active")}
+              </Label>
+            </>
+          ) : (
+            <span>
+              {t(
+                activity.archived
+                  ? "timeTracking:activities.archived"
+                  : "timeTracking:activities.active",
+              )}
+            </span>
+          )}
         </div>
       </TableCell>
     </TableRow>
@@ -172,6 +195,7 @@ function TimeActivitiesSettingsContent() {
   });
   const loading = workspaceLoading || activities.isLoading;
   const disabled = activities.error instanceof TimeTrackingDisabledError;
+  if (isForbiddenError(activities.error)) return <NoAccessPage />;
   return (
     <TimeActivitiesSettingsFrame>
       {loading ? (
@@ -183,8 +207,6 @@ function TimeActivitiesSettingsContent() {
             {t("timeTracking:timesheet.disabledDescription")}
           </AlertDescription>
         </Alert>
-      ) : isForbiddenError(activities.error) ? (
-        <SettingsAccessDenied />
       ) : activities.isError || !activities.data ? (
         <Alert variant="error">
           <AlertTitle>{t("timeTracking:activities.loadError")}</AlertTitle>
@@ -259,11 +281,7 @@ function TimeActivitiesSettingsContent() {
 export function TimeActivitiesSettings() {
   const access = useSettingsAccess((permission) => permission.canLogTime());
   if (access === "allowed") return <TimeActivitiesSettingsContent />;
-  return (
-    <TimeActivitiesSettingsFrame>
-      <SettingsAccessGate access={access}>{null}</SettingsAccessGate>
-    </TimeActivitiesSettingsFrame>
-  );
+  return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
 }
 
 function TimeActivitiesSettingsFrame({

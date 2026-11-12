@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import icons from "@/constants/project-icons";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { cn } from "@/lib/cn";
@@ -53,6 +54,8 @@ type MobileProjectNavProps = {
   onSelectModules?: () => void;
   /** Project pages are staff-only and always offered to the agent surface. */
   onSelectPages?: () => void;
+  /** Explanation shown when slug-keyed `/agent/projects/{key}/...` views cannot resolve safely. */
+  slugViewsDisabledReason?: string;
   onSelectProject: (projectId: string) => void;
   onAddProject?: () => void;
   /** Opens the current project's settings (L-03). */
@@ -63,21 +66,26 @@ function MobileViewButton({
   active,
   icon: Icon,
   onClick,
+  disabledReason,
   children,
 }: {
   active: boolean;
   icon: LucideIcon;
   onClick: () => void;
+  disabledReason?: string;
   children: ReactNode;
 }) {
-  return (
+  const button = (
     <Button
       variant="ghost"
       type="button"
-      onClick={onClick}
+      aria-disabled={disabledReason ? "true" : undefined}
+      aria-description={disabledReason}
+      onClick={disabledReason ? undefined : onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+        disabledReason && "cursor-not-allowed opacity-64",
         active
           ? "border-border bg-secondary text-foreground"
           : "border-transparent text-muted-foreground hover:bg-accent",
@@ -87,6 +95,8 @@ function MobileViewButton({
       {children}
     </Button>
   );
+  if (!disabledReason) return button;
+  return <ActionTooltip label={disabledReason}>{button}</ActionTooltip>;
 }
 
 export default function MobileProjectNav({
@@ -104,6 +114,7 @@ export default function MobileProjectNav({
   onSelectCycles,
   onSelectModules,
   onSelectPages,
+  slugViewsDisabledReason,
   onSelectProject,
   onAddProject,
   onOpenProjectSettings,
@@ -138,6 +149,7 @@ export default function MobileProjectNav({
                   active={activeView === "overview"}
                   icon={LayoutDashboard}
                   onClick={onSelectOverview}
+                  disabledReason={slugViewsDisabledReason}
                 >
                   {t("navigation:projectViews.overview")}
                 </MobileViewButton>
@@ -206,61 +218,41 @@ export default function MobileProjectNav({
                 </Button>
               ) : null}
               {onSelectCycles ? (
-                <Button
-                  variant="ghost"
-                  type="button"
+                <MobileViewButton
+                  active={activeView === "cycles"}
+                  icon={Repeat}
                   onClick={onSelectCycles}
-                  aria-current={activeView === "cycles" ? "page" : undefined}
-                  className={cn(
-                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-                    activeView === "cycles"
-                      ? "border-border bg-secondary text-foreground"
-                      : "border-transparent text-muted-foreground hover:bg-accent",
-                  )}
+                  disabledReason={slugViewsDisabledReason}
                 >
-                  <Repeat className="size-3.5" />
                   {t("navigation:projectViews.cycles")}
-                </Button>
+                </MobileViewButton>
               ) : null}
               {onSelectModules ? (
-                <Button
-                  variant="ghost"
-                  type="button"
+                <MobileViewButton
+                  active={activeView === "modules"}
+                  icon={Layers}
                   onClick={onSelectModules}
-                  aria-current={activeView === "modules" ? "page" : undefined}
-                  className={cn(
-                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-                    activeView === "modules"
-                      ? "border-border bg-secondary text-foreground"
-                      : "border-transparent text-muted-foreground hover:bg-accent",
-                  )}
+                  disabledReason={slugViewsDisabledReason}
                 >
-                  <Layers className="size-3.5" />
                   {t("navigation:projectViews.modules")}
-                </Button>
+                </MobileViewButton>
               ) : null}
               {onSelectPages ? (
-                <Button
-                  variant="ghost"
-                  type="button"
+                <MobileViewButton
+                  active={activeView === "pages"}
+                  icon={FileText}
                   onClick={onSelectPages}
-                  aria-current={activeView === "pages" ? "page" : undefined}
-                  className={cn(
-                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
-                    activeView === "pages"
-                      ? "border-border bg-secondary text-foreground"
-                      : "border-transparent text-muted-foreground hover:bg-accent",
-                  )}
+                  disabledReason={slugViewsDisabledReason}
                 >
-                  <FileText className="size-3.5" />
                   {t("navigation:projectViews.pages")}
-                </Button>
+                </MobileViewButton>
               ) : null}
               {onSelectPrerequisites ? (
                 <MobileViewButton
                   active={activeView === "prerequisites"}
                   icon={ListChecks}
                   onClick={onSelectPrerequisites}
+                  disabledReason={slugViewsDisabledReason}
                 >
                   {t("navigation:projectViews.prerequisites")}
                 </MobileViewButton>
@@ -270,6 +262,7 @@ export default function MobileProjectNav({
                   active={activeView === "team"}
                   icon={Users}
                   onClick={onSelectTeam}
+                  disabledReason={slugViewsDisabledReason}
                 >
                   {t("navigation:projectViews.team")}
                 </MobileViewButton>
@@ -279,6 +272,7 @@ export default function MobileProjectNav({
                   active={activeView === "documents"}
                   icon={Files}
                   onClick={onSelectDocuments}
+                  disabledReason={slugViewsDisabledReason}
                 >
                   {t("navigation:projectViews.documents")}
                 </MobileViewButton>

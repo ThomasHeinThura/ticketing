@@ -15,6 +15,7 @@ import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import db, { schema } from "../database";
 import type { Transaction } from "../database/executor";
+import { customerProjectAccessExists } from "../database/repositories/identity-scope.repository";
 import { customerPortalCondition } from "../feature-flag/enforce";
 import {
   hasDenseRankPositions,
@@ -194,6 +195,11 @@ function privateWorkItemVisible(viewer: PortalViewer) {
 function portalBacklogReach(viewer: PortalViewer) {
   return and(
     eq(projectTable.organisationId, viewer.organisationId),
+    customerProjectAccessExists(
+      viewer.personId,
+      viewer.organisationId,
+      projectTable.id,
+    ),
     eq(submissionTable.organisationId, viewer.organisationId),
     inArray(submissionTable.state, ["accepted", "duplicate"]),
     or(

@@ -8,8 +8,10 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import InviteTeamMemberModal from "./invite-team-member-modal";
 
-const { invite } = vi.hoisted(() => ({
+const { invite, toastSuccess, toastError } = vi.hoisted(() => ({
   invite: vi.fn().mockResolvedValue({}),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }));
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({
@@ -34,16 +36,23 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canInviteUsers: () => true }),
 }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { defaultValue?: string }) =>
-      options?.defaultValue ?? key,
-  }),
+vi.mock("react-i18next", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-i18next")>();
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string, options?: { defaultValue?: string }) =>
+        options?.defaultValue ?? key,
+    }),
+  };
+});
+vi.mock("@/lib/toast", () => ({
+  toast: { success: toastSuccess, error: toastError },
 }));
-vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  invite.mockResolvedValue({});
 });
 
 describe("staff invitation role", () => {
@@ -85,4 +94,35 @@ describe("staff invitation role", () => {
       }),
     );
   });
+  it.each([
+    [true, "team:invitations.resultEmailSent"],
+    [false, "team:invitations.resultEmailNotSent"],
+  ] as const)(
+    "renders the invitation result card after inviting with a selected role (delivered=%s)",
+    async (delivered, expectedBannerKey) => {
+      invite.mockResolvedValueOnce({
+        id: "inv-lead-1",
+        email: "lead@example.com",
+        expiresAt: "2026-12-01T00:00:00.000Z",
+        delivered,
+      });
+      render(<InviteTeamMemberModal open onClose={vi.fn()} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: "team:inviteModal.roleLabel" }),
+      );
+      fireEvent.click(screen.getByText("Lead"));
+      fireEvent.change(screen.getByLabelText("team:inviteModal.emailLabel"), {
+        target: { value: "lead@example.com" },
+      });
+      fireEvent.click(
+        screen.getByRole("button", { name: "team:inviteModal.sendInvitation" }),
+      );
+      expect(await screen.findByText(expectedBannerKey)).toBeVisible();
+      if (delivered) {
+        expect(toastSuccess).toHaveBeenCalledWith("team:inviteModal.success");
+      } else {
+        expect(toastSuccess).not.toHaveBeenCalled();
+      }
+    },
+  );
 });

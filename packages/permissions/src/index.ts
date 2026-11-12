@@ -217,3 +217,8 @@ export {
   ROUTE_SURFACES,
   type RouteSurface,
 } from "./route-coverage.js";
+
+export {
+  WORKSPACE_PROJECT_SEE_ALL_ROLES,
+  workspaceRoleSeesAllProjects,
+} from "./workspace-project-rights.js";

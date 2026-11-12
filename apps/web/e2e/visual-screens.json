@@ -256,6 +256,13 @@
 		"screenshot": "project-timeline.png"
 	},
 	{
+		"name": "project-calendar",
+		"inventoryRoute": "/agent/projects/{key}/calendar",
+		"applicationRoute": "/agent/projects/$projectKey/calendar",
+		"test": "project calendar screen @visual",
+		"screenshot": "project-calendar.png"
+	},
+	{
 		"name": "profile-settings-general",
 		"inventoryRoute": "/dashboard/settings/account/information",
 		"applicationRoute": "/dashboard/settings/account/information",

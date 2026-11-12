@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
+import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -94,7 +95,8 @@ test("board drop stays in place through a real write and a refused move returns 
             .locator('input[autocomplete="new-password"]')
             .fill(password);
           await page.getByRole("button", { name: "Create account" }).click();
-          await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
+          // The first administrator must enrol a second factor before onboarding.
+          await enrollFirstAdmin(page, origin, password);
           await page
             .getByLabel("Workspace name")
             .fill("Board Journey Workspace");

@@ -9,6 +9,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProjectMembersSettings from "./project-members-settings";
 
+vi.mock("./customer-project-access", () => ({
+  CustomerProjectAccess: () => null,
+}));
+
 const mocks = vi.hoisted(() => ({
   canUpdate: true,
   members: [] as unknown[],

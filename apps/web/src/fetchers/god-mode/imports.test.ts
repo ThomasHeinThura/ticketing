@@ -226,3 +226,24 @@ describe("God Mode imports fetchers", () => {
     });
   });
 });
+
+// The server side of this contract is pinned in tests/api/observability/server-error-handler.test.ts:
+// an allowlisted import reason arrives as `{ message, reason, requestId }` with status 502.
+it("keeps an import reason from the server error body", async () => {
+  mocks.apiFetch.mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        message: "Source connection failed",
+        reason: "auth_failed",
+        requestId: "0123456789abcdef0123456789abcdef",
+      }),
+      { status: 502, headers: { "content-type": "application/json" } },
+    ),
+  );
+  const caught = await listImportSources("workspace-1").catch(
+    (error: unknown) => error,
+  );
+  const { ImportReasonError } = await import("./imports");
+  expect(caught).toBeInstanceOf(ImportReasonError);
+  expect(caught).toMatchObject({ status: 502, reason: "auth_failed" });
+});

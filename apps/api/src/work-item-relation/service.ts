@@ -4,6 +4,7 @@ import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import type { Transaction } from "../database/executor";
 import type { workItemRelationTable } from "../database/schema";
+import { eventContext } from "../events";
 import {
   type ActivityActorType,
   recordWorkItemActivity,
@@ -132,7 +133,10 @@ async function recordMutation(
     });
   }
 }
-export async function publishRelationHints(endpoints: RelationEndpoint[]) {
+export async function publishRelationHints(
+  endpoints: RelationEndpoint[],
+  initiator?: { userId: string; windowId: string },
+) {
   await Promise.all(
     endpoints.map((endpoint) =>
       broadcastNativeWorkItemHint({
@@ -143,6 +147,7 @@ export async function publishRelationHints(endpoints: RelationEndpoint[]) {
         at: new Date().toISOString(),
         key: endpoint.key,
         customerVisible: false,
+        initiator,
       }),
     ),
   );
@@ -186,7 +191,15 @@ export async function createWorkItemRelation(input: {
     );
     return { relation, endpoints, created: true };
   });
-  if (result.created) await publishRelationHints(result.endpoints);
+  if (result.created) {
+    const origin = eventContext.getStore()?.nativeInitiator;
+    await publishRelationHints(
+      result.endpoints,
+      input.actorType === "person" && input.actorId === origin?.userId
+        ? origin
+        : undefined,
+    );
+  }
   return result.relation;
 }
 export async function deleteWorkItemRelationInTransaction(

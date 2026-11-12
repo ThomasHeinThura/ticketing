@@ -852,9 +852,13 @@ attachment limits.
 Channels available on this instance: SMTP and the generic webhook (core). Further
 `notify.*` channels — Teams → Slack → Telegram → Viber, then others — appear here as they
 are built ([notifications.md](feature-contracts-p4.md#notifications); future scope, decided 2026-09-05). Each is
-a `notify.*` plugin with settings and a test send through
-the generic `POST /api/instance/plugins/{id}/test` route — there is no channel-specific
-test route. Plus the default notification preferences new users inherit.
+a `notify.*` plugin with settings and a test send. The core email provider uses
+`POST /api/instance/notification-providers/email/test`; other supported plugins use the
+generic test route. Plus the default notification preferences new users inherit.
+
+| Email Test result | Contract |
+| --- | --- |
+| Failed send | Show the SMTP reply code and a translated cause. Authenticated attempts omit free-form provider text; unauthenticated replies may include sanitised text. |
 
 <a id="god-mode-deliveries"></a>
 #### Deliveries
@@ -1143,7 +1147,7 @@ POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
 GET    /api/instance/identity-connections/{id}/events             instance:admin
 GET    /api/instance/auth/local-methods                           instance:admin      (session-only; local sign-in methods per portal, never values or secrets)
-PUT    /api/instance/auth/local-methods                           instance:admin  E  (session-only; PA-15 `auth_local_methods_update` bound to all six flags and the read revision; staff password off, or email code on while `DISABLE_EMAIL_OTP_SIGN_IN` is set, refused with 422; stale revision 409)
+PUT    /api/instance/auth/local-methods                           instance:admin  E  (session-only; PA-15 `auth_local_methods_update` bound to all six flags, the staff self-registration setting and the read revision; changing staff self-registration additionally requires an enrolled second factor and a fresh TOTP or backup-code proof at issuance and consumption; staff password off, or email code on while `DISABLE_EMAIL_OTP_SIGN_IN` is set, refused with 422; stale revision 409)
 POST   /api/instance/purge                                        instance:admin  E  (PA-13 — legal hold checked)
 GET    /api/instance/users                            instance:admin
 POST   /api/instance/users/{id}/suspend               instance:admin  E for a current instance-admin target (PA-15 bound to target + request)
@@ -1835,8 +1839,12 @@ durable delivery children make candidate creation and provider outcomes inspecta
 - `NO-13` The inbox is a screen, not only a dropdown, with filters for unread, mentions
   and assignments.
 - `NO-14` Every notification deep-links to the exact thing — the comment, not the work
-  item.
+  item. A notification about a row of the retired Kaneo task table has no work item to
+  open: it is shown as unavailable with a clear message and never opens an old task URL.
 - `NO-15` Mark one read, mark all read, and mark unread again.
+  The agent inbox and its unread badges show these changes immediately; a refused write rolls
+  back the pending change and displays a translated error. Realtime reads cannot replace a
+  pending optimistic state; after the write settles the server state is read again.
 - `NO-16` Arrives live over WebSocket. No polling.
 - `NO-17` Read notifications are purged after the instance's configured notification
   retention period (90 days by default; configurable in God Mode). The daily

@@ -88,6 +88,47 @@ describe("proveIdentityOperation", () => {
     expect(proof).not.toHaveProperty("code");
   });
 
+  it("keeps notification_provider_save request.password separate from the administrator's password factor", async () => {
+    const request = {
+      version: 3,
+      enabled: true,
+      config: {
+        provider: "ses" as const,
+        region: "eu-west-1" as const,
+        host: "email-smtp.eu-west-1.amazonaws.com",
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        username: "synthetic-ses-user",
+        fromAddress: "noreply@example.test",
+        replyTo: null,
+      },
+      password: "synthetic-smtp-password",
+    };
+    await proveIdentityOperation(
+      { operation: "notification_provider_save", request },
+      { method: "password", secret: "synthetic-admin-login-password" },
+    );
+    expect(mocks.challenge.mock.calls[0]?.[0]).toEqual({
+      json: {
+        kind: "operation",
+        operation: "notification_provider_save",
+        request,
+      },
+    });
+    expect(mocks.prove.mock.calls[0]?.[0]).toEqual({
+      json: {
+        kind: "operation",
+        operation: "notification_provider_save",
+        request,
+        challengeId: "challenge-1",
+        nonce: "n".repeat(43),
+        method: "password",
+        password: "synthetic-admin-login-password",
+      },
+    });
+  });
+
   it("stops at a refused challenge without attempting a proof", async () => {
     mocks.challenge.mockResolvedValue(
       new Response("step_up_unavailable", { status: 403 }),

@@ -96,7 +96,7 @@ export const FILTER_KEYS = [
 export type ReportContext = {
   workspaceId: string;
   identity: ResolvedIdentity;
-  /** `report:read_all`: every project of this workspace (and nothing outside it). */
+  /** Legacy scope marker; report data always uses project reach. */
   readAll: boolean;
   /** `time_entry:read_any`: other people's logged time. Without it a report counts only the caller's own. */
   readAnyTime: boolean;

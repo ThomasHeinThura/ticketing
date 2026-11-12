@@ -1,5 +1,6 @@
 import { and, eq, gt } from "drizzle-orm";
 import db from "../database";
+import type { Executor } from "../database/executor";
 import { invitationTable, userTable, workspaceTable } from "../database/schema";
 
 /**
@@ -12,8 +13,9 @@ export async function findPendingInvitation(params: {
   email?: string | undefined;
   invitationId?: string | undefined;
   now: Date;
+  executor?: Executor;
 }) {
-  const { email, invitationId, now } = params;
+  const { email, invitationId, now, executor = db } = params;
   // CP-21: a customer-scope invitation never opens agent-side registration.
   const conditions = [
     eq(invitationTable.scope, "staff"),
@@ -29,7 +31,7 @@ export async function findPendingInvitation(params: {
     conditions.push(eq(invitationTable.email, email.toLowerCase()));
   }
 
-  const result = await db
+  const result = await executor
     .select({
       id: invitationTable.id,
       email: invitationTable.email,

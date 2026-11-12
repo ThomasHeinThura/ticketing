@@ -6,6 +6,7 @@ import {
   registeredRouteKey,
   UNMATCHED_ROUTE,
 } from "./metrics.js";
+import { SAFE_STACK_FUNCTIONS } from "./server-error-frames.js";
 import {
   LOG_LEVELS,
   type LogLevel,
@@ -19,6 +20,7 @@ import {
 export const LOG_MESSAGES = [
   "http.request",
   "http.lifecycle_failure",
+  "http.server_error",
   "auth.failure",
   "auth.unknown_key_capability",
   "database.failure",
@@ -61,6 +63,18 @@ export interface TaskDeskLogEvent {
   route?: RegisteredHttpRoute | typeof UNMATCHED_ROUTE;
   auditOperation?: AuditFailureOperation;
   strictPolicyWitness?: StrictPolicyWitness;
+  status?: number;
+  method?:
+    | "GET"
+    | "HEAD"
+    | "POST"
+    | "PUT"
+    | "PATCH"
+    | "DELETE"
+    | "OPTIONS"
+    | "OTHER";
+  frames?: string[];
+  errorClass?: "HTTPException" | "Error" | "TypeError" | "RangeError" | "Other";
 }
 
 export interface TaskDeskLogger {
@@ -81,6 +95,10 @@ const allowedEventKeys = new Set([
   "route",
   "auditOperation",
   "strictPolicyWitness",
+  "status",
+  "method",
+  "errorClass",
+  "frames",
 ]);
 const validModules = new Set<string>(OBSERVABILITY_MODULES);
 const validAuditOperations = new Set<string>(AUDIT_FAILURE_OPERATIONS);
@@ -170,6 +188,24 @@ function validateEvent(
   const route = input.route;
   const auditOperation = input.auditOperation;
   if (
+    input.status !== undefined &&
+    (message !== "http.server_error" ||
+      typeof input.status !== "number" ||
+      !Number.isInteger(input.status) ||
+      input.status < 500 ||
+      input.status > 599)
+  )
+    throw new TypeError("Invalid structured log event");
+  if (
+    input.errorClass !== undefined &&
+    (message !== "http.server_error" ||
+      typeof input.errorClass !== "string" ||
+      !["HTTPException", "Error", "TypeError", "RangeError", "Other"].includes(
+        input.errorClass,
+      ))
+  )
+    throw new TypeError("Invalid structured log event");
+  if (
     typeof module !== "string" ||
     typeof message !== "string" ||
     typeof level !== "string" ||
@@ -221,10 +257,82 @@ function validateEvent(
   ) {
     throw new TypeError("Invalid structured log event");
   }
+  if (
+    input.method !== undefined &&
+    (message !== "http.server_error" ||
+      typeof input.method !== "string" ||
+      ![
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+        "OTHER",
+      ].includes(input.method))
+  )
+    throw new TypeError("Invalid structured log event");
+  let frames: string[] | undefined;
+  if (input.frames !== undefined) {
+    if (message !== "http.server_error" || !Array.isArray(input.frames))
+      throw new TypeError("Invalid structured log event");
+    let descriptors: PropertyDescriptorMap;
+    try {
+      if (Object.getPrototypeOf(input.frames) !== Array.prototype)
+        throw new TypeError("Invalid structured log event");
+      descriptors = Object.getOwnPropertyDescriptors(input.frames as object);
+    } catch {
+      throw new TypeError("Invalid structured log event");
+    }
+    const length = descriptors.length?.value;
+    if (
+      !Number.isInteger(length) ||
+      length < 0 ||
+      length > 15 ||
+      Reflect.ownKeys(descriptors).length !== length + 1
+    )
+      throw new TypeError("Invalid structured log event");
+    frames = [];
+    for (let i = 0; i < length; i++) {
+      const descriptor = descriptors[String(i)];
+      if (!descriptor?.enumerable || !Object.hasOwn(descriptor, "value"))
+        throw new TypeError("Invalid structured log event");
+      const frame: unknown = descriptor.value;
+      if (
+        typeof frame !== "string" ||
+        frame.length > 512 ||
+        !/^(?:[\w.$<>-]{1,100} )?(?:(?:apps|packages|tests)\/[\w./-]+\.(?:[cm]?js|[cm]?ts|tsx|jsx)|node_modules\/(?:@[\w-]+\/)?[\w.-]+):[0-9]{1,7}:[0-9]{1,7}$/.test(
+          frame,
+        ) ||
+        /^(?:[^ ]*(?:token|secret|password|credential|cookie|authorization)[^ ]*) /i.test(
+          frame,
+        ) ||
+        /@[^/]+\./.test(frame) ||
+        /[A-Za-z0-9_-]{32,}/.test(frame)
+      )
+        throw new TypeError("Invalid structured log event");
+      const functionName = frame.includes(" ")
+        ? frame.slice(0, frame.indexOf(" "))
+        : undefined;
+      if (
+        functionName &&
+        !(SAFE_STACK_FUNCTIONS as readonly string[]).includes(functionName)
+      )
+        throw new TypeError("Invalid structured log event");
+      frames.push(frame);
+    }
+  }
   const safeEvent = Object.create(null) as TaskDeskLogEvent;
   safeEvent.module = module as ObservabilityModule;
   safeEvent.message = message as LogMessage;
   safeEvent.level = level as LogLevel;
+  if (frames !== undefined) safeEvent.frames = frames;
+  if (input.method !== undefined)
+    safeEvent.method = input.method as TaskDeskLogEvent["method"];
+  if (input.status !== undefined) safeEvent.status = input.status as number;
+  if (input.errorClass !== undefined)
+    safeEvent.errorClass = input.errorClass as TaskDeskLogEvent["errorClass"];
   if (traceId !== undefined) safeEvent.traceId = traceId as string;
   if (result !== undefined) safeEvent.result = result as LogResult;
   if (statusClass !== undefined)
@@ -368,6 +476,11 @@ export function createTaskDeskLogger(
         module: safeEvent.module,
         messageKey: safeEvent.message,
       };
+      if (safeEvent.frames !== undefined) fields.frames = safeEvent.frames;
+      if (safeEvent.method !== undefined) fields.method = safeEvent.method;
+      if (safeEvent.status !== undefined) fields.status = safeEvent.status;
+      if (safeEvent.errorClass !== undefined)
+        fields.errorClass = safeEvent.errorClass;
       if (safeEvent.traceId !== undefined) fields.traceId = safeEvent.traceId;
       if (safeEvent.result !== undefined) fields.result = safeEvent.result;
       if (safeEvent.statusClass !== undefined)

@@ -12,7 +12,7 @@ import { processNextNotificationDelivery } from "../../apps/api/src/notification
 import { verifyNotificationPreferenceLink } from "../../apps/api/src/notification/preference-link";
 import { readEmailProvider } from "../../apps/api/src/notification-provider/repository";
 import { runtimeSmtpConfiguration } from "../../apps/api/src/notification-provider/runtime";
-import { smtpConfigurationSchema } from "../../apps/api/src/notification-provider/schema";
+import { parseStoredEmailConfig } from "../../apps/api/src/notification-provider/schema";
 import { updateEmailProvider } from "../../apps/api/src/notification-provider/service";
 import { createComment } from "../../apps/api/src/work-item/controllers/create-comment";
 import { resetTestDatabase } from "./helpers/database";
@@ -136,6 +136,7 @@ async function fixture() {
       },
     },
     { userId: actor.user.id, personId: author.id },
+    async () => undefined,
   );
   await saveCanonicalPreference(recipient.user.id, preference);
   return { actor, recipient, person, item, project, author };
@@ -147,9 +148,10 @@ function privatePersistedProvider(
   email.setRuntimeSmtpResolver(async () => {
     const row = await readEmailProvider();
     if (!row?.enabled) return null;
-    const config = smtpConfigurationSchema.parse(row.config);
+    const stored = parseStoredEmailConfig(row.config);
+    if (!stored) throw new Error("Stored email configuration is invalid");
     if (beforeConnect) await beforeConnect();
-    return runtimeSmtpConfiguration(config, null, {
+    return runtimeSmtpConfiguration(stored.config, null, {
       resolve: async () => [{ address: "198.51.100.20", family: 4 }],
       connect: (input, signal) =>
         email.openSmtpSocket(
@@ -317,6 +319,7 @@ describe("native persisted comment mention to immediate SMTP delivery", () => {
         await updateEmailProvider(
           { version: 1, enabled: false },
           { userId: f.actor.user.id, personId: f.author.id },
+          async () => undefined,
         );
       if (change === "quiet_hours")
         await db

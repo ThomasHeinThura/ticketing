@@ -1,3 +1,4 @@
+import { normaliseRouteKey } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import {
@@ -15,6 +16,7 @@ import {
   createMetricsListener,
   METRICS_LISTENER_MANIFEST,
 } from "../../observability/metrics-listener.js";
+import { serverErrorFrames } from "../../observability/server-error-frames.js";
 import { defaultLogLevels } from "../../observability/settings.js";
 import { policyRegistry } from "../../policy-registry";
 import { createObservabilityConfigRefresher } from "./config-refresh-version";
@@ -51,6 +53,47 @@ let refreshController:
 
 export function logTaskDesk(event: TaskDeskLogEvent): void {
   logger.log(event);
+}
+
+export function logServerError(input: {
+  requestId: string;
+  method: string;
+  route?: string;
+  status: number;
+  errorClass: TaskDeskLogEvent["errorClass"];
+  stack?: string;
+}): void {
+  let route: RegisteredHttpRoute | typeof UNMATCHED_ROUTE = UNMATCHED_ROUTE;
+  try {
+    const key = normaliseRouteKey(
+      `${input.method} ${input.route ?? ""}`,
+    ) as RegisteredHttpRoute;
+    if (trustedRoutes.has(key)) route = key;
+  } catch {
+    /* An unregistered route is never emitted. */
+  }
+  logger.log({
+    module: "http",
+    message: "http.server_error",
+    level: "error",
+    result: "failed",
+    traceId: input.requestId,
+    route,
+    status: input.status,
+    method: ([
+      "GET",
+      "HEAD",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ].includes(input.method)
+      ? input.method
+      : "OTHER") as TaskDeskLogEvent["method"],
+    errorClass: input.errorClass,
+    frames: serverErrorFrames(input.stack),
+  });
 }
 
 export function applyRuntimeLogLevels(value: unknown): void {

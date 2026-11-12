@@ -42,7 +42,13 @@ import { useTranslation } from "react-i18next";
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import {
   type CannedResponseInput,
   getCannedResponseLibrary,
@@ -221,6 +227,15 @@ function CannedResponseEditor({
 }
 
 function CannedResponsesPage() {
+  const access = useSettingsAccess((permission) =>
+    permission.canManageWorkspaceSettings(),
+  );
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return <CannedResponsesPageContent />;
+}
+
+function CannedResponsesPageContent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -279,6 +294,7 @@ function CannedResponsesPage() {
   );
   const busy =
     !workspace || isCheckingPermissions || (canManage && library.isLoading);
+  if (isForbiddenError(library.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("settings:cannedResponses.title")} />

@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("@/lib/i18n", () => ({ i18n: { t: (key: string) => key } }));
+
 vi.mock("react-i18next", () => ({
   useTranslation: (namespace?: string) => ({
     t: (rawKey: string, options: Record<string, unknown> = {}) =>
@@ -124,5 +126,22 @@ describe("CreateServiceKeyDialog", () => {
       ),
     ).not.toHaveLength(0);
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("shows the translated creation failure rather than raw server text", async () => {
+    mocks.create.mockRejectedValue(new Error("raw server refusal"));
+    const onCreated = renderDialog();
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Pipeline" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create key" }));
+    expect(
+      await screen.findByText(translate("settings:serviceKeys.create.failed")),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("raw server refusal")).not.toBeInTheDocument();
+    expect(onCreated).not.toHaveBeenCalled();
   });
 });

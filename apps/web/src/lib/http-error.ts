@@ -1,12 +1,6 @@
-export class HttpError extends Error {
-  status: number;
+import { HttpError } from "@taskdesk/libs/src/http-error";
 
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "HttpError";
-    this.status = status;
-  }
-}
+export { HttpError } from "@taskdesk/libs/src/http-error";
 
 export function isUnauthorizedError(error: unknown): boolean {
   return error instanceof HttpError && error.status === 401;
@@ -58,4 +52,58 @@ export async function readErrorDetail(
   )
     return fallback;
   return trimmed;
+}
+
+/** Translate only a client-generated fallback; retain useful server-provided detail. */
+export function localizedErrorMessage(
+  error: unknown,
+  translate: (key: string) => string,
+  fallback: string,
+): string {
+  if (error instanceof HttpError && error.fallbackKey)
+    return translate(error.fallbackKey);
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+/** Admin screens display only translated client fallbacks, never raw response messages. */
+export function localizedAdminErrorMessage(
+  error: unknown,
+  translate: (key: string) => string,
+  fallback: string,
+): string {
+  return error instanceof HttpError && error.fallbackKey
+    ? translate(error.fallbackKey)
+    : fallback;
+}
+
+/** Preserve a server reference while leaving client-error messages unchanged. */
+export async function httpErrorFromResponse(
+  response: Response,
+  fallback: string,
+  fallbackKey?: string,
+): Promise<HttpError> {
+  const detail =
+    response.status >= 500
+      ? fallback
+      : await readErrorDetail(response.clone(), fallback);
+  let requestId: string | undefined;
+  if (response.status >= 500) {
+    try {
+      const body: unknown = await response.clone().json();
+      if (
+        body &&
+        typeof body === "object" &&
+        "requestId" in body &&
+        typeof body.requestId === "string"
+      )
+        requestId = body.requestId;
+    } catch {
+      /* A non-JSON error has no body reference. */
+    }
+  }
+  if (!requestId || !/^[0-9a-f]{32}$/.test(requestId))
+    requestId = response.headers.get("x-taskdesk-request-id") ?? undefined;
+  return new HttpError(response.status, detail, requestId, {
+    fallbackKey: detail === fallback ? fallbackKey : undefined,
+  });
 }

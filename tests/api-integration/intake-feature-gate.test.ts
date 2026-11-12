@@ -270,7 +270,9 @@ describe("intake feature-flag reach", () => {
       },
     ]);
 
-    const catalogue = JSON.stringify(await portalCatalogue(organisation.id));
+    const catalogue = JSON.stringify(
+      await portalCatalogue(organisation.id, "", "no-project-grants"),
+    );
     expect(catalogue).toContain(enabledType.id);
     expect(catalogue).not.toContain(disabledType.id);
   });

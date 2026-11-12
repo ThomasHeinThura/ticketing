@@ -9,9 +9,14 @@ function useRestoreWorkItem() {
     mutationFn: ({ key, version }: RestoreInput) =>
       restoreWorkItem({ key, version }),
     onSuccess: async (_item, input) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["work-items", input.projectId],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", input.projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "detail", input.key],
+        }),
+      ]);
     },
   });
 }

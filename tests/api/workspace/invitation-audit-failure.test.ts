@@ -96,6 +96,7 @@ beforeEach(() => {
   });
   mocks.send.mockImplementation(async () => {
     mocks.events.push("delivery");
+    return true;
   });
 });
 

@@ -3,6 +3,7 @@ import {
   type QueryClient,
   useQueryClient,
 } from "@tanstack/react-query";
+import { windowId } from "@taskdesk/libs";
 import { useEffect, useRef, useState } from "react";
 import { getApiUrl, toWebSocketBase } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";
@@ -93,7 +94,7 @@ function refreshOnFirstConnect(query: Query, coverageEndedAt: number) {
 }
 
 function realtimeUrl() {
-  return toWebSocketBase(getApiUrl("ws"));
+  return `${toWebSocketBase(getApiUrl("ws"))}?windowId=${encodeURIComponent(windowId)}`;
 }
 
 export function useNativeWorkItemRealtime(topics: readonly string[]) {

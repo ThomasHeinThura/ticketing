@@ -1997,6 +1997,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | --- | --- |
 | `terminology.changed` | An instance or workspace runtime noun override is saved or removed. Record actor, scope/workspace, audience, term key, locale and non-secret before/after forms; no domain event or automation trigger. |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
+| `auth.password_reset_requested` · `auth.password_reset_completed` | Password recovery request and completion; never record the address, link, token or password |
 | `auth.password_changed` | The signed-in user changes their local password; no credentials are recorded |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
 | `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |
@@ -2005,6 +2006,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
+| `project.customer_organisation_linked` | First project link between a workspace and a customer organisation |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](permissions.md#reach)) |
 | `project.restored` | A soft-deleted project is restored inside its 30-day window; record project/workspace ids and whether archive state remains, never project content |
 | `project.summary_updated` | The project summary (objective, scope, success criteria, status note) or lifecycle status is saved (`PATCH /api/project/{id}/summary`); record project/workspace ids, the changed field names and the before/after `status` only, never the summary text. Audit-only; no outbox event. |
@@ -2018,7 +2020,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `submission.reopen_requested` | A customer asks to reopen a resolved request from the portal (`CP-8`); record work-item id, submission number and the outcome (`reopened` or the refusal reason); the actor is the customer. One row per request that was reopened or newly flagged, none for a repeat press on an already-flagged refusal. Audit-only; no outbox event. |
 | `satisfaction.rated` | A customer rates or re-rates a resolution (`CP-9`); record the work-item id, score and whether it was a change; never the comment text. Audit-only; no outbox event. |
 | `comment.updated` · `comment.deleted` | Comment edit (`CA-17`) and soft-deletion/tombstone (`CA-18`); creation uses `work_item.commented` ([events.md](events.md)) |
-| `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
+| `invitation.sent` · `invitation.redeemed` · `invitation.revoked` · `invitation.link_copied` | Invitations (`invitation.link_copied` is audit-only, recording actor, invitation id, workspace id and organisation id — never the credential or email address) |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |
 | `instance.observability_changed` | Log-level keys or the metrics-token setting changed; record changed key names only, never values, token, hash, or arbitrary before/after documents |

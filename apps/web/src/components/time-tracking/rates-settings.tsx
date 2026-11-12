@@ -22,6 +22,7 @@ import {
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
@@ -106,17 +107,11 @@ function RatesSettingsContent() {
     minor !== null &&
     Boolean(effectiveFrom || today) &&
     !add.isPending;
+  if (isForbiddenError(rates.error)) return <NoAccessPage />;
   return (
     <RatesSettingsFrame>
       {loading ? (
         <Skeleton className="h-32 w-full" role="status" />
-      ) : isForbiddenError(rates.error) ? (
-        <Alert variant="error">
-          <AlertTitle>{t("timeTracking:rates.forbiddenTitle")}</AlertTitle>
-          <AlertDescription>
-            {t("timeTracking:rates.forbiddenDescription")}
-          </AlertDescription>
-        </Alert>
       ) : rates.error instanceof TimeTrackingDisabledError ? (
         <Alert variant="info">
           <AlertTitle>{t("timeTracking:rates.disabledTitle")}</AlertTitle>
@@ -285,11 +280,7 @@ function RatesSettingsContent() {
 export function RatesSettings() {
   const access = useSettingsAccess((permission) => permission.canManageRates());
   if (access === "allowed") return <RatesSettingsContent />;
-  return (
-    <RatesSettingsFrame>
-      <SettingsAccessGate access={access}>{null}</SettingsAccessGate>
-    </RatesSettingsFrame>
-  );
+  return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
 }
 
 function RatesSettingsFrame({ children }: { children: React.ReactNode }) {

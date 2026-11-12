@@ -9,7 +9,7 @@ export type CustomerInvitationStatus =
   | "revoked"
   | "expired";
 
-/** The accept credential is never part of this shape (CP-23). */
+/** List, create and resend responses never include the accept credential; only the explicit copy-link route returns the full link (CP-23). */
 export type CustomerInvitation = {
   id: string;
   organisationId: string;
@@ -23,8 +23,16 @@ export type CustomerInvitation = {
 };
 
 export type SentCustomerInvitation = CustomerInvitation & {
-  /** Whether the email was handed to the mailer; false means a resend is needed. */
+  /**
+   * Whether an email provider is configured on the instance, so an email was queued for eligible
+   * invitations. Identical for real and inert invitations; never claims provider handoff or delivery.
+   */
   delivered: boolean;
+};
+
+export type CopiedCustomerInvitationLink = {
+  link: string;
+  expiresAt: string;
 };
 
 export type InvitableOrganisation = { id: string; key: string; name: string };
@@ -85,12 +93,23 @@ export function createCustomerInvitation(
   workspaceId: string,
   organisationId: string,
   email: string,
+  projectIds: string[] = [],
 ) {
   return request<SentCustomerInvitation>(
     orgBase(workspaceId, organisationId),
-    { method: "POST", body: { email } },
+    { method: "POST", body: { email, projectIds } },
     "Failed to send the invitation",
   );
+}
+
+export async function listCustomerInvitationProjects(
+  workspaceId: string,
+  organisationId: string,
+) {
+  const result = await request<{ projects: { id: string; name: string }[] }>(
+    `/workspace/${encodeURIComponent(workspaceId)}/organisations/${encodeURIComponent(organisationId)}/invitation-projects`,
+  );
+  return result.projects;
 }
 
 export function resendCustomerInvitation(
@@ -102,6 +121,18 @@ export function resendCustomerInvitation(
     `${orgBase(workspaceId, organisationId)}/${encodeURIComponent(id)}/resend`,
     { method: "POST" },
     "Failed to resend the invitation",
+  );
+}
+
+export function copyCustomerInvitationLink(
+  workspaceId: string,
+  organisationId: string,
+  id: string,
+) {
+  return request<CopiedCustomerInvitationLink>(
+    `${orgBase(workspaceId, organisationId)}/${encodeURIComponent(id)}/copy-link`,
+    { method: "POST" },
+    "Failed to copy the invitation link",
   );
 }
 

@@ -176,8 +176,9 @@ async function assertCanGrant(
   actor: RosterActor,
   role: RosterRoleRef,
   targetPersonId: string,
+  allowSelf = false,
 ) {
-  if (targetPersonId === actor.personId) {
+  if (targetPersonId === actor.personId && !allowSelf) {
     throw new HTTPException(403, {
       message:
         "cannot_grant_to_self: you cannot add yourself or change your own role on a project roster",
@@ -211,6 +212,7 @@ export async function addProjectMember(
   scope: Scope,
   input: { personId: string; roleKey: string },
   actor: RosterActor,
+  options: { selfJoin?: boolean } = {},
 ) {
   await db.transaction(async (tx) => {
     await requireProject(tx, scope);
@@ -228,11 +230,26 @@ export async function addProjectMember(
           "person_not_eligible: only active staff members of this workspace can join a project roster",
       });
     }
+    if (options.selfJoin) {
+      if (
+        input.personId !== actor.personId ||
+        input.roleKey !== "project-member"
+      )
+        throw new HTTPException(403, {
+          message: "Invalid self-join target or role",
+        });
+      if (
+        (await loadRoster(tx, scope)).some(
+          (entry) => entry.personId === person.id && entry.source === "direct",
+        )
+      )
+        return;
+    }
     const role = await resolveRosterRole(tx, scope.workspaceId, input.roleKey);
     if (!role) {
       throw new HTTPException(422, { message: "project_role_not_found" });
     }
-    await assertCanGrant(tx, actor, role, person.id);
+    await assertCanGrant(tx, actor, role, person.id, options.selfJoin === true);
     if (await findActiveDirectGrant(tx, person.id, scope.projectId)) {
       throw new HTTPException(409, {
         message: "already_member: this person is already on the project roster",

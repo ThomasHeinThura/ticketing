@@ -47,6 +47,9 @@ export function syncTaskLabelsInTasksCache(
   taskId: string,
   updater: TaskLabelsUpdater,
 ) {
+  queryClient.setQueryData<Task>(["task", taskId], (task) =>
+    task ? updateTaskLabels(task, taskId, updater) : task,
+  );
   queryClient.setQueriesData<ProjectWithTasks | undefined>(
     {
       queryKey: ["tasks"],

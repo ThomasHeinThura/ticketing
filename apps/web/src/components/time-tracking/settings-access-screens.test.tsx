@@ -13,13 +13,23 @@ const mocks = vi.hoisted(() => ({
   canManageRates: false,
   canManageWorkspaceSettings: false,
   checking: false,
+  rateError: null as Error | null,
+  activities: [] as Array<{ id: string; name: string; archived: boolean }>,
   useTimeEntries: vi.fn(),
   useTimeActivities: vi.fn(),
   useHourlyRates: vi.fn(),
   useTimeSettings: vi.fn(),
 }));
 
+vi.mock("@tanstack/react-router", async (original) => ({
+  ...(await original<typeof import("@tanstack/react-router")>()),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
+}));
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: () => undefined },
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
@@ -44,15 +54,20 @@ vi.mock("@/hooks/queries/time-tracking/use-time-tracking", () => ({
   },
   useTimeActivities: (...args: unknown[]) => {
     mocks.useTimeActivities(...args);
-    return { data: [], isLoading: false, isError: false, error: null };
+    return {
+      data: mocks.activities,
+      isLoading: false,
+      isError: false,
+      error: null,
+    };
   },
   useHourlyRates: (...args: unknown[]) => {
     mocks.useHourlyRates(...args);
     return {
       data: { data: [], people: [] },
       isLoading: false,
-      isError: false,
-      error: null,
+      isError: mocks.rateError !== null,
+      error: mocks.rateError,
     };
   },
   useTimeSettings: (...args: unknown[]) => {
@@ -82,6 +97,8 @@ beforeEach(() => {
   mocks.canManageRates = false;
   mocks.canManageWorkspaceSettings = false;
   mocks.checking = false;
+  mocks.rateError = null;
+  mocks.activities = [];
 });
 afterEach(() => {
   cleanup();
@@ -95,7 +112,7 @@ describe("Rates settings access", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: "timeTracking:rates.title",
+        name: "states.noAccess.title",
       }),
     ).toBeInTheDocument();
     expect(mocks.useHourlyRates).not.toHaveBeenCalled();
@@ -107,6 +124,15 @@ describe("Rates settings access", () => {
     renderWithClient(<RatesSettings />);
     expect(screen.queryByTestId("settings-access-denied")).toBeNull();
     expect(mocks.useHourlyRates).not.toHaveBeenCalled();
+  });
+
+  it("shows the no-access page when the rates read returns 403", () => {
+    mocks.canManageRates = true;
+    mocks.rateError = Object.assign(new Error("Forbidden"), { status: 403 });
+    renderWithClient(<RatesSettings />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "states.noAccess.title" }),
+    ).toHaveFocus();
   });
 
   it("loads rates for a role that manages them", () => {
@@ -126,6 +152,23 @@ describe("Time activities settings access", () => {
     ).not.toBeInTheDocument();
     expect(mocks.useTimeActivities).not.toHaveBeenCalled();
   });
+
+  it.each(["member", "lead"])(
+    "shows activity names without edit controls to a %s",
+    () => {
+      mocks.canLogTime = true;
+      mocks.activities = [{ id: "a1", name: "Support", archived: false }];
+      renderWithClient(<TimeActivitiesSettings />);
+      expect(screen.getByText("Support")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("textbox", {
+          name: "timeTracking:activities.nameLabel",
+        }),
+      ).toBeNull();
+      expect(screen.queryByRole("switch")).toBeNull();
+      expect(screen.queryByText("timeTracking:activities.add")).toBeNull();
+    },
+  );
 
   it("loads the activities for a role that logs time", () => {
     mocks.canLogTime = true;

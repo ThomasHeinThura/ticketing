@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import type { ApiKey } from "@/types/api-key";
 import { ApiKeyTable } from "./api-key-table";
 
@@ -31,7 +32,8 @@ vi.mock("@/hooks/use-open-pending-action", () => ({
 }));
 vi.mock("@/lib/toast", () => ({
   toast: {
-    error: (message: string) => mocks.toastError(message),
+    error: (message: string, options: unknown) =>
+      mocks.toastError(message, options),
     success: (message: string) => mocks.toastSuccess(message),
   },
 }));
@@ -90,5 +92,41 @@ describe("personal API-key row actions", () => {
       }),
     );
     expect(mocks.revoke).not.toHaveBeenCalled();
+  });
+
+  it("translates the revoke fallback rather than showing the client English", async () => {
+    mocks.revoke.mockRejectedValue(
+      new HttpError(500, "Failed to revoke API key", "a".repeat(32), {
+        fallbackKey: "settings:apiKey.table.toastRevokeError",
+      }),
+    );
+    render(<ApiKeyTable apiKeys={[apiKey]} isLoading={false} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:apiKey.table.revokeAria" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:apiKey.table.revoke" }),
+    );
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "settings:apiKey.table.toastRevokeError",
+        { error: expect.objectContaining({ requestId: "a".repeat(32) }) },
+      ),
+    );
+  });
+
+  it("uses the translated deletion failure rather than a raw response", async () => {
+    mocks.requestDelete.mockRejectedValue(new Error("raw server refusal"));
+    render(<ApiKeyTable apiKeys={[apiKey]} isLoading={false} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:apiKey.table.deleteAria" }),
+    );
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "settings:apiKey.table.toastDeleteError",
+        { error: expect.any(Error) },
+      ),
+    );
+    expect(mocks.openPendingAction).not.toHaveBeenCalled();
   });
 });

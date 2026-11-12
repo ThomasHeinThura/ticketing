@@ -4,6 +4,7 @@ import {
   eq,
   exists,
   inArray,
+  isNull,
   ne,
   not,
   or,
@@ -12,9 +13,11 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { isBuiltInWorkspaceRoleKey } from "../../permissions/resolve-identity";
+import { WORKSPACE_PROJECT_SEE_ALL_ROLES } from "../../permissions/workspace-project-reach";
 import db from "..";
 import type { Executor } from "../executor";
 import {
+  customerProjectAccessTable,
   membershipTable,
   personTable,
   projectTable,
@@ -23,6 +26,37 @@ import {
   workspaceRoleTable,
   workspaceUserTable,
 } from "../schema";
+
+/**
+ * D-D (Thomas, 12 Nov 2026): SQL predicate asserting `personId` currently holds explicit
+ * `customer_project_access` to `projectId` AND `project` is live (`deleted_at IS NULL`) and
+ * belongs to `organisationId`.
+ */
+export function customerProjectAccessExists(
+  personId: string | SQLWrapper,
+  organisationId: string | SQLWrapper,
+  projectId: string | SQLWrapper,
+  executor: Executor = db,
+) {
+  const accessProject = alias(projectTable, "customer_access_project");
+  return exists(
+    executor
+      .select({ one: sql`1` })
+      .from(customerProjectAccessTable)
+      .innerJoin(
+        accessProject,
+        eq(accessProject.id, customerProjectAccessTable.projectId),
+      )
+      .where(
+        and(
+          eq(customerProjectAccessTable.personId, personId),
+          eq(customerProjectAccessTable.projectId, projectId),
+          eq(accessProject.organisationId, organisationId),
+          isNull(accessProject.deletedAt),
+        ),
+      ),
+  );
+}
 
 /** Role facts admitted by resolveIdentity's scoped-role membership loader. */
 export function canonicalScopedRoleMembership(
@@ -146,9 +180,16 @@ export function currentProjectReachPredicate(
   executor: Executor = db,
 ) {
   if (identity.side === "customer") {
-    return identity.reach.kind === "organisation"
-      ? eq(projectOrganisationId, identity.organisationId)
-      : sql`false`;
+    if (identity.reach.kind !== "organisation") return sql`false`;
+    return and(
+      eq(projectOrganisationId, identity.organisationId),
+      customerProjectAccessExists(
+        identity.personId,
+        identity.organisationId,
+        projectId,
+        executor,
+      ),
+    );
   }
 
   const directProjectMembership = exists(
@@ -242,6 +283,43 @@ export function currentProjectReachPredicate(
       ),
   );
 
+  // D-E derives reach from the current, unambiguous workspace role, even when older
+  // memberships have no persisted sees_all flag. Use the same role admission as identity.
+  const duplicateMember = alias(workspaceUserTable, "see_all_duplicate_member");
+  const workspaceRoleSeesAll = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(workspaceUserTable)
+      .where(
+        and(
+          eq(workspaceUserTable.workspaceId, projectWorkspaceId),
+          eq(workspaceUserTable.userId, identity.userId),
+          not(
+            exists(
+              executor
+                .select({ one: sql`1` })
+                .from(duplicateMember)
+                .where(
+                  and(
+                    eq(duplicateMember.workspaceId, projectWorkspaceId),
+                    eq(duplicateMember.userId, identity.userId),
+                    ne(duplicateMember.id, workspaceUserTable.id),
+                  ),
+                ),
+            ),
+          ),
+          or(
+            ...WORKSPACE_PROJECT_SEE_ALL_ROLES.map((key) =>
+              and(
+                eq(workspaceUserTable.role, key),
+                legacyWorkspaceKeyAdmitted(key, projectWorkspaceId, executor),
+              ),
+            ),
+          ),
+        ),
+      ),
+  );
+
   // TM-4 / reach step 5: the caller is an active member of the team that owns the project.
   // `identity.teamIds` is already limited to teams of workspaces the person currently belongs
   // to; the same-workspace check below keeps a stale team id from reaching across tenants.
@@ -267,6 +345,7 @@ export function currentProjectReachPredicate(
     directProjectMembership,
     ancestorProjectMembership,
     workspaceSeesAll,
+    workspaceRoleSeesAll,
     ownerTeamReach,
   );
 }

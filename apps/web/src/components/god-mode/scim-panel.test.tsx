@@ -19,9 +19,10 @@ const mocks = vi.hoisted(() => ({
   options: vi.fn(),
 }));
 
-vi.mock("react-i18next", async () => {
+vi.mock("react-i18next", async (importOriginal) => {
   const { translate } = await import("@/test/en-translation");
   return {
+    ...(await importOriginal<typeof import("react-i18next")>()),
     useTranslation: (namespace: string) => ({
       t: (key: string, options?: Record<string, unknown>) =>
         translate(key.includes(":") ? key : `${namespace}:${key}`, options),

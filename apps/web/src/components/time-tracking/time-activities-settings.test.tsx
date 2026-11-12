@@ -11,7 +11,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TimeActivitiesSettings } from "./time-activities-settings";
 
 const mocks = vi.hoisted(() => ({ update: vi.fn() }));
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
@@ -47,6 +48,30 @@ afterEach(() => {
 });
 
 describe("time activity saves", () => {
+  it("withdraws the done state when the name is edited again", async () => {
+    mocks.update.mockResolvedValueOnce({});
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TimeActivitiesSettings />
+      </QueryClientProvider>,
+    );
+    const input = screen.getByLabelText("timeTracking:activities.nameLabel");
+    fireEvent.change(input, { target: { value: "Support work" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "timeTracking:actions.save" }),
+    );
+    await screen.findByText("common:actions.saved", {
+      selector: '[role="status"]',
+    });
+    fireEvent.change(input, { target: { value: "Support work again" } });
+    await waitFor(() =>
+      expect(
+        screen.queryByText("common:actions.saved", {
+          selector: '[role="status"]',
+        }),
+      ).toBeNull(),
+    );
+  });
   it("locks rename while archiving and allows it afterward without a double submit", async () => {
     let resolveArchive: (value: unknown) => void = () => {};
     let resolveRename: (value: unknown) => void = () => {};

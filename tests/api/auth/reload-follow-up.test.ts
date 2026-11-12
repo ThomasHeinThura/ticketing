@@ -25,6 +25,11 @@ vi.mock("../../../apps/api/src/auth/repository", async (importOriginal) => ({
   getIdentityConnectionConfigVersions: async () => [],
 }));
 
+vi.mock("../../../apps/api/src/auth/staff-registration", () => ({
+  refreshStaffRegistration: vi.fn().mockResolvedValue(undefined),
+  staffSelfRegistrationEnabled: () => false,
+}));
+
 import {
   customerLocalAuthMethods,
   reloadAuthConfiguration,

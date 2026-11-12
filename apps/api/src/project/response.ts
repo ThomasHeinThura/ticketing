@@ -121,6 +121,14 @@ export const projectStatisticsSchema = z
 export const projectListItemSchema = projectSchema
   .extend({
     statistics: projectStatisticsSchema,
+    canJoin: z.boolean().optional().openapi({
+      description:
+        "Eligible non-impersonated owner/admin/manager session may join this project.",
+    }),
+    seenOnlyViaWorkspaceRole: z.boolean().optional().openapi({
+      description:
+        "The caller reaches this project only through owner, admin or manager workspace-wide visibility.",
+    }),
     /** PR-5: exact work-item statistics for the caller-visible project subtree. */
     descendantStatistics: projectStatisticsSchema.optional(),
     // Legacy, always empty. Fetch the board via GET /task/tasks/{id}.

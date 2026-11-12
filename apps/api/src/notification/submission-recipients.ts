@@ -3,6 +3,7 @@ import { can, type ResolvedIdentity } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { schema } from "../database";
 import type { DbTransaction, DomainEventEnvelope } from "../events/outbox";
+import { hasPortalSubmissionProjectAccess } from "../intake/repository";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import type { NotificationRecipientCandidate } from "./fanout";
 import { configuredMentionChannels } from "./fanout.repository";
@@ -17,7 +18,7 @@ import {
  * handled it"; feature-contracts-p2.md IQ-12: a clarification request "notifies the customer").
  *
  * - `by: "staff"` (a clarification or any triager message): the request's requester, who must
- *   still be an active customer with a login.
+ *   still be an active customer with a login and current project access (D-D).
  * - `by: "customer"` (the reply, IQ-13): the triager who last handled the submission
  *   (`findSubmissionLastHandlerId`: the author of the latest triager message, else
  *   `claimed_by`), only while they still hold `intake:triage` in the submission's workspace.
@@ -63,6 +64,17 @@ export async function resolveSubmissionRepliedRecipients(
   if (!identity || identity.personId !== recipientPersonId) return [];
   if (by === "staff") {
     if (identity.side !== "customer") return [];
+    if (
+      !(await hasPortalSubmissionProjectAccess(
+        submission.id,
+        {
+          personId: identity.personId,
+          organisationId: identity.organisationId,
+        },
+        tx,
+      ))
+    )
+      return [];
   } else if (
     identity.side !== "staff" ||
     !can(identity, "intake:triage", "workspace", {
@@ -120,7 +132,7 @@ export async function resolveSubmissionRepliedRecipients(
  * path carries IQ-15's auto-decline message). The reason is the customer-facing text the
  * decliner wrote, so it is the one place message content is copied into a notification body;
  * it is bounded to keep the inbox row small. A missing or deactivated requester, or one who is
- * not a customer, receives nothing.
+ * not a customer or lacks project access, receives nothing.
  */
 async function resolveSubmissionDeclinedRecipients(
   tx: DbTransaction,
@@ -148,6 +160,17 @@ async function resolveSubmissionDeclinedRecipients(
     identity.side !== "customer"
   )
     return [];
+  if (
+    !(await hasPortalSubmissionProjectAccess(
+      submission.id,
+      {
+        personId: identity.personId,
+        organisationId: identity.organisationId,
+      },
+      tx,
+    ))
+  )
+    return [];
   return [
     {
       personId: submission.requesterId,
@@ -172,9 +195,9 @@ async function resolveSubmissionDeclinedRecipients(
 
 /**
  * Send-time recipient check for a `submission` delivery (`current-eligibility.ts`): the customer
- * must still be the submission's requester, and a staff recipient the triager who last handled
- * it (`findSubmissionLastHandlerId`) while still holding `intake:triage` in its workspace.
- * Fails closed.
+ * must still be the submission's requester with project access, and a staff recipient the triager
+ * who last handled it (`findSubmissionLastHandlerId`) while still holding `intake:triage` in its
+ * workspace. Fails closed.
  */
 export async function isCurrentSubmissionNotificationRecipient(
   tx: DbTransaction,
@@ -197,8 +220,17 @@ export async function isCurrentSubmissionNotificationRecipient(
     .where(eq(schema.submissionTable.id, input.submissionId))
     .limit(1);
   if (!row || row.workspaceId !== input.workspaceId) return false;
-  if (identity.side === "customer")
-    return identity.personId === row.requesterId;
+  if (identity.side === "customer") {
+    if (identity.personId !== row.requesterId) return false;
+    return hasPortalSubmissionProjectAccess(
+      row.id,
+      {
+        personId: identity.personId,
+        organisationId: identity.organisationId,
+      },
+      tx,
+    );
+  }
   return (
     identity.side === "staff" &&
     identity.personId === (await findSubmissionLastHandlerId(tx, row)) &&

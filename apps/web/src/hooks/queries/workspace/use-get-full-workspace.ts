@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { client } from "@taskdesk/libs";
+import { HttpError } from "@/lib/http-error";
 
 type GetFullWorkspaceRequest = {
   workspaceId?: string;
@@ -25,6 +26,8 @@ function useGetFullWorkspace({ workspaceId }: GetFullWorkspaceRequest) {
       });
 
       if (!response.ok) {
+        if (response.status === 403)
+          throw new HttpError(403, "Failed to get full workspace");
         throw new Error("Failed to get full workspace");
       }
 

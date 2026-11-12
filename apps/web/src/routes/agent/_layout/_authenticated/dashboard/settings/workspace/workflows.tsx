@@ -33,7 +33,14 @@ import {
 import { ChevronLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessChecking,
+  SettingsAccessError,
+  useCapabilityCheckFailed,
+} from "@/components/settings/settings-access";
 import { CabTemplatePanel } from "@/components/workflow/cab-template-panel";
 import {
   type NamedOption,
@@ -83,7 +90,6 @@ const STATUS_VARIANT = {
 } as const;
 
 function WorkflowSettingsRoute() {
-  const { t } = useTranslation();
   const navigate = useNavigate({ from: Route.fullPath });
   const { workflowId } = Route.useSearch();
   const { data: workspace } = useActiveWorkspace();
@@ -91,9 +97,12 @@ function WorkflowSettingsRoute() {
   // State templates are workspace-wide; any project can list them for their names.
   const templates = useGetProjectStateTemplates(projects.data?.[0]?.id);
   const roles = useWorkspaceRoles(workspace?.id);
-  const { canManageWorkspaceSettings, isCheckingPermissions } =
+  const { canManageWorkflows, isCheckingPermissions } =
     useWorkspacePermission();
-  const canManage = canManageWorkspaceSettings() && !isCheckingPermissions;
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    isCheckingPermissions ? workspace?.id : undefined,
+  );
+  const canManage = canManageWorkflows() && !isCheckingPermissions;
   const states: NamedOption[] = (templates.data ?? []).map((template) => ({
     id: template.id,
     name: template.name,
@@ -105,39 +114,42 @@ function WorkflowSettingsRoute() {
     id: role.id,
     name: role.role,
   }));
+  if (isCheckingPermissions)
+    return capabilityCheckFailed ? (
+      <SettingsAccessError />
+    ) : (
+      <SettingsAccessChecking />
+    );
   return (
-    <>
-      <PageTitle title={t("settings:workflows.title")} />
-      <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
-        {workflowId ? (
-          <WorkflowDetailView
-            workflowId={workflowId}
-            canManage={canManage}
-            states={states}
-            roles={roleOptions}
-            projects={projectOptions}
-            onBack={() =>
-              void navigate({
-                to: routes.workflowSettings.path,
-                search: { workflowId: undefined },
-              })
-            }
-          />
-        ) : (
-          <WorkflowListView
-            workspaceId={workspace?.id}
-            canManage={canManage}
-            projects={projectOptions}
-            onOpen={(id) =>
-              void navigate({
-                to: routes.workflowSettings.path,
-                search: { workflowId: id },
-              })
-            }
-          />
-        )}
-      </div>
-    </>
+    <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+      {workflowId ? (
+        <WorkflowDetailView
+          workflowId={workflowId}
+          canManage={canManage}
+          states={states}
+          roles={roleOptions}
+          projects={projectOptions}
+          onBack={() =>
+            void navigate({
+              to: routes.workflowSettings.path,
+              search: { workflowId: undefined },
+            })
+          }
+        />
+      ) : (
+        <WorkflowListView
+          workspaceId={workspace?.id}
+          canManage={canManage}
+          projects={projectOptions}
+          onOpen={(id) =>
+            void navigate({
+              to: routes.workflowSettings.path,
+              search: { workflowId: id },
+            })
+          }
+        />
+      )}
+    </div>
   );
 }
 
@@ -159,8 +171,10 @@ function WorkflowListView({
     enabled: Boolean(workspaceId),
   });
   const [creating, setCreating] = useState(false);
+  if (isForbiddenError(list.error)) return <NoAccessPage />;
   return (
     <>
+      <PageTitle title={t("settings:workflows.title")} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="font-semibold text-2xl">
@@ -476,9 +490,11 @@ function WorkflowDetailView({
   const failed = [detail, saveDraft, validate, publish].find(
     (operation) => operation.isError,
   );
+  if (isForbiddenError(detail.error)) return <NoAccessPage />;
 
   return (
     <>
+      <PageTitle title={t("settings:workflows.title")} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           <Button variant="ghost" size="xs" onClick={onBack}>

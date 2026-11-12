@@ -32,7 +32,9 @@ import {
 import { ArrowLeft, ExternalLink, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   requestServiceDeletion,
   SERVICE_STATUSES,
@@ -1030,6 +1032,8 @@ export function ServiceDetailView({ serviceId }: { serviceId: string }) {
   const [editing, setEditing] = useState(false);
   const canManage = status.data?.canManageServices === true;
   const data = service.data;
+  if ([status.error, service.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={data?.name ?? t("services.detail.pageTitle")} />

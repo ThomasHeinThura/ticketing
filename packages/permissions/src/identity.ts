@@ -89,7 +89,16 @@ export type Membership = {
 /** Reach — which organisations, workspaces and projects this person can see. */
 export type Reach =
   | { readonly kind: "all" }
-  | { readonly kind: "organisation"; readonly ids: readonly string[] }
+  | {
+      readonly kind: "organisation";
+      readonly ids: readonly string[];
+      /**
+       * Explicit per-person project/managed-service grants (`customer_project_access`, owner
+       * decision D-D, 12 Nov 2026). A customer reaches a project only when both its
+       * `organisation_id` is in `ids` AND its `id` is in `projectIds`.
+       */
+      readonly projectIds: readonly string[];
+    }
   | { readonly kind: "membership" }
   | {
       /** Ordinary membership reach plus sees_all within only these workspaces. */

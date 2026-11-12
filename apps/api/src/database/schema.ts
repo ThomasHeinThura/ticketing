@@ -412,14 +412,17 @@ export const invitationTable = pgTable(
     inviterId: text("inviter_id")
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
-    // CP-20..CP-26 (0153): `staff` (every pre-existing row) or `customer`. A customer row names one
-    // customer organisation and the `customer` role and carries a hash-only accept credential.
+    // CP-20..CP-26 (0153, 0221): `staff` (every pre-existing row) or `customer`. A customer row names one
+    // customer organisation and the `customer` role and carries a hash-only accept credential derived from
+    // `id` + `generation` under a dedicated HKDF sub-key (D-N); resending increments `generation`.
     scope: text("scope").default("staff").notNull(),
     organisationId: text("organisation_id").references(
       () => organisationTable.id,
       { onDelete: "cascade", onUpdate: "cascade" },
     ),
     credentialHash: text("credential_hash"),
+    validatedProjectIds: jsonb("validated_project_ids").$type<string[]>(),
+    generation: integer("generation").default(1).notNull(),
     lastSentAt: timestamp("last_sent_at", { mode: "date", withTimezone: true }),
     acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
     acceptedPersonId: text("accepted_person_id").references(
@@ -435,6 +438,7 @@ export const invitationTable = pgTable(
       "invitation_scope_allowed",
       sql.raw("scope IN ('staff', 'customer')"),
     ),
+    check("invitation_generation_positive", sql.raw("generation >= 1")),
     check(
       "invitation_scope_shape",
       sql.raw(
@@ -1274,6 +1278,9 @@ export const instanceSettingTable = pgTable(
   "instance_setting",
   {
     id: text("id").primaryKey().default("singleton"),
+    staffSelfRegistrationEnabled: boolean("staff_self_registration_enabled")
+      .notNull()
+      .default(false),
     // Durable first-run marker (auth-and-identity.md § Break-glass). Non-null means
     // the instance has been claimed: the zero-user bootstrap bypass in auth.ts and
     // the TASKDESK_BOOTSTRAP_ADMIN_EMAIL headless path are both permanently inert
@@ -6415,7 +6422,7 @@ export const stepUpConfirmationTable = pgTable(
     check(
       "step_up_operation_route",
       sql.raw(
-        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'organisation_restore'::text) AND (route_key = 'POST /api/instance/organisations/{id}/restore'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'webhook_rotate_all'::text) AND (route_key = 'POST /api/instance/webhooks/rotate-secrets'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'service_key_reattest'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys/{keyId}/re-attest'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text)) OR ((operation_key = 'change_freeze_override'::text) AND (route_key = 'POST /api/work-items/{key}/change/override-freeze'::text)) OR ((operation_key = 'audit_export'::text) AND (route_key = 'POST /api/instance/audit/export'::text)) OR ((operation_key = 'auth_local_methods_update'::text) AND (route_key = 'PUT /api/instance/auth/local-methods'::text)) OR ((operation_key = 'storage_config_save'::text) AND (route_key = 'PUT /api/instance/storage/s3-draft'::text)) OR ((operation_key = 'storage_config_test'::text) AND (route_key = 'POST /api/instance/storage/s3-draft/test'::text))",
+        "(operation_key IS NULL) OR ((operation_key = 'metrics_token_rotate'::text) AND (route_key = 'POST /api/instance/observability/metrics-token/rotate'::text)) OR ((operation_key = 'identity_connection_create'::text) AND (route_key = 'POST /api/instance/identity-connections'::text)) OR ((operation_key = 'identity_connection_configure'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}'::text)) OR ((operation_key = 'oidc_group_mapping_create'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings'::text)) OR ((operation_key = 'oidc_group_mapping_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}'::text)) OR ((operation_key = 'scim_admin_update'::text) AND (route_key = 'PATCH /api/instance/identity-connections/{id}/scim'::text)) OR ((operation_key = 'scim_token_rotate'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/rotate-token'::text)) OR ((operation_key = 'scim_token_revoke'::text) AND (route_key = 'POST /api/instance/identity-connections/{id}/scim/revoke-token'::text)) OR ((operation_key = 'mfa_reset'::text) AND (route_key = 'POST /api/instance/users/{id}/reset-mfa'::text)) OR ((operation_key = 'instance_admin_grant'::text) AND (route_key = 'POST /api/instance/users/{id}/grant-admin'::text)) OR ((operation_key = 'instance_admin_suspend'::text) AND (route_key = 'POST /api/instance/users/{id}/suspend'::text)) OR ((operation_key = 'impersonation_start'::text) AND (route_key = 'POST /api/instance/users/{id}/impersonate'::text)) OR ((operation_key = 'secrets_rotate'::text) AND (route_key = 'POST /api/instance/plugins/rotate-secrets'::text)) OR ((operation_key = 'organisation_restore'::text) AND (route_key = 'POST /api/instance/organisations/{id}/restore'::text)) OR ((operation_key = 'webhook_create'::text) AND (route_key = 'POST /api/webhooks'::text)) OR ((operation_key = 'webhook_update_url'::text) AND (route_key = 'PATCH /api/webhooks/{id}'::text)) OR ((operation_key = 'webhook_rotate_secret'::text) AND (route_key = 'POST /api/webhooks/{id}/rotate-secret'::text)) OR ((operation_key = 'webhook_rotate_all'::text) AND (route_key = 'POST /api/instance/webhooks/rotate-secrets'::text)) OR ((operation_key = 'workspace_role_create'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/roles'::text)) OR ((operation_key = 'workspace_role_update'::text) AND (route_key = 'PATCH /api/workspace/{workspaceId}/roles/{roleId}'::text)) OR ((operation_key = 'service_key_create'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys'::text)) OR ((operation_key = 'service_key_reattest'::text) AND (route_key = 'POST /api/workspaces/{id}/api-keys/{keyId}/re-attest'::text)) OR ((operation_key = 'workspace_ownership_transfer'::text) AND (route_key = 'POST /api/workspace/{workspaceId}/transfer-ownership'::text)) OR ((operation_key = 'change_freeze_override'::text) AND (route_key = 'POST /api/work-items/{key}/change/override-freeze'::text)) OR ((operation_key = 'audit_export'::text) AND (route_key = 'POST /api/instance/audit/export'::text)) OR ((operation_key = 'auth_local_methods_update'::text) AND (route_key = 'PUT /api/instance/auth/local-methods'::text)) OR ((operation_key = 'storage_config_save'::text) AND (route_key = 'PUT /api/instance/storage/s3-draft'::text)) OR ((operation_key = 'storage_config_test'::text) AND (route_key = 'POST /api/instance/storage/s3-draft/test'::text)) OR ((operation_key = 'notification_provider_save'::text) AND (route_key = 'PATCH /api/instance/notification-providers/email'::text))",
       ),
     ),
     check(
@@ -7431,5 +7438,74 @@ export const customerInvitationAuthContinuationTable = pgTable(
       "customer_invitation_auth_nonce_sha256",
       sql.raw("nonce_hash ~ '^[a-f0-9]{64}$'"),
     ),
+  ],
+);
+
+/**
+ * D-D (Thomas, 12 Nov 2026): explicit per-person customer reach to an engagement. A customer's
+ * authority remains their single organisation-scope `customer` role; reach requires both the
+ * project's `organisation_id` matching the customer's organisation and a row here.
+ */
+export const customerProjectAccessTable = pgTable(
+  "customer_project_access",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    grantedBy: text("granted_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "customer_project_access_pkey",
+      columns: [table.personId, table.projectId],
+    }),
+    index("customer_project_access_project_idx").on(table.projectId),
+  ],
+);
+
+/**
+ * D-D / CP-21 / CP-24: projects selected by the inviter on a customer-scope invitation, granted in
+ * `customer_project_access` inside the acceptance transaction.
+ */
+export const customerInvitationProjectTable = pgTable(
+  "customer_invitation_project",
+  {
+    invitationId: text("invitation_id")
+      .notNull()
+      .references(() => invitationTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "customer_invitation_project_pkey",
+      columns: [table.invitationId, table.projectId],
+    }),
+    index("customer_invitation_project_project_idx").on(table.projectId),
   ],
 );

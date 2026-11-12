@@ -22,6 +22,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import {
   FailureAlert,
   StepUpFields,
@@ -32,6 +33,7 @@ import {
   workspaceRolesKey,
 } from "@/hooks/queries/workspace/use-workspace-roles";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { localizedErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 
@@ -214,7 +216,14 @@ export function CreateRoleDialog({
             />
             {mutation.error && mutation.error.cause !== "step_up" ? (
               <Alert variant="error">
-                <AlertDescription>{mutation.error.message}</AlertDescription>
+                <AlertDescription>
+                  {localizedErrorMessage(
+                    mutation.error,
+                    t,
+                    t("roles:clientErrors.create"),
+                  )}
+                  <ErrorReference error={mutation.error} />
+                </AlertDescription>
               </Alert>
             ) : null}
           </div>

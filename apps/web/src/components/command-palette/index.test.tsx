@@ -25,6 +25,12 @@ const mocks = vi.hoisted(() => ({
   projectsPageModule: vi.fn(),
   preloadRoute: vi.fn().mockResolvedValue(undefined),
   sessionRole: undefined as string | undefined,
+  activeOrganizationId: "w1" as string | null,
+  workspaces: [{ id: "w1" }, { id: "w2" }] as Array<{ id: string }>,
+  activateWorkspace: vi.fn((_workspaceId: string) =>
+    Promise.resolve({ id: "w2" }),
+  ),
+  toastError: vi.fn(),
   search: vi.fn((_params: { q: string }) => ({
     data: { results: [] as Array<Record<string, string>> },
   })),
@@ -37,6 +43,8 @@ const mocks = vi.hoisted(() => ({
   routeProjectLoading: false,
   permissionTarget: vi.fn(),
   canCreate: true,
+  canCreateProject: true,
+  checkingProjectPermissions: false,
   checkingPermissions: false,
   // What the mocked shared create dialog was last given.
   createClose: undefined as undefined | (() => void),
@@ -76,14 +84,32 @@ vi.mock("@/lib/auth-client", () => ({
   authClient: {
     useSession: () => ({
       data: mocks.sessionRole
-        ? { user: { id: "u-1", role: mocks.sessionRole } }
-        : undefined,
+        ? {
+            user: { id: "u-1", role: mocks.sessionRole },
+            session: { activeOrganizationId: mocks.activeOrganizationId },
+          }
+        : mocks.activeOrganizationId
+          ? {
+              user: { id: "u-1" },
+              session: { activeOrganizationId: mocks.activeOrganizationId },
+            }
+          : undefined,
     }),
   },
 }));
 
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "w1" } }),
+}));
+vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
+  default: () => ({ data: mocks.workspaces }),
+}));
+vi.mock("@/lib/activate-workspace-for-navigation", () => ({
+  activateWorkspaceForNavigation: (workspaceId: string) =>
+    mocks.activateWorkspace(workspaceId),
+}));
+vi.mock("@/lib/toast", () => ({
+  toast: { error: mocks.toastError },
 }));
 
 vi.mock("@/hooks/queries/search/use-global-search", () => ({
@@ -114,7 +140,10 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     mocks.permissionTarget(workspaceId, projectId, options);
     return {
       canCreateTasks: () => mocks.canCreate,
-      isCheckingPermissions: mocks.checkingPermissions,
+      canCreateProjects: () => mocks.canCreateProject,
+      isCheckingPermissions: options
+        ? mocks.checkingPermissions
+        : mocks.checkingProjectPermissions,
     };
   },
 }));
@@ -145,7 +174,7 @@ vi.mock("@/components/shared/modals/create-workspace-modal", () => ({
   default: () => null,
 }));
 vi.mock("@/components/shared/modals/create-project-modal", () => ({
-  default: () => null,
+  default: () => <div data-testid="create-project-dialog" />,
 }));
 
 // The design-system primitives aren't what this test is about; stub them
@@ -235,10 +264,19 @@ beforeAll(async () => {
 
 beforeEach(() => {
   mocks.sessionRole = undefined;
+  mocks.activeOrganizationId = "w1";
+  mocks.workspaces = [{ id: "w1" }, { id: "w2" }];
+  mocks.activateWorkspace.mockReset();
+  mocks.activateWorkspace.mockImplementation((_workspaceId: string) =>
+    Promise.resolve({ id: "w2" }),
+  );
+  mocks.toastError.mockReset();
   mocks.params = {};
   mocks.routeProject = undefined;
   mocks.routeProjectLoading = false;
   mocks.canCreate = true;
+  mocks.canCreateProject = true;
+  mocks.checkingProjectPermissions = false;
   mocks.checkingPermissions = false;
   mocks.createClose = undefined;
   mocks.createFinalFocus = undefined;
@@ -459,6 +497,50 @@ describe("CommandPalette create-workspace command (D-A, 12 Nov 2026)", () => {
     expect(
       screen.getByText("navigation:commandPalette.createWorkspace"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("CommandPalette create project access", () => {
+  it.each(["lead", "member", "viewer"])(
+    "hides the command and shortcut when %s lacks project:create",
+    async (_role) => {
+      mocks.canCreateProject = false;
+      renderLauncher();
+      await openPalette();
+      expect(
+        screen.queryByText("navigation:commandPalette.createProject"),
+      ).toBeNull();
+      await pressSequence("p", "c");
+      expect(screen.queryByTestId("create-project-dialog")).toBeNull();
+    },
+  );
+
+  it("offers the command and shortcut when an admin has project:create", async () => {
+    mocks.canCreateProject = true;
+    renderLauncher();
+    await openPalette();
+    expect(
+      screen.getByText("navigation:commandPalette.createProject"),
+    ).toBeInTheDocument();
+    await pressSequence("p", "c");
+    expect(screen.getByTestId("create-project-dialog")).toBeInTheDocument();
+  });
+
+  it("waits for the workspace capability before handling the create shortcut", async () => {
+    mocks.checkingProjectPermissions = true;
+    const view = renderLauncher();
+    await openPalette();
+    expect(
+      screen.queryByText("navigation:commandPalette.createProject"),
+    ).toBeNull();
+    await pressSequence("p", "c");
+    expect(screen.queryByTestId("create-project-dialog")).toBeNull();
+    mocks.checkingProjectPermissions = false;
+    await act(async () => {
+      view.refresh();
+      await vi.dynamicImportSettled();
+    });
+    expect(screen.getByTestId("create-project-dialog")).toBeInTheDocument();
   });
 });
 
@@ -774,5 +856,67 @@ describe("CommandPalette typing guard (D-6)", () => {
     expect(
       screen.queryByTestId("create-work-item-dialog-host"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("CommandPalette workspace search results (F-2)", () => {
+  it("activates an authorized workspace before navigating to /agent, and keeps the palette and query open with a translated toast on refusal or failure", async () => {
+    mocks.search.mockImplementation(({ q }: { q: string }) => ({
+      data: {
+        results: q
+          ? [
+              { id: "w2", type: "workspace", title: "Ops Workspace" },
+              { id: "w-denied", type: "workspace", title: "Denied Workspace" },
+            ]
+          : [],
+      },
+    }));
+
+    renderLauncher();
+    await openPalette();
+
+    fireEvent.change(screen.getByLabelText("palette search query"), {
+      target: { value: "Workspace" },
+    });
+
+    fireEvent.click(await screen.findByText("Denied Workspace"));
+    await vi.waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "navigation:workspaceSwitcher.switchFailed",
+      );
+    });
+    expect(mocks.activateWorkspace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("palette search query")).toHaveValue(
+      "Workspace",
+    );
+
+    mocks.toastError.mockClear();
+    mocks.activateWorkspace.mockRejectedValueOnce(new Error("403 Forbidden"));
+
+    fireEvent.click(screen.getByText("Ops Workspace"));
+    await vi.waitFor(() => {
+      expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "navigation:workspaceSwitcher.switchFailed",
+      );
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("palette search query")).toHaveValue(
+      "Workspace",
+    );
+
+    mocks.activateWorkspace.mockClear();
+    fireEvent.click(screen.getByText("Ops Workspace"));
+    await vi.waitFor(() => {
+      expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+      expect(screen.queryByTestId("command-dialog")).not.toBeInTheDocument();
+    });
+    expect(mocks.activateWorkspace.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.navigate.mock.invocationCallOrder[0],
+    );
   });
 });

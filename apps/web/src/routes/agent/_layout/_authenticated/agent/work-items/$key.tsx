@@ -59,6 +59,7 @@ export const Route = createFileRoute(
       .catch(() => {});
   },
   component: WorkItemDetailRouteComponent,
+  // Detail deliberately shows its task-shaped placeholder immediately for a direct entry.
   pendingComponent: WorkItemDetailLoading,
   pendingMs: 0,
   pendingMinMs: 0,
