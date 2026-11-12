@@ -734,12 +734,14 @@ repair or overwrite an existing environment. No email provider is configured by 
 
 Staff logins use their role key at `uat.taskdesk.test` (`agent1` for Marcus, `agent2` for
 Sofia); customer emails and all passwords are in the private credentials file. Staff
-invitation history records the chosen role; Olivia was invited as member before the
-instance administrator named her owner. The workspace includes planning, time, budgets,
-reports, documents, attachments, intake, SLA, useful portal articles and a pending CAB
-change. The example webhook is disabled. Service statuses are New, Open, Waiting on
-customer, On hold, Resolved and Closed. The two target automations are declared in the
-seed plan; unavailable product abilities print explicit skip reasons and create no rule.
+invitation history records the chosen role for other staff; the instance administrator
+names Olivia as owner at workspace creation, without an owner invitation. The workspace
+includes planning, time, budgets, reports, documents, attachments, intake, SLA, useful
+portal articles and a pending CAB
+change. The example webhook is disabled. The demo export follows the normal 24-hour
+expiry and is not renewed by rerunning the seed; request a new export in Reports.
+Service statuses are New, Open, Waiting on customer, On hold, Resolved and Closed.
+The two target automations are declared in the seed plan; unavailable product abilities print explicit skip reasons and create no rule.
 
 Verify locally with `node scripts/test-uat-seed.mjs`: it owns one disposable PostgreSQL 18
 container on a random port, migrates, finalizes a verified first-admin fixture, seeds twice,

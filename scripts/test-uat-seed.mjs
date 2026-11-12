@@ -24,7 +24,7 @@ try {
       path.join(directory, "postgres.env"),
       "--publish",
       "127.0.0.1::5432",
-      "postgres:18",
+      "postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5",
     ],
     { encoding: "utf8" },
   ).trim();
@@ -70,7 +70,10 @@ try {
         "vitest",
         "run",
         "--config",
-        "vitest.uat-seed.config.ts",
+        process.argv.includes("--plain")
+          ? "vitest.integration.config.ts"
+          : "vitest.uat-seed.config.ts",
+        "../../tests/api-integration/uat-seed.test.ts",
       ],
       { env, stdio: "pipe", timeout: 240000 },
     )

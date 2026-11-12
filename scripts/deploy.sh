@@ -453,31 +453,40 @@ print_setup_token() {
   fi
 }
 
-seed_if_permitted() {
+seed_if_permitted() (
   [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || return 0
   if [ "$SEED" -ne 1 ]; then
     say "not seeding demo data (pass --seed after first-administrator setup)"
     return 0
   fi
-  say "seeding clean-install demo data inside the application container"
-  # The seed writes the generated passwords to a new private file; the container's only
-  # writable path is its /tmp tmpfs, so the file is copied out (0600, outside the checkout)
-  # and removed from the container.
-  local in_container="/tmp/sit-credentials-$$.json"
+  local in_container="/tmp/demo-credentials-$$.json"
   local credentials="$HOME/.taskdesk/demo-credentials.json"
+  mkdir -p "$(dirname "$credentials")"
+  chmod 700 "$(dirname "$credentials")"
+  # Always recover credentials, including when a post-commit seed step fails.
+  recover_demo_credentials() {
+    local rc=$? copy_rc=0
+    trap - EXIT
+    if dc exec -T taskdesk test -f "$in_container"; then
+      (umask 077; dc exec -T taskdesk cat "$in_container" > "$credentials.pending") &&
+        chmod 600 "$credentials.pending" && mv -f "$credentials.pending" "$credentials" || copy_rc=$?
+    fi
+    dc exec -T taskdesk rm -f "$in_container" || copy_rc=1
+    if [ "$copy_rc" -ne 0 ]; then
+      warn "could not recover demo credentials; check $credentials.pending"
+      exit 1
+    fi
+    exit "$rc"
+  }
+  trap recover_demo_credentials EXIT
   if [ -f "$credentials" ]; then
     dc exec -T taskdesk sh -c 'umask 077; cat > "$1"' sh "$in_container" < "$credentials" \
       || die "could not restore private seed credentials"
   fi
   dc exec -T taskdesk node apps/api/dist/seed-uat.js --uat --credentials-file "$in_container" \
-    || die "SIT seeding failed. The stack is up; fix the error above and rerun scripts/deploy.sh."
-  mkdir -p "$(dirname "$credentials")"
-  chmod 700 "$(dirname "$credentials")"
-  (umask 077; dc exec -T taskdesk cat "$in_container" > "$credentials") \
-    || die "could not copy the SIT credentials out of the container"
-  dc exec -T taskdesk rm -f "$in_container" || true
-  ok "SIT account passwords are in $credentials (0600)"
-}
+    || die "Demo seeding failed. Finish first-administrator setup, fix the error above and rerun with --seed."
+  ok "Demo account passwords are in $credentials (0600)"
+)
 
 print_urls() {
   local domain="${DOMAIN:-localhost}"

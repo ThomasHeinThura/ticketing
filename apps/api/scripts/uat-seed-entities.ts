@@ -1,5 +1,6 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import { appendAuditLog } from "../src/audit/audit-writer";
 import {
   createAutomation,
   setAutomationEnabled,
@@ -26,7 +27,7 @@ import {
 } from "../src/database/schema-p5-time";
 import { encryptSecret } from "../src/notification-preferences/secrets";
 import { resolveIdentity } from "../src/permissions/resolve-identity";
-import { renderExport } from "../src/report/export.service";
+import { currentCaps, renderExport } from "../src/report/export.service";
 import { buildAttachmentStorageKey, putAttachmentObject } from "../src/storage";
 import type { Tx } from "./seed-sit-users";
 import { G1_AUTOMATIONS, G1_PENDING_CUSTOMER } from "./uat-seed-plan";
@@ -49,7 +50,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     name: "Launch readiness",
     startDate: day(-2),
     endDate: day(12),
-    createdBy: personId,
+    createdBy: "uat-user-agent2",
   });
   await tx.insert(moduleTable).values({
     id: "uat-module",
@@ -60,7 +61,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     leadId: "uat-person-lead",
     state: "in_progress",
     targetDate: day(12),
-    createdBy: personId,
+    createdBy: "uat-user-agent2",
   });
   await tx
     .update(schema.workItemTable)
@@ -90,7 +91,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     events: ["work_item.created"],
     active: false,
     disabledAt: now,
-    disabledReason: "Demo: configure a real endpoint before enabling",
+    disabledReason: "manual",
     createdBy: "uat-person-owner",
   });
   await tx.insert(schema.milestoneTable).values({
@@ -110,8 +111,8 @@ export async function seedG1Entities(tx: Tx, now: Date) {
   await tx.insert(schema.stakeholderTable).values({
     id: "uat-stakeholder",
     projectId,
-    personId: "uat-person-fabrikam1",
-    role: "Customer sponsor",
+    personId: "uat-person-lead",
+    role: "Delivery lead",
     escalationOrder: 1,
   });
   await tx.insert(schema.documentLinkTable).values({
@@ -177,7 +178,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     currency: "USD",
     periodStart: day(-15),
     periodEnd: day(30),
-    createdBy: personId,
+    createdBy: "uat-user-agent2",
   });
   await tx.insert(announcementTable).values({
     id: "uat-announcement",
@@ -194,7 +195,7 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     "Launch checklist\nConfirm customer sign-off, backup, and rollback owner before release.\n",
   );
   const objectKey = buildAttachmentStorageKey("uat/launch-checklist.txt");
-  await putAttachmentObject(objectKey, bytes, "text/plain", 1024);
+
   await tx.insert(schema.attachmentTable).values({
     id: "uat-attachment",
     workspaceId,
@@ -208,6 +209,151 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     uploadedBy: personId,
     customerVisible: true,
   });
+  // Product writers own their transactions and generate ids; the seed must keep its
+  // deterministic ids and single core transaction. Mirror their audit projections here.
+  const audits = [
+    [cycleTable, "uat-cycle", "cycle", ["name", "startDate", "endDate"], true],
+    [
+      moduleTable,
+      "uat-module",
+      "module",
+      ["name", "state", "targetDate"],
+      true,
+    ],
+    [
+      customFieldSectionTable,
+      "uat-field-section",
+      "custom_field_section",
+      ["name"],
+      false,
+    ],
+    [
+      customFieldTable,
+      "uat-custom-field",
+      "custom_field",
+      ["key", "name", "format"],
+      false,
+    ],
+    [timeActivityTable, "uat-time-activity", "time_activity", ["name"], false],
+    [
+      timeEntryTable,
+      "uat-time-entry",
+      "time_entry",
+      ["personId", "date", "minutes", "billable"],
+      true,
+    ],
+    [
+      budgetTable,
+      "uat-budget",
+      "budget",
+      ["name", "plannedAmountMinor", "currency", "periodStart", "periodEnd"],
+      true,
+    ],
+    [dashboardTable, "uat-dashboard", "dashboard", ["name", "scope"], false],
+    [
+      schema.savedViewTable,
+      "uat-saved-view",
+      "saved_view",
+      ["name", "scope", "scopeId", "visibility", "sharedWithTeamId", "layout"],
+      true,
+    ],
+    [
+      schema.documentLinkTable,
+      "uat-document-link",
+      "document_link",
+      ["kind", "customerVisible"],
+      true,
+    ],
+  ] as const;
+  for (const [table, id, entityType, fields, scoped] of audits) {
+    const [row] = await tx.select().from(table).where(eq(table.id, id));
+    if (!row) throw new Error(`Missing seed audit entity ${id}`);
+    const after = Object.fromEntries(
+      fields.map((key) => [
+        key,
+        (row as unknown as Record<string, string | number | boolean | null>)[
+          key
+        ] ?? null,
+      ]),
+    );
+    if (entityType === "time_entry") after.workItemKey = "WEB-3";
+    if (entityType === "dashboard") after.widgets = 1;
+    await appendAuditLog(tx, {
+      actorId: "uat-user-agent2",
+      actorType: "person",
+      workspaceId,
+      projectId: scoped ? projectId : null,
+      action: `${entityType}.created`,
+      entityType,
+      entityId: id,
+      before: null,
+      after,
+    });
+  }
+  const webhookAfter = {
+    name: "Delivery integration (disabled demo)",
+    urlHost: "hooks.example.test",
+    urlDigest: createHash("sha256")
+      .update("https://hooks.example.test/taskdesk")
+      .digest("hex")
+      .slice(0, 12),
+    events: ["work_item.created"],
+    active: true,
+  };
+  await appendAuditLog(tx, {
+    actorId: "uat-user-owner",
+    actorType: "person",
+    workspaceId,
+    action: "webhook.created",
+    entityType: "webhook",
+    entityId: "uat-webhook",
+    before: null,
+    after: webhookAfter,
+  });
+  await appendAuditLog(tx, {
+    actorId: "uat-user-owner",
+    actorType: "person",
+    workspaceId,
+    action: "webhook.updated",
+    entityType: "webhook",
+    entityId: "uat-webhook",
+    before: { active: true },
+    after: { active: false },
+  });
+  await appendAuditLog(tx, {
+    actorId: "uat-user-owner",
+    actorType: "person",
+    workspaceId,
+    action: "announcement.created",
+    entityType: "announcement",
+    entityId: "uat-announcement",
+    before: null,
+    after: {
+      title: "Welcome to the delivery workspace",
+      severity: "info",
+      audience: "workspace",
+      organisationIds: [],
+      projectIds: [],
+      startsAt: now.toISOString(),
+      endsAt: null,
+      publishedAt: now.toISOString(),
+      bodyLength:
+        "Review the launch checklist and use the portal to raise support requests. Include the affected service and the impact on your work."
+          .length,
+    },
+  });
+}
+
+export async function seedG1AttachmentObject() {
+  // Only write storage after the core transaction commits, so rollback cannot orphan an object.
+  await putAttachmentObject(
+    buildAttachmentStorageKey("uat/launch-checklist.txt"),
+    Buffer.from(
+      "Launch checklist\nConfirm customer sign-off, backup, and rollback owner before release.\n",
+    ),
+    "text/plain",
+    1024,
+  );
 }
 
 export async function seedG1PendingCustomer() {
@@ -321,7 +467,13 @@ export async function seedG1Report() {
     filters: {},
     options: {},
   };
-  const caps = { readAll: true, showRates: true, readAnyTime: true };
+  const caps = await currentCaps(
+    workspaceId,
+    "uat-user-owner",
+    identity,
+    undefined,
+  );
+  if (!caps) throw new Error("Demo owner cannot export reports");
   const rendered = await renderExport({
     spec,
     workspaceId,
@@ -347,6 +499,6 @@ export async function seedG1Report() {
     ratesIncluded: rendered.ratesIncluded,
     finishedAt: now,
     expiresAt: new Date(now.getTime() + 86400000),
-    notifiedAt: now,
+    notifiedAt: null,
   });
 }

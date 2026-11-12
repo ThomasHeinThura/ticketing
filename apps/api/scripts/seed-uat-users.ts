@@ -1,12 +1,10 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatSubmissionReference } from "@taskdesk/domain";
 import {
   BUILT_IN_ROLES,
-  DEFAULT_ROLE_NAMES,
-  defaultRolePayloads,
   type FeatureFlag,
   INSTANCE_ONLY_FEATURES,
   LOCKED_FEATURE_DEFAULTS,
@@ -16,11 +14,12 @@ import { config } from "dotenv-mono";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { appendAuditLog } from "../src/audit/audit-writer";
-import { completeFirstUserSetup } from "../src/auth/repository";
+import { ensureCustomerMembershipGrant } from "../src/customer-invitation/repository";
 import db, { getDatabasePool, schema } from "../src/database";
 import { resolveDatabaseConfig } from "../src/database/resolve-database-url";
 import { kbArticleTable, kbCategoryTable } from "../src/database/schema-p5-kb";
 import { projectPageTable } from "../src/database/schema-p5-pages";
+import { projectMembershipKeys } from "../src/identity/membership-projection";
 import {
   acceptSubmission,
   createRequestType,
@@ -35,24 +34,21 @@ import {
 } from "../src/kb/repository";
 import { lockWorkspaceLabelNames } from "../src/label/repository";
 import { enqueueNotificationEvent } from "../src/notification/fanout";
-import { resolveWorkspaceCreatedRecipient } from "../src/notification/recipient-resolvers";
+import { resolveApprovalEventRecipients } from "../src/notification/recipient-resolvers";
 import { createPage } from "../src/pages/repository";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
 import { changeProjectCustomerAccess } from "../src/project/members/customer-access";
-import { ensureProjectLeadRole } from "../src/project/project-creator-grant";
-import { seedDefaultCabWorkflowInTransaction } from "../src/service-management/cab-template";
+import { insertAdminProjectGrant } from "../src/project/members/roster.repository";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seedProjectStates } from "../src/utils/seed-project-states";
-import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
 import { recordWorkItemActivity } from "../src/work-item/activity";
-import { seedWorkspaceBuiltInRoles } from "../src/workspace/built-in-roles.repository";
+import { createWorkspaceInTransaction } from "../src/workspace/controllers/create-workspace";
 import { syncWorkspaceAdminReach } from "../src/workspace/workspace-admin-reach";
 import {
   ensureSystemRole,
   type SeedAccount,
   type Tx,
   upsertPerson,
-  upsertScopedMembership,
   upsertUserAndPassword,
 } from "./seed-sit-users";
 import {
@@ -61,6 +57,7 @@ import {
   UAT_SECOND_CONTOSO_PROJECT_ID,
 } from "./uat-customer-project-plan";
 import {
+  seedG1AttachmentObject,
   seedG1Automations,
   seedG1Entities,
   seedG1PendingCustomer,
@@ -1530,20 +1527,33 @@ type Seeded = {
 };
 
 export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
-  // Seeded accounts skip first sign-up, so mark setup complete here, in the seed transaction.
-  // Sets the marker only while it is unset; never overwrites it or touches the setup row otherwise.
-  await completeFirstUserSetup(tx);
+  const [setup] = await tx
+    .select()
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"));
+  if (!setup?.setupCompletedAt)
+    throw new Error(
+      "Complete first-administrator setup with verified TOTP before running the clean-install seed.",
+    );
   const date = (days: number) => new Date(now.getTime() + days * 86_400_000);
   const internalOrg = await ensureInternalOrganisation(tx);
   const [administrator] = await tx
-    .select()
+    .select({ id: schema.userTable.id, name: schema.userTable.name })
     .from(schema.userTable)
+    .innerJoin(
+      schema.twoFactorTable,
+      and(
+        eq(schema.twoFactorTable.userId, schema.userTable.id),
+        eq(schema.twoFactorTable.verified, true),
+      ),
+    )
     .where(
       and(
         eq(schema.userTable.role, "admin"),
         eq(schema.userTable.twoFactorEnabled, true),
       ),
     )
+    .orderBy(schema.userTable.id)
     .limit(1);
   if (!administrator)
     throw new Error(
@@ -1640,6 +1650,31 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       { roleKey: "customer", workspaceId: null, now },
       "uat",
     ));
+
+  const [workspace] = await tx
+    .select()
+    .from(schema.workspaceTable)
+    .where(eq(schema.workspaceTable.id, UAT_WORKSPACE_ID));
+  if (!workspace)
+    await createWorkspaceInTransaction(
+      tx,
+      {
+        name: "Northwind Service Desk (UAT)",
+        slug: UAT_WORKSPACE_SLUG,
+        description:
+          "User acceptance testing workspace: service desk, internal IT and a client website project.",
+        ownerId: user("owner"),
+        creatorId: administrator.id,
+        sessionId: "",
+      },
+      {
+        workspaceId: UAT_WORKSPACE_ID,
+        teamId: "uat-team-default",
+        teamMemberId: "uat-team-default-owner",
+        now,
+      },
+    );
+
   for (const account of UAT_ACCOUNTS.filter((row) => row.side === "customer")) {
     const organisationId =
       CUSTOMER_ORGS[account.org as "contoso" | "fabrikam"].id;
@@ -1660,60 +1695,15 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
           roleId: customerRoleId,
           seesAll: false,
           now,
+          grantedByPersonId: person("owner"),
         },
         "uat",
       );
   }
 
-  // Workspace, mirroring create-workspace.ts for a workspace this seed owns.
-  const workspaceCreated = await ensureById(
-    tx,
-    schema.workspaceTable,
-    {
-      id: UAT_WORKSPACE_ID,
-      organisationId: internalOrg.id,
-      name: "Northwind Service Desk (UAT)",
-      slug: UAT_WORKSPACE_SLUG,
-      description:
-        "User acceptance testing workspace: service desk, internal IT and a client website project.",
-      createdAt: now,
-    },
-    ["slug", "organisationId"],
-    "workspace",
-  );
-  if (workspaceCreated) {
-    await appendAuditLog(tx, {
-      actorId: administrator.id,
-      actorType: "person",
-      workspaceId: UAT_WORKSPACE_ID,
-      organisationId: internalOrg.id,
-      action: "workspace.created",
-      entityType: "workspace",
-      entityId: UAT_WORKSPACE_ID,
-      after: {
-        createdBy: administrator.id,
-        ownerUserId: user("owner"),
-        name: "Northwind Service Desk (UAT)",
-      },
-    });
-    await seedWorkspaceBuiltInRoles(tx, UAT_WORKSPACE_ID);
-    await tx.insert(schema.workspaceRoleTable).values(
-      DEFAULT_ROLE_NAMES.map((role) => ({
-        workspaceId: UAT_WORKSPACE_ID,
-        role,
-        permission: JSON.stringify(defaultRolePayloads[role]),
-        isSystem: true,
-        createdAt: now,
-        updatedAt: now,
-      })),
-    );
-    await seedWorkspaceDefaults(UAT_WORKSPACE_ID, tx);
-    await seedDefaultCabWorkflowInTransaction(UAT_WORKSPACE_ID, tx);
-    await ensureProjectLeadRole(tx, UAT_WORKSPACE_ID);
-  }
-
   for (const account of UAT_ACCOUNTS) {
     if (!account.workspaceRole) continue;
+    if (account.workspaceRole === "owner") continue;
     const workspaceMemberId = `uat-wm-${account.key}`;
     const inserted = await ensureById(
       tx,
@@ -1733,13 +1723,13 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       schema.invitationTable,
       {
         id: `uat-staff-invite-${account.key}`,
+        createdAt: now,
         workspaceId: UAT_WORKSPACE_ID,
         email: account.email,
-        role:
-          account.workspaceRole === "owner" ? "member" : account.workspaceRole,
+        role: account.workspaceRole,
         status: "accepted",
         scope: "staff",
-        inviterId: administrator.id,
+        inviterId: user("owner"),
         expiresAt: date(28),
         acceptedAt: now,
         acceptedPersonId: account.personId,
@@ -1747,51 +1737,32 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       ["workspaceId", "email", "role"],
       "staff invitation",
     );
+    if (inserted)
+      await appendAuditLog(tx, {
+        actorId: user("owner"),
+        actorType: "person",
+        workspaceId: UAT_WORKSPACE_ID,
+        action: "invitation.sent",
+        entityType: "invitation",
+        entityId: `uat-staff-invite-${account.key}`,
+        before: null,
+        after: {
+          scope: "staff",
+          inviteeHash: createHash("sha256")
+            .update(account.email.toLowerCase())
+            .digest("hex"),
+          resend: false,
+          role: account.workspaceRole,
+        },
+      });
     // Owner and admin reach comes from the real sees_all grant writer.
     if (
       inserted &&
-      (account.workspaceRole === "owner" ||
-        account.workspaceRole === "admin" ||
-        account.workspaceRole === "manager")
+      (account.workspaceRole === "admin" || account.workspaceRole === "manager")
     )
       await syncWorkspaceAdminReach(tx, UAT_WORKSPACE_ID, user(account.key));
   }
 
-  if (workspaceCreated) {
-    await enqueueNotificationEvent(
-      tx,
-      {
-        id: "uat-workspace-created",
-        kind: "workspace.created",
-        occurredAt: now.toISOString(),
-        actor: {
-          type: "person",
-          id: administrator.id,
-          name: administrator.name,
-        },
-        scope: {
-          workspaceId: UAT_WORKSPACE_ID,
-          organisationId: internalOrg.id,
-        },
-        payload: {
-          workspaceId: UAT_WORKSPACE_ID,
-          workspaceName: "Northwind Service Desk (UAT)",
-          ownerId: user("owner"),
-        },
-        causationId: null,
-        depth: 0,
-        originAutomationId: null,
-      },
-      {
-        resolveRecipients: (resolverTx, envelope) =>
-          resolveWorkspaceCreatedRecipient(
-            resolverTx,
-            envelope,
-            async () => [],
-          ),
-      },
-    );
-  }
   await ensureById(
     tx,
     schema.teamTable,
@@ -1926,7 +1897,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       .where(eq(schema.workflowVersionTable.id, "uat-service-workflow-v1"));
     await tx
       .update(schema.workflowTable)
-      .set({ publishedVersionId: "uat-service-workflow-v1" })
+      .set({ activeVersionId: "uat-service-workflow-v1" })
       .where(eq(schema.workflowTable.id, "uat-service-workflow"));
   }
   for (const key of [
@@ -2204,6 +2175,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
             scopeId: project.id,
             roleId: PROJECT_ROLES[account.projectRole].id,
             seesAll: false,
+            grantedByPersonId: person("owner"),
             now,
           },
           "uat",
@@ -2268,6 +2240,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
         scopeId: secondContosoProjectId,
         roleId: PROJECT_ROLES[account.projectRole].id,
         seesAll: false,
+        grantedByPersonId: person("owner"),
         now,
       },
       "uat",
@@ -2524,7 +2497,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     );
   }
 
-  await ensureById(
+  const approvalCreated = await ensureById(
     tx,
     schema.approvalTable,
     {
@@ -2545,8 +2518,133 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     "approval",
   );
 
+  if (approvalCreated) {
+    const createdAt = new Date(now.getTime() - 4 * 3_600_000).toISOString();
+    const expiresAt = date(UAT_APPROVAL_EXPIRY_DAYS).toISOString();
+    await appendAuditLog(tx, {
+      actorId: person("agent1"),
+      actorType: "person",
+      workspaceId: UAT_WORKSPACE_ID,
+      projectId: "uat-proj-support",
+      organisationId: CUSTOMER_ORGS.contoso.id,
+      action: "approval.requested",
+      entityType: "approval",
+      entityId: "uat-approval-sup-11",
+      after: {
+        workItemId: "uat-wi-sup-11",
+        transitionId: "uat-change-to-do-in-progress",
+        kind: "cab",
+        requestedBy: person("agent1"),
+        approverId: person("lead"),
+        state: "pending",
+        createdAt,
+        expiresAt,
+      },
+    });
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: "uat-approval-requested",
+        kind: "approval.requested",
+        occurredAt: createdAt,
+        actor: {
+          type: "person",
+          id: person("agent1"),
+          name: UAT_ACCOUNTS.find((a) => a.key === "agent1")?.name ?? "Marcus",
+        },
+        scope: {
+          workspaceId: UAT_WORKSPACE_ID,
+          projectId: "uat-proj-support",
+          organisationId: CUSTOMER_ORGS.contoso.id,
+        },
+        payload: {
+          approvalId: "uat-approval-sup-11",
+          approverId: person("lead"),
+          kind: "cab",
+          expiresAt,
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      },
+      { resolveRecipients: resolveApprovalEventRecipients },
+    );
+  }
+
   await seedG1Entities(tx, now);
   return { people, users, typeIds };
+}
+
+// Product grant writers plus their ordinary persisted membership projection, inside
+// the seed transaction rather than the roster service's separate transaction.
+async function upsertScopedMembership(
+  tx: Tx,
+  input: {
+    personId: string;
+    scope: "organisation" | "project";
+    scopeId: string;
+    roleId: string;
+    seesAll: boolean;
+    now: Date;
+    grantedByPersonId: string;
+  },
+  _prefix: string,
+) {
+  if (input.scope === "organisation") {
+    await ensureCustomerMembershipGrant(tx, {
+      personId: input.personId,
+      organisationId: input.scopeId,
+      roleId: input.roleId,
+      grantedByPersonId: input.grantedByPersonId,
+    });
+  } else {
+    await insertAdminProjectGrant(tx, {
+      personId: input.personId,
+      projectId: input.scopeId,
+      roleId: input.roleId,
+      grantedByPersonId: input.grantedByPersonId,
+    });
+  }
+  await projectMembershipKeys(tx, [
+    { personId: input.personId, scope: input.scope, scopeId: input.scopeId },
+  ]);
+  const [person] = await tx
+    .select()
+    .from(schema.personTable)
+    .where(eq(schema.personTable.id, input.personId));
+  const [role] = await tx
+    .select()
+    .from(schema.roleTable)
+    .where(eq(schema.roleTable.id, input.roleId));
+  await appendAuditLog(tx, {
+    actorId: "uat-user-owner",
+    actorType: "person",
+    workspaceId: UAT_WORKSPACE_ID,
+    organisationId: person?.organisationId,
+    projectId: input.scope === "project" ? input.scopeId : null,
+    action: "membership.changed",
+    entityType: "membership",
+    entityId: input.personId,
+    before: null,
+    after:
+      input.scope === "project"
+        ? {
+            source: "project_roster",
+            change: "added",
+            scope: "project",
+            scopeId: input.scopeId,
+            role: role?.key ?? null,
+            granted: true,
+          }
+        : {
+            source: "customer_invitation",
+            scope: "organisation",
+            scopeId: input.scopeId,
+            roleId: input.roleId,
+            grantedByPersonId: input.grantedByPersonId,
+            granted: true,
+          },
+  });
 }
 
 async function membershipExists(
@@ -2850,6 +2948,7 @@ export async function runUatSeed(argv: readonly string[] = process.argv) {
         { mode: 0o600, flag: "wx" },
       );
     const seeded = await db.transaction((tx) => seedCore(tx, now));
+    await seedG1AttachmentObject();
     for (const grant of uatCustomerProjectSeedPlan())
       await changeProjectCustomerAccess({
         ...grant,

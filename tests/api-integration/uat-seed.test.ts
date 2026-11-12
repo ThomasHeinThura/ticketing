@@ -1,18 +1,29 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { reaches } from "@taskdesk/permissions";
+import { can, reaches } from "@taskdesk/permissions";
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { UAT_ACCOUNTS } from "../../apps/api/scripts/seed-uat-users";
 import {
   G1_AUTOMATIONS,
   G1_PENDING_CUSTOMER,
   G1_PROJECT_IDS,
   G1_SERVICE_STATES,
 } from "../../apps/api/scripts/uat-seed-plan";
+import {
+  approvalCandidates,
+  approvalRequestContext,
+} from "../../apps/api/src/approval/authoring-service";
+import { resolveApprovalIdentity } from "../../apps/api/src/approval/repository";
+import {
+  auth,
+  portalAuth,
+  reloadAuthConfiguration,
+} from "../../apps/api/src/auth";
 import { finalizeVerifiedFirstUserSetup } from "../../apps/api/src/auth/repository";
 import { validateRuleDefinition } from "../../apps/api/src/automation/validation";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
@@ -23,6 +34,7 @@ import { resetTestDatabase } from "./helpers/database";
 
 const execute = promisify(execFile);
 let directory: string;
+let first: { stdout: string; stderr: string };
 async function snapshot() {
   const tables = (
     await db.execute<{ name: string }>(
@@ -40,20 +52,26 @@ async function snapshot() {
       .sort();
   return result;
 }
-async function run() {
+async function run(args?: string[], env?: NodeJS.ProcessEnv) {
   return execute(
     "pnpm",
     [
       "exec",
       "tsx",
       "../../scripts/seed-uat.mjs",
-      "--uat",
-      "--credentials-file",
-      path.join(directory, "credentials.json"),
+      ...(args ?? [
+        "--uat",
+        "--credentials-file",
+        path.join(directory, "credentials.json"),
+      ]),
     ],
     {
       cwd: `${import.meta.dirname}/../../apps/api`,
-      env: process.env,
+      env: {
+        ...process.env,
+        TASKDESK_STORAGE_FILESYSTEM_ROOT: path.join(directory, "storage"),
+        ...env,
+      },
       timeout: 120000,
     },
   );
@@ -63,11 +81,12 @@ afterAll(async () => {
   if (directory) await rm(directory, { recursive: true, force: true });
 });
 describe("clean-install seed on a disposable migrated database", () => {
-  it("keeps setup, creates the journeys, grants exact reach, and writes nothing on rerun", async () => {
+  it("requires completed setup and seeds once", async () => {
     await resetTestDatabase({ defaultOffFeatures: false });
     directory = await mkdtemp(
       path.join(os.tmpdir(), "taskdesk-g1-credentials-"),
     );
+    await mkdir(path.join(directory, "storage"), { mode: 0o700 });
     await expect(run()).rejects.toThrow(/Complete first-administrator setup/);
     await db.transaction(async (tx) => {
       const org = await ensureInternalOrganisation(tx);
@@ -93,10 +112,25 @@ describe("clean-install seed on a disposable migrated database", () => {
         verified: true,
       });
       await finalizeVerifiedFirstUserSetup(tx, "g1-first-admin");
+      // Operator-configured password login; the seed must not change auth settings.
+      await tx.insert(schema.instancePluginConfigTable).values({
+        id: "g1-password-plugin",
+        pluginId: "auth.password",
+        instanceKey: "default",
+        displayName: "Password",
+        enabled: true,
+        config: {},
+        scope: "instance",
+        portalScope: "both",
+        configVersion: 1,
+      });
     });
     const marker = await db.select().from(schema.instanceSettingTable);
-    const first = await run();
+    first = await run();
     expect(await db.select().from(schema.instanceSettingTable)).toEqual(marker);
+  });
+
+  it("creates the journeys and grants exact reach", async () => {
     const projects = await db
       .select()
       .from(schema.projectTable)
@@ -151,6 +185,24 @@ describe("clean-install seed on a disposable migrated database", () => {
         );
       expect(rows.map((r) => r.projectId).sort()).toEqual(ids.sort());
       expect(rows.every((r) => r.grantedBy === "uat-person-owner")).toBe(true);
+      const identity = await resolveIdentity({
+        userId: `uat-user-${key}`,
+        credential: "session",
+      });
+      if (!identity) throw new Error("Missing customer identity");
+      expect(
+        projects
+          .filter((p) =>
+            reaches(identity, {
+              projectId: p.id,
+              workspaceId: p.workspaceId,
+              organisationId: p.organisationId,
+              ownerTeamId: p.ownerTeamId,
+            }),
+          )
+          .map((p) => p.id)
+          .sort(),
+      ).toEqual([...ids].sort());
     }
     const [invitation] = await db
       .select()
@@ -256,8 +308,203 @@ describe("clean-install seed on a disposable migrated database", () => {
         ),
       );
     expect(triage?.n).toBeGreaterThan(0);
+  });
+
+  it("writes nothing and preserves all password hashes on rerun", async () => {
     const before = await snapshot();
-    await run();
+    const rerun = await run();
+    const credentials = JSON.parse(
+      await readFile(path.join(directory, "credentials.json"), "utf8"),
+    );
+    for (const account of credentials.accounts)
+      expect(rerun.stdout + rerun.stderr).not.toContain(account.password);
     expect(await snapshot()).toEqual(before);
+  });
+  it("retains role authority and CAB candidates", async () => {
+    const owner = await resolveIdentity({
+      userId: "uat-user-owner",
+      credential: "session",
+    });
+    const member = await resolveIdentity({
+      userId: "uat-user-agent1",
+      credential: "session",
+    });
+    const viewer = await resolveIdentity({
+      userId: "uat-user-viewer",
+      credential: "session",
+    });
+    if (!owner || !member || !viewer) throw new Error("Missing role fixture");
+    expect(
+      can(owner, "workspace:manage_members", "workspace", {
+        workspaceId: "uat-ws",
+      }),
+    ).toBe(true);
+    const target = {
+      workItemId: "uat-wi-web-3",
+      workItemProjectId: "uat-proj-web",
+      workspaceId: "uat-ws",
+    };
+    expect(can(member, "work_item:update", "work_item", target)).toBe(true);
+    expect(can(viewer, "work_item:update", "work_item", target)).toBe(false);
+    expect(can(viewer, "work_item:read", "work_item", target)).toBe(true);
+    const identity = await resolveApprovalIdentity("uat-user-agent1");
+    expect(
+      (await approvalRequestContext(identity, "SUP-11")).context,
+    ).toMatchObject({ enabled: true, canRequestCab: true });
+    expect(
+      (
+        await approvalCandidates(identity, "SUP-11", {
+          kind: "cab",
+          q: "",
+          limit: 25,
+        })
+      ).data.map((r) => r.id),
+    ).toContain("uat-person-lead");
+  });
+
+  it("writes the product creation audit rows and admin grant provenance", async () => {
+    for (const kind of [
+      "cycle",
+      "module",
+      "custom_field_section",
+      "custom_field",
+      "time_activity",
+      "time_entry",
+      "budget",
+      "dashboard",
+      "saved_view",
+      "document_link",
+      "webhook",
+      "announcement",
+    ]) {
+      const rows = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.workspaceId, "uat-ws"),
+            eq(schema.auditLogTable.action, `${kind}.created`),
+          ),
+        );
+      expect(rows.length, kind).toBeGreaterThan(0);
+    }
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "approval.requested")),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select()
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.eventId, "uat-approval-requested")),
+    ).toHaveLength(1);
+    const grants = await db
+      .select()
+      .from(schema.membershipGrantTable)
+      .where(eq(schema.membershipGrantTable.directOrigin, "admin"));
+    expect(grants.length).toBeGreaterThan(0);
+    expect(
+      grants.every((g) => g.grantedByPersonId === "uat-person-owner"),
+    ).toBe(true);
+    expect(
+      await db
+        .select()
+        .from(schema.invitationTable)
+        .where(eq(schema.invitationTable.id, "uat-staff-invite-owner")),
+    ).toEqual([]);
+  });
+
+  it("refuses unsafe inputs before connecting or writing", async () => {
+    const credentials = path.join(directory, "credentials.json");
+    await expect(run(["--credentials-file", credentials])).rejects.toThrow(
+      /--uat/,
+    );
+    await expect(
+      run(undefined, {
+        TASKDESK_DATABASE_URL:
+          "postgresql://invalid:invalid@127.0.0.1:1/taskdesk_browser_journey_1022_test",
+      }),
+    ).rejects.toThrow(/protected|live/i);
+    await expect(
+      run(undefined, {
+        TASKDESK_DATABASE_URL:
+          "postgresql://invalid:invalid@127.0.0.1:62870/unused_test",
+      }),
+    ).rejects.toThrow(/protected|62870/i);
+    await expect(
+      run([
+        "--uat",
+        "--credentials-file",
+        path.resolve(import.meta.dirname, "../../unsafe-credentials.json"),
+      ]),
+    ).rejects.toThrow(/outside/i);
+    await chmod(credentials, 0o644);
+    try {
+      await expect(run()).rejects.toThrow(/0600/);
+    } finally {
+      await chmod(credentials, 0o600);
+    }
+    expect((await stat(credentials)).mode & 0o777).toBe(0o600);
+  });
+
+  it("refuses existing accounts without credentials and conflicts without any writes", async () => {
+    const before = await snapshot();
+    await expect(
+      run([
+        "--uat",
+        "--credentials-file",
+        path.join(directory, "missing.json"),
+      ]),
+    ).rejects.toThrow(/accounts already exist/i);
+    expect(await snapshot()).toEqual(before);
+    await db
+      .update(schema.projectTable)
+      .set({ slug: "CONFLICT" })
+      .where(eq(schema.projectTable.id, "uat-proj-web"));
+    const conflicting = await snapshot();
+    try {
+      await expect(run()).rejects.toThrow(/conflict/i);
+      expect(await snapshot()).toEqual(conflicting);
+    } finally {
+      await db
+        .update(schema.projectTable)
+        .set({ slug: "WEB" })
+        .where(eq(schema.projectTable.id, "uat-proj-web"));
+    }
+  });
+
+  it("every generated password signs in through the real authentication handler and is never logged", async () => {
+    const credentials: { accounts: { email: string; password: string }[] } =
+      JSON.parse(
+        await readFile(path.join(directory, "credentials.json"), "utf8"),
+      );
+    expect(credentials.accounts).toHaveLength(UAT_ACCOUNTS.length);
+    await reloadAuthConfiguration();
+    // The auth handler receives the internal client-ip header after proxy normalization.
+    for (const [index, account] of credentials.accounts.entries()) {
+      expect(first.stdout + first.stderr).not.toContain(account.password);
+      const side = UAT_ACCOUNTS.find((a) => a.email === account.email)?.side;
+      const handler = side === "customer" ? portalAuth : auth;
+      const origin =
+        side === "customer"
+          ? process.env.TASKDESK_PORTAL_URL
+          : process.env.TASKDESK_AGENT_URL;
+      const response = await handler.handler(
+        new Request(`${origin}/api/auth/sign-in/email`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-taskdesk-client-ip": `198.51.100.${index + 1}`,
+          },
+          body: JSON.stringify({
+            email: account.email,
+            password: account.password,
+          }),
+        }),
+      );
+      expect(response.status, account.email).toBe(200);
+    }
   });
 });
