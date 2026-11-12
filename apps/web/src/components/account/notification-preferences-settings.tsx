@@ -442,6 +442,7 @@ function WorkspaceRuleCard({
           pending={isSaving}
           success={saveSucceeded}
           savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
           onClick={async () => {
             setIsSaving(true);
             setSaveSucceeded(false);
@@ -569,6 +570,7 @@ function ReportExportEmailPreference() {
           pending={mutation.isPending}
           success={mutation.isSuccess}
           savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
           onClick={() => mutation.mutate({ enabled: current })}
           type="button"
         >
@@ -823,6 +825,7 @@ export function NotificationPreferencesSettings() {
             pending={isSavingPreferences && activeSave === "events"}
             success={completedSave === "events"}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
             onClick={async () => {
               setActiveSave("events");
               setCompletedSave(null);
@@ -863,6 +866,7 @@ export function NotificationPreferencesSettings() {
               pending={isSavingPreferences && activeSave === "email"}
               success={completedSave === "email"}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
               onClick={async () => {
                 setActiveSave("email");
                 setCompletedSave(null);
@@ -929,6 +933,7 @@ export function NotificationPreferencesSettings() {
               pending={isSavingPreferences && activeSave === "gotify"}
               success={completedSave === "gotify"}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
               onClick={async () => {
                 setActiveSave("gotify");
                 setCompletedSave(null);
@@ -1065,6 +1070,7 @@ export function NotificationPreferencesSettings() {
               pending={isSavingPreferences && activeSave === "ntfy"}
               success={completedSave === "ntfy"}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
               onClick={async () => {
                 setActiveSave("ntfy");
                 setCompletedSave(null);
@@ -1218,6 +1224,7 @@ export function NotificationPreferencesSettings() {
               pending={isSavingPreferences && activeSave === "webhook"}
               success={completedSave === "webhook"}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
               onClick={async () => {
                 setActiveSave("webhook");
                 setCompletedSave(null);

@@ -10,6 +10,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  SAVE_FEEDBACK_HOLD_MS,
   Skeleton,
   Tabs,
   TabsList,
@@ -154,7 +155,7 @@ export function RoleDetailView({
   const [savedRoleId, setSavedRoleId] = useState<string | null>(null);
   useEffect(() => {
     if (!savedRoleId) return;
-    const timer = setTimeout(() => setSavedRoleId(null), 1200);
+    const timer = setTimeout(() => setSavedRoleId(null), SAVE_FEEDBACK_HOLD_MS);
     return () => clearTimeout(timer);
   }, [savedRoleId]);
   const queryClient = useQueryClient();

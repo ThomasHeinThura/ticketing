@@ -236,6 +236,8 @@ export function CreateRoleDialog({
               pending={mutation.isPending}
               success={false}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("roles:create.submit")}
             </SaveButton>

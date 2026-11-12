@@ -248,6 +248,8 @@ function CostTypeEditDialog({
               pending={save.isPending}
               success={false}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("timeTracking:actions.save")}
             </SaveButton>
@@ -396,6 +398,8 @@ function CostTypeAddForm({ workspaceId }: { workspaceId: string }) {
         pending={add.isPending}
         success={add.isSuccess}
         savedLabel={t("common:actions.saved")}
+        workingLabel={t("common:actions.saving")}
+        announceSuccess={false}
       >
         <Plus aria-hidden="true" />
         {t("timeTracking:costTypes.add")}

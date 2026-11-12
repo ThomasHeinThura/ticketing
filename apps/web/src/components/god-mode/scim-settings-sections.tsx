@@ -200,6 +200,7 @@ export function ScimSettingsSection({
         pending={saving}
         success={completed}
         savedLabel={t("common:actions.saved")}
+        workingLabel={t("common:actions.saving")}
         onClick={async () => {
           if (!request || step.busy) return;
           setCompleted(false);
@@ -288,6 +289,7 @@ export function ScimProfileMappingSection({
         pending={saving}
         success={completed}
         savedLabel={t("common:actions.saved")}
+        workingLabel={t("common:actions.saving")}
         onClick={async () => {
           if (!request || step.busy) return;
           setCompleted(false);

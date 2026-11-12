@@ -425,6 +425,8 @@ function ProjectEngagementSettings({
             pending={isSaving}
             success={engagementSaved}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => void handleSave()}
           >
             {t("settings:projectGeneral.engagement.save")}
@@ -804,6 +806,8 @@ function ProjectInheritanceSettings({
           pending={saving}
           success={inheritanceSaved}
           savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
           onClick={() => void save()}
         >
           {t("settings:projectInheritance.save")}

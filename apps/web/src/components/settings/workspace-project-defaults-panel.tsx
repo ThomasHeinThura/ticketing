@@ -369,6 +369,7 @@ export function WorkspaceProjectDefaultsPanel({
               pending={saving}
               success={saveSuccess}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
               onClick={() => void save()}
             >
               {t("settings:workspaceProjectDefaults.save")}

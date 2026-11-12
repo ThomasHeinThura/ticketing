@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Separator,
   Skeleton,
@@ -57,7 +58,10 @@ function GodModeOrganisationsRoute() {
   const [completedKey, setCompletedKey] = useState<string | null>(null);
   useEffect(() => {
     if (!completedKey) return;
-    const timer = setTimeout(() => setCompletedKey(null), 1200);
+    const timer = setTimeout(
+      () => setCompletedKey(null),
+      SAVE_FEEDBACK_HOLD_MS,
+    );
     return () => clearTimeout(timer);
   }, [completedKey]);
   const query = useQuery({
@@ -695,7 +699,9 @@ function CatalogueEditor({
             disabled={readOnly || (!changed && !save.isPending)}
             pending={save.isPending}
             success={completed}
+            retainedSuccess
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
             onClick={() => void submit().catch(() => undefined)}
             type="button"
           >

@@ -20,6 +20,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Skeleton,
   Table,
@@ -369,6 +370,8 @@ function CreateWorkflowDialog({
             pending={create.isPending}
             success={false}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => create.mutate()}
           >
             {t("settings:workflows.create.submit")}
@@ -408,7 +411,7 @@ function WorkflowDetailView({
   const [draftSaved, setDraftSaved] = useState(false);
   useEffect(() => {
     if (!draftSaved) return;
-    const timer = setTimeout(() => setDraftSaved(false), 1200);
+    const timer = setTimeout(() => setDraftSaved(false), SAVE_FEEDBACK_HOLD_MS);
     return () => clearTimeout(timer);
   }, [draftSaved]);
   const [validating, setValidating] = useState<{
@@ -625,6 +628,8 @@ function WorkflowDetailView({
                         pending={saveDraft.isPending}
                         success={draftSaved}
                         savedLabel={t("common:actions.saved")}
+                        workingLabel={t("common:actions.saving")}
+                        announceSuccess={false}
                         onClick={() => {
                           if (working) {
                             setDraftSaved(false);

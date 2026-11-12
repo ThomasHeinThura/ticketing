@@ -420,6 +420,8 @@ function MappingForm({
           pending={step.busy}
           success={false}
           savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
           type="submit"
         >
           {existing ? t("scim.groups.save") : t("scim.groups.create")}

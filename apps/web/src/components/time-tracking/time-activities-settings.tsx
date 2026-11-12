@@ -4,9 +4,10 @@ import {
   AlertDescription,
   AlertTitle,
   Badge,
-  Button,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Skeleton,
   Switch,
   Table,
@@ -17,7 +18,7 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import {
@@ -52,10 +53,27 @@ function ActivityRow({
   const invalidate = useInvalidateTime();
   const message = useTimeErrorMessage();
   const [name, setName] = useState(activity.name);
+  const [nameSaved, setNameSaved] = useState(false);
+  const previousName = useRef(activity.name);
+  useEffect(() => {
+    if (previousName.current !== activity.name) {
+      previousName.current = activity.name;
+      setName(activity.name);
+    }
+  }, [activity.name]);
+  useEffect(() => {
+    if (!nameSaved) return;
+    const timer = setTimeout(() => setNameSaved(false), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [nameSaved]);
   const save = useMutation({
     mutationFn: (changes: { name?: string; archived?: boolean }) =>
       updateTimeActivity(activity.id, workspaceId, changes),
-    onSuccess: invalidate,
+    onMutate: () => setNameSaved(false),
+    onSuccess: async (_result, changes) => {
+      await invalidate();
+      if (changes.name !== undefined) setNameSaved(true);
+    },
     onError: (error) => {
       setName(activity.name);
       toast.error(message(error));
@@ -75,18 +93,29 @@ function ActivityRow({
             disabled={!canManage || save.isPending}
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && dirty)
+              if (
+                event.key === "Enter" &&
+                dirty &&
+                !save.isPending &&
+                canManage
+              )
                 save.mutate({ name: name.trim() });
             }}
           />
-          {dirty ? (
-            <Button
+          {dirty ||
+          nameSaved ||
+          (save.isPending && save.variables?.name !== undefined) ? (
+            <SaveButton
               size="sm"
-              disabled={save.isPending}
+              pending={save.isPending && save.variables?.name !== undefined}
+              success={nameSaved}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              disabled={!canManage}
               onClick={() => save.mutate({ name: name.trim() })}
             >
               {t("timeTracking:actions.save")}
-            </Button>
+            </SaveButton>
           ) : null}
           {activity.archived ? (
             <Badge variant="outline">
@@ -178,10 +207,17 @@ function TimeActivitiesSettingsContent() {
                   onChange={(event) => setName(event.target.value)}
                 />
               </div>
-              <Button type="submit" disabled={!name.trim() || add.isPending}>
+              <SaveButton
+                type="submit"
+                disabled={!name.trim() && !add.isPending && !add.isSuccess}
+                pending={add.isPending}
+                success={add.isSuccess}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+              >
                 <Plus aria-hidden="true" />
                 {t("timeTracking:activities.add")}
-              </Button>
+              </SaveButton>
             </form>
           ) : null}
           <Table>
@@ -196,7 +232,7 @@ function TimeActivitiesSettingsContent() {
             <TableBody>
               {activities.data.map((activity) => (
                 <ActivityRow
-                  key={`${activity.id}:${activity.name}:${activity.archived}`}
+                  key={activity.id}
                   activity={activity}
                   workspaceId={workspace?.id ?? ""}
                   canManage={canManage}

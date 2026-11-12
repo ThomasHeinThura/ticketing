@@ -13,6 +13,7 @@ import {
   CardTitle,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Select,
   SelectContent,
@@ -186,7 +187,9 @@ export function TeamSettingsCard({
               }
               pending={save.isPending}
               success={completed}
+              retainedSuccess
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
             >
               {t("teams:detail.save")}
             </SaveButton>
@@ -406,7 +409,7 @@ export function TeamDetailView({
   const [savedTeamId, setSavedTeamId] = useState<string | null>(null);
   useEffect(() => {
     if (!savedTeamId) return;
-    const timer = setTimeout(() => setSavedTeamId(null), 1200);
+    const timer = setTimeout(() => setSavedTeamId(null), SAVE_FEEDBACK_HOLD_MS);
     return () => clearTimeout(timer);
   }, [savedTeamId]);
   const team = useTeam(teamId, showInactive);

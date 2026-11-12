@@ -510,6 +510,8 @@ export function CreateApiKeyDialog({
                 pending={isSubmitting}
                 success={false}
                 savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+                announceSuccess={false}
               >
                 {t("settings:apiKey.createDialog.create")}
               </SaveButton>

@@ -11,6 +11,7 @@ import {
   CardTitle,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Select,
   SelectContent,
@@ -138,7 +139,7 @@ export function InstanceSettingsForm() {
   const [completed, setCompleted] = useState(false);
   useEffect(() => {
     if (!completed) return;
-    const timer = setTimeout(() => setCompleted(false), 1200);
+    const timer = setTimeout(() => setCompleted(false), SAVE_FEEDBACK_HOLD_MS);
     return () => clearTimeout(timer);
   }, [completed]);
   const query = useQuery({
@@ -442,7 +443,9 @@ function SettingsFields({
           disabled={!dirty && !save.isPending}
           pending={save.isPending}
           success={completed}
+          retainedSuccess
           savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
         >
           {t("save")}
         </SaveButton>

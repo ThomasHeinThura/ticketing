@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Skeleton,
 } from "@taskdesk/ui";
@@ -64,7 +65,7 @@ export function NotificationProviderEditor() {
   const [completed, setCompleted] = useState(false);
   useEffect(() => {
     if (!completed) return;
-    const timer = setTimeout(() => setCompleted(false), 1200);
+    const timer = setTimeout(() => setCompleted(false), SAVE_FEEDBACK_HOLD_MS);
     return () => clearTimeout(timer);
   }, [completed]);
   const query = useQuery({ queryKey, queryFn: getEmailProvider, retry: false });
@@ -357,7 +358,10 @@ function ProviderForm({
               }
               pending={save.isPending}
               success={completed}
+              retainedSuccess
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("save")}
             </SaveButton>

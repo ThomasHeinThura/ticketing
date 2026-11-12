@@ -632,6 +632,8 @@ export function LabelCatalogue({
               pending={createLabel.isPending}
               success={false}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("settings:workspaceLabels.createLabel", {
                 defaultValue: "Create Label",
@@ -754,6 +756,8 @@ export function LabelCatalogue({
               pending={updateLabel.isPending}
               success={false}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("settings:workspaceLabels.saveLabel", {
                 defaultValue: "Save",

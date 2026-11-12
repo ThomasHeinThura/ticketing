@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "./button";
+import { Input } from "./input";
 import { SaveButton } from "./save-button";
 
 const meta = {
@@ -24,7 +26,12 @@ export const Loading: Story = {
 
 export const SaveIdle: Story = {
   render: () => (
-    <SaveButton pending={false} success={false} savedLabel="Saved">
+    <SaveButton
+      pending={false}
+      success={false}
+      savedLabel="Saved"
+      workingLabel="Saving…"
+    >
       Save changes
     </SaveButton>
   ),
@@ -32,7 +39,12 @@ export const SaveIdle: Story = {
 
 export const SaveWorking: Story = {
   render: () => (
-    <SaveButton pending success={false} savedLabel="Saved">
+    <SaveButton
+      pending
+      success={false}
+      savedLabel="Saved"
+      workingLabel="Saving…"
+    >
       Save changes
     </SaveButton>
   ),
@@ -42,10 +54,72 @@ function SaveSuccessExample() {
   const [success, setSuccess] = useState(false);
   useEffect(() => setSuccess(true), []);
   return (
-    <SaveButton pending={false} success={success} savedLabel="Saved">
+    <SaveButton
+      pending={false}
+      success={success}
+      savedLabel="Saved"
+      workingLabel="Saving…"
+    >
       Save changes
     </SaveButton>
   );
 }
 
 export const SaveDone: Story = { render: () => <SaveSuccessExample /> };
+
+export const SaveWithIcon: Story = {
+  render: () => (
+    <div className="flex flex-wrap items-center gap-4">
+      <SaveButton
+        size="sm"
+        pending={false}
+        success={false}
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        <Plus aria-hidden="true" />
+        Add activity
+      </SaveButton>
+      <SaveButton
+        size="default"
+        pending={false}
+        success={false}
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        <Plus aria-hidden="true" />
+        Add activity
+      </SaveButton>
+    </div>
+  ),
+};
+
+function SaveFormExample() {
+  const [pending, setPending] = useState(false);
+  const [count, setCount] = useState(0);
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!pending) {
+          setCount(count + 1);
+          setPending(true);
+        }
+      }}
+    >
+      <label htmlFor="save-story-input">Name</label>
+      <Input id="save-story-input" />
+      <SaveButton
+        type="submit"
+        pending={pending}
+        success={false}
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>
+      <output>{count}</output>
+    </form>
+  );
+}
+export const SaveForm: Story = { render: () => <SaveFormExample /> };

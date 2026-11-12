@@ -160,6 +160,8 @@ function SectionDialog({
               pending={save.isPending}
               success={false}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("customFields:editor.save")}
             </SaveButton>

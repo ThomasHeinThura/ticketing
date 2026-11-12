@@ -317,6 +317,7 @@ function MentionEmailForm({
         pending={mutation.isPending}
         success={mutation.isSuccess}
         savedLabel={t("common:actions.saved")}
+        workingLabel={t("common:actions.saving")}
         disabled={
           !mutation.isPending &&
           enabled === preference.enabled &&

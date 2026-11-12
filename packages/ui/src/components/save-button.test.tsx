@@ -6,7 +6,11 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SaveButton } from "./save-button";
+import {
+  SAVE_FEEDBACK_DELAY_MS,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
+} from "./save-button";
 
 afterEach(() => {
   cleanup();
@@ -14,15 +18,33 @@ afterEach(() => {
 });
 
 describe("SaveButton", () => {
-  it("shows a completed save when mounted after its parent refreshes", () => {
+  it("does not show stale success on a fresh mount, but can retain a parent completion", () => {
     vi.useFakeTimers();
-    render(
-      <SaveButton pending={false} success savedLabel="Saved">
+    const { rerender } = render(
+      <SaveButton
+        pending={false}
+        success
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>,
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    rerender(
+      <SaveButton
+        key="refreshed"
+        pending={false}
+        success
+        retainedSuccess
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
         Save
       </SaveButton>,
     );
     expect(screen.getByRole("button", { name: "Saved" })).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(1200));
+    act(() => vi.advanceTimersByTime(SAVE_FEEDBACK_HOLD_MS));
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
   it("delays working, keeps focus and width reservations, then shows success temporarily", () => {
@@ -33,6 +55,7 @@ describe("SaveButton", () => {
         pending={pending}
         success={success}
         savedLabel="Saved"
+        workingLabel="Saving…"
         onClick={click}
       >
         Save changes
@@ -43,30 +66,39 @@ describe("SaveButton", () => {
     button.focus();
     const reservation = button.querySelector(".invisible");
     expect(reservation).toHaveTextContent("Saved");
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
     rerender(view(true, false));
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(button).toHaveFocus();
     fireEvent.click(button);
     expect(click).not.toHaveBeenCalled();
-    act(() => vi.advanceTimersByTime(149));
+    act(() => vi.advanceTimersByTime(SAVE_FEEDBACK_DELAY_MS - 1));
     expect(button.querySelector("svg.animate-spin")).toBeNull();
     act(() => vi.advanceTimersByTime(1));
     expect(button.querySelector("svg.animate-spin")).toBeInTheDocument();
+    expect(status).toHaveTextContent("Saving…");
     expect(screen.getByRole("button", { name: "Save changes" })).toBe(button);
     expect(button.querySelector("svg.animate-spin")).toHaveClass(
       "motion-reduce:animate-none",
     );
     rerender(view(false, true));
     expect(screen.getByRole("button", { name: "Saved" })).toBe(button);
+    expect(status).toHaveTextContent("Saved");
     expect(button.querySelector(".invisible")).toBeInTheDocument();
-    act(() => vi.advanceTimersByTime(1200));
+    act(() => vi.advanceTimersByTime(SAVE_FEEDBACK_HOLD_MS));
     expect(screen.getByRole("button", { name: "Save changes" })).toBe(button);
   });
 
   it("shows success after a fast save without showing a spinner and resets on error", () => {
     vi.useFakeTimers();
     const view = (pending: boolean, success: boolean) => (
-      <SaveButton pending={pending} success={success} savedLabel="Saved">
+      <SaveButton
+        pending={pending}
+        success={success}
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
         Save
       </SaveButton>
     );
@@ -77,9 +109,64 @@ describe("SaveButton", () => {
     expect(screen.getByRole("button", { name: "Saved" })).toBeInTheDocument();
     expect(document.querySelector("svg.animate-spin")).toBeNull();
     rerender(view(true, false));
-    act(() => vi.advanceTimersByTime(150));
+    act(() => vi.advanceTimersByTime(SAVE_FEEDBACK_DELAY_MS));
     rerender(view(false, false));
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(document.querySelector("svg.animate-spin")).toBeNull();
+  });
+  it("cleans up both timers on unmount", () => {
+    vi.useFakeTimers();
+    const { unmount } = render(
+      <SaveButton
+        pending
+        success={false}
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>,
+    );
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    const second = render(
+      <SaveButton
+        pending={false}
+        success={false}
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>,
+    );
+    second.rerender(
+      <SaveButton
+        pending={false}
+        success
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>,
+    );
+    second.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("does not duplicate an existing success notice", () => {
+    const view = (success: boolean) => (
+      <SaveButton
+        pending={false}
+        success={success}
+        announceSuccess={false}
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>
+    );
+    const { rerender } = render(view(false));
+    rerender(view(true));
+    expect(screen.getByRole("button", { name: "Saved" })).toBeVisible();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 });

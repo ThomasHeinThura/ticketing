@@ -390,6 +390,7 @@ export function WorkspaceStateTemplatesPanel({
                   pending={savingTemplate && savingId === item.id}
                   success={savedId === item.id}
                   savedLabel={t("common:actions.saved")}
+                  workingLabel={t("common:actions.saving")}
                   onClick={() => void saveTemplate(item)}
                 >
                   {t("settings:workspaceStateTemplates.save")}
@@ -485,6 +486,7 @@ export function WorkspaceStateTemplatesPanel({
             pending={creating}
             success={created}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
             onClick={() => void createTemplate()}
           >
             {t("settings:workspaceStateTemplates.create")}

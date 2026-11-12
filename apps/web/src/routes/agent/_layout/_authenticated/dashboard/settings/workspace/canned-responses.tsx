@@ -208,6 +208,8 @@ function CannedResponseEditor({
               pending={pending}
               success={false}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("settings:cannedResponses.save")}
             </SaveButton>

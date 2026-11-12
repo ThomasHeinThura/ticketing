@@ -146,6 +146,8 @@ export function EditSummaryDialog({
             pending={save.isPending}
             success={false}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => {
               setProblem(null);
               save.mutate();

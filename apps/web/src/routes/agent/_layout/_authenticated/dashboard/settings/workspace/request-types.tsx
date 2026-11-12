@@ -502,6 +502,7 @@ function RequestTypesEditor() {
                     pending={saveGroupOrder.isPending}
                     success={saveGroupOrder.isSuccess}
                     savedLabel={t("common:actions.saved")}
+                    workingLabel={t("common:actions.saving")}
                     onClick={() => void saveGroupOrder.mutate()}
                     type="button"
                   >
@@ -1275,6 +1276,7 @@ function RequestTypesEditor() {
                 pending={save.isPending}
                 success={save.isSuccess}
                 savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
                 disabled={
                   !draft.name.trim() ||
                   !draft.group.trim() ||

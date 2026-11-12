@@ -163,6 +163,8 @@ export function ChangePasswordCard({
             pending={pending}
             success={saved}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
           >
             {t("auth:changePassword.submit")}
           </SaveButton>

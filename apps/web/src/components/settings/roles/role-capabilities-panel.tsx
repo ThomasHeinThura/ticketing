@@ -371,7 +371,10 @@ export function RoleCapabilitiesPanel({
             disabled={!dirty || !rankValid || !nameValid || save.isPending}
             pending={false}
             success={saved}
+            retainedSuccess
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => {
               onSaveStart?.();
               setConfirming(true);
@@ -491,6 +494,8 @@ export function RoleCapabilitiesPanel({
                 pending={save.isPending}
                 success={save.isSuccess}
                 savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+                announceSuccess={false}
                 onClick={() => save.mutate()}
               >
                 {t("roles:save.confirm")}

@@ -272,6 +272,8 @@ export function CreateServiceKeyDialog({
               pending={mutation.isPending}
               success={false}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               {t("settings:serviceKeys.create.submit")}
             </SaveButton>

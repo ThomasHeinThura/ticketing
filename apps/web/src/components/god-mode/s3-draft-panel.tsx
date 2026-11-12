@@ -491,6 +491,7 @@ function S3DraftForm({
             pending={savingDraft}
             success={notice}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
             onClick={() => void run("storage_config_save")}
           >
             {t("draft.save")}

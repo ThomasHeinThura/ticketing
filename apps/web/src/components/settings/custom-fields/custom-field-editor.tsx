@@ -13,6 +13,7 @@ import {
   CardTitle,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Select,
   SelectContent,
@@ -29,7 +30,7 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { ArrowLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CustomFieldValueInput } from "@/components/custom-field/custom-field-value-input";
 import PageTitle from "@/components/page-title";
@@ -118,6 +119,9 @@ function EditorForm({
   others,
   types,
   canManage,
+  completed,
+  onStart,
+  onSaved,
 }: {
   field: CustomField | undefined;
   isNew: boolean;
@@ -126,6 +130,9 @@ function EditorForm({
   others: CustomField[];
   types: { id: string; name: string }[];
   canManage: boolean;
+  completed: boolean;
+  onStart: () => void;
+  onSaved: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -134,6 +141,12 @@ function EditorForm({
   const [draft, setDraft] = useState(() =>
     draftFrom(field, sections[0]?.id ?? ""),
   );
+  const previousVersion = useRef(field?.updatedAt);
+  useEffect(() => {
+    if (previousVersion.current === field?.updatedAt) return;
+    previousVersion.current = field?.updatedAt;
+    setDraft(draftFrom(field, sections[0]?.id ?? ""));
+  }, [field, sections]);
   const patch = (next: Partial<Draft>) =>
     setDraft((current) => ({ ...current, ...next }));
   const effectiveOptions = hasOptions(draft.format)
@@ -188,6 +201,7 @@ function EditorForm({
     },
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ["custom-fields"] });
+      if (!isNew) onSaved();
       toast.success(t("customFields:editor.saved"));
       if (isNew)
         void navigate({
@@ -224,7 +238,10 @@ function EditorForm({
       className="space-y-6"
       onSubmit={(event) => {
         event.preventDefault();
-        if (valid && !disabled) save.mutate();
+        if (valid && !disabled) {
+          onStart();
+          save.mutate();
+        }
       }}
     >
       <Card>
@@ -682,8 +699,10 @@ function EditorForm({
             type="submit"
             disabled={!canManage || !valid}
             pending={save.isPending}
-            success={!isNew && save.isSuccess}
+            success={!isNew && completed}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
           >
             {isNew
               ? t("customFields:editor.create")
@@ -716,6 +735,12 @@ function EditorForm({
 export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
   const { t } = useTranslation();
   const isNew = fieldId === "new";
+  const [completedId, setCompletedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!completedId) return;
+    const timer = setTimeout(() => setCompletedId(null), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [completedId]);
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
   const fields = useCustomFields(workspaceId);
@@ -790,7 +815,10 @@ export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
           </Alert>
         ) : (
           <EditorForm
-            key={field ? `${field.id}:${field.updatedAt}` : "new"}
+            key={field?.id ?? "new"}
+            completed={completedId === fieldId}
+            onStart={() => setCompletedId(null)}
+            onSaved={() => setCompletedId(fieldId)}
             field={field}
             isNew={isNew}
             workspaceId={workspaceId}

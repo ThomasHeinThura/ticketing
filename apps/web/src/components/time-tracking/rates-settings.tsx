@@ -228,6 +228,8 @@ function RatesSettingsContent() {
               pending={add.isPending}
               success={add.isSuccess}
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
               <Plus aria-hidden="true" />
               {t("timeTracking:rates.add")}

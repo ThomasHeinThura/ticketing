@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Select,
   SelectContent,
@@ -44,7 +45,7 @@ export function QuietHoursPreference() {
   const [completed, setCompleted] = useState(false);
   useEffect(() => {
     if (!completed) return;
-    const timer = setTimeout(() => setCompleted(false), 1200);
+    const timer = setTimeout(() => setCompleted(false), SAVE_FEEDBACK_HOLD_MS);
     return () => clearTimeout(timer);
   }, [completed]);
   const quietHours = preferences.data?.quietHours ?? null;
@@ -209,7 +210,10 @@ function QuietHoursForm({
           }
           pending={mutation.isPending && mutation.variables !== null}
           success={completed}
+          retainedSuccess
           savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
         >
           {t("quietHours.save")}
         </SaveButton>

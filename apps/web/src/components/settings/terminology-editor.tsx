@@ -389,6 +389,7 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
             pending={save.isPending && save.variables !== null}
             success={save.isSuccess && save.variables !== null}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
             onClick={() => save.mutate(draft)}
           >
             {t("common:actions.save", { defaultValue: "Save" })}

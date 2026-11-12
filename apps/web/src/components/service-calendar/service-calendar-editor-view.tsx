@@ -118,6 +118,7 @@ export function ServiceCalendarEditorView({
             pending={saving}
             success={!isNew && state.saveSucceeded}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
             disabled={
               (state.calendarConflict !== null &&
                 state.conflictRefreshState !== "ready") ||

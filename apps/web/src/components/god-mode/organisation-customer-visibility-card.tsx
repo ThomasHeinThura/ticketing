@@ -203,6 +203,8 @@ function VisibilityForm({
             pending={busy}
             success={notice !== null}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => void submit()}
             type="button"
           >

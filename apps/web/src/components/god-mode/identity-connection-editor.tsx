@@ -510,6 +510,8 @@ export function IdentityConnectionEditor({
             pending={step.busy}
             success={saved !== null}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             type="submit"
           >
             {creating ? t("editor.createDisabled") : t("editor.save")}

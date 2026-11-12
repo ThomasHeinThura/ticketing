@@ -408,6 +408,8 @@ function SaveDialog({
             pending={stepUp.busy}
             success={false}
             savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => void submit()}
             type="button"
           >

@@ -777,7 +777,10 @@ export function OrganisationProfileEditor({
               }
               pending={save.isPending}
               success={completed}
+              retainedSuccess
               savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={() => void submit()}
               type="button"
             >
