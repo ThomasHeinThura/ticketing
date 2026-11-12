@@ -26,6 +26,7 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "auth.sign_in_succeeded",
   "auth.sign_in_failed",
   "auth.sign_out",
+  "auth.password_changed",
   "auth.session_revoked",
   // Second factor enrolled; reset by an administrator (with the verification note).
   "auth.mfa_enrolled",
