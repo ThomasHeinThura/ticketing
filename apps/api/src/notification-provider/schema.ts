@@ -314,7 +314,7 @@ export const testResultSchema = z.discriminatedUnion("ok", [
     testedAt: testTimestamp,
     category: z.enum(SMTP_TEST_FAILURE_CATEGORIES),
     smtpCode: z.number().int().min(200).max(599).nullable(),
-    /** The provider's reply with addresses, hosts, IPs and credentials removed. */
+    /** Sanitised provider reply for unauthenticated attempts; null for authenticated attempts. */
     providerText: z.string().max(240).nullable(),
     persisted: z.boolean(),
   }),

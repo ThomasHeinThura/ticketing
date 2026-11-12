@@ -62,7 +62,7 @@ const testRoute = createRoute({
   operationId: "testEmailProvider",
   summary: "Send a real test email through the email provider settings",
   description:
-    "Current instance administrators on the agent host, browser sessions only; no step-up. Sends one fixed message to the given recipient using the unsaved form values when supplied, rate limited to 5 per administrator per minute and audited with the recipient's domain only. When the tested settings match the saved settings, the result may be stored as test status. A delivery failure is a 200 answer carrying a bounded category, the SMTP reply code and the provider's text with addresses, hosts and credentials removed.",
+    "Current instance administrators on the agent host, browser sessions only; no step-up. Sends one fixed message to the given recipient using the unsaved form values when supplied, rate limited to 5 per administrator per minute and audited with the recipient's domain only. When the tested settings match the saved settings, the result may be stored as test status. A delivery failure returns a bounded category and SMTP reply code. Authenticated SMTP attempts omit free-form provider text to protect credential fragments; unauthenticated replies may include sanitised provider text.",
   middleware: [requireSessionOnly()] as const,
   request: {
     body: {

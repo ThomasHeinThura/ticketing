@@ -542,7 +542,7 @@ describe("persisted SMTP provider backend", () => {
     expect(serialised).not.toContain(recipient);
     expect(audit[0]?.after).toMatchObject({ recipientDomain: "example.test" });
   });
-  it("reports a real SMTP 535 with its code and a sanitised reply that never contains the password", async () => {
+  it("reports a real SMTP 535 without returning authenticated provider text", async () => {
     const f = await administrator();
     const password = `synthetic-secret-${randomUUID()}`;
     const providerReply = `535 5.7.8 invalid credentials for ${config.username} ${password} sent to ops@example.test via mail.provider.example`;
@@ -581,17 +581,32 @@ describe("persisted SMTP provider backend", () => {
         ok: false,
         category: "authentication",
         smtpCode: 535,
+        providerText: null,
         persisted: false,
       });
-      expect(body.providerText).toContain("5.7.8 invalid credentials");
       for (const leaked of [
         password,
         config.username,
+        Buffer.from(`\0${config.username}\0${password}`).toString("base64"),
+        "AUTH PLAIN",
         "ops@example.test",
         "mail.provider.example",
         "synthetic.test",
       ])
         expect(text).not.toContain(leaked);
+      const audit = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "plugin.tested"));
+      expect(audit).toHaveLength(1);
+      const recorded = JSON.stringify(audit);
+      for (const leaked of [
+        password,
+        config.username,
+        Buffer.from(`\0${config.username}\0${password}`).toString("base64"),
+        "AUTH PLAIN",
+      ])
+        expect(recorded).not.toContain(leaked);
       expect(
         await db
           .select()
@@ -601,6 +616,129 @@ describe("persisted SMTP provider backend", () => {
     } finally {
       await endpoint.close();
     }
+  });
+  it("binds saved credentials to the saved SMTP destination and accepts a freshly typed password", async () => {
+    const f = await administrator();
+    const saved = { ...config, requireTLS: false };
+    const savedPassword = "synthetic-stored-password";
+    await saveProvider(
+      { version: 0, enabled: true, config: saved, password: savedPassword },
+      f.actor,
+    );
+    const execute = vi
+      .spyOn(emailRuntime, "executeSmtp")
+      .mockResolvedValue(undefined);
+    const factory = vi.spyOn(providerRuntime, "runtimeSmtpConfiguration");
+    const ses = {
+      ...saved,
+      provider: "ses",
+      region: "eu-west-1",
+      host: "email-smtp.eu-west-1.amazonaws.com",
+      requireTLS: true,
+    };
+    for (const changed of [
+      { ...saved, host: "other.example.test" },
+      { ...saved, port: 2525 },
+      { ...saved, secure: true },
+      { ...saved, requireTLS: true },
+      { ...saved, username: "other-user" },
+      ses,
+    ]) {
+      const response = await testRequest(f, { version: 1, config: changed });
+      expect(response.status).toBe(400);
+      const body = await response.text();
+      expect(body).toContain(
+        "smtp_test_password_required_for_changed_destination",
+      );
+      expect(body).not.toContain(savedPassword);
+    }
+    const cleared = await testRequest(f, {
+      version: 1,
+      config: { ...saved, host: "other.example.test", username: null },
+      password: null,
+    });
+    expect(cleared.status).toBe(400);
+    expect(await cleared.text()).toContain(
+      "smtp_test_password_required_for_changed_destination",
+    );
+    expect(factory).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "plugin.tested")),
+    ).toHaveLength(0);
+
+    const same = await testRequest(f, { version: 1, config: saved });
+    expect(same.status).toBe(200);
+    expect(await same.json()).toMatchObject({ ok: true, persisted: true });
+    expect(execute.mock.calls[0]?.[0].options.auth).toMatchObject({
+      user: saved.username,
+      pass: savedPassword,
+    });
+
+    const replacement = "synthetic-new-password";
+    const changed = await testRequest(f, {
+      version: 1,
+      config: { ...saved, host: "other.example.test" },
+      password: replacement,
+    });
+    expect(changed.status).toBe(200);
+    expect(await changed.json()).toMatchObject({ ok: true, persisted: false });
+    expect(execute.mock.calls[1]?.[0].options.auth).toMatchObject({
+      user: saved.username,
+      pass: replacement,
+    });
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "plugin.tested"));
+    expect(audit).toHaveLength(2);
+    expect(JSON.stringify(audit)).not.toContain(savedPassword);
+    expect(JSON.stringify(audit)).not.toContain(replacement);
+  });
+  it("refuses to reuse an SES password for another region", async () => {
+    const f = await administrator();
+    const ses = {
+      ...config,
+      provider: "ses" as const,
+      region: "eu-west-1" as const,
+      host: "email-smtp.eu-west-1.amazonaws.com",
+    };
+    await saveProvider(
+      {
+        version: 0,
+        enabled: true,
+        config: ses,
+        password: "synthetic-ses-secret",
+      },
+      f.actor,
+    );
+    const execute = vi
+      .spyOn(emailRuntime, "executeSmtp")
+      .mockResolvedValue(undefined);
+    const factory = vi.spyOn(providerRuntime, "runtimeSmtpConfiguration");
+    const response = await testRequest(f, {
+      version: 1,
+      config: {
+        ...ses,
+        region: "us-east-1",
+        host: "email-smtp.us-east-1.amazonaws.com",
+      },
+    });
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain(
+      "smtp_test_password_required_for_changed_destination",
+    );
+    expect(factory).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "plugin.tested")),
+    ).toHaveLength(0);
   });
   it("reports a real connection refusal as a connection failure", async () => {
     const f = await administrator();
@@ -788,9 +926,9 @@ describe("persisted SMTP provider backend", () => {
         ).json(),
       ).toMatchObject({ testStatus: { state: "verified" } });
 
-      // Delivery on/off keeps it; changing the settings resets it.
+      // Delivery on/off and changing the settings each reset the result.
       expect((await patch(f, { version: 1, enabled: false })).status).toBe(200);
-      expect((await getEmailProvider()).testStatus.state).toBe("verified");
+      expect((await getEmailProvider()).testStatus.state).toBe("stale");
       expect(
         (
           await patch(f, {
