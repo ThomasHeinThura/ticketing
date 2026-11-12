@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
+  AlertAction,
   AlertDescription,
   AlertTitle,
   Button,
@@ -9,17 +10,28 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
+  Label,
+  RadioGroup,
+  RadioGroupItem,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
   type EmailProvider,
   type EmailProviderConfig,
+  type EmailProviderKind,
+  type EmailTestResult,
   getEmailProvider,
   saveEmailProvider,
-  smtpDiagnosticTranslationKey,
-  verifyEmailProvider,
+  sendEmailProviderTest,
 } from "@/fetchers/god-mode/notification-provider";
 import {
   listSupportedPlugins,
@@ -27,14 +39,23 @@ import {
   type SupportedPlugin,
 } from "@/fetchers/god-mode/plugins";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
+import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { HttpError } from "@/lib/http-error";
 import {
+  TestResultAlert,
+  TestStatusLine,
+} from "./notification-provider-test-result";
+import {
+  type FieldPresentation,
   isSupportedPluginSettingsForm,
   SchemaSettingsForm,
 } from "./plugins/schema-settings-form";
+import { FailureAlert, StepUpFields } from "./step-up-fields";
 
 const queryKey = ["instance", "notification-provider", "email"];
 const emptyConfig: EmailProviderConfig = {
+  provider: "smtp",
+  region: null,
   host: "",
   port: 587,
   secure: false,
@@ -44,6 +65,13 @@ const emptyConfig: EmailProviderConfig = {
   replyTo: null,
   captureToMailpit: false,
 };
+
+/** What Amazon SES fixes besides the host: the server rejects anything else. */
+const SES_FIXED = { port: 587, secure: false, requireTLS: true } as const;
+const kindOf = (config: EmailProviderConfig): EmailProviderKind =>
+  config.provider ?? "smtp";
+const looksLikeAddress = (value: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value);
 
 function isEmailSettingsForm(
   value: unknown,
@@ -104,6 +132,7 @@ export function NotificationProviderEditor() {
       provider={query.data}
       settingsForm={plugin.settingsForm}
       localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
+      onReload={() => void query.refetch()}
     />
   );
 }
@@ -111,19 +140,29 @@ function ProviderForm({
   provider,
   settingsForm,
   localMailpitCaptureAvailable,
+  onReload,
 }: {
   provider: EmailProvider;
   settingsForm: Extract<SupportedPlugin["settingsForm"], { available: true }>;
   localMailpitCaptureAvailable: boolean;
+  onReload: () => void;
 }) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const step = useStepUpAction();
   const [config, setConfig] = useState(provider.config ?? emptyConfig);
   const [enabled, setEnabled] = useState(provider.enabled);
   const [password, setPassword] = useState("");
   const [clearPassword, setClearPassword] = useState(false);
   const [ordinaryConfigBeforeCapture, setOrdinaryConfigBeforeCapture] =
     useState<EmailProviderConfig | null>(null);
+  // The custom SMTP draft while Amazon SES is chosen, so switching back restores it.
+  const [smtpDraft, setSmtpDraft] = useState<EmailProviderConfig | null>(null);
+  const [recipient, setRecipient] = useState(user?.email ?? "");
+  const [testResult, setTestResult] = useState<EmailTestResult | null>(null);
+  const [edited, setEdited] = useState(false);
+  const [sandboxDismissed, setSandboxDismissed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lifecycle = useIntentLifecycle(String(provider.version), () => {
@@ -131,21 +170,48 @@ function ProviderForm({
     setClearPassword(false);
     setNotice(null);
     setError(null);
+    setTestResult(null);
   });
-  const save = useMutation({ mutationFn: saveEmailProvider });
-  const verify = useMutation({ mutationFn: verifyEmailProvider });
-  const busy = save.isPending || verify.isPending;
+  const verify = useMutation({ mutationFn: sendEmailProviderTest });
+  const busy = step.busy || verify.isPending;
+  const kind = kindOf(config);
+  const sesSelected = kind === "ses";
+  const savedKind = provider.config ? kindOf(provider.config) : null;
+  // A password saved for one provider is never reused for the other.
+  const kindChanged = savedKind !== null && savedKind !== kind;
+  const passwordKept = provider.passwordConfigured && !kindChanged;
   const hasConfig = Boolean(
     config.host || config.fromAddress || config.username,
   );
   const requireConfig = enabled || hasConfig;
   const captureSelected = config.captureToMailpit === true;
   const captureUnavailable = captureSelected && !localMailpitCaptureAvailable;
+  const sesIncomplete = sesSelected && !config.region;
+  const credentialsMissing =
+    kindChanged && !password && !clearPassword && !captureSelected;
+  const saved = provider.config;
+  const destinationChanged =
+    saved !== null &&
+    (kindOf(config) !== kindOf(saved) ||
+      (config.region ?? null) !== (saved.region ?? null) ||
+      config.host !== saved.host ||
+      config.port !== saved.port ||
+      config.secure !== saved.secure ||
+      config.requireTLS !== saved.requireTLS ||
+      config.username !== saved.username);
+  function markEdited() {
+    setEdited(true);
+    setTestResult(null);
+    setNotice(null);
+  }
   const visibleSettingsForm = {
     ...settingsForm,
     fields: settingsForm.fields.filter((field) => {
+      // Provider and region have their own controls above the generic fields.
+      if (field.key === "config.provider" || field.key === "config.region")
+        return false;
       if (field.key === "config.captureToMailpit")
-        return localMailpitCaptureAvailable;
+        return localMailpitCaptureAvailable && !sesSelected;
       if (captureSelected && localMailpitCaptureAvailable)
         return (
           field.group !== "secret" &&
@@ -157,6 +223,23 @@ function ProviderForm({
       return true;
     }),
   };
+  const presentation: Partial<Record<string, FieldPresentation>> = sesSelected
+    ? {
+        "config.host": { readOnly: true },
+        "config.port": { readOnly: true },
+        "config.secure": { readOnly: true },
+        "config.requireTLS": { readOnly: true },
+        "config.username": {
+          labelKey: "ses.username",
+          required: true,
+          helpKey: "ses.credentialsHelp",
+        },
+        "config.fromAddress": { helpKey: "ses.fromHelp" },
+        password: { labelKey: "ses.password", required: !passwordKept },
+      }
+    : kindChanged
+      ? { password: { required: true } }
+      : {};
   const secret = clearPassword
     ? { password: null }
     : captureSelected
@@ -164,10 +247,62 @@ function ProviderForm({
       : password
         ? { password }
         : {};
+  function selectKind(next: EmailProviderKind) {
+    if (next === kind) return;
+    markEdited();
+    if (next === "ses") {
+      setSmtpDraft(config);
+      setConfig(
+        provider.config && savedKind === "ses"
+          ? provider.config
+          : {
+              ...emptyConfig,
+              provider: "ses",
+              region: null,
+              ...SES_FIXED,
+              fromAddress: config.fromAddress,
+              replyTo: config.replyTo,
+            },
+      );
+    } else {
+      setConfig(
+        smtpDraft ??
+          (provider.config && savedKind === "smtp"
+            ? provider.config
+            : {
+                ...emptyConfig,
+                fromAddress: config.fromAddress,
+                replyTo: config.replyTo,
+              }),
+      );
+      setSmtpDraft(null);
+    }
+    setPassword("");
+    setClearPassword(false);
+    setNotice(null);
+    setError(null);
+    setTestResult(null);
+  }
+  function selectRegion(region: string) {
+    const option = provider.sesRegions.find((item) => item.region === region);
+    if (!option) return;
+    markEdited();
+    setConfig((previous) => ({
+      ...previous,
+      provider: "ses",
+      region: option.region,
+      host: option.host,
+      ...SES_FIXED,
+      captureToMailpit: false,
+    }));
+    setNotice(null);
+    setTestResult(null);
+  }
   function change<K extends keyof EmailProviderConfig>(
     key: K,
     value: EmailProviderConfig[K],
   ) {
+    markEdited();
     if (key === "captureToMailpit") {
       if (value === true && localMailpitCaptureAvailable) {
         setOrdinaryConfigBeforeCapture(config);
@@ -225,33 +360,73 @@ function ProviderForm({
     }
     setNotice(null);
   }
-  async function submit(testOnly: boolean) {
+  async function save() {
     if (busy) return;
+    if (credentialsMissing) {
+      setError(t("credentialsRequired"));
+      return;
+    }
     const intent = lifecycle.capture();
     setError(null);
     setNotice(null);
+    const request = {
+      version: provider.version,
+      enabled,
+      ...(requireConfig ? { config } : {}),
+      ...secret,
+    };
+    // Mail carries reset links, so the write needs the administrator's second factor again; the
+    // single-use proof is bound to exactly this request.
+    const result = await step.run(
+      { operation: "notification_provider_save", request },
+      (token) => saveEmailProvider(request, token),
+    );
+    if (!result.ok) {
+      // A failed write never leaves the typed password behind; the failure itself is shown by
+      // `step.failure`.
+      if (lifecycle.isCurrent(intent)) setPassword("");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey });
+    if (lifecycle.isCurrent(intent)) {
+      setPassword("");
+      setClearPassword(false);
+      setNotice(t("saved"));
+    }
+  }
+  async function sendTest() {
+    if (busy) return;
+    const address = recipient.trim();
+    if (!looksLikeAddress(address)) {
+      setError(t("testSend.recipientRequired"));
+      return;
+    }
+    if (credentialsMissing) {
+      setError(t("credentialsRequired"));
+      return;
+    }
+    if (
+      destinationChanged &&
+      provider.passwordConfigured &&
+      (!password || clearPassword || captureSelected)
+    ) {
+      setError(t("testDestinationPasswordRequired"));
+      return;
+    }
+    const intent = lifecycle.capture();
+    setError(null);
+    setNotice(null);
+    setTestResult(null);
     try {
-      if (testOnly) {
-        await verify.mutateAsync({
-          version: provider.version,
-          ...(requireConfig ? { config } : {}),
-          ...secret,
-        });
-        if (lifecycle.isCurrent(intent)) setNotice(t("verified"));
-      } else {
-        await save.mutateAsync({
-          version: provider.version,
-          enabled,
-          ...(requireConfig ? { config } : {}),
-          ...secret,
-        });
-        await queryClient.invalidateQueries({ queryKey });
-        if (lifecycle.isCurrent(intent)) {
-          setPassword("");
-          setClearPassword(false);
-          setNotice(t("saved"));
-        }
-      }
+      const result = await verify.mutateAsync({
+        version: provider.version,
+        ...(requireConfig ? { config } : {}),
+        ...secret,
+        recipient: address,
+      });
+      if (!lifecycle.isCurrent(intent)) return;
+      setTestResult(result);
+      if (result.persisted) await queryClient.invalidateQueries({ queryKey });
     } catch (cause) {
       if (!lifecycle.isCurrent(intent)) return;
       setPassword("");
@@ -261,8 +436,10 @@ function ProviderForm({
             ? "conflict"
             : cause instanceof HttpError && cause.status === 429
               ? "rateLimited"
-              : cause instanceof HttpError && cause.status === 502
-                ? smtpDiagnosticTranslationKey(cause.message)
+              : cause instanceof HttpError &&
+                  cause.message ===
+                    "smtp_test_password_required_for_changed_destination"
+                ? "testDestinationPasswordRequired"
                 : "operationFailed",
         ),
       );
@@ -272,6 +449,18 @@ function ProviderForm({
     <Card>
       <CardHeader>
         <CardTitle>{t("email")}</CardTitle>
+        <TestStatusLine
+          status={
+            edited
+              ? {
+                  state: "stale",
+                  testedAt: null,
+                  smtpCode: null,
+                  category: null,
+                }
+              : provider.testStatus
+          }
+        />
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -279,12 +468,56 @@ function ProviderForm({
           className="space-y-5"
           onSubmit={(event) => {
             event.preventDefault();
-            void submit(false);
+            void save();
           }}
         >
           <p className="text-sm text-muted-foreground">
             {t(`sources.${provider.source}`)}
           </p>
+          <div className="space-y-2">
+            <span className="text-sm font-medium" id="email-provider-kind">
+              {t("providerChoice.label")}
+            </span>
+            <RadioGroup
+              aria-labelledby="email-provider-kind"
+              className="grid gap-2 sm:grid-cols-2"
+              disabled={busy}
+              onValueChange={(value) => {
+                if (value === "smtp" || value === "ses") selectKind(value);
+              }}
+              value={kind}
+            >
+              {(["smtp", "ses"] as const).map((option) => (
+                <Label
+                  className="rounded-lg border p-3 has-data-checked:border-primary"
+                  htmlFor={`email-provider-kind-${option}`}
+                  key={option}
+                >
+                  <RadioGroupItem
+                    id={`email-provider-kind-${option}`}
+                    value={option}
+                  />
+                  {t(`providerChoice.${option}`)}
+                </Label>
+              ))}
+            </RadioGroup>
+          </div>
+          {sesSelected && !sandboxDismissed ? (
+            <Alert role="status" variant="warning">
+              <AlertTitle>{t("ses.sandboxTitle")}</AlertTitle>
+              <AlertDescription>{t("ses.sandboxBody")}</AlertDescription>
+              <AlertAction>
+                <Button
+                  onClick={() => setSandboxDismissed(true)}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  {t("ses.dismiss")}
+                </Button>
+              </AlertAction>
+            </Alert>
+          ) : null}
           {captureUnavailable ? (
             <Alert variant="error">
               <AlertTitle>{t("unavailable")}</AlertTitle>
@@ -294,10 +527,51 @@ function ProviderForm({
           {captureSelected && localMailpitCaptureAvailable ? (
             <p className="text-sm text-muted-foreground">{t("captureHelp")}</p>
           ) : null}
+          {sesSelected ? (
+            <div className="space-y-2">
+              <Label htmlFor="email-provider-region">
+                {t("ses.regionLabel")}
+              </Label>
+              <Select
+                disabled={busy}
+                items={provider.sesRegions.map((option) => ({
+                  value: option.region,
+                  label: t("ses.regionOption", {
+                    name: t(`ses.regions.${option.region}`),
+                    region: option.region,
+                  }),
+                }))}
+                onValueChange={(value) => {
+                  if (typeof value === "string") selectRegion(value);
+                }}
+                value={config.region ?? null}
+              >
+                <SelectTrigger id="email-provider-region">
+                  <SelectValue placeholder={t("ses.regionPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {provider.sesRegions.map((option) => (
+                    <SelectItem key={option.region} value={option.region}>
+                      {t("ses.regionOption", {
+                        name: t(`ses.regions.${option.region}`),
+                        region: option.region,
+                      })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t("ses.regionHelp")}
+              </p>
+            </div>
+          ) : null}
           <SchemaSettingsForm
             manifest={visibleSettingsForm}
             enabled={enabled}
-            onEnabledChange={setEnabled}
+            onEnabledChange={(value) => {
+              markEdited();
+              setEnabled(value);
+            }}
             config={
               config as unknown as Record<
                 string,
@@ -312,15 +586,62 @@ function ProviderForm({
             requireConfig={requireConfig}
             disabled={busy}
             password={password}
-            onPasswordChange={setPassword}
-            passwordConfigured={provider.passwordConfigured}
+            onPasswordChange={(value) => {
+              markEdited();
+              setPassword(value);
+            }}
+            passwordConfigured={passwordKept}
             passwordPreview={provider.passwordPreview}
             clearPassword={clearPassword}
             onClearPasswordChange={(value) => {
+              markEdited();
               setClearPassword(value);
               if (value) setPassword("");
             }}
+            presentation={presentation}
           />
+          <div className="space-y-2">
+            <Label htmlFor="email-provider-test-recipient">
+              {t("testSend.recipientLabel")}
+            </Label>
+            <div className="flex flex-wrap items-start gap-2">
+              <Input
+                autoComplete="email"
+                className="min-w-0 flex-1 basis-64"
+                disabled={busy}
+                id="email-provider-test-recipient"
+                inputMode="email"
+                onChange={(event) => {
+                  markEdited();
+                  setRecipient(event.target.value);
+                }}
+                value={recipient}
+              />
+              <Button
+                disabled={
+                  busy ||
+                  captureUnavailable ||
+                  sesIncomplete ||
+                  !config.host ||
+                  !config.fromAddress ||
+                  !recipient.trim()
+                }
+                onClick={() => void sendTest()}
+                type="button"
+                variant="outline"
+              >
+                {verify.isPending
+                  ? t("testSend.sending")
+                  : t("testSend.button")}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("testSend.help")}
+            </p>
+          </div>
+          {testResult ? (
+            <TestResultAlert provider={kind} result={testResult} />
+          ) : null}
           {error && (
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -331,28 +652,18 @@ function ProviderForm({
               {notice}
             </p>
           )}
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={busy || captureUnavailable}>
-              {t("save")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                busy ||
-                captureUnavailable ||
-                !config.host ||
-                !config.fromAddress
-              }
-              onClick={(event) => {
-                if (event.currentTarget.form?.reportValidity())
-                  void submit(true);
-              }}
-            >
-              {t("test")}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">{t("testHelp")}</p>
+          <StepUpFields action={step} idPrefix="email-provider-step-up" />
+          <FailureAlert
+            failure={step.failure}
+            onReload={onReload}
+            title={t("operationFailed")}
+          />
+          <Button
+            disabled={busy || captureUnavailable || sesIncomplete}
+            type="submit"
+          >
+            {t("save")}
+          </Button>
         </form>
       </CardContent>
     </Card>

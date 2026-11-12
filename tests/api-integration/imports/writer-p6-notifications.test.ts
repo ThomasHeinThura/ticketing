@@ -61,6 +61,7 @@ async function notifiableMember(f: WriterFixture) {
       },
     },
     { userId: f.user.id, personId: f.person.id },
+    async () => undefined,
   );
   await saveCanonicalPreference(user.id, {
     eventKind: "work_item.mentioned",
