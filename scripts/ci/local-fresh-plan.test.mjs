@@ -72,3 +72,51 @@ test("fresh plan orders backup before any removal", async () => {
     ],
   );
 });
+
+test("rejects similar projects, metacharacters, malformed IDs and duplicate resources", () => {
+  for (const value of [
+    "",
+    "taskdesk-codex-testing2",
+    "taskdesk-codex-testing;true",
+    "$(whoami)",
+  ]) {
+    const f = fixture();
+    f.confirmation = value;
+    assert.throws(() => planRemoval(f));
+  }
+  for (const value of [
+    "taskdesk-codex-testing2",
+    "",
+    "taskdesk-codex-testing;true",
+  ]) {
+    const f = fixture();
+    f.containers[0].Config.Labels["com.docker.compose.project"] = value;
+    assert.throws(() => planRemoval(f));
+  }
+  const f = fixture();
+  f.containers.push(f.containers[0]);
+  assert.throws(() => planRemoval(f));
+  const g = fixture();
+  g.volumes.push(g.volumes[0]);
+  assert.throws(() => planRemoval(g));
+  const h = fixture();
+  h.containers[0].Id = "a;true";
+  assert.throws(() => planRemoval(h));
+});
+
+test("rejects host networking, publish-all and live port 62870 bindings", () => {
+  for (const host of [
+    { NetworkMode: "host" },
+    { PublishAllPorts: true },
+    { PortBindings: { "5432/tcp": [{ HostPort: "62870" }] } },
+  ]) {
+    const f = fixture();
+    f.containers[0].HostConfig = host;
+    assert.throws(() => planRemoval(f));
+  }
+  const f = fixture();
+  f.containers[0].NetworkSettings = {
+    Ports: { "5432/tcp": [{ HostPort: "62870" }] },
+  };
+  assert.throws(() => planRemoval(f));
+});

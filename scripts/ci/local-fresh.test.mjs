@@ -21,13 +21,18 @@ function fixture(t) {
   const containers = [
     {
       Id: pg,
+      Image: `sha256:${"9".repeat(64)}`,
       Config: { Labels: labels("postgres") },
       HostConfig: {},
       State: { Running: true },
     },
     {
       Id: app,
-      Config: { Labels: labels("taskdesk") },
+      Image: `sha256:${"8".repeat(64)}`,
+      Config: {
+        Image: `ghcr.io/thomasheinthura/taskdesk@sha256:${"7".repeat(64)}`,
+        Labels: labels("taskdesk"),
+      },
       HostConfig: {},
       State: { Running: true },
       Mounts: [
@@ -39,8 +44,22 @@ function fixture(t) {
       ],
     },
   ];
-  const volumes = ["postgres-data", "attachments"].map((v) => ({
+  for (const [id, service] of [
+    ["c", "valkey"],
+    ["d", "traefik"],
+    ["e", "mailpit"],
+  ]) {
+    containers.push({
+      Id: id.repeat(64),
+      Config: { Labels: labels(service) },
+      HostConfig: {},
+      State: { Running: true },
+    });
+  }
+  const volumes = ["postgres-data", "attachments", "mailpit-data"].map((v) => ({
     Name: `${PROJECT}_${v}`,
+    Driver: "local",
+    Mountpoint: `/var/lib/docker/volumes/${PROJECT}_${v}/_data`,
     Labels: {
       "com.docker.compose.project": PROJECT,
       "com.docker.compose.volume": v,
@@ -50,12 +69,13 @@ function fixture(t) {
   const run = (bin, args) => {
     calls.push([bin, ...args]);
     let stdout = "";
-    if (args[0] === "ps") stdout = `${pg}\n${app}\n`;
+    if (args[0] === "ps")
+      stdout = `${containers.map((c) => c.Id).join("\n")}\n`;
     else if (args[0] === "inspect") stdout = JSON.stringify(containers);
     else if (args[0] === "volume" && args[1] === "ls")
       stdout = `${volumes.map((v) => v.Name).join("\n")}\n`;
     else if (args[0] === "volume" && args[1] === "inspect")
-      stdout = JSON.stringify(volumes);
+      stdout = JSON.stringify(volumes.filter((v) => args.includes(v.Name)));
     return { status: 0, stdout };
   };
   const preflight = () => ({
@@ -84,6 +104,7 @@ function fixture(t) {
     calls,
     preflight,
     previewUpgrade: () => [["docker", "inspect", "<new-application-id>"]],
+    verifyBackup: () => {},
     lock: () => () => {},
     report: () => {},
   };
@@ -96,8 +117,22 @@ test("dry run only queries Docker and prints the plan", (t) => {
     args: ["--confirm-wipe", PROJECT, "--dry-run"],
     report: (line) => lines.push(line),
   });
+  assert.ok(!lines.some((line) => line.includes("execution is disabled")));
   assert.ok(lines.some((line) => line.includes("postgres.dump")));
+  assert.ok(
+    lines.some((line) => line.includes("taskdesk-fresh-restore-proof-")),
+  );
   assert.ok(lines.some((line) => line.includes("release-smoke.mjs")));
+  assert.ok(
+    lines.some((line) =>
+      line.includes("scripts/deploy.sh local-fresh --resume "),
+    ),
+  );
+  assert.ok(
+    lines.some((line) =>
+      line.includes("scripts/deploy.sh local-fresh --restore-from-backup "),
+    ),
+  );
   assert.ok(
     f.calls.every(
       ([bin, op, sub]) =>
@@ -188,12 +223,14 @@ test("successful mocked install runs backup, removal, migration, seed and smoke 
       writeSync(options.stdio[1], "data\n");
     return original(bin, args, options);
   };
+  f.verifyBackup = () => f.calls.push(["proof"]);
   f.upgrade = () => f.calls.push(["upgrade"]);
   executeFresh({ ...f, args: ["--confirm-wipe", PROJECT] });
   const position = (predicate) => f.calls.findIndex(predicate);
   const verify = position(
     ([bin, ...args]) => bin === "shasum" && args.includes("-c"),
   );
+  const proof = position(([bin]) => bin === "proof");
   const remove = position(([bin, op]) => bin === "docker" && op === "stop");
   const migrated = position(([bin, op]) => bin === "docker" && op === "wait");
   const upgraded = position(([bin]) => bin === "upgrade");
@@ -206,8 +243,15 @@ test("successful mocked install runs backup, removal, migration, seed and smoke 
       bin === "node" && args.includes("scripts/sit/release-smoke.mjs"),
   );
   assert.ok(
+    f.calls.some(
+      ([bin, ...args]) =>
+        bin === "docker" && args.includes("up") && args.includes("mailpit"),
+    ),
+  );
+  assert.ok(
     verify >= 0 &&
-      verify < remove &&
+      verify < proof &&
+      proof < remove &&
       remove < migrated &&
       migrated < upgraded &&
       upgraded < seed &&
@@ -239,7 +283,7 @@ test("a volume referenced by an outside container aborts", (t) => {
       args[0] === "ps" &&
       args.some((a) => a.startsWith("volume="))
     )
-      return { status: 0, stdout: `${"e".repeat(64)}\n` };
+      return { status: 0, stdout: `${"f".repeat(64)}\n` };
     return original(bin, args, options);
   };
   assert.throws(
@@ -389,5 +433,263 @@ test("release helper preview traces full port proof and subsequent command argum
   );
   assert.ok(
     commands.some((c) => c.includes("--no-deps") && c.includes("taskdesk")),
+  );
+});
+
+test("unverified restore proof fails closed before removing resources", async (t) => {
+  const { writeSync } = await import("node:fs");
+  const f = fixture(t);
+  f.verifyBackup = () => false;
+  const original = f.run;
+  f.run = (bin, args, options) => {
+    if (bin === "docker" && args.includes("pg_restore")) {
+      f.calls.push([bin, ...args]);
+      return { status: 0, stdout: "1; archive entry\n" };
+    }
+    if (options?.stdio && typeof options.stdio[1] === "number")
+      writeSync(options.stdio[1], "backup data\n");
+    return original(bin, args, options);
+  };
+  assert.throws(
+    () => executeFresh({ ...f, args: ["--confirm-wipe", PROJECT] }),
+    /Restore proof must complete in this run/,
+  );
+  assert.ok(
+    !f.calls.some(
+      ([bin, op, sub]) =>
+        bin === "docker" &&
+        (op === "stop" || op === "rm" || (op === "volume" && sub === "rm")),
+    ),
+  );
+});
+
+test("checksum failure blocks all removals", async (t) => {
+  const { writeSync } = await import("node:fs");
+  const f = fixture(t);
+  const original = f.run;
+  f.run = (bin, args, options) => {
+    if (bin === "docker" && args.includes("pg_restore"))
+      return { status: 0, stdout: "1; archive entry\n" };
+    if (bin === "shasum" && args.includes("-c"))
+      return { status: 1, stdout: "" };
+    if (options?.stdio && typeof options.stdio[1] === "number")
+      writeSync(options.stdio[1], "backup data\n");
+    return original(bin, args, options);
+  };
+  assert.throws(
+    () => executeFresh({ ...f, args: ["--confirm-wipe", PROJECT] }),
+    /shasum/,
+  );
+  assert.ok(
+    !f.calls.some(
+      ([bin, op, sub]) =>
+        bin === "docker" &&
+        (op === "stop" || op === "rm" || (op === "volume" && sub === "rm")),
+    ),
+  );
+});
+
+test("malformed Docker inspection fails before mutation", (t) => {
+  for (const broken of ["{}", "null", "not json"]) {
+    const f = fixture(t);
+    const original = f.run;
+    f.run = (bin, args, options) =>
+      bin === "docker" && args[0] === "inspect"
+        ? { status: 0, stdout: broken }
+        : original(bin, args, options);
+    assert.throws(() =>
+      executeFresh({ ...f, args: ["--confirm-wipe", PROJECT, "--dry-run"] }),
+    );
+    assert.ok(
+      !f.calls.some(
+        ([bin, op, sub]) =>
+          bin === "docker" &&
+          (op === "stop" || op === "rm" || (op === "volume" && sub === "rm")),
+      ),
+    );
+  }
+});
+
+test("restore proof failure occurs before any project removal", async (t) => {
+  const { writeSync } = await import("node:fs");
+  const f = fixture(t);
+  const original = f.run;
+  f.run = (bin, args, options) => {
+    if (bin === "docker" && args.includes("pg_restore"))
+      return { status: 0, stdout: "1; archive entry\n" };
+    if (options?.stdio && typeof options.stdio[1] === "number")
+      writeSync(options.stdio[1], "backup\n");
+    return original(bin, args, options);
+  };
+  f.verifyBackup = () => {
+    throw new Error("restore proof failure");
+  };
+  assert.throws(
+    () => executeFresh({ ...f, args: ["--confirm-wipe", PROJECT] }),
+    /restore proof failure/,
+  );
+  assert.ok(
+    !f.calls.some(
+      ([bin, op, sub]) =>
+        bin === "docker" &&
+        (op === "stop" || op === "rm" || (op === "volume" && sub === "rm")),
+    ),
+  );
+});
+
+test("failed removal retains lock and reports uncertain resource", async (t) => {
+  const { writeSync } = await import("node:fs");
+  const f = fixture(t);
+  const original = f.run;
+  let released = false;
+  f.lock = () => () => {
+    released = true;
+  };
+  const messages = [];
+  f.report = (line) => messages.push(line);
+  f.run = (bin, args, options) => {
+    if (bin === "docker" && args.includes("pg_restore"))
+      return { status: 0, stdout: "1; archive entry\n" };
+    if (bin === "docker" && args[0] === "rm") return { status: 1, stdout: "" };
+    if (options?.stdio && typeof options.stdio[1] === "number")
+      writeSync(options.stdio[1], "backup\n");
+    return original(bin, args, options);
+  };
+  assert.throws(
+    () => executeFresh({ ...f, args: ["--confirm-wipe", PROJECT] }),
+    /docker rm failed/,
+  );
+  assert.equal(released, false);
+  assert.ok(
+    messages.some(
+      (line) =>
+        line.includes("uncertain: remove-container:") &&
+        line.includes("Recovery reference:"),
+    ),
+  );
+});
+
+for (const failure of [
+  "remove",
+  "dependencies",
+  "migration",
+  "wait",
+  "upgrade",
+  "seed",
+  "credentials",
+  "readiness",
+  "smoke",
+]) {
+  test(`post-removal ${failure} failure retains lock and journal`, async (t) => {
+    const { readFileSync, readdirSync, writeSync } = await import("node:fs");
+    const f = fixture(t);
+    const original = f.run;
+    let released = false;
+    f.lock = () => () => {
+      released = true;
+    };
+    f.upgrade = () => {
+      if (failure === "upgrade") throw new Error("upgrade failed");
+    };
+    const migration = "8".repeat(64);
+    const freshApp = "7".repeat(64);
+    const messages = [];
+    f.report = (line) => messages.push(line);
+    f.run = (bin, args, options) => {
+      if (bin === "docker" && args.includes("pg_restore"))
+        return { status: 0, stdout: "1; archive entry\n" };
+      const fail =
+        (failure === "remove" && bin === "docker" && args[0] === "rm") ||
+        (failure === "dependencies" &&
+          bin === "docker" &&
+          args[0] === "compose" &&
+          args.includes("up")) ||
+        (failure === "migration" &&
+          bin === "docker" &&
+          args[0] === "compose" &&
+          args.includes("run")) ||
+        (failure === "wait" && bin === "docker" && args[0] === "wait") ||
+        (failure === "seed" &&
+          bin === "docker" &&
+          args.includes("apps/api/dist/seed-sit-users.js")) ||
+        (failure === "credentials" &&
+          bin === "docker" &&
+          args.includes("cat")) ||
+        (failure === "readiness" && bin === "curl") ||
+        (failure === "smoke" &&
+          bin === "node" &&
+          args.includes("scripts/sit/release-smoke.mjs"));
+      if (fail) return { status: 1, stdout: "" };
+      if (bin === "docker" && args[0] === "compose" && args.includes("run"))
+        return { status: 0, stdout: migration };
+      if (bin === "docker" && args[0] === "compose" && args.includes("ps"))
+        return { status: 0, stdout: freshApp };
+      if (bin === "docker" && args[0] === "wait")
+        return { status: 0, stdout: "0" };
+      if (options?.stdio && typeof options.stdio[1] === "number")
+        writeSync(options.stdio[1], "data\n");
+      return original(bin, args, options);
+    };
+    assert.throws(() =>
+      executeFresh({ ...f, args: ["--confirm-wipe", PROJECT] }),
+    );
+    assert.equal(released, false);
+    const backupRoot = join(f.env.SIT_PRIVATE_DIR, "fresh-backups");
+    const ref = readdirSync(backupRoot)[0];
+    assert.ok(
+      messages.some(
+        (line) =>
+          line.includes(`Recovery reference: ${ref}`) &&
+          line.includes("removed:") &&
+          line.includes("uncertain:") &&
+          line.includes("remaining:"),
+      ),
+    );
+    assert.ok(
+      messages.some(
+        (line) =>
+          line.includes(`scripts/deploy.sh local-fresh --resume ${ref}`) &&
+          line.includes(
+            `scripts/deploy.sh local-fresh --restore-from-backup ${ref}`,
+          ),
+      ),
+    );
+    assert.ok(!messages.some((line) => line.includes(f.env.SIT_PRIVATE_DIR)));
+    const journal = JSON.parse(
+      readFileSync(join(backupRoot, ref, "journal.json"), "utf8"),
+    );
+    assert.equal(journal.steps.at(-1).state, "failed");
+  });
+}
+
+test("uncertain restore-proof cleanup retains lock and records a private marker", async (t) => {
+  const { writeSync, readdirSync, existsSync } = await import("node:fs");
+  const { ProofCleanupUncertain } = await import(
+    "../../deploy/local-fresh-restore-proof.mjs"
+  );
+  const f = fixture(t);
+  const original = f.run;
+  let released = false;
+  f.lock = () => () => {
+    released = true;
+  };
+  f.verifyBackup = () => {
+    throw new ProofCleanupUncertain("cleanup uncertain");
+  };
+  f.run = (bin, args, options) => {
+    if (bin === "docker" && args.includes("pg_restore"))
+      return { status: 0, stdout: "1; archive entry\n" };
+    if (options?.stdio && typeof options.stdio[1] === "number")
+      writeSync(options.stdio[1], "backup\n");
+    return original(bin, args, options);
+  };
+  assert.throws(
+    () => executeFresh({ ...f, args: ["--confirm-wipe", PROJECT] }),
+    /cleanup uncertain/,
+  );
+  assert.equal(released, false);
+  const backupRoot = join(f.env.SIT_PRIVATE_DIR, "fresh-backups");
+  assert.ok(
+    existsSync(join(backupRoot, readdirSync(backupRoot)[0], "proof-uncertain")),
   );
 });
