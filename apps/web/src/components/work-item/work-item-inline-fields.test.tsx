@@ -1,5 +1,7 @@
+import en from "@i18n/en-US.json";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createInstance } from "i18next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemCustomFieldColumn, WorkItemRow } from "@/types/work-item";
@@ -21,8 +23,15 @@ const mocks = vi.hoisted(() => ({
   guard: vi.fn(),
 }));
 
+const human = vi.hoisted(() => ({
+  translate: undefined as undefined | ((key: string) => string),
+  language: "en-US",
+}));
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) => human.translate?.(key) ?? key,
+    i18n: human,
+  }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 vi.mock("@taskdesk/ui", async (importOriginal) => {
@@ -174,6 +183,25 @@ beforeEach(() => {
 });
 
 describe("WorkItemInlineFields", () => {
+  it("announces a translated unassigned list row before the deferred catalog loads", async () => {
+    const instance = createInstance();
+    await instance.init({
+      lng: "en-US",
+      resources: { "en-US": en },
+      defaultNS: "common",
+      interpolation: { defaultVariables: { term_project_one: "Project" } },
+    });
+    human.translate = (key) => instance.t(key);
+    try {
+      renderInline();
+      expect(
+        screen.getByTestId("work-item-inline-assignee"),
+      ).toHaveAccessibleName("Assignee: Unassigned");
+    } finally {
+      human.translate = undefined;
+    }
+  });
+
   it("keeps title editing separate from detail navigation and Escape writes nothing", () => {
     const row = item();
     const { client } = renderInline(row, false, "table");

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 const TABS = [
   { key: "announcements", to: routes.portalAnnouncements.path },

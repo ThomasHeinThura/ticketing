@@ -332,7 +332,7 @@ function CanonicalMenuActions({
               : command.kind === "assign" &&
                   error instanceof HttpError &&
                   error.status === 409
-                ? t("workItemExtras:journey.assignmentConflict")
+                ? t("workItems:journey.assignmentConflict")
                 : t("workItems:properties.saveFailed"),
         );
     } finally {
@@ -410,8 +410,8 @@ function CanonicalMenuActions({
                   void execute({ kind: "state", transitionId }),
                 emptyLabel: t(
                   !offersReady
-                    ? "workItemExtras:journey.loadingTransitions"
-                    : "workItemExtras:journey.transitionsEmpty",
+                    ? "workItems:journey.loadingTransitions"
+                    : "workItems:journey.transitionsEmpty",
                 ),
               }
             : undefined
@@ -432,8 +432,7 @@ function CanonicalMenuActions({
                 options: (peopleReady ? (people.data ?? []) : []).map(
                   (person) => ({
                     value: person.personId,
-                    label:
-                      person.name ?? t("workItemExtras:journey.unnamedPerson"),
+                    label: person.name ?? t("workItems:journey.unnamedPerson"),
                     name: person.name ?? "",
                   }),
                 ),
@@ -441,8 +440,8 @@ function CanonicalMenuActions({
                 canUnassign: Boolean(canUnassign),
                 emptyLabel: t(
                   !peopleReady
-                    ? "workItemExtras:journey.loadingPeople"
-                    : "workItemExtras:journey.noPeople",
+                    ? "workItems:journey.loadingPeople"
+                    : "workItems:journey.noPeople",
                 ),
               }
             : undefined
@@ -461,7 +460,7 @@ function CanonicalMenuActions({
                     setMoveOpen(true);
                   }}
                 >
-                  <span>{t("workItemExtras:move.action")}</span>
+                  <span>{t("workItems:move.action")}</span>
                 </ContextMenuItem>
               ) : null}
               {canEdit && scopedMembership?.canEdit ? (
@@ -493,8 +492,8 @@ function CanonicalMenuActions({
                 deletion.failed
                   ? "workItems:deletion.requestFailed"
                   : offers.isError
-                    ? "workItemExtras:journey.transitionsError"
-                    : "workItemExtras:journey.peopleError",
+                    ? "workItems:journey.transitionsError"
+                    : "workItems:journey.peopleError",
               )}
             </ContextMenuItem>
           ) : undefined
@@ -515,10 +514,10 @@ function CanonicalMenuActions({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("workItemExtras:journey.confirmReassign")}
+              {t("workItems:journey.confirmReassign")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("workItemExtras:journey.confirmReassignDescription")}
+              {t("workItems:journey.confirmReassignDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

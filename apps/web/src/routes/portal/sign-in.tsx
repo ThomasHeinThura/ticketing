@@ -17,12 +17,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getPortalAuthMethods } from "@/fetchers/customer-invitation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
+import { routes } from "@/lib/portal-route-builders";
 import {
   type PortalSignInStage,
   parsePortalSignInSearch,
-  routes,
   safePortalRedirect,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
+
 import { signInRefusalKey } from "@/lib/sign-in-refusal";
 
 export const Route = createFileRoute("/sign-in")({

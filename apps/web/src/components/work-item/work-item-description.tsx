@@ -129,7 +129,7 @@ export default function WorkItemDescription({
           if (unsaved.current === document) unsaved.current = NOTHING_SAVED;
           setFailed(false);
           clearConflict();
-          announce(t("workItemExtras:journey.editSaved"));
+          announce(t("workItems:journey.editSaved"));
         },
       },
     );

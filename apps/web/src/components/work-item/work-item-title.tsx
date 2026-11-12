@@ -100,7 +100,7 @@ export default function WorkItemTitle({
           if (unsaved.current === text) unsaved.current = null;
           setFailed(false);
           clearConflict();
-          announce(t("workItemExtras:journey.editSaved"));
+          announce(t("workItems:journey.editSaved"));
         },
       },
     );

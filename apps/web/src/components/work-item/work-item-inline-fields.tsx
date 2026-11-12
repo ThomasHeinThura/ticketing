@@ -319,7 +319,7 @@ export default function WorkItemInlineFields({
           queryKey: ["work-items", "activity", item.key],
         }),
       ]);
-      toast.success(t("workItemExtras:journey.editSaved"));
+      toast.success(t("workItems:journey.editSaved"));
     },
     onError: (mutationError, command) => {
       if (isWorkItemAccessLost(mutationError)) {
@@ -346,7 +346,7 @@ export default function WorkItemInlineFields({
                   .join(", "),
               })
             : mutationError instanceof HttpError && mutationError.status === 409
-              ? t("workItemExtras:journey.assignmentConflict")
+              ? t("workItems:journey.assignmentConflict")
               : t("workItems:properties.saveFailed");
       setError(message);
       toast.error(message);
@@ -500,11 +500,11 @@ export default function WorkItemInlineFields({
     unassigned:
       presentation === "table"
         ? t("workItems:list.unassigned")
-        : t("workItemExtras:detail.unassigned"),
+        : t("workItems:detail.unassigned"),
     inactive:
       presentation === "table"
         ? t("workItems:list.assigneeInactive")
-        : t("workItemExtras:detail.inactiveAssignee"),
+        : t("workItems:detail.inactiveAssignee"),
     notOnProject: t("workItems:list.assigneeNotOnProject"),
   });
 
@@ -813,7 +813,7 @@ export default function WorkItemInlineFields({
             size="sm"
             variant="ghost"
             className="h-7 min-w-0 max-w-full justify-start overflow-hidden px-1.5 text-xs"
-            aria-label={t("workItemExtras:detail.editField", {
+            aria-label={t("workItems:detail.editField", {
               name: field.name,
             })}
             data-testid={`work-item-inline-custom-field-edit-${field.key}`}
@@ -898,7 +898,7 @@ export default function WorkItemInlineFields({
           </p>
         ) : transitions.isError ? (
           <p className="p-3 text-sm text-destructive" role="alert">
-            {t("workItemExtras:journey.transitionsError")}
+            {t("workItems:journey.transitionsError")}
           </p>
         ) : offers.length === 0 ? (
           <p className="p-3 text-sm text-muted-foreground">
@@ -932,7 +932,7 @@ export default function WorkItemInlineFields({
                   {blocked ? (
                     <span className="text-left text-xs text-muted-foreground">
                       {reasons.join(", ") ||
-                        t("workItemExtras:journey.reasonUnknown")}
+                        t("workItems:journey.reasonUnknown")}
                     </span>
                   ) : null}
                 </Button>
@@ -1057,7 +1057,7 @@ export default function WorkItemInlineFields({
             onClick={() => selectAssignee(null)}
           >
             <span className="w-5 text-center text-muted-foreground">?</span>
-            <span>{t("workItemExtras:detail.unassigned")}</span>
+            <span>{t("workItems:detail.unassigned")}</span>
             <Check className="ml-auto h-4 w-4" />
           </Button>
         ) : null}
@@ -1067,11 +1067,11 @@ export default function WorkItemInlineFields({
           </p>
         ) : people.isError ? (
           <p className="p-3 text-sm text-destructive" role="alert">
-            {t("workItemExtras:journey.peopleError")}
+            {t("workItems:journey.peopleError")}
           </p>
         ) : (people.data ?? []).length === 0 ? (
           <p className="p-3 text-sm text-muted-foreground">
-            {t("workItemExtras:journey.noPeople")}
+            {t("workItems:journey.noPeople")}
           </p>
         ) : (
           (people.data ?? []).map((person) => (
@@ -1094,7 +1094,7 @@ export default function WorkItemInlineFields({
                 </AvatarFallback>
               </Avatar>
               <span className="truncate">
-                {person.name ?? t("workItemExtras:journey.unnamedPerson")}
+                {person.name ?? t("workItems:journey.unnamedPerson")}
               </span>
               {item.assigneeId === person.personId ? (
                 <Check className="ml-auto h-4 w-4" />
@@ -1143,10 +1143,10 @@ export default function WorkItemInlineFields({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("workItemExtras:journey.confirmReassign")}
+              {t("workItems:journey.confirmReassign")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("workItemExtras:journey.confirmReassignDescription")}
+              {t("workItems:journey.confirmReassignDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

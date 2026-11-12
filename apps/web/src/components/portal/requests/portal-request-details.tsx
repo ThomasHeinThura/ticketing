@@ -44,7 +44,7 @@ import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cas
 import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { messageAuthor } from "@/lib/portal-request";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 function fieldValue(
   value: unknown,

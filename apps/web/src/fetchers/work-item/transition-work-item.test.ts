@@ -52,10 +52,10 @@ describe("canonical board transition transport", () => {
     ]);
     expect(JSON.stringify(error)).not.toContain("Private");
     expect(workItemTransitionReasonKey("cab.pending")).toBe(
-      "workItemExtras:journey.reasonCabPending",
+      "workItems:journey.reasonCabPending",
     );
     expect(workItemTransitionReasonKey("untrusted")).toBe(
-      "workItemExtras:journey.reasonUnknown",
+      "workItems:journey.reasonUnknown",
     );
   });
   it.each([403, 404, 409, 500])(

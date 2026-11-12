@@ -19,17 +19,14 @@ export function humanizeKey(key: string): string {
 
 /** The audit row's action as a label; unknown keys fall back to readable words. */
 export function auditActionLabel(action: string, t: Translate): string {
-  return t(
-    `workItemExtras:auditHistory.actions.${action.replace(/\./g, "_")}`,
-    {
-      defaultValue: humanizeKey(action),
-    },
-  );
+  return t(`workItems:auditHistory.actions.${action.replace(/\./g, "_")}`, {
+    defaultValue: humanizeKey(action),
+  });
 }
 
 /** A recorded field key as a label; unknown keys fall back to readable words. */
 export function auditFieldLabel(field: string, t: Translate): string {
-  return t(`workItemExtras:auditHistory.fields.${field}`, {
+  return t(`workItems:auditHistory.fields.${field}`, {
     defaultValue: humanizeKey(field),
   });
 }

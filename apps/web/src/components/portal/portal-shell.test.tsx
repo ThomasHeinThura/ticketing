@@ -1,3 +1,4 @@
+import en from "@i18n/en-US.json";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { expectNoA11yViolations } from "@taskdesk/ui/test/a11y";
 import {
@@ -7,10 +8,14 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { createInstance } from "i18next";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PortalLayout from "./portal-layout";
 
+const human = vi.hoisted(() => ({
+  translate: undefined as undefined | ((key: string) => string),
+}));
 const location = vi.hoisted(() => ({ pathname: "/", search: {} }));
 const navigate = vi.hoisted(() => vi.fn());
 const signOut = vi.hoisted(() => vi.fn());
@@ -45,7 +50,8 @@ vi.mock("@tanstack/react-router", async () => {
 vi.mock("@/lib/i18n/portal-translation", () => ({
   usePortalTranslation: () => ({
     t: (key: string, options?: { name?: string }) =>
-      options?.name ? `${key} ${options.name}` : key,
+      human.translate?.(key) ??
+      (options?.name ? `${key} ${options.name}` : key),
     i18n: {},
   }),
   getDefaultPortalTerm: () => "Requests",
@@ -380,4 +386,23 @@ describe("portal shell", () => {
     await expect(expectNoA11yViolations(probe)).rejects.toThrow();
     probe.remove();
   });
+});
+
+it("loads the deferred portal layout and renders translated navigation", async () => {
+  const instance = createInstance();
+  await instance.init({
+    lng: "en-US",
+    resources: { "en-US": en },
+    defaultNS: "portal",
+  });
+  human.translate = (key) => instance.t(key);
+  try {
+    const module = await import("./portal-layout");
+    expect(module.default).toBe(PortalLayout);
+    renderShell();
+    expect(await screen.findByText("Projects")).toBeVisible();
+    expect(document.body.textContent).not.toMatch(/portal:[\w.]+/);
+  } finally {
+    human.translate = undefined;
+  }
 });

@@ -10,7 +10,8 @@ import { type FormEvent, lazy, Suspense, useRef, useState } from "react";
 import { ThemeToggleDropdown } from "@/components/theme-toggle-dropdown";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalCapabilities } from "@/lib/portal-capabilities";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+
 import PortalNotificationBell from "./portal-notification-bell";
 import PortalUserMenu, { type PortalShellUser } from "./portal-user-menu";
 

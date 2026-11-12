@@ -597,7 +597,7 @@ it("keeps actor-offered blocked states disabled and displays translated reasons"
   const state = await screen.findByRole("button", { name: /State Done/ });
   expect(state).toBeDisabled();
   expect(state).toHaveTextContent(
-    translate("workItemExtras:journey.reasonCabPending"),
+    translate("workItems:journey.reasonCabPending"),
   );
   expect(state).not.toHaveTextContent("cab.pending");
   fireEvent.click(state);
@@ -615,7 +615,7 @@ it("explains a newly blocked POST without exposing pending approver data or raw 
   await waitFor(() =>
     expect(mocks.error).toHaveBeenCalledWith(
       expect.stringContaining(
-        translate("workItemExtras:journey.reasonApprovalPending"),
+        translate("workItems:journey.reasonApprovalPending"),
       ),
     ),
   );
@@ -630,7 +630,7 @@ it("explains a newly blocked POST without exposing pending approver data or raw 
 it("does not expose a stale roster after its current scoped request is denied", async () => {
   mocks.people.mockRejectedValue(new HttpError(403, "private denial"));
   mount();
-  await screen.findByText(translate("workItemExtras:journey.peopleError"));
+  await screen.findByText(translate("workItems:journey.peopleError"));
   expect(
     screen.queryByRole("button", { name: "Assign Jordan" }),
   ).not.toBeInTheDocument();

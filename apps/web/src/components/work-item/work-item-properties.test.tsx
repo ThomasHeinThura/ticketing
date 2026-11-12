@@ -518,7 +518,7 @@ describe("WorkItemProperties", () => {
       await screen.findByRole("menuitem", { name: /In progress/ }),
     );
     expect(
-      await screen.findByText("workItemExtras:journey.transitionUnavailable"),
+      await screen.findByText("workItems:journey.transitionUnavailable"),
     ).toBeInTheDocument();
   });
 
@@ -537,7 +537,7 @@ describe("WorkItemProperties", () => {
     fireEvent.click(screen.getByTestId("work-item-state-control"));
     const held = await screen.findByRole("menuitem", { name: /Held/ });
     expect(held).toHaveAttribute("aria-disabled", "true");
-    expect(held).toHaveTextContent("workItemExtras:journey.reasonUnknown");
+    expect(held).toHaveTextContent("workItems:journey.reasonUnknown");
   });
 
   it("moves with an optional note left empty, sending no note", async () => {
@@ -567,7 +567,7 @@ describe("WorkItemProperties", () => {
       }),
     );
     expect(await screen.findByTestId("work-item-status")).toHaveTextContent(
-      "workItemExtras:journey.transitionDone",
+      "workItems:journey.transitionDone",
     );
   });
 
@@ -607,7 +607,7 @@ describe("WorkItemProperties", () => {
     const blocked = await screen.findByRole("menuitem", { name: /Done/ });
     expect(blocked).toHaveAttribute("aria-disabled", "true");
     expect(blocked).toHaveTextContent(
-      "workItemExtras:journey.reasonApprovalPending",
+      "workItems:journey.reasonApprovalPending",
     );
     fireEvent.click(screen.getByRole("menuitem", { name: /In progress/ }));
     await waitFor(() =>
@@ -785,7 +785,7 @@ describe("WorkItemProperties", () => {
       } else {
         fireEvent.click(
           await screen.findByRole("button", {
-            name: "workItemExtras:detail.unassigned",
+            name: "workItems:detail.unassigned",
           }),
         );
       }
@@ -826,7 +826,7 @@ describe("WorkItemProperties", () => {
       fireEvent.click(screen.getByTestId("work-item-assignee-control"));
       await screen.findByRole("button", { name: /Me/u });
       const button = screen.queryByRole("button", {
-        name: "workItemExtras:detail.unassigned",
+        name: "workItems:detail.unassigned",
       });
       if (self) expect(button).toBeEnabled();
       else expect(button).toBeNull();
@@ -846,7 +846,7 @@ describe("WorkItemProperties", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
     expect(mocks.assign).not.toHaveBeenCalled();
     expect(
-      screen.getByText("workItemExtras:journey.confirmReassignDescription"),
+      screen.getByText("workItems:journey.confirmReassignDescription"),
     ).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", {
@@ -888,7 +888,7 @@ describe("WorkItemProperties", () => {
     fireEvent.click(screen.getByRole("button", { name: /Riley Fox/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
     fireEvent.click(
-      screen.getByRole("button", { name: "workItemExtras:journey.cancel" }),
+      screen.getByRole("button", { name: "workItems:journey.cancel" }),
     );
     expect(
       await screen.findByRole("button", { name: /Casey Ray/ }),

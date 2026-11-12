@@ -13,7 +13,8 @@ import { AnnouncementSeverityBadge } from "@/components/announcements/announceme
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { getPortalAnnouncement } from "@/fetchers/portal/announcements";
 import { HttpError } from "@/lib/http-error";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+
 import { useAnnouncementWindow } from "./portal-announcements-list";
 
 /** Plain text only: announcement bodies never render as HTML or markdown. */

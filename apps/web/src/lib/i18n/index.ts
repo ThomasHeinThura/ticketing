@@ -53,6 +53,7 @@ export function getBrowserLocale(): string | null {
 // the rest after its first paint, so the full catalog is not on the route's critical path (G11).
 // Every other entry point keeps loading the whole locale before it renders.
 const useNamespaceGroups =
+  import.meta.env.MODE !== "portal" &&
   typeof window !== "undefined" &&
   WORK_LIST_PATH_PATTERN.test(window.location.pathname);
 

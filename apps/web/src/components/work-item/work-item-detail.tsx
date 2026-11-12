@@ -44,6 +44,7 @@ import WorkItemDescription from "./work-item-description";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 import { WorkItemFeedbackProvider } from "./work-item-feedback";
 import WorkItemHierarchy from "./work-item-hierarchy";
+import WorkItemNamespaceBoundary from "./work-item-namespace-boundary";
 import WorkItemProperties from "./work-item-properties";
 import WorkItemRelations from "./work-item-relations";
 import WorkItemSla from "./work-item-sla";
@@ -548,4 +549,10 @@ function WorkItemDetailSections({
   );
 }
 
-export default WorkItemDetail;
+export default function TranslatedWorkItemDetail(props: WorkItemDetailProps) {
+  return (
+    <WorkItemNamespaceBoundary>
+      <WorkItemDetail {...props} />
+    </WorkItemNamespaceBoundary>
+  );
+}

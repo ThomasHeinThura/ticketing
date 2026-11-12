@@ -72,11 +72,11 @@ import {
   PortalActionError,
   readPortalSla,
 } from "@/lib/portal-request";
+import { routes } from "@/lib/portal-route-builders";
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
-  routes,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 /** The priorities the case list shows as a severity; anything else reads "Not set". */
 const PORTAL_SEVERITIES: readonly string[] = [

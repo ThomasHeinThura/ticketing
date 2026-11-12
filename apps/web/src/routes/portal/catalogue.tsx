@@ -39,11 +39,11 @@ import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { missingRequiredIntakeFields } from "@/lib/intake-validation";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
+import { routes } from "@/lib/portal-route-builders";
 import {
   parsePortalCatalogueSearch,
   portalProjectSearchMiddlewares,
-  routes,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 type Entry = {
   key: string;

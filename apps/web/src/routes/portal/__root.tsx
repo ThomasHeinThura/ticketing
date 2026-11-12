@@ -7,12 +7,24 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import PortalLayout from "@/components/portal/portal-layout";
+import { PageLoading } from "@/components/page-loading";
 import type { PortalShellUser } from "@/components/portal/portal-user-menu";
 import { HttpError } from "@/lib/http-error";
+import {
+  importWithRetry,
+  rememberCssPreloadFailure,
+  resettableLazy,
+} from "@/lib/lazy-retry";
 import { portalAuthClient } from "@/lib/portal-auth-client";
-import { safePortalRedirect } from "@/lib/routes";
+import { safePortalRedirect } from "@/lib/portal-route-search";
+
 import queryClient, { portalSessionQueryKey } from "@/query-client";
+
+const portalLayout = resettableLazy(
+  rememberCssPreloadFailure(() =>
+    importWithRetry(() => import("@/components/portal/portal-layout")),
+  ),
+);
 
 // Rarely shown, so kept out of the portal's initial bundle (G11 budget).
 const PortalFeatureOff = lazy(() =>
@@ -139,6 +151,8 @@ function shellUser(user: Record<string, unknown>): PortalShellUser {
 }
 
 function PortalRoot() {
+  "use no memo";
+  const PortalLayout = portalLayout.Component;
   const location = useLocation();
   const { portalUserId, portalUser, portalState } = Route.useRouteContext();
   // P3-R2-03: the host marked the portal as switched off (or unreadable) for this visitor.
@@ -151,9 +165,11 @@ function PortalRoot() {
   return isSignIn(location.pathname) ? (
     <Outlet />
   ) : (
-    <PortalLayout key={portalUserId} user={portalUser ?? anonymousUser}>
-      <Outlet />
-    </PortalLayout>
+    <Suspense fallback={<PageLoading portal />}>
+      <PortalLayout key={portalUserId} user={portalUser ?? anonymousUser}>
+        <Outlet />
+      </PortalLayout>
+    </Suspense>
   );
 }
 

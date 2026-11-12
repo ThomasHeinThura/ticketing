@@ -10,18 +10,18 @@ import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import { PortalProjectsCards } from "@/components/portal/projects/portal-projects-cards";
 import { outstandingCasesQuery } from "@/hooks/queries/portal/outstanding-cases-query";
 import { portalProjectsOptions } from "@/hooks/queries/portal/portal-projects-options";
-import { prefetchPortalHome } from "@/hooks/queries/portal/prefetch-portal-home";
 import {
   usePortalCases,
   usePortalHome,
 } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { routes } from "@/lib/portal-route-builders";
 import {
   type PortalHomeSearch,
   parsePortalHomeSearch,
   portalProjectSearchMiddlewares,
-  routes,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
+
 import queryClient from "@/query-client";
 
 export const Route = createFileRoute("/")({
@@ -33,12 +33,15 @@ export const Route = createFileRoute("/")({
     status: search.status,
     priority: search.priority,
   }),
-  loader: ({ context, deps, cause }) => {
+  loader: async ({ context, deps, cause }) => {
     const { portalUserId, portalState } = context as unknown as {
       portalUserId?: string;
       portalState?: unknown;
     };
     if (cause === "enter" && portalUserId && !portalState) {
+      const { prefetchPortalHome } = await import(
+        "@/hooks/queries/portal/prefetch-portal-home"
+      );
       prefetchPortalHome(queryClient, portalUserId, deps);
     }
   },

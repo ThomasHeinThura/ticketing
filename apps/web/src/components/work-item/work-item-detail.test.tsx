@@ -1,5 +1,7 @@
+import en from "@i18n/en-US.json";
 import { Button } from "@taskdesk/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { createInstance } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
@@ -74,9 +76,15 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+const human = vi.hoisted(() => ({
+  translate: undefined as undefined | ((key: string) => string),
+  language: "en-US",
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, fallback?: string) =>
+      human.translate?.(key) ?? fallback ?? key,
+    i18n: human,
   }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
@@ -238,6 +246,39 @@ const baseProps: WorkItemDetailProps = {
 };
 
 describe("WorkItemDetail", () => {
+  it.each(["page", "pane"] as const)(
+    "renders translated %s detail labels",
+    async (variant) => {
+      const instance = createInstance();
+      await instance.init({
+        lng: "en-US",
+        resources: { "en-US": en },
+        defaultNS: "common",
+        interpolation: { defaultVariables: { term_project_one: "Project" } },
+      });
+      human.translate = (key) => instance.t(key);
+      try {
+        if (variant === "pane")
+          window.history.replaceState(
+            {},
+            "",
+            "/agent/projects/PROJ/work?item=PROJ-123",
+          );
+        render(
+          <WorkItemDetail {...baseProps} item={makeItem()} variant={variant} />,
+        );
+        expect(await screen.findByText("Attachments")).toBeVisible();
+        expect(screen.getByText("SLA")).toBeVisible();
+        expect(document.body.textContent).not.toMatch(
+          /workItemExtras:detail\./,
+        );
+      } finally {
+        human.translate = undefined;
+        window.history.replaceState({}, "", "/");
+      }
+    },
+  );
+
   it("renders the loading skeleton state", () => {
     render(<WorkItemDetail {...baseProps} isLoading={true} />);
     expect(screen.getByTestId("work-item-detail-loading")).toBeInTheDocument();

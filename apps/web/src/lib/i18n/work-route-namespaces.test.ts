@@ -73,21 +73,16 @@ describe("work route namespace groups", () => {
     }
   });
 
-  it("defers detail and journey text while keeping loading and realtime text eager", () => {
+  it("keeps every list row and detail label eager", () => {
     for (const file of locales) {
       const catalog = JSON.parse(
         readFileSync(path.join(i18nDir, file), "utf8"),
       );
-      const { slim, rest } = splitI18nNamespaces(catalog);
-      expect(slim).not.toHaveProperty("workItemExtras");
-      expect(rest).toHaveProperty("workItemExtras.detail");
-      expect(rest).toHaveProperty("workItemExtras.journey");
-      expect(Object.keys(catalog.workItems.detail).sort()).toEqual([
-        "loading",
-        "realtimeUnavailable",
-      ]);
-      expect(catalog.workItems.detail.loading).toBeTruthy();
-      expect(catalog.workItems.detail.realtimeUnavailable).toBeTruthy();
+      const { slim } = splitI18nNamespaces(catalog);
+      expect(slim).toHaveProperty("workItems.detail.unassigned");
+      expect(slim).toHaveProperty("workItems.detail.inactiveAssignee");
+      expect(slim).toHaveProperty("workItems.detail.editField");
+      expect(slim).toHaveProperty("customFields.value.notSet");
     }
   });
 

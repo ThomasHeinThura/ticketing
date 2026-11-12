@@ -64,7 +64,7 @@ export function CanonicalGanttTaskBar(
         try {
           await save.mutateAsync({ start, end });
         } catch {
-          throw new Error(t("workItemExtras:journey.saveError"));
+          throw new Error(t("workItems:journey.saveError"));
         }
       }}
     />

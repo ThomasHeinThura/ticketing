@@ -19,11 +19,11 @@ import { PortalCaseTable } from "@/components/portal/cases/portal-case-table";
 import { outstandingCasesQuery } from "@/hooks/queries/portal/outstanding-cases-query";
 import { usePortalCases } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { routes } from "@/lib/portal-route-builders";
 import {
   PORTAL_OUTSTANDING_STATUSES,
   type PortalHomeSearch,
-  routes,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 const OUTSTANDING = PORTAL_OUTSTANDING_STATUSES.join(",");
 
