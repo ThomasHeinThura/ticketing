@@ -8,6 +8,7 @@ import { assertBackupLocation } from "./local-fresh-location.mjs";
 import {
   acquireDaemonProjectLock,
   assertSameDockerDaemon,
+  DAEMON_ID_PATTERN,
   readDockerDaemonIdentity,
 } from "./local-fresh-lock.mjs";
 import { PROJECT, planRemoval } from "./local-fresh-plan.mjs";
@@ -25,7 +26,57 @@ import { deployLocalLocked } from "./local-release.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const split = (s) => s.trim().split(/\s+/).filter(Boolean);
-const USAGE = `Use --confirm-wipe ${PROJECT} [--dry-run].`;
+const USAGE = `Preview with no flags or --dry-run; execute with --confirm-wipe ${PROJECT} --confirm-daemon <daemon-id>.`;
+
+function parseFreshArgs(args) {
+  if (!Array.isArray(args)) throw new Error(USAGE);
+  let explicitDryRun = false;
+  let allowOpen = false;
+  let confirmWipe;
+  let confirmDaemon;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--dry-run") {
+      if (explicitDryRun) throw new Error(USAGE);
+      explicitDryRun = true;
+    } else if (arg === "--dry-run-allow-open-registration") {
+      if (allowOpen) throw new Error(USAGE);
+      allowOpen = true;
+    } else if (arg === "--confirm-wipe") {
+      if (confirmWipe !== undefined || i + 1 >= args.length)
+        throw new Error(USAGE);
+      confirmWipe = args[++i];
+      if (confirmWipe !== PROJECT) throw new Error(USAGE);
+    } else if (arg === "--confirm-daemon") {
+      if (confirmDaemon !== undefined || i + 1 >= args.length)
+        throw new Error(
+          `Invalid or missing --confirm-daemon <daemon-id>. ${USAGE}`,
+        );
+      confirmDaemon = args[++i];
+      if (!DAEMON_ID_PATTERN.test(confirmDaemon))
+        throw new Error(
+          `Invalid --confirm-daemon value; expected a verified Docker daemon ID. ${USAGE}`,
+        );
+    } else {
+      throw new Error(USAGE);
+    }
+  }
+  if (allowOpen && !explicitDryRun) throw new Error(USAGE);
+  const noConfirmation =
+    confirmWipe === undefined && confirmDaemon === undefined;
+  const dry = explicitDryRun || noConfirmation;
+  if (!dry) {
+    if (confirmWipe !== PROJECT)
+      throw new Error(
+        `Refusing real run without --confirm-wipe ${PROJECT}. ${USAGE}`,
+      );
+    if (confirmDaemon === undefined)
+      throw new Error(
+        `Refusing real run without --confirm-daemon <daemon-id>. ${USAGE}`,
+      );
+  }
+  return { dry, allowOpen, confirmDaemon };
+}
 
 export function executeFresh({
   args,
@@ -39,38 +90,31 @@ export function executeFresh({
   lockRoot,
   signal,
 }) {
-  if (!Array.isArray(args) || args.length === 0) throw new Error(USAGE);
+  const { dry, allowOpen, confirmDaemon } = parseFreshArgs(args);
   const safeReport = (line) =>
     report(redactFreshText(line, { env, checkout: root }));
-  const dry = args.includes("--dry-run");
-  const allowOpen = args.includes("--dry-run-allow-open-registration");
-  const rest = args.filter(
-    (a) => !["--dry-run", "--dry-run-allow-open-registration"].includes(a),
-  );
-  if (
-    rest.length !== 2 ||
-    rest[0] !== "--confirm-wipe" ||
-    rest[1] !== PROJECT ||
-    args.filter((a) => a === "--dry-run").length > 1 ||
-    args.filter((a) => a === "--dry-run-allow-open-registration").length > 1 ||
-    (allowOpen && !dry)
-  )
-    throw new Error(USAGE);
 
   for (const key of ["SIT_COMPOSE_ENV", "SIT_PRIVATE_DIR"])
     if (!env[key] || !isAbsolute(env[key]) || !existsSync(env[key]))
       throw new Error(`${key} must be an existing absolute private path.`);
   const daemonOptions = { env, run, checkout: root };
   const daemon = readDockerDaemonIdentity(daemonOptions);
-  report(`Docker daemon ID: ${daemon.daemonId}`);
-  const release = acquireDaemonProjectLock({
-    daemonId: daemon.daemonId,
-    project: PROJECT,
-    lockRoot,
-    signal,
-  });
+  if (confirmDaemon !== undefined && daemon.daemonId !== confirmDaemon) {
+    throw new Error(
+      `Docker daemon ID mismatch: expected ${confirmDaemon}, observed ${daemon.daemonId} on context ${daemon.contextName} (${daemon.effectiveEndpoint}).`,
+    );
+  }
+  const release = dry
+    ? () => {}
+    : acquireDaemonProjectLock({
+        daemonId: daemon.daemonId,
+        project: PROJECT,
+        lockRoot,
+        signal,
+      });
   const previousMask = dry ? undefined : process.umask(0o077);
   try {
+    if (!dry) assertSameDockerDaemon(daemon, daemonOptions);
     const pre = preflight({
       args: [],
       env,
@@ -97,7 +141,7 @@ export function executeFresh({
         `Private app environment must set ${openSwitches[0]}=true.`,
       );
     if (openSwitches.length)
-      report(
+      safeReport(
         `WARNING: DRY RUN ONLY; private app environment must set ${openSwitches.map((key) => `${key}=true`).join(", ")} before execution.`,
       );
 
@@ -121,7 +165,10 @@ export function executeFresh({
       return parsed;
     };
 
+    const sameDaemon = () => assertSameDockerDaemon(daemon, daemonOptions);
+
     function inventory({ requireRunningApp = true } = {}) {
+      sameDaemon();
       const ids = split(
         cmd("docker", [
           "ps",
@@ -152,7 +199,7 @@ export function executeFresh({
         volumes,
       });
       const plan = planRemoval({
-        confirmation: rest[1],
+        confirmation: PROJECT,
         config,
         containers,
         volumes,
@@ -266,7 +313,6 @@ export function executeFresh({
       envTar,
       basename(env.SIT_COMPOSE_ENV),
     ];
-    const sameDaemon = () => assertSameDockerDaemon(daemon, daemonOptions);
     const checkedContainer = (id) => {
       sameDaemon();
       const liveIds = split(
@@ -311,12 +357,17 @@ export function executeFresh({
       planRemoval({ confirmation: PROJECT, config, containers: [], volumes });
     };
     const appContainers = plan.containers.filter((id) => id !== plan.db);
-    report(`Backup directory: ${backup}`);
-    report(`Containers: ${plan.containers.join(" ")}`);
-    report(`Volumes: ${plan.volumes.join(" ")}`);
+    safeReport(`Docker daemon ID: ${daemon.daemonId}`);
+    safeReport(
+      `Docker context: ${daemon.contextName} (${daemon.effectiveEndpoint})`,
+    );
+    safeReport(`Compose project: ${PROJECT}`);
+    safeReport(`Backup directory: ${backup}`);
+    safeReport(`Containers: ${plan.containers.join(" ")}`);
+    safeReport(`Volumes: ${plan.volumes.join(" ")}`);
     if (dry) {
-      report(
-        "Dry run: stop application containers, isolate the database, verify the backup, remove the inspected project resources, then install.",
+      safeReport(
+        `Dry run: no changes made; confirm daemon with --confirm-wipe ${PROJECT} --confirm-daemon ${daemon.daemonId} to stop application containers, isolate the database, verify the backup, remove the inspected project resources, then install.`,
       );
       return;
     }
@@ -325,6 +376,7 @@ export function executeFresh({
     let removing = false;
     let helper;
     const checkSessions = () => {
+      sameDaemon();
       if (cmd("docker", activeWriterArgs).trim() !== "0")
         throw new Error(
           "Database has client sessions; refusing backup or removal.",
@@ -418,7 +470,7 @@ export function executeFresh({
           "setInterval(()=>{},60000)",
         ]).trim();
       } catch (error) {
-        report(
+        safeReport(
           `Attachment helper creation uncertain; inspect Docker label info.taskdesk.attachment-proof=${helperMarker} manually.`,
         );
         throw error;
@@ -546,7 +598,7 @@ export function executeFresh({
         removing = true;
         cmd("docker", ["rm", id]);
         remaining.delete(id);
-        report(`Removed container ${id}`);
+        safeReport(`Removed container ${id}`);
       }
       for (const name of live.volumes) {
         checkedVolume(name);
@@ -565,9 +617,10 @@ export function executeFresh({
           throw new Error("Volume has remaining users.");
         checkedVolume(name);
         cmd("docker", ["volume", "rm", name]);
-        report(`Removed volume ${name}`);
+        safeReport(`Removed volume ${name}`);
       }
       for (const name of live.volumes) {
+        sameDaemon();
         const key = name.slice(PROJECT.length + 1);
         cmd("docker", [
           "volume",
@@ -612,6 +665,7 @@ export function executeFresh({
       };
       requireServicesAbsent(["postgres", "valkey", "mailpit"]);
       dc(["up", "-d", "--wait", "postgres", "valkey", "mailpit"]);
+      sameDaemon();
       const migration = dc(["run", "-d", "--no-deps", "migrate"]).trim();
       if (!/^[a-f0-9]{64}$/.test(migration))
         throw new Error("Migration ID invalid.");
@@ -627,19 +681,31 @@ export function executeFresh({
           if (!/^[a-f0-9]{64}$/.test(target || ""))
             throw new Error("Upgrade removal target is invalid.");
           checkedContainer(target);
-        }
-        if (bin === "docker" && argv[0] === "compose" && argv.includes("up")) {
+        } else if (
+          bin === "docker" &&
+          argv[0] === "compose" &&
+          argv.includes("up")
+        ) {
           const service = argv.at(-1);
           if (!["taskdesk", "traefik"].includes(service))
             throw new Error("Unexpected Compose replacement target.");
           requireServicesAbsent([service]);
+        } else if (
+          bin === "docker" &&
+          (["create", "start"].includes(argv[0]) ||
+            (argv[0] === "compose" &&
+              (argv.includes("pull") || argv.includes("run"))))
+        ) {
+          sameDaemon();
         }
         return run(bin, argv, options);
       };
       upgrade({ args: [], env, run: guardedRun, report: safeReport });
+      sameDaemon();
       const ids = split(dc(["ps", "-q", "taskdesk"]));
       if (ids.length !== 1 || !/^[a-f0-9]{64}$/.test(ids[0]))
         throw new Error("Fresh app is ambiguous.");
+      checkedContainer(ids[0]);
       cmd("docker", [
         "exec",
         ids[0],
@@ -672,7 +738,7 @@ export function executeFresh({
           "--insecure",
           `https://${host}/api/public/health/ready`,
         ]);
-      cmd(
+      const smokeOutput = cmd(
         "node",
         ["scripts/sit/release-smoke.mjs", "--credentials", credentials],
         {
@@ -682,10 +748,11 @@ export function executeFresh({
               env.NODE_EXTRA_CA_CERTS ||
               resolve(root, "deploy/local/certs/local.crt"),
           },
-          stdio: "inherit",
         },
       );
-      report("Fresh install smoke passed.");
+      for (const line of smokeOutput.split(/\r?\n/).filter(Boolean))
+        safeReport(line);
+      safeReport("Fresh install smoke passed.");
     } catch (error) {
       try {
         cleanupHelper();
@@ -711,7 +778,7 @@ export function executeFresh({
             );
           }
         }
-        for (const id of stopped) {
+        for (const id of [...stopped].reverse()) {
           try {
             checkedContainer(id);
             cmd("docker", ["start", id]);

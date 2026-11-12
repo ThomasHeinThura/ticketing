@@ -56,18 +56,36 @@ test("lock keys distinguish daemons and reject malformed identifiers", (t) => {
 test("identity checks daemon, context and socket", () => {
   let daemon = "daemon-1234";
   let endpoint = "unix:///var/run/docker.sock";
+  let context = "default";
   const run = (_bin, args) => ({
     status: 0,
     stdout:
       args[0] === "info"
         ? daemon
         : args[1] === "show"
-          ? "default"
+          ? context
           : JSON.stringify([{ Endpoints: { docker: { Host: endpoint } } }]),
   });
   const opts = { env: {}, run };
   const identity = readDockerDaemonIdentity(opts);
+  assert.equal(identity.effectiveEndpoint, "unix:///var/run/docker.sock");
   assert.doesNotThrow(() => assertSameDockerDaemon(identity, opts));
+  const overridden = readDockerDaemonIdentity({
+    env: { DOCKER_HOST: "unix:///tmp/other-docker.sock" },
+    run,
+  });
+  assert.equal(overridden.effectiveEndpoint, "unix:///tmp/other-docker.sock");
+  assert.throws(
+    () =>
+      assertSameDockerDaemon(identity, {
+        env: { DOCKER_HOST: "unix:///tmp/other-docker.sock" },
+        run,
+      }),
+    /changed/,
+  );
+  context = "colima";
+  assert.throws(() => assertSameDockerDaemon(identity, opts), /changed/);
+  context = "default";
   daemon = "daemon-5678";
   assert.throws(() => assertSameDockerDaemon(identity, opts), /changed/);
   daemon = "daemon-1234";

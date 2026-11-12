@@ -398,8 +398,11 @@ export function verifyRestoreProof({
           "Restore proof container cleanup could not be confirmed.",
         );
     } catch (cleanupError) {
+      const detail = [failure?.message, cleanupError?.message]
+        .filter(Boolean)
+        .join("; cleanup: ");
       failure = new ProofCleanupUncertain(
-        `Restore proof failed or cleanup was uncertain; inspect exact ID ${id}.`,
+        `Restore proof failed or cleanup was uncertain${detail ? ` (${detail})` : ""}; inspect exact ID ${id}.`,
         { cause: failure || cleanupError },
       );
     }

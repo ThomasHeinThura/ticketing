@@ -199,7 +199,7 @@ function fixture(t) {
     env,
     run,
     lockRoot,
-    args: ["--confirm-wipe", PROJECT],
+    args: ["--confirm-wipe", PROJECT, "--confirm-daemon", "daemon-1234"],
     preflight: () => ({
       config,
       image,
@@ -209,7 +209,9 @@ function fixture(t) {
       composeEnv: {},
     }),
     verifyBackup: () => ({ verified: true }),
-    upgrade: () => {},
+    upgrade: () => {
+      containers.set(ids.newApp, container(ids.newApp, "taskdesk"));
+    },
     report: () => {},
   };
   return {
@@ -244,16 +246,76 @@ const removedOriginals = (f) =>
         (op === "volume" && args[0] === "rm")),
   );
 
-test("requires explicit confirmation and rejects removed recovery modes", (t) => {
+test("requires explicit project and daemon confirmation and rejects removed recovery modes", (t) => {
   const f = fixture(t);
   for (const args of [
-    [],
     ["--resume"],
     ["--restore-from-backup"],
     ["--confirm-wipe", "other"],
+    ["--confirm-wipe", PROJECT],
+    ["--confirm-wipe", PROJECT, "--confirm-daemon"],
+    ["--confirm-wipe", PROJECT, "--confirm-daemon", "--dry-run"],
+    ["--confirm-daemon", "daemon-1234"],
   ])
     assert.throws(() => executeFresh({ ...f.opts, args }), /confirm-wipe/);
   assert.equal(f.calls.length, 0);
+});
+
+test("defaults to preview when no confirmation is given and refuses wrong daemon before lock", (t) => {
+  const f = fixture(t);
+  const previewLines = [];
+  executeFresh({
+    ...f.opts,
+    args: [],
+    report: (line) => previewLines.push(line),
+  });
+  assert.ok(previewLines.includes("Docker daemon ID: daemon-1234"));
+  assert.ok(
+    previewLines.includes(
+      "Docker context: default (unix:///var/run/docker.sock)",
+    ),
+  );
+  assert.ok(previewLines.includes(`Compose project: ${PROJECT}`));
+  assert.ok(
+    previewLines.some(
+      (line) =>
+        line.startsWith("Containers: ") &&
+        line.includes(f.ids.app) &&
+        line.includes(f.ids.db) &&
+        line.includes(f.ids.proxy),
+    ),
+  );
+  assert.ok(
+    previewLines.some(
+      (line) =>
+        line.startsWith("Volumes: ") &&
+        line.includes(`${PROJECT}_attachments`) &&
+        line.includes(`${PROJECT}_postgres-data`),
+    ),
+  );
+  assert.ok(
+    !f.calls.some(
+      ([bin, op, sub]) =>
+        bin === "docker" &&
+        (["stop", "start", "create", "rm", "network"].includes(op) ||
+          (op === "volume" && sub === "rm")),
+    ),
+  );
+
+  f.calls.length = 0;
+  assert.throws(
+    () =>
+      executeFresh({
+        ...f.opts,
+        args: ["--confirm-wipe", PROJECT, "--confirm-daemon", "daemon-wrong"],
+      }),
+    /Docker daemon ID mismatch/,
+  );
+  assert.ok(
+    !f.calls.some(
+      ([bin, op]) => bin === "docker" && !["context", "info"].includes(op),
+    ),
+  );
 });
 
 test("stops application before dumping and completes after proof", (t) => {

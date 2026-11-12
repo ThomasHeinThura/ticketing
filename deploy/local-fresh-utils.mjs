@@ -75,6 +75,27 @@ export function redactFreshText(value, { env = {}, checkout } = {}) {
     /postgres(?:ql)?:\/\/[^\s'"]+/gi,
     "<redacted-db-url>",
   );
+  result = result.replace(
+    /https?:\/\/[^\s/'":]+:[^\s/'"]+@[^\s'"]+/gi,
+    "<redacted-url>",
+  );
+  result = result.replace(
+    /(?:set-cookie|cookie)\s*:\s*[^\r\n]+/gi,
+    "<redacted-cookie>",
+  );
+  result = result.replace(
+    /\b(?:better-auth|__Secure-better-auth|taskdesk)[._-][A-Za-z0-9._-]*=[^\s;'"]+/gi,
+    "<redacted-cookie>",
+  );
+  for (const [key, secretValue] of Object.entries(env)) {
+    if (
+      typeof secretValue === "string" &&
+      secretValue.length >= 4 &&
+      /(?:SECRET|PASSWORD|TOKEN|KEY|COOKIE|DATABASE_URL)/i.test(key)
+    ) {
+      result = result.replaceAll(secretValue, "<redacted-secret>");
+    }
+  }
   for (const [secretPath, label] of [
     [env.SIT_COMPOSE_ENV, "<private-compose-env>"],
     [env.SIT_PRIVATE_DIR, "<private-dir>"],
@@ -87,6 +108,9 @@ export function redactFreshText(value, { env = {}, checkout } = {}) {
   ]) {
     if (secretPath) result = result.replaceAll(secretPath, label);
   }
-  result = result.replace(/(?:^|(?<=[\s'"=(:]))\/[^\s'"]+/g, "<private-path>");
+  result = result.replace(
+    /(?<!\bunix:)(?:^|(?<=[\s'"=(:]))\/[^\s'"]+/g,
+    "<private-path>",
+  );
   return result;
 }
