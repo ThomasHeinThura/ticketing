@@ -698,51 +698,69 @@ describe("work list fallback polling", () => {
   );
 
   it.each([false, true])(
-    "ignores clock-derived SLA progression across reads while catching real displayed row edits (search: %s)",
+    "ignores clock-only SLA fields across three ticks and again after Refresh with one request per tick (search: %s)",
     async (search) => {
-      const baseItem = {
-        id: "a",
-        projectId: "p",
-        number: 1,
-        key: "P-1",
-        title: "Investigate outage",
-        stateId: "s-open",
-        stateName: "In progress",
-        stateCategory: "started",
-        priority: "high" as const,
-        assigneeId: "person-1",
-        assigneeName: "Alice",
-        assigneeActive: true,
-        assigneeOnProject: true,
-        blockedByOpenCount: 0,
-        labels: [
-          { id: "l-2", name: "Urgent", color: "#f00" },
-          { id: "l-1", name: "Backend", color: "#00f" },
+      const makeRow = (sla: {
+        metric: "first_response" | "resolution";
+        state: "ok" | "at_risk" | "breached" | "met" | "missed";
+        dueAt: string | null;
+        remainingMinutes: number | null;
+        consumedPct: number;
+      }) =>
+        ({
+          id: "a",
+          projectId: "p",
+          number: 1,
+          key: "P-1",
+          title: "Investigate outage",
+          stateId: "s-open",
+          stateName: "In progress",
+          stateCategory: "started",
+          priority: "high" as const,
+          assigneeId: "person-1",
+          assigneeName: "Alice",
+          assigneeActive: true,
+          assigneeOnProject: true,
+          blockedByOpenCount: 0,
+          labels: [
+            { id: "l-2", name: "Urgent", color: "#f00" },
+            { id: "l-1", name: "Backend", color: "#00f" },
+          ],
+          dueDate: "2026-11-20T00:00:00.000Z",
+          archivedAt: null,
+          deletedAt: null,
+          unavailableFields: [],
+          customFieldValues: {
+            tier: "gold",
+            constructor: { rank: 1, tag: "x" },
+          },
+          version: 4,
+          updatedAt: "2026-11-12T10:00:00.000Z",
+          sla,
+        }) as unknown as WorkItemsResult["items"][number];
+
+      const makeFirstPage = (
+        remainingMinutes: number,
+        consumedPct: number,
+        dueAt: string,
+      ): WorkItemsResult => ({
+        items: [
+          makeRow({
+            metric: "resolution",
+            state: "ok",
+            dueAt,
+            remainingMinutes,
+            consumedPct,
+          }),
         ],
-        dueDate: "2026-11-20T00:00:00.000Z",
-        archivedAt: null,
-        deletedAt: null,
-        unavailableFields: [],
-        customFieldValues: { tier: "gold", constructor: { rank: 1, tag: "x" } },
-        version: 4,
-        updatedAt: "2026-11-12T10:00:00.000Z",
-        sla: {
-          metric: "resolution" as const,
-          state: "ok" as const,
-          dueAt: "2026-11-12T12:00:00.000Z",
-          remainingMinutes: 45,
-          consumedPct: 25,
-        },
-      } as unknown as WorkItemsResult["items"][number];
+        hasPartialFailure: false,
+        hasMore: true,
+        nextCursor: "c1",
+      });
 
       const cached = {
         pages: [
-          {
-            items: [baseItem],
-            hasPartialFailure: false,
-            hasMore: true,
-            nextCursor: "c1",
-          },
+          makeFirstPage(45, 25, "2026-11-12T12:00:00.000Z"),
           page(["c", "d"], null),
         ],
         pageParams: [undefined, "c1"],
@@ -750,34 +768,16 @@ describe("work list fallback polling", () => {
       const view = setup("unavailable", search, { cached });
       const fetcher = search ? mocks.search : mocks.list;
 
-      // Read 1 (later wall clock): SLA remainingMinutes, consumedPct, state, and severity-picked metric/dueAt
-      // all advance with time, labels/customFieldValues keys arrive in a different order, and paging cursor/total
-      // vary, while rendered clock-independent row data is unchanged.
-      fetcher.mockResolvedValueOnce({
-        items: [
-          {
-            ...baseItem,
-            labels: [
-              { id: "l-1", name: "Backend", color: "#00f" },
-              { id: "l-2", name: "Urgent", color: "#f00" },
-            ],
-            customFieldValues: {
-              constructor: { tag: "x", rank: 1 },
-              tier: "gold",
-            },
-            sla: {
-              metric: "first_response" as const,
-              state: "breached" as const,
-              dueAt: "2026-11-12T10:30:00.000Z",
-              remainingMinutes: 0,
-              consumedPct: 140,
-            },
-          } as unknown as WorkItemsResult["items"][number],
-        ],
-        hasPartialFailure: false,
-        hasMore: false,
-        nextCursor: null,
-      });
+      fetcher
+        .mockResolvedValueOnce(
+          makeFirstPage(40, 33, "2026-11-12T12:05:00.000Z"),
+        )
+        .mockResolvedValueOnce(
+          makeFirstPage(35, 42, "2026-11-12T12:10:00.000Z"),
+        )
+        .mockResolvedValueOnce(
+          makeFirstPage(30, 50, "2026-11-12T12:15:00.000Z"),
+        );
 
       await advance();
       await advance(10);
@@ -785,21 +785,87 @@ describe("work list fallback polling", () => {
       expect(view.result.current.hasNewerChanges).toBe(false);
       expect(view.client.getQueryData(view.activeKey)).toBe(cached);
 
-      // Read 2: a real edit to a displayed field (customFieldValues, assigneeName, or priority) raises the notice.
-      fetcher.mockResolvedValueOnce({
+      await advance(29_990);
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cached);
+
+      await advance(29_990);
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cached);
+
+      // Press Refresh (refetches both loaded pages with updated clock values), then poll across three more ticks.
+      fetcher
+        .mockResolvedValueOnce(
+          makeFirstPage(28, 53, "2026-11-12T12:15:00.000Z"),
+        )
+        .mockResolvedValueOnce(page(["c", "d"], null))
+        .mockResolvedValueOnce(
+          makeFirstPage(22, 63, "2026-11-12T12:20:00.000Z"),
+        )
+        .mockResolvedValueOnce(
+          makeFirstPage(16, 70, "2026-11-12T12:25:00.000Z"),
+        )
+        .mockResolvedValueOnce(
+          makeFirstPage(12, 74, "2026-11-12T12:30:00.000Z"),
+        );
+
+      await act(async () => {
+        await view.result.current.refreshChangedList();
+      });
+      expect(fetcher).toHaveBeenCalledTimes(5);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+      const cachedAfterRefresh = view.client.getQueryData(view.activeKey);
+
+      await advance(29_990);
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(6);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cachedAfterRefresh);
+
+      await advance(29_990);
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(7);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cachedAfterRefresh);
+
+      await advance(29_990);
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(8);
+      expect(view.result.current.hasNewerChanges).toBe(false);
+      expect(view.client.getQueryData(view.activeKey)).toBe(cachedAfterRefresh);
+    },
+  );
+
+  it.each([false, true])(
+    "raises the notice when SLA state crosses ok -> at_risk and at_risk -> breached without mutating cached pages (search: %s)",
+    async (search) => {
+      const makePage = (
+        state: "ok" | "at_risk" | "breached",
+      ): WorkItemsResult => ({
         items: [
           {
-            ...baseItem,
-            customFieldValues: {
-              tier: "platinum",
-              constructor: { rank: 1, tag: "x" },
-            },
+            id: "a",
+            projectId: "p",
+            number: 1,
+            key: "P-1",
+            title: "Investigate outage",
+            stateId: "s-open",
+            stateName: "In progress",
+            stateCategory: "started",
+            priority: "high" as const,
+            unavailableFields: [],
+            version: 4,
+            updatedAt: "2026-11-12T10:00:00.000Z",
             sla: {
-              metric: "first_response" as const,
-              state: "breached" as const,
-              dueAt: "2026-11-12T10:30:00.000Z",
-              remainingMinutes: 0,
-              consumedPct: 155,
+              metric: "resolution" as const,
+              state,
+              dueAt: "2026-11-12T12:00:00.000Z",
+              remainingMinutes: 15,
+              consumedPct: 75,
             },
           } as unknown as WorkItemsResult["items"][number],
         ],
@@ -808,9 +874,135 @@ describe("work list fallback polling", () => {
         nextCursor: "c1",
       });
 
-      await advance(29_990);
+      const client = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            staleTime: Number.POSITIVE_INFINITY,
+            gcTime: Number.POSITIVE_INFINITY,
+          },
+        },
+      });
+      const searchKey = [
+        "work-items",
+        "p",
+        "key",
+        "asc",
+        [{ field: "key", order: "asc" }],
+        "search",
+        "priority:high",
+        "ws",
+        null,
+      ];
+      const activeKey = search ? searchKey : key;
+      const cached = {
+        pages: [makePage("ok"), page(["c", "d"], null)],
+        pageParams: [undefined, "c1"],
+      };
+      client.setQueryData(activeKey, cached);
+
+      let latest!: ReturnType<typeof useGetWorkItems>;
+      function Harness() {
+        const list = useGetWorkItems({
+          projectId: "p",
+          projectSlug: "P",
+          workspaceId: "ws",
+          ...(search ? { filter: "priority:high" } : {}),
+          sort: "key",
+          dir: "asc",
+          realtimeStatus: "unavailable",
+        });
+        latest = list;
+        return list.hasNewerChanges ? (
+          <WorkListChangedNotice
+            onRefresh={() => void list.refreshChangedList()}
+          />
+        ) : null;
+      }
+
+      render(
+        <QueryClientProvider client={client}>
+          <Harness />
+        </QueryClientProvider>,
+      );
+      const fetcher = search ? mocks.search : mocks.list;
+
+      // Tick 1: ok -> at_risk raises the notice without touching cached pages.
+      fetcher.mockResolvedValueOnce(makePage("at_risk"));
+      await advance();
       await advance(10);
-      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(latest.hasNewerChanges).toBe(true);
+      expect(client.getQueryData(activeKey)).toBe(cached);
+
+      // Press Refresh to load the updated pages and clear hasNewerChanges.
+      fetcher
+        .mockResolvedValueOnce(makePage("at_risk"))
+        .mockResolvedValueOnce(page(["c", "d"], null));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        await vi.advanceTimersByTimeAsync(10);
+      });
+      expect(fetcher).toHaveBeenCalledTimes(3);
+      expect(latest.hasNewerChanges).toBe(false);
+      const cachedAfterRefresh = client.getQueryData(activeKey);
+      expect(cachedAfterRefresh).toBeDefined();
+
+      // Later tick: at_risk -> breached raises the notice again with one request and leaves cached pages untouched.
+      fetcher.mockResolvedValueOnce(makePage("breached"));
+      await advance(29_980);
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(4);
+      expect(latest.hasNewerChanges).toBe(true);
+      expect(client.getQueryData(activeKey)).toBe(cachedAfterRefresh);
+    },
+  );
+
+  it.each([
+    { label: "null to present", fromPresent: false, search: false },
+    { label: "null to present", fromPresent: false, search: true },
+    { label: "present to null", fromPresent: true, search: false },
+    { label: "present to null", fromPresent: true, search: true },
+  ])(
+    "raises the notice when a row's SLA badge goes from $label (search: $search)",
+    async ({ fromPresent, search }) => {
+      const badge = {
+        metric: "resolution" as const,
+        state: "ok" as const,
+        dueAt: "2026-11-12T12:00:00.000Z",
+        remainingMinutes: 45,
+        consumedPct: 25,
+      };
+      const makePage = (sla: typeof badge | null): WorkItemsResult => ({
+        items: [
+          {
+            id: "a",
+            projectId: "p",
+            number: 1,
+            key: "P-1",
+            title: "Investigate outage",
+            unavailableFields: [],
+            version: 4,
+            updatedAt: "2026-11-12T10:00:00.000Z",
+            sla,
+          } as unknown as WorkItemsResult["items"][number],
+        ],
+        hasPartialFailure: false,
+        hasMore: true,
+        nextCursor: "c1",
+      });
+
+      const cached = {
+        pages: [makePage(fromPresent ? badge : null), page(["c", "d"], null)],
+        pageParams: [undefined, "c1"],
+      };
+      const view = setup("unavailable", search, { cached });
+      const fetcher = search ? mocks.search : mocks.list;
+
+      fetcher.mockResolvedValueOnce(makePage(fromPresent ? null : badge));
+      await advance();
+      await advance(10);
+      expect(fetcher).toHaveBeenCalledTimes(1);
       expect(view.result.current.hasNewerChanges).toBe(true);
       expect(view.client.getQueryData(view.activeKey)).toBe(cached);
     },

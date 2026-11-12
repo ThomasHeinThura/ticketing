@@ -59,10 +59,9 @@ function canonicalizeJson(value: unknown): unknown {
  * renames, workflow state renames, assignee display names/activity/project membership, and open
  * blocker counts).
  *
- * Excluded on purpose: `item.sla` (`remainingMinutes`, `consumedPct`, `state`, `metric`, `dueAt`),
- * which `apps/api/src/work-item/row-sla.ts` computes from `new Date()` on every read, so remaining
- * minutes, consumed percentage, open risk/breach state, and severity tie-breaking change with the
- * clock even when nothing was edited.
+ * The fingerprint includes the SLA badge state and metric (`item.sla.state` and `item.sla.metric`);
+ * it ignores only remaining time, consumed percentage and due time (`remainingMinutes`,
+ * `consumedPct` and `dueAt`).
  */
 function stableRowProjection(item: WorkItemRow) {
   const customFieldValues =
@@ -94,6 +93,7 @@ function stableRowProjection(item: WorkItemRow) {
     deletedAt: item.deletedAt ?? null,
     unavailableFields: [...(item.unavailableFields ?? [])].sort(compareStrings),
     customFieldValues,
+    sla: item.sla ? { state: item.sla.state, metric: item.sla.metric } : null,
     version: item.version ?? null,
     updatedAt: item.updatedAt ?? null,
   };
@@ -362,8 +362,10 @@ function useGetWorkItems({
         if (!oldData?.pages.length) {
           // Use the observed query's lifecycle, but disable retries for this tick only.
           // Cleanup must not cancel this normal query so an in-flight cold recovery can
-          // finish when realtime connects; unmount or filter changes still cancel via
-          // TanStack Query's own observer removal.
+          // finish when realtime connects; unmount or a query-key change cancels via
+          // TanStack Query's observer removal, whereas a list/search toggle only flips
+          // `enabled` (keeping both observers mounted) and the disposed effect ignores
+          // the result.
           const options = query.options;
           const request = query.fetch({ ...options, retry: false });
           query.setOptions(options);
