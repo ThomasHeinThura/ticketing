@@ -456,7 +456,7 @@ function S3DraftForm({
           />
         )}
         {notice && (
-          <Alert variant="success">
+          <Alert variant="success" role="presentation">
             <AlertTitle>{t("draft.saved")}</AlertTitle>
             <AlertDescription>{t("draft.notice")}</AlertDescription>
           </Alert>

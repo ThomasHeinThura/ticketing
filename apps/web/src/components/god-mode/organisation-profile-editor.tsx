@@ -150,6 +150,7 @@ export function OrganisationProfileEditor({
   );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeIsSave, setNoticeIsSave] = useState(false);
   const [confirmingStatus, setConfirmingStatus] = useState(false);
   const save = useMutation({
     mutationFn: async (values: Draft) => {
@@ -318,6 +319,7 @@ export function OrganisationProfileEditor({
       setBase(savedDraft);
       setDraft(savedDraft);
       setDomainsText(saved.emailDomains.join(", "));
+      setNoticeIsSave(true);
       const initialInvitation =
         "profile" in result ? result.initialInvitation : null;
       if (!organisation && initialInvitation) {
@@ -343,6 +345,7 @@ export function OrganisationProfileEditor({
 
   async function changeStatus() {
     if (!organisation || busy) return;
+    setNoticeIsSave(false);
     setError(null);
     setNotice(null);
     try {
@@ -408,7 +411,10 @@ export function OrganisationProfileEditor({
             </Alert>
           ) : null}
           {notice ? (
-            <p aria-live="polite" className="text-sm text-muted-foreground">
+            <p
+              aria-live={noticeIsSave ? "off" : "polite"}
+              className="text-sm text-muted-foreground"
+            >
               {notice}
             </p>
           ) : null}
@@ -780,7 +786,7 @@ export function OrganisationProfileEditor({
               retainedSuccess
               savedLabel={t("common:actions.saved")}
               workingLabel={t("common:actions.saving")}
-              announceSuccess={false}
+              announceSuccess={organisation !== null}
               onClick={() => void submit()}
               type="button"
             >

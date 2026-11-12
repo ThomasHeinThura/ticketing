@@ -128,6 +128,57 @@ for (const surface of ["agent", "portal"]) {
       ).toHaveValue("");
       expect(toastSuccess).toHaveBeenCalledWith("auth:changePassword.success");
     });
+    it("never shows success for invalid submissions, including after a save", async () => {
+      setup();
+      change.mockResolvedValue({});
+      submit();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "auth:changePassword.required",
+      );
+      expect(
+        screen.getByRole("button", { name: "auth:changePassword.submit" }),
+      ).not.toHaveAttribute("aria-busy");
+      expect(
+        screen.queryByRole("button", { name: "common:actions.saved" }),
+      ).toBeNull();
+      expect(change).not.toHaveBeenCalled();
+      fill("old-password", "valid-password", "valid-password");
+      submit();
+      const saved = await screen.findByRole("button", {
+        name: "common:actions.saved",
+      });
+      fireEvent.click(saved);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "auth:changePassword.required",
+      );
+      expect(
+        screen.queryByRole("button", { name: "common:actions.saved" }),
+      ).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "auth:changePassword.submit" }),
+      ).not.toHaveAttribute("aria-busy");
+      expect(change).toHaveBeenCalledOnce();
+    });
+    it("clears an earlier completion when the next server validation fails", async () => {
+      setup();
+      change
+        .mockResolvedValueOnce({})
+        .mockRejectedValueOnce(new Error("INVALID_PASSWORD"));
+      fill("old-password", "valid-password", "valid-password");
+      submit();
+      const saved = await screen.findByRole("button", {
+        name: "common:actions.saved",
+      });
+      fill("wrong-password", "valid-password", "valid-password");
+      fireEvent.click(saved);
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "auth:changePassword.wrongCurrent",
+      );
+      expect(
+        screen.queryByRole("button", { name: "common:actions.saved" }),
+      ).toBeNull();
+      expect(change).toHaveBeenCalledTimes(2);
+    });
     it("keeps focus during a pending save, ignores repeated submits, and shows success", async () => {
       let resolveSave: (value: unknown) => void = () => {};
       setup();

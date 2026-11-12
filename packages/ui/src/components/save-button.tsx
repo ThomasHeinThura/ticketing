@@ -51,6 +51,11 @@ export function SaveButton({
   useEffect(() => {
     const becameSuccessful = success && !previousSuccess.current;
     previousSuccess.current = success;
+    if (!success) {
+      clearTimeout(doneTimer.current);
+      setDone(false);
+      return;
+    }
     if (!becameSuccessful) return;
     clearTimeout(doneTimer.current);
     setDone(true);
@@ -58,7 +63,7 @@ export function SaveButton({
   }, [success]);
 
   const showWorking = pending && working;
-  const showDone = !pending && done;
+  const showDone = !pending && success && done;
 
   return (
     <>

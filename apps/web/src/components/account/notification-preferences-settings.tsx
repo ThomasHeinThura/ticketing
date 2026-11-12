@@ -443,6 +443,7 @@ function WorkspaceRuleCard({
           success={saveSucceeded}
           savedLabel={t("common:actions.saved")}
           workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
           onClick={async () => {
             setIsSaving(true);
             setSaveSucceeded(false);
@@ -559,11 +560,9 @@ function ReportExportEmailPreference() {
           {t("settings:notificationsPage.reportExportSaveFailed")}
         </p>
       ) : null}
-      {saved ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          {t("settings:notificationsPage.reportExportSaved")}
-        </p>
-      ) : null}
+      <p role="status" className="text-sm text-muted-foreground">
+        {saved ? t("settings:notificationsPage.reportExportSaved") : null}
+      </p>
       <div>
         <SaveButton
           disabled={!mutation.isPending && current === stored.enabled}
@@ -571,6 +570,7 @@ function ReportExportEmailPreference() {
           success={mutation.isSuccess}
           savedLabel={t("common:actions.saved")}
           workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
           onClick={() => mutation.mutate({ enabled: current })}
           type="button"
         >
@@ -826,6 +826,7 @@ export function NotificationPreferencesSettings() {
             success={completedSave === "events"}
             savedLabel={t("common:actions.saved")}
             workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={async () => {
               setActiveSave("events");
               setCompletedSave(null);
@@ -867,6 +868,7 @@ export function NotificationPreferencesSettings() {
               success={completedSave === "email"}
               savedLabel={t("common:actions.saved")}
               workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={async () => {
                 setActiveSave("email");
                 setCompletedSave(null);
@@ -934,6 +936,7 @@ export function NotificationPreferencesSettings() {
               success={completedSave === "gotify"}
               savedLabel={t("common:actions.saved")}
               workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={async () => {
                 setActiveSave("gotify");
                 setCompletedSave(null);
@@ -1071,6 +1074,7 @@ export function NotificationPreferencesSettings() {
               success={completedSave === "ntfy"}
               savedLabel={t("common:actions.saved")}
               workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={async () => {
                 setActiveSave("ntfy");
                 setCompletedSave(null);
@@ -1225,6 +1229,7 @@ export function NotificationPreferencesSettings() {
               success={completedSave === "webhook"}
               savedLabel={t("common:actions.saved")}
               workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
               onClick={async () => {
                 setActiveSave("webhook");
                 setCompletedSave(null);

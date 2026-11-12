@@ -1,11 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider, toastManager } from "@taskdesk/ui";
 import {
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 
@@ -34,7 +37,18 @@ vi.mock("react-i18next", () => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
-vi.mock("@/lib/toast", () => ({ toast: { success: mocks.toastSuccess } }));
+vi.mock("@/lib/toast", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/toast")>();
+  return {
+    toast: {
+      ...actual.toast,
+      success: (message: string) => {
+        mocks.toastSuccess(message);
+        return actual.toast.success(message);
+      },
+    },
+  };
+});
 vi.mock("@/fetchers/god-mode/identity-step-up", () => ({
   proveIdentityOperation: (...args: unknown[]) => mocks.prove(...args),
 }));
@@ -63,7 +77,10 @@ beforeEach(() => {
   mocks.navigate.mockReset();
   mocks.toastSuccess.mockReset();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  toastManager.close();
+});
 
 function renderDialog() {
   const client = new QueryClient();
@@ -110,8 +127,55 @@ describe("CreateRoleDialog", () => {
     await waitFor(() =>
       expect(mocks.toastSuccess).toHaveBeenCalledWith("Saved"),
     );
+    expect(mocks.toastSuccess).toHaveBeenCalledOnce();
+    expect(
+      screen
+        .queryAllByRole("status")
+        .filter((node) => node.textContent?.trim()),
+    ).toHaveLength(0);
   });
 
+  it("announces success once through the toast when the dialog closes", async () => {
+    const client = new QueryClient();
+    client.setQueryData(["god-mode", "step-up-factor"], mocks.factorStatus);
+    function ClosingDialog() {
+      const [open, setOpen] = useState(true);
+      return (
+        <ToastProvider>
+          {open && (
+            <CreateRoleDialog
+              workspaceId="ws-1"
+              roles={[]}
+              callerRank={100}
+              onClose={() => setOpen(false)}
+            />
+          )}
+        </ToastProvider>
+      );
+    }
+    render(
+      <QueryClientProvider client={client}>
+        <ClosingDialog />
+      </QueryClientProvider>,
+    );
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Auditors" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create role" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const notifications = screen.getByRole("region", { name: "Notifications" });
+    expect(notifications).toHaveAttribute("aria-live", "polite");
+    expect(await within(notifications).findAllByText("Saved")).toHaveLength(1);
+    expect(
+      screen
+        .queryAllByRole("status")
+        .filter((node) => node.textContent?.trim()),
+    ).toHaveLength(0);
+    expect(mocks.toastSuccess).toHaveBeenCalledOnce();
+  });
   it("creates nothing when the verification fails", async () => {
     mocks.prove.mockRejectedValue(new Error("refused"));
     renderDialog();

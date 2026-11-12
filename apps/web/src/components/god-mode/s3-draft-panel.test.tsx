@@ -89,6 +89,17 @@ describe("S3DraftPanel", () => {
     await factor();
     fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    await screen.findByRole("button", { name: "common:actions.saved" });
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("common:actions.saved");
+    expect(
+      screen
+        .queryAllByRole("alert")
+        .some((node) => node.textContent?.includes("draft.saved")),
+    ).toBe(false);
     const saved = mocks.save.mock.calls[0][0];
     expect(saved.credentials).toBeUndefined();
     expect(mocks.prove.mock.calls[0][0]).toEqual({

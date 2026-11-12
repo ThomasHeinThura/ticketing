@@ -346,6 +346,11 @@ describe("request type editor", () => {
       }),
     );
     expect(await screen.findByText("Group order saved.")).toBeTruthy();
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("Group order saved.");
     expect(
       screen.getByRole("button", { name: "Move Support down" }),
     ).toBeTruthy();

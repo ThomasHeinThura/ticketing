@@ -182,6 +182,7 @@ import { NotificationProviderEditor } from "./notification-provider-editor";
 
 afterEach(cleanup);
 beforeEach(() => {
+  mocks.version = 3;
   mocks.unconfigured = false;
   mocks.localMailpitCaptureAvailable = true;
   mocks.persistedCaptureSelected = false;
@@ -195,11 +196,44 @@ describe("runtime email configuration", () => {
     expect(screen.getByLabelText("password")).toHaveValue("");
     fireEvent.click(screen.getByRole("button", { name: "save" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.trim()),
+      ).toHaveLength(1),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.trim())[0],
+    ).toHaveTextContent("saved");
     expect(mocks.save.mock.calls[0][0]).toMatchObject({
       version: 3,
       enabled: true,
     });
     expect(mocks.save.mock.calls[0][0]).not.toHaveProperty("password");
+  });
+  it("announces the saved provider once across a version refresh", async () => {
+    const view = render(<NotificationProviderEditor />);
+    mocks.invalidate.mockImplementation(async () => {
+      mocks.version = 4;
+      view.rerender(<NotificationProviderEditor />);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.trim()),
+      ).toHaveLength(1),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.trim())[0],
+    ).toHaveTextContent("saved");
   });
   it("can explicitly disable an unconfigured provider without inventing connection details", async () => {
     mocks.unconfigured = true;
@@ -231,7 +265,18 @@ describe("runtime email configuration", () => {
     await waitFor(() => expect(mocks.verify).toHaveBeenCalled());
     expect(mocks.verify.mock.calls[0][0]).not.toHaveProperty("enabled");
     expect(mocks.save).not.toHaveBeenCalled();
-    expect(await screen.findByRole("status")).toHaveTextContent("verified");
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.trim()),
+      ).toHaveLength(1),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.trim())[0],
+    ).toHaveTextContent("verified");
   });
   it("selects the fixed Mailpit profile and explicitly clears any saved password", async () => {
     render(<NotificationProviderEditor />);

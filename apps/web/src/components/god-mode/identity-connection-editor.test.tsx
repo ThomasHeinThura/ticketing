@@ -110,6 +110,18 @@ describe("IdentityConnectionEditor (edit)", () => {
     expect(screen.queryByLabelText("Password")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await screen.findByText("Identity connection saved");
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("Identity connection saved");
+    expect(
+      screen
+        .queryAllByRole("alert")
+        .some((node) =>
+          node.textContent?.includes("Identity connection saved"),
+        ),
+    ).toBe(false);
     expect(mocks.prove).toHaveBeenCalledWith(
       {
         operation: "identity_connection_configure",

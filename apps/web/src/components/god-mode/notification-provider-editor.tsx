@@ -107,15 +107,20 @@ export function NotificationProviderEditor() {
       </Alert>
     );
   return (
-    <ProviderForm
-      key={query.data.version}
-      provider={query.data}
-      settingsForm={plugin.settingsForm}
-      localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
-      completed={completed}
-      onStart={() => setCompleted(false)}
-      onSaved={() => setCompleted(true)}
-    />
+    <>
+      <span role="status" aria-atomic="true" className="sr-only">
+        {completed ? t("saved") : ""}
+      </span>
+      <ProviderForm
+        key={query.data.version}
+        provider={query.data}
+        settingsForm={plugin.settingsForm}
+        localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
+        completed={completed}
+        onStart={() => setCompleted(false)}
+        onSaved={() => setCompleted(true)}
+      />
+    </>
   );
 }
 function ProviderForm({
@@ -142,6 +147,7 @@ function ProviderForm({
   const [ordinaryConfigBeforeCapture, setOrdinaryConfigBeforeCapture] =
     useState<EmailProviderConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeIsSave, setNoticeIsSave] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lifecycle = useIntentLifecycle(String(provider.version), () => {
     setPassword("");
@@ -245,6 +251,7 @@ function ProviderForm({
   async function submit(testOnly: boolean) {
     if (busy) return;
     if (!testOnly) onStart();
+    setNoticeIsSave(!testOnly);
     const intent = lifecycle.capture();
     setError(null);
     setNotice(null);
@@ -346,7 +353,7 @@ function ProviderForm({
             </p>
           )}
           {notice && (
-            <p role="status" className="text-sm">
+            <p role={noticeIsSave ? undefined : "status"} className="text-sm">
               {notice}
             </p>
           )}

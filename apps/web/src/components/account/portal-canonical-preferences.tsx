@@ -266,17 +266,16 @@ function PreferenceCard({
             {t("portal:account.notifications.saveFailed")}
           </p>
         ) : null}
-        {saved ? (
-          <p role="status" className="text-sm">
-            {t("portal:account.notifications.saved")}
-          </p>
-        ) : null}
+        <p role="status" className="text-sm">
+          {saved ? t("portal:account.notifications.saved") : null}
+        </p>
         <SaveButton
           type="button"
           pending={mutation.isPending}
           success={mutation.isSuccess}
           savedLabel={t("common:actions.saved")}
           workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
           disabled={
             !mutation.isPending &&
             enabled === preference.enabled &&

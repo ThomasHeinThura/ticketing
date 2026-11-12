@@ -2,6 +2,7 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IdentityAdminError } from "@/fetchers/god-mode/identity-admin-error";
 import type { ScimAdminSettings } from "@/fetchers/god-mode/identity-connections";
+import { toast } from "@/lib/toast";
 import {
   chooseOption,
   renderWithQuery,
@@ -168,6 +169,12 @@ describe("SCIM settings", () => {
     await enterCode();
     fireEvent.click(screen.getByRole("button", { name: "Save SCIM settings" }));
     await screen.findByText("SCIM settings were saved.");
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("SCIM settings were saved.");
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
     const request = {
       configVersion: 7,
       kind: "settings",
@@ -352,6 +359,7 @@ describe("SCIM bearer token", () => {
 
 describe("SCIM group mappings", () => {
   it("opens the add form from the URL state and creates an agent mapping", async () => {
+    const announce = vi.spyOn(toast, "success");
     mocks.getScim.mockResolvedValue({
       ...scimSettings,
       data: { ...scimSettings.data, enabled: true },
@@ -386,6 +394,13 @@ describe("SCIM group mappings", () => {
       enabled: true,
     });
     await waitFor(() => expect(onOpenMapping).toHaveBeenCalledWith(undefined));
+    const notice = await screen.findByText("The group mapping was created.");
+    expect(notice.closest('[role="status"]')).toHaveAttribute(
+      "aria-live",
+      "off",
+    );
+    expect(announce).toHaveBeenCalledOnce();
+    announce.mockRestore();
   });
 
   it("reports a duplicate group without closing the form", async () => {

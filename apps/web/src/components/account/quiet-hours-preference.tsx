@@ -100,10 +100,12 @@ function QuietHoursForm({
   const [end, setEnd] = useState(saved?.end ?? "07:00");
   const [timezone, setTimezone] = useState(saved?.timezone ?? browserZone);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeIsSave, setNoticeIsSave] = useState(false);
   const zones = useMemo(() => timeZones(timezone), [timezone]);
   const mutation = useMutation({
     mutationFn: saveQuietHours,
     onSuccess: async (_data, variables) => {
+      setNoticeIsSave(Boolean(variables));
       setNotice(variables ? t("quietHours.saved") : t("quietHours.cleared"));
       await queryClient.invalidateQueries({
         queryKey: ["notification-preferences"],
@@ -197,7 +199,7 @@ function QuietHoursForm({
         </p>
       )}
       {notice && (
-        <p role="status" className="text-sm">
+        <p role={noticeIsSave ? undefined : "status"} className="text-sm">
           {notice}
         </p>
       )}
@@ -213,7 +215,6 @@ function QuietHoursForm({
           retainedSuccess
           savedLabel={t("common:actions.saved")}
           workingLabel={t("common:actions.saving")}
-          announceSuccess={false}
         >
           {t("quietHours.save")}
         </SaveButton>

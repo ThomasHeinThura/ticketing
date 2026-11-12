@@ -807,7 +807,6 @@ function ProjectInheritanceSettings({
           success={inheritanceSaved}
           savedLabel={t("common:actions.saved")}
           workingLabel={t("common:actions.saving")}
-          announceSuccess={false}
           onClick={() => void save()}
         >
           {t("settings:projectInheritance.save")}

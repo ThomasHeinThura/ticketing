@@ -117,6 +117,7 @@ export function ServiceCalendarEditorView({
             form="service-calendar-form"
             pending={saving}
             success={!isNew && state.saveSucceeded}
+            announceSuccess={false}
             savedLabel={t("common:actions.saved")}
             workingLabel={t("common:actions.saving")}
             disabled={

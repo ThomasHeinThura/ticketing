@@ -108,6 +108,12 @@ describe("quiet hours preference", () => {
     expect(mocks.save).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    await screen.findByRole("button", { name: "Saved" });
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("Saved");
     const saved = mocks.save.mock.calls[0]?.[0] as {
       start: string;
       end: string;
@@ -116,6 +122,25 @@ describe("quiet hours preference", () => {
     expect(saved.start).toBe("21:30");
     expect(saved.end).toBe("07:00");
     expect(saved.timezone.length).toBeGreaterThan(0);
+  });
+
+  it("announces one save after refreshed quiet hours remount the form", async () => {
+    mocks.invalidate.mockImplementation(async () => {
+      mocks.quietHours = {
+        start: "21:30",
+        end: "07:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      };
+    });
+    render(<QuietHoursPreference />);
+    await chooseTime("From", "21:30");
+    fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
+    await screen.findByRole("button", { name: "Saved" });
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("Saved");
   });
 
   it("refuses identical start and end times without calling the server", async () => {

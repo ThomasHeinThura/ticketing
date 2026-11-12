@@ -159,9 +159,10 @@ export function IdentityConnectionEditor({
       );
       forgetClientSecret(mutations.create.reset);
       if (result.ok) {
-        toast.success(t("common:actions.saved"));
-        if (onCreated) onCreated(result.value.id);
-        else setSaved(result.value.configVersion);
+        if (onCreated) {
+          toast.success(t("common:actions.saved"));
+          onCreated(result.value.id);
+        } else setSaved(result.value.configVersion);
       }
       return;
     }
@@ -302,14 +303,16 @@ export function IdentityConnectionEditor({
           <AlertDescription>{t("editor.unchanged")}</AlertDescription>
         </Alert>
       ) : null}
-      {saved !== null ? (
-        <Alert variant="success">
-          <AlertTitle>{t("editor.saved")}</AlertTitle>
-          <AlertDescription>
-            {t("editor.savedDescription", { version: saved })}
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      <div role="status" aria-atomic="true">
+        {saved !== null ? (
+          <Alert variant="success" role="presentation">
+            <AlertTitle>{t("editor.saved")}</AlertTitle>
+            <AlertDescription>
+              {t("editor.savedDescription", { version: saved })}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
 
       <form className="grid items-start gap-4 md:grid-cols-2" onSubmit={submit}>
         <Field

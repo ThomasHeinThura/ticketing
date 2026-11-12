@@ -489,18 +489,19 @@ function RequestTypesEditor() {
                     </Button>
                   </Alert>
                 ) : null}
-                {saveGroupOrder.isSuccess ? (
-                  <p role="status" className="text-sm text-muted-foreground">
-                    {t("groupOrderSaved", {
-                      defaultValue: "Group order saved.",
-                    })}
-                  </p>
-                ) : null}
+                <p role="status" className="text-sm text-muted-foreground">
+                  {saveGroupOrder.isSuccess
+                    ? t("groupOrderSaved", {
+                        defaultValue: "Group order saved.",
+                      })
+                    : null}
+                </p>
                 {groupOrderDraft.length > 1 ? (
                   <SaveButton
                     disabled={!groupOrderChanged && !saveGroupOrder.isPending}
                     pending={saveGroupOrder.isPending}
                     success={saveGroupOrder.isSuccess}
+                    announceSuccess={false}
                     savedLabel={t("common:actions.saved")}
                     workingLabel={t("common:actions.saving")}
                     onClick={() => void saveGroupOrder.mutate()}

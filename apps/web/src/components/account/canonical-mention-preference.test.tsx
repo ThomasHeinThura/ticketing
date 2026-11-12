@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     scopeId: null as string | null,
   },
   invalidate: vi.fn(),
+  mentionEnabled: true,
 }));
 vi.mock("react-i18next", async () => {
   const { default: english } = await import("@i18n/en-US.json");
@@ -51,7 +53,7 @@ vi.mock(
             channel: "notify.email",
             scope: "global",
             scopeId: null,
-            enabled: true,
+            enabled: mocks.mentionEnabled,
             digest: "off",
             source: "global",
           },
@@ -95,12 +97,24 @@ vi.mock("@tanstack/react-query", () => ({
     mutationFn,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
-  }) => ({
-    isPending: false,
-    isError: false,
-    mutate: (value: boolean, callbacks: { onSuccess: () => void }) =>
-      void mutationFn(value).then(callbacks.onSuccess),
-  }),
+  }) => {
+    const [isSuccess, setSuccess] = useState(false);
+    return {
+      isPending: false,
+      isError: false,
+      isSuccess,
+      mutate: (
+        value: boolean,
+        callbacks: { onSuccess: () => Promise<void> },
+      ) => {
+        setSuccess(false);
+        void mutationFn(value).then(async () => {
+          await callbacks.onSuccess();
+          setSuccess(true);
+        });
+      },
+    };
+  },
 }));
 
 import { CanonicalMentionPreference } from "./canonical-mention-preference";
@@ -111,6 +125,7 @@ beforeEach(() => {
   mocks.saveComment.mockReset().mockResolvedValue({});
   mocks.saveTeamNotification.mockReset().mockResolvedValue({});
   mocks.invalidate.mockReset().mockResolvedValue(undefined);
+  mocks.mentionEnabled = true;
   mocks.selector.scope = "global";
   mocks.selector.scopeId = null;
 });
@@ -135,6 +150,41 @@ describe("email preference landing", () => {
         digest: "off",
       }),
     );
+  });
+  it("announces a successful preference save once when the form stays mounted", async () => {
+    render(<CanonicalMentionPreference />);
+    fireEvent.click(screen.getByRole("switch", { name: "mention.enabled" }));
+    fireEvent.click(screen.getByRole("button", { name: "mention.save" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "common:actions.saved" }),
+      ).toBeVisible(),
+    );
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("mention.saved");
+  });
+  it("announces a successful preference save once even when the refreshed form remounts", async () => {
+    mocks.invalidate.mockImplementation(async () => {
+      mocks.mentionEnabled = false;
+    });
+    render(<CanonicalMentionPreference />);
+    fireEvent.click(screen.getByRole("switch", { name: "mention.enabled" }));
+    fireEvent.click(screen.getByRole("button", { name: "mention.save" }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.trim()),
+      ).toHaveLength(1),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.trim())[0],
+    ).toHaveTextContent("mention.saved");
   });
   it("saves hourly or daily cadence only for low-priority comments", async () => {
     render(<CanonicalMentionPreference />);

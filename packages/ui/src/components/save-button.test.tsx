@@ -114,6 +114,26 @@ describe("SaveButton", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
     expect(document.querySelector("svg.animate-spin")).toBeNull();
   });
+  it("clears completion immediately when success is withdrawn without pending", () => {
+    vi.useFakeTimers();
+    const view = (success: boolean) => (
+      <SaveButton
+        pending={false}
+        success={success}
+        savedLabel="Saved"
+        workingLabel="Saving…"
+      >
+        Save
+      </SaveButton>
+    );
+    const { rerender } = render(view(false));
+    rerender(view(true));
+    expect(screen.getByRole("button", { name: "Saved" })).toBeVisible();
+    rerender(view(false));
+    expect(screen.getByRole("button", { name: "Save" })).toBeVisible();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it("cleans up both timers on unmount", () => {
     vi.useFakeTimers();
     const { unmount } = render(

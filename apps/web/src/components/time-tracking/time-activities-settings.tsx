@@ -111,8 +111,14 @@ function ActivityRow({
               success={nameSaved}
               savedLabel={t("common:actions.saved")}
               workingLabel={t("common:actions.saving")}
-              disabled={!canManage}
-              onClick={() => save.mutate({ name: name.trim() })}
+              disabled={
+                !canManage ||
+                (save.isPending && save.variables?.name === undefined)
+              }
+              onClick={() => {
+                if (!save.isPending && dirty)
+                  save.mutate({ name: name.trim() });
+              }}
             >
               {t("timeTracking:actions.save")}
             </SaveButton>
