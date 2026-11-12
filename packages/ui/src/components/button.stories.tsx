@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Button } from "./button";
-import { Input } from "./input";
 import { SaveButton } from "./save-button";
 
 const meta = {
@@ -42,6 +40,7 @@ export const SaveWorking: Story = {
     <SaveButton
       pending
       success={false}
+      feedbackState="working"
       savedLabel="Saved"
       workingLabel="Saving…"
     >
@@ -50,22 +49,19 @@ export const SaveWorking: Story = {
   ),
 };
 
-function SaveSuccessExample() {
-  const [success, setSuccess] = useState(false);
-  useEffect(() => setSuccess(true), []);
-  return (
+export const SaveDone: Story = {
+  render: () => (
     <SaveButton
       pending={false}
-      success={success}
+      success
+      feedbackState="done"
       savedLabel="Saved"
       workingLabel="Saving…"
     >
       Save changes
     </SaveButton>
-  );
-}
-
-export const SaveDone: Story = { render: () => <SaveSuccessExample /> };
+  ),
+};
 
 export const SaveWithIcon: Story = {
   render: () => (
@@ -93,33 +89,3 @@ export const SaveWithIcon: Story = {
     </div>
   ),
 };
-
-function SaveFormExample() {
-  const [pending, setPending] = useState(false);
-  const [count, setCount] = useState(0);
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!pending) {
-          setCount(count + 1);
-          setPending(true);
-        }
-      }}
-    >
-      <label htmlFor="save-story-input">Name</label>
-      <Input id="save-story-input" />
-      <SaveButton
-        type="submit"
-        pending={pending}
-        success={false}
-        savedLabel="Saved"
-        workingLabel="Saving…"
-      >
-        Save
-      </SaveButton>
-      <output>{count}</output>
-    </form>
-  );
-}
-export const SaveForm: Story = { render: () => <SaveFormExample /> };

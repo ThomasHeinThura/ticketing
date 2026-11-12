@@ -17,6 +17,7 @@ export function SaveButton({
   workingLabel,
   announceSuccess = true,
   retainedSuccess = false,
+  feedbackState,
   children,
   onClickCapture,
   ...props
@@ -27,6 +28,8 @@ export function SaveButton({
   workingLabel: string;
   announceSuccess?: boolean;
   retainedSuccess?: boolean;
+  /** Optional fixed feedback frame, useful for static previews. */
+  feedbackState?: "working" | "done";
 }) {
   const [working, setWorking] = useState(false);
   const [done, setDone] = useState(false);
@@ -62,8 +65,12 @@ export function SaveButton({
     doneTimer.current = setTimeout(() => setDone(false), SAVE_FEEDBACK_HOLD_MS);
   }, [success]);
 
-  const showWorking = pending && working;
-  const showDone = !pending && success && done;
+  const showWorking = feedbackState
+    ? feedbackState === "working"
+    : pending && working;
+  const showDone = feedbackState
+    ? feedbackState === "done"
+    : !pending && success && done;
 
   return (
     <>
