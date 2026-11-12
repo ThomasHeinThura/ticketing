@@ -13,11 +13,16 @@ import { headingLevels } from "@/test/headings";
  */
 const mocks = vi.hoisted(() => ({
   canManageSettings: false,
+  estimatesForbidden: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <a href="/">{children}</a>,
   useNavigate: () => vi.fn(),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     useParams: () => ({ projectId: "p1" }),
@@ -61,7 +66,10 @@ vi.mock("@/fetchers/agile", async (importOriginal) => {
     getModules: off,
     getCycle: off,
     getModule: off,
-    getEstimates: off,
+    getEstimates: () =>
+      mocks.estimatesForbidden
+        ? Promise.reject(Object.assign(new Error("Forbidden"), { status: 403 }))
+        : off(),
   };
 });
 
@@ -74,6 +82,7 @@ import { ModulesList } from "./modules-list";
 afterEach(() => {
   cleanup();
   mocks.canManageSettings = false;
+  mocks.estimatesForbidden = false;
 });
 
 function renderWithClient(ui: ReactNode) {
@@ -89,6 +98,19 @@ function renderWithClient(ui: ReactNode) {
 }
 
 describe("project feature-off screens: heading outline (UX-1a)", () => {
+  it("shows no access for a forbidden estimates read", async () => {
+    mocks.estimatesForbidden = true;
+    const Component = (
+      EstimatesRoute as unknown as { component: () => ReactNode }
+    ).component;
+    renderWithClient(<Component />);
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
+    ).toHaveFocus();
+  });
   it("modules list: the off state is the page's one h1", async () => {
     renderWithClient(<ModulesList projectKey="HELP" />);
     expect(await screen.findByTestId("feature-off-modules")).toBeTruthy();

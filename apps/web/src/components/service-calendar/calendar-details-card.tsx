@@ -44,6 +44,33 @@ export function CalendarDetailsCard({
   useEffect(() => {
     if (disabled) setTimezoneOpen(false);
   }, [disabled]);
+  if (disabled) {
+    const values = form.getValues();
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("details.title")}</CardTitle>
+          <CardDescription>{t("details.description")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl>
+            <dt>
+              {t(
+                isNew
+                  ? "details.stableKeyLabel"
+                  : "details.stableKeyReadOnlyLabel",
+              )}
+            </dt>
+            <dd>{values.key}</dd>
+            <dt>{t("details.name")}</dt>
+            <dd>{values.name}</dd>
+            <dt>{t("details.timezone")}</dt>
+            <dd>{values.timezone}</dd>
+          </dl>
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card>
       <CardHeader>

@@ -1061,7 +1061,12 @@
 			"title": "Работен тек",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States"
+			"statesTitle": "States",
+			"columnsTitle": "Columns",
+			"columnsDescription": "Manage the columns that appear on your board. Drag to reorder. Turn on \"Done column\" for stages that represent completed work.",
+			"automationTitle": "Automation Rules",
+			"automationDescription": "Map integration events to columns. When an event occurs, the linked {{term_work_item_one}} moves to the specified column.",
+			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectSwitcher": {
 			"selectProject": "Избери {{term_project_one}}",
@@ -3089,7 +3094,8 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable"
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "Back to Dashboard"
 		},
 		"create": {
 			"pageTitle": "Креирај работен простор",

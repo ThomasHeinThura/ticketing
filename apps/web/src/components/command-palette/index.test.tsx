@@ -43,6 +43,8 @@ const mocks = vi.hoisted(() => ({
   routeProjectLoading: false,
   permissionTarget: vi.fn(),
   canCreate: true,
+  canCreateProject: true,
+  checkingProjectPermissions: false,
   checkingPermissions: false,
   // What the mocked shared create dialog was last given.
   createClose: undefined as undefined | (() => void),
@@ -138,7 +140,10 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     mocks.permissionTarget(workspaceId, projectId, options);
     return {
       canCreateTasks: () => mocks.canCreate,
-      isCheckingPermissions: mocks.checkingPermissions,
+      canCreateProjects: () => mocks.canCreateProject,
+      isCheckingPermissions: options
+        ? mocks.checkingPermissions
+        : mocks.checkingProjectPermissions,
     };
   },
 }));
@@ -169,7 +174,7 @@ vi.mock("@/components/shared/modals/create-workspace-modal", () => ({
   default: () => null,
 }));
 vi.mock("@/components/shared/modals/create-project-modal", () => ({
-  default: () => null,
+  default: () => <div data-testid="create-project-dialog" />,
 }));
 
 // The design-system primitives aren't what this test is about; stub them
@@ -270,6 +275,8 @@ beforeEach(() => {
   mocks.routeProject = undefined;
   mocks.routeProjectLoading = false;
   mocks.canCreate = true;
+  mocks.canCreateProject = true;
+  mocks.checkingProjectPermissions = false;
   mocks.checkingPermissions = false;
   mocks.createClose = undefined;
   mocks.createFinalFocus = undefined;
@@ -490,6 +497,50 @@ describe("CommandPalette create-workspace command (D-A, 12 Nov 2026)", () => {
     expect(
       screen.getByText("navigation:commandPalette.createWorkspace"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("CommandPalette create project access", () => {
+  it.each(["lead", "member", "viewer"])(
+    "hides the command and shortcut when %s lacks project:create",
+    async (_role) => {
+      mocks.canCreateProject = false;
+      renderLauncher();
+      await openPalette();
+      expect(
+        screen.queryByText("navigation:commandPalette.createProject"),
+      ).toBeNull();
+      await pressSequence("p", "c");
+      expect(screen.queryByTestId("create-project-dialog")).toBeNull();
+    },
+  );
+
+  it("offers the command and shortcut when an admin has project:create", async () => {
+    mocks.canCreateProject = true;
+    renderLauncher();
+    await openPalette();
+    expect(
+      screen.getByText("navigation:commandPalette.createProject"),
+    ).toBeInTheDocument();
+    await pressSequence("p", "c");
+    expect(screen.getByTestId("create-project-dialog")).toBeInTheDocument();
+  });
+
+  it("waits for the workspace capability before handling the create shortcut", async () => {
+    mocks.checkingProjectPermissions = true;
+    const view = renderLauncher();
+    await openPalette();
+    expect(
+      screen.queryByText("navigation:commandPalette.createProject"),
+    ).toBeNull();
+    await pressSequence("p", "c");
+    expect(screen.queryByTestId("create-project-dialog")).toBeNull();
+    mocks.checkingProjectPermissions = false;
+    await act(async () => {
+      view.refresh();
+      await vi.dynamicImportSettled();
+    });
+    expect(screen.getByTestId("create-project-dialog")).toBeInTheDocument();
   });
 });
 

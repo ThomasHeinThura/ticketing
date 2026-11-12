@@ -50,6 +50,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     useSearch: () => mocks.search,
@@ -133,11 +137,12 @@ const REAL_ENGLISH_KEYS =
   /^(status|statusFilter|states\..+|attachmentStates\..+|submissionRegion|submissionFallback|loadingDetails|destinationProject|chooseProject|workItemType|chooseWorkItemType|download|ageSuffix\..+|errors\..+|actorTypes\..+|systemReasons\..+|reference|summary|requestType|organisation|submittedAt|convertedWorkItem|claimedAt|defaultFromRequestType|convertHeading)$/u;
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
-  useTranslation: () => ({
+  useTranslation: (namespace?: string) => ({
     t: (
       key: string,
       options?: { defaultValue?: string; state?: string; [k: string]: unknown },
     ) => {
+      if (namespace === "common") return key;
       if (REAL_ENGLISH_KEYS.test(key))
         return translate(`intake:${key}`, options);
       const value =
@@ -255,14 +260,19 @@ describe("intake triage route", () => {
     ],
   ])(
     "keeps the page title as the one h1 in the header bar on %s",
-    async (_label, arrange, outline) => {
+    async (label, arrange, outline) => {
       arrange();
       const { container } = renderTriage();
       expect(headingLevels()).toEqual(outline);
       const [title] = screen.getAllByRole("heading", { level: 1 });
-      expect(title).toHaveTextContent("title");
-      expect(title).toHaveClass("px-2", "font-medium", "text-sm");
-      expect(title.closest("header")).not.toBeNull();
+      if (label === "no access") {
+        expect(title).toHaveTextContent("states.noAccess.title");
+        expect(title).toHaveFocus();
+      } else {
+        expect(title).toHaveTextContent("title");
+        expect(title).toHaveClass("px-2", "font-medium", "text-sm");
+        expect(title.closest("header")).not.toBeNull();
+      }
       expect(container.querySelector("[data-slot=page-header]")).toBeNull();
       await act(async () => {});
     },
@@ -409,7 +419,7 @@ describe("intake triage route", () => {
     mocks.checkingPermissions = true;
     const view = renderTriage();
     expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.queryByText("noAccessTitle")).toBeNull();
+    expect(screen.queryByText("states.noAccess.title")).toBeNull();
 
     mocks.checkingPermissions = false;
     view.rerender(
@@ -417,7 +427,9 @@ describe("intake triage route", () => {
         <IntakeRoute />
       </QueryClientProvider>,
     );
-    expect(await screen.findByText("noAccessTitle")).toBeInTheDocument();
+    expect(
+      await screen.findByText("states.noAccess.title"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(mocks.queuePickerProps).toBeUndefined();
     expect(mocks.getSubmissions).not.toHaveBeenCalled();
@@ -430,7 +442,9 @@ describe("intake triage route", () => {
       .mockReset()
       .mockRejectedValue(new HttpError(403, "Forbidden"));
     renderTriage();
-    expect(await screen.findByText("noAccessTitle")).toBeInTheDocument();
+    expect(
+      await screen.findByText("states.noAccess.title"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
   });
 

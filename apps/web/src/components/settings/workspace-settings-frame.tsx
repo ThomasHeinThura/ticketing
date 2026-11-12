@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   Button,
@@ -31,8 +32,12 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SettingsSidebar from "@/components/SettingsSidebar";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { SETTINGS_CONTENT_ID } from "@/components/settings/settings-content-id";
+import { getWorkflows } from "@/fetchers/workflow";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
+import { useServiceCalendars } from "@/hooks/queries/service-calendar/use-service-calendars";
+import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
@@ -44,43 +49,56 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
     workspace,
     role,
     canManageWorkspaceSettings,
-    canManageServiceCalendars,
     canManageRequestTypes,
-    canManageRoles,
     canManageWebhooks,
-    canManageCustomFields,
     canInviteUsers,
     canManageRates,
-    canManageWorkflows,
+    canLogTime,
   } = useWorkspacePermission();
   const location = useLocation();
   const canSettings = canManageWorkspaceSettings();
-  const canCalendars = canManageServiceCalendars();
   const canRequestTypes = canManageRequestTypes();
-  const canRoles = canManageRoles();
   const canWebhooks = canManageWebhooks();
-  const canFields = canManageCustomFields();
   const canInvite = canInviteUsers();
   const canRates = canManageRates();
-  const canWorkflows = canManageWorkflows();
   // P4R2-M1: SLA policies and service calendars are `feature.sla` settings; off (or still
   // loading) they are not offered, like every other flagged area.
   const workspaceFeatures = useWorkspaceFeatures(workspace?.id);
   const slaOn = workspaceFeatures.isOn("feature.sla");
-  // Every entry is shown only to people the server would let into it, using the capability the
-  // API of that area enforces: `workspace:manage_roles`, `webhook:manage`, `custom_field:manage`,
-  // `sla_policy:manage` (service calendars), `time_entry:manage_rates` (rates), `workflow:manage`
-  // (workflows and the CAB template), `request_type:manage` (request types) and otherwise
-  // `workspace:manage_settings`. A direct URL still reaches the page. Pages that check access
-  // first (`useSettingsAccess`: Request Types, Terminology, Workspace features, Automations) show
-  // the neutral no-access notice and send no request; the others show the API's access-denied
-  // error.
+  // These are read surfaces. Reuse their existing read queries to distinguish permission from
+  // management, including custom roles; a transient failure is not a permission denial.
+  const rolesRead = useWorkspaceRoles(workspace?.id);
+  const workflowRead = useQuery({
+    queryKey: ["workflows", workspace?.id],
+    queryFn: () => getWorkflows(workspace?.id ?? ""),
+    enabled: Boolean(workspace?.id),
+    retry: false,
+  });
+  const calendarRead = useServiceCalendars(
+    workspace?.id ?? "",
+    undefined,
+    slaOn,
+  );
+  const mayRead = (query: {
+    isSuccess: boolean;
+    isError: boolean;
+    error: unknown;
+  }) => {
+    const status = (query.error as { status?: unknown } | null)?.status;
+    return (
+      query.isSuccess ||
+      (query.isError && !isForbiddenError(query.error) && status !== 404)
+    );
+  };
+  const canReadWorkspace = mayRead(rolesRead);
+  const canReadWorkflows = mayRead(workflowRead);
+  const canReadCalendars = slaOn && mayRead(calendarRead);
   const allMenuItems = [
     {
       title: t("settings:workspaceGeneral.title"),
       url: "/dashboard/settings/workspace/general",
       icon: Settings,
-      visible: true,
+      visible: canReadWorkspace,
     },
     {
       title: t("settings:workspaceFeatures.title"),
@@ -98,13 +116,13 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("settings:workspaceRoles.title", { defaultValue: "Roles" }),
       url: "/dashboard/settings/workspace/roles",
       icon: Shield,
-      visible: canRoles,
+      visible: canReadWorkspace,
     },
     {
       title: t("settings:workspaceLabels.title", { defaultValue: "Labels" }),
       url: "/dashboard/settings/workspace/labels",
       icon: Tag,
-      visible: true,
+      visible: canReadWorkspace,
     },
     {
       title: t("settings:cannedResponses.title"),
@@ -122,13 +140,13 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("serviceCalendars:list.title"),
       url: "/dashboard/settings/workspace/calendars",
       icon: CalendarDays,
-      visible: canCalendars && slaOn,
+      visible: canReadCalendars,
     },
     {
       title: t("slaPolicies:list.title"),
       url: "/dashboard/settings/workspace/sla-policies",
       icon: Timer,
-      visible: canCalendars && slaOn,
+      visible: canReadCalendars,
     },
     {
       title: t("requestTypes:title"),
@@ -140,26 +158,26 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("settings:workflows.title"),
       url: "/dashboard/settings/workspace/workflows",
       icon: Workflow,
-      visible: canWorkflows,
+      visible: canReadWorkflows,
     },
     {
-      // Every member can read the list; role changes, removal and invites are gated inside.
+      // Role changes, removal and invites are gated inside the readable members list.
       title: t("navigation:sidebar.members"),
       url: routes.workspaceMembers.path,
       icon: UserCog,
-      visible: true,
+      visible: canReadWorkspace,
     },
     {
       title: t("teams:list.title"),
       url: "/dashboard/settings/workspace/teams",
       icon: Users,
-      visible: canSettings,
+      visible: canReadWorkspace,
     },
     {
       title: t("timeTracking:activities.title"),
       url: "/dashboard/settings/workspace/time-activities",
       icon: Clock,
-      visible: canSettings,
+      visible: canLogTime(),
     },
     {
       title: t("timeTracking:rates.title"),
@@ -171,7 +189,7 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
       title: t("customFields:list.title"),
       url: "/dashboard/settings/workspace/custom-fields",
       icon: SlidersHorizontal,
-      visible: canFields,
+      visible: canReadWorkspace,
     },
     {
       title: t("customerInvitations:title"),

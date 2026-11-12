@@ -42,7 +42,12 @@ import {
   announcementState,
 } from "@/components/announcements/announcement-severity-badge";
 import { DateTimePicker } from "@/components/common/date-time-picker";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessChecking,
+} from "@/components/settings/settings-access";
 import {
   ANNOUNCEMENT_AUDIENCES,
   ANNOUNCEMENT_SEVERITIES,
@@ -606,6 +611,10 @@ export function AnnouncementsList() {
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const announcements = useAnnouncements(workspaceId, canManage);
   const [editing, setEditing] = useState<Announcement | "new" | null>(null);
+  if (!workspace || status.isLoading) return <SettingsAccessChecking />;
+  if ([status.error, announcements.error].some(isForbiddenError))
+    return <NoAccessPage />;
+  if (status.data && !catalogueOff && !canManage) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("announcements.list.title")} />
@@ -621,20 +630,19 @@ export function AnnouncementsList() {
           ) : null
         }
       >
-        <SectionNav active="announcements" />
+        <SectionNav
+          active="announcements"
+          canManageServices={status.data?.canManageServices === true}
+        />
         {status.isLoading || !workspace ? (
           <LoadingRows />
         ) : catalogueOff ? (
           <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
-        ) : !canManage ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>{t("announcements.forbidden.title")}</EmptyTitle>
-              <EmptyDescription>
-                {t("announcements.forbidden.description")}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+        ) : status.isError ? (
+          <QueryFailure
+            error={status.error}
+            onRetry={() => void status.refetch()}
+          />
         ) : announcements.isLoading ? (
           <LoadingRows />
         ) : announcements.isError ? (

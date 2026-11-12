@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CustomerInvitation } from "@/fetchers/customer-invitation";
+import { HttpError } from "@/lib/http-error";
 
 const mocks = vi.hoisted(() => ({
   listOrganisations: vi.fn(),
@@ -21,10 +22,15 @@ const mocks = vi.hoisted(() => ({
   openPendingAction: vi.fn(),
   navigate: vi.fn(),
   canInvite: true,
+  checking: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -36,7 +42,7 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canInviteUsers: () => mocks.canInvite,
-    isCheckingPermissions: false,
+    isCheckingPermissions: mocks.checking,
   }),
 }));
 vi.mock("@/hooks/use-open-pending-action", () => ({
@@ -96,9 +102,39 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   mocks.canInvite = true;
+  mocks.checking = false;
 });
 
 describe("customer invitations screen", () => {
+  it("waits for permission without a denial or reads", () => {
+    mocks.canInvite = false;
+    mocks.checking = true;
+    renderScreen();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+    expect(mocks.listOrganisations).not.toHaveBeenCalled();
+  });
+  it.each(["organisations", "invitations"])(
+    "shows no access for a forbidden %s read",
+    async (read) => {
+      mocks.listOrganisations.mockResolvedValue([
+        { id: "o1", key: "acme", name: "Acme" },
+      ]);
+      mocks.listInvitations.mockResolvedValue([]);
+      if (read === "organisations")
+        mocks.listOrganisations.mockRejectedValue(
+          new HttpError(403, "forbidden"),
+        );
+      else
+        mocks.listInvitations.mockRejectedValue(
+          new HttpError(403, "forbidden"),
+        );
+      renderScreen();
+      expect(
+        await screen.findByTestId("settings-access-denied"),
+      ).toBeInTheDocument();
+    },
+  );
   it("lists every status with expiry, offers Copy link only while pending, and offers Resend/Revoke while open", async () => {
     mocks.listOrganisations.mockResolvedValue([
       { id: "o1", key: "acme", name: "Acme" },
@@ -283,7 +319,10 @@ describe("customer invitations screen", () => {
     mocks.canInvite = false;
     renderScreen();
     expect(
-      await screen.findByText("customerInvitations:denied.title"),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
     ).toBeTruthy();
     expect(mocks.listOrganisations).not.toHaveBeenCalled();
     expect(screen.queryByText("customerInvitations:invite")).toBeNull();

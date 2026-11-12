@@ -169,22 +169,24 @@ export default function TaskContextMenuPresentation({
             <span>{t("tasks:assignee.label")}</span>
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="w-48">
-            <ContextMenuCheckboxItem
-              checked={!assignee.value}
-              onCheckedChange={() => assignee.onChange("")}
-              closeOnClick
-              disabled={disabled || assignee.canUnassign === false}
-            >
-              <div
-                className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
-                title={t("tasks:assignee.unassigned")}
+            {assignee.canUnassign !== false ? (
+              <ContextMenuCheckboxItem
+                checked={!assignee.value}
+                onCheckedChange={() => assignee.onChange("")}
+                closeOnClick
+                disabled={disabled}
               >
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  ?
-                </span>
-              </div>
-              {t("tasks:assignee.unassigned")}
-            </ContextMenuCheckboxItem>
+                <div
+                  className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
+                  title={t("tasks:assignee.unassigned")}
+                >
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    ?
+                  </span>
+                </div>
+                {t("tasks:assignee.unassigned")}
+              </ContextMenuCheckboxItem>
+            ) : null}
             {assignee.options.map((person) => (
               <ContextMenuCheckboxItem
                 key={person.value}

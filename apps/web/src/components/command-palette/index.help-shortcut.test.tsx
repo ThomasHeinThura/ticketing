@@ -60,6 +60,7 @@ vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canCreateTasks: () => false,
+    canCreateProjects: () => false,
     isCheckingPermissions: false,
   }),
 }));

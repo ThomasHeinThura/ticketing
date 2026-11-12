@@ -29,7 +29,9 @@ import {
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { createTeam } from "@/fetchers/team";
 import { teamsKey, useTeams } from "@/hooks/queries/team/use-teams";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -157,6 +159,7 @@ export function TeamsList() {
   const canManage = canManageWorkspaceSettings() && !isCheckingPermissions;
   const [creating, setCreating] = useState(false);
   const loading = workspaceLoading || teams.isLoading;
+  if (isForbiddenError(teams.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("teams:list.title")} />

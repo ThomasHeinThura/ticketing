@@ -3,8 +3,8 @@ import { Skeleton } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AutomationRulesPanel } from "@/components/automation/automation-rules-panel";
 import {
-  SettingsAccessDenied,
   SettingsAccessError,
+  SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -31,17 +31,15 @@ function WorkspaceAutomationsRoute() {
         <Skeleton className="h-24 w-full" />
       </div>
     );
-  if (access === "denied" || access === "error")
+  if (access === "error")
     return (
       <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <h1 className="text-2xl font-semibold">{t("workspace.title")}</h1>
-        {access === "error" ? (
-          <SettingsAccessError />
-        ) : (
-          <SettingsAccessDenied />
-        )}
+        <SettingsAccessError />
       </div>
     );
+  if (access === "denied")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
   return (
     <div className="flex h-full w-full min-w-0 flex-col overflow-y-auto p-6">
       <AutomationRulesPanel

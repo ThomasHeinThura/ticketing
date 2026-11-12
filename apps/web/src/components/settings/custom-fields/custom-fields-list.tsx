@@ -39,7 +39,9 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   type CustomField,
   type CustomFieldSection,
@@ -332,6 +334,8 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
           : fieldsIn(section.id, false).map((field) => field.id),
     }));
 
+  if ([fields.error, sections.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("customFields:list.title")} />

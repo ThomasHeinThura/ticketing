@@ -27,7 +27,9 @@ import {
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { DateField } from "@/components/time-tracking/date-field";
 import {
   RELEASE_STATUSES,
@@ -83,6 +85,39 @@ function DetailsCard({
     publish !== release.publishToPortal ||
     parseChangeKeys(keys).join(",") !==
       release.changes.map((change) => change.key).join(",");
+  if (!canManage)
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("releases.detail.details.title")}</CardTitle>
+          <CardDescription>
+            {t("releases.detail.details.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl>
+            <dt>{t("releases.fields.name")}</dt>
+            <dd>{release.name}</dd>
+            <dt>{t("releases.fields.plannedDate")}</dt>
+            <dd>{release.plannedDate ?? "—"}</dd>
+            <dt>{t("releases.fields.status")}</dt>
+            <dd>{t(`releases.status.${release.status}`)}</dd>
+            <dt>{t("releases.fields.changes")}</dt>
+            <dd>
+              {release.changes.map((change) => change.key).join(", ") || "—"}
+            </dd>
+            <dt>{t("releases.detail.publish.label")}</dt>
+            <dd>
+              {t(
+                release.publishToPortal
+                  ? "roles:compare.has"
+                  : "roles:compare.hasNot",
+              )}
+            </dd>
+          </dl>
+        </CardContent>
+      </Card>
+    );
   return (
     <Card>
       <CardHeader>
@@ -282,15 +317,27 @@ function ChecklistCard({
           <ul className="space-y-2">
             {release.checklist.map((item) => (
               <li key={item.id} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  id={`checklist-${item.id}`}
-                  checked={item.done}
-                  disabled={!canManage || toggle.isPending}
-                  onCheckedChange={(checked) =>
-                    toggle.mutate({ itemId: item.id, done: checked === true })
-                  }
-                />
-                <Label htmlFor={`checklist-${item.id}`}>{item.text}</Label>
+                {canManage ? (
+                  <Checkbox
+                    id={`checklist-${item.id}`}
+                    checked={item.done}
+                    disabled={!canManage || toggle.isPending}
+                    onCheckedChange={(checked) =>
+                      toggle.mutate({ itemId: item.id, done: checked === true })
+                    }
+                  />
+                ) : (
+                  <span>
+                    {t(
+                      item.done ? "roles:compare.has" : "roles:compare.hasNot",
+                    )}
+                  </span>
+                )}
+                {canManage ? (
+                  <Label htmlFor={`checklist-${item.id}`}>{item.text}</Label>
+                ) : (
+                  <span>{item.text}</span>
+                )}
               </li>
             ))}
           </ul>
@@ -397,6 +444,8 @@ export function ReleaseDetailView({ releaseId }: { releaseId: string }) {
   const release = useRelease(releaseId);
   const canManage = status.data?.canManageReleases === true;
   const data = release.data;
+  if ([status.error, release.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={data?.name ?? t("releases.detail.pageTitle")} />

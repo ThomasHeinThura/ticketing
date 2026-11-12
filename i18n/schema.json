@@ -4852,6 +4852,21 @@
 						},
 						"statesDescription": {
 							"type": "string"
+						},
+						"columnsTitle": {
+							"type": "string"
+						},
+						"columnsDescription": {
+							"type": "string"
+						},
+						"automationTitle": {
+							"type": "string"
+						},
+						"automationDescription": {
+							"type": "string"
+						},
+						"columnsNote": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -4859,7 +4874,12 @@
 						"title",
 						"subtitle",
 						"statesTitle",
-						"statesDescription"
+						"statesDescription",
+						"columnsTitle",
+						"columnsDescription",
+						"automationTitle",
+						"automationDescription",
+						"columnsNote"
 					]
 				},
 				"projectMembers": {
@@ -12725,6 +12745,9 @@
 						},
 						"unavailableDescription": {
 							"type": "string"
+						},
+						"backToDashboard": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12747,7 +12770,8 @@
 						"scopeWorkItems",
 						"scopeProjects",
 						"unavailableTitle",
-						"unavailableDescription"
+						"unavailableDescription",
+						"backToDashboard"
 					]
 				},
 				"create": {

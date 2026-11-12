@@ -59,6 +59,9 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     };
   },
 }));
+vi.mock("@/components/settings/settings-access", () => ({
+  useCapabilityCheckFailed: () => false,
+}));
 vi.mock(
   "@/hooks/mutations/service-calendar/use-create-service-calendar",
   () => ({

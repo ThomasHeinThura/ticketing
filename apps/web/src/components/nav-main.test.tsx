@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   user: { id: "viewer-1" } as { id: string } | undefined,
   paint: { resolve: () => {} },
   getSavedViews: vi.fn(),
+  getReportCatalogue: vi.fn(),
   countSavedView: vi.fn(),
   getWorkspaceResolvedFeatures: vi.fn(),
   logTime: true,
@@ -86,6 +87,9 @@ vi.mock("@/lib/i18n/after-first-paint", () => ({
       mocks.paint.resolve = resolve;
     }),
 }));
+vi.mock("@/fetchers/report", () => ({
+  getReportCatalogue: mocks.getReportCatalogue,
+}));
 vi.mock("@/fetchers/saved-views", () => ({
   getSavedViews: (...args: unknown[]) => mocks.getSavedViews(...args),
   countSavedView: (...args: unknown[]) => mocks.countSavedView(...args),
@@ -136,6 +140,7 @@ beforeEach(() => {
   mocks.preloadRoute.mockReset();
   mocks.preloadRoute.mockResolvedValue(undefined);
   mocks.getWorkspaceResolvedFeatures.mockResolvedValue([]);
+  mocks.getReportCatalogue.mockReset().mockResolvedValue({ data: [] });
   mocks.getSavedViews.mockResolvedValue([
     view("v-pinned", "Escalations", true),
     view("v-other", "Not pinned", false),
@@ -309,6 +314,20 @@ describe("NavMain feature entries (P5-R4-04)", () => {
       expect(mocks.getWorkspaceResolvedFeatures).toHaveBeenCalledTimes(2),
     );
     expect(screen.queryByRole("button", { name: "Knowledge base" })).toBeNull();
+  });
+});
+
+describe("report navigation access", () => {
+  it("hides report and dashboard links when the catalogue read is forbidden", async () => {
+    mocks.getWorkspaceResolvedFeatures.mockResolvedValue([
+      { key: "feature.reports", enabled: true },
+    ]);
+    mocks.getReportCatalogue.mockRejectedValue(new HttpError(403, "Forbidden"));
+    renderNav();
+    mocks.paint.resolve();
+    await waitFor(() => expect(mocks.getReportCatalogue).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Reports" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Dashboard" })).toBeNull();
   });
 });
 

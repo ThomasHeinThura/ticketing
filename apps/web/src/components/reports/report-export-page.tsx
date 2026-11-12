@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import { downloadReportExport, ReportsDisabledError } from "@/fetchers/report";
 import { useReportExport } from "@/hooks/queries/report";
@@ -100,6 +101,8 @@ function ReportExportPageScreen({ exportId }: { exportId: string }) {
         ? "expired"
         : (info?.status ?? "unavailable");
   const title = info?.title ?? t("reports:exportPage.title");
+
+  if (state === "forbidden") return <NoAccessPage />;
 
   return (
     <>

@@ -39,7 +39,7 @@ describe("holiday calendar dates", () => {
     expect(container.querySelector('input[type="date"]')).toBeNull();
   });
 
-  it("keeps both inclusive range endpoints disabled for read-only calendars", () => {
+  it("shows the inclusive range without editing controls for read-only calendars", () => {
     render(
       <HolidayFields
         index={0}
@@ -50,7 +50,7 @@ describe("holiday calendar dates", () => {
         disabled
       />,
     );
-    expect(screen.getByRole("button", { name: "From" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Through" })).toBeDisabled();
+    expect(screen.getByText(/2026-12-31 – 2027-01-01/)).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

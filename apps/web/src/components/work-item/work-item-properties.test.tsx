@@ -824,11 +824,12 @@ describe("WorkItemProperties", () => {
       });
       renderProps(<WorkItemProperties item={current} onAccessLost={vi.fn()} />);
       fireEvent.click(screen.getByTestId("work-item-assignee-control"));
-      const button = await screen.findByRole("button", {
+      await screen.findByRole("button", { name: /Me/u });
+      const button = screen.queryByRole("button", {
         name: "workItems:detail.unassigned",
       });
       if (self) expect(button).toBeEnabled();
-      else expect(button).toBeDisabled();
+      else expect(button).toBeNull();
     },
   );
 

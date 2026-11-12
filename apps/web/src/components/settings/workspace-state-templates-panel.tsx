@@ -13,6 +13,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   createWorkspaceStateTemplate,
@@ -28,7 +29,9 @@ import {
   isForbiddenError,
   SettingsAccessDenied,
   SettingsAccessError,
+  SettingsAccessGate,
   useCapabilityCheckFailed,
+  useSettingsAccess,
 } from "./settings-access";
 
 const GROUPS: WorkspaceStateTemplate["group"][] = [
@@ -510,6 +513,17 @@ export function WorkspaceStateTemplatesPanel({
 export function WorkspaceStateTemplatesPage() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
+  const access = useSettingsAccess((permission) =>
+    permission.canManageWorkspaceSettings(),
+  );
+  const templates = useQuery({
+    queryKey: ["workspace", workspace?.id ?? "", "state-templates"],
+    queryFn: () => getWorkspaceStateTemplates(workspace?.id ?? ""),
+    enabled: access === "allowed" && Boolean(workspace?.id),
+  });
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  if (isForbiddenError(templates.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("settings:workspaceStateTemplates.title")} />

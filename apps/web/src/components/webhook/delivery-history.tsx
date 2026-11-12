@@ -28,8 +28,10 @@ import {
 } from "@taskdesk/ui";
 import { ArrowLeft, ChevronRight, RefreshCw, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { ErrorReference } from "@/components/errors/error-reference";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   listWebhookDeliveries,
   redeliverWebhookDelivery,
@@ -187,6 +189,9 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
 
   const rows = query.data?.pages.flatMap((page) => page.data) ?? [];
   const loading = workspaceLoading || isCheckingPermissions || query.isLoading;
+
+  if (!isCheckingPermissions && isForbiddenError(query.error))
+    return <NoAccessPage />;
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">

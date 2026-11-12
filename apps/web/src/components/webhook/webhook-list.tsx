@@ -21,7 +21,9 @@ import {
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { listWebhooks, type Webhook } from "@/fetchers/webhook/webhooks";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -87,6 +89,8 @@ export function WebhookList() {
   const loading =
     workspaceLoading || isCheckingPermissions || (canManage && query.isLoading);
   const webhooks = query.data ?? [];
+
+  if (isForbiddenError(query.error)) return <NoAccessPage />;
 
   return (
     <>
