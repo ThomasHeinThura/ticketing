@@ -1,6 +1,10 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 export type PortalProjectKind = "project" | "managed_service";
 
@@ -100,6 +104,8 @@ export async function getPortalProjects(): Promise<{
   const response = await apiFetch(getApiUrl("/portal/projects"), {
     credentials: "include",
   });
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, "The request failed");
   if (!response.ok)
     throw new HttpError(
       response.status,
@@ -115,6 +121,8 @@ export async function getPortalProject(
     getApiUrl(`/portal/projects/${encodeURIComponent(key)}`),
     { credentials: "include" },
   );
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, "The request failed");
   if (!response.ok)
     throw new HttpError(
       response.status,

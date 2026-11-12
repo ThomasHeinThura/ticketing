@@ -22,7 +22,6 @@ import {
   Progress,
   ProgressIndicator,
   ProgressTrack,
-  Skeleton,
 } from "@taskdesk/ui";
 import {
   AlertTriangle,
@@ -32,21 +31,25 @@ import {
   Pencil,
   Plus,
 } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PageLoading } from "@/components/page-loading";
 import PageTitle from "@/components/page-title";
+import WorkItemCreateDialogHost from "@/components/work-item/work-item-create-dialog-host";
+import { preloadWorkItemCreateDialogShell } from "@/components/work-item/work-item-create-dialog-shell-loader";
 import archiveProject from "@/fetchers/project/archive-project";
 import type getProject from "@/fetchers/project/get-project";
 import {
-  getProjectOverview,
   type ProjectOverview,
   projectOverviewKeys,
 } from "@/fetchers/project/overview";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
+import { projectOverviewOptions } from "@/hooks/queries/project/project-overview-options";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { HttpError } from "@/lib/http-error";
+import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { formatPortalDuration } from "@/lib/portal-duration";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
@@ -60,11 +63,6 @@ import {
   StatusBadge,
   useFailureMessage,
 } from "./overview-shared";
-
-// The existing create-work-item modal; loaded on first open so its editor stays out of this chunk.
-const CreateTaskModal = lazy(
-  () => import("@/components/shared/modals/create-task-modal"),
-);
 
 type ProjectDetail = Awaited<ReturnType<typeof getProject>>;
 
@@ -337,8 +335,15 @@ function ServiceLevelsPanel({ overview }: { overview: ProjectOverview }) {
  * inside the Kaneo project shell. Reads need `project:read`; edit controls appear only with
  * `project:update` (summary, milestones) or `project:manage_settings` (contract).
  */
-export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
+export function ProjectOverviewPage({
+  projectKey,
+  prefetched = false,
+}: {
+  projectKey: string;
+  prefetched?: boolean;
+}) {
   const { t, i18n } = useTranslation("projectOverview");
+  const { t: workspaceT } = useTranslation("workspace");
   const {
     project: listed,
     workspaceId,
@@ -350,20 +355,29 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
   });
   const project = (detail ?? listed) as ProjectDetail | undefined;
   const projectId = project?.id ?? "";
+  // Read for this project, not the workspace at large: the server intersects the work-item
+  // flags (create included) with the caller's effective role in this project, the same read the
+  // work page's Create button and the palette make.
   const {
     canUpdateProjects,
     canManageProjectSettings,
     canCreateTasks,
     canArchiveProjects,
-  } = useWorkspacePermission();
+    isCheckingPermissions,
+  } = useWorkspacePermission(listed?.workspaceId, listed?.id, {
+    enabled: Boolean(listed),
+  });
   const canUpdate = canUpdateProjects();
   // Archive needs the strict project:archive (A8-2); project update alone is not enough.
   const canArchive = canArchiveProjects();
   const canManage = canManageProjectSettings();
-  const canCreate = canCreateTasks();
+  // Not offered while this project's scoped check is still pending.
+  const canCreate = !isCheckingPermissions && canCreateTasks();
   const [editingSummary, setEditingSummary] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [hasOpenedCreate, setHasOpenedCreate] = useState(false);
+  // The dialog code is still loading after the click; the button shows it is working.
+  const [createLoading, setCreateLoading] = useState(false);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   const failure = useFailureMessage();
   const cache = useQueryClient();
@@ -385,31 +399,25 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
       ),
   });
   const overview = useQuery({
-    queryKey: projectOverviewKeys.overview(projectId),
-    queryFn: () => getProjectOverview(projectId),
+    ...projectOverviewOptions(projectId),
     enabled: Boolean(projectId),
-    // Counts derive from work items, which change on other tabs; the app-wide default
-    // (refetchOnMount: false) would keep showing the numbers from the first visit.
-    refetchOnMount: "always",
+    // The route refreshes counts on entry; mounting reuses that same request.
+    refetchOnMount: prefetched ? false : "always",
   });
+  // The shared create dialog is not needed to paint, but Create should open without a network
+  // wait, so fetch it once the page has painted.
+  useEffect(() => {
+    if (!canCreate) return;
+    let cancelled = false;
+    void afterFirstPaint().then(() => {
+      if (!cancelled) preloadWorkItemCreateDialogShell();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canCreate]);
 
-  if (isLoading || (project && overview.isLoading))
-    return (
-      <div
-        className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 md:p-6"
-        role="status"
-        aria-label={t("loading")}
-      >
-        <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Skeleton className="h-20" />
-          <Skeleton className="h-20" />
-          <Skeleton className="h-20" />
-          <Skeleton className="h-20" />
-        </div>
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+  if (isLoading || (project && overview.isLoading)) return <PageLoading />;
   if (!project || overview.isError || !overview.data)
     return (
       <div className="mx-auto w-full max-w-6xl p-4 md:p-6">
@@ -451,6 +459,11 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
               <Badge variant="secondary">{t("header.archived")}</Badge>
             ) : null}
           </h1>
+          {listed?.seenOnlyViaWorkspaceRole ? (
+            <span className="text-muted-foreground text-xs">
+              {workspaceT("projects.notMember")}
+            </span>
+          ) : null}
           <div
             className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-muted-foreground text-xs"
             data-testid="project-overview-header-line"
@@ -496,9 +509,12 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
             ) : null}
             {canCreate && !data.archived ? (
               <Button
+                ref={createButtonRef}
                 size="sm"
+                loading={createLoading}
+                aria-busy={createLoading || undefined}
                 onClick={() => {
-                  setHasOpenedCreate(true);
+                  setCreateLoading(true);
                   setCreating(true);
                 }}
                 data-testid="project-overview-new-item"
@@ -683,21 +699,25 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
           onClose={() => setEditingSummary(false)}
         />
       ) : null}
-      {hasOpenedCreate ? (
-        <Suspense fallback={null}>
-          <CreateTaskModal
-            open={creating}
-            projectId={project.id}
-            status="to-do"
-            onClose={() => {
-              setCreating(false);
-              // The modal only invalidates the task lists; refresh the counts here.
-              void cache.invalidateQueries({
-                queryKey: projectOverviewKeys.overview(project.id),
-              });
-            }}
-          />
-        </Suspense>
+      {creating ? (
+        <WorkItemCreateDialogHost
+          projectId={project.id}
+          workspaceId={workspaceId}
+          onReady={() => setCreateLoading(false)}
+          onClose={() => {
+            setCreating(false);
+            setCreateLoading(false);
+            // The dialog only invalidates the work-item lists; refresh the counts here.
+            void cache.invalidateQueries({
+              queryKey: projectOverviewKeys.overview(project.id),
+            });
+          }}
+          finalFocus={() =>
+            createButtonRef.current?.isConnected
+              ? createButtonRef.current
+              : false
+          }
+        />
       ) : null}
       <AlertDialog
         open={confirmingArchive}

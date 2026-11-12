@@ -13,6 +13,7 @@ import { currentImpersonatorId } from "../auth/impersonation-context";
 import { appendPendingActionStepUpAudit } from "../auth/step-up-audit";
 import { consumePendingActionProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
+import type { Transaction } from "../database/executor";
 import {
   apikeyTable,
   pendingActionTable,
@@ -364,7 +365,10 @@ export async function createPendingActionInTransaction(
 }
 
 /** Creates the durable approval and its audit record before returning any 202 response. */
-export async function createPendingAction(requested: CreatePendingActionInput) {
+export async function createPendingAction(
+  requested: CreatePendingActionInput,
+  validateLockedTarget?: (tx: Transaction) => Promise<void>,
+) {
   // GM-9: an impersonator may not request a deletion (or any other pending action) as the
   // target. Every route that opens one, single or bulk, DELETE or POST, passes through here.
   if (currentImpersonatorId() !== null) {
@@ -404,6 +408,7 @@ export async function createPendingAction(requested: CreatePendingActionInput) {
       const transact = () =>
         db.transaction(async (tx) => {
           await lockPendingActionLifecycle(tx);
+          await validateLockedTarget?.(tx);
           const scope = await resolveRequestScope(tx, input);
           const executionTargetIds =
             scope.executionTargetIds ?? input.targetIds;

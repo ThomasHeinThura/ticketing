@@ -9,6 +9,9 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  FeatureOff,
+  PageContainer,
+  PageHeader,
   Skeleton,
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
@@ -16,6 +19,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChangeRisk, ServiceStatus } from "@/fetchers/service-management";
 import { isFeatureDisabled } from "@/hooks/queries/service-management";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 
@@ -50,7 +54,10 @@ export function RiskBadge({ risk }: { risk: ChangeRisk | null }) {
   );
 }
 
-/** The page frame every service-management screen shares: title, description, actions. */
+/**
+ * The page frame every service-management screen shares: title, description, actions. Built on
+ * the shared `PageContainer` and `PageHeader` (UX-1a) with the same gutter and title size.
+ */
 export function PageFrame({
   title,
   description,
@@ -63,22 +70,10 @@ export function PageFrame({
   children: ReactNode;
 }) {
   return (
-    <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">{title}</h1>
-          {description ? (
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              {description}
-            </p>
-          ) : null}
-        </div>
-        {actions ? (
-          <div className="flex items-center gap-2">{actions}</div>
-        ) : null}
-      </div>
+    <PageContainer>
+      <PageHeader title={title} description={description} actions={actions} />
       {children}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -92,20 +87,45 @@ export function LoadingRows() {
   );
 }
 
-/** A failed read: a disabled feature gets its own explanation, anything else offers a retry. */
-/** The one "Service catalogue is off" state a catalogue page shows instead of its list. */
-export function CatalogueOff() {
+/**
+ * The one "Service catalogue is off" state a catalogue page shows instead of its list: the shared
+ * `FeatureOff` (UX-1a, SR-02), with "Turn on in Features" when the viewer can manage workspace
+ * settings (`canManageFeatures`, which each page reads from its capabilities).
+ */
+export function CatalogueOff({
+  canManageFeatures = false,
+}: {
+  canManageFeatures?: boolean;
+}) {
   const { t } = useTranslation("serviceManagement");
   return (
-    <Empty data-testid="service-catalogue-off">
-      <EmptyHeader>
-        <EmptyTitle>{t("disabled.title")}</EmptyTitle>
-        <EmptyDescription>{t("disabled.description")}</EmptyDescription>
-      </EmptyHeader>
-    </Empty>
+    <FeatureOff
+      data-testid="service-catalogue-off"
+      title={t("disabled.title")}
+      description={
+        canManageFeatures
+          ? t("disabled.manageDescription")
+          : t("disabled.description")
+      }
+      action={
+        canManageFeatures
+          ? {
+              label: t("common:featureOff.turnOn"),
+              render: <Link to={routes.workspaceFeatures.path} />,
+            }
+          : undefined
+      }
+    />
   );
 }
 
+/** `CatalogueOff` for the current viewer: admins who can manage workspace settings get "Turn on". */
+function CatalogueOffForViewer() {
+  const { canManageWorkspaceSettings } = useWorkspacePermission();
+  return <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />;
+}
+
+/** A failed read: a disabled feature gets its own explanation, anything else offers a retry. */
 export function QueryFailure({
   error,
   onRetry,
@@ -126,7 +146,7 @@ export function QueryFailure({
         </EmptyHeader>
       </Empty>
     );
-  if (isFeatureDisabled(error)) return <CatalogueOff />;
+  if (isFeatureDisabled(error)) return <CatalogueOffForViewer />;
   return (
     <Alert variant="error">
       <AlertTitle>{t("common.loadErrorTitle")}</AlertTitle>

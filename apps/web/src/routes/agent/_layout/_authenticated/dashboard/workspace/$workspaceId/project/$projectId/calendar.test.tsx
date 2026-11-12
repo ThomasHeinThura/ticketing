@@ -16,6 +16,7 @@ import {
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectCalendarSearch } from "@/lib/project-board-search";
+import { headingLevels } from "@/test/headings";
 import { Route } from "./calendar";
 
 type ProjectRecord = { id: string; workspaceId: string; slug: string };
@@ -44,8 +45,14 @@ const state = vi.hoisted(() => ({
   requestedProjectsWorkspaceId: [] as string[],
 }));
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
+  useTranslation: (defaultNamespace?: string | string[]) => ({
+    t: (rawKey: string) =>
+      typeof defaultNamespace === "string" && !rawKey.includes(":")
+        ? `${defaultNamespace}:${rawKey}`
+        : rawKey,
+  }),
 }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -61,34 +68,39 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
     return state.workspaceProjects;
   },
 }));
-vi.mock("@/components/common/layout", () => ({
-  default: {
-    Content: ({ children }: { children: ReactNode }) => <>{children}</>,
-  },
+// The real off state renders through ProjectViewFeatureGate; only its permission read is stubbed.
+vi.mock("@/components/agile/use-can-manage-project-features", () => ({
+  useCanManageProjectFeatures: () => false,
+  useCanManageProjectFeaturesById: () => false,
 }));
-vi.mock("@/components/common/project-view-feature-gate", () => ({
+vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
+  useProjectFeatureState: () => state.calendarFeatureEnabled,
+}));
+vi.mock("@/components/common/project-layout", () => ({
   default: ({
     projectId,
     workspaceId,
-    view,
+    activeView,
     children,
   }: {
     projectId: string;
     workspaceId: string;
-    view: string;
+    activeView?: string;
     children: ReactNode;
-  }) =>
-    state.calendarFeatureEnabled ? (
-      <div
-        data-project-id={projectId}
-        data-testid={`feature-gate-${view}`}
-        data-workspace-id={workspaceId}
-      >
-        {children}
-      </div>
-    ) : (
-      <div data-testid={`feature-off-${view}`} />
-    ),
+  }) => (
+    <div
+      data-active-view={activeView}
+      data-project-id={projectId}
+      data-workspace-id={workspaceId}
+    >
+      {children}
+    </div>
+  ),
+}));
+vi.mock("@/components/common/layout", () => ({
+  default: {
+    Content: ({ children }: { children: ReactNode }) => <>{children}</>,
+  },
 }));
 vi.mock("@/components/calendar/project-calendar-view", () => ({
   default: ({
@@ -255,6 +267,8 @@ describe("old Kaneo calendar URL", () => {
     expect(
       await screen.findByTestId("feature-off-calendar"),
     ).toBeInTheDocument();
+    // The project shell has no h1, so the off state is the page's one h1.
+    expect(headingLevels()).toEqual([1]);
     expect(router.state.location.pathname).toBe(
       "/dashboard/workspace/workspace-2/project/project-2/calendar",
     );

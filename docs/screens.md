@@ -4,6 +4,8 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
+| Forgot password | `/auth/forgot-password` | route | P0 | 🟡 |
+| Reset password | `/auth/reset-password` | route | P0 | 🟡 |
 | Sign in (legacy `/agent/sign-in` redirects) | `/auth/sign-in` | route | P0 | 🟡 |
 | MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
 | MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
@@ -122,6 +124,8 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Import run detail | `/god-mode/imports/{id}?workspaceId={workspaceId}` | route | P6 | 🟡 |
 | Users | `/god-mode/users` | route | P4 | 🟡 |
 | Sign in | `/sign-in` | route | P3 | 🟡 |
+| Forgot password | `/forgot-password` | route | P3 | 🟡 |
+| Reset password | `/reset-password` | route | P3 | 🟡 |
 | Accept invitation | `/invite/{id}` | route | P3 | 🟡 |
 | Home | `/` | route | P3 | ⬜ |
 | Request detail (work item) | `/submissions/{ref}` | route | P3 | ⬜ |
@@ -147,7 +151,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **155** (139 routes + 16 overlays, dialogs and sections) |
+| **Total** | **159** (143 routes + 16 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

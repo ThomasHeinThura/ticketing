@@ -397,6 +397,13 @@ function PortalSignIn() {
               </AlertDescription>
             </Alert>
           ) : null}
+          <Button
+            variant="link"
+            render={<a href="/forgot-password" />}
+            className="w-full"
+          >
+            {t("auth:passwordRecovery.forgot")}
+          </Button>
           {stage === "email" ? (
             <form className="space-y-4" onSubmit={submitEmail}>
               <label

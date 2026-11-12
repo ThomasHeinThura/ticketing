@@ -3,6 +3,22 @@ import getProjects from "@/fetchers/project/get-projects";
 
 type Projects = Awaited<ReturnType<typeof getProjects>>;
 
+export function projectsOptions(
+  workspaceId: string,
+  archived?: boolean,
+  deleted?: boolean,
+) {
+  return {
+    queryKey: ["projects", workspaceId, archived, deleted],
+    queryFn: () =>
+      getProjects({
+        workspaceId,
+        includeArchived: archived ? "true" : undefined,
+        includeDeleted: deleted ? "true" : undefined,
+      }),
+  };
+}
+
 function useGetProjects<TSelected = Projects>(
   {
     workspaceId,
@@ -21,13 +37,7 @@ function useGetProjects<TSelected = Projects>(
   const archived = includeArchived ? true : undefined;
   const deleted = includeDeleted ? true : undefined;
   return useQuery({
-    queryFn: () =>
-      getProjects({
-        workspaceId,
-        includeArchived: archived ? "true" : undefined,
-        includeDeleted: deleted ? "true" : undefined,
-      }),
-    queryKey: ["projects", workspaceId, archived, deleted],
+    ...projectsOptions(workspaceId, archived, deleted),
     enabled: Boolean(workspaceId) && enabled,
     select,
   });

@@ -1,5 +1,7 @@
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../database";
+import db, { schema } from "../database";
+import { cycleTable, moduleTable } from "../database/schema-p5-agile";
 import {
   apiRouter,
   type BaseVariables,
@@ -312,6 +314,7 @@ const summaryRoute = createRoute({
   responses: {
     200: jsonResponse("Roll-up", summarySchema),
     403: errorResponse("Missing time_entry:create"),
+    404: errorResponse("Scope not found or out of reach"),
     409: errorResponse("feature.time_tracking is off"),
   },
 });
@@ -712,6 +715,53 @@ const router = apiRouter<Vars>()
   .openapi(summaryRoute, async (c) => {
     const identity = await identityOf(c);
     const query = c.req.valid("query");
+    let projectId = query.projectId;
+    if (query.workItemId) {
+      const [item] = await db
+        .select({ projectId: schema.workItemTable.projectId })
+        .from(schema.workItemTable)
+        .where(
+          and(
+            eq(schema.workItemTable.workspaceId, query.workspaceId),
+            eq(schema.workItemTable.id, query.workItemId),
+            isNull(schema.workItemTable.deletedAt),
+          ),
+        )
+        .limit(1);
+      projectId = item?.projectId;
+    } else if (query.cycleId) {
+      const [cycle] = await db
+        .select({ projectId: cycleTable.projectId })
+        .from(cycleTable)
+        .where(
+          and(
+            eq(cycleTable.workspaceId, query.workspaceId),
+            eq(cycleTable.id, query.cycleId),
+          ),
+        )
+        .limit(1);
+      projectId = cycle?.projectId;
+    } else if (query.moduleId) {
+      const [module] = await db
+        .select({ projectId: moduleTable.projectId })
+        .from(moduleTable)
+        .where(
+          and(
+            eq(moduleTable.workspaceId, query.workspaceId),
+            eq(moduleTable.id, query.moduleId),
+          ),
+        )
+        .limit(1);
+      projectId = module?.projectId;
+    }
+    if (
+      !projectId ||
+      !(await listReachOf(c).reachableProjectIds([query.workspaceId])).includes(
+        projectId,
+      )
+    ) {
+      throw new HTTPException(404, { message: "Scope not found" });
+    }
     // Without time_entry:read_any every figure is the caller's own: totals, breakdowns and cost
     // never cover another person's minutes (matches the list route and the reports).
     const canReadAny = await holds(c, "time_entry:read_any");

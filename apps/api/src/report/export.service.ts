@@ -102,7 +102,7 @@ type RenderExportInput = {
   spec: ExportSpec;
   workspaceId: string;
   identity: ResolvedIdentity;
-  caps: ReportCaps;
+  caps: ReportCaps & { projectIds?: string[] };
   now: Date;
   exporting: boolean;
   executor?: Executor;
@@ -256,6 +256,7 @@ export async function getExport(id: string): Promise<ExportRow | undefined> {
 export async function listExports(
   workspaceId: string,
   personId: string,
+  offset = 0,
 ): Promise<ExportRow[]> {
   const rows = await db
     .select()
@@ -266,7 +267,11 @@ export async function listExports(
         eq(reportExportTable.personId, personId),
       ),
     )
-    .orderBy(sql`${reportExportTable.createdAt} DESC`)
+    .orderBy(
+      sql`${reportExportTable.createdAt} DESC`,
+      sql`${reportExportTable.id} DESC`,
+    )
+    .offset(offset)
     .limit(20);
   return rows;
 }
@@ -358,7 +363,7 @@ async function currentCaps(
  * `caps` jsonb, so no column is needed) when the file is rendered. Taken after the render, so
  * the list can only be a superset of what the CSV drew from.
  */
-async function coveredProjectIds(
+export async function coveredProjectIds(
   workspaceId: string,
   identity: ResolvedIdentity,
   executor: Executor,
@@ -391,12 +396,12 @@ export async function exportReachLost(
     return true;
   const ids = stored.projectIds as string[];
   if (ids.length === 0) return false;
-  const [lost] = await selectRows<{ n: string }>(sql`SELECT count(*) AS n
+  const [allowed] = await selectRows<{ n: string }>(sql`SELECT count(*) AS n
     FROM project p
     WHERE p.workspace_id = ${row.workspaceId} AND p.deleted_at IS NULL
       AND p.id = ANY(${textArray(ids)})
-      AND NOT (${reachPredicate(identity, false)})`);
-  return Number(lost?.n ?? 0) > 0;
+      AND (${reachPredicate(identity, false)})`);
+  return Number(allowed?.n ?? 0) !== new Set(ids).size;
 }
 
 /**

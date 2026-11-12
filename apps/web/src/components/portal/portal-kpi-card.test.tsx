@@ -31,12 +31,20 @@ describe("PortalKpiCard", () => {
     );
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/requests");
+    expect(link).toHaveAttribute("data-interactive", "");
+    expect(link).toHaveClass("press-feedback", "[--press-scale:0.98]");
+    expect(link).not.toHaveClass("transition-colors");
     expect(link).toHaveTextContent("Outstanding123 need your reply");
   });
 
-  it("renders a static tile without a link", () => {
-    render(<PortalKpiCard label="Closed (30 days)" value={4} icon={Inbox} />);
+  it("renders a static tile without a link or press feedback", () => {
+    const { container } = render(
+      <PortalKpiCard label="Closed (30 days)" value={4} icon={Inbox} />,
+    );
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.getByText("4")).toBeInTheDocument();
+    const card = container.querySelector('[data-slot="portal-kpi-card"]');
+    expect(card).not.toHaveClass("press-feedback");
+    expect(card).not.toHaveAttribute("data-interactive");
   });
 });

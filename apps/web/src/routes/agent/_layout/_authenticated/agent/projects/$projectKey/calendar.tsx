@@ -44,6 +44,7 @@ function GatedRouteComponent() {
   return (
     <ProjectViewFeatureGate
       projectId={project.id}
+      projectKey={projectKey}
       workspaceId={project.workspaceId}
       view="calendar"
     >

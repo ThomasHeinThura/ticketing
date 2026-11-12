@@ -417,3 +417,90 @@ it("P1R2-1: ignores clicks and drag starts React bubbles up from portalled picke
   expect(dndMocks.mouseDown).not.toHaveBeenCalled();
   expect(dndMocks.touchStart).not.toHaveBeenCalled();
 });
+
+it("uses shared pointer and keyboard press feedback on the clickable row and suppresses press while dragging", () => {
+  const onOpenTask = vi.fn();
+  const { rerender } = render(
+    <TaskRow
+      task={task}
+      projectSlug="kan"
+      taskIsCompleted={false}
+      displayPreferences={{
+        showAssignees: false,
+        showPriority: false,
+        showDueDates: false,
+        showLabels: false,
+        showTaskNumbers: true,
+      }}
+      onOpenTask={onOpenTask}
+      t={mockT}
+    />,
+  );
+
+  const row = screen.getByRole("group");
+  expect(row).toHaveClass("press-feedback", "[--press-scale:0.99]");
+  expect(row).not.toHaveAttribute("data-task-dragging");
+  expect(row).not.toHaveAttribute("data-pressed");
+
+  // Idle sortable row: Enter shows instant keyboard press feedback and clears on keyup;
+  // Space belongs to dnd-kit's keyboard sensor rather than row press.
+  fireEvent.keyDown(row, { key: "Enter" });
+  expect(row).toHaveAttribute("data-pressed", "");
+  expect(row).toHaveAttribute("data-keyboard-press", "");
+  fireEvent.keyUp(row, { key: "Enter" });
+  expect(row).not.toHaveAttribute("data-pressed");
+  expect(row).toHaveAttribute("data-keyboard-press", "");
+
+  fireEvent.pointerDown(row);
+  expect(row).not.toHaveAttribute("data-keyboard-press");
+  fireEvent.keyDown(row, { key: " " });
+  expect(row).not.toHaveAttribute("data-pressed");
+  expect(dndMocks.keyDown).toHaveBeenCalledWith(
+    expect.objectContaining({ key: " " }),
+  );
+
+  // Non-draggable row: Space also activates press feedback and clears on blur/pointercancel.
+  rerender(
+    <TaskRow
+      task={task}
+      disableDragDrop
+      projectSlug="kan"
+      taskIsCompleted={false}
+      displayPreferences={{
+        showAssignees: false,
+        showPriority: false,
+        showDueDates: false,
+        showLabels: false,
+        showTaskNumbers: true,
+      }}
+      onOpenTask={onOpenTask}
+      t={mockT}
+    />,
+  );
+  fireEvent.keyDown(row, { key: " " });
+  expect(row).toHaveAttribute("data-pressed", "");
+  fireEvent.pointerCancel(row);
+  expect(row).not.toHaveAttribute("data-pressed");
+
+  dndMocks.isDragging = true;
+  rerender(
+    <TaskRow
+      task={task}
+      projectSlug="kan"
+      taskIsCompleted={false}
+      displayPreferences={{
+        showAssignees: false,
+        showPriority: false,
+        showDueDates: false,
+        showLabels: false,
+        showTaskNumbers: true,
+      }}
+      onOpenTask={onOpenTask}
+      t={mockT}
+    />,
+  );
+  const draggingRow = screen.getByRole("group");
+  expect(draggingRow).toHaveAttribute("data-task-dragging", "true");
+  fireEvent.keyDown(draggingRow, { key: "Enter" });
+  expect(draggingRow).not.toHaveAttribute("data-pressed");
+});

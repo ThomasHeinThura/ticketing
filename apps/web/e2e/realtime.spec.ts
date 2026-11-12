@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  totpForUri,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
+import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -87,7 +91,11 @@ test("native work-item events invalidate a second authenticated browser session"
       await first.getByLabel("Email").fill(email);
       await first.locator('input[autocomplete="new-password"]').fill(password);
       await first.getByRole("button", { name: "Create account" }).click();
-      await expect(first).toHaveURL(/\/onboarding(?:\?|$)/);
+      const { provisioningUri } = await enrollFirstAdmin(
+        first,
+        origin,
+        password,
+      );
       await first
         .getByLabel("Workspace name")
         .fill("Realtime Journey Workspace");
@@ -115,7 +123,19 @@ test("native work-item events invalidate a second authenticated browser session"
         .locator('input[autocomplete="current-password"]')
         .fill(password);
       await second.getByRole("button", { name: "Sign in" }).click();
+      await expect(second).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
+      await second.locator("#factor-code").fill(totpForUri(provisioningUri));
+      await second.getByRole("button", { name: "Verify and sign in" }).click();
       await expect(second).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
+      const firstSessionResponse = await firstContext.request.get(
+        new URL("/api/auth/get-session", origin).toString(),
+        { headers: { Origin: origin } },
+      );
+      expect(firstSessionResponse.status()).toBe(200);
+      const firstSession = (await firstSessionResponse.json()) as {
+        session?: unknown;
+      };
+      expect(Boolean(firstSession.session)).toBe(true);
       const activation = await csrfMutation(
         second,
         `/api/workspace/${encodeURIComponent(workspaceId as string)}/activate`,
@@ -189,6 +209,9 @@ test("native work-item events invalidate a second authenticated browser session"
         ),
       );
       await first.goto(new URL(listPath, origin).toString());
+      expect(new URL(first.url()).pathname).toBe(
+        new URL(listPath, origin).pathname,
+      );
       await first.getByTestId("create-work-item-trigger").click();
       await expect(first.getByTestId("create-work-item-dialog")).toBeVisible();
       await first.getByTestId("create-work-item-type-trigger").click();

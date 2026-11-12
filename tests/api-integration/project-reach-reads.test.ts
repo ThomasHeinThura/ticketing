@@ -225,6 +225,7 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         "GET /api/label/workspace/{workspaceId}",
         "GET /api/project",
         "GET /api/search",
+        "GET /api/services",
         "GET /api/views",
         "GET /api/submissions/{ref}/duplicates",
       ].sort(),

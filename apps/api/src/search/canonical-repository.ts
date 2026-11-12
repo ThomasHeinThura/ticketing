@@ -12,6 +12,7 @@ import {
   workspaceTable,
   workspaceUserTable,
 } from "../database/schema";
+import { savedViewQueryReachSql } from "../view/query-reach";
 import { projectScopeInReach } from "../view/repository";
 import { escapeLikePattern } from "./like-pattern";
 
@@ -493,6 +494,7 @@ export async function searchSavedViews(params: {
             : undefined,
         ),
         projectScopeInReach(params.reachableProjectIds),
+        savedViewQueryReachSql(params.workspaceId, params.reachableProjectIds),
         sql`lower(${savedViewTable.name}) LIKE ${contains}`,
       ),
     )

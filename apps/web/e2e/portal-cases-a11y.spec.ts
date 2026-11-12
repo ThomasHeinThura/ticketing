@@ -51,6 +51,7 @@ const session = {
 
 const baseCase = {
   source: "submission",
+  raisedBySupport: false,
   requestTypeName: "Access request",
   createdAt: "2026-09-15T00:00:00.000Z",
   updatedAt: "2026-09-16T09:30:00.000Z",
@@ -81,6 +82,7 @@ const casesPage = {
       createdBy: { name: "Dana Customer", isYou: false },
       isRequester: false,
       customerVisibility: "organisation",
+      raisedBySupport: true,
     },
     {
       // Long names and the widest badges: the table must still fit its frame (no sideways

@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Откажи",
 			"close": "Затвори",
@@ -73,6 +74,10 @@
 			"unknown": "Непознат"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Нешто тргна наопаку",
 			"troubleshooting": "Чекори за решавање проблеми:",
 			"tryAgain": "Обиди се повторно",
@@ -131,6 +136,7 @@
 				"organisationError": "Организациите на клиенти не може да се вчитаат.",
 				"organisationRetry": "Обиди се повторно",
 				"organisationEmpty": "Сè уште нема активни организации на клиенти. Овој {{term_project_one}} ќе биде интерен.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Нема (интерен {{term_project_one}})",
 				"organisationHint": "Опционално. Се избира сега и не може да се промени откако ќе се создаде проектот.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
@@ -243,6 +249,24 @@
 		"retry": "Retry",
 		"navigation": {
 			"auditLog": "Audit log"
+		},
+		"boolean": {
+			"false": "False",
+			"true": "True"
+		},
+		"featureOff": {
+			"turnOn": "Вклучи во Функции"
+		},
+		"states": {
+			"back": "Back",
+			"noAccess": {
+				"title": "You don't have access",
+				"description": "Ask a workspace admin."
+			},
+			"error": {
+				"title": "This could not be loaded",
+				"description": "Check your connection and try again."
+			}
 		}
 	},
 	"auth": {
@@ -405,6 +429,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Името на работниот простор е задолжително"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -492,6 +521,35 @@
 			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
 			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
 			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
+		},
+		"changePassword": {
+			"confirmPassword": "Confirm new password",
+			"currentPassword": "Current password",
+			"failed": "Could not change your password. Please try again.",
+			"mismatch": "Passwords do not match.",
+			"newPassword": "New password",
+			"required": "Enter your current password.",
+			"revoke": "Sign out of other sessions",
+			"saving": "Changing password…",
+			"submit": "Change password",
+			"success": "Password changed.",
+			"title": "Change password",
+			"tooLong": "Password must be at most 128 characters.",
+			"wrongCurrent": "Your current password is incorrect."
+		},
+		"passwordRecovery": {
+			"forgot": "Forgot password?",
+			"requestTitle": "Reset your password",
+			"confirmation": "If an account exists for that address, we sent a link",
+			"send": "Send reset link",
+			"back": "Back to sign in",
+			"resetTitle": "Choose a new password",
+			"newPassword": "New password",
+			"confirmPassword": "Confirm new password",
+			"mismatch": "Passwords do not match",
+			"invalid": "This link is invalid, expired, or already used. Request a new link.",
+			"success": "Your password has been reset.",
+			"reset": "Reset password"
 		}
 	},
 	"settings": {
@@ -2961,6 +3019,7 @@
 	},
 	"workspace": {
 		"projects": {
+			"notMember": "You are not a member of this project",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "Креирај {{term_project_one}}",
 			"title": "Наслов",
@@ -3038,7 +3097,14 @@
 			"creating": "Се креира...",
 			"submit": "Креирај работен простор",
 			"success": "Работниот простор е успешно креиран",
-			"error": "Неуспешно креирање на работен простор"
+			"error": "Неуспешно креирање на работен простор",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {
@@ -3065,6 +3131,9 @@
 		"inviteModal": {
 			"title": "Покани член на тим",
 			"emailLabel": "Е-пошта",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "kolega@kompanija.com",
 			"sendInvitation": "Испрати покана",
 			"success": "Поканата е успешно испратена",
@@ -3527,6 +3596,7 @@
 				"invalid": "The {{term_work_item_other}} around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"rejected": "{{key}} can't be moved right now because a rule blocks it. The board was refreshed.",
 				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"network": "Couldn't confirm the move for {{key}}. Check your connection and refresh.",
 				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"loadErrorDescription": "The board's states or {{term_work_item_other}} failed to load.",
@@ -3534,6 +3604,8 @@
 			"loadingMore": "Loading…",
 			"loadingTransitions": "Loading state changes…",
 			"loadMore": "Load more",
+			"moveRefusedReturned": "Move refused. {{key}} is back in {{state}}.",
+			"moveCancelledReturned": "Move cancelled. {{key}} is back in {{state}}.",
 			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
 			"moveDown": "Move down: {{key}} in {{state}}",
 			"moveDownShort": "Move down",
@@ -3962,7 +4034,8 @@
 			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
-			"reject": "Reject"
+			"reject": "Reject",
+			"emptyDescription": "Барањата за одобрување од тимот за поддршка се појавуваат тука."
 		},
 		"unavailable": {
 			"title": "Порталот за клиенти не е достапен",
@@ -3979,6 +4052,7 @@
 			"description": "Страницата не можеше да се вчита. Обидете се повторно."
 		},
 		"intake": {
+			"invalidNumber": "Enter a valid number.",
 			"answers": "Your answers",
 			"attachments": "Attachments",
 			"backToCatalogue": "Back to catalogue",
@@ -4267,9 +4341,12 @@
 			"window": "{{start}} – {{end}}"
 		},
 		"cases": {
+			"raisedBy": "Raised by",
+			"supportTeam": "Support team",
 			"columns": {
 				"assignedTo": "Assigned to",
 				"created": "Created",
+				"requester": "Requester",
 				"createdBy": "Created by",
 				"details": "Details",
 				"project": "Project",
@@ -4954,7 +5031,8 @@
 		"noAccessTitle": "You cannot triage {{term_submission_other}}",
 		"featureOff": {
 			"title": "Intake is off for this workspace",
-			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
+			"manageDescription": "Вклучете Intake во поставките за функции на работниот простор. Постојните {{term_submission_other}} повторно ќе се појават кога ќе се вклучи."
 		}
 	},
 	"requestTypes": {
@@ -5027,7 +5105,16 @@
 		"moveGroupDown": "Move {{group}} down",
 		"moveGroupUp": "Move {{group}} up",
 		"saveGroupOrder": "Save group order",
-		"savingGroupOrder": "Saving group order…"
+		"savingGroupOrder": "Saving group order…",
+		"choosePriority": "Choose priority",
+		"priorityValueMapping": "Priority value mapping",
+		"removeField": "Remove {{name}}",
+		"defaultGroup": "General",
+		"defaultSummary": "Summary",
+		"newQuestion": "New question",
+		"priorityMappingInvalid": "Every priority option must map to low, medium, high, or urgent before publishing.",
+		"requiredFileInvalid": "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish.",
+		"requiredFileUnavailable": "Required is unavailable for file uploads until the submission file contract is defined."
 	},
 	"slaPolicies": {
 		"editor": {
@@ -5775,12 +5862,9 @@
 			"runtime": "Using saved instance configuration.",
 			"unconfigured": "No email provider is configured."
 		},
-		"test": "Test connection",
-		"testHelp": "Checks connection and authentication without sending an email.",
 		"title": "Notification delivery",
 		"unavailable": "Email configuration unavailable",
 		"username": "Username (optional)",
-		"verified": "Connection verified. No email was sent.",
 		"mention": {
 			"description": "Email me when someone mentions me in a work item comment.",
 			"enabled": "Email for mentions",
@@ -5823,12 +5907,6 @@
 			"saveFailed": "The comment preference could not be saved. Try again.",
 			"title": "Work item comment emails"
 		},
-		"diagnostics": {
-			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
-			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
-			"smtp_timeout": "The SMTP server did not respond before the connection deadline.",
-			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings."
-		},
 		"teamNotification": {
 			"title": "Team notifications",
 			"description": "Email notifications sent to your teams by automation rules.",
@@ -5845,7 +5923,103 @@
 		},
 		"captureToMailpit": "Capture email in local Mailpit inbox (local Compose only)",
 		"captureHelp": "Local testing only. Messages are captured in the Mailpit inbox instead of being sent externally.",
-		"captureUnavailable": "Local Mailpit capture is unavailable in this deployment. Enter a public SMTP configuration to continue."
+		"captureUnavailable": "Local Mailpit capture is unavailable in this deployment. Enter a public SMTP configuration to continue.",
+		"credentialsRequired": "Enter the password for the new provider. A saved password is not reused when the provider changes.",
+		"testDestinationPasswordRequired": "Enter the SMTP password again to test changed connection settings, or save cleared credentials before testing without authentication.",
+		"failure": {
+			"authentication": "Wrong SMTP credentials: the server rejected the user name or password.",
+			"connection": "The host could not be reached. Check the host, the port and network access.",
+			"failed": "The test email could not be sent.",
+			"message_rejected": "The server did not accept the sender or the recipient.",
+			"rejected": "The server refused the message.",
+			"starttls_required": "The server requires a STARTTLS connection. Keep “Require TLS before authentication” on and use port 587.",
+			"temporary": "The server reported a temporary problem. Try again shortly.",
+			"throttled": "The server is limiting how fast mail may be sent. Wait a moment and try again.",
+			"timeout": "The server did not answer in time.",
+			"tls": "The secure connection could not be verified. Check the certificate and the TLS settings."
+		},
+		"failureSes": {
+			"authentication": "Amazon SES rejected the SMTP credentials (535). Use the SES SMTP user name and password from the SES console, not your AWS access key.",
+			"message_rejected": "Amazon SES refused the message (554). The From address must be a verified SES identity, and while the account is in the sandbox the recipient must be verified too.",
+			"starttls_required": "Amazon SES requires a STARTTLS connection (530). Keep “Require TLS before authentication” on and use port 587.",
+			"throttled": "Amazon SES is throttling this account (454). Wait a moment and try again."
+		},
+		"failureShort": {
+			"authentication": "wrong SMTP credentials",
+			"connection": "server unreachable",
+			"failed": "send failed",
+			"message_rejected": "sender or recipient not accepted",
+			"rejected": "message refused",
+			"starttls_required": "STARTTLS required",
+			"temporary": "temporary server problem",
+			"throttled": "throttled",
+			"timeout": "timed out",
+			"tls": "secure connection could not be verified"
+		},
+		"provider": "Provider",
+		"providerChoice": {
+			"label": "Send email through",
+			"ses": "Amazon SES",
+			"smtp": "Custom SMTP"
+		},
+		"region": "Region",
+		"ses": {
+			"credentialsHelp": "Create these in the SES console under SMTP settings. They are not your AWS access key.",
+			"dismiss": "Dismiss",
+			"fromHelp": "Must be an identity verified in Amazon SES, either this address or its domain.",
+			"password": "SES SMTP password",
+			"regionHelp": "The region decides the SMTP host. Port 587 with STARTTLS is fixed and shown read-only.",
+			"regionLabel": "AWS region",
+			"regionOption": "{{name}} ({{region}})",
+			"regionPlaceholder": "Choose a region",
+			"regions": {
+				"ap-northeast-1": "Asia Pacific (Tokyo)",
+				"ap-northeast-2": "Asia Pacific (Seoul)",
+				"ap-northeast-3": "Asia Pacific (Osaka)",
+				"ap-south-1": "Asia Pacific (Mumbai)",
+				"ap-southeast-1": "Asia Pacific (Singapore)",
+				"ap-southeast-2": "Asia Pacific (Sydney)",
+				"ca-central-1": "Canada (Central)",
+				"eu-central-1": "Europe (Frankfurt)",
+				"eu-north-1": "Europe (Stockholm)",
+				"eu-west-1": "Europe (Ireland)",
+				"eu-west-2": "Europe (London)",
+				"eu-west-3": "Europe (Paris)",
+				"sa-east-1": "South America (São Paulo)",
+				"us-east-1": "US East (N. Virginia)",
+				"us-east-2": "US East (Ohio)",
+				"us-gov-east-1": "AWS GovCloud (US-East)",
+				"us-gov-west-1": "AWS GovCloud (US-West)",
+				"us-west-1": "US West (N. California)",
+				"us-west-2": "US West (Oregon)"
+			},
+			"sandboxBody": "In the sandbox SES only delivers to verified addresses. Until your account has production access, use “Copy link” on invitations to send them by hand.",
+			"sandboxTitle": "New Amazon SES accounts start in the sandbox",
+			"username": "SES SMTP user name"
+		},
+		"status": {
+			"failed": "Failed",
+			"lastTested": "Last tested {{time}}: {{result}}",
+			"never": "Never tested",
+			"resultFailed": "{{reason}}",
+			"resultFailedCode": "{{reason}} (SMTP {{code}})",
+			"resultVerified": "test email sent",
+			"stale": "Not tested since change",
+			"verified": "Verified"
+		},
+		"testSend": {
+			"button": "Send test email",
+			"failedTitle": "The test email was not sent",
+			"help": "Sends one short email to this address using the values in this form, saved or not. Testing does not save anything.",
+			"notSaved": "These values are not saved yet. Save them, then test again to record the result.",
+			"recipientLabel": "Send the test email to",
+			"recipientRequired": "Enter the address that should receive the test email.",
+			"replyCodeOnly": "Server reply {{code}}",
+			"replyTextOnly": "Server reply: {{text}}",
+			"replyWithCode": "Server reply {{code}}: {{text}}",
+			"sending": "Sending…",
+			"sent": "Test email accepted by the mail server. Check the inbox of the address above."
+		}
 	},
 	"featureFlags": {
 		"flags": {
@@ -7116,32 +7290,40 @@
 		"featureOff": {
 			"cycles": {
 				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
-				"title": "{{term_cycle_other}} are off for this {{term_project_one}}"
+				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
+				"manageDescription": "Вклучете {{term_cycle_other}} во поставките за функции на овој {{term_project_one}}. Постојните {{term_cycle_other}} повторно ќе се појават кога ќе се вклучи."
 			},
 			"estimates": {
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
-				"title": "Estimates are off for this {{term_project_one}}"
+				"title": "Estimates are off for this {{term_project_one}}",
+				"manageDescription": "Turn on Estimates in this {{term_project_one}}'s feature settings. Existing estimates come back when it is switched on."
 			},
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
-				"title": "{{term_module_other}} are off for this {{term_project_one}}"
+				"title": "{{term_module_other}} are off for this {{term_project_one}}",
+				"manageDescription": "Вклучете {{term_module_other}} во поставките за функции на овој {{term_project_one}}. Постојните {{term_module_other}} повторно ќе се појават кога ќе се вклучи."
 			},
 			"calendar": {
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "Calendar is off for this {{term_project_one}}"
+				"title": "Calendar is off for this {{term_project_one}}",
+				"manageDescription": "Turn on Calendar in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"timeline": {
 				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "The timeline is off for this {{term_project_one}}"
+				"title": "The timeline is off for this {{term_project_one}}",
+				"manageDescription": "Turn on the timeline in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
-				"title": "SLAs are off for this workspace"
+				"title": "SLAs are off for this workspace",
+				"manageDescription": "Вклучете ги нивоата на услуга во поставките за функции на работниот простор за да користите SLA политики и календари за услуги."
 			},
 			"pages": {
 				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
-				"title": "Pages are off for this {{term_project_one}}"
-			}
+				"title": "Pages are off for this {{term_project_one}}",
+				"manageDescription": "Turn on Pages in this {{term_project_one}}'s feature settings. Existing pages come back when it is switched on."
+			},
+			"openSettings": "Отвори поставки за функции"
 		},
 		"modules": {
 			"create": "Create {{term_module_one}}",
@@ -7585,7 +7767,8 @@
 		},
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
-			"title": "{{term_service_one}} catalogue is off"
+			"title": "{{term_service_one}} catalogue is off",
+			"manageDescription": "Вклучете го каталогот {{term_service_one}} во поставките за функции на работниот простор."
 		},
 		"freezes": {
 			"affected_one": "{{count}} planned {{term_change_one}} now falls inside this freeze and cannot be approved without an override.",
@@ -8689,7 +8872,8 @@
 		"errors": {
 			"disabled": {
 				"description": "An administrator can turn this feature on in the workspace feature settings.",
-				"title": "Reports are off"
+				"title": "Reports are off",
+				"manageDescription": "Вклучете ги извештаите во поставките за функции на работниот простор за да гледате извештаи и контролни табли."
 			},
 			"failed": {
 				"description": "Try again in a moment.",

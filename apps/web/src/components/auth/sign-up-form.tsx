@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import { authClient } from "@/lib/auth-client";
+import { localPasswordSchema } from "@/lib/password-schema";
 import { toast } from "@/lib/toast";
 
 export type SignUpFormValues = {
@@ -45,9 +46,10 @@ export function SignUpForm({
     () =>
       z.object({
         email: z.email(),
-        password: z.string().min(8, {
-          message: t("auth:signUpForm.passwordTooShort"),
-        }),
+        password: localPasswordSchema(
+          t("auth:signUpForm.passwordTooShort"),
+          t("auth:changePassword.tooLong"),
+        ),
         name: z.string(),
       }),
     [t],

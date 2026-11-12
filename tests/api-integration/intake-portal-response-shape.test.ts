@@ -17,6 +17,7 @@ import {
 } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
+import { staffRequest } from "./helpers/intake-http";
 
 const PNG_BYTES = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
@@ -216,33 +217,54 @@ describe("customer-facing intake responses expose only declared fields", () => {
       ref: string;
     };
 
+    // The page returns only the answers of fields the form version declares and shows. The
+    // version declares `answer`, so a stored object keeps it; every other stored JSON shape
+    // (and any undeclared key) is read as no answers rather than passed to the customer.
+    const declared = {
+      fields: [{ key: "answer", type: "text", label: "Answer" }],
+    };
+    await db
+      .update(schema.requestTypeVersionTable)
+      .set({ formSchema: declared })
+      .where(eq(schema.requestTypeVersionTable.requestTypeId, requestType.id));
     const cases = [
       {
         name: "object",
         stored: { answer: "yes" },
         raw: { answer: "yes" },
         typed: { answer: "yes" },
+        shown: { answer: "yes" },
+      },
+      {
+        name: "object with an undeclared key",
+        stored: { answer: "yes", legacy_key: "old" },
+        raw: { answer: "yes", legacy_key: "old" },
+        typed: { answer: "yes", legacy_key: "old" },
+        shown: { answer: "yes" },
       },
       {
         name: "array",
         stored: ["one", 2],
         raw: ["one", 2],
         typed: ["one", 2],
+        shown: {},
       },
-      { name: "number scalar", stored: 7, raw: 7, typed: 7 },
+      { name: "number scalar", stored: 7, raw: 7, typed: 7, shown: {} },
       {
         name: "ordinary string scalar",
         stored: "plain text",
         raw: "plain text",
         typed: "plain text",
+        shown: {},
       },
       {
         name: "JSON text string scalar",
         stored: '{"answer":"yes"}',
         raw: '{"answer":"yes"}',
         typed: { answer: "yes" },
+        shown: { answer: "yes" },
       },
-      { name: "JSON null", stored: null, raw: null, typed: null },
+      { name: "JSON null", stored: null, raw: null, typed: null, shown: {} },
     ];
 
     for (const value of cases) {
@@ -283,7 +305,7 @@ describe("customer-facing intake responses expose only declared fields", () => {
       expect(
         detail.submission.formData,
         `${value.name}: repository value`,
-      ).toEqual(value.typed);
+      ).toEqual(value.shown);
 
       const response = await portalRequest(
         t,
@@ -312,11 +334,13 @@ describe("customer-facing intake responses expose only declared fields", () => {
         "canUpload",
         "canViewAttachments",
         "canWithdraw",
+        "createdBy",
         // CF-11: customer-visible custom fields (label and value only).
         "customFields",
         "customerStatus",
         "isRequester",
         "messages",
+        "raisedBySupport",
         "ref",
         "requestType",
         "satisfaction",
@@ -334,9 +358,294 @@ describe("customer-facing intake responses expose only declared fields", () => {
       expect(
         body.submission.formData,
         `${value.name}: HTTP JSON value`,
-      ).toEqual(value.typed);
+      ).toEqual(value.shown);
     }
   });
+
+  /** Replace the form of the seeded request type and its published version. */
+  async function setForm(
+    requestTypeId: string,
+    formSchema: Record<string, unknown>,
+  ) {
+    await db
+      .update(schema.requestTypeTable)
+      .set({ formSchema })
+      .where(eq(schema.requestTypeTable.id, requestTypeId));
+    await db
+      .update(schema.requestTypeVersionTable)
+      .set({ formSchema })
+      .where(eq(schema.requestTypeVersionTable.requestTypeId, requestTypeId));
+  }
+
+  const hardwareForm = (condition: Record<string, unknown>) => ({
+    fields: [
+      {
+        key: "summary",
+        type: "text",
+        label: "Summary",
+        required: true,
+        mapsTo: { field: "title" },
+      },
+      { key: "gate", type: "checkbox", label: "Hardware involved?" },
+      {
+        key: "serial",
+        type: "text",
+        label: "Serial number",
+        showIf: { field_key: "gate", ...condition },
+      },
+      { key: "notes", type: "text", label: "Notes" },
+    ],
+  });
+
+  async function submitForm(
+    seeded: Awaited<ReturnType<typeof seed>>,
+    formData: Record<string, unknown>,
+  ) {
+    const created = await portalRequest(
+      seeded.t,
+      seeded.customer,
+      "/api/portal/submissions",
+      {
+        method: "POST",
+        body: { key: seeded.requestType.key, formData },
+      },
+    );
+    expect(created.status, await created.clone().text()).toBe(200);
+    return ((await created.json()) as { ref: string }).ref;
+  }
+
+  async function storedFormData(ref: string) {
+    const number = Number(ref.replace("SUB-", ""));
+    const [row] = await db
+      .select({ formData: schema.submissionTable.formData })
+      .from(schema.submissionTable)
+      .where(eq(schema.submissionTable.number, number));
+    return row?.formData;
+  }
+
+  it("returns only the visible declared answers to the customer and to triage, and leaves the stored row alone", async () => {
+    const s = await seed();
+    await setForm(s.requestType.id, hardwareForm({ op: "eq", value: true }));
+    const ref = await submitForm(s, { summary: "Printer", gate: false });
+    // An older row: the form hid `serial`, but the stored answers kept whatever was sent,
+    // plus a key this version never declared.
+    const legacy = {
+      summary: "Printer",
+      gate: false,
+      serial: "smuggled-serial",
+      notes: "kept note",
+      legacy_key: "old answer",
+    };
+    const number = Number(ref.replace("SUB-", ""));
+    await db
+      .update(schema.submissionTable)
+      .set({ formData: legacy })
+      .where(eq(schema.submissionTable.number, number));
+
+    const visible = { summary: "Printer", gate: false, notes: "kept note" };
+    const readBoth = async () => {
+      const portal = await portalRequest(
+        s.t,
+        s.customer,
+        `/api/portal/submissions/${ref}`,
+      );
+      expect(portal.status, await portal.clone().text()).toBe(200);
+      const staff = await staffRequest(
+        s.t,
+        s.t.requester,
+        `/api/submissions/${ref}`,
+      );
+      expect(staff.status, await staff.clone().text()).toBe(200);
+      const queue = await staffRequest(
+        s.t,
+        s.t.requester,
+        `/api/submissions?workspaceId=${s.t.workspaceId}`,
+      );
+      expect(queue.status, await queue.clone().text()).toBe(200);
+      return {
+        portal: (await portal.json()) as {
+          submission: { formData: unknown };
+          version: { formSchema: { fields: Array<{ key: string }> } };
+        },
+        staff: (await staff.json()) as { submission: { formData: unknown } },
+        queue: (await queue.json()) as {
+          submissions: Array<{ ref: string; summary: string }>;
+        },
+      };
+    };
+
+    const hidden = await readBoth();
+    expect(hidden.portal.submission.formData).toEqual(visible);
+    expect(hidden.staff.submission.formData).toEqual(visible);
+    expect(
+      hidden.portal.version.formSchema.fields.map((field) => field.key),
+    ).toEqual(["summary", "gate", "notes"]);
+    for (const body of [hidden.portal, hidden.staff])
+      expect(JSON.stringify(body)).not.toMatch(/smuggled-serial|old answer/u);
+    expect(
+      hidden.queue.submissions.find((row) => row.ref === ref)?.summary,
+    ).toBe("Printer");
+    // History is not rewritten: the stored answers are exactly what was stored.
+    expect(await storedFormData(ref)).toEqual(legacy);
+
+    // Once the controlling box is ticked the same stored answer is a visible one.
+    await db
+      .update(schema.submissionTable)
+      .set({ formData: { ...legacy, gate: true } })
+      .where(eq(schema.submissionTable.number, number));
+    const shown = await readBoth();
+    const expected = { ...visible, gate: true, serial: "smuggled-serial" };
+    expect(shown.portal.submission.formData).toEqual(expected);
+    expect(shown.staff.submission.formData).toEqual(expected);
+  });
+
+  it.each([
+    // `ghost` is named by the condition but the version never declares it: whatever is stored
+    // under it must not decide whether `detail` shows.
+    ["eq", { op: "eq", value: "yes" }, false],
+    ["neq", { op: "neq", value: "yes" }, true],
+  ])(
+    "an undeclared stored key named by a '%s' condition neither shows nor hides a field, and fields and answers agree",
+    async (_name, condition, detailShown) => {
+      const s = await seed();
+      await setForm(s.requestType.id, {
+        fields: [
+          { key: "summary", type: "text", label: "Summary", required: true },
+          {
+            key: "detail",
+            type: "text",
+            label: "Detail",
+            showIf: { field_key: "ghost", ...condition },
+          },
+          { key: "notes", type: "text", label: "Notes" },
+        ],
+      });
+      const ref = await submitForm(s, { summary: "Printer" });
+      const stored = {
+        summary: "Printer",
+        ghost: "yes",
+        detail: "stored detail",
+        notes: "kept note",
+      };
+      await db
+        .update(schema.submissionTable)
+        .set({ formData: stored })
+        .where(
+          eq(schema.submissionTable.number, Number(ref.replace("SUB-", ""))),
+        );
+
+      const portal = await portalRequest(
+        s.t,
+        s.customer,
+        `/api/portal/submissions/${ref}`,
+      );
+      expect(portal.status, await portal.clone().text()).toBe(200);
+      const portalBody = (await portal.json()) as {
+        submission: { formData: Record<string, unknown> };
+        version: { formSchema: { fields: Array<{ key: string }> } };
+      };
+      const staff = await staffRequest(
+        s.t,
+        s.t.requester,
+        `/api/submissions/${ref}`,
+      );
+      expect(staff.status, await staff.clone().text()).toBe(200);
+      const staffBody = (await staff.json()) as {
+        submission: { formData: Record<string, unknown> };
+      };
+
+      const answers = {
+        summary: "Printer",
+        ...(detailShown ? { detail: "stored detail" } : {}),
+        notes: "kept note",
+      };
+      const fieldKeys = portalBody.version.formSchema.fields.map(
+        (field) => field.key,
+      );
+      expect(fieldKeys).toEqual(
+        detailShown ? ["summary", "detail", "notes"] : ["summary", "notes"],
+      );
+      expect(portalBody.submission.formData).toEqual(answers);
+      expect(staffBody.submission.formData).toEqual(answers);
+      // The two never disagree: every returned answer belongs to a listed field.
+      for (const key of Object.keys(portalBody.submission.formData))
+        expect(fieldKeys).toContain(key);
+      // The undeclared key is never returned, and history is not rewritten.
+      for (const returned of [
+        portalBody.submission.formData,
+        staffBody.submission.formData,
+      ])
+        expect(Object.hasOwn(returned, "ghost")).toBe(false);
+      expect(await storedFormData(ref)).toEqual(stored);
+    },
+  );
+
+  it("does not store a forged answer for a hidden text field or a key the form never declared", async () => {
+    const s = await seed();
+    await setForm(s.requestType.id, hardwareForm({ op: "eq", value: true }));
+    const hiddenRef = await submitForm(s, {
+      summary: "Printer",
+      gate: false,
+      serial: "forged serial",
+      rogue: "undeclared",
+    });
+    expect(await storedFormData(hiddenRef)).toEqual({
+      summary: "Printer",
+      gate: false,
+    });
+    // The same answer is kept when its field is shown.
+    const shownRef = await submitForm(s, {
+      summary: "Printer",
+      gate: true,
+      serial: "SN-1",
+      rogue: "undeclared",
+    });
+    expect(await storedFormData(shownRef)).toEqual({
+      summary: "Printer",
+      gate: true,
+      serial: "SN-1",
+    });
+  });
+
+  it.each([
+    ["the text 'true'", { op: "eq", value: "true" }, true],
+    ["the text 'TRUE '", { op: "eq", value: "TRUE " }, true],
+    ["the text 'false' (neq)", { op: "neq", value: "false" }, true],
+    [
+      "the empty text (eq), left by a field turned into a checkbox",
+      { op: "eq", value: "" },
+      false,
+    ],
+    [
+      "the empty text (neq), left by a field turned into a checkbox",
+      { op: "neq", value: "" },
+      true,
+    ],
+  ])(
+    "evaluates a version published with %s as a checkbox condition (D4)",
+    async (_name, condition, shownWhenChecked) => {
+      const s = await seed();
+      await setForm(s.requestType.id, hardwareForm(condition));
+      const checked = await submitForm(s, {
+        summary: "Printer",
+        gate: true,
+        serial: "SN-1",
+      });
+      const unchecked = await submitForm(s, {
+        summary: "Printer",
+        gate: false,
+        serial: "SN-2",
+      });
+      const serialOf = async (ref: string) =>
+        ((await storedFormData(ref)) as Record<string, unknown>).serial;
+      expect(await serialOf(checked)).toBe(
+        shownWhenChecked ? "SN-1" : undefined,
+      );
+      expect(await serialOf(unchecked)).toBe(
+        shownWhenChecked ? undefined : "SN-2",
+      );
+    },
+  );
 
   it("SLA-21: shows the owner only state and due time; nothing from the policy or pauses", async () => {
     const { t, customer, requestType } = await seed();

@@ -47,7 +47,7 @@ function PortalNotFound() {
   );
 }
 
-function PortalError({ reset }: { reset: () => void }) {
+function PortalError({ reset, error }: { reset: () => void; error: unknown }) {
   const router = useRouter();
   // Clearing the boundary alone would show the same failed match again: run the root's
   // beforeLoad (the session read) once more, then clear it.
@@ -56,7 +56,7 @@ function PortalError({ reset }: { reset: () => void }) {
   };
   return (
     <Suspense fallback={null}>
-      <PortalErrorState reset={tryAgain} />
+      <PortalErrorState reset={tryAgain} error={error} />
     </Suspense>
   );
 }
@@ -65,6 +65,8 @@ function PortalError({ reset }: { reset: () => void }) {
 // (the invitee signs in from the accept page).
 const isSignIn = (pathname: string) =>
   pathname === "/sign-in" ||
+  pathname === "/forgot-password" ||
+  pathname === "/reset-password" ||
   pathname === "/portal/sign-in" ||
   pathname.startsWith("/invite/");
 
@@ -86,7 +88,11 @@ async function readPortalSession() {
   const result = await portalAuthClient.getSession();
   if (result.error) {
     if (result.error.status >= 500)
-      throw new HttpError(result.error.status, "session_unavailable");
+      throw new HttpError(
+        result.error.status,
+        "session_unavailable",
+        result.error.requestId,
+      );
     return null;
   }
   return result.data?.session ? result.data : null;

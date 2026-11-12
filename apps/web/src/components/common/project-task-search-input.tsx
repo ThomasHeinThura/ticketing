@@ -1,6 +1,6 @@
 import { Button, Input } from "@taskdesk/ui";
 import { Search, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 interface ProjectTaskSearchInputProps {
   value: string;
@@ -21,22 +21,27 @@ export default function ProjectTaskSearchInput({
   registerShortcut = true,
 }: ProjectTaskSearchInputProps) {
   const internalInputRef = useRef<HTMLInputElement>(null);
-  const resolvedInputRef = inputRef ?? internalInputRef;
+  const setInputRef = useCallback(
+    (node: HTMLInputElement | null) => {
+      internalInputRef.current = node;
+      if (typeof inputRef === "function") inputRef(node);
+      else if (inputRef) inputRef.current = node;
+    },
+    [inputRef],
+  );
 
   useEffect(() => {
     if (!registerShortcut) return;
     const focusSearch = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
         event.preventDefault();
-        if (resolvedInputRef && "current" in resolvedInputRef) {
-          resolvedInputRef.current?.focus();
-        }
+        internalInputRef.current?.focus();
       }
     };
 
     window.addEventListener("keydown", focusSearch);
     return () => window.removeEventListener("keydown", focusSearch);
-  }, [registerShortcut, resolvedInputRef]);
+  }, [registerShortcut]);
 
   return (
     <div className="relative w-full max-w-sm">
@@ -44,7 +49,7 @@ export default function ProjectTaskSearchInput({
           earlier absolute sibling, which hid this icon in light mode. */}
       <Search className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <Input
-        ref={resolvedInputRef}
+        ref={setInputRef}
         aria-label={placeholder}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
@@ -58,7 +63,10 @@ export default function ProjectTaskSearchInput({
           variant="ghost"
           size="icon"
           aria-label={clearLabel}
-          onClick={() => onValueChange("")}
+          onClick={() => {
+            internalInputRef.current?.focus();
+            onValueChange("");
+          }}
           className="absolute top-1/2 right-1 size-7 -translate-y-1/2"
         >
           <X aria-hidden="true" className="size-3.5" />

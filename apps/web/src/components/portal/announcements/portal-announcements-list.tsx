@@ -9,12 +9,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
+  EmptyState,
   Skeleton,
 } from "@taskdesk/ui";
+import { Megaphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AnnouncementSeverityBadge } from "@/components/announcements/announcement-severity-badge";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
@@ -94,14 +92,12 @@ export function PortalAnnouncementsList({
           </AlertDescription>
         </Alert>
       ) : entries.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>{t("portal:announcements.emptyTitle")}</EmptyTitle>
-            <EmptyDescription>
-              {t("portal:announcements.emptyDescription")}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        // UX-1a (CP-10): the shared empty look.
+        <EmptyState
+          icon={<Megaphone />}
+          title={t("portal:announcements.emptyTitle")}
+          description={t("portal:announcements.emptyDescription")}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {entries.map((announcement) => (

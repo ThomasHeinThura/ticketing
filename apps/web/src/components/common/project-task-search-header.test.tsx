@@ -112,4 +112,19 @@ describe("ProjectTaskSearchHeader", () => {
       expect(screen.getAllByPlaceholderText(PLACEHOLDER)).toHaveLength(2),
     );
   });
+
+  it("keeps focus in the popover search after clearing", async () => {
+    render(<Harness initial="urgent" />);
+    fireEvent.click(screen.getByRole("button", { name: PLACEHOLDER }));
+    await waitFor(() =>
+      expect(screen.getAllByPlaceholderText(PLACEHOLDER)).toHaveLength(2),
+    );
+    const input = screen.getAllByPlaceholderText(PLACEHOLDER)[1];
+    const clear = screen.getAllByRole("button", { name: "Clear all" }).at(-1);
+    expect(clear).toBeDefined();
+    clear?.focus();
+    fireEvent.click(clear as HTMLElement);
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue("");
+  });
 });

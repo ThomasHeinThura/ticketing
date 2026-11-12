@@ -27,6 +27,7 @@ export const Route = createFileRoute(
       });
   },
   component: RouteComponent,
+  // The workspace list deliberately shows its labelled project table shape immediately.
   pendingComponent: ProjectsRouteLoading,
   pendingMs: 0,
   pendingMinMs: 0,

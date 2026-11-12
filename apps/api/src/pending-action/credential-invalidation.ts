@@ -7,8 +7,10 @@ import type {
   Where,
 } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { and, eq, inArray, ne, type SQL } from "drizzle-orm";
+import { and, eq, inArray, like, ne, type SQL } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
+import { RESET_IDENTIFIER_PREFIX } from "../auth/password-reset";
+import { lockFirstUserPromotion } from "../auth/repository";
 import db, { schema as importedSchema } from "../database";
 import {
   apikeyTable,
@@ -16,6 +18,7 @@ import {
   personTable,
   sessionTable,
   userTable,
+  verificationTable,
 } from "../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
@@ -42,13 +45,72 @@ type PendingActionInvalidationReason =
   | "version_changed"
   | "scope_changed";
 
+type PasswordSessionSource = {
+  id: string;
+  userId: string;
+  portal: "agent" | "customer";
+  identityConnectionId: string | null;
+  activeOrganizationId: string | null;
+  activeTeamId: string | null;
+};
 type ExplicitCredentialMutationState = ExplicitCredentialMutation & {
   deleteFailure: unknown | null;
+  passwordSessionSource?: PasswordSessionSource;
 };
+
+export function setPasswordSessionSource(source: PasswordSessionSource) {
+  const state = explicitMutationStorage.getStore();
+  if (state?.route !== "/change-password")
+    throw new Error("Password change transaction required");
+  state.passwordSessionSource = source;
+}
+
+export function getPasswordSessionSource() {
+  const state = explicitMutationStorage.getStore();
+  return state?.route === "/change-password"
+    ? state.passwordSessionSource
+    : undefined;
+}
 
 const explicitMutationStorage =
   new AsyncLocalStorage<ExplicitCredentialMutationState>();
 const transactionStorage = new AsyncLocalStorage<PendingActionTransaction>();
+const firstUserAdmissionStorage =
+  new AsyncLocalStorage<PendingActionTransaction>();
+
+class FirstUserAdmissionRollback extends Error {
+  constructor(readonly response: Response) {
+    super("First-user signup did not succeed");
+  }
+}
+
+/** Enlist every Better Auth signup write and hook in the promotion-lock transaction. */
+export async function withFirstUserAdmissionTransaction<T>(
+  callback: () => Promise<T>,
+): Promise<T> {
+  if (firstUserAdmissionStorage.getStore()) return callback();
+  try {
+    return await db.transaction(async (tx) => {
+      await lockFirstUserPromotion(tx);
+      return transactionStorage.run(tx, () =>
+        firstUserAdmissionStorage.run(tx, async () => {
+          const result = await callback();
+          if (result instanceof Response && result.status >= 400) {
+            throw new FirstUserAdmissionRollback(result);
+          }
+          return result;
+        }),
+      );
+    });
+  } catch (error) {
+    if (error instanceof FirstUserAdmissionRollback) return error.response as T;
+    throw error;
+  }
+}
+
+export function currentFirstUserAdmissionTransaction() {
+  return firstUserAdmissionStorage.getStore() ?? null;
+}
 
 type TotpEnrollmentContext = {
   pendingActionAuditFailures: number;
@@ -71,11 +133,49 @@ export class AccountDeletionRetryError extends Error {
   }
 }
 
+class PasswordChangeResponseRollback extends Error {
+  constructor(
+    readonly outcome: {
+      result: unknown;
+      state: ExplicitCredentialMutationState;
+    },
+  ) {
+    super("Password change failed; transaction rolled back");
+  }
+}
+
 /** The route marker is server-owned and exists only around the Better Auth handler. */
 export async function withExplicitCredentialMutation<T>(
   mutation: ExplicitCredentialMutation,
   callback: () => Promise<T>,
 ): Promise<{ result: T; state: ExplicitCredentialMutationState }> {
+  if (mutation.route === "/change-password" && !transactionStorage.getStore()) {
+    try {
+      return await withTotpSessionEnrollment(
+        async () => {
+          const outcome = await withExplicitCredentialMutation(
+            mutation,
+            callback,
+          );
+          if (
+            outcome.state.deleteFailure ||
+            (outcome.result instanceof Response && !outcome.result.ok)
+          ) {
+            throw new PasswordChangeResponseRollback(outcome);
+          }
+          return outcome;
+        },
+        { markExplicitSessionMutation: false },
+      );
+    } catch (error) {
+      if (error instanceof PasswordChangeResponseRollback)
+        return error.outcome as {
+          result: T;
+          state: ExplicitCredentialMutationState;
+        };
+      throw error;
+    }
+  }
   const state: ExplicitCredentialMutationState = {
     ...mutation,
     deleteFailure: null,
@@ -141,7 +241,7 @@ class TotpResponseRollback extends Error {
   }
 }
 
-/** Run the installed TOTP API operation and all adapter/hook writes atomically. */
+/** Run a factor enrollment or password-session rotation with lifecycle writes atomically. */
 export async function withTotpSessionEnrollment<T>(
   callback: (executor: PendingActionTransaction) => Promise<T>,
   options: { markExplicitSessionMutation?: boolean } = {},
@@ -485,6 +585,9 @@ function currentTransaction(): PendingActionTransaction {
 }
 
 type AdapterWhere = Where[];
+type AdapterUpdateManyInput = Parameters<
+  DBAdapter<BetterAuthOptions>["updateMany"]
+>[0];
 type AdapterUpdateInput = Parameters<DBAdapter<BetterAuthOptions>["update"]>[0];
 
 function exactSelector(where: AdapterWhere | undefined, allowedField: string) {
@@ -831,7 +934,102 @@ function withCredentialRevocationWrites<
 >(target: A, base: DBAdapter<BetterAuthOptions>): A {
   return {
     ...target,
+    create: async <T extends Record<string, unknown>, R = T>(input: {
+      model: string;
+      data: Omit<T, "id">;
+      select?: string[];
+      forceAllowId?: boolean;
+    }): Promise<R> => {
+      const data = input.data as Record<string, unknown>;
+      if (
+        input.model !== "verification" ||
+        typeof data.identifier !== "string" ||
+        !data.identifier.startsWith(RESET_IDENTIFIER_PREFIX) ||
+        typeof data.value !== "string"
+      )
+        return target.create<T, R>(input);
+      const userId = data.value;
+      return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+        await tx
+          .select({ id: userTable.id })
+          .from(userTable)
+          .where(eq(userTable.id, userId))
+          .for("update");
+        await tx
+          .delete(verificationTable)
+          .where(
+            and(
+              eq(verificationTable.value, userId),
+              like(verificationTable.identifier, `${RESET_IDENTIFIER_PREFIX}%`),
+            ),
+          );
+        return { result: await txAdapter.create<T, R>(input) };
+      });
+    },
+    updateMany: async (input: AdapterUpdateManyInput) => {
+      if (input.model !== "account" || input.update.password === undefined)
+        return target.updateMany(input);
+      const userId = input.where?.find(
+        (w) =>
+          w.field === "userId" && typeof w.value === "string" && !w.operator,
+      )?.value;
+      if (typeof userId !== "string")
+        throw new Error("Password update requires exact user selector");
+      return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+        await tx
+          .select({ id: userTable.id })
+          .from(userTable)
+          .where(eq(userTable.id, userId))
+          .for("update");
+        const result = await txAdapter.updateMany(input);
+        if (result > 0)
+          await tx
+            .delete(verificationTable)
+            .where(
+              and(
+                eq(verificationTable.value, userId),
+                like(
+                  verificationTable.identifier,
+                  `${RESET_IDENTIFIER_PREFIX}%`,
+                ),
+              ),
+            );
+        return { result };
+      });
+    },
     update: async <T>(input: AdapterUpdateInput) => {
+      if (input.model === "account" && input.update.password !== undefined) {
+        const selector = exactSelector(input.where, "id");
+        if (!selector || typeof selector.value !== "string")
+          throw new Error("Password update requires exact account selector");
+        return runCredentialAdapterTransaction(base, async (txAdapter, tx) => {
+          const [account] = await tx
+            .select({ userId: importedSchema.accountTable.userId })
+            .from(importedSchema.accountTable)
+            .where(eq(importedSchema.accountTable.id, selector.value as string))
+            .limit(1);
+          if (account)
+            await tx
+              .select({ id: userTable.id })
+              .from(userTable)
+              .where(eq(userTable.id, account.userId))
+              .for("update");
+          const result = await txAdapter.update<T>(input);
+          if (account && result)
+            await tx
+              .delete(verificationTable)
+              .where(
+                and(
+                  eq(verificationTable.value, account.userId),
+                  like(
+                    verificationTable.identifier,
+                    `${RESET_IDENTIFIER_PREFIX}%`,
+                  ),
+                ),
+              );
+          return { result };
+        });
+      }
       if (input.model !== "apikey") {
         return target.update<T>(input);
       }

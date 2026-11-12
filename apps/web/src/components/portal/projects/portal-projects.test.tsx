@@ -197,6 +197,7 @@ const scopedCase = {
   project: { key: "CON", name: "Contoso rollout" },
   createdBy: { name: null, isYou: true },
   isRequester: true,
+  raisedBySupport: false,
   customerVisibility: "private",
   sla: null,
 };

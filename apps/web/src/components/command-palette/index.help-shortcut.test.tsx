@@ -23,7 +23,7 @@ import CommandPaletteLauncher from "./command-palette-launcher";
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
+  useParams: () => ({}),
   useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
 }));
 
@@ -45,13 +45,25 @@ vi.mock("@/hooks/queries/config/use-get-config", () => ({
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: undefined }),
 }));
+vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
+  default: () => ({ data: undefined }),
+}));
 
 vi.mock("@/store/user-preferences", () => ({
   useUserPreferencesStore: () => ({ setTheme: vi.fn() }),
 }));
 
 vi.mock("@/components/search-command-menu", () => ({ default: () => null }));
-vi.mock("@/components/shared/modals/create-task-modal", () => ({
+vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
+  default: () => ({ project: undefined, workspaceId: "", isLoading: false }),
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canCreateTasks: () => false,
+    isCheckingPermissions: false,
+  }),
+}));
+vi.mock("@/components/work-item/work-item-create-dialog-host", () => ({
   default: () => null,
 }));
 vi.mock("@/components/shared/modals/create-workspace-modal", () => ({

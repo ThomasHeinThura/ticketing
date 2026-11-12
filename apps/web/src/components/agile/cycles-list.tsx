@@ -32,7 +32,7 @@ import {
 } from "./agile-format";
 import { CycleFormDialog } from "./cycle-form-dialog";
 import { CycleSummaryLine } from "./cycle-summary-line";
-import { FeatureOff } from "./feature-off";
+import { ProjectFeatureOff } from "./feature-off";
 
 /** `CY-9`: the mean of the last three completed cycles, or "insufficient data". Never one cycle. */
 export function VelocityText({ velocity }: { velocity: Velocity }) {
@@ -71,7 +71,13 @@ export function CyclesList({ projectKey }: { projectKey: string }) {
   });
 
   if (query.error instanceof FeatureDisabledError)
-    return <FeatureOff feature="cycles" />;
+    return (
+      <ProjectFeatureOff
+        feature="cycles"
+        headingLevel={1}
+        projectKey={projectKey}
+      />
+    );
   if (query.isLoading)
     return (
       <div

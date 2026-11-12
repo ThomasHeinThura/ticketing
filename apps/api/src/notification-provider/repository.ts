@@ -64,3 +64,28 @@ export async function saveEmailProvider(
       .returning()
   )[0];
 }
+/**
+ * Stores a test result inside the row's `config` document without touching the version, the
+ * update time or the editor: the open form's version stays valid, and the result is dropped by
+ * the guard when the settings changed in the meantime. Never creates a row.
+ */
+export async function writeEmailTestStatus(
+  tx: Transaction,
+  input: {
+    id: string;
+    expectedVersion: number;
+    config: Record<string, unknown>;
+  },
+) {
+  const [row] = await tx
+    .update(instancePluginConfigTable)
+    .set({ config: input.config })
+    .where(
+      and(
+        eq(instancePluginConfigTable.id, input.id),
+        eq(instancePluginConfigTable.configVersion, input.expectedVersion),
+      ),
+    )
+    .returning({ id: instancePluginConfigTable.id });
+  return row !== undefined;
+}

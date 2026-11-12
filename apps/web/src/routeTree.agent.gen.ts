@@ -15,6 +15,8 @@ import { Route as AuthRouteImport } from './routes/agent/auth'
 import { Route as LayoutAuthenticatedRouteImport } from './routes/agent/_layout/_authenticated'
 import { Route as AgentSignInRouteImport } from './routes/agent/agent/sign-in'
 import { Route as AuthCheckEmailRouteImport } from './routes/agent/auth/check-email'
+import { Route as AuthForgotPasswordRouteImport } from './routes/agent/auth/forgot-password'
+import { Route as AuthResetPasswordRouteImport } from './routes/agent/auth/reset-password'
 import { Route as AuthSignInRouteImport } from './routes/agent/auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/agent/auth/sign-up'
 import { Route as AuthTwoFactorRouteImport } from './routes/agent/auth/two-factor'
@@ -187,6 +189,16 @@ const AgentSignInRoute = AgentSignInRouteImport.update({
 const AuthCheckEmailRoute = AuthCheckEmailRouteImport.update({
   id: '/check-email',
   path: '/check-email',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthSignInRoute = AuthSignInRouteImport.update({
@@ -1129,6 +1141,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/two-factor': typeof AuthTwoFactorRoute
@@ -1280,6 +1294,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/two-factor': typeof AuthTwoFactorRoute
@@ -1428,6 +1444,8 @@ export interface FileRoutesById {
   '/_layout/_authenticated': typeof LayoutAuthenticatedRouteWithChildren
   '/agent/sign-in': typeof AgentSignInRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/two-factor': typeof AuthTwoFactorRoute
@@ -1581,6 +1599,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/agent/sign-in'
     | '/auth/check-email'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/auth/two-factor'
@@ -1732,6 +1752,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/agent/sign-in'
     | '/auth/check-email'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/auth/two-factor'
@@ -1879,6 +1901,8 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated'
     | '/agent/sign-in'
     | '/auth/check-email'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/auth/two-factor'
@@ -2078,6 +2102,20 @@ declare module '@tanstack/react-router' {
       path: '/check-email'
       fullPath: '/auth/check-email'
       preLoaderRoute: typeof AuthCheckEmailRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
     '/auth/sign-in': {
@@ -3792,6 +3830,8 @@ const LayoutRouteWithChildren =
 
 interface AuthRouteChildren {
   AuthCheckEmailRoute: typeof AuthCheckEmailRoute
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
   AuthTwoFactorRoute: typeof AuthTwoFactorRoute
@@ -3800,6 +3840,8 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCheckEmailRoute: AuthCheckEmailRoute,
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
   AuthTwoFactorRoute: AuthTwoFactorRoute,

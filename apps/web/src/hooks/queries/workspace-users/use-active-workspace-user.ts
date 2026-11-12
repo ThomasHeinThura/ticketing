@@ -32,7 +32,12 @@ const SHARED_MEMBERS_READ_FRESH_MS = 5_000;
 // mutations that invalidate it keep working. A read they ask for (an invalidated entry) always
 // goes to the server and refreshes the shared list too; only a first read reuses a fresh or
 // in-flight list read.
-export const useGetActiveWorkspaceUser = () => {
+export const useGetActiveWorkspaceUser = ({
+  enabled = true,
+}: {
+  /** `false` reads nothing; for a caller that only sometimes needs the membership. */
+  enabled?: boolean;
+} = {}) => {
   const { user } = useAuth();
   const { data: workspace } = useActiveWorkspace();
   const queryClient = useQueryClient();
@@ -42,7 +47,7 @@ export const useGetActiveWorkspaceUser = () => {
 
   return useQuery({
     queryKey,
-    enabled: !!workspaceId && !!userId,
+    enabled: enabled && !!workspaceId && !!userId,
     queryFn: async (): Promise<ActiveWorkspaceUser | null> => {
       const listKey = ["active-workspace-users", workspaceId] as const;
       const read = () =>

@@ -554,6 +554,105 @@ for (const [name, path, activeLabel] of STRIP_VIEWS)
 
 // From md to below lg the Calendar search collapses to an icon button so the header fits;
 // Cmd/Ctrl+F and the button open the same field, and lg and up keep the inline field.
+test("unknown agent path presents recovery and signed-out visitors reach sign-in", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  await page.goto("/agent/not-a-page");
+  const heading = page.getByRole("heading", {
+    name: "Page not found",
+    exact: true,
+  });
+  await expect(heading).toBeFocused();
+  await expect(page).toHaveTitle(/Page not found/);
+  const recovery = page.getByTestId("agent-not-found");
+  await expect(
+    recovery.getByRole("link", { name: "Projects", exact: true }),
+  ).toHaveAttribute("href", "/agent");
+  await expect(
+    recovery.getByRole("button", { name: "Back", exact: true }),
+  ).toBeVisible();
+
+  await installPerformanceApiFixture(page, { authenticated: false });
+  await page.reload();
+  await expect(page).toHaveURL(/\/auth\/sign-in\?/);
+  expect(new URL(page.url()).searchParams.get("redirect")).toBe(
+    "/agent/not-a-page",
+  );
+});
+
+for (const width of [820, 1440])
+  test(`keyboard clearing calendar search returns focus at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mountAllProjectViews(page);
+    await page.goto(`${PROJECT_VIEW}/calendar`);
+    const header = page.locator("header");
+    if (width === 820)
+      await header.getByRole("button", { name: "Search tickets..." }).click();
+    const search = page.getByRole("searchbox", { name: "Search tickets..." });
+    await search.fill("fixture");
+    await search.press("Tab");
+    const clear = page.getByRole("button", { name: "Clear all" });
+    await expect(clear).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(search).toHaveValue("");
+    await expect(search).toBeFocused();
+    await page.keyboard.press("Tab");
+    const next = await page.evaluate(() => ({
+      tag: document.activeElement?.tagName,
+      name: document.activeElement?.getAttribute("aria-label"),
+    }));
+    expect(next.tag).not.toBe("BODY");
+    expect(next.name).not.toBe("Search tickets...");
+  });
+
+test("calendar toolbar fits its work area at 390px", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await mountAllProjectViews(page);
+  await page.goto(`${PROJECT_VIEW}/calendar`);
+  const heading = page.getByRole("heading", { name: "Calendar", exact: true });
+  await expect(heading).toBeVisible();
+  const toolbar = heading.locator("../..");
+  const controls = [
+    heading,
+    toolbar.getByTestId("calendar-month-label"),
+    ...[
+      "Select items",
+      "Month",
+      "Week",
+      "Day",
+      "Previous month",
+      "Today",
+      "Next month",
+    ].map((name) => toolbar.getByRole("button", { name, exact: true })),
+  ];
+  const frame = await toolbar.boundingBox();
+  expect(frame).not.toBeNull();
+  for (const control of controls) {
+    await expect(control).toBeVisible();
+    const rect = await control.boundingBox();
+    expect(rect).not.toBeNull();
+    expect(rect?.width).toBeGreaterThan(0);
+    expect(rect?.x ?? 0).toBeGreaterThanOrEqual((frame?.x ?? 0) - 1);
+    expect((rect?.x ?? 0) + (rect?.width ?? 0)).toBeLessThanOrEqual(
+      (frame?.x ?? 0) + (frame?.width ?? 0) + 1,
+    );
+  }
+  const overflow = await heading.evaluate((element) => {
+    const failures: string[] = [];
+    for (
+      let node = element.parentElement;
+      node && node !== document.body;
+      node = node.parentElement
+    )
+      if (node.scrollWidth > node.clientWidth + 1) failures.push(node.tagName);
+    return failures;
+  });
+  expect(overflow).toEqual([]);
+});
+
 for (const width of [768, 900, 1024])
   test(`calendar header search fits and stays reachable at ${width}px @a11y`, async ({
     page,

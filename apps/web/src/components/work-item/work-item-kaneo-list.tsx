@@ -218,7 +218,7 @@ export default function WorkItemKaneoList({
             }),
       disableDragDrop:
         props.isPlaceholderData ||
-        drag.busy ||
+        drag.pendingItemIds.has(item.id) ||
         item.unavailableFields.includes("key") ||
         (!drag.canReorder &&
           (permission.isCheckingPermissions ||
@@ -283,15 +283,6 @@ export default function WorkItemKaneoList({
         <p className="sr-only" role="status" aria-live="polite">
           {drag.notice?.kind === "status" ? drag.notice.text : ""}
         </p>
-        {drag.notice?.kind === "error" ? (
-          <Alert
-            variant="error"
-            role="alert"
-            data-testid="work-item-list-drag-error"
-          >
-            <AlertDescription>{drag.notice.text}</AlertDescription>
-          </Alert>
-        ) : null}
         <WorkItemContextMenu items={props.workItems}>
           <div className="divide-y divide-border/50">
             {columns.map((column) => (
@@ -349,6 +340,7 @@ export default function WorkItemKaneoList({
           ) : null}
         </DragOverlay>
         {drag.childrenDialog}
+        {drag.noteDialog}
       </DndContext>
       {props.isLoadMoreError ? (
         <Alert

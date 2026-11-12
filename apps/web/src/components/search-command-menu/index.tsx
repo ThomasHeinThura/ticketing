@@ -40,17 +40,14 @@ import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 import { openPaletteEntry } from "./open-search-entry";
-import {
-  pushRecentItem,
-  type RecentItem,
-  readRecentItems,
-} from "./recent-items";
+import { pushRecentItem } from "./recent-items";
 import {
   type PaletteEntry,
   projectSearchGroups,
   type SearchGroup,
   type SearchResultItem,
 } from "./search-targets";
+import { useRecentItems } from "./use-recent-items";
 
 type SearchCommandMenuProps = {
   open: boolean;
@@ -113,13 +110,7 @@ function SearchCommandMenu({
     }
   }, [open]);
 
-  const recentItems = useMemo<RecentItem[]>(
-    () =>
-      open && workspace?.id && userId
-        ? readRecentItems(userId, workspace.id)
-        : [],
-    [open, workspace?.id, userId],
-  );
+  const recentItems = useRecentItems(open, userId, workspace?.id);
 
   const selectingRef = useRef(false);
 

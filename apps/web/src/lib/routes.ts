@@ -1212,7 +1212,37 @@ export function parseAccountSecuritySearch(
   };
 }
 
+export function parsePasswordResetSearch(raw: Record<string, unknown>): {
+  token?: string;
+} {
+  return typeof raw.token === "string" ? { token: raw.token } : {};
+}
+
+function passwordResetUrl(path: string, token?: string) {
+  if (!token) return path;
+  const query = new URLSearchParams({ token });
+  return `${path}?${query}`;
+}
+
 export const routes = {
+  agentForgotPassword: {
+    path: "/auth/forgot-password" as const,
+    build: () => "/auth/forgot-password",
+  },
+  agentResetPassword: {
+    path: "/auth/reset-password" as const,
+    build: (token?: string) => passwordResetUrl("/auth/reset-password", token),
+    parseSearch: parsePasswordResetSearch,
+  },
+  portalForgotPassword: {
+    path: "/forgot-password" as const,
+    build: () => "/forgot-password",
+  },
+  portalResetPassword: {
+    path: "/reset-password" as const,
+    build: (token?: string) => passwordResetUrl("/reset-password", token),
+    parseSearch: parsePasswordResetSearch,
+  },
   accountSecurity: {
     path: "/dashboard/settings/account/security" as const,
     build: (search: AccountSecuritySearch = {}) => {
