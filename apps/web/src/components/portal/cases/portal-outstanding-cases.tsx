@@ -16,6 +16,7 @@ import {
   PortalCaseFilters,
 } from "@/components/portal/cases/portal-case-filters";
 import { PortalCaseTable } from "@/components/portal/cases/portal-case-table";
+import { outstandingCasesQuery } from "@/hooks/queries/portal/outstanding-cases-query";
 import { usePortalCases } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
@@ -24,8 +25,6 @@ import {
   routes,
 } from "@/lib/routes";
 
-/** Rows of the outstanding list; the full list lives on `/requests`. */
-const ROWS = 10;
 const OUTSTANDING = PORTAL_OUTSTANDING_STATUSES.join(",");
 
 /**
@@ -39,22 +38,22 @@ export function PortalOutstandingCases({
   filters,
   project,
   onChange,
+  prefetched = false,
 }: {
   portalUserId: string;
   filters: Pick<PortalHomeSearch, "scope" | "status" | "priority">;
   project?: string;
   onChange: (patch: PortalCaseFilterPatch) => void;
+  prefetched?: boolean;
 }) {
   const { t } = usePortalTranslation("portal");
   const { scope, priority } = filters;
   const status = filters.status ?? OUTSTANDING;
-  const cases = usePortalCases(portalUserId, {
-    scope: scope ?? "mine",
-    status,
-    ...(priority ? { priority } : {}),
-    ...(project ? { project } : {}),
-    limit: ROWS,
-  });
+  const cases = usePortalCases(
+    portalUserId,
+    outstandingCasesQuery(filters, project),
+    { prefetched },
+  );
   const listSearch = {
     ...(scope ? { scope } : {}),
     status,

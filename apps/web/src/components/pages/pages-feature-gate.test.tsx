@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { headingLevels } from "@/test/headings";
 
 /**
  * UAT role sweep: lead and viewer opened project Pages and `GET /api/projects/{key}/pages`
@@ -28,6 +29,10 @@ vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
 }));
 vi.mock("@/fetchers/agile", () => ({
   getResolvedFeatures: mocks.resolved,
+}));
+// The feature-off state's "Open feature settings" action is covered by feature-off.test.tsx.
+vi.mock("@/components/agile/use-can-manage-project-features", () => ({
+  useCanManageProjectFeatures: () => false,
 }));
 
 import { useQuery } from "@tanstack/react-query";
@@ -76,6 +81,8 @@ describe("PagesFeatureGate", () => {
     expect(screen.queryByTestId("pages-content")).toBeNull();
     expect(mocks.resolved).toHaveBeenCalledWith("p-1");
     expect(mocks.getPages).not.toHaveBeenCalled();
+    // The gate replaces the whole page, so the off state's title is the page's one h1.
+    expect(headingLevels()).toEqual([1]);
   });
 
   it("shows not found and sends no request for a project the caller does not reach", () => {

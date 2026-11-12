@@ -1997,6 +1997,8 @@ them; register a new audit-only action in the maintained catalogue before implem
 | --- | --- |
 | `terminology.changed` | An instance or workspace runtime noun override is saved or removed. Record actor, scope/workspace, audience, term key, locale and non-secret before/after forms; no domain event or automation trigger. |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
+| `auth.password_reset_requested` · `auth.password_reset_completed` | Password recovery request and completion; never record the address, link, token or password |
+| `auth.password_changed` | The signed-in user changes their local password; no credentials are recorded |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
 | `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |
 | `auth.sessions_revoked` | God Mode force sign-out; one summary row with target user id and count, never session ids, tokens, IP addresses or user agents |
@@ -2004,6 +2006,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
+| `project.customer_organisation_linked` | First project link between a workspace and a customer organisation |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](permissions.md#reach)) |
 | `project.restored` | A soft-deleted project is restored inside its 30-day window; record project/workspace ids and whether archive state remains, never project content |
 | `project.summary_updated` | The project summary (objective, scope, success criteria, status note) or lifecycle status is saved (`PATCH /api/project/{id}/summary`); record project/workspace ids, the changed field names and the before/after `status` only, never the summary text. Audit-only; no outbox event. |

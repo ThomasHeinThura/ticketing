@@ -1,7 +1,11 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import type { PortalCase } from "@/fetchers/portal/cases";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 /**
  * A request the team raised for the customer (`direct`, D6), as `GET /api/portal/requests/{ref}`
@@ -67,6 +71,8 @@ async function send<T>(
           body: JSON.stringify(init.body),
         }),
   });
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, "The request failed");
   if (!response.ok)
     throw new HttpError(
       response.status,

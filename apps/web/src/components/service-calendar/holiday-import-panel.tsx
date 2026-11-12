@@ -8,6 +8,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import type { Holiday, ServiceCalendar } from "@/fetchers/service-calendar";
 import { useImportServiceCalendarHolidays } from "@/hooks/mutations/service-calendar/use-import-service-calendar-holidays";
 import { HttpError, localizedErrorMessage } from "@/lib/http-error";
@@ -24,6 +25,7 @@ export function HolidayImportPanel({
   const [ics, setIcs] = useState<string | null>(null);
   const [names, setNames] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [referenceError, setReferenceError] = useState<unknown>();
   const [result, setResult] = useState<{
     importedCount: number;
     duplicateCount: number;
@@ -73,6 +75,7 @@ export function HolidayImportPanel({
 
   async function handleFile(file?: File) {
     setError(null);
+    setReferenceError(undefined);
     setResult(null);
     setIcs(null);
     setNames([]);
@@ -95,6 +98,7 @@ export function HolidayImportPanel({
   async function confirmImport() {
     if (!ics) return;
     setError(null);
+    setReferenceError(undefined);
     try {
       const imported = await importer.mutateAsync({
         id: calendar.id,
@@ -111,6 +115,7 @@ export function HolidayImportPanel({
       setNames([]);
     } catch (cause) {
       setError(localizedErrorMessage(cause, t, t("import.error")));
+      setReferenceError(cause);
       if (cause instanceof HttpError && [400, 422].includes(cause.status)) {
         setIcs(null);
         setNames([]);
@@ -142,7 +147,10 @@ export function HolidayImportPanel({
       {error ? (
         <Alert variant="error" role="alert">
           <AlertTitle>{t("import.errorTitle")}</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error}
+            <ErrorReference error={referenceError} />
+          </AlertDescription>
         </Alert>
       ) : null}
       {names.length ? (

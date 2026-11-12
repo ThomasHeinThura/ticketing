@@ -34,6 +34,17 @@ describe("Empty", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the title a plain block unless a heading level is given", () => {
+    const { rerender } = render(<EmptyTitle>No work items</EmptyTitle>);
+    expect(screen.queryByRole("heading")).toBeNull();
+    expect(screen.getByText("No work items").tagName).toBe("DIV");
+
+    rerender(<EmptyTitle level={3}>No work items</EmptyTitle>);
+    const heading = screen.getByRole("heading", { level: 3 });
+    expect(heading.tagName).toBe("H3");
+    expect(heading).toHaveAttribute("data-slot", "empty-title");
+  });
+
   it("has no accessibility violations", async () => {
     const { baseElement } = render(
       <Empty>

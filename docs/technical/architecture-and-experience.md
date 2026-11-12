@@ -335,7 +335,7 @@ held as plaintext configuration.
 | **Generic OIDC** | `CUSTOM_OAUTH_DISCOVERY_URL`, `CUSTOM_OAUTH_AUTHORIZATION_URL`, `CUSTOM_OAUTH_TOKEN_URL`, `CUSTOM_OAUTH_USER_INFO_URL`, `CUSTOM_OAUTH_LOGOUT_URL`, `CUSTOM_OAUTH_SCOPES`, `CUSTOM_OAUTH_RESPONSE_TYPE`, `CUSTOM_OAUTH_AUTO_LOGIN`, `CUSTOM_AUTH_PKCE`, `CUSTOM_OAUTH_CLIENT_ID` | `identity_connection` | no |
 | **OIDC secret** | `CUSTOM_OAUTH_CLIENT_SECRET` | `identity_connection` | **yes — encrypted** |
 | **Social providers** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `identity_connection` | secret half **encrypted** |
-| **Instance switches** | `DISABLE_REGISTRATION`, `DISABLE_LOGIN_FORM`, `DISABLE_PASSWORD_REGISTRATION`, `DISABLE_EMAIL_OTP_SIGN_IN`, `DISABLE_WORKSPACE_CREATION` | instance settings | no |
+| **Instance switches** | `DISABLE_REGISTRATION`, `DISABLE_LOGIN_FORM`, `DISABLE_PASSWORD_REGISTRATION`, `DISABLE_EMAIL_OTP_SIGN_IN`, `DISABLE_WORKSPACE_CREATION` (name retained; no effect since D-A, workspace creation is always instance-administrator only) | instance settings | no |
 | **Origins / cookies** | `CORS_ORIGINS`, `COOKIE_DOMAIN` | derived from `TASKDESK_AGENT_URL` + `TASKDESK_PORTAL_URL`, or instance settings | no |
 | **Valkey topology** | `REDIS_CLUSTER_NODES`, `REDIS_SENTINELS`, `REDIS_SENTINEL_MASTER_NAME`, `REDIS_SENTINEL_TLS` | operational; fold into `TASKDESK_VALKEY_URL` or an operational row | no |
 | **Valkey credentials** | `REDIS_PASSWORD`, `REDIS_SENTINEL_PASSWORD` | as above | **yes** |
@@ -1524,6 +1524,8 @@ Three levels, following Plane, with clear ownership at each.
 | **Instance** | `/god-mode/*` (agent host root; sign-in at `/god-mode/sign-in`) | Everything about the deployment |
 
 Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) and `/agent/god-mode/*` URLs redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
+
+An unknown agent page has a focused page heading, an explanation, a workspace home link and a history Back action. Protected routes continue to send signed-out visitors to sign-in; the invitation acceptance route remains separate.
 
 Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
 

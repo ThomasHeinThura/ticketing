@@ -32,6 +32,7 @@ export const localAuthMethodsBody = z
   .object({
     agent: localAuthMethodSetSchema,
     customer: localAuthMethodSetSchema,
+    staffSelfRegistrationEnabled: z.boolean(),
     expectedRevision: localAuthMethodsRevisionSchema,
   })
   .strict()

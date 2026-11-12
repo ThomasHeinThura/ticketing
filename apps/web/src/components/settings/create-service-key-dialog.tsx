@@ -24,6 +24,7 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import {
   FailureAlert,
   StepUpFields,
@@ -257,6 +258,7 @@ export function CreateServiceKeyDialog({
                     t,
                     t("settings:serviceKeys.create.failed"),
                   )}
+                  <ErrorReference error={mutation.error} />
                 </AlertDescription>
               </Alert>
             ) : null}

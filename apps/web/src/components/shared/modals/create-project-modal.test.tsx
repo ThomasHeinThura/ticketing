@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   createProjectArgs: vi.fn(),
   navigate: vi.fn(),
   canBind: true,
+  instanceAdmin: false,
   canManageSettings: true,
   slaOn: true,
   workspaceDefaultCalendarId: "calendar-default" as string | null,
@@ -81,6 +82,14 @@ vi.mock("@/hooks/mutations/project/use-create-project", () => ({
   },
 }));
 
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: { user: { role: mocks.instanceAdmin ? "admin" : "user" } },
+    }),
+  },
+}));
+
 vi.mock("@/lib/toast", () => ({
   toast: { error: mocks.toastError, success: vi.fn() },
 }));
@@ -127,6 +136,7 @@ function fillAndSubmit() {
 
 beforeEach(() => {
   mocks.canBind = true;
+  mocks.instanceAdmin = false;
   mocks.canManageSettings = true;
   mocks.slaOn = true;
   mocks.workspaceDefaultCalendarId = "calendar-default";
@@ -221,8 +231,19 @@ describe("CreateProjectModal customer organisation selector", () => {
   it("shows an empty state when no customer organisation is active", () => {
     mocks.organisations.mockReturnValue(loaded([]));
     render(<CreateProjectModal open onClose={vi.fn()} />);
-    expect(screen.getByTestId("project-organisation-empty")).toBeTruthy();
+    expect(screen.getByTestId("project-organisation-empty")).toHaveTextContent(
+      "common:modals.createProject.organisationLinkHint",
+    );
     expect(screen.queryByRole("combobox")).toBeNull();
+  });
+
+  it("shows the normal empty state to an instance administrator", () => {
+    mocks.instanceAdmin = true;
+    mocks.organisations.mockReturnValue(loaded([]));
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    expect(screen.getByTestId("project-organisation-empty")).toHaveTextContent(
+      "common:modals.createProject.organisationEmpty",
+    );
   });
 
   it("defaults to an internal project (null organisation)", async () => {

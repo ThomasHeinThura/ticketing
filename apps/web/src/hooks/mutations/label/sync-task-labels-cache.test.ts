@@ -1,7 +1,25 @@
+import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
-import { updateTaskLabelsInProject } from "./sync-task-labels-cache";
+import {
+  addLabelToTaskInTasksCache,
+  removeLabelFromTaskInTasksCache,
+  updateTaskLabelsInProject,
+} from "./sync-task-labels-cache";
 
 describe("updateTaskLabelsInProject", () => {
+  it("keeps the separately cached task detail aligned on attach and detach", () => {
+    const client = new QueryClient();
+    client.setQueryData(["task", "task-1"], { id: "task-1", labels: [] });
+    const label = { id: "label-1", name: "bug", color: "red" };
+    addLabelToTaskInTasksCache(client, "task-1", label);
+    expect(client.getQueryData(["task", "task-1"])).toMatchObject({
+      labels: [label],
+    });
+    removeLabelFromTaskInTasksCache(client, "task-1", "label-1");
+    expect(client.getQueryData(["task", "task-1"])).toMatchObject({
+      labels: [],
+    });
+  });
   it("adds a label to the matching task without changing other tasks", () => {
     const project = {
       id: "project-1",

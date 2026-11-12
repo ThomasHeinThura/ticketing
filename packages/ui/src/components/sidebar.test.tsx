@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { expectNoA11yViolations } from "../test/a11y";
+import { mountCompiledMotionStyles } from "../test/compile-motion-css";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +19,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -234,6 +238,91 @@ describe("Sidebar", () => {
       </SidebarProvider>,
     );
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("shows instantaneous press feedback on Enter and Space for sidebar items and ignores disabled items", async () => {
+    const styles = await mountCompiledMotionStyles([
+      "press-feedback",
+      "[--press-scale:0.985]",
+      "data-pressed:bg-sidebar-accent",
+      "data-pressed:text-sidebar-accent-foreground",
+    ]);
+
+    try {
+      render(
+        <SidebarProvider>
+          <Sidebar
+            closeLabel="Close navigation"
+            mobileDescription="Navigate TaskDesk sections."
+            mobileTitle="Main navigation"
+          >
+            <SidebarContent nativeScroll>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton>Work items</SidebarMenuButton>
+                  <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton href="/triage">
+                        Triage
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton aria-disabled="true" href="/locked">
+                        Locked
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled>Disabled item</SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarContent>
+          </Sidebar>
+          <SidebarInset>content</SidebarInset>
+        </SidebarProvider>,
+      );
+
+      const menuButton = screen.getByRole("button", { name: "Work items" });
+      const subButton = screen.getByRole("link", { name: "Triage" });
+      const disabledButton = screen.getByRole("button", {
+        name: "Disabled item",
+      });
+      const disabledSubButton = screen.getByRole("link", { name: "Locked" });
+
+      fireEvent.keyDown(menuButton, { key: "Enter" });
+      expect(menuButton).toHaveAttribute("data-pressed", "");
+      expect(getComputedStyle(menuButton).scale).toMatch(
+        /^var\(--press-scale,\s*0?\.97\)$/,
+      );
+      expect(
+        getComputedStyle(menuButton).getPropertyValue("--tw-duration").trim(),
+      ).toMatch(/^0m?s$/);
+
+      fireEvent.keyUp(menuButton, { key: "Enter" });
+      expect(menuButton).not.toHaveAttribute("data-pressed");
+      expect(getComputedStyle(menuButton).scale).toBe("none");
+      expect(
+        getComputedStyle(menuButton).getPropertyValue("--tw-duration").trim(),
+      ).toMatch(/^0m?s$/);
+
+      fireEvent.keyDown(subButton, { key: " " });
+      expect(subButton).toHaveAttribute("data-pressed", "");
+      expect(getComputedStyle(subButton).scale).toMatch(
+        /^var\(--press-scale,\s*0?\.97\)$/,
+      );
+      fireEvent.blur(subButton);
+      expect(subButton).not.toHaveAttribute("data-pressed");
+
+      for (const item of [disabledButton, disabledSubButton]) {
+        fireEvent.keyDown(item, { key: "Enter" });
+        fireEvent.keyDown(item, { key: " " });
+        expect(item).not.toHaveAttribute("data-pressed");
+        expect(getComputedStyle(item).scale).toBe("none");
+      }
+    } finally {
+      styles.cleanup();
+    }
   });
 });
 

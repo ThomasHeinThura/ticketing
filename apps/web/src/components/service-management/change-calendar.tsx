@@ -47,6 +47,7 @@ import {
   useInvalidateServiceManagement,
 } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime } from "@/lib/format";
 import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import {
@@ -58,6 +59,7 @@ import { useServerToday } from "@/lib/server-clock";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import { FreezeDialog } from "./freeze-dialog";
 import {
+  CatalogueOff,
   LoadingRows,
   MutationError,
   PageFrame,
@@ -497,6 +499,11 @@ export function ChangeCalendarView({
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const tab = search.tab ?? "calendar";
   const canManage = status.data?.canManageChanges === true;
+  // UX-1a (SR-03): with the catalogue off the off state replaces the sub-tabs, the calendar chrome
+  // and the legend, and the calendar is not requested.
+  const catalogueOff = status.data?.enabled === false;
+  const statusPending = !status.data && !status.isError;
+  const { canManageWorkspaceSettings } = useWorkspacePermission();
   return (
     <>
       <PageTitle title={t("changes.title")} />
@@ -509,58 +516,66 @@ export function ChangeCalendarView({
         description={t("changes.description")}
       >
         <SectionNav active="changes" />
-        <div
-          className="flex flex-wrap gap-1"
-          role="tablist"
-          aria-label={t("changes.tabs")}
-        >
-          {TABS.filter((entry) => entry !== "overrides" || canManage).map(
-            (entry) => (
-              <Button
-                key={entry}
-                role="tab"
-                aria-selected={tab === entry}
-                size="sm"
-                variant={tab === entry ? "secondary" : "ghost"}
-                onClick={() =>
+        {statusPending ? (
+          <LoadingRows />
+        ) : catalogueOff ? (
+          <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
+        ) : (
+          <>
+            <div
+              className="flex flex-wrap gap-1"
+              role="tablist"
+              aria-label={t("changes.tabs")}
+            >
+              {TABS.filter((entry) => entry !== "overrides" || canManage).map(
+                (entry) => (
+                  <Button
+                    key={entry}
+                    role="tab"
+                    aria-selected={tab === entry}
+                    size="sm"
+                    variant={tab === entry ? "secondary" : "ghost"}
+                    onClick={() =>
+                      void navigate({
+                        to: routes.serviceManagementChanges.path,
+                        search: {
+                          ...(search.month ? { month: search.month } : {}),
+                          ...(entry === "calendar" ? {} : { tab: entry }),
+                        },
+                      })
+                    }
+                  >
+                    {t(`changes.tab.${entry}`)}
+                  </Button>
+                ),
+              )}
+            </div>
+            {!workspace ? (
+              <LoadingRows />
+            ) : tab === "calendar" ? (
+              <CalendarTab
+                workspaceId={workspace.id}
+                month={search.month}
+                canManage={canManage}
+                onEditFreeze={(id) => {
                   void navigate({
                     to: routes.serviceManagementChanges.path,
-                    search: {
-                      ...(search.month ? { month: search.month } : {}),
-                      ...(entry === "calendar" ? {} : { tab: entry }),
-                    },
-                  })
-                }
-              >
-                {t(`changes.tab.${entry}`)}
-              </Button>
-            ),
-          )}
-        </div>
-        {!workspace ? (
-          <LoadingRows />
-        ) : tab === "calendar" ? (
-          <CalendarTab
-            workspaceId={workspace.id}
-            month={search.month}
-            canManage={canManage}
-            onEditFreeze={(id) => {
-              void navigate({
-                to: routes.serviceManagementChanges.path,
-                search: { tab: "freezes" },
-              });
-              setEditing(id);
-            }}
-          />
-        ) : tab === "freezes" ? (
-          <FreezesTab
-            workspaceId={workspace.id}
-            canManage={canManage}
-            editing={editing}
-            onEdit={setEditing}
-          />
-        ) : (
-          <OverridesTab workspaceId={workspace.id} enabled={canManage} />
+                    search: { tab: "freezes" },
+                  });
+                  setEditing(id);
+                }}
+              />
+            ) : tab === "freezes" ? (
+              <FreezesTab
+                workspaceId={workspace.id}
+                canManage={canManage}
+                editing={editing}
+                onEdit={setEditing}
+              />
+            ) : (
+              <OverridesTab workspaceId={workspace.id} enabled={canManage} />
+            )}
+          </>
         )}
       </PageFrame>
     </>

@@ -25,6 +25,7 @@ import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
 import {
+  type LocalAuthConfiguration,
   type LocalAuthMethodSet,
   type LocalAuthMethods,
   type LocalAuthMethodsByPortal,
@@ -45,17 +46,21 @@ type Method = keyof LocalAuthMethodSet;
 const METHODS: readonly Method[] = ["password", "magicLink", "emailOtp"];
 const AUDIENCES: readonly Audience[] = ["agent", "customer"];
 
-function sameMethods(a: LocalAuthMethodsByPortal, b: LocalAuthMethodsByPortal) {
-  return AUDIENCES.every((audience) =>
-    METHODS.every((method) => a[audience][method] === b[audience][method]),
+function sameMethods(a: LocalAuthConfiguration, b: LocalAuthConfiguration) {
+  return (
+    a.staffSelfRegistrationEnabled === b.staffSelfRegistrationEnabled &&
+    AUDIENCES.every((audience) =>
+      METHODS.every((method) => a[audience][method] === b[audience][method]),
+    )
   );
 }
 
-function requestOf(data: LocalAuthMethods): LocalAuthMethodsByPortal {
+function requestOf(data: LocalAuthMethods): LocalAuthConfiguration {
   // The environment keeps email-code sign-in off on both hosts; the server refuses to store it
   // as on, so it is shown and sent as off whatever an older stored row says.
   const emailOtpOff = data.emailOtpDisabledByEnvironment;
   return {
+    staffSelfRegistrationEnabled: data.staffSelfRegistrationEnabled,
     // Staff password is the break-glass sign-in and is always sent as on (R5).
     agent: {
       ...data.agent,
@@ -76,7 +81,7 @@ function requestOf(data: LocalAuthMethods): LocalAuthMethodsByPortal {
 export function LocalSignInMethodsCard() {
   const { t } = useTranslation("identityConnections");
   const query = useLocalAuthMethods();
-  const [draft, setDraft] = useState<LocalAuthMethodsByPortal | null>(null);
+  const [draft, setDraft] = useState<LocalAuthConfiguration | null>(null);
   const [confirming, setConfirming] = useState(false);
 
   if (query.isPending)
@@ -214,6 +219,32 @@ export function LocalSignInMethodsCard() {
           </p>
         ) : null}
       </CardContent>
+      <CardContent className="space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-medium text-sm">
+              {t("signInMethods.staffRegistration")}
+            </p>
+            <p className="text-sm">
+              {t("signInMethods.staffRegistrationDescription")}
+            </p>
+          </div>
+          <Switch
+            aria-label={t("signInMethods.staffRegistration")}
+            checked={current.staffSelfRegistrationEnabled}
+            disabled={query.data.staffRegistrationDisabledByEnvironment}
+            onCheckedChange={(checked) =>
+              setDraft({ ...current, staffSelfRegistrationEnabled: checked })
+            }
+          />
+        </div>
+        <p className="text-sm">{t("signInMethods.customerInvitationOnly")}</p>
+        {query.data.staffRegistrationDisabledByEnvironment && (
+          <p className="text-sm">
+            {t("signInMethods.registrationEnvironmentDisabled")}
+          </p>
+        )}
+      </CardContent>
       <CardFooter className="flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
         <Button
           disabled={!dirty}
@@ -323,16 +354,18 @@ function SaveDialog({
   onReload,
   onSaved,
 }: {
-  request: LocalAuthMethodsByPortal;
+  request: LocalAuthConfiguration;
   revision: string;
-  saved: LocalAuthMethodsByPortal;
+  saved: LocalAuthConfiguration;
   onClose: () => void;
   onReload: () => void;
   onSaved: () => void;
 }) {
   const { t } = useTranslation("identityConnections");
   const queryClient = useQueryClient();
-  const stepUp = useStepUpAction();
+  const registrationChanged =
+    request.staffSelfRegistrationEnabled !== saved.staffSelfRegistrationEnabled;
+  const stepUp = useStepUpAction({ requireSecondFactor: registrationChanged });
   const changes = AUDIENCES.flatMap((audience) =>
     METHODS.filter(
       (method) => request[audience][method] !== saved[audience][method],
@@ -368,6 +401,16 @@ function SaveDialog({
         </DialogHeader>
         <div className="space-y-4 px-6">
           <ul className="list-disc space-y-1 ps-5 text-sm">
+            {request.staffSelfRegistrationEnabled !==
+              saved.staffSelfRegistrationEnabled && (
+              <li>
+                {t(
+                  request.staffSelfRegistrationEnabled
+                    ? "signInMethods.registrationOn"
+                    : "signInMethods.registrationOff",
+                )}
+              </li>
+            )}
             {changes.map((change) => (
               <li key={`${change.audience}-${change.method}`}>
                 {t(
@@ -386,7 +429,13 @@ function SaveDialog({
               </li>
             ))}
           </ul>
-          <StepUpFields action={stepUp} idPrefix="sign-in-methods" />
+          {stepUp.needsFactorEnrollment ? (
+            <Alert variant="error">
+              <AlertDescription>{t("errors.enroll_factor")}</AlertDescription>
+            </Alert>
+          ) : (
+            <StepUpFields action={stepUp} idPrefix="sign-in-methods" />
+          )}
           <FailureAlert
             failure={stepUp.failure}
             onReload={onReload}

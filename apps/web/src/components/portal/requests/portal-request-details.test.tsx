@@ -65,6 +65,7 @@ function detail(
     project: { key: "SUP", name: "Contoso Support" },
     createdBy: { name: null, isYou: true },
     isRequester: true,
+    raisedBySupport: false,
     customerVisibility: "private",
     sla: null,
     description: "Please test the profile on your laptop.",
@@ -232,6 +233,7 @@ describe("PortalRequestDetails", () => {
     getPortalRequest.mockResolvedValue(
       detail({
         isRequester: false,
+        raisedBySupport: true,
         createdBy: { name: "Bob Colleague", isYou: false },
         canReply: false,
         canViewAttachments: false,
@@ -241,12 +243,21 @@ describe("PortalRequestDetails", () => {
     render(<PortalRequestDetails portalUserId="u1" requestRef="SUP-12" />, {
       wrapper,
     });
-    expect(
-      await screen.findByText(
-        "Service request · cases.raisedByTeamFor(Bob Colleague)",
-      ),
-    ).toBeVisible();
-    expect(screen.queryByText(/cases\.raisedByTeam$/)).toBeNull();
+    expect(await screen.findByText("Bob Colleague")).toBeVisible();
+    expect(screen.getByText("cases.columns.requester")).toBeVisible();
+    expect(screen.getByText("cases.raisedBy")).toBeVisible();
+    expect(screen.getByText("cases.supportTeam")).toBeVisible();
+    expect(screen.queryByText(/@/)).toBeNull();
+  });
+
+  it("omits Raised by for a customer-created request", async () => {
+    getPortalRequest.mockResolvedValue(detail({ raisedBySupport: false }));
+    getPortalRequestFiles.mockResolvedValue([]);
+    render(<PortalRequestDetails portalUserId="u1" requestRef="SUP-12" />, {
+      wrapper,
+    });
+    expect(await screen.findByText("cases.columns.requester")).toBeVisible();
+    expect(screen.queryByText("cases.raisedBy")).toBeNull();
   });
 
   it("keeps focus in the reply box after sending and announces the reply", async () => {

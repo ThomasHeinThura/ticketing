@@ -1,7 +1,11 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 import type {
   ApiKey,
   CreateApiKeyClientRequest,
@@ -14,16 +18,16 @@ async function ensureOk(
   fallbackKey?: string,
 ) {
   if (response.ok) return;
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, message, fallbackKey);
   // 400/403 carry the API's reason (an unknown capability, a missing browser session).
   const detail =
     response.status === 400 || response.status === 403
       ? await readErrorDetail(response, message)
       : message;
-  throw new HttpError(
-    response.status,
-    detail,
-    detail === message ? fallbackKey : undefined,
-  );
+  throw new HttpError(response.status, detail, undefined, {
+    fallbackKey: detail === message ? fallbackKey : undefined,
+  });
 }
 
 export async function getMyApiKeys(): Promise<ApiKey[]> {

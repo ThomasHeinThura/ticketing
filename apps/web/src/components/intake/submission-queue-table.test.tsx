@@ -55,9 +55,16 @@ describe("SubmissionQueueTable", () => {
     const open = renderTable();
     fireEvent.click(screen.getByText("VPN drops every hour"));
     expect(open).toHaveBeenCalledWith("SUB-3");
-    expect(screen.getByTestId("triage-row-SUB-3")).toHaveClass(
+    const triageRow = screen.getByTestId("triage-row-SUB-3");
+    expect(triageRow).toHaveClass(
       "cursor-pointer",
+      "press-feedback",
+      "[--press-scale:0.99]",
     );
+    expect(triageRow).toHaveAttribute("data-interactive", "");
+    const headerRow = screen.getAllByRole("row")[0];
+    expect(headerRow).not.toHaveClass("press-feedback");
+    expect(headerRow).not.toHaveAttribute("data-interactive");
   });
 
   it("opens once from the reference and leaves a duplicate link to itself", () => {

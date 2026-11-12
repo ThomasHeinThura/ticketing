@@ -20,34 +20,10 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `workspace/policy.ts` was written to avoid. `GET /api/project/{id}`, already classified
  * before this batch, sets that precedent.
  *
- * **The legacy resource key matches the target vocabulary exactly, unlike `workspace`'s
- * `organization`/`workspace` split.** `apps/api/src/utils/require-workspace-permission.ts`
- * resolves a caller's statements from `packages/permissions/src/
- * legacy-better-auth-access-control.ts`'s `statement.project = ["create", "read", "update",
- * "delete", "share"]` — the resource key is literally `"project"`, the same string the target
- * `Capability` union prefixes with (`project:create`, `project:read`, `project:update`,
- * `project:delete`). So `requireWorkspacePermission({ project: [...] })` and a declared
- * `project:*` capability name the same authority today; there is no re-keying gap to record
- * here the way there was for `workspace:update` vs the legacy `organization:update`.
- *
- * **The narrower Projects-group capabilities are enforced, not aliased (A8-2, Thomas 8 Nov).**
- * rbac.md defines two capabilities the legacy `statement.project` never had a matching action
- * for: `project:archive` ("Archive and restore", implies `project:update`) and
- * `project:manage_settings` ("Project states, features, labels, SLA and calendar assignment,
- * automations", implies `project:update`). Archive, unarchive and restore declare
- * `project:archive`, and the column and workflow-rule mutations declare
- * `project:manage_settings` (see those files). The declaration is what runtime enforces:
- * `workspaceAccess.fromProject(..., { requireProjectReach: true })` evaluates the REGISTERED
- * capability for the route against the caller's project authority (`evaluateProjectRead`, the
- * same check `PUT /api/project/{id}` makes for its sensitive fields), and without
- * `deferApiKeyCapability` an API key must also carry that capability in its own scope. The
- * legacy `requireWorkspacePermission({ project: ["update"] })` stays as the baseline every
- * project write needs. A lead (`project:update` only) is refused; a manager is allowed.
- * `PUT /api/project/{id}` (#766) keeps `project:update` as its declared baseline and checks
- * the strict `project:manage_settings` in the handler only when the body sends
- * `defaultCommentVisibility` (CA-2), `kind`, `supportLevel`, `serviceCalendarId`, `managerId`,
- * `startDate`, `endDate` or `defaultAssigneeId`, because that check depends on the body;
- * health and reorder stay on `project:update`.
+ * Project writes retain their legacy workspace-role and literal API-key statement gates,
+ * in addition to project reach and the pre-existing project capability checks. Archive,
+ * unarchive and restore also require project:archive; update sensitive fields additionally
+ * require project:manage_settings. Reorder applies its workspace update gate and filters by reach.
  *
  * **Scope: the container that genuinely has an id at request time, per rbac.md's own
  * `work_item:create` example (`scope: 'project'` for a work item created inside a project, not
@@ -208,7 +184,7 @@ export const projectPolicies = {
 
   // List the customer organisations a new project may serve (create-project selector).
   // Same gate as the create itself: `workspaceAccess.fromQuery()` then
-  // `requireWorkspacePermission({ project: ["create"] })`. Registered ahead of
+  // `requireWorkspaceCapability("project:create")`. Registered ahead of
   // `GET /api/project/{id}` in the router so "organisations" is never read as a project id.
   "GET /api/project/organisations": {
     capability: "project:create",
@@ -237,7 +213,7 @@ export const projectPolicies = {
 
   // Create a project in a workspace. `workspaceAccess.fromBody()` takes `workspaceId` straight
   // off the JSON body (no project row exists yet to read it from), then
-  // `requireWorkspacePermission({ project: ["create"] })` runs -- an exact match for
+  // `requireWorkspaceCapability("project:create")` runs -- an exact match for
   // `project:create`.
   "POST /api/project": {
     capability: "project:create",
@@ -248,8 +224,7 @@ export const projectPolicies = {
 
   // Replace a project's own fields (name, icon, slug, description).
   // `workspaceAccess.fromProject()` reads the project row for its workspaceId, and
-  // `requireWorkspacePermission({ project: ["update"] })` runs after -- an exact match for
-  // `project:update`.
+  // the reach middleware and legacy workspace `project:update` gate both apply.
   // CA-2: the body may also carry `defaultCommentVisibility`. That field alone has an extra
   // handler-level STRICT `project:manage_settings` check (+ API-key scope) after body
   // validation -- route middleware runs before validators, so it cannot be declared here.
@@ -273,8 +248,8 @@ export const projectPolicies = {
     reach: "required",
   },
 
-  // Soft-delete a project. Same middleware shape as update, with `project: ["delete"]` --
-  // an exact match for `project:delete`. P0 deletion audit: this route no longer deletes; it
+  // Soft-delete a project. Reach and the legacy workspace `project:delete` gate both apply.
+  // P0 deletion audit: this route no longer deletes; it
   // records a durable pending action (202) that its requester approves in a current browser
   // session with the typed exact project name plus step-up (permissions.md "Deleting a ...
   // project — typed exact name/key + step-up, through a pending action"). `sessionOnly` is the
@@ -291,7 +266,7 @@ export const projectPolicies = {
   },
 
   // Archive a project: `project:archive` (A8-2), enforced by the project reach middleware against
-  // this declaration; the legacy `project:update` gate stays as the baseline.
+  // this declaration, alongside the legacy workspace `project:update` gate.
   "PUT /api/project/{id}/archive": {
     capability: "project:archive",
     scope: "project",
@@ -330,28 +305,8 @@ export const projectPolicies = {
     reach: "required",
   },
 
-  // **Project reach on project writes (#720).** Each `{id}`/`{projectId}` write runs
-  // `workspaceAccess.fromProject(..., { requireProjectReach: true })`: an out-of-reach project
-  // answers the same 404 as a missing one before the legacy `requireWorkspacePermission` gate, and
-  // in reach without the declared capability is 403. Writes that also pass
-  // `deferApiKeyCapability: true` (the milestone, prerequisite, stakeholder and document-link
-  // writes below, among others) still need reach for an API key but leave its capability to the
-  // key-aware legacy gate. Archive, unarchive and restore above, and the column and workflow-rule
-  // mutations, do NOT defer (A8-2): an API key must carry the strict `project:archive` /
-  // `project:manage_settings` in its own scope.
-  // `tests/permissions/project-reach-guard.test.ts` enforces reach for every project-scoped route;
-  // `PUT /api/project/{id}`'s handler-level `project:manage_settings` check (#726) runs after.
-
-  // ── Issue #25's bounded slice ──────────────────────────────────────────────────────
-  // Milestones, prerequisites, stakeholders, document links. All eleven routes below
-  // share one enforcement shape: `workspaceAccess.fromProject()` (scope: "project",
-  // scopeSource: "row", matching every other `/{id}/...` route above) plus
-  // `requireWorkspacePermission({ project: ["update"] })` on every mutation -- the
-  // legacy statement has no narrower action for any of these, and the spec's own
-  // permission table names exactly this one capability for all four resources:
-  // "Manage stakeholders, milestones, prerequisites, document links; set health |
-  // project:update" (projects-and-engagements.md). `project:update` is not
-  // AUTHORITY_GRANTING, so none of this needs `elevated`/`sessionOnly` declarations.
+  // Project-scoped writes retain reach, project authority and the legacy workspace gate.
+  // Milestone, prerequisite, stakeholder and document-link writes include API-key scope.
   "GET /api/project/{id}/milestones": {
     capability: "project:read",
     scope: "project",

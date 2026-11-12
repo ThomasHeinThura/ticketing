@@ -419,7 +419,8 @@ export const CAPABILITIES = {
   "report:read_all": {
     group: "Reports",
     implies: ["report:read"],
-    description: "Reports across all projects",
+    description:
+      "Reports across all projects the person can reach; this capability does not grant project reach",
   },
   "report:export": {
     group: "Reports",

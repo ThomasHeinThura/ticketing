@@ -16,6 +16,8 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  PageContainer,
+  PageHeader,
   Skeleton,
 } from "@taskdesk/ui";
 import {
@@ -43,8 +45,14 @@ export const Route = createFileRoute(
 
 /** P4R2-M1: the list and its detail routes exist only while `feature.sla` is on. */
 function ServiceCalendarsRoute() {
+  const { t } = useTranslation("serviceCalendars");
   return (
-    <WorkspaceFeatureGate feature="feature.sla" off="sla">
+    <WorkspaceFeatureGate
+      feature="feature.sla"
+      off="sla"
+      title={t("list.title")}
+      description={t("list.description")}
+    >
       <ServiceCalendarsRouteContent />
     </WorkspaceFeatureGate>
   );
@@ -81,29 +89,27 @@ function ServiceCalendarsRouteContent() {
   return (
     <>
       <PageTitle title={t("list.title")} />
-      <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">{t("list.title")}</h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              {t("list.description")}
-            </p>
-          </div>
-          {canManageCalendars && !isCheckingPermissions ? (
-            <Button
-              render={
-                <Link
-                  to={routes.serviceCalendarEditor.path}
-                  params={{ id: "new" }}
-                />
-              }
-              disabled={!workspace}
-            >
-              <Plus aria-hidden="true" />
-              {t("list.new")}
-            </Button>
-          ) : null}
-        </div>
+      <PageContainer>
+        <PageHeader
+          title={t("list.title")}
+          description={t("list.description")}
+          actions={
+            canManageCalendars && !isCheckingPermissions ? (
+              <Button
+                render={
+                  <Link
+                    to={routes.serviceCalendarEditor.path}
+                    params={{ id: "new" }}
+                  />
+                }
+                disabled={!workspace}
+              >
+                <Plus aria-hidden="true" />
+                {t("list.new")}
+              </Button>
+            ) : undefined
+          }
+        />
 
         {!canManageCalendars && !isCheckingPermissions ? (
           <Alert variant="info">
@@ -223,7 +229,7 @@ function ServiceCalendarsRouteContent() {
             </Button>
           </nav>
         ) : null}
-      </div>
+      </PageContainer>
     </>
   );
 }

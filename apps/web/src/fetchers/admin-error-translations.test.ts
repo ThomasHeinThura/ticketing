@@ -45,10 +45,22 @@ import {
 beforeEach(() => {
   mocks.fetch
     .mockReset()
-    .mockImplementation(async () => new Response("", { status: 500 }));
+    .mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({ message: "private", requestId: "a".repeat(32) }),
+          { status: 500 },
+        ),
+    );
   mocks.holidayImport
     .mockReset()
-    .mockImplementation(async () => new Response("", { status: 500 }));
+    .mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({ message: "private", requestId: "a".repeat(32) }),
+          { status: 500 },
+        ),
+    );
 });
 
 const cases: Array<[string, () => Promise<unknown>, string]> = [
@@ -107,7 +119,11 @@ describe("localized administrative failures", () => {
           "generic",
         ),
       ).toBe(`localized:${key}`);
-      expect(error).toHaveProperty("status", 500);
+      expect(error).toMatchObject({
+        status: 500,
+        requestId: "a".repeat(32),
+        fallbackKey: key,
+      });
     },
   );
 
@@ -181,7 +197,11 @@ describe("round-two admin failure boundaries", () => {
     "selects the translated fallback for %s",
     async (_label, request, key) => {
       const error = await request().catch((cause: unknown) => cause);
-      expect(error).toHaveProperty("status", 500);
+      expect(error).toMatchObject({
+        status: 500,
+        requestId: "a".repeat(32),
+        fallbackKey: key,
+      });
       expect(
         localizedAdminErrorMessage(
           error,

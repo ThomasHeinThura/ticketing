@@ -1,6 +1,10 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 /**
  * Workspace webhooks (`WH-1`..`WH-15`). The workspace travels in `X-Workspace-Id`, as the API
@@ -85,12 +89,12 @@ async function ensureOk(
   fallbackKey?: string,
 ) {
   if (response.ok) return;
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, message, fallbackKey);
   const detail = await readErrorDetail(response, message);
-  throw new HttpError(
-    response.status,
-    detail,
-    detail === message ? fallbackKey : undefined,
-  );
+  throw new HttpError(response.status, detail, undefined, {
+    fallbackKey: detail === message ? fallbackKey : undefined,
+  });
 }
 
 /** WH-15: the single-use step-up proof for create, destination change and secret rotation. */

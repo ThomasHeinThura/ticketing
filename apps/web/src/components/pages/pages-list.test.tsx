@@ -8,8 +8,10 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PageList } from "@/fetchers/pages";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
+  canManageFeatures: false,
   getPages: vi.fn(),
   undeletePage: vi.fn(),
   success: vi.fn(),
@@ -29,6 +31,9 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/components/agile/use-can-manage-project-features", () => ({
+  useCanManageProjectFeatures: () => mocks.canManageFeatures,
+}));
 vi.mock("@/lib/toast", () => ({
   toast: { success: mocks.success, error: mocks.error },
 }));
@@ -69,6 +74,7 @@ function renderList() {
 
 afterEach(() => {
   cleanup();
+  mocks.canManageFeatures = false;
   mocks.getPages.mockReset();
   mocks.undeletePage.mockReset();
   mocks.success.mockReset();
@@ -119,6 +125,22 @@ describe("PagesList", () => {
     expect(await screen.findByTestId("feature-off-pages")).toBeTruthy();
     expect(screen.queryByText("list.notFound")).toBeNull();
     expect(mocks.getPages).toHaveBeenCalledTimes(1);
+    // The off state is the whole page, so its title is the page's one h1.
+    expect(headingLevels()).toEqual([1]);
+  });
+
+  it("offers Open feature settings with Pages off only to someone who can manage the project", async () => {
+    const { PagesDisabledError } = await import("@/fetchers/pages");
+    mocks.getPages.mockRejectedValue(new PagesDisabledError());
+    renderList();
+    expect(await screen.findByTestId("feature-off-pages")).toBeTruthy();
+    expect(screen.queryByText("featureOff.openSettings")).toBeNull();
+    cleanup();
+
+    mocks.canManageFeatures = true;
+    renderList();
+    expect(await screen.findByText("featureOff.openSettings")).toBeTruthy();
+    expect(screen.getByText("featureOff.pages.manageDescription")).toBeTruthy();
   });
 
   it("shows one not-found message for a project the caller cannot reach", async () => {

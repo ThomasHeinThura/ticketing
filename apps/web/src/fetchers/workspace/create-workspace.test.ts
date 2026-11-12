@@ -18,6 +18,8 @@ vi.mock("@/fetchers/workspace/get-workspaces", () => ({
   default: mocks.getWorkspaces,
 }));
 
+const OWNER = "user-1";
+
 describe("createWorkspace", () => {
   beforeEach(() => {
     mocks.post.mockReset();
@@ -31,7 +33,11 @@ describe("createWorkspace", () => {
       json: async () => ({ id: "workspace-1", name: "Acme", slug: "acme" }),
     });
 
-    const result = await createWorkspace({ name: "Acme", slug: "acme" });
+    const result = await createWorkspace({
+      name: "Acme",
+      slug: "acme",
+      ownerUserId: OWNER,
+    });
 
     expect(mocks.getWorkspaces).not.toHaveBeenCalled();
     expect(mocks.post).toHaveBeenCalledWith({
@@ -39,6 +45,7 @@ describe("createWorkspace", () => {
         name: "Acme",
         slug: "acme",
         logo: undefined,
+        ownerUserId: OWNER,
         description: undefined,
       },
     });
@@ -51,7 +58,12 @@ describe("createWorkspace", () => {
       json: async () => ({ id: "workspace-1" }),
     });
 
-    await createWorkspace({ name: "Acme", slug: "acme", description: "" });
+    await createWorkspace({
+      name: "Acme",
+      slug: "acme",
+      description: "",
+      ownerUserId: OWNER,
+    });
 
     expect(mocks.post).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -70,6 +82,7 @@ describe("createWorkspace", () => {
       name: "Acme",
       slug: "acme",
       description: "Our team",
+      ownerUserId: OWNER,
     });
 
     expect(mocks.post).toHaveBeenCalledWith(
@@ -89,7 +102,7 @@ describe("createWorkspace", () => {
       json: async () => ({ id: "workspace-2" }),
     });
 
-    await createWorkspace({ name: "Acme" });
+    await createWorkspace({ name: "Acme", ownerUserId: OWNER });
 
     expect(mocks.getWorkspaces).toHaveBeenCalledTimes(1);
     const sentSlug = mocks.post.mock.calls[0]?.[0]?.json?.slug;
@@ -107,7 +120,7 @@ describe("createWorkspace", () => {
         json: async () => ({ id: "workspace-3" }),
       });
 
-    const result = await createWorkspace({ name: "Acme" });
+    const result = await createWorkspace({ name: "Acme", ownerUserId: OWNER });
 
     expect(mocks.post).toHaveBeenCalledTimes(2);
     const firstSlug = mocks.post.mock.calls[0]?.[0]?.json?.slug;
@@ -123,7 +136,7 @@ describe("createWorkspace", () => {
     });
 
     await expect(
-      createWorkspace({ name: "Acme", slug: "acme" }),
+      createWorkspace({ name: "Acme", slug: "acme", ownerUserId: OWNER }),
     ).rejects.toThrow("already taken");
 
     expect(mocks.post).toHaveBeenCalledTimes(1);
@@ -132,12 +145,12 @@ describe("createWorkspace", () => {
   it("rethrows a non-collision error immediately without retrying", async () => {
     mocks.post.mockResolvedValue({
       ok: false,
-      text: async () => "Workspace creation is disabled on this instance",
+      text: async () => "Forbidden",
     });
 
-    await expect(createWorkspace({ name: "Acme" })).rejects.toThrow(
-      "disabled on this instance",
-    );
+    await expect(
+      createWorkspace({ name: "Acme", ownerUserId: OWNER }),
+    ).rejects.toThrow("Forbidden");
 
     expect(mocks.post).toHaveBeenCalledTimes(1);
   });

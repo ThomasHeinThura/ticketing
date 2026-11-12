@@ -229,6 +229,7 @@ describe("ServiceKeysCard", () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
         translate("settings:serviceKeys.toastRevokeError"),
+        { error: expect.any(Error) },
       ),
     );
   });
@@ -243,6 +244,7 @@ describe("ServiceKeysCard", () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
         translate("settings:serviceKeys.deleteFailed"),
+        { error: expect.any(Error) },
       ),
     );
     expect(mocks.navigate).not.toHaveBeenCalled();

@@ -1541,6 +1541,13 @@
 			"when": 1794461069672,
 			"tag": "0219_notification_provider_step_up",
 			"breakpoints": true
+		},
+		{
+			"idx": 220,
+			"version": "7",
+			"when": 1794465850849,
+			"tag": "0220_staff_self_registration",
+			"breakpoints": true
 		}
 	]
 }

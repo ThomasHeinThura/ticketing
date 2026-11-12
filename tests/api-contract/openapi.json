@@ -337,6 +337,10 @@
               "statistics": {
                 "$ref": "#/components/schemas/ProjectStatistics"
               },
+              "seenOnlyViaWorkspaceRole": {
+                "type": "boolean",
+                "description": "The caller reaches this project only through owner, admin or manager workspace-wide visibility."
+              },
               "descendantStatistics": {
                 "$ref": "#/components/schemas/ProjectStatistics"
               },
@@ -8614,6 +8618,12 @@
           "emailOtpDisabledByEnvironment": {
             "type": "boolean"
           },
+          "staffSelfRegistrationEnabled": {
+            "type": "boolean"
+          },
+          "staffRegistrationDisabledByEnvironment": {
+            "type": "boolean"
+          },
           "revision": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$/u",
@@ -8625,6 +8635,8 @@
           "customer",
           "emailProviderEnabled",
           "emailOtpDisabledByEnvironment",
+          "staffSelfRegistrationEnabled",
+          "staffRegistrationDisabledByEnvironment",
           "revision"
         ]
       },
@@ -8637,6 +8649,9 @@
           "customer": {
             "$ref": "#/components/schemas/LocalAuthMethodSet"
           },
+          "staffSelfRegistrationEnabled": {
+            "type": "boolean"
+          },
           "expectedRevision": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$/u",
@@ -8646,6 +8661,7 @@
         "required": [
           "agent",
           "customer",
+          "staffSelfRegistrationEnabled",
           "expectedRevision"
         ],
         "additionalProperties": false
@@ -10473,7 +10489,7 @@
           "Projects"
         ],
         "summary": "List customer organisations a new project may serve",
-        "description": "Active, live customer organisations (never the internal one), for the create-project selector, each with the service calendar a new project for it inherits in this workspace. Requires project:create in the workspace.",
+        "description": "Active, live customer organisations (never the internal one), for the create-project selector, each with the service calendar a new project for it inherits in this workspace. Instance admins see all; other callers see only organisations served by a live or recoverable project in this workspace. Requires project:create in the workspace.",
         "parameters": [
           {
             "schema": {
@@ -10696,7 +10712,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "No workspace access, or missing project:create permission",
+            "description": "No workspace access, missing project:create permission, or instance_admin_required_for_new_customer_organisation",
             "content": {
               "text/plain": {
                 "schema": {
@@ -11264,7 +11280,7 @@
           "Projects"
         ],
         "summary": "Reorder projects",
-        "description": "Set the sidebar order of a workspace's projects. The given positions express relative order only -- the workspace is renumbered to 0..n-1.",
+        "description": "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
         "parameters": [
           {
             "schema": {
@@ -11339,6 +11355,16 @@
           },
           "403": {
             "description": "No workspace access, or missing project:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A project is missing or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -20898,6 +20924,16 @@
           },
           "403": {
             "description": "Missing time_entry:create",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Scope not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -33380,7 +33416,7 @@
           "Workspaces"
         ],
         "summary": "Create a workspace",
-        "description": "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Native replacement for authClient.organization.create().",
+        "description": "Create a workspace, its owner membership, its default roles and its default team in a single transaction. Only a current instance administrator (checked against the database at request time, browser session only) may call this. The request names the workspace owner, an existing active staff user; the administrator becomes a member only by naming themselves. The creator and the named owner are recorded in the audit log.",
         "requestBody": {
           "required": true,
           "content": {
@@ -33413,10 +33449,16 @@
                       "null"
                     ],
                     "maxLength": 2000
+                  },
+                  "ownerUserId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The existing, active, unsuspended staff user who becomes the workspace owner. The instance administrator creating the workspace becomes a member only by naming themselves."
                   }
                 },
                 "required": [
-                  "name"
+                  "name",
+                  "ownerUserId"
                 ]
               }
             }
@@ -33434,7 +33476,7 @@
             }
           },
           "400": {
-            "description": "Invalid body, or the name was rejected",
+            "description": "Invalid body, the name was rejected, or the named owner is not an existing, active, unsuspended staff user",
             "content": {
               "text/plain": {
                 "schema": {
@@ -33454,7 +33496,7 @@
             }
           },
           "403": {
-            "description": "An API key or impersonation session (session_required), or workspace creation is disabled on this instance",
+            "description": "An API key or impersonation session (session_required), or the caller is not a current instance administrator",
             "content": {
               "text/plain": {
                 "schema": {
@@ -58335,6 +58377,9 @@
                           "isRequester": {
                             "type": "boolean"
                           },
+                          "raisedBySupport": {
+                            "type": "boolean"
+                          },
                           "customerVisibility": {
                             "type": "string",
                             "enum": [
@@ -58392,6 +58437,7 @@
                           "project",
                           "createdBy",
                           "isRequester",
+                          "raisedBySupport",
                           "customerVisibility",
                           "sla"
                         ]
@@ -58922,6 +58968,9 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "customerVisibility": {
                       "type": "string",
                       "enum": [
@@ -59071,6 +59120,7 @@
                     "project",
                     "createdBy",
                     "isRequester",
+                    "raisedBySupport",
                     "customerVisibility",
                     "sla",
                     "description",
@@ -59622,6 +59672,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -59903,6 +59974,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -60220,6 +60293,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -60501,6 +60595,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -60623,6 +60719,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -60904,6 +61021,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -61042,6 +61161,27 @@
                     "isRequester": {
                       "type": "boolean"
                     },
+                    "createdBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "isYou": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "isYou"
+                      ]
+                    },
+                    "raisedBySupport": {
+                      "type": "boolean"
+                    },
                     "canViewAttachments": {
                       "type": "boolean"
                     },
@@ -61323,6 +61463,8 @@
                     "submission",
                     "customerStatus",
                     "isRequester",
+                    "createdBy",
+                    "raisedBySupport",
                     "canViewAttachments",
                     "canUpload",
                     "canWithdraw",
@@ -65266,6 +65408,9 @@
                     "passwordRequiredForEnrollment": {
                       "type": "boolean"
                     },
+                    "hasLocalPassword": {
+                      "type": "boolean"
+                    },
                     "policyMode": {
                       "type": "string",
                       "enum": [
@@ -65293,6 +65438,7 @@
                     "enabled",
                     "required",
                     "passwordRequiredForEnrollment",
+                    "hasLocalPassword",
                     "policyMode",
                     "availableMethods"
                   ]
@@ -65301,7 +65447,22 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "A session is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
           },
           "403": {
             "description": "The caller's identity is inactive",
@@ -67247,6 +67408,9 @@
                       "customer": {
                         "$ref": "#/components/schemas/LocalAuthMethodSet"
                       },
+                      "staffSelfRegistrationEnabled": {
+                        "type": "boolean"
+                      },
                       "expectedRevision": {
                         "type": "string",
                         "pattern": "^[a-f0-9]{64}$/u",
@@ -67258,6 +67422,7 @@
                       "operation",
                       "agent",
                       "customer",
+                      "staffSelfRegistrationEnabled",
                       "expectedRevision"
                     ],
                     "additionalProperties": false
@@ -73962,6 +74127,9 @@
                       "customer": {
                         "$ref": "#/components/schemas/LocalAuthMethodSet"
                       },
+                      "staffSelfRegistrationEnabled": {
+                        "type": "boolean"
+                      },
                       "expectedRevision": {
                         "type": "string",
                         "pattern": "^[a-f0-9]{64}$/u",
@@ -73992,6 +74160,7 @@
                       "operation",
                       "agent",
                       "customer",
+                      "staffSelfRegistrationEnabled",
                       "expectedRevision",
                       "challengeId",
                       "nonce",
@@ -74020,6 +74189,9 @@
                       },
                       "customer": {
                         "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "staffSelfRegistrationEnabled": {
+                        "type": "boolean"
                       },
                       "expectedRevision": {
                         "type": "string",
@@ -74050,6 +74222,7 @@
                       "operation",
                       "agent",
                       "customer",
+                      "staffSelfRegistrationEnabled",
                       "expectedRevision",
                       "challengeId",
                       "nonce",
@@ -74078,6 +74251,9 @@
                       },
                       "customer": {
                         "$ref": "#/components/schemas/LocalAuthMethodSet"
+                      },
+                      "staffSelfRegistrationEnabled": {
+                        "type": "boolean"
                       },
                       "expectedRevision": {
                         "type": "string",
@@ -74109,6 +74285,7 @@
                       "operation",
                       "agent",
                       "customer",
+                      "staffSelfRegistrationEnabled",
                       "expectedRevision",
                       "challengeId",
                       "nonce",
@@ -76884,6 +77061,9 @@
                       "customer": {
                         "$ref": "#/components/schemas/LocalAuthMethodSet"
                       },
+                      "staffSelfRegistrationEnabled": {
+                        "type": "boolean"
+                      },
                       "expectedRevision": {
                         "type": "string",
                         "pattern": "^[a-f0-9]{64}$/u",
@@ -76909,6 +77089,7 @@
                       "operation",
                       "agent",
                       "customer",
+                      "staffSelfRegistrationEnabled",
                       "expectedRevision",
                       "challengeId",
                       "nonce",
@@ -80502,7 +80683,7 @@
           "Instance"
         ],
         "summary": "Get the local sign-in methods of the staff and customer portals",
-        "description": "Current instance administrators only, session-only. Returns the stored method flags per portal as the runtime resolves them, whether an email provider is enabled, and whether the environment switches email-code sign-in off. Never returns configuration values or secrets.",
+        "description": "Current instance administrators only, session-only. Returns stored method flags per portal, staff self-registration, whether an email provider is enabled, and whether the environment switches email-code or staff self-registration off. Never returns configuration values or secrets.",
         "responses": {
           "200": {
             "description": "Local sign-in methods",
@@ -80543,7 +80724,7 @@
           "Instance"
         ],
         "summary": "Set the local sign-in methods of the staff and customer portals",
-        "description": "Current instance administrators only, elevated and session-only (PA-15 operation `auth_local_methods_update`, bound to all six flags). Staff password sign-in can never be disabled (R5), and email-code sign-in cannot be enabled while the environment switches it off: either request is refused with 422 before any proof is spent. The write stores one row per method and portal, retires any other stored row for these methods, audits the changed keys only and reloads authentication on every replica.",
+        "description": "Current instance administrators only, elevated and session-only (PA-15 operation `auth_local_methods_update`, bound to all six method flags, the staff registration setting and the read revision). Changes to staff self-registration require an enrolled second factor and a fresh TOTP or backup-code proof; other saves keep the standard PA-15 rules. Staff password sign-in can never be disabled (R5), and email-code sign-in cannot be enabled while the environment switches it off: either request is refused with 422 before any proof is spent. The write stores one row per method and portal, retires any other stored row for these methods, audits the changed keys only and reloads authentication on every replica.",
         "parameters": [
           {
             "schema": {
@@ -112723,7 +112904,7 @@
           "Teams"
         ],
         "summary": "Add a staff member to a team",
-        "description": "workspace:manage_settings, or a lead of this team. Customer-side people are refused (TM-2).",
+        "description": "workspace:manage_settings, or a lead of this team. Customer-side people and self-adds are refused (TM-2, TM-3).",
         "parameters": [
           {
             "schema": {
@@ -112801,7 +112982,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not permitted to edit this roster",
+            "description": "Not permitted to edit this roster, or team_self_add_forbidden",
             "content": {
               "text/plain": {
                 "schema": {
@@ -118718,7 +118899,7 @@
           "Reports"
         ],
         "summary": "Run a tier 1 report",
-        "description": "Filtered to the caller's reach (report:read) or the whole workspace (report:read_all). States scope, window and as-of time. Insufficient data is null with its sample, never 0% or 100%. Rate and cost fields are absent without time_entry:manage_rates.",
+        "description": "Filtered to the caller's project reach. States scope, window and as-of time. Insufficient data is null with its sample, never 0% or 100%. Rate and cost fields are absent without time_entry:manage_rates.",
         "parameters": [
           {
             "schema": {
@@ -119411,7 +119592,7 @@
                           "name"
                         ]
                       },
-                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's project reach. Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [
@@ -119457,7 +119638,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -119782,7 +119963,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -120012,7 +120193,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -120233,6 +120414,16 @@
           },
           "403": {
             "description": "Not staff, or missing report:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -120507,7 +120698,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -121545,7 +121736,7 @@
                           "name"
                         ]
                       },
-                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's project reach. Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [
@@ -121582,6 +121773,16 @@
           },
           "403": {
             "description": "Not staff, or missing report:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -122067,6 +122268,16 @@
           },
           "403": {
             "description": "Workspace dashboards need workspace:manage_settings",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Widget target not found or out of reach",
             "content": {
               "text/plain": {
                 "schema": {
@@ -123312,7 +123523,7 @@
                           "name"
                         ]
                       },
-                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's project reach. Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [
@@ -123742,7 +123953,7 @@
             }
           },
           "404": {
-            "description": "Unknown report",
+            "description": "Unknown report or inaccessible project, cycle or team",
             "content": {
               "text/plain": {
                 "schema": {

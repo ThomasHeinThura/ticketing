@@ -27,7 +27,7 @@ This maintained contract registers bootstrap environment names for `check:env` a
 | `TASKDESK_TRUST_PROXY` | `1` | Exact trusted reverse-proxy hop count; `0` uses the socket address. Measure the deployed topology. Expose the application through the trusted proxy network only. |
 | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` | unset | Headless first-administrator setup. Normal empty-database setup uses the one-time setup page and token. |
 | `NODE_ENV` | `production` | Development permits HTTP webhook targets; production must be explicit. |
-| `DISABLE_WORKSPACE_CREATION` | unset | Literal `true` restricts workspace creation to instance administrators; current authority is read from the database at request time. |
+| `DISABLE_WORKSPACE_CREATION` | unset | Retained name only. Since 12 November 2026 (D-A) workspace creation is always limited to a current instance administrator, read from the database at request time, so this variable no longer widens or narrows anything. |
 | `TASKDESK_STORAGE_DRIVER` | `filesystem` | Interim `filesystem` or `s3` bootstrap selection. Invalid values fail startup. Do not switch existing bytes between backends without a migration plan; deletion cannot clean up a backend that is no longer selected. |
 | `TASKDESK_STORAGE_FILESYSTEM_ROOT` | `/app/data/attachments` | Writable filesystem-storage root; mount persistent storage for durable bytes. |
 | `TASKDESK_POLICY_SHADOW` | `off` | Interim `on`/`off` policy comparison. Records disagreements without changing responses; invalid values fail startup. |
@@ -84,3 +84,8 @@ Configuration is backed-up data: `instance_setting`, `instance_branding`, `insta
 ## Source installer integrity
 
 The maintained source SHA-256 for `install.sh` is `088bd56959c79068ac9d97cc3e4f627a961fe20c78f37facfbb1aa982cc39215`. Refresh it with an intentional installer change. The installer regression checks the actual source bytes; release archives and deployed images still require their own verified checksums and source identity.
+
+
+### Staff registration
+
+The instance setting `staff_self_registration_enabled` defaults to false. God Mode controls it through the elevated sign-in methods save; `DISABLE_REGISTRATION=true` forces staff self-registration off regardless of the stored value, while valid staff invitations remain usable. `DISABLE_PASSWORD_REGISTRATION=true` independently disables password registration. Changing the staff self-registration setting requires an enrolled second factor and a fresh TOTP or backup-code proof; other sign-in method changes retain their existing PA-15 rules. The customer portal remains invitation-only.

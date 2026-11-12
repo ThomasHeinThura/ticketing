@@ -3,7 +3,13 @@ import {
   useNavigate,
   useSearch,
 } from "@tanstack/react-router";
-import { Alert, AlertDescription } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+} from "@taskdesk/ui";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/components/auth/layout";
@@ -54,6 +60,20 @@ function SignUp() {
       });
     }
   }, []);
+
+  if (!config) return null;
+
+  if (config.disableRegistration && !invitationId && !isInstanceAdminSetup) {
+    return (
+      <AuthLayout title={t("auth:signUp.pageTitle")}>
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>{t("auth:signUp.invitationOnly")}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      </AuthLayout>
+    );
+  }
 
   const baseUrl = window.location.origin;
   const callbackURL = invitationId

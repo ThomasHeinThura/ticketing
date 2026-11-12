@@ -38,6 +38,7 @@ import {
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import {
   RoleApiError,
   reassignRole,
@@ -135,6 +136,7 @@ export function RolePeoplePanel({
     onError: (error) =>
       toast.error(
         localizedAdminErrorMessage(error, t, t("roles:delete.failed")),
+        { error },
       ),
   });
 
@@ -342,6 +344,7 @@ export function RolePeoplePanel({
                       t,
                       t("roles:people.moveFailed"),
                     )}
+                    <ErrorReference error={moveError} />
                   </AlertDescription>
                 </Alert>
               </div>

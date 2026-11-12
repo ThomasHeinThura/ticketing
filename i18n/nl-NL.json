@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Annuleren",
 			"close": "Sluiten",
@@ -73,6 +74,10 @@
 			"unknown": "Onbekend"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Er is iets misgegaan",
 			"troubleshooting": "Stappen voor probleemoplossing:",
 			"tryAgain": "Opnieuw proberen",
@@ -131,6 +136,7 @@
 				"organisationError": "Klantorganisaties konden niet worden geladen.",
 				"organisationRetry": "Opnieuw proberen",
 				"organisationEmpty": "Er zijn nog geen actieve klantorganisaties. Dit {{term_project_one}} wordt intern.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Geen (intern {{term_project_one}})",
 				"organisationHint": "Optioneel. Wordt nu gekozen en kan na het aanmaken van het {{term_project_one}} niet meer worden gewijzigd.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
@@ -247,6 +253,20 @@
 		"boolean": {
 			"false": "False",
 			"true": "True"
+		},
+		"featureOff": {
+			"turnOn": "Inschakelen bij Functies"
+		},
+		"states": {
+			"back": "Back",
+			"noAccess": {
+				"title": "You don't have access",
+				"description": "Ask a workspace admin."
+			},
+			"error": {
+				"title": "This could not be loaded",
+				"description": "Check your connection and try again."
+			}
 		}
 	},
 	"auth": {
@@ -313,7 +333,8 @@
 			"toggleLink": "Inloggen",
 			"instanceStatusError": "Kan de server niet bereiken. Probeer het over een moment opnieuw.",
 			"instanceAdminTitle": "Stel je TaskDesk-instantie in",
-			"instanceAdminSubtitle": "Dit account wordt de instantiebeheerder met volledige toegang."
+			"instanceAdminSubtitle": "Dit account wordt de instantiebeheerder met volledige toegang.",
+			"invitationOnly": "Accounts are by invitation. Ask your administrator for an invitation."
 		},
 		"verifyOtp": {
 			"pageTitle": "Code verifiëren",
@@ -409,6 +430,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Werkruimtenaam is verplicht"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -496,6 +522,35 @@
 			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
 			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
 			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
+		},
+		"changePassword": {
+			"confirmPassword": "Confirm new password",
+			"currentPassword": "Current password",
+			"failed": "Could not change your password. Please try again.",
+			"mismatch": "Passwords do not match.",
+			"newPassword": "New password",
+			"required": "Enter your current password.",
+			"revoke": "Sign out of other sessions",
+			"saving": "Changing password…",
+			"submit": "Change password",
+			"success": "Password changed.",
+			"title": "Change password",
+			"tooLong": "Password must be at most 128 characters.",
+			"wrongCurrent": "Your current password is incorrect."
+		},
+		"passwordRecovery": {
+			"forgot": "Forgot password?",
+			"requestTitle": "Reset your password",
+			"confirmation": "If an account exists for that address, we sent a link",
+			"send": "Send reset link",
+			"back": "Back to sign in",
+			"resetTitle": "Choose a new password",
+			"newPassword": "New password",
+			"confirmPassword": "Confirm new password",
+			"mismatch": "Passwords do not match",
+			"invalid": "This link is invalid, expired, or already used. Request a new link.",
+			"success": "Your password has been reset.",
+			"reset": "Reset password"
 		}
 	},
 	"settings": {
@@ -2967,6 +3022,7 @@
 	},
 	"workspace": {
 		"projects": {
+			"notMember": "You are not a member of this project",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "{{term_project_one}} aanmaken",
 			"title": "Titel",
@@ -3043,7 +3099,14 @@
 			"creating": "Aanmaken...",
 			"submit": "Werkruimte maken",
 			"success": "Werkruimte succesvol aangemaakt",
-			"error": "Aanmaken werkruimte mislukt"
+			"error": "Aanmaken werkruimte mislukt",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {
@@ -3535,6 +3598,7 @@
 				"invalid": "The {{term_work_item_other}} around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"rejected": "{{key}} can't be moved right now because a rule blocks it. The board was refreshed.",
 				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"network": "Couldn't confirm the move for {{key}}. Check your connection and refresh.",
 				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"loadErrorDescription": "The board's states or {{term_work_item_other}} failed to load.",
@@ -3542,6 +3606,8 @@
 			"loadingMore": "Loading…",
 			"loadingTransitions": "Loading state changes…",
 			"loadMore": "Load more",
+			"moveRefusedReturned": "Move refused. {{key}} is back in {{state}}.",
+			"moveCancelledReturned": "Move cancelled. {{key}} is back in {{state}}.",
 			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
 			"moveDown": "Move down: {{key}} in {{state}}",
 			"moveDownShort": "Move down",
@@ -3970,7 +4036,8 @@
 			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
-			"reject": "Reject"
+			"reject": "Reject",
+			"emptyDescription": "Goedkeuringsverzoeken van het ondersteuningsteam verschijnen hier."
 		},
 		"unavailable": {
 			"title": "Klantenportaal niet beschikbaar",
@@ -4276,9 +4343,12 @@
 			"window": "{{start}} – {{end}}"
 		},
 		"cases": {
+			"raisedBy": "Raised by",
+			"supportTeam": "Support team",
 			"columns": {
 				"assignedTo": "Assigned to",
 				"created": "Created",
+				"requester": "Requester",
 				"createdBy": "Created by",
 				"details": "Details",
 				"project": "Project",
@@ -4963,7 +5033,8 @@
 		"noAccessTitle": "You cannot triage {{term_submission_other}}",
 		"featureOff": {
 			"title": "Intake is off for this workspace",
-			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
+			"manageDescription": "Schakel Intake in bij de functie-instellingen van de werkruimte. Bestaande {{term_submission_other}} verschijnen weer na het inschakelen."
 		}
 	},
 	"requestTypes": {
@@ -5523,7 +5594,8 @@
 			"rate_limited": "Too many verification attempts. Wait a few minutes and try again.",
 			"step_up": "Fresh verification was unavailable, did not match, or has expired. Verify again and retry. Nothing was changed.",
 			"unavailable": "The identity service is temporarily unavailable. Nothing was changed; try again.",
-			"unknown": "The request could not be completed. Nothing was changed."
+			"unknown": "The request could not be completed. Nothing was changed.",
+			"enroll_factor": "Enroll a second factor before changing staff self-registration."
 		},
 		"events": {
 			"actors": {
@@ -5768,7 +5840,13 @@
 			"staffPasswordLocked": "Staff password sign-in is always on. It is the recovery sign-in when every other method fails, so it cannot be turned off.",
 			"switchLabel": "{{method}} for {{audience}}",
 			"title": "Sign-in methods",
-			"unavailable": "Sign-in methods unavailable"
+			"unavailable": "Sign-in methods unavailable",
+			"staffRegistration": "Allow staff self-registration",
+			"staffRegistrationDescription": "Allow people to create staff accounts without an invitation.",
+			"customerInvitationOnly": "Customer portal: invitation only",
+			"registrationEnvironmentDisabled": "The environment disables staff self-registration.",
+			"registrationOn": "Allow staff self-registration",
+			"registrationOff": "Require invitations for staff registration"
 		}
 	},
 	"notificationProvider": {
@@ -7448,32 +7526,40 @@
 		"featureOff": {
 			"cycles": {
 				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
-				"title": "{{term_cycle_other}} are off for this {{term_project_one}}"
+				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
+				"manageDescription": "Schakel {{term_cycle_other}} in bij de functie-instellingen van dit {{term_project_one}}. Bestaande {{term_cycle_other}} verschijnen weer na het inschakelen."
 			},
 			"estimates": {
 				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
-				"title": "Estimates are off for this {{term_project_one}}"
+				"title": "Estimates are off for this {{term_project_one}}",
+				"manageDescription": "Turn on Estimates in this {{term_project_one}}'s feature settings. Existing estimates come back when it is switched on."
 			},
 			"modules": {
 				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
-				"title": "{{term_module_other}} are off for this {{term_project_one}}"
+				"title": "{{term_module_other}} are off for this {{term_project_one}}",
+				"manageDescription": "Schakel {{term_module_other}} in bij de functie-instellingen van dit {{term_project_one}}. Bestaande {{term_module_other}} verschijnen weer na het inschakelen."
 			},
 			"calendar": {
 				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "Calendar is off for this {{term_project_one}}"
+				"title": "Calendar is off for this {{term_project_one}}",
+				"manageDescription": "Turn on Calendar in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"timeline": {
 				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
-				"title": "The timeline is off for this {{term_project_one}}"
+				"title": "The timeline is off for this {{term_project_one}}",
+				"manageDescription": "Turn on the timeline in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"sla": {
 				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
-				"title": "SLAs are off for this workspace"
+				"title": "SLAs are off for this workspace",
+				"manageDescription": "Schakel serviceniveaus in bij de functie-instellingen van de werkruimte om SLA-beleid en servicekalenders te gebruiken."
 			},
 			"pages": {
 				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
-				"title": "Pages are off for this {{term_project_one}}"
-			}
+				"title": "Pages are off for this {{term_project_one}}",
+				"manageDescription": "Turn on Pages in this {{term_project_one}}'s feature settings. Existing pages come back when it is switched on."
+			},
+			"openSettings": "Functie-instellingen openen"
 		},
 		"modules": {
 			"create": "Create {{term_module_one}}",
@@ -7917,7 +8003,8 @@
 		},
 		"disabled": {
 			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches.",
-			"title": "{{term_service_one}} catalogue is off"
+			"title": "{{term_service_one}} catalogue is off",
+			"manageDescription": "Schakel de {{term_service_one}}-catalogus in bij de functie-instellingen van de werkruimte."
 		},
 		"freezes": {
 			"affected_one": "{{count}} planned {{term_change_one}} now falls inside this freeze and cannot be approved without an override.",
@@ -9021,7 +9108,8 @@
 		"errors": {
 			"disabled": {
 				"description": "An administrator can turn this feature on in the workspace feature settings.",
-				"title": "Reports are off"
+				"title": "Reports are off",
+				"manageDescription": "Schakel rapporten in bij de functie-instellingen van de werkruimte om rapporten en dashboards te bekijken."
 			},
 			"failed": {
 				"description": "Try again in a moment.",

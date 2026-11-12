@@ -12,6 +12,9 @@
 				"appName": {
 					"type": "string"
 				},
+				"pageLoading": {
+					"type": "string"
+				},
 				"audit": {
 					"type": "object",
 					"additionalProperties": false,
@@ -397,6 +400,18 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"reference": {
+							"type": "string"
+						},
+						"copyReference": {
+							"type": "string"
+						},
+						"copyReferenceFailed": {
+							"type": "string"
+						},
+						"serverReferenceToast": {
+							"type": "string"
+						},
 						"title": {
 							"type": "string"
 						},
@@ -531,6 +546,10 @@
 						}
 					},
 					"required": [
+						"reference",
+						"copyReference",
+						"copyReferenceFailed",
+						"serverReferenceToast",
 						"title",
 						"description",
 						"troubleshooting",
@@ -612,6 +631,9 @@
 									"type": "string"
 								},
 								"organisationEmpty": {
+									"type": "string"
+								},
+								"organisationLinkHint": {
 									"type": "string"
 								},
 								"organisationNone": {
@@ -700,6 +722,7 @@
 								"organisationError",
 								"organisationRetry",
 								"organisationEmpty",
+								"organisationLinkHint",
 								"organisationNone",
 								"organisationHint",
 								"kindLabel",
@@ -990,10 +1013,57 @@
 						}
 					},
 					"required": ["auditLog"]
+				},
+				"featureOff": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"turnOn": {
+							"type": "string"
+						}
+					},
+					"required": ["turnOn"]
+				},
+				"states": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"back": {
+							"type": "string"
+						},
+						"noAccess": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
+						},
+						"error": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description"]
+						}
+					},
+					"required": ["back", "noAccess", "error"]
 				}
 			},
 			"required": [
 				"appName",
+				"pageLoading",
 				"audit",
 				"picker",
 				"boolean",
@@ -1013,7 +1083,9 @@
 				"invalidDate",
 				"clearDate",
 				"retry",
-				"navigation"
+				"navigation",
+				"featureOff",
+				"states"
 			]
 		},
 		"auth": {
@@ -1258,6 +1330,9 @@
 						},
 						"instanceAdminSubtitle": {
 							"type": "string"
+						},
+						"invitationOnly": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -1275,7 +1350,8 @@
 						"toggleLink",
 						"instanceStatusError",
 						"instanceAdminTitle",
-						"instanceAdminSubtitle"
+						"instanceAdminSubtitle",
+						"invitationOnly"
 					]
 				},
 				"verifyOtp": {
@@ -1528,6 +1604,66 @@
 						}
 					},
 					"required": ["pageTitle", "title", "subtitle", "passwordDisabled"]
+				},
+				"changePassword": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"currentPassword": {
+							"type": "string"
+						},
+						"newPassword": {
+							"type": "string"
+						},
+						"confirmPassword": {
+							"type": "string"
+						},
+						"revoke": {
+							"type": "string"
+						},
+						"required": {
+							"type": "string"
+						},
+						"tooLong": {
+							"type": "string"
+						},
+						"mismatch": {
+							"type": "string"
+						},
+						"wrongCurrent": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						},
+						"success": {
+							"type": "string"
+						},
+						"submit": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"currentPassword",
+						"newPassword",
+						"confirmPassword",
+						"revoke",
+						"required",
+						"tooLong",
+						"mismatch",
+						"wrongCurrent",
+						"failed",
+						"success",
+						"submit",
+						"saving"
+					]
 				},
 				"accountSecurity": {
 					"type": "object",
@@ -1882,6 +2018,22 @@
 								}
 							},
 							"required": ["workspaceNameRequired"]
+						},
+						"noWorkspace": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"viewInvitations": {
+									"type": "string"
+								}
+							},
+							"required": ["title", "description", "viewInvitations"]
 						}
 					},
 					"required": [
@@ -1898,7 +2050,8 @@
 						"workspaceCreatedTitle",
 						"redirectingToWorkspace",
 						"toast",
-						"validation"
+						"validation",
+						"noWorkspace"
 					]
 				},
 				"profileSetup": {
@@ -1992,6 +2145,62 @@
 						"useAgentSignIn",
 						"customerPortalUnavailable"
 					]
+				},
+				"passwordRecovery": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"forgot": {
+							"type": "string"
+						},
+						"requestTitle": {
+							"type": "string"
+						},
+						"confirmation": {
+							"type": "string"
+						},
+						"send": {
+							"type": "string"
+						},
+						"back": {
+							"type": "string"
+						},
+						"resetTitle": {
+							"type": "string"
+						},
+						"newPassword": {
+							"type": "string"
+						},
+						"confirmPassword": {
+							"type": "string"
+						},
+						"mismatch": {
+							"type": "string"
+						},
+						"invalid": {
+							"type": "string"
+						},
+						"success": {
+							"type": "string"
+						},
+						"reset": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"forgot",
+						"requestTitle",
+						"confirmation",
+						"send",
+						"back",
+						"resetTitle",
+						"newPassword",
+						"confirmPassword",
+						"mismatch",
+						"invalid",
+						"success",
+						"reset"
+					]
 				}
 			},
 			"required": [
@@ -2006,11 +2215,13 @@
 				"signUpForm",
 				"twoFactor",
 				"godModeSignIn",
+				"changePassword",
 				"accountSecurity",
 				"invitation",
 				"onboarding",
 				"profileSetup",
-				"wrongPortal"
+				"wrongPortal",
+				"passwordRecovery"
 			]
 		},
 		"settings": {
@@ -12256,6 +12467,9 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"notMember": {
+							"type": "string"
+						},
 						"pageTitle": {
 							"type": "string"
 						},
@@ -12379,6 +12593,7 @@
 						}
 					},
 					"required": [
+						"notMember",
 						"pageTitle",
 						"createProject",
 						"title",
@@ -12558,6 +12773,27 @@
 						},
 						"error": {
 							"type": "string"
+						},
+						"ownerLabel": {
+							"type": "string"
+						},
+						"ownerPlaceholder": {
+							"type": "string"
+						},
+						"ownerHelp": {
+							"type": "string"
+						},
+						"ownerEmpty": {
+							"type": "string"
+						},
+						"ownerError": {
+							"type": "string"
+						},
+						"ownerLoading": {
+							"type": "string"
+						},
+						"successHandedOver": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12572,7 +12808,14 @@
 						"creating",
 						"submit",
 						"success",
-						"error"
+						"error",
+						"ownerLabel",
+						"ownerPlaceholder",
+						"ownerHelp",
+						"ownerEmpty",
+						"ownerError",
+						"ownerLoading",
+						"successHandedOver"
 					]
 				}
 			},
@@ -14649,6 +14892,12 @@
 						"transitionUnavailable": {
 							"type": "string"
 						},
+						"moveRefusedReturned": {
+							"type": "string"
+						},
+						"moveCancelledReturned": {
+							"type": "string"
+						},
 						"movedNotRanked": {
 							"type": "string"
 						},
@@ -14701,6 +14950,9 @@
 								"unknown": {
 									"type": "string"
 								},
+								"network": {
+									"type": "string"
+								},
 								"transitionInvalid": {
 									"type": "string"
 								}
@@ -14712,6 +14964,7 @@
 								"invalid",
 								"forbidden",
 								"unknown",
+								"network",
 								"transitionInvalid"
 							]
 						},
@@ -14787,6 +15040,8 @@
 						"transitionForbidden",
 						"transitionBlocked",
 						"transitionUnavailable",
+						"moveRefusedReturned",
+						"moveCancelledReturned",
 						"movedNotRanked",
 						"changeState",
 						"changeStateFor",
@@ -16278,6 +16533,9 @@
 						},
 						"reject": {
 							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -16297,7 +16555,8 @@
 						"unavailable",
 						"note",
 						"approve",
-						"reject"
+						"reject",
+						"emptyDescription"
 					]
 				},
 				"unavailable": {
@@ -17447,6 +17706,12 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"raisedBy": {
+							"type": "string"
+						},
+						"supportTeam": {
+							"type": "string"
+						},
 						"outstandingTitle": {
 							"type": "string"
 						},
@@ -17539,6 +17804,9 @@
 								"status": {
 									"type": "string"
 								},
+								"requester": {
+									"type": "string"
+								},
 								"createdBy": {
 									"type": "string"
 								},
@@ -17555,6 +17823,7 @@
 								"project",
 								"severity",
 								"status",
+								"requester",
 								"createdBy",
 								"assignedTo",
 								"created"
@@ -17688,6 +17957,8 @@
 						}
 					},
 					"required": [
+						"raisedBy",
+						"supportTeam",
 						"outstandingTitle",
 						"outstandingDescription",
 						"viewAll",
@@ -20554,9 +20825,12 @@
 						},
 						"description": {
 							"type": "string"
+						},
+						"manageDescription": {
+							"type": "string"
 						}
 					},
-					"required": ["title", "description"]
+					"required": ["title", "description", "manageDescription"]
 				}
 			},
 			"required": [
@@ -25240,6 +25514,9 @@
 						},
 						"factor_required": {
 							"type": "string"
+						},
+						"enroll_factor": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -25253,7 +25530,8 @@
 						"rate_limited",
 						"unavailable",
 						"unknown",
-						"factor_required"
+						"factor_required",
+						"enroll_factor"
 					]
 				},
 				"editor": {
@@ -26360,6 +26638,24 @@
 						},
 						"failed": {
 							"type": "string"
+						},
+						"staffRegistration": {
+							"type": "string"
+						},
+						"staffRegistrationDescription": {
+							"type": "string"
+						},
+						"customerInvitationOnly": {
+							"type": "string"
+						},
+						"registrationEnvironmentDisabled": {
+							"type": "string"
+						},
+						"registrationOn": {
+							"type": "string"
+						},
+						"registrationOff": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -26394,7 +26690,13 @@
 						"changeOff",
 						"cancel",
 						"confirm",
-						"failed"
+						"failed",
+						"staffRegistration",
+						"staffRegistrationDescription",
+						"customerInvitationOnly",
+						"registrationEnvironmentDisabled",
+						"registrationOn",
+						"registrationOff"
 					]
 				}
 			},
@@ -30020,9 +30322,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"modules": {
 							"type": "object",
@@ -30033,9 +30338,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"estimates": {
 							"type": "object",
@@ -30046,9 +30354,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"calendar": {
 							"type": "object",
@@ -30059,9 +30370,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"timeline": {
 							"type": "object",
@@ -30072,9 +30386,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"sla": {
 							"type": "object",
@@ -30085,9 +30402,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"pages": {
 							"type": "object",
@@ -30098,9 +30418,15 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
+						},
+						"openSettings": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -30110,7 +30436,8 @@
 						"calendar",
 						"timeline",
 						"sla",
-						"pages"
+						"pages",
+						"openSettings"
 					]
 				},
 				"cycles": {
@@ -32363,9 +32690,12 @@
 						},
 						"description": {
 							"type": "string"
+						},
+						"manageDescription": {
+							"type": "string"
 						}
 					},
-					"required": ["title", "description"]
+					"required": ["title", "description", "manageDescription"]
 				},
 				"common": {
 					"type": "object",
@@ -38716,9 +39046,12 @@
 								},
 								"description": {
 									"type": "string"
+								},
+								"manageDescription": {
+									"type": "string"
 								}
 							},
-							"required": ["title", "description"]
+							"required": ["title", "description", "manageDescription"]
 						},
 						"forbidden": {
 							"type": "object",

@@ -1,6 +1,10 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 import type { PortalSla } from "@/lib/portal-request";
 import type {
   PortalCasePriority,
@@ -22,6 +26,7 @@ export type PortalCase = {
   project: { key: string; name: string } | null;
   createdBy: { name: string | null; isYou: boolean };
   isRequester: boolean;
+  raisedBySupport: boolean;
   customerVisibility: "private" | "organisation";
   sla: PortalSla | null;
 };
@@ -72,6 +77,8 @@ async function readJson<T>(path: string, fallback: string): Promise<T> {
   const response = await apiFetch(getApiUrl(path), {
     credentials: "include",
   });
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, "The request failed");
   if (!response.ok)
     throw new HttpError(
       response.status,

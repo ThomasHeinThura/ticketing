@@ -30,13 +30,23 @@ class StepUpUnavailableError extends Error {
 export function proofMethodAcceptable(
   authMethod: "password" | "totp" | "backup_code" | "sso_prompt_login",
   factor: { required: boolean; enabled: boolean },
+  requireSecondFactor = false,
 ): boolean {
+  if (
+    requireSecondFactor &&
+    authMethod !== "totp" &&
+    authMethod !== "backup_code"
+  )
+    return false;
   if (authMethod === "password" || authMethod === "sso_prompt_login")
     return !(factor.required || factor.enabled);
   return factor.enabled;
 }
 
-export type StepUpSpender = (tx: StepUpExecutor) => Promise<void>;
+export type StepUpSpender = (
+  tx: StepUpExecutor,
+  options?: { requireSecondFactor?: boolean },
+) => Promise<void>;
 
 /**
  * Spends the caller's operation-bound step-up proof for `input` inside the caller's own mutation
@@ -63,7 +73,15 @@ export async function runWithStepUp<T>(
   // without a proof never pays for it and the pool is not asked for a second connection while the
   // transaction holds one).
   const factor = token && session ? await loadLocalFactorState(userId) : null;
-  const spend: StepUpSpender = async (tx) => {
+  const spend: StepUpSpender = async (tx, options) => {
+    if (options?.requireSecondFactor) {
+      const enrolled = await loadLocalFactorState(userId, tx);
+      if (!enrolled.enabled)
+        throw new HTTPException(403, {
+          message:
+            "Enroll a second factor before changing staff self-registration.",
+        });
+    }
     if (!token) throw new HTTPException(403, { message: "step_up_required" });
     if (!session || !factor)
       throw new HTTPException(401, { message: "Unauthorized" });
@@ -76,7 +94,11 @@ export async function runWithStepUp<T>(
     if (
       !proof ||
       currentFactor.personId !== factor.personId ||
-      !proofMethodAcceptable(proof.authMethod, currentFactor)
+      !proofMethodAcceptable(
+        proof.authMethod,
+        currentFactor,
+        options?.requireSecondFactor,
+      )
     )
       throw new StepUpUnavailableError();
     await appendStepUpAudit(tx, {

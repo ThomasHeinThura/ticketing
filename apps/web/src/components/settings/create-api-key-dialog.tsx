@@ -227,6 +227,7 @@ export function CreateApiKeyDialog({
           t,
           t("settings:apiKey.createDialog.failedCreate"),
         ),
+        { error },
       );
     } finally {
       setIsSubmitting(false);

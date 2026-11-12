@@ -416,6 +416,54 @@ describe("PA-15 Entra prompt=login step-up", () => {
     expect(user?.enabled).toBe(false);
   });
 
+  it("preserves OIDC provenance when an authenticated session rotates for a password change", async () => {
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ setupCompletedAt: new Date() })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    const sessionCookie = await signInThroughOidc();
+    const bcrypt = apiRequire("bcryptjs") as {
+      hash(value: string, rounds: number): Promise<string>;
+    };
+    await db.insert(schema.accountTable).values({
+      id: "sso-password-credential",
+      accountId: ADMIN_ID,
+      providerId: "credential",
+      userId: ADMIN_ID,
+      password: await bcrypt.hash("sso-local-password", 4),
+    });
+    const before = await db
+      .select()
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, ADMIN_ID));
+    expect(
+      before.some((session) => session.identityConnectionId === CONNECTION_ID),
+    ).toBe(true);
+    const response = await app.request(`${origin}/api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        origin,
+        cookie: sessionCookie,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        currentPassword: "sso-local-password",
+        newPassword: "sso-local-password-new",
+        revokeOtherSessions: true,
+      }),
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    const sessions = await db
+      .select()
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, ADMIN_ID));
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.identityConnectionId).toBe(CONNECTION_ID);
+    expect(before.some((session) => session.id === sessions[0]?.id)).toBe(
+      false,
+    );
+  });
+
   it("uses the actual signed-token validator and spends one exact operation proof without creating a session", async () => {
     const [beforeSessions] = await db
       .select({ id: schema.sessionTable.id })

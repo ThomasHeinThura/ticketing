@@ -87,6 +87,7 @@ export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
           t,
           t("settings:apiKey.table.toastRevokeError"),
         ),
+        { error },
       );
     } finally {
       setRevokingId(null);
@@ -105,6 +106,7 @@ export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
           t,
           t("settings:apiKey.table.toastDeleteError"),
         ),
+        { error },
       );
     } finally {
       setDeletingId(null);

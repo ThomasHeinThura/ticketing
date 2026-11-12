@@ -150,6 +150,7 @@ describe("role people errors", () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
         translate("roles:delete.failed"),
+        { error: expect.any(Error) },
       ),
     );
     expect(mocks.pending).not.toHaveBeenCalled();

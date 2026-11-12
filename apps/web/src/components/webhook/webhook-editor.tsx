@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import {
   FailureAlert,
   StepUpFields,
@@ -401,6 +402,7 @@ function DeleteCard({ webhook }: { webhook: Webhook }) {
           <Alert variant="error">
             <AlertDescription>
               {localizedErrorMessage(request.error, t, t("delete.failed"))}
+              <ErrorReference error={request.error} />
             </AlertDescription>
           </Alert>
         ) : null}
@@ -421,7 +423,9 @@ function SendTest({
     mutationFn: () => sendWebhookTestEvent(webhook.id),
     onSuccess: onResult,
     onError: (error) =>
-      toast.error(localizedErrorMessage(error, t, t("test.failedToSend"))),
+      toast.error(localizedErrorMessage(error, t, t("test.failedToSend")), {
+        error,
+      }),
   });
   return (
     <Button
@@ -477,7 +481,9 @@ function StatusCard({
     onError: (error) =>
       error.cause === "step_up"
         ? undefined
-        : toast.error(localizedErrorMessage(error, t, t("editor.saveFailed"))),
+        : toast.error(localizedErrorMessage(error, t, t("editor.saveFailed")), {
+            error,
+          }),
   });
   const reown = needsReown(webhook);
   return (
@@ -781,6 +787,7 @@ function WebhookForm({
         <Alert variant="error">
           <AlertDescription>
             {localizedErrorMessage(save.error, t, t("editor.saveFailed"))}
+            <ErrorReference error={save.error} />
           </AlertDescription>
         </Alert>
       ) : null}

@@ -32,7 +32,8 @@ vi.mock("@/hooks/use-open-pending-action", () => ({
 }));
 vi.mock("@/lib/toast", () => ({
   toast: {
-    error: (message: string) => mocks.toastError(message),
+    error: (message: string, options: unknown) =>
+      mocks.toastError(message, options),
     success: (message: string) => mocks.toastSuccess(message),
   },
 }));
@@ -95,11 +96,9 @@ describe("personal API-key row actions", () => {
 
   it("translates the revoke fallback rather than showing the client English", async () => {
     mocks.revoke.mockRejectedValue(
-      new HttpError(
-        500,
-        "Failed to revoke API key",
-        "settings:apiKey.table.toastRevokeError",
-      ),
+      new HttpError(500, "Failed to revoke API key", "a".repeat(32), {
+        fallbackKey: "settings:apiKey.table.toastRevokeError",
+      }),
     );
     render(<ApiKeyTable apiKeys={[apiKey]} isLoading={false} />);
     fireEvent.click(
@@ -111,6 +110,7 @@ describe("personal API-key row actions", () => {
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith(
         "settings:apiKey.table.toastRevokeError",
+        { error: expect.objectContaining({ requestId: "a".repeat(32) }) },
       ),
     );
   });
@@ -124,6 +124,7 @@ describe("personal API-key row actions", () => {
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith(
         "settings:apiKey.table.toastDeleteError",
+        { error: expect.any(Error) },
       ),
     );
     expect(mocks.openPendingAction).not.toHaveBeenCalled();

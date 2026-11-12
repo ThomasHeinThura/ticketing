@@ -28,6 +28,7 @@ import {
 } from "@taskdesk/ui";
 import { ArrowLeft, ChevronRight, RefreshCw, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import PageTitle from "@/components/page-title";
 import {
   listWebhookDeliveries,
@@ -180,6 +181,7 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
     onError: (error) =>
       toast.error(
         localizedAdminErrorMessage(error, t, t("deliveries.redeliveryFailed")),
+        { error },
       ),
   });
 
@@ -229,6 +231,7 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
               t,
               t("deliveries.loadErrorDescription"),
             )}
+            <ErrorReference error={query.error} />
             <Button className="w-fit" onClick={() => void query.refetch()}>
               <RefreshCw aria-hidden="true" />
               {t("list.retry")}

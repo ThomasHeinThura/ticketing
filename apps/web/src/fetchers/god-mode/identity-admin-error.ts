@@ -6,6 +6,7 @@ export type IdentityAdminFailureKind =
   | "denied"
   /** Fresh verification is unavailable, wrong, expired or already used. */
   | "step_up"
+  | "enroll_factor"
   /** The parent configuration version moved; the draft is stale. */
   | "conflict"
   /** A unique value (for example a mapped external group) already exists. */
@@ -60,8 +61,10 @@ function classifyStatus(
   currentVersion: number | null,
 ): IdentityAdminFailureKind {
   const normalised = detail.trim().toLowerCase();
-  if (status === 403)
+  if (status === 403) {
+    if (normalised.includes("enroll a second factor")) return "enroll_factor";
     return normalised.includes("step_up") ? "step_up" : "denied";
+  }
   if (status === 404) return "not_found";
   if (status === 409) {
     if (currentVersion !== null || normalised.includes("version_conflict"))

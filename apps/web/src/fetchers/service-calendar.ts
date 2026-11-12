@@ -1,7 +1,7 @@
 import { client } from "@taskdesk/libs";
 import type { InferRequestType, InferResponseType } from "hono/client";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
-import { HttpError } from "@/lib/http-error";
+import { HttpError, httpErrorFromResponse } from "@/lib/http-error";
 import { recordServerDate } from "@/lib/server-clock";
 
 export type ServiceCalendar = InferResponseType<
@@ -195,6 +195,12 @@ export async function importServiceCalendarHolidays(input: {
     json: { ics: input.ics },
   });
   if (!response.ok) {
+    if (response.status >= 500)
+      throw await httpErrorFromResponse(
+        response,
+        "Failed to import holidays",
+        "serviceCalendars:clientErrors.importHolidays",
+      );
     const detail = await response.text();
     let message = detail;
     try {
@@ -227,7 +233,12 @@ export async function importServiceCalendarHolidays(input: {
     throw new HttpError(
       response.status,
       message || "Failed to import holidays",
-      message ? undefined : "serviceCalendars:clientErrors.importHolidays",
+      undefined,
+      {
+        fallbackKey: message
+          ? undefined
+          : "serviceCalendars:clientErrors.importHolidays",
+      },
     );
   }
   return response.json();

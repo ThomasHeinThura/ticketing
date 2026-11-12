@@ -20,7 +20,6 @@ import { useEffect } from "react";
 import {
   PortalCaseSeverity,
   PortalCaseStatus,
-  raisedByTeamLabel,
 } from "@/components/portal/cases/portal-case-table";
 import {
   formatPortalDateTime,
@@ -174,9 +173,7 @@ export function PortalRequestDetails({
               </Badge>
             </div>
             <p className="text-muted-foreground text-sm">
-              {[request.requestTypeName, raisedByTeamLabel(request, t)].join(
-                " · ",
-              )}
+              {request.requestTypeName}
             </p>
           </header>
           {request.canReply ? null : (
@@ -227,6 +224,26 @@ function RequestFacts({
       <CardPanel>
         <div className="flex flex-col gap-4">
           <dl className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <dt>
+                <CardDescription>
+                  {t("cases.columns.requester")}
+                </CardDescription>
+              </dt>
+              <dd className="text-sm">
+                {request.createdBy.isYou
+                  ? t("request.author.you")
+                  : (request.createdBy.name ?? t("request.author.colleague"))}
+              </dd>
+            </div>
+            {request.raisedBySupport ? (
+              <div className="flex flex-col gap-1">
+                <dt>
+                  <CardDescription>{t("cases.raisedBy")}</CardDescription>
+                </dt>
+                <dd className="text-sm">{t("cases.supportTeam")}</dd>
+              </div>
+            ) : null}
             <div className="flex flex-col gap-1">
               <dt>
                 <CardDescription>{t("cases.columns.status")}</CardDescription>

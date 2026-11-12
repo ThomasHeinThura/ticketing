@@ -22,7 +22,7 @@ export function propertyTriggerProps(editable: boolean, compact: boolean) {
   return {
     className: cn(
       propertyRowClass(compact),
-      "cursor-default hover:bg-transparent active:scale-100",
+      "cursor-default hover:bg-transparent [--press-scale:1]",
     ),
     render: <div />,
     "data-read-only": "true",

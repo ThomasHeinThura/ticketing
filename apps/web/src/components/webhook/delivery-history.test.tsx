@@ -99,6 +99,7 @@ describe("delivery failures", () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
         translate("webhooks:deliveries.redeliveryFailed"),
+        { error: expect.any(Error) },
       ),
     );
   });

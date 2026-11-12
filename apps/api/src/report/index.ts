@@ -1,5 +1,7 @@
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { cycleTable } from "../database/schema-p5-agile";
 import { listWorkspaceFeatures } from "../feature-flag/repository";
 import {
   apiRouter,
@@ -13,12 +15,22 @@ import {
   requestRegisteredDeletion,
 } from "../pending-action/deletion-targets";
 import { kickReportExport } from "../scheduler/report-jobs";
+import { callerReach } from "../utils/caller-reach";
 import { requireReachFilteredList } from "../utils/reach-filtered-list";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import getView from "../view/controllers/get-view";
+import {
+  assertSavedViewQueryReach,
+  savedViewQueryFilter,
+} from "../view/query-reach";
 import { auditReport } from "./audit";
-import { buildContext, cleanFilters } from "./context";
+import {
+  buildContext,
+  cleanFilters,
+  reachPredicate,
+  selectRows,
+} from "./context";
 import {
   CUSTOM_CHART_TYPES,
   customQuerySchema,
@@ -38,11 +50,13 @@ import {
   getWidget,
   listDashboards,
   listWidgets,
+  listWidgetsForDashboards,
   updateDashboard,
 } from "./dashboard.repository";
 import { DASHBOARD_DELETION_ROUTE } from "./deletion-target";
 import { shouldQueueExport } from "./export.logic";
 import {
+  coveredProjectIds,
   type ExportRow,
   ExportRuleError,
   type ExportSpec,
@@ -95,6 +109,7 @@ import {
   widgetParam,
   workspaceIdQuery,
 } from "./schema";
+import { reachableTeam } from "./team-reach";
 import type { ReportDefinition } from "./types";
 
 type Vars = BaseVariables & { workspaceId: string };
@@ -164,7 +179,7 @@ const reportRoute = createRoute({
   tags: ["Reports"],
   summary: "Run a tier 1 report",
   description:
-    "Filtered to the caller's reach (report:read) or the whole workspace (report:read_all). States scope, window and as-of time. Insufficient data is null with its sample, never 0% or 100%. Rate and cost fields are absent without time_entry:manage_rates.",
+    "Filtered to the caller's project reach. States scope, window and as-of time. Insufficient data is null with its sample, never 0% or 100%. Rate and cost fields are absent without time_entry:manage_rates.",
   middleware: [
     staffOnly,
     workspaceAccess.fromQuery(),
@@ -175,7 +190,7 @@ const reportRoute = createRoute({
   responses: {
     200: jsonResponse("The report", reportEnvelopeSchema),
     403: errorResponse("Not staff, or missing report:read"),
-    404: errorResponse("Unknown report"),
+    404: errorResponse("Unknown report or inaccessible project, cycle or team"),
     409: errorResponse("feature.reports (or the report's own feature) is off"),
     422: errorResponse("Invalid window"),
   },
@@ -199,7 +214,7 @@ const drillRoute = createRoute({
   responses: {
     200: jsonResponse("Items", drillResponseSchema),
     403: errorResponse("Not staff, or missing report:read"),
-    404: errorResponse("Unknown report"),
+    404: errorResponse("Unknown report or inaccessible project, cycle or team"),
     409: errorResponse("Feature off"),
     422: errorResponse("Invalid window"),
   },
@@ -215,7 +230,7 @@ const exportResponses = {
     exportEnvelopeSchema,
   ),
   403: errorResponse("Not staff, or missing report:export"),
-  404: errorResponse("Unknown report"),
+  404: errorResponse("Unknown report or inaccessible project, cycle or team"),
   409: errorResponse("Feature off"),
   422: errorResponse("Invalid window"),
   429: errorResponse("Too many exports queued or running for this person"),
@@ -290,6 +305,7 @@ const customItemsRoute = createRoute({
   responses: {
     200: jsonResponse("Items", drillResponseSchema),
     403: errorResponse("Not staff, or missing report:read"),
+    404: errorResponse("Project not found or out of reach"),
     409: errorResponse("feature.reports is off"),
     422: errorResponse("Unsupported filter, grouping or aggregate"),
   },
@@ -377,6 +393,7 @@ const customPreviewRoute = createRoute({
   responses: {
     200: jsonResponse("The result", reportEnvelopeSchema),
     403: errorResponse("Not staff, or missing report:read"),
+    404: errorResponse("Project not found or out of reach"),
     409: errorResponse("feature.reports is off"),
     422: errorResponse("Unsupported filter, grouping or aggregate"),
   },
@@ -425,6 +442,7 @@ const createDashboardRoute = createRoute({
   responses: {
     201: jsonResponse("The dashboard", dashboardDetailSchema),
     403: errorResponse("Workspace dashboards need workspace:manage_settings"),
+    404: errorResponse("Widget target not found or out of reach"),
     409: errorResponse("Name taken, or feature off"),
     422: errorResponse("Invalid layout or widget"),
   },
@@ -601,13 +619,23 @@ function dashboardDto(
 }
 
 async function detail(
+  c: Parameters<typeof actorOf>[0],
   row: NonNullable<DashboardRowLike>,
   personId: string,
   canManage: boolean,
 ) {
-  const widgets = await listWidgets(row.id);
+  const allWidgets = await listWidgets(row.id);
+  const widgets = await visibleWidgets(
+    c,
+    row.workspaceId,
+    personId,
+    allWidgets,
+  );
   return {
     ...dashboardDto(row, personId, canManage, widgets.length),
+    canEdit:
+      widgets.length === allWidgets.length &&
+      (row.scope === "workspace" ? canManage : row.ownerId === personId),
     widgets: widgets.map((widget) => ({
       id: widget.id,
       reportKey: widget.reportKey,
@@ -620,6 +648,145 @@ async function detail(
       h: widget.h,
     })),
   };
+}
+
+/** Widget metadata can itself name a project or saved view the reader no longer reaches. */
+async function visibleWidgets<
+  T extends { filters?: Record<string, unknown>; savedViewId?: string | null },
+>(
+  c: Parameters<typeof actorOf>[0],
+  workspaceId: string,
+  personId: string,
+  widgets: T[],
+): Promise<T[]> {
+  const reach = await callerReach(c, c.get("userId") as string);
+  const projects = await reach.projectFactsFor([workspaceId]);
+  const allowed = new Set(await reach.reachableProjectIds([workspaceId]));
+  let teamsPromise: Promise<Set<string>> | undefined;
+  const visibleTeam = async (teamId: unknown) => {
+    if (typeof teamId !== "string") return true;
+    if (!reach.identity) return false;
+    const identity = reach.identity;
+    teamsPromise ??= selectRows<{ id: string }>(sql`SELECT t.id FROM team t
+      WHERE t.workspace_id = ${workspaceId}
+        AND ${reachableTeam({ workspaceId, identity, reach: reachPredicate(identity, false) })}`).then(
+      (rows) => new Set(rows.map((row) => row.id)),
+    );
+    return (await teamsPromise).has(teamId);
+  };
+
+  const hidden = new Set(
+    projects
+      .filter((project) => !allowed.has(project.id))
+      .map((project) => project.id),
+  );
+  const cycleIds = widgets.flatMap((widget) =>
+    typeof widget.filters?.cycle === "string" ? [widget.filters.cycle] : [],
+  );
+  if (cycleIds.length) {
+    const cycles = await db
+      .select({ id: cycleTable.id, projectId: cycleTable.projectId })
+      .from(cycleTable)
+      .where(
+        and(
+          eq(cycleTable.workspaceId, workspaceId),
+          inArray(cycleTable.id, cycleIds),
+        ),
+      );
+    const permitted = new Set(
+      cycles
+        .filter((cycle) => allowed.has(cycle.projectId))
+        .map((cycle) => cycle.id),
+    );
+    for (const id of cycleIds) if (!permitted.has(id)) hidden.add(id);
+  }
+  const result: T[] = [];
+  const visibleViewQuery = await savedViewQueryFilter(reach, workspaceId);
+  for (const widget of widgets) {
+    const projectId = widget.filters?.projectId;
+    if (typeof projectId === "string" && !allowed.has(projectId)) continue;
+    if (!(await visibleTeam(widget.filters?.teamId))) continue;
+    if (!visibleViewQuery(widget.filters)) continue;
+    if (
+      typeof widget.filters?.cycle === "string" &&
+      hidden.has(widget.filters.cycle)
+    )
+      continue;
+    if (widget.savedViewId) {
+      try {
+        const view = await getView(
+          widget.savedViewId,
+          personId,
+          c.get("userId") as string,
+        );
+        const currentReach = await callerReach(c, c.get("userId") as string);
+        const currentIds = new Set(
+          await currentReach.reachableProjectIds([workspaceId]),
+        );
+        const currentQueryVisible = await savedViewQueryFilter(
+          currentReach,
+          workspaceId,
+        );
+        const parsedView = customQuerySchema.safeParse(view.query);
+        if (
+          parsedView.success &&
+          !(await visibleTeam(parsedView.data.filter?.teamId))
+        )
+          continue;
+        if (
+          view.workspaceId !== workspaceId ||
+          (view.scope === "project" && !currentIds.has(view.scopeId)) ||
+          !currentQueryVisible(view.query)
+        )
+          continue;
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 404) continue;
+        throw error;
+      }
+    }
+    result.push(widget);
+  }
+  return result;
+}
+
+async function requireVisibleWidget(
+  c: Parameters<typeof actorOf>[0],
+  workspaceId: string,
+  personId: string,
+  widget: WidgetRow,
+) {
+  if ((await visibleWidgets(c, workspaceId, personId, [widget])).length === 0)
+    throw new HTTPException(404, { message: "Widget not found" });
+}
+
+async function requireReportScope(
+  c: Parameters<typeof actorOf>[0],
+  workspaceId: string,
+  projectId: unknown,
+  cycle: unknown,
+  teamId?: unknown,
+) {
+  if (
+    typeof projectId !== "string" &&
+    typeof cycle !== "string" &&
+    typeof teamId !== "string"
+  )
+    return;
+  const identity = await identityOf(c);
+  const widgets = [
+    {
+      filters: {
+        ...(typeof projectId === "string" ? { projectId } : {}),
+        ...(typeof cycle === "string" ? { cycle } : {}),
+        ...(typeof teamId === "string" ? { teamId } : {}),
+      },
+    },
+  ];
+  if (
+    (await visibleWidgets(c, workspaceId, identity.personId, widgets))
+      .length === 0
+  )
+    throw new HTTPException(404, { message: "Project not found" });
 }
 
 /** A widget must name a real report, or a saved view the caller may see and that is a chart. */
@@ -684,6 +851,17 @@ function exportDto(row: ExportRow) {
   };
 }
 
+async function exportVisible(
+  c: Parameters<typeof actorOf>[0],
+  row: ExportRow,
+  identity: Awaited<ReturnType<typeof identityOf>>,
+) {
+  const stored = row.caps as { readAll?: boolean };
+  if (stored.readAll === true && !(await holds(c, "report:read_all")))
+    return false;
+  return !(await exportReachLost(row, identity));
+}
+
 /**
  * RP-10, one path for every export (a fixed report, a tier 3 report, a widget): run it on screen
  * terms for the caller; if it is small, that is the CSV (audited as it leaves); if it hit the row
@@ -743,7 +921,14 @@ async function runExport(
         userId: c.get("userId") as string,
         spec,
         title: rendered.title,
-        caps,
+        caps: {
+          ...caps,
+          ...(caps.readAll
+            ? {}
+            : {
+                projectIds: await coveredProjectIds(workspaceId, identity, db),
+              }),
+        },
         now,
         audit: (tx, id) =>
           auditReport(tx, {
@@ -815,6 +1000,7 @@ async function widgetSpec(
     personId,
     c.get("userId") as string,
   );
+  await assertSavedViewQueryReach(c, view);
   const parsed = customQuerySchema.safeParse(view.query);
   if (!parsed.success || validateCustomQuery(parsed.data))
     throw new HTTPException(422, { message: "saved_view_not_runnable" });
@@ -881,6 +1067,13 @@ router
     const window = windowOrThrow(query, now);
     const identity = await identityOf(c);
     const workspaceId = c.get("workspaceId");
+    await requireReportScope(
+      c,
+      workspaceId,
+      query.projectId,
+      query.cycle,
+      query.teamId,
+    );
     const caps = await callerCaps(c, filtersOf(query).projectId);
     try {
       const envelope = await runReport({
@@ -911,8 +1104,15 @@ router
   .openapi(drillRoute, async (c) => {
     const def = definitionOf(c.req.valid("param").key);
     const drill = drillOf(def);
-    if (!drill) return c.json({ data: [] }, 200);
     const query = c.req.valid("query");
+    await requireReportScope(
+      c,
+      c.get("workspaceId"),
+      query.projectId,
+      query.cycle,
+      query.teamId,
+    );
+    if (!drill) return c.json({ data: [] }, 200);
     const now = new Date();
     const window = windowOrThrow(query, now);
     const workspaceId = c.get("workspaceId");
@@ -942,6 +1142,13 @@ router
   })
   .openapi(customExportRoute, async (c) => {
     const body = c.req.valid("json");
+    await requireReportScope(
+      c,
+      c.get("workspaceId"),
+      body.query.filter?.projectId,
+      undefined,
+      body.query.filter?.teamId,
+    );
     return runExport(c, c.get("workspaceId"), {
       kind: "custom",
       name: body.name || "Custom report",
@@ -951,6 +1158,13 @@ router
   })
   .openapi(customItemsRoute, async (c) => {
     const body = c.req.valid("json");
+    await requireReportScope(
+      c,
+      c.get("workspaceId"),
+      body.query.filter?.projectId,
+      undefined,
+      body.query.filter?.teamId,
+    );
     const problem = validateCustomQuery(body.query);
     if (problem) throw new HTTPException(422, { message: problem });
     const now = new Date();
@@ -970,6 +1184,13 @@ router
     const key = c.req.valid("param").key;
     definitionOf(key);
     const body = c.req.valid("json");
+    await requireReportScope(
+      c,
+      c.get("workspaceId"),
+      body.projectId,
+      body.cycle,
+      body.teamId,
+    );
     return runExport(c, c.get("workspaceId"), {
       kind: "report",
       key,
@@ -980,17 +1201,37 @@ router
   })
   .openapi(listExportsRoute, async (c) => {
     const identity = await identityOf(c);
-    const rows = await listExports(c.get("workspaceId"), identity.personId);
-    return c.json({ data: rows.map(exportDto) }, 200);
+    const visible: ExportRow[] = [];
+    for (let offset = 0; visible.length < 20; offset += 20) {
+      const rows = await listExports(
+        c.get("workspaceId"),
+        identity.personId,
+        offset,
+      );
+      const checks = await Promise.all(
+        rows.map((row) => exportVisible(c, row, identity)),
+      );
+      visible.push(...rows.filter((_row, index) => checks[index]));
+      if (rows.length < 20) break;
+    }
+    return c.json({ data: visible.slice(0, 20).map(exportDto) }, 200);
   })
   .openapi(getExportRoute, async (c) => {
     const row = await getExport(c.req.valid("param").id);
-    if (!row) throw new HTTPException(404, { message: "Export not found" });
+    if (!row || !(await exportVisible(c, row, await identityOf(c))))
+      throw new HTTPException(404, { message: "Export not found" });
     return c.json({ data: exportDto(row) }, 200);
   })
   .openapi(downloadExportRoute, async (c) => {
     const row = await getExport(c.req.valid("param").id);
     if (!row) throw new HTTPException(404, { message: "Export not found" });
+    if (!(await exportVisible(c, row, await identityOf(c)))) {
+      const stored = row.caps as { readAll?: boolean; projectIds?: unknown };
+      if (stored.readAll === true || !Array.isArray(stored.projectIds)) {
+        throw new HTTPException(403, { message: "reach_revoked" });
+      }
+      throw new HTTPException(404, { message: "Export not found" });
+    }
     if (row.status === "expired")
       throw new HTTPException(410, { message: "expired" });
     if (row.status !== "ready")
@@ -1045,6 +1286,13 @@ router
   })
   .openapi(customPreviewRoute, async (c) => {
     const body = c.req.valid("json");
+    await requireReportScope(
+      c,
+      c.get("workspaceId"),
+      body.query.filter?.projectId,
+      undefined,
+      body.query.filter?.teamId,
+    );
     const problem = validateCustomQuery(body.query);
     if (problem) throw new HTTPException(422, { message: problem });
     const now = new Date();
@@ -1068,11 +1316,35 @@ router
     await ensureDefaultDashboard(workspaceId, identity.personId, actorOf(c));
     const canManage = await holds(c, "workspace:manage_settings");
     const rows = await listDashboards(workspaceId, identity.personId);
+    const allWidgets = await listWidgetsForDashboards(
+      rows.map((row) => row.id),
+    );
+    const visible = await visibleWidgets(
+      c,
+      workspaceId,
+      identity.personId,
+      allWidgets,
+    );
+    const visibleIds = new Set(visible.map((widget) => widget.id));
+    const entries = rows.map((row) => {
+      const widgets = allWidgets.filter(
+        (widget) => widget.dashboardId === row.id,
+      );
+      const visibleCount = widgets.filter((widget) =>
+        visibleIds.has(widget.id),
+      ).length;
+      return {
+        ...dashboardDto(row, identity.personId, canManage, visibleCount),
+        canEdit:
+          visibleCount === widgets.length &&
+          (row.scope === "workspace"
+            ? canManage
+            : row.ownerId === identity.personId),
+      };
+    });
     return c.json(
       {
-        data: rows.map((row) =>
-          dashboardDto(row, identity.personId, canManage, row.widgetCount),
-        ),
+        data: entries,
         meta: { canManageWorkspaceDashboards: canManage },
       },
       200,
@@ -1086,6 +1358,11 @@ router
       throw new HTTPException(403, { message: "Insufficient permissions" });
     const widgets = body.widgets ?? [];
     await checkWidgets(widgets, identity.personId, c.get("userId") as string);
+    if (
+      (await visibleWidgets(c, body.workspaceId, identity.personId, widgets))
+        .length !== widgets.length
+    )
+      throw new HTTPException(404, { message: "Widget not found" });
     try {
       const row = await createDashboard({
         workspaceId: body.workspaceId,
@@ -1096,7 +1373,7 @@ router
         widgets,
         actor: actorOf(c),
       });
-      return c.json(await detail(row, identity.personId, canManage), 201);
+      return c.json(await detail(c, row, identity.personId, canManage), 201);
     } catch (error) {
       if (error instanceof DashboardNameTakenError)
         throw new HTTPException(409, { message: "name_taken" });
@@ -1115,6 +1392,7 @@ router
     if (!row) throw new HTTPException(404, { message: "Dashboard not found" });
     return c.json(
       await detail(
+        c,
         row,
         identity.personId,
         await holds(c, "workspace:manage_settings"),
@@ -1134,12 +1412,24 @@ router
       row.scope === "workspace" ? canManage : row.ownerId === identity.personId;
     if (!allowed)
       throw new HTTPException(403, { message: "Insufficient permissions" });
+    const currentWidgets = await listWidgets(id);
+    if (
+      (await visibleWidgets(c, workspaceId, identity.personId, currentWidgets))
+        .length !== currentWidgets.length
+    )
+      throw new HTTPException(404, { message: "Dashboard not found" });
     if (body.widgets)
       await checkWidgets(
         body.widgets,
         identity.personId,
         c.get("userId") as string,
       );
+    if (
+      body.widgets &&
+      (await visibleWidgets(c, workspaceId, identity.personId, body.widgets))
+        .length !== body.widgets.length
+    )
+      throw new HTTPException(404, { message: "Widget not found" });
     try {
       const updated = await updateDashboard({
         workspaceId,
@@ -1152,7 +1442,10 @@ router
       });
       if (!updated)
         throw new HTTPException(404, { message: "Dashboard not found" });
-      return c.json(await detail(updated, identity.personId, canManage), 200);
+      return c.json(
+        await detail(c, updated, identity.personId, canManage),
+        200,
+      );
     } catch (error) {
       if (error instanceof DashboardVersionConflictError)
         throw new HTTPException(409, { message: "version_conflict" });
@@ -1190,6 +1483,7 @@ router
       throw new HTTPException(404, { message: "Dashboard not found" });
     const widget = await getWidget(id, wid);
     if (!widget) throw new HTTPException(404, { message: "Widget not found" });
+    await requireVisibleWidget(c, workspaceId, identity.personId, widget);
     const now = new Date();
     const filters = widget.filters ?? {};
     const caps = await callerCaps(c, cleanFilters(filters).projectId);
@@ -1226,6 +1520,7 @@ router
       identity.personId,
       c.get("userId") as string,
     );
+    await assertSavedViewQueryReach(c, view);
     const parsed = customQuerySchema.safeParse(view.query);
     if (!parsed.success || validateCustomQuery(parsed.data))
       throw new HTTPException(422, { message: "saved_view_not_runnable" });
@@ -1256,6 +1551,7 @@ router
       throw new HTTPException(404, { message: "Dashboard not found" });
     const widget = await getWidget(id, wid);
     if (!widget) throw new HTTPException(404, { message: "Widget not found" });
+    await requireVisibleWidget(c, workspaceId, identity.personId, widget);
     const now = new Date();
     const spec = await widgetSpec(c, widget, identity.personId);
     const caps = await callerCaps(c, specProjectId(spec));
@@ -1308,6 +1604,7 @@ router
       throw new HTTPException(404, { message: "Dashboard not found" });
     const widget = await getWidget(id, wid);
     if (!widget) throw new HTTPException(404, { message: "Widget not found" });
+    await requireVisibleWidget(c, workspaceId, identity.personId, widget);
     return runExport(
       c,
       workspaceId,

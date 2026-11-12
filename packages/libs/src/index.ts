@@ -5,10 +5,12 @@ export {
   client,
   createApiFetch,
   FACTOR_ENROLLMENT_REQUIRED,
+  notifyServerError,
   onFactorEnrollmentRequired,
   primeCsrfToken,
   windowId,
 } from "./hono";
+export { HttpError } from "./http-error";
 export type {
   ScimAdministrationDto,
   ScimAdministrationRequest,

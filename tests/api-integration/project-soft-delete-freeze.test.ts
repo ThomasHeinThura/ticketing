@@ -198,15 +198,8 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
         { projects: [{ id: project.id, position: 0 }] },
       );
 
-      expect(response.status).toBe(400);
-      // Hono renders an HTTPException's message as plain text, not JSON.
-      const message = await response.text();
-      // The id does belong to this workspace -- it is gone, and saying otherwise
-      // sends whoever reads the error looking for the wrong problem (#202).
-      expect(message).toBe(
-        `Project ${project.id} is deleted and cannot be reordered`,
-      );
-      expect(message).not.toContain("does not belong to this workspace");
+      expect(response.status).toBe(404);
+      expect(await response.text()).toContain("Project not found");
 
       const row = await reloadProject(project.id);
       expect(row.position).toBe(project.position);

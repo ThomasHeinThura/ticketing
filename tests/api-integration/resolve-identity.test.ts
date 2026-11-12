@@ -28,6 +28,13 @@ beforeEach(async () => {
 /** Backfills a `person` row (side: staff) for every `user` row that doesn't have one yet —
  * the same boot-time seed the real application runs. */
 async function backfillStaffPersons() {
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: { staffSelfRegistrationEnabled: true },
+    });
   await seedInternalOrganisationAndStaffPersons();
 }
 

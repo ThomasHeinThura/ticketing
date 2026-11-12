@@ -13,6 +13,7 @@ import {
   getNetworkTroubleshootingSteps,
   parseApiError,
 } from "../../lib/error-handler";
+import { ErrorReference } from "./error-reference";
 
 type ErrorDisplayProps = {
   error: unknown;
@@ -59,6 +60,7 @@ export function ErrorDisplay({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <ErrorReference error={error} />
           {troubleshootingSteps.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-sm font-medium text-foreground">

@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DocumentEditorProps } from "@/components/editor/document-editor";
 import type { Page } from "@/fetchers/pages";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   getPage: vi.fn(),
@@ -42,6 +43,9 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/components/agile/use-can-manage-project-features", () => ({
+  useCanManageProjectFeatures: () => false,
+}));
 // The real editor is covered by document-editor.test.tsx; this one records its props and mounts.
 vi.mock("@/components/editor/document-editor", () => ({
   DocumentEditor: (props: DocumentEditorProps) => {
@@ -171,6 +175,14 @@ function editBody(document: unknown = editedBody) {
 }
 
 describe("PageDetail", () => {
+  it("uses an h1 when the feature-off state replaces the page", async () => {
+    const { PagesDisabledError } = await import("@/fetchers/pages");
+    mocks.getPage.mockRejectedValue(new PagesDisabledError());
+    renderDetail();
+    expect(await screen.findByTestId("feature-off-pages")).toBeTruthy();
+    expect(headingLevels()).toEqual([1]);
+  });
+
   it("renders the body and the version history, marking the current version", async () => {
     setup(false);
     renderDetail();

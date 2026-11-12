@@ -1,7 +1,11 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 import type { ApiKey, CreateApiKeyResponse } from "@/types/api-key";
 
 /** `X-TaskDesk-Step-Up-Token`: the one-use PA-15 proof an elevated write spends. */
@@ -13,15 +17,15 @@ async function ensureOk(
   fallbackKey?: string,
 ) {
   if (response.ok) return;
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, message, fallbackKey);
   const detail =
     response.status === 400 || response.status === 403
       ? await readErrorDetail(response, message)
       : message;
-  throw new HttpError(
-    response.status,
-    detail,
-    detail === message ? fallbackKey : undefined,
-  );
+  throw new HttpError(response.status, detail, undefined, {
+    fallbackKey: detail === message ? fallbackKey : undefined,
+  });
 }
 
 const base = (workspaceId: string) =>

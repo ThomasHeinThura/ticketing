@@ -22,6 +22,7 @@ import {
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import {
   FailureAlert,
   StepUpFields,
@@ -330,6 +331,7 @@ export function RoleCapabilitiesPanel({
             <span>
               {localizedErrorMessage(error, t, t("roles:clientErrors.save"))}
             </span>
+            <ErrorReference error={error} />
             {error.code === "role_changed" ? (
               <Button
                 className="w-fit"
@@ -453,6 +455,7 @@ export function RoleCapabilitiesPanel({
                         t("roles:clientErrors.previewImpact"),
                       )}
                     </span>
+                    <ErrorReference error={impactPreview.error} />
                     <Button
                       variant="outline"
                       size="sm"
@@ -476,6 +479,7 @@ export function RoleCapabilitiesPanel({
                       t,
                       t("roles:clientErrors.save"),
                     )}
+                    <ErrorReference error={save.error} />
                   </AlertDescription>
                 </Alert>
               ) : null}

@@ -1,6 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
-import { eq, like, or } from "drizzle-orm";
+import { and, eq, like, or } from "drizzle-orm";
+import { appendAuditLog } from "../../audit/audit-writer";
+import type { AuditRequestContext } from "../../audit/request-context";
 import db, { schema } from "../../database";
 import type { DomainEventEnvelope } from "../../events/outbox";
 import { enqueueNotificationEvent } from "../../notification/fanout";
@@ -23,10 +25,33 @@ export type CreateWorkspaceInput = {
   slug?: string;
   logo?: string | null;
   description?: string | null;
+  /**
+   * The user who becomes the workspace owner. Named by the instance administrator making the
+   * request (owner decision D-A, 12 Nov 2026), who is NOT made a member unless they name
+   * themselves here.
+   */
   ownerId: string;
-  /** The row id of the session making the call — effects 7 and 8. */
+  /** The current instance administrator making the call. Recorded in the audit row and the event. */
+  creatorId: string;
+  /** The row id of the session making the call. Selected into only when the creator is the owner. */
   sessionId: string;
+  /** Request facts for the audit row (client address, user agent, trace id, API key if any). */
+  audit?: AuditRequestContext;
 };
+
+/**
+ * The named owner is not an existing, active, unsuspended staff user. Ownership is handed to a
+ * person who already has a staff account; naming someone with no account yet would need
+ * invitation-as-owner, which the invite API refuses on purpose.
+ */
+export class WorkspaceOwnerNotEligibleError extends Error {
+  constructor() {
+    super(
+      "The workspace owner must be an existing, active, unsuspended staff user.",
+    );
+    this.name = "WorkspaceOwnerNotEligibleError";
+  }
+}
 
 export class WorkspaceSlugTakenError extends Error {
   constructor(public readonly slug: string) {
@@ -78,8 +103,14 @@ async function proposeSlug(name: string): Promise<string> {
  *
  * Required authorization state does not get a best-effort path. Workspace,
  * owner membership, the three default role rows, the default team, its
- * team_member row and the creating session's active workspace/team either
- * COMMIT TOGETHER or ROLL BACK TOGETHER.
+ * team_member row, the audit row and (when the creator is also the owner) the
+ * creating session's active workspace/team either COMMIT TOGETHER or ROLL BACK
+ * TOGETHER.
+ *
+ * Only a current instance administrator reaches this function (owner decision D-A,
+ * 12 Nov 2026; the route enforces it). That administrator NAMES the owner, who must
+ * be an existing active staff user; the administrator becomes a member only by
+ * naming themselves.
  *
  * The `workspace.created` outbox envelope AND the owner's inbox notification are
  * written inside the same transaction (EV-1, NO-8): both commit with the workspace
@@ -123,6 +154,28 @@ async function createWorkspace(input: CreateWorkspaceInput) {
         // either way, so this is just as safe to call again here as at boot.
         const internalOrganisation = await ensureInternalOrganisation(tx);
 
+        // The named owner must be an existing, active, unsuspended STAFF user, read inside this
+        // transaction so a user deactivated or suspended a moment ago is refused rather than
+        // handed a workspace. Customer-side people and users with no staff identity never qualify.
+        const [ownerCandidate] = await tx
+          .select({
+            banned: schema.userTable.banned,
+          })
+          .from(schema.userTable)
+          .innerJoin(
+            schema.personTable,
+            and(
+              eq(schema.personTable.userId, schema.userTable.id),
+              eq(schema.personTable.side, "staff"),
+              eq(schema.personTable.active, true),
+            ),
+          )
+          .where(eq(schema.userTable.id, input.ownerId))
+          .limit(1);
+        if (!ownerCandidate || ownerCandidate.banned === true) {
+          throw new WorkspaceOwnerNotEligibleError();
+        }
+
         // (1) the workspace row
         const [workspace] = await tx
           .insert(schema.workspaceTable)
@@ -139,7 +192,7 @@ async function createWorkspace(input: CreateWorkspaceInput) {
           throw new Error("workspace insert returned no row");
         }
 
-        // (2) the creator's owner membership
+        // (2) the named owner's membership (the creating instance administrator gets none)
         await tx.insert(schema.workspaceUserTable).values({
           workspaceId: workspace.id,
           userId: input.ownerId,
@@ -220,27 +273,31 @@ async function createWorkspace(input: CreateWorkspaceInput) {
         // assign from the first project on; migration 0124 seeds it for older workspaces.
         await ensureProjectLeadRole(tx, workspace.id);
 
-        // (7)+(8) the CREATING session selects the new workspace and team.
-        // Preserved through S4–S7 by explicit decision (retrofit plan §2.5,
-        // "Session selection is preserved through S4–S7"); dropping either
-        // would leave a user who has just made their first workspace with
-        // nothing selected and no error.
-        await tx
-          .update(schema.sessionTable)
-          .set({
-            activeOrganizationId: workspace.id,
-            activeTeamId: team.id,
-          })
-          .where(eq(schema.sessionTable.id, input.sessionId));
+        // (7)+(8) the CREATING session selects the new workspace and team, but only when the
+        // creator is also the named owner. Preserved through S4–S7 by explicit decision (retrofit
+        // plan §2.5, "Session selection is preserved through S4–S7"); dropping either would leave
+        // a user who has just made their first workspace with nothing selected and no error.
+        // When an instance administrator hands the workspace to someone else, their own session
+        // must not point at a workspace they do not belong to; the owner's sessions pick it up
+        // through the normal active-workspace fallback.
+        if (input.creatorId === input.ownerId) {
+          await tx
+            .update(schema.sessionTable)
+            .set({
+              activeOrganizationId: workspace.id,
+              activeTeamId: team.id,
+            })
+            .where(eq(schema.sessionTable.id, input.sessionId));
+        }
 
         // (4)+(9) the durable domain event (EV-1) and the owner's notification: the outbox
         // row and the inbox row commit or roll back with the workspace itself. This runs
         // after the owner membership and reach grant are written, because the recipient
         // resolver re-evaluates `workspace:read` from those persisted facts.
-        const [owner] = await tx
+        const [creator] = await tx
           .select({ name: schema.userTable.name })
           .from(schema.userTable)
-          .where(eq(schema.userTable.id, input.ownerId))
+          .where(eq(schema.userTable.id, input.creatorId))
           .limit(1);
         const event: DomainEventEnvelope<Record<string, unknown>> = {
           id: `evt_${createId()}`,
@@ -248,8 +305,8 @@ async function createWorkspace(input: CreateWorkspaceInput) {
           occurredAt: now.toISOString(),
           actor: {
             type: "person",
-            id: input.ownerId,
-            name: owner?.name ?? "Workspace owner",
+            id: input.creatorId,
+            name: creator?.name ?? "Instance administrator",
           },
           scope: {
             workspaceId: workspace.id,
@@ -272,6 +329,28 @@ async function createWorkspace(input: CreateWorkspaceInput) {
               envelope,
               async () => [],
             ),
+        });
+
+        // D-A: who created the workspace and who it was handed to, in the same transaction so
+        // the audit row commits or rolls back with the workspace itself.
+        await appendAuditLog(tx, {
+          actorId: input.creatorId,
+          actorType: "person",
+          actorIp: input.audit?.actorIp ?? null,
+          userAgent: input.audit?.userAgent ?? null,
+          traceId: input.audit?.traceId ?? null,
+          workspaceId: workspace.id,
+          organisationId: internalOrganisation.id,
+          action: "workspace.created",
+          entityType: "workspace",
+          entityId: workspace.id,
+          before: null,
+          after: {
+            name: workspace.name,
+            slug: workspace.slug,
+            createdBy: input.creatorId,
+            ownerUserId: input.ownerId,
+          },
         });
 
         return { workspace, team };

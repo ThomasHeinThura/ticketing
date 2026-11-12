@@ -1,7 +1,11 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 /**
  * Roles (RL-1..RL-15) on the canonical `role` store. A role's capabilities are the stored
@@ -71,8 +75,9 @@ export class RoleApiError extends HttpError {
     code: string | null,
     body: Record<string, unknown> | null,
     fallbackKey?: string,
+    requestId?: string,
   ) {
-    super(status, message, fallbackKey);
+    super(status, message, requestId, { fallbackKey });
     this.name = "RoleApiError";
     this.code = code;
     this.body = body;
@@ -97,8 +102,13 @@ async function request<T>(
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
   });
   if (!response.ok) {
+    const serverError =
+      response.status >= 500
+        ? await httpErrorFromResponse(response, fallback, fallbackKey)
+        : undefined;
     const copy = response.clone();
-    const message = await readErrorDetail(response, fallback);
+    const message =
+      serverError?.message ?? (await readErrorDetail(response, fallback));
     let body: Record<string, unknown> | null = null;
     try {
       const parsed: unknown = await copy.json();
@@ -113,6 +123,7 @@ async function request<T>(
       typeof body?.error === "string" ? body.error : null,
       body,
       message === fallback ? fallbackKey : undefined,
+      serverError?.requestId,
     );
   }
   return response.json() as Promise<T>;

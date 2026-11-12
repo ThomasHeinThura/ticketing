@@ -21,6 +21,7 @@ import apiKey from "./api-key";
 import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
+import { appendAuditLog } from "./audit/audit-writer";
 import {
   assertCookieDomainIsNotConfiguredForHostIsolation,
   authForHost,
@@ -56,7 +57,7 @@ import {
 import portalAuthMethods from "./customer-invitation/auth-methods";
 import { customerInvitationDeliveryKeyring } from "./customer-invitation/delivery/keyring";
 import { purgeExpiredCustomerInvitationEnvelopes } from "./customer-invitation/delivery/repository";
-import {
+import db, {
   closeMigrationPool,
   getDatabase,
   getMigrationDatabase,
@@ -101,6 +102,7 @@ import instanceJobs from "./instance/jobs";
 import localFactorPolicy from "./instance/local-factor-policy";
 import instanceMcpUsage from "./instance/mcp-usage";
 import observability from "./instance/observability";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
 import {
   logDatabaseFailure,
   logHttpLifecycleFailure,
@@ -109,8 +111,10 @@ import {
 import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
 import {
   beginObservedRequest,
+  logServerError,
   logTaskDesk,
   observeRequest,
+  recordAuditWriteFailure,
   startObservabilityRuntime,
   stopObservabilityRuntime,
 } from "./instance/observability/runtime";
@@ -157,6 +161,7 @@ import notificationPreferences from "./notification-preferences";
 import notificationProvider from "./notification-provider";
 import { installRuntimeSmtpResolver } from "./notification-provider/runtime";
 import oauth from "./oauth";
+import { handleServerError } from "./observability/server-error-handler";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 import pages from "./pages";
 import pendingAction from "./pending-action";
@@ -320,6 +325,11 @@ import {
 } from "./ws/legacy-project-reach";
 import { logRealtimeFailure } from "./ws/log-realtime-failure";
 import { checkWebSocketOrigin } from "./ws/origin-policy";
+import {
+  browserWindowOrigin,
+  legacyWindowOrigin,
+  validWindowId,
+} from "./ws/window-id";
 
 type ApiKey = {
   id: string;
@@ -446,6 +456,10 @@ function isApiRequestPath(path: string): boolean {
 const CUSTOMER_AUTH_ENDPOINTS = new Set([
   "GET /api/auth/get-session",
   "POST /api/auth/sign-out",
+  "POST /api/auth/request-password-reset",
+  "POST /api/auth/reset-password",
+  "POST /api/auth/change-password",
+  "GET /api/me/security/factors",
   "POST /api/auth/two-factor/verify-totp",
   "POST /api/auth/two-factor/verify-backup-code",
   "POST /api/portal/sign-in/home-realm",
@@ -572,6 +586,15 @@ async function handleAuthRequest(
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
+  if (
+    portal === "customer" &&
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/change-password" &&
+    !session?.session
+  ) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
   // The enrollment routes stay open to a pending first administrator, so they
   // skip the marker read; the frequently polled get-session is one of them.
   const enrollmentRoute =
@@ -616,7 +639,8 @@ async function handleAuthRequest(
   const authRequest = buildAuthRequest(c, headers);
   if (
     c.req.method === "POST" &&
-    c.req.path === "/api/auth/two-factor/verify-totp"
+    (c.req.path === "/api/auth/two-factor/verify-totp" ||
+      c.req.path === "/api/auth/reset-password")
   ) {
     try {
       return await withTotpSessionEnrollment(() =>
@@ -634,15 +658,40 @@ async function handleAuthRequest(
       selected.handler(authRequest),
     );
   }
-  if (!mutation) return selected.handler(authRequest);
-
-  const outcome = await withExplicitCredentialMutation(mutation, () =>
-    selected.handler(authRequest),
-  );
-  if (outcome.state.deleteFailure) {
-    return c.json({ error: "credential_revocation_failed" }, 503);
+  let result: Response;
+  if (!mutation) {
+    result = await selected.handler(authRequest);
+  } else {
+    const outcome = await withExplicitCredentialMutation(mutation, () =>
+      selected.handler(authRequest),
+    );
+    if (outcome.state.deleteFailure) {
+      return c.json({ error: "credential_revocation_failed" }, 503);
+    }
+    result = outcome.result;
   }
-  return outcome.result;
+  if (
+    c.req.method === "POST" &&
+    c.req.path === "/api/auth/change-password" &&
+    result.ok &&
+    session?.user
+  ) {
+    try {
+      await db.transaction((tx) =>
+        appendAuditLog(tx, {
+          action: "auth.password_changed",
+          actorId: session.user.id,
+          actorType: "person",
+          entityType: "person",
+          entityId: session.user.id,
+        }),
+      );
+    } catch {
+      recordAuditWriteFailure("mutation");
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    }
+  }
+  return result;
 }
 
 function explicitAuthCredentialMutation(
@@ -1091,15 +1140,7 @@ export function createApp(
   declareCatchAllMiddleware(requestMetricsMiddleware);
   app.use("*", requestMetricsMiddleware);
 
-  app.onError((err, c) => {
-    if (err instanceof HTTPException) {
-      // expected errors (401/404/...) are not reported; real failures are
-      if (err.status >= 500) {
-      }
-      return err.getResponse();
-    }
-    return c.json({ message: "Internal Server Error" }, 500);
-  });
+  app.onError((err, c) => handleServerError(err, c, logServerError));
   const staticRoots = resolveStaticRoots({
     agent: options.staticRoot,
     portal: options.portalStaticRoot,
@@ -2157,9 +2198,9 @@ export function createApp(
       assertRouteIsClassified(c);
       // GM-9: an impersonation session is refused the restricted classes before any route runs.
       await enforceImpersonationRestrictions(c);
-      const windowId = c.req.header("X-TaskDesk-Window-Id");
+      const windowId = validWindowId(c.req.header("X-TaskDesk-Window-Id"));
       const userId = c.get("userId");
-      const initiatorId = windowId ? `${userId}:${windowId}` : userId;
+      const initiatorId = legacyWindowOrigin(userId, windowId);
       // Issue #8, Slice 2: `runNextWithPolicyShadow` wraps this SAME `next` in place of
       // calling it directly — it evaluates the finished response against the declarative
       // policy registry and logs any disagreement, off by default
@@ -2176,10 +2217,19 @@ export function createApp(
         c.get("session") as { impersonatedBy?: string | null } | null
       )?.impersonatedBy;
       const runRequest = () =>
-        eventContext.run({ initiatorId }, () =>
-          !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
-            ? deleteIdempotency(c, () => runNextWithPolicyShadow(c, next))
-            : runNextWithPolicyShadow(c, next),
+        eventContext.run(
+          {
+            initiatorId,
+            nativeInitiator: browserWindowOrigin(
+              userId,
+              windowId,
+              Boolean(c.get("session") && !c.get("apiKey")),
+            ),
+          },
+          () =>
+            !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
+              ? deleteIdempotency(c, () => runNextWithPolicyShadow(c, next))
+              : runNextWithPolicyShadow(c, next),
         );
       // GM-8: every audit row written by an impersonated request names the impersonator.
       return await (impersonatorId
@@ -2544,6 +2594,7 @@ export function createApp(
                 return null;
               }
             },
+            validWindowId(c.req.query("windowId")),
           );
         },
         onMessage(event, ws) {
@@ -2678,7 +2729,7 @@ export function createApp(
 
       const userId = c.get("userId");
 
-      const windowId = c.req.query("windowId");
+      const windowId = validWindowId(c.req.query("windowId"));
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;
       let conn: ReturnType<typeof addConnection> | null = null;
 

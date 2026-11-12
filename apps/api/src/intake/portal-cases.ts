@@ -138,6 +138,8 @@ export const portalCaseSchema = z.object({
   /** D5: a same-organisation customer's name; `isYou` marks the caller's own case. */
   createdBy: z.object({ name: z.string().nullable(), isYou: z.boolean() }),
   isRequester: z.boolean(),
+  /** D-K: a staff person created this item on behalf of its customer requester. */
+  raisedBySupport: z.boolean(),
   customerVisibility: z.enum(["private", "organisation"]),
   sla: portalSlaSchema.nullable(),
 });
@@ -588,6 +590,7 @@ type CaseRow = {
   customer_visibility: string;
   work_item_id: string | null;
   created_by_name: string | null;
+  raised_by_support: boolean;
 };
 
 function toDate(value: Date | string): Date {
@@ -631,6 +634,16 @@ async function selectCases(
       c.title_from_form, c.priority_from_form, c.customer_status,
       c.created_at, c.updated_at, ${sortAt} AS sort_at, c.source || ':' || c.id AS case_key,
       c.project_key, c.project_name, c.requester_id, c.customer_visibility, c.work_item_id,
+      CASE WHEN c.source = 'direct' THEN COALESCE((
+        -- Agent creation records a user ID; portal conversion records a person ID.
+        -- An ambiguous ID fails closed rather than treating a conversion as staff-raised.
+        SELECT a.actor_type IN ('person', 'api_key') AND creator.side = 'staff'
+          AND NOT EXISTS (SELECT 1 FROM person person_actor WHERE person_actor.id = a.actor_id)
+        FROM activity a
+        LEFT JOIN person creator ON creator.user_id = a.actor_id
+        WHERE a.work_item_id = c.work_item_id AND a.verb = 'created'
+        ORDER BY a.seq ASC LIMIT 1
+      ), FALSE) ELSE FALSE END AS raised_by_support,
       CASE
         WHEN cb.side = 'customer' AND cb.organisation_id = ${viewer.organisationId}
           THEN COALESCE(NULLIF(btrim(cb.display_name), ''), NULLIF(btrim(cbu.name), ''))
@@ -828,6 +841,7 @@ async function toCases(
           : null,
       createdBy: { name: isYou ? null : row.created_by_name, isYou },
       isRequester: isYou,
+      raisedBySupport: row.raised_by_support,
       customerVisibility:
         row.customer_visibility === "organisation" ? "organisation" : "private",
       sla: slas.get(row.case_key) ?? null,
@@ -952,7 +966,8 @@ export const PORTAL_CASE_CSV_HEADER = [
   "Severity",
   "Status",
   "Project",
-  "Created by",
+  "Requester",
+  "Raised by",
   "Created",
   "Updated",
 ];
@@ -966,6 +981,7 @@ function csvLine(item: PortalCase): string {
     STATUS_LABEL[item.customerStatus],
     item.project ? `${item.project.name} (${item.project.key})` : null,
     item.createdBy.isYou ? "You" : item.createdBy.name,
+    item.raisedBySupport ? "Support team" : null,
     item.createdAt,
     item.updatedAt,
   ]);

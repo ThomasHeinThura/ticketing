@@ -189,6 +189,7 @@ export function ServiceKeysCard() {
           t,
           t("settings:serviceKeys.toastRevokeError"),
         ),
+        { error },
       ),
   });
 
@@ -205,6 +206,7 @@ export function ServiceKeysCard() {
           t,
           t("settings:serviceKeys.deleteFailed"),
         ),
+        { error },
       ),
   });
 
