@@ -20,7 +20,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
-import { signUpUser } from "./helpers/organization-http";
+import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
 import { mintStepUpToken, signInAgain } from "./helpers/step-up";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
@@ -29,7 +29,10 @@ import {
   transferWorkspaceOwnershipNative,
   updateWorkspaceMemberRoleNative,
 } from "./helpers/workspace-membership-write-http";
-import { createWorkspaceNative } from "./helpers/workspace-write-http";
+import {
+  createWorkspaceNative,
+  postCreateWorkspace,
+} from "./helpers/workspace-write-http";
 
 async function createWorkspace(
   app: ReturnType<typeof createApp>["app"],
@@ -195,6 +198,56 @@ describe("S5 REQUIRED: cannot self-demote", () => {
     );
     expect(updated.status).toBe(400);
     expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+  });
+});
+
+describe("D-A: a workspace admin cannot remove or demote the owner an instance admin handed the workspace to", () => {
+  async function handedOverWorkspace() {
+    const { app } = createApp();
+    const instanceAdmin = await signUpInstanceAdmin(app);
+    const owner = await signUpUser(app);
+    const created = await postCreateWorkspace(app, instanceAdmin.cookie, {
+      name: "Handed To Owner",
+      ownerUserId: owner.user.id,
+    });
+    expect(created.status).toBe(200);
+    const workspaceId = ((await created.json()) as { id: string }).id;
+    const admin = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "admin",
+    );
+    return { app, owner, admin, workspaceId };
+  }
+
+  it("refuses an admin's attempt to demote the owner, and the owner role is untouched", async () => {
+    const { app, owner, admin, workspaceId } = await handedOverWorkspace();
+
+    const demoted = await updateWorkspaceMemberRoleNative(
+      app,
+      admin.cookie,
+      workspaceId,
+      owner.user.id,
+      { role: "member" },
+    );
+    expect([400, 403]).toContain(demoted.status);
+    expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+    expect(await ownerCount(workspaceId)).toBe(1);
+  });
+
+  it("refuses an admin's attempt to remove the owner, and the owner stays a member", async () => {
+    const { app, owner, admin, workspaceId } = await handedOverWorkspace();
+
+    const removed = await removeWorkspaceMemberNative(
+      app,
+      admin.cookie,
+      workspaceId,
+      owner.user.id,
+    );
+    expect([400, 403]).toContain(removed.status);
+    expect(await membershipRole(workspaceId, owner.user.id)).toBe("owner");
+    expect(await ownerCount(workspaceId)).toBe(1);
   });
 });
 

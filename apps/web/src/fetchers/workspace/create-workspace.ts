@@ -15,6 +15,7 @@ const createWorkspace = async ({
   description,
   slug,
   logo,
+  ownerUserId,
 }: CreateWorkspaceRequest) => {
   // Issue #100 (S3 gap): native replacement for authClient.organization.list(),
   // used only to seed the local slug-collision check below. getWorkspaces()
@@ -35,6 +36,7 @@ const createWorkspace = async ({
         name,
         slug: workspaceSlug,
         logo,
+        ownerUserId,
         // Preserves the plugin-era behaviour of omitting an empty
         // description rather than persisting "" (createWorkspaceCtrl stores
         // `input.description ?? null`).

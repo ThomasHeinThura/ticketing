@@ -21,7 +21,9 @@ const TENANT_ID = "12345678-1234-4234-8234-123456789012";
 const CONNECTION_ID = "connection-delete-target";
 
 async function setup() {
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", setupCompletedAt: new Date() });
   const [admin] = await db
     .insert(schema.userTable)
     .values({

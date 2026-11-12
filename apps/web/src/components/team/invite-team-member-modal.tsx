@@ -1,5 +1,6 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { client } from "@taskdesk/libs";
 import {
   Button,
   Dialog,
@@ -21,6 +22,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
+import { PickerPopover } from "@/components/common/picker-popover";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
 import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-workspace-user";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -34,6 +36,7 @@ type Props = {
 
 const teamMemberSchema = z.object({
   email: z.string(),
+  role: z.string().min(1),
 });
 
 type TeamMemberFormValues = z.infer<typeof teamMemberSchema>;
@@ -44,6 +47,18 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
   const queryClient = useQueryClient();
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id;
+  const roles = useQuery({
+    queryKey: ["invitation-roles", workspaceId],
+    enabled: Boolean(workspaceId && open),
+    queryFn: async () => {
+      if (!workspaceId) return [];
+      const response = await client.workspace[":workspaceId"][
+        "invitation-roles"
+      ].$get({ param: { workspaceId } });
+      if (!response.ok) throw new Error("Could not load invitation roles");
+      return response.json();
+    },
+  });
   const { canInviteUsers } = useWorkspacePermission();
   const canInvite = canInviteUsers();
   const [createdInvitation, setCreatedInvitation] = useState<{
@@ -57,15 +72,16 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
     resolver: standardSchemaResolver(teamMemberSchema),
     defaultValues: {
       email: "",
+      role: "member",
     },
   });
 
-  const onSubmit = async ({ email }: TeamMemberFormValues) => {
+  const onSubmit = async ({ email, role }: TeamMemberFormValues) => {
     if (!workspaceId) {
       toast.error(t("team:inviteModal.error"));
       return;
     }
-    if (!canInvite) {
+    if (!canInvite || !roles.data?.some((item) => item.id === role)) {
       // Defense-in-depth: parent gates the trigger, but if the modal is
       // somehow open without permission we refuse rather than firing a
       // mutation the server will reject.
@@ -76,7 +92,7 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
       const invitation = await mutateAsync({
         email,
         workspaceId,
-        role: "member",
+        role,
       });
       await queryClient.refetchQueries({
         queryKey: ["workspace-users", workspaceId],
@@ -177,6 +193,34 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("team:inviteModal.roleLabel")}</FormLabel>
+                      <FormControl>
+                        <PickerPopover
+                          value={field.value}
+                          ariaLabel={t("team:inviteModal.roleLabel")}
+                          placeholder={t("team:inviteModal.rolePlaceholder")}
+                          options={(roles.data ?? []).map((item) => ({
+                            value: item.id,
+                            label: t(`team:roles.${item.id}`, {
+                              defaultValue: item.name,
+                            }),
+                          }))}
+                          onChange={field.onChange}
+                          disabled={roles.isLoading || roles.isError}
+                        />
+                      </FormControl>
+                      {roles.isError && (
+                        <p role="alert">{t("team:inviteModal.rolesError")}</p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </DialogPanel>
 
               <DialogFooter>
@@ -188,7 +232,11 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!workspaceId || !canInvite}
+                  disabled={
+                    !workspaceId ||
+                    !canInvite ||
+                    !roles.data?.some((item) => item.id === form.watch("role"))
+                  }
                 >
                   {t("team:inviteModal.sendInvitation")}
                 </Button>

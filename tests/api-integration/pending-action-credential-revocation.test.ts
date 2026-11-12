@@ -9,6 +9,10 @@ import {
   portalAuth,
   reloadAuthConfiguration,
 } from "../../apps/api/src/auth";
+import {
+  hashResetIdentifier,
+  signResetToken,
+} from "../../apps/api/src/auth/password-reset";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import * as observability from "../../apps/api/src/instance/observability/runtime";
@@ -111,7 +115,10 @@ async function waitForDeletedUser(userId: string): Promise<void> {
 
 beforeEach(async () => {
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db.insert(schema.instanceSettingTable).values({
+    id: "singleton",
+    setupCompletedAt: new Date(),
+  });
 });
 
 async function setupCredentialOwner(app: ReturnType<typeof createApp>["app"]) {
@@ -632,7 +639,7 @@ describe("PA-9 explicit credential revocation", () => {
     ).toHaveLength(1);
   });
 
-  it("keeps sessions and pending actions on password reset with session revocation disabled", async () => {
+  it("invalidates sessions and pending actions on password reset", async () => {
     const setup = await setupCredentialOwner(createApp().app);
     const pending = await insertPendingAction({
       requesterPersonId: setup.person.id,
@@ -644,7 +651,7 @@ describe("PA-9 explicit credential revocation", () => {
     const token = `reset-${randomUUID()}`;
     await db.insert(schema.verificationTable).values({
       id: `verification-${randomUUID()}`,
-      identifier: `reset-password:${token}`,
+      identifier: await hashResetIdentifier(`reset-password:${token}`),
       value: setup.user.id,
       expiresAt: new Date(Date.now() + 60 * 60_000),
       createdAt: new Date(),
@@ -652,20 +659,27 @@ describe("PA-9 explicit credential revocation", () => {
     });
 
     const response = await auth.api.resetPassword({
-      body: { token, newPassword: "ChangedValidPassword-42!" },
+      body: {
+        token: signResetToken(
+          token,
+          "agent",
+          process.env.TASKDESK_AUTH_SECRET as string,
+        ),
+        newPassword: "ChangedValidPassword-42!",
+      },
     });
 
     expect(response.status).toBe(true);
     expect(await stateOf(pending.id)).toEqual({
-      state: "pending",
-      invalidationReason: null,
+      state: "invalidated",
+      invalidationReason: "credential_revoked",
     });
     expect(
       await db
         .select({ id: schema.sessionTable.id })
         .from(schema.sessionTable)
         .where(eq(schema.sessionTable.id, setup.session.id)),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
   });
 
   it("terminally invalidates an API-key-bound request when its owner deletes the key", async () => {

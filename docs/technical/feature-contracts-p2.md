@@ -1055,7 +1055,18 @@ as the form itself.
 - `RT-4` `mapsTo` may translate values, as in the impact-to-priority example. This is how
   you avoid asking customers to choose a priority, which they always get wrong.
 - `RT-5` Fields support conditional visibility: show this field only when that field has
-  this value. See the `showIf` example in Data above.
+  this value. See the `showIf` example in Data above. A hidden field's answer is never
+  stored, and no response returns the answer of a hidden field or of a key the form version
+  does not declare, including for older submissions (the stored answers are not rewritten;
+  the portal detail and the triage detail return the visible answers only, and the portal
+  case list and its CSV take a case's title and priority from a mapped field only while that
+  field is visible). A stored key the version does not declare never decides whether a field
+  is visible, even when a condition names it. On a checkbox
+  controller the condition value `""` or `"false"` means unchecked and `"true"` means
+  checked. A number answer given as text must be plain decimal digits (`-12`, `0.5`); other
+  text, and any integer beyond `Number.MAX_SAFE_INTEGER`, is refused with `422`; the portal
+  form flags it before sending. A number condition written as text matches under the same
+  rule, with surrounding spaces in the stored condition ignored (the answer is never trimmed).
 - `RT-6` Publishing creates an immutable snapshot of the form schema, mapped work-item
   type, request-type SLA override and default assignee. Submissions record which version
   they used, so edits to the live request type cannot silently remap a queued submission.
@@ -1331,9 +1342,11 @@ and `work_item_id` (set on acceptance) — [data-model.md](data-model.md).
 - `IQ-8` On acceptance, form data is mapped onto native and custom fields per the request
   type's `mapsTo` rules, and anything unmapped is rendered into the description under a
   clear heading.
-- `IQ-9` Attachments transfer to the work item, preserving customer visibility
-  (`attachment.submission_id` before acceptance, `attachment.work_item_id` after —
-  [data-model.md](data-model.md)).
+- `IQ-9` Attachments for visible fields and thread attachments transfer to the work item,
+  preserving customer visibility. Completed uploads for hidden fields remain ready on the
+  submission as staff-only history; pending hidden uploads are cancelled for existing cleanup.
+  The acceptance audit records suppressed attachment IDs and count. Hidden uploads are never
+  transferred to the work item or exposed through customer routes.
 - `IQ-10` The submission thread transfers to the work item as public comments, **preserving
   each message's original `created_at`** (not the moment of transfer), so the conversation
   is not lost and so `SLA-7`'s `first_response_at` — set from the earliest public staff
@@ -1984,6 +1997,8 @@ them; register a new audit-only action in the maintained catalogue before implem
 | --- | --- |
 | `terminology.changed` | An instance or workspace runtime noun override is saved or removed. Record actor, scope/workspace, audience, term key, locale and non-secret before/after forms; no domain event or automation trigger. |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
+| `auth.password_reset_requested` · `auth.password_reset_completed` | Password recovery request and completion; never record the address, link, token or password |
+| `auth.password_changed` | The signed-in user changes their local password; no credentials are recorded |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
 | `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |
 | `auth.sessions_revoked` | God Mode force sign-out; one summary row with target user id and count, never session ids, tokens, IP addresses or user agents |
@@ -1991,6 +2006,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
+| `project.customer_organisation_linked` | First project link between a workspace and a customer organisation |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](permissions.md#reach)) |
 | `project.restored` | A soft-deleted project is restored inside its 30-day window; record project/workspace ids and whether archive state remains, never project content |
 | `project.summary_updated` | The project summary (objective, scope, success criteria, status note) or lifecycle status is saved (`PATCH /api/project/{id}/summary`); record project/workspace ids, the changed field names and the before/after `status` only, never the summary text. Audit-only; no outbox event. |

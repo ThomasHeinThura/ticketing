@@ -29,6 +29,8 @@ function testApp(readCspMode: () => Promise<string>) {
     const nonce = cspNonceForContext(context);
     return nonce ? injectCspNonceIntoHtmlResponse(response, nonce) : response;
   });
+  app.get("/auth/reset-password", (context) => context.html("reset"));
+  app.get("/reset-password", (context) => context.html("reset"));
   app.get("/pdf-preview.html", async (context) => {
     const response = new Response(
       '<script type="module" src="/assets/pdf-preview/viewer-abc123.js"></script>',
@@ -42,6 +44,18 @@ function testApp(readCspMode: () => Promise<string>) {
 }
 
 describe("security headers middleware", () => {
+  it("prevents reset links leaking as referrers on both hosts", async () => {
+    const app = testApp(async () => "enforce");
+    for (const url of [
+      "https://agent.example.test/auth/reset-password?token=secret",
+      "https://portal.example.test/reset-password?token=secret",
+    ]) {
+      const response = await app.request(url);
+      expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+  });
+
   it("preserves separate cookies while applying response policies", async () => {
     const app = testApp(async () => "report_only");
     app.get("/api/cookies", (context) => {

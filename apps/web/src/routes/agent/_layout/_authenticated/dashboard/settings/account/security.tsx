@@ -10,9 +10,11 @@ import {
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChangePasswordCard } from "@/components/account/change-password-card";
 import PageTitle from "@/components/page-title";
 import { ConnectedAccountsPanel } from "@/components/settings/connected-accounts-panel";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import useChangePassword from "@/hooks/mutations/use-change-password";
 import { authClient } from "@/lib/auth-client";
 import { parseAccountSecuritySearch, routes } from "@/lib/routes";
 
@@ -27,11 +29,13 @@ type FactorStatus = {
   enabled: boolean;
   required: boolean;
   passwordRequiredForEnrollment: boolean;
+  hasLocalPassword: boolean;
   policyMode: string;
 };
 
 function AccountSecurity() {
   const { t } = useTranslation();
+  const passwordChange = useChangePassword();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { enrollmentRequired, identityLinkIntent } = search;
@@ -110,20 +114,28 @@ function AccountSecurity() {
             {t("auth:accountSecurity.description")}
           </p>
         </header>
-        <ConnectedAccountsPanel
-          intentId={identityLinkIntent}
-          onClearIntent={() =>
-            void navigate({
-              to: routes.accountSecurity.path,
-              search: parseAccountSecuritySearch({
-                ...search,
-                identityLinkIntent: undefined,
-              }),
-              replace: true,
-            })
-          }
-        />
-        {enrollmentRequired && !status?.enabled ? (
+        {status && (!status.required || status.enabled) ? (
+          <>
+            <ChangePasswordCard
+              hasLocalPassword={status.hasLocalPassword === true}
+              changePassword={passwordChange.mutateAsync}
+            />
+            <ConnectedAccountsPanel
+              intentId={identityLinkIntent}
+              onClearIntent={() =>
+                void navigate({
+                  to: routes.accountSecurity.path,
+                  search: parseAccountSecuritySearch({
+                    ...search,
+                    identityLinkIntent: undefined,
+                  }),
+                  replace: true,
+                })
+              }
+            />
+          </>
+        ) : null}
+        {(enrollmentRequired || status?.required) && !status?.enabled ? (
           <Alert>
             <AlertDescription>
               {t("auth:accountSecurity.required")}
@@ -196,7 +208,7 @@ function AccountSecurity() {
               </form>
             </CardContent>
           </Card>
-        ) : status?.policyMode === "off" ? (
+        ) : status?.policyMode === "off" && !status.required ? (
           <p className="text-sm text-muted-foreground">
             {t("auth:accountSecurity.enrollmentDisabled")}
           </p>

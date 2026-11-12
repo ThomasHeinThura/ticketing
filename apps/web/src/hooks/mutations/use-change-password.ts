@@ -4,6 +4,7 @@ import { authClient } from "@/lib/auth-client";
 type ChangePasswordRequest = {
   currentPassword: string;
   newPassword: string;
+  revokeOtherSessions: boolean;
 };
 
 function useChangePassword() {
@@ -11,14 +12,16 @@ function useChangePassword() {
     mutationFn: async ({
       currentPassword,
       newPassword,
+      revokeOtherSessions,
     }: ChangePasswordRequest) => {
       const { data, error } = await authClient.changePassword({
         currentPassword,
         newPassword,
+        revokeOtherSessions,
       });
 
       if (error) {
-        throw new Error(error.message || "Failed to change password");
+        throw new Error(error.code || "UNKNOWN");
       }
 
       return data;

@@ -580,6 +580,20 @@ describe("MembersTable narrow widths (finding #4)", () => {
     expect(inviteRoles[1].closest("td")).toHaveClass("max-sm:hidden");
   });
 
+  it("shows the invited role on pending invitation badges", () => {
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[{ ...pendingInvitation, role: "lead" }]}
+        users={[]}
+      />,
+    );
+    const row = screen.getByText(pendingInvitation.email).closest("tr");
+    expect(
+      within(row as HTMLElement).getAllByText("team:roles.lead"),
+    ).toHaveLength(2);
+  });
+
   it("opens the phone role picker with the role options", async () => {
     render(
       <MembersTable

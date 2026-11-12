@@ -1,5 +1,9 @@
 import { client } from "@taskdesk/libs";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 /**
  * `GET /api/portal/submissions/:ref` for the submission page, failing with an `HttpError` that
@@ -10,6 +14,8 @@ export async function getPortalSubmissionDetail(ref: string) {
   const response = await client.portal.submissions[":ref"].$get({
     param: { ref },
   });
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, "The request failed");
   if (!response.ok)
     throw new HttpError(
       response.status,

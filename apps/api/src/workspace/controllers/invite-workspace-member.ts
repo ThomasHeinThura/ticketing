@@ -1,4 +1,8 @@
+import { createHash } from "node:crypto";
+import { HTTPException } from "hono/http-exception";
 import db from "../../database";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { sendNativeWorkspaceInvitationEmail } from "../../utils/send-workspace-invitation-email";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../utils/workspace-invitation-limits";
 import { roleGrantsOwner } from "../../utils/workspace-member-roles";
@@ -28,7 +32,7 @@ import {
 export type InviteWorkspaceMemberInput = {
   workspaceId: string;
   email: string;
-  role: string;
+  role?: string;
   inviterId: string;
   resend?: boolean;
 };
@@ -89,27 +93,10 @@ async function inviteWorkspaceMember(
   input: InviteWorkspaceMemberInput,
 ): Promise<InvitedWorkspaceMember> {
   const email = input.email.trim().toLowerCase();
+  const inviteeHash = createHash("sha256").update(email).digest("hex");
 
-  if (roleGrantsOwner(input.role)) {
-    throw new OwnerRoleNotAssignableHereError();
-  }
-
-  const invitation = await db.transaction(async (tx) => {
+  const { invitation, auditFailed } = await db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, input.workspaceId);
-
-    const [roleRow] = await findWorkspaceInvitationRole(
-      tx,
-      input.workspaceId,
-      input.role,
-    );
-    if (!roleRow) {
-      throw new WorkspaceRoleNotFoundError(input.role);
-    }
-    await assertMayAssignRole(tx, {
-      workspaceId: input.workspaceId,
-      actorUserId: input.inviterId,
-      targetRoleKey: input.role,
-    });
 
     const [existingMember] = await findExistingWorkspaceMemberByEmail(
       tx,
@@ -128,25 +115,52 @@ async function inviteWorkspaceMember(
       now,
     );
 
+    if (existingInvitation && !input.resend) {
+      throw new InvitationAlreadyPendingError();
+    }
+    const role =
+      input.role ?? (input.resend ? existingInvitation?.role : undefined);
+    if (!role) throw new HTTPException(400, { message: "A role is required" });
+    if (roleGrantsOwner(role)) throw new OwnerRoleNotAssignableHereError();
+    const [roleRow] = await findWorkspaceInvitationRole(
+      tx,
+      input.workspaceId,
+      role,
+    );
+    if (!roleRow) throw new WorkspaceRoleNotFoundError(role);
+    await assertMayAssignRole(tx, {
+      workspaceId: input.workspaceId,
+      actorUserId: input.inviterId,
+      targetRoleKey: role,
+    });
+
     const invitationLifetimeHours = await readInvitationLifetimeHours(tx);
     const expiresAt = new Date(
       now.getTime() + invitationLifetimeHours * 3_600_000,
     );
 
     if (existingInvitation) {
-      if (!input.resend) {
-        throw new InvitationAlreadyPendingError();
-      }
       const [updated] = await refreshWorkspaceInvitation(
         tx,
         existingInvitation.id,
         expiresAt,
-        input.role,
+        role,
+        input.inviterId,
       );
       if (!updated) {
         throw new Error("invitation update returned no row");
       }
-      return updated;
+      const auditFailed = await appendAuditSavepoint(tx, {
+        actorId: input.inviterId,
+        actorType: "person",
+        workspaceId: input.workspaceId,
+        action: "invitation.sent",
+        entityType: "invitation",
+        entityId: updated.id,
+        before: { role: existingInvitation.role },
+        after: { scope: "staff", inviteeHash, resend: true, role },
+      });
+      return { invitation: updated, auditFailed };
     }
 
     // This point is only reached when `existingInvitation` above was
@@ -185,7 +199,7 @@ async function inviteWorkspaceMember(
     const [created] = await insertWorkspaceInvitation(tx, {
       workspaceId: input.workspaceId,
       email,
-      role: input.role,
+      role,
       status: "pending",
       expiresAt,
       createdAt: now,
@@ -194,19 +208,33 @@ async function inviteWorkspaceMember(
     if (!created) {
       throw new Error("invitation insert returned no row");
     }
-    return created;
+    const auditFailed = await appendAuditSavepoint(tx, {
+      actorId: input.inviterId,
+      actorType: "person",
+      workspaceId: input.workspaceId,
+      action: "invitation.sent",
+      entityType: "invitation",
+      entityId: created.id,
+      before: null,
+      after: { scope: "staff", inviteeHash, resend: false, role },
+    });
+    return { invitation: created, auditFailed };
   });
+
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 
   const [workspace] = await findWorkspaceInvitationWorkspace(input.workspaceId);
   const [inviter] = await findWorkspaceInvitationInviter(input.inviterId);
 
-  const delivered = await sendNativeWorkspaceInvitationEmail({
-    invitationId: invitation.id,
-    email: invitation.email,
-    workspaceName: workspace?.name ?? "",
-    inviterName: inviter?.name ?? "",
-    inviterEmail: inviter?.email ?? "",
-  });
+  const delivered = Boolean(
+    await sendNativeWorkspaceInvitationEmail({
+      invitationId: invitation.id,
+      email: invitation.email,
+      workspaceName: workspace?.name ?? "",
+      inviterName: inviter?.name ?? "",
+      inviterEmail: inviter?.email ?? "",
+    }),
+  );
 
   return { ...invitation, delivered };
 }

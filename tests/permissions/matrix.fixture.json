@@ -11206,6 +11206,40 @@
 				"outOfReach": "404 not_found"
 			}
 		},
+		"GET /api/workspace/{workspaceId}/invitation-roles": {
+			"instance_admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"owner": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"admin": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"manager": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"lead": {
+				"inReach": "allow",
+				"outOfReach": "404 not_found"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "404 not_found"
+			}
+		},
 		"GET /api/workspace/{workspaceId}/invitations": {
 			"instance_admin": {
 				"inReach": "403 forbidden",
@@ -12840,8 +12874,8 @@
 		},
 		"PATCH /api/instance/notification-providers/email": {
 			"instance_admin": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
 			},
 			"owner": {
 				"inReach": "403 forbidden",
@@ -21650,32 +21684,32 @@
 				"outOfReach": "allow"
 			},
 			"owner": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"admin": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"manager": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"lead": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"member": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"viewer": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			},
 			"customer": {
-				"inReach": "allow",
-				"outOfReach": "allow"
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
 			}
 		},
 		"POST /api/workspace/{workspaceId}/activate": {

@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import type { Executor } from "../../database/executor";
 import { publishEvent } from "../../events";
 import type { z } from "../../openapi";
 import { withWorkspaceDeletionAccessLifecycle } from "../../pending-action/workspace-access-invalidation";
@@ -33,6 +34,10 @@ async function updateView(
   userId: string,
   auditActor: SavedViewAuditActor,
   apiKey?: ApiKeyPermissionScope,
+  assertQueryReach?: (
+    row: { workspaceId: string; query: unknown },
+    executor: Executor,
+  ) => Promise<void>,
 ) {
   const existing = await findSavedViewById(id);
   if (!existing)
@@ -47,6 +52,12 @@ async function updateView(
       }
 
       await assertCanEditView(view, personId, userId, apiKey, tx);
+      await assertQueryReach?.(view, tx);
+      if (input.query !== undefined)
+        await assertQueryReach?.(
+          { workspaceId: view.workspaceId, query: input.query },
+          tx,
+        );
 
       if (view.queuePairId) {
         throw new HTTPException(409, {

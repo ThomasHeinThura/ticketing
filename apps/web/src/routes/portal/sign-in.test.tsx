@@ -120,6 +120,13 @@ describe("portal sign-in", () => {
     vi.unstubAllGlobals();
   });
 
+  it("links to password recovery", () => {
+    renderSignIn();
+    expect(
+      screen.getByRole("link", { name: "auth:passwordRecovery.forgot" }),
+    ).toHaveAttribute("href", "/forgot-password");
+  });
+
   it("exposes one page heading on the standalone portal sign-in screen", () => {
     renderSignIn();
     expect(

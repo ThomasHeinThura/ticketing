@@ -31,6 +31,7 @@ import {
   getTeam,
   getTeamWorkspace,
   isLeadOfTeam,
+  isPersonForUser,
   listCandidates,
   listMembers,
   listTeams,
@@ -115,6 +116,28 @@ async function requireRosterEdit(c: Context, next: Next) {
   if (!allowed)
     throw new HTTPException(403, { message: "Insufficient permissions" });
   await next();
+}
+
+/** Check the target before roster authority so every role gets the same self-add code. */
+async function forbidSelfAdd(c: Context, next: Next) {
+  const userId = c.get("userId") as string | undefined;
+  let body: unknown;
+  try {
+    body = await c.req.raw.clone().json();
+  } catch {
+    return next(); // The route validator handles malformed JSON.
+  }
+  if (
+    userId &&
+    typeof body === "object" &&
+    body !== null &&
+    "personId" in body &&
+    typeof body.personId === "string" &&
+    (await isPersonForUser(body.personId, userId))
+  ) {
+    throw new HTTPException(403, { message: "team_self_add_forbidden" });
+  }
+  return next();
 }
 
 const manageSettings = [
@@ -225,8 +248,8 @@ const addMemberRoute = createRoute({
   tags: ["Teams"],
   summary: "Add a staff member to a team",
   description:
-    "workspace:manage_settings, or a lead of this team. Customer-side people are refused (TM-2).",
-  middleware: [teamReach, requireRosterEdit] as const,
+    "workspace:manage_settings, or a lead of this team. Customer-side people and self-adds are refused (TM-2, TM-3).",
+  middleware: [teamReach, forbidSelfAdd, requireRosterEdit] as const,
   request: {
     params: teamIdParam,
     body: {
@@ -237,7 +260,9 @@ const addMemberRoute = createRoute({
   responses: {
     200: jsonResponse("Added", okSchema),
     400: errorResponse("The person cannot be a team member"),
-    403: errorResponse("Not permitted to edit this roster"),
+    403: errorResponse(
+      "Not permitted to edit this roster, or team_self_add_forbidden",
+    ),
     404: errorResponse("Team or person not found"),
     409: errorResponse("Already a member"),
   },

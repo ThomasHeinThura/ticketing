@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import getWorkItems, {
   type WorkItemAgileScope,
 } from "@/fetchers/work-item/get-work-items";
@@ -12,7 +12,7 @@ import type {
 
 const BOARD_PAGE_SIZE = 200;
 
-export default function useGetBoardWorkItems({
+export function boardWorkItemsOptions({
   projectId,
   projectSlug,
   workspaceId,
@@ -46,7 +46,7 @@ export default function useGetBoardWorkItems({
     !(structuredFilter || hasCustomFieldColumns) ||
     Boolean(workspaceId && projectSlug);
 
-  return useInfiniteQuery({
+  return infiniteQueryOptions({
     queryKey:
       structuredFilter || hasCustomFieldColumns
         ? [
@@ -109,4 +109,10 @@ export default function useGetBoardWorkItems({
     refetchInterval: realtimeStatus === "available" ? false : 30_000,
     refetchIntervalInBackground: false,
   });
+}
+
+export default function useGetBoardWorkItems(
+  options: Parameters<typeof boardWorkItemsOptions>[0],
+) {
+  return useInfiniteQuery(boardWorkItemsOptions(options));
 }

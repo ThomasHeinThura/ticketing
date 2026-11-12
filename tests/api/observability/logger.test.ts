@@ -410,3 +410,41 @@ describe("allowlisted structured logger", () => {
     expect(sink.lines[0]).not.toContain("tenant-secret");
   });
 });
+
+describe("server error event", () => {
+  it("emits a closed set of fields", () => {
+    const sink = capture();
+    const logger = createTaskDeskLogger(
+      defaultLogLevels(),
+      registeredRoutes,
+      sink.stream,
+    );
+    logger.log({
+      module: "http",
+      message: "http.server_error",
+      level: "error",
+      traceId: "a".repeat(32),
+      method: "GET",
+      route: workspacesRoute,
+      status: 500,
+      errorClass: "Error",
+      result: "failed",
+    });
+    expect(sink.lines).toHaveLength(1);
+    expect(JSON.parse(sink.lines[0] as string)).toMatchObject({
+      messageKey: "http.server_error",
+      traceId: "a".repeat(32),
+      method: "GET",
+      status: 500,
+      errorClass: "Error",
+    });
+    expect(() =>
+      logger.log({
+        module: "http",
+        message: "http.server_error",
+        level: "error",
+        errorClass: "person@example.com token-secret",
+      } as unknown as TaskDeskLogEvent),
+    ).toThrow();
+  });
+});

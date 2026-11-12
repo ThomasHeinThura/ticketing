@@ -12,6 +12,7 @@ export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/",
 )({
   component: RouteComponent,
+  // The workspace list deliberately shows its labelled project table shape immediately.
   pendingComponent: ProjectsRouteLoading,
   pendingMs: 0,
   pendingMinMs: 0,

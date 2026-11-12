@@ -11,11 +11,14 @@
  * `organization-invite-abuse-guards.test.ts` are kept separate from the
  * plugin's own S1 characterization suite.
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import * as observability from "../../apps/api/src/instance/observability/runtime";
 import * as invitationRepository from "../../apps/api/src/invitation/repository";
+import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
+import * as invitationEmail from "../../apps/api/src/utils/send-workspace-invitation-email";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../apps/api/src/utils/workspace-invitation-limits";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
@@ -142,6 +145,102 @@ beforeEach(async () => {
 });
 
 describe("S6a invite (POST /api/workspace/{id}/invitations)", () => {
+  it("commits create and resend and notifies administrators when audit inserts fail", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Audit failure",
+    );
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, owner.user.id));
+    await ensureStaffPersonForUser(owner.user.id);
+    const metric = vi.spyOn(observability, "recordAuditWriteFailure");
+    const delivery = vi
+      .spyOn(invitationEmail, "sendNativeWorkspaceInvitationEmail")
+      .mockResolvedValue(true);
+    await db.execute(
+      sql.raw(`CREATE FUNCTION staff_invite_audit_probe() RETURNS trigger AS $$
+      BEGIN IF NEW.action = 'invitation.sent' THEN RAISE EXCEPTION 'injected audit failure'; END IF; RETURN NEW; END;
+      $$ LANGUAGE plpgsql`),
+    );
+    await db.execute(
+      sql.raw(
+        "CREATE TRIGGER staff_invite_audit_probe BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION staff_invite_audit_probe()",
+      ),
+    );
+    try {
+      const email = "audit-failure@example.test";
+      const created = await inviteWorkspaceMemberNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        { email, role: "member" },
+      );
+      expect(created.status, await created.clone().text()).toBe(200);
+      const { id } = (await created.json()) as { id: string };
+      expect((await invitationRow(id))?.role).toBe("member");
+      const resent = await inviteWorkspaceMemberNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        { email, role: "admin", resend: true },
+      );
+      expect(resent.status, await resent.clone().text()).toBe(200);
+      expect(((await resent.json()) as { id: string }).id).toBe(id);
+      expect(await invitationRow(id)).toMatchObject({
+        role: "admin",
+        inviterId: owner.user.id,
+        status: "pending",
+      });
+      expect(
+        metric.mock.calls.filter(([operation]) => operation === "mutation"),
+      ).toHaveLength(2);
+      expect(delivery).toHaveBeenCalledTimes(2);
+      const alerts = await db
+        .select()
+        .from(schema.notificationTable)
+        .where(
+          and(
+            eq(schema.notificationTable.userId, owner.user.id),
+            eq(schema.notificationTable.type, "audit_write_failed"),
+          ),
+        );
+      expect(alerts).toHaveLength(2);
+      expect(
+        alerts.every(
+          (alert) =>
+            (alert.eventData as { operation?: string } | null)?.operation ===
+            "mutation",
+        ),
+      ).toBe(true);
+      expect(
+        JSON.stringify(alerts.map((alert) => alert.eventData)),
+      ).not.toContain(email);
+      const audits = await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, id),
+            eq(schema.auditLogTable.action, "invitation.sent"),
+          ),
+        );
+      expect(audits).toHaveLength(0);
+    } finally {
+      await db.execute(
+        sql.raw("DROP TRIGGER IF EXISTS staff_invite_audit_probe ON audit_log"),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS staff_invite_audit_probe()"),
+      );
+      vi.restoreAllMocks();
+    }
+  });
+
   it("uses the shared configured CP-22 invitation lifetime", async () => {
     await db
       .insert(schema.instanceSettingTable)

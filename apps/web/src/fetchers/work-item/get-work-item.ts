@@ -1,5 +1,5 @@
 import { client } from "@taskdesk/libs";
-import { HttpError } from "@/lib/http-error";
+import { httpErrorFromResponse } from "@/lib/http-error";
 import {
   parseWorkItemDetailRow,
   type WorkItemDetailRow,
@@ -23,7 +23,7 @@ async function getWorkItem(key: string): Promise<WorkItemDetailRow> {
   });
 
   if (!response.ok) {
-    throw new HttpError(response.status, "Failed to fetch work item");
+    throw await httpErrorFromResponse(response, "Failed to fetch work item");
   }
 
   const raw = await response.json();

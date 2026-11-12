@@ -213,7 +213,11 @@ async function loadEdges(
     .where(eq(serviceDependencyTable.workspaceId, workspaceId));
 }
 
-export async function listServices(workspaceId: string, q?: string) {
+export async function listServices(
+  workspaceId: string,
+  reachableProjectIds: readonly string[],
+  q?: string,
+) {
   const rows = await db
     .select({
       service: serviceTable,
@@ -239,7 +243,12 @@ export async function listServices(workspaceId: string, q?: string) {
     )
     .orderBy(asc(serviceTable.name), asc(serviceTable.id));
   const ids = rows.map((row) => row.service.id);
-  const counts = await workItemCounts(db, workspaceId, ids);
+  const counts = await workItemCounts(
+    db,
+    workspaceId,
+    ids,
+    reachableProjectIds,
+  );
   return rows.map((row) => ({
     ...row.service,
     ownerTeamName: row.ownerTeamName ?? null,
@@ -254,6 +263,7 @@ async function workItemCounts(
   executor: Executor,
   workspaceId: string,
   serviceIds: string[],
+  reachableProjectIds: readonly string[],
 ) {
   const result = new Map<string, { incidents: number; openChanges: number }>();
   if (serviceIds.length === 0) return result;
@@ -267,6 +277,7 @@ async function workItemCounts(
     .where(
       and(
         eq(workItemTable.workspaceId, workspaceId),
+        inArray(workItemTable.projectId, [...reachableProjectIds]),
         inArray(workItemTable.serviceId, serviceIds),
         eq(workItemTypeTable.key, "incident"),
         isNull(workItemTable.deletedAt),
@@ -279,7 +290,12 @@ async function workItemCounts(
         incidents: row.value,
         openChanges: 0,
       });
-  const changes = await openChangeCounts(executor, workspaceId, serviceIds);
+  const changes = await openChangeCounts(
+    executor,
+    workspaceId,
+    serviceIds,
+    reachableProjectIds,
+  );
   for (const [serviceId, openChanges] of changes) {
     const entry = result.get(serviceId) ?? { incidents: 0, openChanges: 0 };
     entry.openChanges = openChanges;
@@ -296,6 +312,7 @@ async function openChangeCounts(
   executor: Executor,
   workspaceId: string,
   serviceIds: string[],
+  reachableProjectIds?: readonly string[],
 ): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (serviceIds.length === 0) return out;
@@ -303,6 +320,15 @@ async function openChangeCounts(
     serviceIds.map((id) => sql`${id}`),
     sql`, `,
   );
+  const projectScope =
+    reachableProjectIds === undefined
+      ? sql`true`
+      : reachableProjectIds.length === 0
+        ? sql`false`
+        : sql`wi.project_id IN (${sql.join(
+            reachableProjectIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`;
   const rows = await executor.execute(sql`
     SELECT service_id, count(DISTINCT work_item_id)::int AS value FROM (
       SELECT cs.service_id AS service_id, cs.work_item_id AS work_item_id
@@ -311,6 +337,7 @@ async function openChangeCounts(
         JOIN state s ON s.id = wi.state_id
         JOIN state_template st ON st.id = s.state_template_id
        WHERE cs.workspace_id = ${workspaceId} AND cs.service_id IN (${idList})
+         AND ${projectScope}
          AND wi.deleted_at IS NULL AND wi.archived_at IS NULL
          AND st."group" NOT IN ('completed', 'cancelled')
       UNION ALL
@@ -320,6 +347,7 @@ async function openChangeCounts(
         JOIN state s ON s.id = wi.state_id
         JOIN state_template st ON st.id = s.state_template_id
        WHERE wi.workspace_id = ${workspaceId} AND wi.service_id IN (${idList})
+         AND ${projectScope}
          AND wi.deleted_at IS NULL AND wi.archived_at IS NULL
          AND st."group" NOT IN ('completed', 'cancelled')
     ) t GROUP BY service_id`);
@@ -477,8 +505,8 @@ export async function getServiceDetail(
       .from(serviceReleaseChecklistItemTable)
       .where(eq(serviceReleaseChecklistItemTable.serviceId, id))
       .orderBy(asc(serviceReleaseChecklistItemTable.position)),
-    workItemCounts(db, workspaceId, [id]),
-    serviceDeletionBlockers(db, id, workspaceId),
+    workItemCounts(db, workspaceId, [id], reachableProjectIds),
+    serviceDeletionBlockers(db, id, workspaceId, reachableProjectIds),
   ]);
   const edges = await loadEdges(db, workspaceId);
   const cycle = traverseImpact(id, edges).cycleDetected;
@@ -874,9 +902,15 @@ export async function serviceDeletionBlockers(
   executor: Executor,
   id: string,
   workspaceId: string,
+  reachableProjectIds?: readonly string[],
 ): Promise<string[]> {
   const blockers: string[] = [];
-  const open = await openChangeCounts(executor, workspaceId, [id]);
+  const open = await openChangeCounts(
+    executor,
+    workspaceId,
+    [id],
+    reachableProjectIds,
+  );
   const openCount = open.get(id) ?? 0;
   if (openCount > 0)
     blockers.push(
@@ -896,10 +930,17 @@ export async function serviceDeletionBlockers(
   const [affected] = await executor
     .select({ value: count() })
     .from(changeServiceTable)
+    .innerJoin(
+      workItemTable,
+      eq(workItemTable.id, changeServiceTable.workItemId),
+    )
     .where(
       and(
         eq(changeServiceTable.workspaceId, workspaceId),
         eq(changeServiceTable.serviceId, id),
+        reachableProjectIds === undefined
+          ? undefined
+          : inArray(workItemTable.projectId, [...reachableProjectIds]),
       ),
     );
   if ((affected?.value ?? 0) > 0 && openCount === 0)

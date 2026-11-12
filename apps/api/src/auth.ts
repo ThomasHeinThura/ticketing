@@ -1,9 +1,17 @@
 import { createHmac } from "node:crypto";
 import { apiKey } from "@better-auth/api-key";
-import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
+import {
+  sendMagicLinkEmail,
+  sendOtpEmail,
+  sendPasswordResetEmail,
+} from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import {
+  APIError,
+  createAuthMiddleware,
+  getAuthoritativeSessionFromCtx,
+} from "better-auth/api";
 import { deleteSessionCookie } from "better-auth/cookies";
 import {
   admin as adminPlugin,
@@ -15,13 +23,25 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
+import { and, eq, gt } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { authConfigurationVersion } from "./auth/configuration-version";
 import {
   IMPERSONATION_SESSION_SECONDS,
   isSanctionedAdminEndpoint,
 } from "./auth/impersonation-context";
-import { loadLocalFactorState } from "./auth/local-factor-service";
+import {
+  InactiveFactorIdentityError,
+  loadLocalFactorState,
+} from "./auth/local-factor-service";
+import {
+  canResetPassword,
+  consumeResetAddressLimit,
+  hashResetIdentifier,
+  lockResetUser,
+  signResetToken,
+  verifyResetToken,
+} from "./auth/password-reset";
 import {
   auditPortalSignInRefusal,
   markUserCreatedInRequest,
@@ -30,9 +50,9 @@ import {
 } from "./auth/portal-sign-in-refusal";
 import { AUTH_RATE_LIMIT } from "./auth/rate-limit-rules";
 import {
-  completeFirstUserSetup,
   countAuthUsers,
   countAuthUsersForExecutor,
+  finalizeVerifiedFirstUserSetup,
   getAuthUserLocale,
   getCustomerPortalIdentityRow,
   getFirstUserWorkspaceMembership,
@@ -40,7 +60,7 @@ import {
   getSetupCompletionMarker,
   getStoredAuthPluginConfigRows,
   hasCustomerSidePerson,
-  lockFirstUserPromotion,
+  isPendingFirstAdministrator,
   promoteFirstAuthUser,
   updateSessionActiveOrganizationId,
   updateSessionPortal,
@@ -61,12 +81,16 @@ import {
   readInviteSignUpBody,
   verifyInviteSignUp,
 } from "./customer-invitation/signup";
-import db from "./database";
+import db, { schema } from "./database";
 import {
   bindTwoFactorOidcSession,
   identityOidcPlugin,
   OIDC_PENDING_SESSION_COOKIE,
 } from "./identity/oidc-login";
+import {
+  lockOidcConnection,
+  lockOidcExternalIdentity,
+} from "./identity/repository";
 import {
   logTaskDesk,
   recordAuthReload,
@@ -81,18 +105,23 @@ import {
   afterTotpEnrollmentCommit,
   createCredentialAwareDrizzleAdapter,
   currentAccountDeletionTransaction,
+  currentFirstUserAdmissionTransaction,
   currentTotpEnrollmentTransaction,
+  getPasswordSessionSource,
   noteTotpEnrollmentMutationAuditFailure,
   revokeTotpPeerSessions,
   runOrAfterTotpEnrollmentCommit,
+  setPasswordSessionSource,
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
+  withFirstUserAdmissionTransaction,
   withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
 import { hasCanonicalCustomerMembership } from "./permissions/customer-membership";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
 import { mapCustomOAuthProfileToUser } from "./utils/custom-oauth-profile";
+import { dbNowUtc } from "./utils/db-time";
 import { getDefaultCookieAttributes } from "./utils/get-default-cookie-attributes";
 import { getGithubSsoOAuthCredentials } from "./utils/github-sso-env";
 import { consumeAnonymousInvitationRateLimit } from "./utils/invitation-anonymous-rate-limit";
@@ -222,9 +251,23 @@ function withExplicitServerCredentialMutations<T extends object>(
                   Reflect.apply(targetMethod, thisArgument, args),
                 );
               }
+              if (apiMethod === "resetPassword") {
+                return withTotpSessionEnrollment(() =>
+                  Reflect.apply(targetMethod, thisArgument, args),
+                );
+              }
               if (apiMethod === "verifyTOTP") {
                 return withTotpSessionEnrollment(() =>
                   Reflect.apply(targetMethod, thisArgument, args),
+                );
+              }
+              if (apiMethod === "signUpEmail") {
+                return isSetupCompleted().then((completed) =>
+                  completed
+                    ? Reflect.apply(targetMethod, thisArgument, args)
+                    : withFirstUserAdmissionTransaction(() =>
+                        Reflect.apply(targetMethod, thisArgument, args),
+                      ),
                 );
               }
               const mutation = explicitServerCredentialMutation(
@@ -417,6 +460,7 @@ function getAuthEmailCopy(locale?: string | null) {
     return {
       magicLinkSubject: "Anmeldelink fuer TaskDesk",
       otpSubject: "Bestaetigungscode fuer TaskDesk",
+      resetSubject: "TaskDesk-Passwort zuruecksetzen",
     };
   }
 
@@ -424,6 +468,7 @@ function getAuthEmailCopy(locale?: string | null) {
     return {
       magicLinkSubject: "Liên kết đăng nhập TaskDesk",
       otpSubject: "Mã xác minh TaskDesk",
+      resetSubject: "Đặt lại mật khẩu TaskDesk",
     };
   }
 
@@ -431,12 +476,14 @@ function getAuthEmailCopy(locale?: string | null) {
     return {
       magicLinkSubject: "TaskDesk ログインリンク",
       otpSubject: "TaskDesk 認証コード",
+      resetSubject: "TaskDesk のパスワードをリセット",
     };
   }
 
   return {
     magicLinkSubject: "Login for TaskDesk",
     otpSubject: "Authentication code for TaskDesk",
+    resetSubject: "Reset your TaskDesk password",
   };
 }
 
@@ -453,6 +500,12 @@ function createAuth(
     secret: authSecret,
     basePath: "/api/auth",
     database: createCredentialAwareDrizzleAdapter(),
+    verification: {
+      storeIdentifier: {
+        default: "plain",
+        overrides: { "reset-password:": { hash: hashResetIdentifier } },
+      },
+    },
     user: {
       additionalFields: {
         locale: {
@@ -493,6 +546,54 @@ function createAuth(
       // customer invitation credential for the same address (CP-12, CP-24).
       disableSignUp: false,
       autoSignIn: true,
+      resetPasswordTokenExpiresIn: 3600,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, token }) => {
+        // Do not let SMTP latency disclose whether the address exists.
+        void (async () => {
+          try {
+            if (!(await canResetPassword(user.id, portal))) return;
+            const link = new URL(
+              portal === "agent" ? "/auth/reset-password" : "/reset-password",
+              baseURL,
+            );
+            link.hash = new URLSearchParams({
+              token: signResetToken(token, portal, authSecret),
+            }).toString();
+            const locale = await getUserLocale(user.email);
+            await sendPasswordResetEmail(
+              user.email,
+              getAuthEmailCopy(locale).resetSubject,
+              {
+                resetLink: link.href,
+                userName: user.name,
+                locale,
+              },
+            );
+          } catch {
+            logTaskDesk({
+              module: "auth",
+              message: "auth.failure",
+              level: "error",
+              result: "failed",
+            });
+          }
+        })();
+      },
+      onPasswordReset: async ({ user }) => {
+        const tx = currentTotpEnrollmentTransaction();
+        await appendAuditLog(tx, {
+          action: "auth.password_reset_completed",
+          actorId: user.id,
+          actorType: "person",
+          entityType: "person",
+          entityId: user.id,
+          after: { portal },
+        });
+        afterTotpEnrollmentCommit(() =>
+          invalidateNativeAuthorization({ userId: user.id }),
+        );
+      },
       password: {
         hash: async (password) => {
           return await bcrypt.hash(password, 10);
@@ -761,6 +862,14 @@ function createAuth(
             }
 
             if (portal === "customer") {
+              // Customer invitation and provider creation are available only
+              // after the local first administrator finishes verified setup.
+              // This runs before any invite or OTP path can create a user.
+              if (!(await isSetupCompleted())) {
+                throw new APIError("FORBIDDEN", {
+                  message: "Customer accounts must be invited or provisioned.",
+                });
+              }
               const creationPath =
                 ctx?.path === "/sign-up/email" ||
                 ctx?.path === "/magic-link/verify" ||
@@ -806,8 +915,13 @@ function createAuth(
             //     set up, which must never re-open this window.
             // `instance_setting.setup_completed_at` is the durable marker that
             // tells them apart; it is never cleared by deleting user rows.
-            const [userCountRow] = await countAuthUsers();
+            const admissionTx = currentFirstUserAdmissionTransaction();
+            const [userCountRow] = await countAuthUsersForExecutor(
+              admissionTx ?? db,
+            );
             const existingUserCount = userCountRow?.value ?? 0;
+            const [setup] = await getSetupCompletionMarker(admissionTx ?? db);
+            const setupCompleted = setup?.setupCompletedAt != null;
 
             // Computed once, up front, so the SAME call with the SAME
             // arguments is what decides every refusal message below --
@@ -819,7 +933,7 @@ function createAuth(
                 ctx?.headers?.get("x-invitation-id"),
             );
 
-            if (existingUserCount === 0 && !(await isSetupCompleted())) {
+            if (existingUserCount === 0 && !setupCompleted) {
               // This is the one-time bootstrap. It is allowed through even
               // when DISABLE_REGISTRATION / DISABLE_PASSWORD_REGISTRATION are
               // set -- but ONLY on proof of authorization: the operator's
@@ -827,12 +941,20 @@ function createAuth(
               // container log (auth-and-identity.md § Break-glass). There is
               // no other bypass; an unauthorized zero-user signup is refused
               // below exactly like any other signup would be.
-              if (isBootstrapAdminEmail(user.email)) {
+              if (
+                ctx?.path === "/sign-up/email" &&
+                admissionTx &&
+                isBootstrapAdminEmail(user.email)
+              ) {
                 return;
               }
 
               const presentedToken = ctx?.headers?.get(SETUP_TOKEN_HEADER);
-              if (await verifyAndConsumeSetupToken(presentedToken)) {
+              if (
+                ctx?.path === "/sign-up/email" &&
+                admissionTx &&
+                (await verifyAndConsumeSetupToken(presentedToken, admissionTx))
+              ) {
                 return;
               }
 
@@ -877,6 +999,21 @@ function createAuth(
               });
             }
 
+            if (!setupCompleted) {
+              // A first user exists but TOTP is not yet verified. Neither a
+              // second password signup nor provider auto-creation may land.
+              const pendingRefusal = await checkRegistrationAllowed(
+                user.email,
+                invitationId,
+                { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+              );
+              throw new APIError("FORBIDDEN", {
+                message: pendingRefusal.allowed
+                  ? "Registration is currently disabled. Please use a valid invitation link to create an account."
+                  : pendingRefusal.reason,
+              });
+            }
+
             const result = await checkRegistrationAllowed(
               user.email,
               invitationId,
@@ -901,47 +1038,22 @@ function createAuth(
 
             if (portal === "customer") return;
 
-            // Promote the first user to instance admin atomically.
-            //
-            // A previous version of this code checked the user count in
-            // the `before` hook and returned `role: "admin"`, but the
-            // count and the eventual INSERT happened in separate
-            // transactions, so two concurrent first-signups could both
-            // see count=0 and both become admins (qodo bot #5).
-            //
-            // We now run the check + promote inside a single transaction
-            // guarded by a Postgres advisory lock. Whichever transaction
-            // wins the lock first promotes its user; any concurrent
-            // transaction then sees totalUserCount > 1 and skips.
-            //
-            // Note: we count total users (not admins) so that upgrading
-            // an existing instance (where every existing user has
-            // role=NULL from the new column) doesn't promote the next
-            // signup to admin (qodo bot #4).
-            //
-            // #18: also re-check `setup_completed_at` INSIDE the lock. Without
-            // this, deleting every admin from an already-set-up instance would
-            // let the next signup silently re-trigger admin auto-promotion --
-            // exactly the durable-marker guarantee this column exists for.
-            await db.transaction(async (tx) => {
-              await lockFirstUserPromotion(tx);
-
-              const totalRows = await countAuthUsersForExecutor(tx);
-              const totalUserCount = totalRows[0]?.value ?? 0;
-
-              const [setting] = await getSetupCompletionMarker(tx);
-              const setupAlreadyCompleted = setting?.setupCompletedAt != null;
-
-              // This hook runs after the user row is inserted, so the
-              // just-created user is included in the count. If they are
-              // the only row in the table, and the instance has never
-              // completed setup, this is the fresh-instance bootstrap and
-              // they get promoted to admin.
-              if (totalUserCount === 1 && !setupAlreadyCompleted) {
-                await promoteFirstAuthUser(tx, user.id);
-                await completeFirstUserSetup(tx);
+            // The local signup handler owns the promotion lock and transaction.
+            // The credential check, user/account insertion and grant share that
+            // transaction; a losing signup cannot commit an ordinary user.
+            // Completion waits for verified TOTP in the separate enrollment
+            // transaction.
+            const admissionTx = currentFirstUserAdmissionTransaction();
+            if (admissionTx) {
+              const [users] = await countAuthUsersForExecutor(admissionTx);
+              const [setting] = await getSetupCompletionMarker(admissionTx);
+              if (
+                (users?.value ?? 0) === 1 &&
+                setting?.setupCompletedAt == null
+              ) {
+                await promoteFirstAuthUser(admissionTx, user.id);
               }
-            });
+            }
 
             // #315 S7 / #324: boot seeding alone misses local users who register
             // after startup. The current local password-signup path creates ordinary
@@ -949,7 +1061,7 @@ function createAuth(
             // callbacks: their portal and organisation must come from a configured
             // identity connection, which owns that provisioning decision.
             if (context?.path === "/sign-up/email") {
-              await ensureStaffPersonForUser(user.id);
+              await ensureStaffPersonForUser(user.id, admissionTx ?? undefined);
             }
           },
         },
@@ -957,6 +1069,49 @@ function createAuth(
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        if (
+          ctx.path === "/request-password-reset" &&
+          typeof ctx.body?.email === "string"
+        ) {
+          const allowed = await consumeResetAddressLimit(
+            ctx.body.email,
+            authSecret,
+          );
+          await db.transaction((tx) =>
+            appendAuditLog(tx, {
+              action: "auth.password_reset_requested",
+              actorId: null,
+              actorType: "system",
+              entityType: "authentication",
+              entityId: portal,
+              after: { portal },
+            }),
+          );
+          if (!allowed)
+            return ctx.json({
+              status: true,
+              message:
+                "If this email exists in our system, check your email for the reset link",
+            });
+        }
+        // Links go directly to the web app; the library's legacy GET callback
+        // also falls back to plaintext identifiers, so it is deliberately closed.
+        if (ctx.path.startsWith("/reset-password/")) {
+          throw new APIError("NOT_FOUND", { message: "Not found" });
+        }
+        if (ctx.path === "/reset-password") {
+          const signed =
+            typeof ctx.body?.token === "string" ? ctx.body.token : "";
+          const token = verifyResetToken(signed, portal, authSecret);
+          const tx = currentTotpEnrollmentTransaction();
+          if (!token || !(await lockResetUser(token, portal, tx))) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Invalid or expired reset token",
+              code: "INVALID_TOKEN",
+            });
+          }
+          return { context: { body: { ...ctx.body, token } } };
+        }
         // The admin plugin is kept as a session primitive only (role, banned,
         // impersonatedBy fields and ban enforcement). Its HTTP endpoints
         // (set-role, create-user, set-user-password, impersonate-user,
@@ -972,9 +1127,91 @@ function createAuth(
           throw new APIError("NOT_FOUND", { message: "Not found" });
         }
 
+        if (ctx.path === "/change-password") {
+          const current = await getAuthoritativeSessionFromCtx(ctx);
+          if (
+            !current?.session ||
+            current.session.portal !== portal ||
+            (current.session as { impersonatedBy?: string | null })
+              .impersonatedBy
+          ) {
+            throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
+          }
+          if (
+            (portal === "customer" &&
+              !(await hasCustomerPortalIdentity(current.user.id))) ||
+            (portal === "agent" &&
+              (await hasCustomerSidePerson(current.user.id)))
+          ) {
+            throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
+          }
+          let factor: Awaited<ReturnType<typeof loadLocalFactorState>>;
+          try {
+            factor = await loadLocalFactorState(current.user.id);
+          } catch (error) {
+            if (error instanceof InactiveFactorIdentityError) {
+              throw new APIError("FORBIDDEN", { message: "Forbidden" });
+            }
+            throw new APIError("SERVICE_UNAVAILABLE", {
+              message: "factor_policy_unavailable",
+            });
+          }
+          if (!factor.setupCompleted || (factor.required && !factor.enabled)) {
+            throw new APIError("FORBIDDEN", {
+              message: "mfa_enrollment_required",
+            });
+          }
+          if (ctx.body?.revokeOtherSessions === true) {
+            const tx = currentTotpEnrollmentTransaction();
+            const [source] = await tx
+              .select()
+              .from(schema.sessionTable)
+              .where(
+                and(
+                  eq(schema.sessionTable.id, current.session.id),
+                  eq(schema.sessionTable.userId, current.user.id),
+                  eq(schema.sessionTable.portal, portal),
+                  gt(schema.sessionTable.expiresAt, dbNowUtc()),
+                ),
+              )
+              .limit(1);
+            if (!source || source.impersonatedBy)
+              throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
+            if (source.identityConnectionId) {
+              const [connection] = await lockOidcConnection(
+                tx,
+                source.identityConnectionId,
+              );
+              const [identity] = await lockOidcExternalIdentity(
+                tx,
+                source.identityConnectionId,
+                current.user.id,
+              );
+              if (
+                !connection?.enabled ||
+                connection.portalScope !== portal ||
+                !identity
+              ) {
+                throw new APIError("FORBIDDEN", { message: "Unauthorized" });
+              }
+            }
+            setPasswordSessionSource({
+              id: source.id,
+              userId: source.userId,
+              portal,
+              identityConnectionId: source.identityConnectionId,
+              activeOrganizationId: source.activeOrganizationId,
+              activeTeamId: source.activeTeamId,
+            });
+          }
+        }
+
         if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
           const state = await loadLocalFactorState(ctx.context.session.user.id);
-          if (state.policy.mode === "off") {
+          if (
+            state.policy.mode === "off" &&
+            !(await isPendingFirstAdministrator(ctx.context.session.user.id))
+          ) {
             throw new APIError("FORBIDDEN", {
               message:
                 "Local factor enrollment is disabled by instance policy.",
@@ -1116,8 +1353,11 @@ function createAuth(
         const previousSession = ctx.context.session;
         const completedEnrollment =
           ctx.path === "/two-factor/verify-totp" &&
-          previousSession?.user.twoFactorEnabled !== true &&
-          newSession?.user.twoFactorEnabled === true;
+          previousSession != null &&
+          newSession != null &&
+          previousSession.user.id === newSession.user.id &&
+          previousSession.user.twoFactorEnabled !== true &&
+          newSession.user.twoFactorEnabled === true;
         if (completedEnrollment && newSession) {
           // Better Auth replaces the session used to verify enrollment. Revoke any
           // verified factor gates every device. The shared transaction locks the
@@ -1127,6 +1367,7 @@ function createAuth(
             newSession.user.id,
             newSession.session.id,
           );
+          await finalizeVerifiedFirstUserSetup(tx, newSession.user.id);
           afterTotpEnrollmentCommit(() =>
             invalidateNativeAuthorization({ userId: newSession.user.id }),
           );
@@ -1283,10 +1524,27 @@ function createAuth(
           ctx.path === "/sign-in/email" ||
           ctx.path === "/sign-in/username" ||
           ctx.path === "/sign-in/phone-number";
+        const passwordSource =
+          ctx.path === "/change-password"
+            ? getPasswordSessionSource()
+            : undefined;
+        const passwordReplacement = Boolean(
+          passwordSource &&
+            previousSession?.session.id === passwordSource.id &&
+            previousSession.user.id === passwordSource.userId &&
+            newSession.user.id === passwordSource.userId &&
+            passwordSource.portal === portal,
+        );
+        if (ctx.path === "/change-password" && !passwordReplacement) {
+          throw new APIError("INTERNAL_SERVER_ERROR", {
+            message: "Session replacement failed",
+          });
+        }
         if (
           newSession.user.twoFactorEnabled &&
           !factorVerifiedEndpoint &&
-          !passwordSignInPath
+          !passwordSignInPath &&
+          !passwordReplacement
         ) {
           // The plugin's built-in sign-in gate covers password sign-in. Other
           // credential flows may not establish that challenge; refuse their
@@ -1321,8 +1579,31 @@ function createAuth(
             });
           }
         }
-        const sessionWriter = totpTransaction ?? db;
+        const sessionWriter = passwordReplacement
+          ? currentTotpEnrollmentTransaction()
+          : (totpTransaction ?? db);
         await updateSessionPortal(sessionWriter, newSession.session.id, portal);
+        if (passwordReplacement && passwordSource) {
+          const [updated] = await sessionWriter
+            .update(schema.sessionTable)
+            .set({
+              identityConnectionId: passwordSource.identityConnectionId,
+              activeOrganizationId: passwordSource.activeOrganizationId,
+              activeTeamId: passwordSource.activeTeamId,
+            })
+            .where(
+              and(
+                eq(schema.sessionTable.id, newSession.session.id),
+                eq(schema.sessionTable.userId, passwordSource.userId),
+                eq(schema.sessionTable.portal, portal),
+              ),
+            )
+            .returning({ id: schema.sessionTable.id });
+          if (!updated)
+            throw new APIError("INTERNAL_SERVER_ERROR", {
+              message: "Session replacement failed",
+            });
+        }
 
         if (factorVerifiedEndpoint) {
           const factorCookie = ctx.context.createAuthCookie("two_factor");

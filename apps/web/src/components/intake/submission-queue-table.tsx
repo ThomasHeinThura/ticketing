@@ -74,10 +74,10 @@ export function SubmissionQueueTable({
       <TableBody>
         {rows.map((row) => (
           <TableRow
+            interactive
             key={row.ref}
             data-state={selectedRef === row.ref ? "selected" : undefined}
             data-testid={`triage-row-${row.ref}`}
-            className="cursor-pointer"
             onClick={(event) => openFromRow(event, row.ref)}
           >
             <TableCell>

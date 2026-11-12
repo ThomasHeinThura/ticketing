@@ -188,23 +188,28 @@ export const workspacePolicies = {
     sessionOnly: true,
   },
 
-  // Creates a workspace. There is no existing workspace to check authority against — the
-  // caller becomes the owner of a brand-new one, which is exactly the `self` kind's shape:
-  // the resulting rows are keyed to the caller's own identity (the owner `workspace_member`
-  // row, the new workspace itself), not to a capability held in some other scope. This is
-  // also why there is no `workspace:create` entry in the capability list at all (rbac.md):
-  // creation is gated only by authentication plus the instance-wide
-  // `DISABLE_WORKSPACE_CREATION` admin flag (`requireWorkspaceCreationAllowed`), which is a
-  // route-level business rule, not a capability check, and so is not itself a distinct policy
-  // kind.
+  // Creates a workspace (owner decision D-A, 12 Nov 2026, final): only a CURRENT instance
+  // administrator may create one, so this is the `instance:admin` capability at instance scope.
+  // There is no existing workspace to reach-check, and the route names no workspace, so reach is
+  // the written `no_single_resource` exemption. The administrator's authority is re-read from the
+  // database at request time (`requireWorkspaceCreationAllowed` ->
+  // `requireCurrentInstanceAdmin`), never taken from the session, and an API key or
+  // impersonation session is refused (`sessionOnly`). The body names the owner
+  // (`ownerUserId`, an existing active staff user); the administrator becomes a member only by
+  // naming themselves. `DISABLE_WORKSPACE_CREATION` is still registered but no longer changes
+  // who may create.
   "POST /api/workspace": {
-    authenticated: true,
-    self: true,
-    personParam: {
-      exempt: "no_person_parameter",
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
       reason:
-        "creates a new workspace that the caller becomes the owner of; the route names no person parameter because the caller is the person",
+        "a current instance administrator creates a new workspace and names its owner; the route addresses no existing workspace",
     },
+    elevated: false,
+    elevationExemptionReason:
+      "Workspace creation is not on the elevated-action table; the owner is an existing active staff user chosen by the administrator, and the creator and owner are both written to the audit log.",
     sessionOnly: true,
   },
 
@@ -354,6 +359,13 @@ export const workspacePolicies = {
   // `member:invite` is NOT in `AUTHORITY_GRANTING` (`elevated.ts`), so no `elevated` field is
   // declared -- this route mints no fresh authority the elevation-coverage test would demand
   // a written exemption for; it only creates a pending, revocable invitation row.
+  "GET /api/workspace/{workspaceId}/invitation-roles": {
+    capability: "member:invite",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+    sessionOnly: true,
+  },
   "POST /api/workspace/{workspaceId}/invitations": {
     capability: "member:invite",
     scope: "workspace",

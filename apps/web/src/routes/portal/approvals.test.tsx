@@ -24,6 +24,18 @@ vi.mock("@tanstack/react-router", () => ({
       fullPath: "/approvals",
     }),
   useNavigate: () => fake.navigate,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children?: React.ReactNode;
+  }) => (
+    <a {...props} href={to}>
+      {children}
+    </a>
+  ),
 }));
 vi.mock("react-i18next", async () => ({
   ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
@@ -113,6 +125,22 @@ it("does not offer decisions when the selected approval is no longer addressed t
   ).toBeNull();
   expect(screen.queryByRole("button", { name: "approvals.reject" })).toBeNull();
   expect(fake.decide).not.toHaveBeenCalled();
+});
+
+// UX-1a (CP-4): an empty list is the shared empty state with a way back to the customer's requests.
+it("shows the shared empty state with an icon, an explanation and a link to My requests", async () => {
+  fake.get.mockResolvedValue({ approvals: [] });
+  setup();
+  const title = await screen.findByText("approvals.empty");
+  const empty = title.closest("[data-slot=empty]");
+  expect(empty).not.toBeNull();
+  expect(
+    empty?.querySelector("[data-slot=empty-media][aria-hidden=true] svg"),
+  ).not.toBeNull();
+  expect(screen.getByText("approvals.emptyDescription")).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: "navigation.requests" }),
+  ).toHaveAttribute("href", "/requests");
 });
 
 it("never renders customer A's cached approval when the retained client switches to B", async () => {

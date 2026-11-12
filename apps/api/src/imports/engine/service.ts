@@ -27,7 +27,8 @@ import {
   requireImportWorkspaceRead,
 } from "../access";
 import { reportImportAuditWriteFailure } from "../service";
-import { type ConnectFailureReason, getImportAdapter } from "./adapter";
+import { getImportAdapter } from "./adapter";
+import { ImportConnectError } from "./connect-error";
 import type { DryRunReport } from "./dry-run";
 import {
   applyMappingEdits,
@@ -124,18 +125,6 @@ const sourceDto = (row: typeof CONNECTION.$inferSelect) => {
   };
 };
 
-/** 502 carrying a fixed reason code the wizard turns into words (never free text). */
-function connectFailure(reason: ConnectFailureReason | undefined) {
-  const body = {
-    message: "Source connection failed",
-    reason: reason ?? "source_error",
-  };
-  return new HTTPException(502, {
-    res: Response.json(body, { status: 502 }),
-    message: body.message,
-  });
-}
-
 export async function createSourceConnection(
   c: Context,
   input: {
@@ -160,7 +149,7 @@ export async function createSourceConnection(
         readOnly: true,
       })
       .catch(() => ({ ok: false as const, reason: undefined }));
-    if (!connected.ok) throw connectFailure(connected.reason);
+    if (!connected.ok) throw new ImportConnectError(connected.reason);
   }
   try {
     return await db.transaction(async (tx) => {

@@ -333,6 +333,7 @@ export async function installPerformanceApiFixture(
     workflowCapabilities = false,
     triageCapability = false,
     boardProject = false,
+    instanceAdmin = false,
   }: {
     authenticated?: boolean;
     dataDelayMs?: number;
@@ -350,8 +351,17 @@ export async function installPerformanceApiFixture(
     triageCapability?: boolean;
     /** Serve the 200-item `BRD` board project (see `BOARD_PROJECT_KEY`). */
     boardProject?: boolean;
+    /**
+     * Sign in as an instance administrator (`role: "admin"`), the only person offered "create
+     * workspace" (D-A, 12 Nov 2026), and serve an empty staff directory for the owner picker.
+     * Off by default for the specs that share this fixture.
+     */
+    instanceAdmin?: boolean;
   } = {},
 ) {
+  const session = instanceAdmin
+    ? { ...SESSION, user: { ...SESSION.user, role: "admin" } }
+    : SESSION;
   let isAuthenticated = authenticated;
   let createdItem: ReturnType<typeof makeWorkItem> | undefined;
   // Mutable canonical rows: the WLP-1 detail and the BRD board persist their writes, so a
@@ -476,7 +486,7 @@ export async function installPerformanceApiFixture(
       await new Promise((resolve) => setTimeout(resolve, dataDelayMs));
 
     if (path.endsWith("/auth/get-session"))
-      return json(isAuthenticated ? SESSION : null);
+      return json(isAuthenticated ? session : null);
     if (path === "/api/me/security/factors" && request.method() === "GET")
       return isAuthenticated
         ? json({
@@ -496,7 +506,7 @@ export async function installPerformanceApiFixture(
     if (path.endsWith("/auth/sign-in/email") && request.method() === "POST") {
       await new Promise((resolve) => setTimeout(resolve, 250));
       isAuthenticated = true;
-      return json({ token: "g11", user: SESSION.user });
+      return json({ token: "g11", user: session.user });
     }
     if (path === "/api/config")
       return json({
@@ -1017,6 +1027,15 @@ export async function installPerformanceApiFixture(
         return json([]);
     }
 
+    if (
+      instanceAdmin &&
+      path === "/api/instance/users" &&
+      request.method() === "GET"
+    )
+      return json({
+        data: [],
+        page: { nextCursor: null, hasMore: false },
+      });
     return json({ message: "Not found in the G11 browser fixture" }, 404);
   });
 

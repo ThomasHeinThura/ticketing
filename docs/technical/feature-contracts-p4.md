@@ -325,7 +325,9 @@ Board. Team membership and ownership participate in the existing [reach contract
   refused.
 - `TM-3` A team may have zero or more leads. A lead may add and remove members; editing
   the team's shared saved views is held for a later release. A lead may not change capacity
-  or the CAB flag — that is `workspace:manage_settings`.
+  or the CAB flag — that is `workspace:manage_settings`. No actor may add themselves to a
+  team, including through their API key; self-add returns `403 team_self_add_forbidden`.
+  An otherwise authorised actor can still remove themselves.
 - `TM-4` `owner_team_id` on a project grants **reach only** to the team's members — step 5
   of the reach resolution in [RBAC](permissions.md). It grants no capability.
   Because it *is* a reach grant, setting or changing it requires `project:manage_members`
@@ -850,9 +852,13 @@ attachment limits.
 Channels available on this instance: SMTP and the generic webhook (core). Further
 `notify.*` channels — Teams → Slack → Telegram → Viber, then others — appear here as they
 are built ([notifications.md](feature-contracts-p4.md#notifications); future scope, decided 2026-09-05). Each is
-a `notify.*` plugin with settings and a test send through
-the generic `POST /api/instance/plugins/{id}/test` route — there is no channel-specific
-test route. Plus the default notification preferences new users inherit.
+a `notify.*` plugin with settings and a test send. The core email provider uses
+`POST /api/instance/notification-providers/email/test`; other supported plugins use the
+generic test route. Plus the default notification preferences new users inherit.
+
+| Email Test result | Contract |
+| --- | --- |
+| Failed send | Show the SMTP reply code and a translated cause. Authenticated attempts omit free-form provider text; unauthenticated replies may include sanitised text. |
 
 <a id="god-mode-deliveries"></a>
 #### Deliveries

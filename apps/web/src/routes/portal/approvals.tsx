@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogPanel,
   DialogTitle,
+  EmptyState,
   Label,
   Skeleton,
   Table,
@@ -22,6 +23,7 @@ import {
   TableRow,
   Textarea,
 } from "@taskdesk/ui";
+import { CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
@@ -34,6 +36,7 @@ import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
   parsePortalApprovalsSearch,
   portalProjectSearchMiddlewares,
+  routes,
 } from "@/lib/routes";
 
 export const Route = createFileRoute("/approvals")({
@@ -103,7 +106,20 @@ function PortalApprovals() {
       ) : query.isPending ? (
         <Skeleton className="h-24 w-full" />
       ) : !query.data.approvals.length ? (
-        <p className="text-sm text-muted-foreground">{t("approvals.empty")}</p>
+        // UX-1a (CP-4): the shared empty look, with the way back to the customer's requests.
+        <EmptyState
+          icon={<CheckCircle />}
+          title={t("approvals.empty")}
+          description={t("approvals.emptyDescription")}
+          action={
+            <Button
+              variant="outline"
+              render={<Link to={routes.portalRequests.path} />}
+            >
+              {t("navigation.requests")}
+            </Button>
+          }
+        />
       ) : (
         <Table>
           <TableHeader>

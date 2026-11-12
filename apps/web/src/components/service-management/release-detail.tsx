@@ -14,6 +14,8 @@ import {
   Checkbox,
   Input,
   Label,
+  PageContainer,
+  PageHeader,
   Select,
   SelectContent,
   SelectItem,
@@ -398,37 +400,39 @@ export function ReleaseDetailView({ releaseId }: { releaseId: string }) {
   return (
     <>
       <PageTitle title={data?.name ?? t("releases.detail.pageTitle")} />
-      <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
-        <div className="space-y-2">
-          <Button
-            render={<Link to={routes.serviceManagementReleases.path} />}
-            variant="ghost"
-            size="sm"
-          >
-            <ArrowLeft aria-hidden="true" />
-            {t("releases.detail.allReleases")}
-          </Button>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold">
-              {data?.name ?? t("releases.detail.pageTitle")}
-            </h1>
-            {data ? <ReleaseStatusBadge status={data.status} /> : null}
-          </div>
-          {data ? (
-            <p className="text-sm text-muted-foreground">
-              <Link
-                className="underline-offset-4 hover:underline"
-                to={routes.serviceManagementServiceDetail.path}
-                params={{ id: data.serviceId }}
-              >
-                {data.serviceName}
-              </Link>
-              {data.plannedDate
-                ? ` · ${formatDateMedium(data.plannedDate)}`
-                : ""}
-            </p>
-          ) : null}
-        </div>
+      <PageContainer>
+        <PageHeader
+          breadcrumbs={
+            <Button
+              render={<Link to={routes.serviceManagementReleases.path} />}
+              variant="ghost"
+              size="sm"
+            >
+              <ArrowLeft aria-hidden="true" />
+              {t("releases.detail.allReleases")}
+            </Button>
+          }
+          title={data?.name ?? t("releases.detail.pageTitle")}
+          description={
+            data ? (
+              <>
+                <Link
+                  className="underline-offset-4 hover:underline"
+                  to={routes.serviceManagementServiceDetail.path}
+                  params={{ id: data.serviceId }}
+                >
+                  {data.serviceName}
+                </Link>
+                {data.plannedDate
+                  ? ` · ${formatDateMedium(data.plannedDate)}`
+                  : ""}
+              </>
+            ) : undefined
+          }
+          actions={
+            data ? <ReleaseStatusBadge status={data.status} /> : undefined
+          }
+        />
         {release.isLoading ? (
           <LoadingRows />
         ) : release.isError || !data ? (
@@ -453,7 +457,7 @@ export function ReleaseDetailView({ releaseId }: { releaseId: string }) {
             />
           </>
         )}
-      </div>
+      </PageContainer>
     </>
   );
 }

@@ -9,6 +9,7 @@ import {
 import { ChevronLeft, Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorReference } from "@/components/errors/error-reference";
 import PageTitle from "@/components/page-title";
 import { exportReport, ReportsDisabledError } from "@/fetchers/report";
 import { useReport, useReportCatalogue } from "@/hooks/queries/report";
@@ -48,6 +49,7 @@ export function ReportError({ error }: { error: unknown }) {
       <AlertDescription>
         {t(`reports:errors.${key}.description`)}
       </AlertDescription>
+      <ErrorReference error={error} />
     </Alert>
   );
 }

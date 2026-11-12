@@ -40,7 +40,7 @@ describe("useCreateWorkspace", () => {
     mocks.getWorkspaces.mockResolvedValue([]);
   });
 
-  it("creates via the native workspace route, ignoring plugin-only options", async () => {
+  it("creates via the native workspace route and names the workspace owner", async () => {
     mocks.post.mockResolvedValue({
       ok: true,
       json: async () => ({ id: "workspace-1", name: "Acme" }),
@@ -55,10 +55,7 @@ describe("useCreateWorkspace", () => {
       created = await result.current.mutateAsync({
         name: "Acme",
         slug: "acme",
-        // Plugin-era options: must be accepted (existing call sites still
-        // pass them) but must NOT change what is sent to the native route.
-        keepCurrentActiveOrganization: true,
-        userId: "user-1",
+        ownerUserId: "user-2",
       });
     });
 
@@ -67,6 +64,7 @@ describe("useCreateWorkspace", () => {
         name: "Acme",
         slug: "acme",
         logo: undefined,
+        ownerUserId: "user-2",
         description: undefined,
       },
     });
@@ -89,7 +87,10 @@ describe("useCreateWorkspace", () => {
     });
 
     await act(async () => {
-      await result.current.mutateAsync({ name: "Acme" });
+      await result.current.mutateAsync({
+        name: "Acme",
+        ownerUserId: "user-2",
+      });
     });
 
     expect(mocks.post).toHaveBeenCalledTimes(2);
@@ -109,7 +110,11 @@ describe("useCreateWorkspace", () => {
 
     await act(async () => {
       await expect(
-        result.current.mutateAsync({ name: "Acme", slug: "acme" }),
+        result.current.mutateAsync({
+          name: "Acme",
+          slug: "acme",
+          ownerUserId: "user-2",
+        }),
       ).rejects.toThrow("Forbidden");
     });
 

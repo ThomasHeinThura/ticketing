@@ -170,8 +170,65 @@ export function validateFormSchema(
   return defects;
 }
 
+const NUMERIC_STRING = /^-?\d+(\.\d+)?$/u;
+
+/** A number that kept every digit: finite, and an integer only within the safe range. */
+function isUsableNumber(value: number): boolean {
+  return (
+    Number.isFinite(value) &&
+    (!Number.isInteger(value) || Number.isSafeInteger(value))
+  );
+}
+
+/**
+ * A string answer or condition value read as a number, only when it is plain decimal digits
+ * (`"50"`, `"-3"`, `"0.5"`). `Number()` alone also accepts `" "`, `"0x10"`, `"1e3"` and
+ * `"Infinity"`, and an integer beyond `Number.MAX_SAFE_INTEGER` silently loses digits, so
+ * those stay strings and fail as a wrong-typed answer instead.
+ */
+function parseNumericString(value: string): number | null {
+  if (!NUMERIC_STRING.test(value)) return null;
+  const num = Number(value);
+  return isUsableNumber(num) ? num : null;
+}
+
+/**
+ * A number answer as the form sends it: a real number, or plain decimal text; `null` for
+ * anything the server would refuse. The portal form uses this to convert what the customer
+ * typed and to flag a bad entry, so the browser and the server read a number the same way.
+ */
+export function parseNumberAnswer(value: unknown): number | null {
+  if (typeof value === "number") return isUsableNumber(value) ? value : null;
+  if (typeof value === "string") return parseNumericString(value);
+  return null;
+}
+
+/** `a` is the answer given, `b` the condition's stored value: the two are not symmetric. */
 function valuesEqual(a: FormValue, b: FormValue): boolean {
   if (a === b) return true;
+  if (typeof a === "string" && typeof b === "string") {
+    if (a.trim() === "" && b.trim() === "") return true;
+  }
+  if (typeof a === "boolean" && typeof b === "string") {
+    const trimmed = b.trim().toLowerCase();
+    if (trimmed === "true") return a === true;
+    if (trimmed === "false") return a === false;
+  }
+  if (typeof a === "string" && typeof b === "boolean") {
+    const trimmed = a.trim().toLowerCase();
+    if (trimmed === "true") return b === true;
+    if (trimmed === "false") return b === false;
+  }
+  if (typeof a === "number" && typeof b === "string") {
+    // `b` is the condition's stored value: older forms saved it as text with stray spaces
+    // (" 16"), which must still match the answer 16. Answers (`a`, below) stay strict.
+    const num = parseNumericString(b.trim());
+    if (num !== null) return a === num;
+  }
+  if (typeof a === "string" && typeof b === "number") {
+    const num = parseNumericString(a);
+    if (num !== null) return num === b;
+  }
   // Arrays compare structurally for visibility purposes.
   if (Array.isArray(a) && Array.isArray(b)) {
     return (
@@ -180,6 +237,97 @@ function valuesEqual(a: FormValue, b: FormValue): boolean {
     );
   }
   return false;
+}
+
+/**
+ * Normalise draft answers, coercing legacy numeric string values to numbers
+ * for fields declared as type "number", while preserving all answers (including "__proto__" keys).
+ */
+export function normalizeDraftAnswers(
+  schema: FormSchema,
+  data: unknown,
+): Record<string, FormValue> {
+  const normalizedSchema = normalizeFormSchema(schema);
+  const byKey = new Map(normalizedSchema.fields.map((f) => [f.key, f]));
+  const result: Record<string, FormValue> = {};
+  // Older submissions can contain any JSON value. Visibility only consumes answer
+  // objects; the repository still returns the original stored value to callers.
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return result;
+  }
+  for (const key of Object.getOwnPropertyNames(data)) {
+    const field = byKey.get(key);
+    let value = (data as Record<string, unknown>)[key] as FormValue;
+    if (field?.type === "number" && typeof value === "string") {
+      const num = parseNumericString(value);
+      if (num !== null) value = num;
+    }
+    Object.defineProperty(result, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return result;
+}
+
+/** A checkbox condition value: `""`/`"false"` mean unchecked, `"true"` means checked. */
+function normalizeCheckboxConditionValue<T extends FormValue>(
+  value: T,
+): T | boolean {
+  if (typeof value !== "string") return value;
+  const lower = value.trim().toLowerCase();
+  if (lower === "true") return true;
+  if (lower === "false" || lower === "") return false;
+  return value;
+}
+
+/**
+ * Normalise a form schema, repairing published versions whose checkbox conditions
+ * stored boolean-like strings ("true"/"false") instead of boolean values (D4), and
+ * conditions left as `""` when the controlling field was later changed to a checkbox
+ * (a checkbox answer is never the empty string, so that condition could never match).
+ * Idempotent: a repaired schema normalises to itself.
+ */
+export function normalizeFormSchema(schema: FormSchema): FormSchema {
+  const checkboxKeys = new Set(
+    schema.fields.filter((f) => f.type === "checkbox").map((f) => f.key),
+  );
+  return {
+    ...schema,
+    fields: schema.fields.map((field) => {
+      if (!field.showIf) return field;
+      if (checkboxKeys.has(field.showIf.field_key)) {
+        const val = field.showIf.value;
+        return {
+          ...field,
+          showIf: {
+            ...field.showIf,
+            value: Array.isArray(val)
+              ? val.map((item) => normalizeCheckboxConditionValue(item))
+              : normalizeCheckboxConditionValue(val as FormValue),
+          },
+        };
+      }
+      return field;
+    }),
+  };
+}
+
+/**
+ * Set of field keys referenced by at least one other field's showIf condition.
+ */
+export function getConditionDrivingKeys(
+  schema: FormSchema,
+): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const field of schema.fields) {
+    if (field.showIf?.field_key) {
+      keys.add(field.showIf.field_key);
+    }
+  }
+  return keys;
 }
 
 /**
@@ -200,9 +348,11 @@ function valuesEqual(a: FormValue, b: FormValue): boolean {
  */
 export function resolveFormVisibility(
   schema: FormSchema,
-  data: Readonly<Record<string, FormValue>>,
+  data: unknown,
 ): ReadonlyMap<string, boolean> {
-  const byKey = new Map(schema.fields.map((f) => [f.key, f]));
+  const normalized = normalizeFormSchema(schema);
+  const normalizedData = normalizeDraftAnswers(normalized, data);
+  const byKey = new Map(normalized.fields.map((f) => [f.key, f]));
   const cache = new Map<string, boolean>();
   const resolving = new Map<string, number>();
   const path: string[] = [];
@@ -236,17 +386,31 @@ export function resolveFormVisibility(
     // A cycle member stays fail-closed/visible even after recursion unwinds.
     if (cache.has(field.key)) return true;
 
-    // N1: a hidden controller's answer never decides another field's visibility.
-    const actual: FormValue =
-      controllerVisible && Object.hasOwn(data, condition.field_key)
-        ? (data[condition.field_key] ?? null)
+    // N1: a hidden controller's answer never decides another field's visibility. Neither does
+    // a stored key the form does not declare: with no declared controller the condition reads
+    // an absent answer, so a forged or legacy key cannot show or hide a field.
+    let actual: FormValue = null;
+    if (controllerVisible && controller !== undefined) {
+      const raw = Object.hasOwn(normalizedData, condition.field_key)
+        ? (normalizedData[condition.field_key] ?? null)
         : null;
+      if (raw !== null) {
+        actual = raw;
+      } else if (controller?.type === "checkbox") {
+        actual = false;
+      } else if (
+        controller?.type === "text" ||
+        controller?.type === "textarea"
+      ) {
+        actual = "";
+      }
+    }
     const visible = isVisibilityConditionSatisfied(condition, actual);
     cache.set(field.key, visible);
     return visible;
   }
 
-  for (const field of schema.fields) resolve(field);
+  for (const field of normalized.fields) resolve(field);
   return cache;
 }
 
@@ -262,10 +426,59 @@ export function isFieldVisible(
 /** The fields a customer actually sees for the data so far — required checks apply only here. */
 export function visibleFields(
   schema: FormSchema,
-  data: Readonly<Record<string, FormValue>>,
+  data: unknown,
 ): readonly FormField[] {
   const visibility = resolveFormVisibility(schema, data);
   return schema.fields.filter((f) => visibility.get(f.key) ?? true);
+}
+
+/** What a reader may be shown of one submission: the form's visible fields and their answers. */
+export type VisibleSubmissionView = {
+  /** The fields the form version shows for these answers, in field order. */
+  readonly fields: readonly FormField[];
+  /** The stored answers of those fields (file fields never have one), values unchanged. */
+  readonly answers: Record<string, unknown>;
+};
+
+/**
+ * What a reader may be shown of a stored submission, from ONE visibility result (RT-5): the
+ * fields the form version shows, and the answers of those fields in the form's field order with
+ * each stored value unchanged. An undeclared key (a forged or legacy key) is neither returned nor
+ * allowed to decide whether a field is visible ({@link resolveFormVisibility} ignores it, so
+ * validation, sanitising, conversion and this view all agree). Hidden-field answers and file
+ * fields (their files never sit in `form_data`, IQ-9) are left out of `answers`. A read-time
+ * projection for portal and triage responses; stored history is never rewritten.
+ */
+export function visibleSubmissionView(
+  schema: FormSchema,
+  data: unknown,
+): VisibleSubmissionView {
+  const answers: Record<string, unknown> = {};
+  const isObject =
+    data !== null && typeof data === "object" && !Array.isArray(data);
+  const visibility = resolveFormVisibility(schema, isObject ? data : {});
+  const fields = schema.fields.filter((f) => visibility.get(f.key) ?? true);
+  if (!isObject) return { fields, answers };
+  for (const field of fields) {
+    if (field.type === "file" || !Object.hasOwn(data, field.key)) continue;
+    // `defineProperty`, not assignment: a field keyed `__proto__` is an own answer, and must
+    // not re-target the prototype of the returned object.
+    Object.defineProperty(answers, field.key, {
+      value: (data as Record<string, unknown>)[field.key],
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+  return { fields, answers };
+}
+
+/** The visible stored answers alone: {@link visibleSubmissionView}'s `answers`. */
+export function visibleSubmissionAnswers(
+  schema: FormSchema,
+  data: unknown,
+): Record<string, unknown> {
+  return visibleSubmissionView(schema, data).answers;
 }
 
 /** A validation failure against submitted data. */
@@ -290,7 +503,8 @@ function isValueOfFieldType(
     case "checkbox":
       return typeof value === "boolean";
     case "number":
-      return typeof value === "number" && Number.isFinite(value);
+      // An integer beyond `Number.MAX_SAFE_INTEGER` has already lost digits: reject it.
+      return typeof value === "number" && isUsableNumber(value);
     case "text":
     case "textarea":
     case "date":
@@ -330,11 +544,15 @@ export function validateSubmissionData(
   schema: FormSchema,
   data: Readonly<Record<string, FormValue>>,
 ): readonly SubmissionDataError[] {
+  const normalized = normalizeFormSchema(schema);
+  const normalizedData = normalizeDraftAnswers(normalized, data);
   const errors: SubmissionDataError[] = [];
-  for (const field of visibleFields(schema, data)) {
+  for (const field of visibleFields(normalized, normalizedData)) {
     // Own-property lookup (M1/L4): an inherited key like `toString` must not count as
     // an answer just because `data["toString"]` resolves via the prototype chain.
-    const value = Object.hasOwn(data, field.key) ? data[field.key] : undefined;
+    const value = Object.hasOwn(normalizedData, field.key)
+      ? normalizedData[field.key]
+      : undefined;
     const missing =
       value === undefined ||
       value === null ||
@@ -361,6 +579,67 @@ export function validateSubmissionData(
     }
   }
   return errors;
+}
+
+/**
+ * Strip hidden, undeclared, and wrong-type answers from submitted form data (D5).
+ * File fields transfer via the attachment table (IQ-9), never in form_data, so they are excluded.
+ */
+export function sanitizeSubmissionData(
+  schema: FormSchema,
+  data: Readonly<Record<string, FormValue>>,
+): Record<string, FormValue> {
+  const normalized = normalizeFormSchema(schema);
+  const normalizedData = normalizeDraftAnswers(normalized, data);
+  const visible = visibleFields(normalized, normalizedData);
+  const drivingKeys = getConditionDrivingKeys(normalized);
+  const sanitized: Record<string, FormValue> = {};
+  for (const field of visible) {
+    if (field.type === "file") continue;
+    const hasValue = Object.hasOwn(normalizedData, field.key);
+    const value = hasValue ? normalizedData[field.key] : undefined;
+    const isBlank =
+      value === undefined ||
+      value === null ||
+      (typeof value === "string" && value.trim() === "");
+
+    if (isBlank) {
+      if (
+        drivingKeys.has(field.key) &&
+        (field.type === "text" ||
+          field.type === "textarea" ||
+          field.options?.includes(""))
+      ) {
+        Object.defineProperty(sanitized, field.key, {
+          value: "",
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
+      }
+      continue;
+    }
+
+    if (isValidAnswer(field, value as FormValue)) {
+      if (field.options !== undefined) {
+        const values = Array.isArray(value) ? value : [value];
+        if (
+          !values.every(
+            (v) => typeof v === "string" && field.options?.includes(v),
+          )
+        ) {
+          continue;
+        }
+      }
+      Object.defineProperty(sanitized, field.key, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    }
+  }
+  return sanitized;
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
+  useKeyboardPress,
 } from "@taskdesk/ui";
 import { format } from "date-fns";
 import type { TFunction } from "i18next";
@@ -212,9 +213,17 @@ function TaskRow({
     }
   };
 
+  const keyboardPressProps = useKeyboardPress({
+    disabled: isDragging,
+    allowSpace: disableDragDrop,
+    shouldIgnoreEvent: (event) =>
+      isDeferredKeyboardSensorEvent(event.nativeEvent),
+  });
+
   const handleRowKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.target !== e.currentTarget) return;
     if (isDeferredKeyboardSensorEvent(e.nativeEvent)) return;
+    keyboardPressProps.onKeyDown(e);
     onSortableKeyDown?.(e);
     handleKeyDown(e);
   };
@@ -234,7 +243,7 @@ function TaskRow({
       <Fieldset
         onClick={handleClick}
         className={cn(
-          "group relative m-0 flex w-full min-w-0 max-w-none flex-row items-center gap-3 border-0 p-0 px-4 py-1.5 transition-colors cursor-pointer",
+          "group relative m-0 flex w-full min-w-0 max-w-none flex-row items-center gap-3 border-0 p-0 px-4 py-1.5 transition-[color,background-color,scale] press-feedback [--press-scale:0.99] cursor-pointer",
           selected ? "bg-accent/45" : "hover:bg-accent/60",
         )}
         {...rowAttributes}
@@ -248,13 +257,22 @@ function TaskRow({
             sortableListeners.onTouchStart?.(event);
         }}
         onPointerDown={(event) => {
+          keyboardPressProps.onPointerDown(event);
           if (!isOutsideRowControlTarget(event))
             sortableListeners.onPointerDown?.(event);
         }}
+        onPointerCancel={(event) => {
+          keyboardPressProps.onPointerCancel(event);
+          sortableListeners.onPointerCancel?.(event);
+        }}
         tabIndex={0}
         aria-describedby={describedBy}
+        data-pressed={keyboardPressProps["data-pressed"]}
+        data-keyboard-press={keyboardPressProps["data-keyboard-press"]}
         data-task-dragging={isDragging ? "true" : undefined}
+        onBlur={keyboardPressProps.onBlur}
         onKeyDown={handleRowKeyDown}
+        onKeyUp={keyboardPressProps.onKeyUp}
       >
         <FieldsetLegend className="sr-only">
           {t("common:a11y.taskContainerLabel", {

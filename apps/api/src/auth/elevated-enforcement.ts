@@ -158,6 +158,12 @@ export const ELEVATED_ENFORCEMENT: Record<string, ElevatedEnforcement> = {
     handler: "instance/storage/s3-draft.ts",
     consumer: "runWithStepUp",
   },
+  "PATCH /api/instance/notification-providers/email": {
+    kind: "operation",
+    operation: "notification_provider_save",
+    handler: "notification-provider/index.ts",
+    consumer: "runWithStepUp",
+  },
   "DELETE /api/instance/identity-connections/{id}": {
     kind: "pending_action",
     handler: "pending-action/identity-connection-deletion-target.ts",

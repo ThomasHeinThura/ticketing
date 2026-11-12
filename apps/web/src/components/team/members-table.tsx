@@ -472,7 +472,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
               ? new Date(invitation.expiresAt).getTime() < Date.now()
               : false;
             const invitationRole = (
-              <Badge variant="outline" className="capitalize">
+              <Badge variant="outline" size="sm" className="capitalize">
                 {t(`team:roles.${invitation.role ?? ""}`, {
                   defaultValue: capitalize(invitation.role ?? ""),
                 })}

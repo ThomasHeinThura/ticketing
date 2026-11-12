@@ -73,6 +73,14 @@ export async function listWidgets(
     );
 }
 
+export async function listWidgetsForDashboards(ids: readonly string[]) {
+  if (ids.length === 0) return [];
+  return db
+    .select()
+    .from(dashboardWidgetTable)
+    .where(inArray(dashboardWidgetTable.dashboardId, [...ids]));
+}
+
 /**
  * RP-16: a person with no dashboard of their own and a workspace with no workspace dashboard gets
  * the default one. Insert-only (a unique index decides a race), so a person who deletes it gets it
@@ -125,10 +133,7 @@ export async function ensureDefaultDashboard(
 
 export async function listDashboards(workspaceId: string, personId: string) {
   const rows = await db
-    .select({
-      dashboard: dashboardTable,
-      widgetCount: sql<number>`(SELECT count(*) FROM dashboard_widget w WHERE w.dashboard_id = ${dashboardTable.id})`,
-    })
+    .select()
     .from(dashboardTable)
     .where(visible(workspaceId, personId))
     .orderBy(
@@ -136,10 +141,7 @@ export async function listDashboards(workspaceId: string, personId: string) {
       sql`${dashboardTable.isDefault} DESC`,
       asc(dashboardTable.name),
     );
-  return rows.map((row) => ({
-    ...row.dashboard,
-    widgetCount: Number(row.widgetCount),
-  }));
+  return rows;
 }
 
 type WidgetValues = {
