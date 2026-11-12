@@ -1,6 +1,7 @@
 "use client";
 
 import { Toast } from "@base-ui/react/toast";
+import { XIcon } from "lucide-react";
 import {
   Component,
   lazy,
@@ -13,26 +14,22 @@ import {
   useState,
 } from "react";
 import { cn } from "../lib/cn";
+import { Button } from "./button";
 import { Card, CardDescription, CardTitle } from "./card";
 import { loadToastContents, warmToastContents } from "./toast-loader";
 
 const toastManager = Toast.createToastManager();
 const anchoredToastManager = Toast.createToastManager();
 
-const createContents = () =>
-  lazy(() =>
-    loadToastContents().catch((error: unknown) => {
-      ToastContents = createContents();
-      throw error;
-    }),
-  );
-let ToastContents = createContents();
+const createContents = () => lazy(loadToastContents);
+const InitialContents = createContents();
 
 class ToastContentsBoundary extends Component<
   {
     children: ReactNode;
     fallback: ReactNode;
     notification: string | undefined;
+    onRetry: () => void;
   },
   { failed: boolean }
 > {
@@ -41,28 +38,64 @@ class ToastContentsBoundary extends Component<
     return { failed: true };
   }
   componentDidUpdate(previous: Readonly<typeof this.props>) {
-    if (this.state.failed && previous.notification !== this.props.notification)
+    if (
+      this.state.failed &&
+      previous.notification !== this.props.notification
+    ) {
+      this.props.onRetry();
       this.setState({ failed: false });
+    }
   }
   render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }
 }
 
-function ToastTextFallback({ onReady }: { onReady: () => void }) {
-  const { toasts } = Toast.useToastManager();
+function ToastTextFallback({
+  onReady,
+  anchored = false,
+}: {
+  onReady: () => void;
+  anchored?: boolean;
+}) {
+  const { toasts, close } = Toast.useToastManager();
   useLayoutEffect(onReady, [onReady]);
-  return toasts
-    .filter((toast) => toast.transitionStatus !== "ending")
-    .map((toast) => (
-      <Card
-        key={toast.id}
-        className="mb-2 rounded-lg bg-popover p-3 text-popover-foreground shadow-lg"
-      >
-        <CardTitle>{toast.title}</CardTitle>
-        <CardDescription>{toast.description}</CardDescription>
-      </Card>
-    ));
+  return (
+    <div
+      className={cn(
+        "flex w-full flex-col gap-2",
+        anchored && "fixed right-4 bottom-4 z-[200] max-w-90",
+      )}
+    >
+      {toasts
+        .filter(
+          (toast) => toast.transitionStatus !== "ending" && !toast.limited,
+        )
+        .map((toast) => (
+          <Card
+            key={toast.id}
+            className="flex-row items-center gap-2 rounded-lg bg-popover p-3 text-popover-foreground shadow-lg"
+          >
+            <div className="min-w-0 flex-1">
+              <CardTitle className="font-normal text-sm tracking-normal">
+                {toast.title}
+              </CardTitle>
+              <CardDescription>{toast.description}</CardDescription>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => close(toast.id)}
+              aria-label={
+                typeof toast.title === "string" ? toast.title : undefined
+              }
+            >
+              <XIcon />
+            </Button>
+          </Card>
+        ))}
+    </div>
+  );
 }
 
 type ToastPosition =
@@ -94,8 +127,17 @@ function DeferredToastViewport({
 }) {
   const { toasts, update } = Toast.useToastManager();
   const [visible, setVisible] = useState(false);
+  const [generation, setGeneration] = useState(0);
+  const [Contents, setContents] = useState(() => InitialContents);
+  const onRetry = useCallback(() => {
+    setContents(() => createContents());
+    setGeneration((value) => value + 1);
+  }, []);
   const onReady = useCallback(() => setVisible(true), []);
   const onPending = useCallback(() => setVisible(false), []);
+  // Base UI has no public remove API: closed entries are hidden now and removed by
+  // deferred Roots after recovery; the visible list remains bounded by its limit.
+  // While held, an explicit timeout:0 hook update is restored to the prior duration.
   const held = useRef(new Map<string, number>());
   useEffect(warmToastContents, []);
   useLayoutEffect(() => {
@@ -120,14 +162,19 @@ function DeferredToastViewport({
   return (
     <ToastContentsBoundary
       notification={toasts[0]?.id}
-      fallback={<ToastTextFallback onReady={onReady} />}
+      onRetry={onRetry}
+      fallback={<ToastTextFallback onReady={onReady} anchored={anchored} />}
     >
-      <Suspense fallback={<PendingToastContents onPending={onPending} />}>
-        <ToastContents
-          position={position}
-          anchored={anchored}
-          onReady={onReady}
-        />
+      <Suspense
+        fallback={
+          generation > 0 ? (
+            <ToastTextFallback onReady={onReady} anchored={anchored} />
+          ) : (
+            <PendingToastContents onPending={onPending} />
+          )
+        }
+      >
+        <Contents position={position} anchored={anchored} onReady={onReady} />
       </Suspense>
     </ToastContentsBoundary>
   );

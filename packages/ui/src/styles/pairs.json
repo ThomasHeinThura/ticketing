@@ -14265,8 +14265,8 @@
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0"
 		],
 		"occurrences": [
 			{
@@ -14846,23 +14846,23 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -14918,8 +14918,8 @@
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuContent[0]/ContextMenuItem[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0"
 		],
 		"occurrences": [
 			{
@@ -15499,23 +15499,23 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -30364,7 +30364,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=info]:text-info",
 		"backgroundClass": {
@@ -30372,31 +30372,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -30406,7 +30406,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=info]:text-info",
 		"backgroundClass": {
@@ -30414,31 +30414,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=info]:text-info#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -87716,8 +87716,8 @@
 			"packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -92907,23 +92907,23 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -93252,8 +93252,8 @@
 			"packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -98467,23 +98467,23 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -104619,8 +104619,9 @@
 			"packages/ui/src/components/preview-card.tsx::PreviewCardPopup::PreviewCardPrimitive.Portal[0]/PreviewCardPrimitive.Positioner[0]/PreviewCardPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sheet.tsx::SheetPopup::SheetPortal[0]/SheetViewport[0]/SheetPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sidebar-shell.tsx::SkipToMainLink::a[0]::text-popover-foreground#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast.tsx::ToastTextFallback::div[0]/Card[0]::text-popover-foreground#0",
 			"packages/ui/src/components/tooltip.tsx::TooltipPopup::TooltipPrimitive.Portal[0]/TooltipPrimitive.Positioner[0]/TooltipPrimitive.Popup[0]::text-popover-foreground#0"
 		],
 		"occurrences": [
@@ -104716,21 +104717,32 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]::text-popover-foreground#0",
+				"surfaceContext": "same-element",
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/toast.tsx:ToastTextFallback",
+					"jsx:div[0]/Card[0]>bg-popover"
+				],
+				"id": "packages/ui/src/components/toast.tsx::ToastTextFallback::div[0]/Card[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "packages/ui/src/components/toast.tsx"
 			},
@@ -104769,8 +104781,9 @@
 			"packages/ui/src/components/preview-card.tsx::PreviewCardPopup::PreviewCardPrimitive.Portal[0]/PreviewCardPrimitive.Positioner[0]/PreviewCardPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sheet.tsx::SheetPopup::SheetPortal[0]/SheetViewport[0]/SheetPrimitive.Popup[0]::text-popover-foreground#0",
 			"packages/ui/src/components/sidebar-shell.tsx::SkipToMainLink::a[0]::text-popover-foreground#0",
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]::text-popover-foreground#0",
+			"packages/ui/src/components/toast.tsx::ToastTextFallback::div[0]/Card[0]::text-popover-foreground#0",
 			"packages/ui/src/components/tooltip.tsx::TooltipPopup::TooltipPrimitive.Portal[0]/TooltipPrimitive.Positioner[0]/TooltipPrimitive.Popup[0]::text-popover-foreground#0"
 		],
 		"occurrences": [
@@ -104866,21 +104879,32 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]::text-popover-foreground#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]::text-popover-foreground#0",
+				"surfaceContext": "same-element",
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/toast.tsx:ToastTextFallback",
+					"jsx:div[0]/Card[0]>bg-popover"
+				],
+				"id": "packages/ui/src/components/toast.tsx::ToastTextFallback::div[0]/Card[0]::text-popover-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "packages/ui/src/components/toast.tsx"
 			},
@@ -110013,7 +110037,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=success]:text-success",
 		"backgroundClass": {
@@ -110021,31 +110045,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -110055,7 +110079,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=success]:text-success",
 		"backgroundClass": {
@@ -110063,31 +110087,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=success]:text-success#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -112663,7 +112687,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=warning]:text-warning",
 		"backgroundClass": {
@@ -112671,31 +112695,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	},
@@ -112705,7 +112729,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "packages/ui/src/components/toast.tsx",
+		"usage": "packages/ui/src/components/toast-viewport.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "in-data-[type=warning]:text-warning",
 		"backgroundClass": {
@@ -112713,31 +112737,31 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
-			"packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0"
+			"packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+			"packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0"
 		],
 		"occurrences": [
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:AnchoredToasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:AnchoredToastItem",
+					"jsx:Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::AnchoredToastItem::Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"packages/ui/src/components/toast.tsx:Toasts",
-					"jsx:Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
+					"packages/ui/src/components/toast-viewport.tsx:ToastItem",
+					"jsx:Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]>bg-popover"
 				],
-				"id": "packages/ui/src/components/toast.tsx::Toasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
+				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=warning]:text-warning#0",
 				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "packages/ui/src/components/toast.tsx"
+				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
 	}
