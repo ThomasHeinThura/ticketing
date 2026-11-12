@@ -1,4 +1,4 @@
-// D-E (12 Nov): approval actors use project-limited workspace roles.
+// D-E (12 Nov): real owner actors by default; restricted reach is an explicit test option.
 import { randomUUID } from "node:crypto";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, isNull } from "drizzle-orm";
@@ -10,14 +10,13 @@ import {
   assignProjectLimitedRole,
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./fixtures";
 
 /** Shared fixtures for the approvals integration tests (S3). */
-export type Member = Awaited<
-  ReturnType<typeof createProjectLimitedWorkspaceMember>
->;
+export type Member = Awaited<ReturnType<typeof createWorkspaceMember>>;
 
 export const json = { "content-type": "application/json" };
 
@@ -35,9 +34,15 @@ export async function personOf(userId: string) {
 /** One self-contained tenant: workspace, gated workflow, change-type work item, CAB approver. */
 export async function buildTenant(
   label: string,
-  options: { executable?: boolean } = {},
+  options: {
+    executable?: boolean;
+    projectLimitedApprover?: boolean;
+    projectLimitedRequester?: boolean;
+  } = {},
 ) {
-  const requester = await createProjectLimitedWorkspaceMember({
+  const requester = await (options.projectLimitedRequester
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({
     role: "owner",
   });
   const requesterPerson = await personOf(requester.user.id);
@@ -238,14 +243,15 @@ export async function buildTenant(
     "tenant type",
   );
 
-  const approver = await createProjectLimitedWorkspaceMember({ role: "owner" });
+  const approver = await createWorkspaceMember({ role: "owner" });
   await db.insert(schema.workspaceUserTable).values({
     workspaceId: wsId,
     userId: approver.user.id,
-    role: "member",
+    role: "owner",
     joinedAt: now,
   });
-  await assignProjectLimitedRole(approver.user.id, wsId, "owner");
+  if (options.projectLimitedApprover)
+    await assignProjectLimitedRole(approver.user.id, wsId, "owner");
   await grantProjectRole(approver.user.id, project.id, [
     "project:read",
     "work_item:read",

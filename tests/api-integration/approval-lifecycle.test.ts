@@ -17,6 +17,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -100,7 +101,7 @@ describe("API integration: approval lifecycle", () => {
   });
 
   it("commits the request with its event, inbox, and audit rows; keeps the workflow gate while disabled; and flags then denies a no-longer-reachable approver", async () => {
-    const requester = await createProjectLimitedWorkspaceMember({
+    const requester = await createWorkspaceMember({
       role: "owner",
     });
     const requesterPerson = requireRow(
@@ -735,7 +736,7 @@ describe("API integration: approval lifecycle", () => {
       outOfReachEffectsBeforeDenial,
     );
 
-    const instanceAdmin = await createProjectLimitedWorkspaceMember({
+    const instanceAdmin = await createWorkspaceMember({
       role: "owner",
     });
     await db
@@ -848,7 +849,7 @@ describe("API integration: approval lifecycle", () => {
     expect((await adminSessionWithdrawal.json()).state).toBe("withdrawn");
 
     const inactiveAdminApproval = await createAdditionalApprovalAsRequester();
-    const inactiveAdmin = await createProjectLimitedWorkspaceMember({
+    const inactiveAdmin = await createWorkspaceMember({
       role: "owner",
     });
     await db

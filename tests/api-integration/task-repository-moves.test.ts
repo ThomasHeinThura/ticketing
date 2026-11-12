@@ -12,6 +12,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectRole,
   grantWorkItemProjectAccess,
 } from "./helpers/fixtures";
@@ -96,9 +97,13 @@ async function waitForBlockedPid(client: Client, blockerPid: number) {
   throw new Error(`No PostgreSQL session blocked by pid ${blockerPid}`);
 }
 
-async function seed() {
-  const a = await createProjectLimitedWorkspaceMember({ role: "admin" });
-  const b = await createProjectLimitedWorkspaceMember({ role: "admin" });
+async function seed(projectLimited = false) {
+  const a = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "admin" });
+  const b = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "admin" });
   const { project: p1, columns: c1 } = await createProjectFixture({
     workspaceId: a.workspace.id,
   });
@@ -771,7 +776,7 @@ describe("task repository: create, move and bulk statements (#580 b9b)", () => {
   });
 
   it("moves the task and assets under one authorization snapshot during revocation", async () => {
-    const { a, p1, p2, t1 } = await seed();
+    const { a, p1, p2, t1 } = await seed(true);
     const [taskAsset] = await db
       .insert(schema.assetTable)
       .values({

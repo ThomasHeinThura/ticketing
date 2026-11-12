@@ -1,4 +1,3 @@
-// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -33,6 +32,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectManageAccess,
   requireRow,
 } from "./helpers/fixtures";
@@ -181,10 +181,10 @@ describe("current leaf repository reach", () => {
   });
 
   it("reads only the authenticated user's custom-provider id token", async () => {
-    const member = await createProjectLimitedWorkspaceMember({
+    const member = await createWorkspaceMember({
       role: "member",
     });
-    const other = await createProjectLimitedWorkspaceMember({ role: "member" });
+    const other = await createWorkspaceMember({ role: "member" });
     await db.insert(schema.accountTable).values([
       {
         id: `custom-${randomUUID()}`,
@@ -262,7 +262,7 @@ describe("current leaf repository reach", () => {
   });
 
   it("returns websocket scope only for live work items in currently reached projects", async () => {
-    const member = await createProjectLimitedWorkspaceMember({
+    const member = await createWorkspaceMember({
       role: "member",
     });
     const live = await createProjectFixture({
@@ -521,7 +521,7 @@ describe("current leaf repository reach", () => {
     expect(toSlug("  Ａccent / B  ")).toBe("accent-b");
     expect(toSlug("---")).toBe("");
 
-    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
+    const member = await createWorkspaceMember({ role: "admin" });
     const first = await createProjectFixture({
       workspaceId: member.workspace.id,
     });

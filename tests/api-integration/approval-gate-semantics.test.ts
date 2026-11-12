@@ -1,4 +1,3 @@
-// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * Gate and request semantics for approvals (S3): the owner decisions of 2026-10-10 (approvals
  * are single use; withdrawn approvals are ignored), `requires_cab`, request-time validation,
@@ -27,7 +26,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -172,7 +171,7 @@ describe("approvals: request-time and read-time validation", () => {
   });
 
   it("the approver's reach on the work item is checked when the request is made", async () => {
-    const t = await buildTenant("reach");
+    const t = await buildTenant("reach", { projectLimitedApprover: true });
     const approverMembership = await revokeProjectMembership(
       t.approverPerson.id,
       t.project.id,
@@ -238,7 +237,7 @@ describe("approvals: request-time and read-time validation", () => {
   it("a second CAB member who holds approval:decide but is not the named approver cannot decide", async () => {
     const t = await buildTenant("not-named");
     const approval = await createApproval(t);
-    const other = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const other = await createWorkspaceMember({ role: "owner" });
     const now = new Date();
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: t.workspaceId,
@@ -390,7 +389,7 @@ describe("approvals: request-time and read-time validation", () => {
       (await withdrawAs(t, t.requester, requesterWithdrawn.id)).status,
     ).toBe(200);
     const adminWithdrawn = await createApproval(t);
-    const admin = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const admin = await createWorkspaceMember({ role: "owner" });
     await db
       .update(schema.userTable)
       .set({ role: "admin" })

@@ -34,9 +34,14 @@ export const TITLE_FORM = {
 
 export async function seedIntake(
   label: string,
-  options: { assignToOrganisation?: boolean } = {},
+  options: {
+    assignToOrganisation?: boolean;
+    projectLimitedRequester?: boolean;
+  } = {},
 ) {
-  const t = await buildTenant(label);
+  const t = await buildTenant(label, {
+    projectLimitedRequester: options.projectLimitedRequester,
+  });
   const customer = await addCustomer(t);
   await db
     .insert(schema.instanceFeatureFlagTable)

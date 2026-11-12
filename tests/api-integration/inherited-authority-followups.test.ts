@@ -24,7 +24,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
-  createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
@@ -32,7 +32,7 @@ import { projectKey } from "./helpers/project-key";
 import { addProjectLimitedMember } from "./helpers/reach-world";
 
 async function world() {
-  const owner = await createProjectLimitedWorkspaceMember({ role: "admin" });
+  const owner = await createWorkspaceMember({ role: "admin" });
   const workspaceId = owner.workspace.id;
   const parent = (
     await createProjectFixture({ workspaceId, slug: projectKey() })

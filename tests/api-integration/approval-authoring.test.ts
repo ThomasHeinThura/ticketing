@@ -47,7 +47,9 @@ async function scopedKey(
 describe("persisted approval authoring under strict policy", () => {
   beforeEach(resetTestDatabase);
   it("lists reachable approvals and masks the work item after staff project reach is revoked", async () => {
-    const t = await buildTenant("approval-list-reach");
+    const t = await buildTenant("approval-list-reach", {
+      projectLimitedApprover: true,
+    });
     mockAuthenticatedSession(t.approver.user);
     expect(
       (await t.app.request(`/api/work-items/${t.key}/approvals`)).status,

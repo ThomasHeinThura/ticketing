@@ -1,4 +1,3 @@
-// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * `GET /api/projects/{projectId}/assignable` (`docs/03-features/assignment.md` § API) --
  * the person-picker feed: the roster with open-work counts, filtered to the people the
@@ -20,6 +19,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -281,11 +281,12 @@ async function assignItemTo(
   });
 }
 
-async function setup() {
-  const { user: creator, workspace } =
-    await createProjectLimitedWorkspaceMember({
-      role: "admin",
-    });
+async function setup(projectLimited = false) {
+  const { user: creator, workspace } = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({
+    role: "admin",
+  });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
   const type = await makeWorkItemType(workspace.id);
   const backlog = await makeState(workspace.id, project.id, "backlog", true);
@@ -510,7 +511,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
       name: "Ada Lovelace",
       projectId: project.id,
     });
-    const outsider = await createProjectLimitedWorkspaceMember({
+    const outsider = await createWorkspaceMember({
       role: "admin",
     });
 
@@ -555,7 +556,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     // ...and, as staff can be, loaded in a DIFFERENT workspace's project too. The
     // caller (a lead of this workspace) has no reach there; the count must not report
     // its activity (PR #362 review, L1).
-    const other = await createProjectLimitedWorkspaceMember({ role: "admin" });
+    const other = await createWorkspaceMember({ role: "admin" });
     const { project: otherProject } = await createProjectFixture({
       workspaceId: other.workspace.id,
     });

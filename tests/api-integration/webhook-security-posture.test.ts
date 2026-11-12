@@ -172,7 +172,7 @@ describe("GET /api/instance/webhooks/security-posture", () => {
       .update(schema.userTable)
       .set({ role: "admin" })
       .where(eq(schema.userTable.id, admin.user.id));
-    const ordinary = await createProjectLimitedWorkspaceMember({
+    const ordinary = await createWorkspaceMember({
       role: "owner",
     });
 

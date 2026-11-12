@@ -16,6 +16,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectManageAccess,
   grantProjectRole,
 } from "./helpers/fixtures";
@@ -49,8 +50,10 @@ async function projectWithManage(
   return project;
 }
 
-async function setup() {
-  const owner = await createProjectLimitedWorkspaceMember({ role: "admin" });
+async function setup(projectLimited = false) {
+  const owner = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "admin" });
   mockAuthenticatedSession(owner.user);
   return owner;
 }
@@ -135,7 +138,7 @@ describe("API integration: project hierarchy (PR-1)", () => {
   });
 
   it("needs project:manage_members on the prospective parent too", async () => {
-    const owner = await setup();
+    const owner = await setup(true);
     const ws = owner.workspace.id;
     const child = await projectWithManage(ws, owner.user.id, "CHILD");
     const { project: parent } = await createProjectFixture({
@@ -296,7 +299,7 @@ describe("API integration: project settings fields (PR-6, PR-10, PR-13, AS-11, P
   });
 
   it("needs project:manage_settings for the new fields but not for a plain rename", async () => {
-    const owner = await setup();
+    const owner = await setup(true);
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
       slug: "LEAD",

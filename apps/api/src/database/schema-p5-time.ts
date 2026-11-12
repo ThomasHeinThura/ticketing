@@ -119,6 +119,7 @@ export const timeEntryTable = pgTable(
       .onDelete("cascade")
       .onUpdate("cascade"),
     foreignKey({
+      // DEFERRABLE INITIALLY DEFERRED via migration 0223: workspace cascades must not depend on trigger order.
       name: "time_entry_workspace_activity_fk",
       columns: [table.workspaceId, table.activityId],
       foreignColumns: [timeActivityTable.workspaceId, timeActivityTable.id],
@@ -185,6 +186,7 @@ export const runningTimerTable = pgTable(
       .onDelete("cascade")
       .onUpdate("cascade"),
     foreignKey({
+      // DEFERRABLE INITIALLY DEFERRED via migration 0223: workspace cascades must not depend on trigger order.
       name: "running_timer_workspace_activity_fk",
       columns: [table.workspaceId, table.activityId],
       foreignColumns: [timeActivityTable.workspaceId, timeActivityTable.id],

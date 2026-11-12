@@ -1,4 +1,3 @@
-// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * Integration tests for audit-trail.md's read API (§ API + § Access).
  *
@@ -24,6 +23,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -95,7 +95,7 @@ describe("GET /api/instance/audit (AU-11/AU-12/AU-13)", () => {
   });
 
   it("a non-instance-admin is refused (AU-12 — customers/agents never reach the log)", async () => {
-    const member = await createProjectLimitedWorkspaceMember({
+    const member = await createWorkspaceMember({
       role: "member",
     });
     mockAuthenticatedSession(member.user);
@@ -189,10 +189,10 @@ describe("GET /api/instance/audit (AU-11/AU-12/AU-13)", () => {
 
 describe("GET /api/workspaces/{workspaceId}/audit (AU-10 + tenant isolation)", () => {
   it("a workspace owner reads their workspace's rows only, and the read is audited with the workspace id", async () => {
-    const { user, workspace } = await createProjectLimitedWorkspaceMember({
+    const { user, workspace } = await createWorkspaceMember({
       role: "owner",
     });
-    const other = await createProjectLimitedWorkspaceMember();
+    const other = await createWorkspaceMember();
     await seedAuditRow(workspace.id, "role.created");
     await seedAuditRow(other.workspace.id, "role.deleted");
 
@@ -224,7 +224,7 @@ describe("GET /api/workspaces/{workspaceId}/audit (AU-10 + tenant isolation)", (
   });
 
   it("a member without workspace:manage_settings is refused", async () => {
-    const { user, workspace } = await createProjectLimitedWorkspaceMember({
+    const { user, workspace } = await createWorkspaceMember({
       role: "member",
     });
     mockAuthenticatedSession(user);
@@ -235,7 +235,7 @@ describe("GET /api/workspaces/{workspaceId}/audit (AU-10 + tenant isolation)", (
   });
 
   it("a workspace administrator API key with the required stored scope can read its workspace", async () => {
-    const { user, workspace } = await createProjectLimitedWorkspaceMember({
+    const { user, workspace } = await createWorkspaceMember({
       role: "owner",
     });
     await seedAuditRow(workspace.id, "role.created");
@@ -276,10 +276,10 @@ describe("GET /api/workspaces/{workspaceId}/audit (AU-10 + tenant isolation)", (
   });
 
   it("a non-member is refused by the membership gate", async () => {
-    const { workspace } = await createProjectLimitedWorkspaceMember({
+    const { workspace } = await createWorkspaceMember({
       role: "owner",
     });
-    const outsider = await createProjectLimitedWorkspaceMember();
+    const outsider = await createWorkspaceMember();
     mockAuthenticatedSession(outsider.user);
     const { app } = createApp();
 
@@ -387,42 +387,46 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     return body.rows.map((row) => row.action);
   }
 
-  it("a manager sees non-project rows and their own projects' rows — never a project they have no membership on", async () => {
-    const manager = await createProjectLimitedWorkspaceMember({
-      role: "admin",
-    });
-    const { project: reachable } = await createProjectFixture({
-      workspaceId: manager.workspace.id,
-    });
-    const { project: unreachable } = await createProjectFixture({
-      workspaceId: manager.workspace.id,
-    });
-    const personId = await addPersonForUser(manager.user.id);
-    await addMembership(personId, "project", reachable.id);
+  it.each(["owner", "admin", "manager", "custom"] as const)(
+    "audit reach for %s includes all projects only for system roles",
+    async (role) => {
+      const manager =
+        role === "custom"
+          ? await createProjectLimitedWorkspaceMember({ role: "admin" })
+          : await createWorkspaceMember({ role });
+      const { project: reachable } = await createProjectFixture({
+        workspaceId: manager.workspace.id,
+      });
+      const { project: unreachable } = await createProjectFixture({
+        workspaceId: manager.workspace.id,
+      });
+      const personId = await addPersonForUser(manager.user.id);
+      await addMembership(personId, "project", reachable.id);
 
-    await seedProjectScopedRow(manager.workspace.id, null, "auth.sign_out");
-    await seedProjectScopedRow(
-      manager.workspace.id,
-      reachable.id,
-      "plugin.changed",
-    );
-    await seedProjectScopedRow(
-      manager.workspace.id,
-      unreachable.id,
-      "plugin.tested",
-    );
+      await seedProjectScopedRow(manager.workspace.id, null, "auth.sign_out");
+      await seedProjectScopedRow(
+        manager.workspace.id,
+        reachable.id,
+        "plugin.changed",
+      );
+      await seedProjectScopedRow(
+        manager.workspace.id,
+        unreachable.id,
+        "plugin.tested",
+      );
 
-    const actions = await readActions(manager.user, manager.workspace.id);
-    expect(actions).toContain("auth.sign_out");
-    expect(actions).toContain("plugin.changed");
-    // The rows of the project outside their reach are invisible even though the caller
-    // holds `workspace:manage_settings` (Thomas, 2026-09-23: "restrict audit reads to
-    // owner, admin or sees_all" was the REJECTED alternative).
-    expect(actions).not.toContain("plugin.tested");
-  });
+      const actions = await readActions(manager.user, manager.workspace.id);
+      expect(actions).toContain("auth.sign_out");
+      expect(actions).toContain("plugin.changed");
+      // The rows of the project outside their reach are invisible even though the caller
+      // holds `workspace:manage_settings` (Thomas, 2026-09-23: "restrict audit reads to
+      // owner, admin or sees_all" was the REJECTED alternative).
+      expect(actions.includes("plugin.tested")).toBe(role !== "custom");
+    },
+  );
 
   it("the per-workspace sees_all grant lifts the filter for THIS workspace (#319/#334)", async () => {
-    const manager = await createProjectLimitedWorkspaceMember({
+    const manager = await createWorkspaceMember({
       role: "admin",
     });
     const { project: unreachable } = await createProjectFixture({
@@ -473,7 +477,7 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     const manager = await createProjectLimitedWorkspaceMember({
       role: "admin",
     });
-    const otherWorkspace = await createProjectLimitedWorkspaceMember({
+    const otherWorkspace = await createWorkspaceMember({
       role: "admin",
     });
     const { project: unreachable } = await createProjectFixture({
@@ -503,7 +507,7 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     expect(actions).not.toContain("plugin.tested");
   });
 
-  it("a manager with no person row and no sees_all sees only non-project rows (fail-closed)", async () => {
+  it("a custom operator with no person row and no sees_all sees only non-project rows (fail-closed)", async () => {
     const manager = await createProjectLimitedWorkspaceMember({
       role: "admin",
     });
@@ -526,7 +530,7 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
     const manager = await createProjectLimitedWorkspaceMember({
       role: "admin",
     });
-    const foreignWorkspace = await createProjectLimitedWorkspaceMember({
+    const foreignWorkspace = await createWorkspaceMember({
       role: "admin",
     });
     const { project: malformedDirect } = await createProjectFixture({

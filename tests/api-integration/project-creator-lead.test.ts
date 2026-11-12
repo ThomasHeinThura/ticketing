@@ -464,6 +464,7 @@ describe("a project's creator holds a project-lead membership", () => {
         )
       ).status,
     ).toBe(200);
+    expect(await projectStatus(world, manager, theirs.id)).toBe(404);
     const after = await creatorGrants(personId, mine.id);
     expect(after[0]?.revokedAt).toBeNull();
     expect(await projectStatus(world, manager, mine.id)).toBe(200);

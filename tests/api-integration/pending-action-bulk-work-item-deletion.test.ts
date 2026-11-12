@@ -1,8 +1,8 @@
 // D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { randomUUID } from "node:crypto";
-import { createRequire } from "node:module";
 import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { approveBulkWorkItemDeletion } from "../../apps/api/src/pending-action/bulk-work-item-deletion-target";
@@ -17,19 +17,15 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantWorkItemProjectAccess,
   requireRow,
 } from "./helpers/fixtures";
 
-const apiRequire = createRequire(
-  new URL("../../apps/api/package.json", import.meta.url),
-);
-const bcrypt = apiRequire("bcryptjs") as {
-  hash(password: string, rounds: number): Promise<string>;
-};
-
-async function fixture(count = 2) {
-  const creator = await createProjectLimitedWorkspaceMember({ role: "admin" });
+async function fixture(count = 2, projectLimited = false) {
+  const creator = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "admin" });
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
@@ -152,7 +148,9 @@ async function fixture(count = 2) {
         accountId: creator.user.id,
         providerId: "credential",
         userId: creator.user.id,
-        password: await bcrypt.hash("bulk-local-password", 4),
+        password: await (await auth.$context).password.hash(
+          "bulk-local-password",
+        ),
       })
       .onConflictDoNothing();
     const challenge = await agentRequest("/api/me/step-up/challenges", {
@@ -266,7 +264,7 @@ describe("durable canonical bulk work-item deletion", () => {
     },
   );
   it("explicitly excludes missing and hidden targets without discovering their titles", async () => {
-    const f = await fixture();
+    const f = await fixture(undefined, true);
     const { project: hidden } = await createProjectFixture({
       workspaceId: f.creator.workspace.id,
     });
@@ -472,7 +470,7 @@ describe("durable canonical bulk work-item deletion", () => {
     expect((await f.rows()).every((r) => r.deletedAt !== null)).toBe(true);
   });
   it("redacts the entire confirmation after any approved target loses read, and invalidates without shrinking", async () => {
-    const f = await fixture();
+    const f = await fixture(undefined, true);
     const created = await requestPending(f);
     const membership = requireRow(
       await db

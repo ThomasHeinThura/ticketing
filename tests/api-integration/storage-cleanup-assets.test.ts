@@ -27,12 +27,15 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectAccessForWorkspaceRole,
   requireRow,
 } from "./helpers/fixtures";
 
-async function seed() {
-  const member = await createProjectLimitedWorkspaceMember({ role: "owner" });
+async function seed(projectLimited = false) {
+  const member = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "owner" });
   const { project, columns } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });
@@ -236,7 +239,7 @@ describe("API integration: asset clean-up through the storage repository", () =>
   });
 
   it("does not detach an asset or call storage after persisted project reach is revoked", async () => {
-    const { identity, project, task, asset } = await seed();
+    const { identity, project, task, asset } = await seed(true);
     const t = await task(1);
     await asset(t.id, "revoked", "key/revoked");
     await db

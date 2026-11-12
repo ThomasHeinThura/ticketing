@@ -30,8 +30,8 @@ import { resetTestDatabase } from "./helpers/database";
 import { requireRow } from "./helpers/fixtures";
 import { seedIntake, submissionRow, submitAs } from "./helpers/intake-http";
 
-async function seed() {
-  const t = await buildTenant("dup-reach");
+async function seed(projectLimitedRequester = false) {
+  const t = await buildTenant("dup-reach", { projectLimitedRequester });
   const owner = await addCustomer(t);
   const other = await addCustomer(t);
   await db
@@ -443,7 +443,7 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
   });
 
   it("direct repository reads bind both parent arms to the actual requester and acceptance state", async () => {
-    const s = await seed();
+    const s = await seed(true);
     const visibleOwn = requireRow(
       await db
         .insert(schema.attachmentTable)
@@ -836,7 +836,7 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
   });
 
   it("keeps linked attachment reads on archived projects and closes them on reach revocation", async () => {
-    const s = await seed();
+    const s = await seed(true);
     await db
       .update(schema.projectTable)
       .set({ archivedAt: new Date() })

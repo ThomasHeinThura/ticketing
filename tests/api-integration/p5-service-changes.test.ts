@@ -25,6 +25,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
+  assignProjectLimitedRole,
   createProjectFixture,
   grantProjectRole,
   requireRow,
@@ -535,7 +536,7 @@ describe("change freeze management", () => {
 
 describe("freeze override report", () => {
   it("lists only overrides of changes in projects the caller reaches", async () => {
-    const w = await serviceWorld();
+    const w = await serviceWorld(true);
     const { project: hidden } = await createProjectFixture({
       workspaceId: w.workspaceId,
     });
@@ -690,7 +691,7 @@ describe("change calendar", () => {
   });
 
   it("hides changes in projects the caller cannot reach and answers 404 for their change detail", async () => {
-    const w = await serviceWorld();
+    const w = await serviceWorld(true);
     const { project: hidden } = await createProjectFixture({
       workspaceId: w.workspaceId,
     });
@@ -814,7 +815,20 @@ describe("freeze override (CH-4)", () => {
         }),
       },
     );
-    expect([403, 404]).toContain(denied.status);
+    // A real owner reaches the domain check even without a project change grant.
+    expect(denied.status).toBe(409);
+    await assignProjectLimitedRole(t.approver.user.id, t.workspaceId, "owner");
+    const limitedDenied = await t.app.request(
+      `/api/work-items/${t.key}/change/override-freeze`,
+      {
+        method: "POST",
+        headers: json,
+        body: JSON.stringify({
+          reason: "An approver without change authority",
+        }),
+      },
+    );
+    expect([403, 404]).toContain(limitedDenied.status);
   });
 
   async function realSessionWorld() {

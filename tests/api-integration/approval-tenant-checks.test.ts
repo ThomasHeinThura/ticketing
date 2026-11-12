@@ -1,4 +1,3 @@
-// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * Slice S3 runtime checks required by the 0120 security review
  * (docs/07-planning/security-reviews/m0120-approval-anchor.md, "S3 runtime checks").
@@ -29,7 +28,10 @@ import {
 } from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createProjectLimitedWorkspaceMember } from "./helpers/fixtures";
+import {
+  createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
+} from "./helpers/fixtures";
 
 describe("approvals: 0120 tenant runtime checks (S3)", () => {
   beforeEach(async () => {
@@ -243,7 +245,7 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
     expect(row?.requestedBy).toBe(a.requesterPerson.id);
 
     // A caller without the request capability in this workspace cannot request at all.
-    const stranger = await createProjectLimitedWorkspaceMember({
+    const stranger = await createWorkspaceMember({
       role: "member",
     });
     const denied = await request(a, stranger);
@@ -252,7 +254,7 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
   });
 
   it("check 6: only the named, current approver may decide a pending, unexpired approval, once", async () => {
-    const a = await buildTenant("a");
+    const a = await buildTenant("a", { projectLimitedApprover: true });
     const approval = await createApproval(a);
 
     // Not the approver (the requester, and a workspace outsider).

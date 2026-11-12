@@ -10,9 +10,9 @@
  *  - A re-own is elevated (step-up) and is for a webhook paused because its owner left, unless
  *    the caller is an instance administrator.
  */
-import { createRequire } from "node:module";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { auth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import {
   webhookDeliveryTable,
@@ -38,12 +38,6 @@ vi.mock("../../apps/api/src/webhook/safe-http", async (importOriginal) => ({
 
 process.env.TASKDESK_ENCRYPTION_KEY ??= "e1".repeat(32);
 
-const apiRequire = createRequire(
-  new URL("../../apps/api/package.json", import.meta.url),
-);
-const bcrypt = apiRequire("bcryptjs") as {
-  hash(value: string, rounds: number): Promise<string>;
-};
 const PASSWORD = "p4-webhook-ownership-password";
 const SECRET = "whsec_integration_secret_0000000";
 const OLD_URL = "https://hooks.example.com/old";
@@ -67,7 +61,7 @@ async function withPassword(userId: string) {
     accountId: userId,
     providerId: "credential",
     userId,
-    password: await bcrypt.hash(PASSWORD, 4),
+    password: await (await auth.$context).password.hash(PASSWORD),
   });
 }
 
@@ -391,7 +385,6 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
     expect(await count()).toBe(rowsBefore);
 
     // A retry whose body was stored before the change is cancelled rather than sent.
-    await new Promise((resolve) => setTimeout(resolve, 5));
     const [stale] = await db
       .insert(webhookDeliveryTable)
       .values({
@@ -402,7 +395,8 @@ describe("webhook destination ownership (P4R1-H1, WH-14, WH-15)", () => {
         source: "event",
         requestBody: { stored: true },
         state: "pending",
-        nextAttemptAt: new Date(),
+        // The claim uses PostgreSQL now(), so schedule with that same clock.
+        nextAttemptAt: sql`now() - interval '1 second'`,
         createdAt: new Date(Date.now() - 60_000),
       })
       .returning();

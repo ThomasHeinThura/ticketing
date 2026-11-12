@@ -1,4 +1,3 @@
-// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * #580 batch 3: behaviour pins for the activity, task-relation and time-entry controllers
  * once their statements live in repositories -- authorship predicates on comment
@@ -25,13 +24,16 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
   requireRow,
 } from "./helpers/fixtures";
 import { setTimeFlags } from "./helpers/p5-time";
 
-async function world() {
-  const member = await createProjectLimitedWorkspaceMember({ role: "owner" });
+async function world(projectLimited = false) {
+  const member = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "owner" });
   const { project, columns } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });
@@ -137,7 +139,7 @@ describe("API integration: activity through the repository", () => {
 
   it("only the author can update a comment (others get 404), the retired delete route deletes nothing for anyone", async () => {
     const { member, project, seed } = await world();
-    const other = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const other = await createWorkspaceMember({ role: "owner" });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: member.workspace.id,
       userId: other.user.id,
@@ -318,7 +320,7 @@ describe("API integration: task relations through the repository", () => {
   });
 
   it("repository reads and deletes require current reach to both relation endpoints", async () => {
-    const { member, project, seed } = await world();
+    const { member, project, seed } = await world(true);
     const ownSource = await seed(1, "Own source");
     const ownTarget = await seed(2, "Own target");
     const foreignProject = await createProjectFixture({
@@ -612,8 +614,8 @@ describe("API integration: repository predicates behind the controllers' own che
   });
 
   it("deleting a settings row only affects that person's row", async () => {
-    const a = await createProjectLimitedWorkspaceMember({ role: "member" });
-    const b = await createProjectLimitedWorkspaceMember({ role: "member" });
+    const a = await createWorkspaceMember({ role: "member" });
+    const b = await createWorkspaceMember({ role: "member" });
     const personOf = async (userId: string) =>
       requireRow(
         await db

@@ -231,8 +231,10 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
   });
 
   describe("POST /api/submissions/{ref}/accept", () => {
-    async function arrange() {
-      const s = await seedIntake("reach-accept");
+    async function arrange(projectLimitedRequester = true) {
+      const s = await seedIntake("reach-accept", {
+        projectLimitedRequester,
+      });
       const wsId = s.t.workspaceId;
       // A second project of the same customer organisation, with a default state, so a
       // destination guard that forgot reach would ACCEPT into it.
@@ -277,6 +279,22 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
         workItems: items.length,
       };
     }
+
+    it("a real workspace owner accepts into an unjoined project", async () => {
+      const a = await arrange(false);
+      const ref = await submitAs(a.s, a.s.customer, "Owner workspace reach");
+      const accepted = await staffRequest(
+        a.s.t,
+        a.s.t.requester,
+        `/api/submissions/${ref}/accept`,
+        acceptBody(a, a.second.id),
+      );
+      expect(accepted.status, await accepted.clone().text()).toBe(200);
+      expect(await snapshotOf(ref)).toMatchObject({
+        state: "accepted",
+        workItems: a.baseline + 1,
+      });
+    });
 
     it("an unreachable destination project is answered exactly like a missing one and creates no work item", async () => {
       const a = await arrange();
@@ -382,7 +400,9 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
 
   describe("duplicate suggestions and linking name only work items the triager reaches", () => {
     async function arrange() {
-      const s = await seedIntake("reach-duplicates");
+      const s = await seedIntake("reach-duplicates", {
+        projectLimitedRequester: true,
+      });
       const wsId = s.t.workspaceId;
       const { project: second } = await createProjectFixture({
         workspaceId: wsId,
@@ -513,7 +533,9 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
 
   describe("GET /api/submissions/{ref}: an accepted submission's work item is shown only within reach", () => {
     it("a triager without reach to the destination sees neither the work item id nor its public comments", async () => {
-      const s = await seedIntake("reach-detail");
+      const s = await seedIntake("reach-detail", {
+        projectLimitedRequester: true,
+      });
       const wsId = s.t.workspaceId;
       const { project: second } = await createProjectFixture({
         workspaceId: wsId,
@@ -593,7 +615,9 @@ describe("API integration: project reach on body-targeted writes (#741)", () => 
 
   describe("staff submission attachments: an accepted submission's work item attachments are shown only within reach", () => {
     async function arrange() {
-      const s = await seedIntake("reach-attachments");
+      const s = await seedIntake("reach-attachments", {
+        projectLimitedRequester: true,
+      });
       const wsId = s.t.workspaceId;
       const { project: second } = await createProjectFixture({
         workspaceId: wsId,

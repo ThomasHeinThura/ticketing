@@ -12,6 +12,7 @@ import { mockAuthenticatedSession } from "./auth";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectManageAccess,
   grantProjectRole,
   grantWorkItemProjectAccess,
@@ -50,8 +51,10 @@ export async function setServiceFlag(workspaceId: string, enabled: boolean) {
  * A workspace with the service catalogue on: an owner, a plain member (no service, change or
  * release authority), a viewer, a project, and a second tenant (workspace) for isolation checks.
  */
-export async function serviceWorld() {
-  const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+export async function serviceWorld(projectLimited = false) {
+  const owner = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "owner" });
   const workspaceId = owner.workspace.id;
   await setServiceFlag(workspaceId, true);
   const { project } = await createProjectFixture({ workspaceId });
@@ -73,7 +76,7 @@ export async function serviceWorld() {
   });
   const member = await addMember(workspaceId, "member");
   const viewer = await addMember(workspaceId, "viewer");
-  const stranger = await createProjectLimitedWorkspaceMember({ role: "owner" });
+  const stranger = await createWorkspaceMember({ role: "owner" });
   await setServiceFlag(stranger.workspace.id, true);
   const { app } = createApp();
 

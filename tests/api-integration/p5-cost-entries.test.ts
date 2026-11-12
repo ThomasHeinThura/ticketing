@@ -1,4 +1,3 @@
-// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * P5 time and cost, cost: cost types (TC-12), cost entries on a project or work item with the rate
  * captured on the row (TC-13, TC-14), permission and amount stripping (TC-11), reach and tenant
@@ -15,7 +14,7 @@ import {
 import { resetTestDatabase } from "./helpers/database";
 import {
   assignProjectLimitedRole,
-  createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
 import {
@@ -205,7 +204,7 @@ describe("cost types (TC-12)", () => {
 
   it("never lets another workspace see or edit a type", async () => {
     const type = await makeType();
-    const stranger = await createProjectLimitedWorkspaceMember({
+    const stranger = await createWorkspaceMember({
       role: "owner",
     });
     await setTimeFlags(stranger.workspace.id);
@@ -541,7 +540,7 @@ describe("reach and tenant isolation", () => {
         })
       ).status,
     ).toBe(404);
-    const stranger = await createProjectLimitedWorkspaceMember({
+    const stranger = await createWorkspaceMember({
       role: "owner",
     });
     await setTimeFlags(stranger.workspace.id);
@@ -567,7 +566,7 @@ describe("reach and tenant isolation", () => {
   });
 
   it("refuses a cost type of another workspace", async () => {
-    const stranger = await createProjectLimitedWorkspaceMember({
+    const stranger = await createWorkspaceMember({
       role: "owner",
     });
     await setTimeFlags(stranger.workspace.id);
@@ -594,7 +593,7 @@ describe("reach and tenant isolation", () => {
       personId: w.member.personId,
     });
     expect(forOther.status).toBe(201);
-    const stranger = await createProjectLimitedWorkspaceMember({
+    const stranger = await createWorkspaceMember({
       role: "owner",
     });
     const foreignPerson = (

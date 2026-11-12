@@ -455,7 +455,9 @@ describe("API integration: MCP approval decisions (PA-14)", () => {
   });
 
   it("rechecks the current key subset, key expiry, approver role, and project reach", async () => {
-    const tenant = await buildTenant("mcp-decision-current-authority");
+    const tenant = await buildTenant("mcp-decision-current-authority", {
+      projectLimitedApprover: true,
+    });
     const key = await createMcpKey(
       tenant.approver.user.id,
       tenant.approverPerson.id,

@@ -1,4 +1,3 @@
-// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 import { createHash, randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as auditWriter from "../../apps/api/src/audit/audit-writer";
@@ -13,6 +12,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createProjectLimitedWorkspaceMember,
+  createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
 import {
@@ -84,7 +84,7 @@ describe("POST /api/work-items/export", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("requires work_item:export and records no audit row on denial", async () => {
-    const member = await createProjectLimitedWorkspaceMember({
+    const member = await createWorkspaceMember({
       role: "member",
     });
     mockAuthenticatedSession(member.user);
@@ -103,10 +103,10 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("masks a foreign workspace before checking export capability", async () => {
-    const caller = await createProjectLimitedWorkspaceMember({
+    const caller = await createWorkspaceMember({
       role: "member",
     });
-    const foreign = await createProjectLimitedWorkspaceMember({
+    const foreign = await createWorkspaceMember({
       role: "owner",
     });
     mockAuthenticatedSession(caller.user);
@@ -124,7 +124,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("exports only requested columns and audits the completed export", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const owner = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
     const response = await app.request("/api/work-items/export", {
@@ -152,7 +152,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("streams registered custom columns with their labels and formula escaping", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const owner = await createWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -188,7 +188,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("exports an empty cell for hidden custom fields", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const owner = await createWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -225,7 +225,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("AU-14: preserves a completed CSV when its audit append fails", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const owner = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     vi.spyOn(auditWriter, "appendAuditLog").mockRejectedValueOnce(
       new Error("audit unavailable"),
@@ -249,128 +249,134 @@ describe("POST /api/work-items/export", () => {
     expect(notifyAdmins).toHaveBeenCalledWith("mutation");
   });
 
-  it("exports real reached rows for an owner API key with an explicit export scope", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
-    const otherAdmin = await createProjectLimitedWorkspaceMember({
-      role: "owner",
-    });
-    await db.insert(schema.workspaceUserTable).values({
-      workspaceId: owner.workspace.id,
-      userId: otherAdmin.user.id,
-      role: "owner",
-      joinedAt: new Date(),
-    });
-    const reachable = await createProjectFixture({
-      workspaceId: owner.workspace.id,
-    });
-    const unreachable = await createProjectFixture({
-      workspaceId: owner.workspace.id,
-    });
-    await grantProjectRole(owner.user.id, reachable.project.id, [
-      "work_item:create",
-      "work_item:export",
-      "project:read",
-    ]);
-    await grantProjectRole(otherAdmin.user.id, unreachable.project.id, [
-      "work_item:create",
-      "project:read",
-    ]);
-    const now = new Date();
-    const [type] = await db
-      .insert(schema.workItemTypeTable)
-      .values({
-        workspaceId: owner.workspace.id,
-        key: `type-${randomUUID()}`,
-        name: "Task",
-        category: "delivery",
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-    const [template] = await db
-      .insert(schema.stateTemplateTable)
-      .values({
-        workspaceId: owner.workspace.id,
-        key: `state-${randomUUID()}`,
-        name: "Started",
-        group: "started",
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-    if (!type || !template) throw new Error("Export fixture setup failed");
-    await db.insert(schema.stateTable).values([
-      {
-        projectId: reachable.project.id,
-        stateTemplateId: template.id,
-        isDefault: true,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        projectId: unreachable.project.id,
-        stateTemplateId: template.id,
-        isDefault: true,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ]);
-    for (const project of [reachable.project, unreachable.project])
-      await ensureCreationWorkflow({
-        workspaceId: owner.workspace.id,
-        projectId: project.id,
-        typeId: type.id,
+  it.each(["owner", "admin", "manager", "custom"] as const)(
+    "exports rows within %s reach with explicit key scope",
+    async (role) => {
+      const owner =
+        role === "custom"
+          ? await createProjectLimitedWorkspaceMember({ role: "owner" })
+          : await createWorkspaceMember({ role });
+      const otherAdmin = await createWorkspaceMember({
+        role: "owner",
       });
-    mockAuthenticatedSession(owner.user);
-    const { app } = createApp();
-    const reachableCreated = await app.request(
-      `/api/projects/${reachable.project.id}/work-items`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: owner.workspace.id,
+        userId: otherAdmin.user.id,
+        role: "owner",
+        joinedAt: new Date(),
+      });
+      const reachable = await createProjectFixture({
+        workspaceId: owner.workspace.id,
+      });
+      const unreachable = await createProjectFixture({
+        workspaceId: owner.workspace.id,
+      });
+      await grantProjectRole(owner.user.id, reachable.project.id, [
+        "work_item:create",
+        "work_item:export",
+        "project:read",
+      ]);
+      await grantProjectRole(otherAdmin.user.id, unreachable.project.id, [
+        "work_item:create",
+        "project:read",
+      ]);
+      const now = new Date();
+      const [type] = await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: owner.workspace.id,
+          key: `type-${randomUUID()}`,
+          name: "Task",
+          category: "delivery",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+      const [template] = await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId: owner.workspace.id,
+          key: `state-${randomUUID()}`,
+          name: "Started",
+          group: "started",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+      if (!type || !template) throw new Error("Export fixture setup failed");
+      await db.insert(schema.stateTable).values([
+        {
+          projectId: reachable.project.id,
+          stateTemplateId: template.id,
+          isDefault: true,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          projectId: unreachable.project.id,
+          stateTemplateId: template.id,
+          isDefault: true,
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]);
+      for (const project of [reachable.project, unreachable.project])
+        await ensureCreationWorkflow({
+          workspaceId: owner.workspace.id,
+          projectId: project.id,
           typeId: type.id,
-          title: "Reachable export row",
-        }),
-      },
-    );
-    expect(reachableCreated.status).toBe(200);
-    mockAuthenticatedSession(otherAdmin.user);
-    const unreachableCreated = await app.request(
-      `/api/projects/${unreachable.project.id}/work-items`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          typeId: type.id,
-          title: "Unreachable export row",
-        }),
-      },
-    );
-    expect(unreachableCreated.status).toBe(200);
-    const key = await createApiKeyFor(
-      owner.user.id,
-      JSON.stringify({ work_item: ["export"] }),
-    );
+        });
+      mockAuthenticatedSession(owner.user);
+      const { app } = createApp();
+      const reachableCreated = await app.request(
+        `/api/projects/${reachable.project.id}/work-items`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            typeId: type.id,
+            title: "Reachable export row",
+          }),
+        },
+      );
+      expect(reachableCreated.status).toBe(200);
+      mockAuthenticatedSession(otherAdmin.user);
+      const unreachableCreated = await app.request(
+        `/api/projects/${unreachable.project.id}/work-items`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            typeId: type.id,
+            title: "Unreachable export row",
+          }),
+        },
+      );
+      expect(unreachableCreated.status).toBe(200);
+      const key = await createApiKeyFor(
+        owner.user.id,
+        JSON.stringify({ work_item: ["export"] }),
+      );
 
-    const response = await exportWithKey(key, owner.workspace.id);
+      const response = await exportWithKey(key, owner.workspace.id);
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("text/csv");
-    const csv = await response.text();
-    expect(csv).toContain("Reachable export row");
-    expect(csv).not.toContain("Unreachable export row");
-    const audits = await db.select().from(schema.auditLogTable);
-    expect(audits).toHaveLength(1);
-    expect(audits[0]).toMatchObject({
-      action: "work_item.exported",
-      actorType: "api_key",
-      apiKeyId: expect.any(String),
-    });
-  });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("text/csv");
+      const csv = await response.text();
+      expect(csv).toContain("Reachable export row");
+      expect(csv.includes("Unreachable export row")).toBe(role !== "custom");
+      const audits = await db.select().from(schema.auditLogTable);
+      expect(audits).toHaveLength(1);
+      expect(audits[0]).toMatchObject({
+        action: "work_item.exported",
+        actorType: "api_key",
+        apiKeyId: expect.any(String),
+      });
+    },
+  );
 
   it("requires project:read in key scope for a project-filtered export", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const owner = await createWorkspaceMember({ role: "owner" });
     const reachable = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -465,7 +471,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("keeps the key's export scope subordinate to the owner's current workspace role", async () => {
-    const member = await createProjectLimitedWorkspaceMember({
+    const member = await createWorkspaceMember({
       role: "member",
     });
     const key = await createApiKeyFor(
@@ -491,7 +497,7 @@ describe("POST /api/work-items/export", () => {
   ])(
     "denies an owner API key with %s scope without exporting",
     async (_label, permissions) => {
-      const owner = await createProjectLimitedWorkspaceMember({
+      const owner = await createWorkspaceMember({
         role: "owner",
       });
       const key = await createApiKeyFor(owner.user.id, permissions);
@@ -508,7 +514,7 @@ describe("POST /api/work-items/export", () => {
   );
 
   it("refuses an expired owner API key without exporting", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const owner = await createWorkspaceMember({ role: "owner" });
     const key = await createApiKeyFor(
       owner.user.id,
       JSON.stringify({ work_item: ["export"] }),
@@ -526,7 +532,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("rejects exports exceeding 10,000 rows with 422 export_limit_exceeded and records no audit row", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const owner = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     vi.spyOn(searchWorkItemsModule, "searchWorkItems").mockResolvedValueOnce({
       data: [],
@@ -558,7 +564,7 @@ describe("POST /api/work-items/export", () => {
   });
 
   it("enforces the 5 exports/min per-user rate limit with HTTP 429", async () => {
-    const owner = await createProjectLimitedWorkspaceMember({ role: "owner" });
+    const owner = await createWorkspaceMember({ role: "owner" });
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
 
