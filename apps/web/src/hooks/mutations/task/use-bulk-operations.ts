@@ -4,9 +4,11 @@ import bulkOperation from "@/fetchers/task/bulk-operation";
 export function useBulkOperations() {
   const queryClientRef = useQueryClient();
 
-  const invalidateCommon = () => {
+  const invalidateCommon = (taskIds: string[]) => {
     queryClientRef.invalidateQueries({ queryKey: ["tasks"] });
     queryClientRef.invalidateQueries({ queryKey: ["projects"] });
+    for (const id of new Set(taskIds))
+      queryClientRef.invalidateQueries({ queryKey: ["task", id] });
   };
 
   const bulkArchive = useMutation({
@@ -17,7 +19,7 @@ export function useBulkOperations() {
         value: "archived",
       });
     },
-    onSuccess: invalidateCommon,
+    onSuccess: (_result, taskIds) => invalidateCommon(taskIds),
   });
 
   const bulkChangeStatus = useMutation({
@@ -34,7 +36,7 @@ export function useBulkOperations() {
         value: status,
       });
     },
-    onSuccess: invalidateCommon,
+    onSuccess: (_result, { taskIds }) => invalidateCommon(taskIds),
   });
 
   const bulkAssign = useMutation({
@@ -51,7 +53,7 @@ export function useBulkOperations() {
         value: userId,
       });
     },
-    onSuccess: invalidateCommon,
+    onSuccess: (_result, { taskIds }) => invalidateCommon(taskIds),
   });
 
   const bulkMoveToBacklog = useMutation({
@@ -62,7 +64,7 @@ export function useBulkOperations() {
         value: "planned",
       });
     },
-    onSuccess: invalidateCommon,
+    onSuccess: (_result, taskIds) => invalidateCommon(taskIds),
   });
 
   const bulkMoveToBoard = useMutation({
@@ -79,7 +81,7 @@ export function useBulkOperations() {
         value: status,
       });
     },
-    onSuccess: invalidateCommon,
+    onSuccess: (_result, { taskIds }) => invalidateCommon(taskIds),
   });
 
   const bulkPriority = useMutation({
@@ -96,7 +98,7 @@ export function useBulkOperations() {
         value: priority,
       });
     },
-    onSuccess: invalidateCommon,
+    onSuccess: (_result, { taskIds }) => invalidateCommon(taskIds),
   });
 
   const bulkAddLabel = useMutation({
@@ -113,8 +115,8 @@ export function useBulkOperations() {
         value: labelId,
       });
     },
-    onSuccess: () => {
-      invalidateCommon();
+    onSuccess: (_result, { taskIds }) => {
+      invalidateCommon(taskIds);
       queryClientRef.invalidateQueries({ queryKey: ["labels"] });
     },
   });
@@ -133,7 +135,7 @@ export function useBulkOperations() {
         value: dueDate,
       });
     },
-    onSuccess: invalidateCommon,
+    onSuccess: (_result, { taskIds }) => invalidateCommon(taskIds),
   });
 
   return {

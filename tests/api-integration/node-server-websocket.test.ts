@@ -1285,6 +1285,103 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       version: 2,
     });
 
+    // Both actors deliberately choose the same tab ID. A real authenticated PATCH must
+    // exclude only the first actor's socket, not the second actor with the guessed ID.
+    const sharedUrl = websocketUrl(node.server, "/api/ws?windowId=shared-tab");
+    const sender = await openSocket(sharedUrl, headers);
+    sessionMock.mockResolvedValue({
+      session: {
+        id: `session-${secondUser.id}`,
+        token: `token-${secondUser.id}`,
+        userId: secondUser.id,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ipAddress: null,
+        userAgent: null,
+        portal: "agent",
+      },
+      user: { ...secondUser },
+    });
+    const sameIdOtherUser = await openSocket(sharedUrl, {
+      ...headers,
+      cookie: `__Host-tdk_agent_session=token-${secondUser.id}`,
+    });
+    sessionMock.mockResolvedValue({
+      session: {
+        id: `session-${first.user.id}`,
+        token: `token-${first.user.id}`,
+        userId: first.user.id,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ipAddress: null,
+        userAgent: null,
+        portal: "agent",
+      },
+      user: { ...first.user },
+    });
+    for (const socket of [sender, sameIdOtherUser]) {
+      const subscribed = nextMessage(socket);
+      socket.send(
+        JSON.stringify({
+          type: "subscribe",
+          topic: `project:${project.project.id}`,
+        }),
+      );
+      await subscribed;
+    }
+    let senderEvents = 0;
+    sender.on("message", () => {
+      senderEvents += 1;
+    });
+    const otherEvent = nextMessage(sameIdOtherUser);
+    const sharedUpdate = await csrfRequest(
+      app,
+      `/api/work-items/${encodeURIComponent(created.key)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "if-match": '"2"',
+          "X-TaskDesk-Window-Id": "shared-tab",
+        },
+        body: JSON.stringify({ title: "Shared tab IDs" }),
+      },
+      headers.cookie,
+    );
+    expect(sharedUpdate.status).toBe(200);
+    await expect(otherEvent).resolves.toMatchObject({
+      type: "work_item.updated",
+      payload: { key: created.key },
+    });
+    expect(senderEvents).toBe(0);
+    const invalidSenderEvent = nextMessage(sender);
+    const invalidOtherEvent = nextMessage(sameIdOtherUser);
+    const invalidUpdate = await csrfRequest(
+      app,
+      `/api/work-items/${encodeURIComponent(created.key)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "if-match": '"3"',
+          "X-TaskDesk-Window-Id": "invalid.tab",
+        },
+        body: JSON.stringify({ title: "Invalid tab ID" }),
+      },
+      headers.cookie,
+    );
+    expect(invalidUpdate.status).toBe(200);
+    await Promise.all([invalidSenderEvent, invalidOtherEvent]);
+    for (const socket of [sender, sameIdOtherUser]) {
+      const closed = new Promise<void>((resolve) =>
+        socket.once("close", () => resolve()),
+      );
+      socket.close();
+      await closed;
+    }
+
     for (const socket of [firstSocket, secondSocket]) {
       const closed = new Promise<void>((resolve) =>
         socket.once("close", () => resolve()),

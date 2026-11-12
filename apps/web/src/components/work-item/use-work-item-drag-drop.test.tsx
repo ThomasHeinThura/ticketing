@@ -258,7 +258,7 @@ it("refreshes a committed old-project transition but never starts its second ran
   });
   expect(mocks.rank).not.toHaveBeenCalled();
   expect(hook.invalidate).toHaveBeenCalledWith({
-    queryKey: ["work-items", "project", "board"],
+    queryKey: ["work-items", "project"],
   });
   expect(hook.result.current.notice).toBeUndefined();
 });
@@ -1029,7 +1029,7 @@ it("reloads without waiting for the reload", async () => {
   });
   expect(reloaded).toBe(true);
   expect(hook.invalidate).toHaveBeenCalledWith({
-    queryKey: ["work-items", "project", "board"],
+    queryKey: ["work-items", "project"],
   });
   expect(mocks.toastError).not.toHaveBeenCalled();
 });

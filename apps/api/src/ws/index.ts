@@ -416,9 +416,15 @@ export function broadcastToProject(
   }
 
   const messageKey = `${message.type}:${message.taskId ?? ""}:${message.sourceTaskId ?? ""}:${message.targetTaskId ?? ""}`;
-  projectBroadcastQueues
-    .get(projectId)
-    ?.set(messageKey, { message, excludeInitiatorId });
+  const queue = projectBroadcastQueues.get(projectId);
+  const previous = queue?.get(messageKey);
+  queue?.set(messageKey, {
+    message,
+    excludeInitiatorId:
+      previous && previous.excludeInitiatorId !== excludeInitiatorId
+        ? undefined
+        : excludeInitiatorId,
+  });
 
   if (projectBroadcastTimeouts.has(projectId)) {
     return;

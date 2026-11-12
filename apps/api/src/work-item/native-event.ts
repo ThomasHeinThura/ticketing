@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { eventContext } from "../events";
 import {
   type DbTransaction,
   type DomainEventEnvelope,
@@ -62,11 +63,25 @@ export async function recordWorkItemEvent(
   };
   if (input.notify) await enqueueNotificationEvent(tx, envelope, input.notify);
   else await enqueueOutboxEvent(tx, envelope);
-  return { id, occurredAt };
+  const nativeInitiator = eventContext.getStore()?.nativeInitiator;
+  return {
+    id,
+    occurredAt,
+    initiator:
+      input.actorType === "person" &&
+      input.payload.source !== "import" &&
+      input.actorId === nativeInitiator?.userId
+        ? nativeInitiator
+        : undefined,
+  };
 }
 
 export async function publishWorkItemHint(
-  event: { id: string; occurredAt: Date },
+  event: {
+    id: string;
+    occurredAt: Date;
+    initiator?: { userId: string; windowId: string };
+  },
   input: Pick<
     WorkItemEventInput,
     "kind" | "key" | "projectId" | "customerVisible"
@@ -80,6 +95,7 @@ export async function publishWorkItemHint(
     at: event.occurredAt.toISOString(),
     key: input.key,
     customerVisible: input.customerVisible,
+    initiator: event.initiator,
   });
 }
 
@@ -94,7 +110,11 @@ export async function publishRankHint(input: {
   key: string;
 }) {
   await publishWorkItemHint(
-    { id: `hint_${randomUUID()}`, occurredAt: new Date() },
+    {
+      id: `hint_${randomUUID()}`,
+      occurredAt: new Date(),
+      initiator: eventContext.getStore()?.nativeInitiator,
+    },
     {
       kind: "work_item.updated",
       key: input.key,
