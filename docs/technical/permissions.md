@@ -159,3 +159,5 @@ Reach is evaluated for the loaded resource from current persisted memberships an
 ## Safety invariants
 
 Tenant reach, API-key ceilings, self/owner predicates, agent/customer separation, audit records and concurrency checks remain mandatory. Instance actions and authority-minting routes need elevation or a registered exemption. User deletion is a durable pending action. Impersonation cannot satisfy an elevated/session-only action.
+
+**Customer organisation reach (12 November 2026):** Creating the first non-deleted project that links a workspace to a customer organisation requires a current instance admin using a non-impersonated browser session. Other project creators may use only organisations already served by a non-deleted project in that workspace. The project organisation selector follows the same scope; first links are audited.

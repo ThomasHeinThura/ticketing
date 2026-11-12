@@ -131,6 +131,7 @@
 				"organisationError": "Organisasi pelanggan tidak dapat dimuat.",
 				"organisationRetry": "Coba lagi",
 				"organisationEmpty": "Belum ada organisasi pelanggan yang aktif. {{term_project_other}} ini akan bersifat internal.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Tidak ada ({{term_project_other}} internal)",
 				"organisationHint": "Opsional. Dipilih sekarang dan tidak dapat diubah setelah {{term_project_other}} dibuat.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

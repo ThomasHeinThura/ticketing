@@ -131,6 +131,7 @@
 				"organisationError": "Δεν ήταν δυνατή η φόρτωση των οργανισμών πελατών.",
 				"organisationRetry": "Επανάληψη",
 				"organisationEmpty": "Δεν υπάρχουν ακόμη ενεργοί οργανισμοί πελατών. Αυτό το {{term_project_one}} θα είναι εσωτερικό.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Κανένας (εσωτερικό {{term_project_one}})",
 				"organisationHint": "Προαιρετικό. Επιλέγεται τώρα και δεν μπορεί να αλλάξει μετά τη δημιουργία του έργου.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

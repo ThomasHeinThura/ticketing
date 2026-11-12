@@ -131,6 +131,7 @@
 				"organisationError": "Не вдалося завантажити організації клієнтів.",
 				"organisationRetry": "Повторити",
 				"organisationEmpty": "Активних організацій клієнтів ще немає. Цей {{term_project_one}} буде внутрішнім.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Немає (внутрішній {{term_project_one}})",
 				"organisationHint": "Необов’язково. Обирається зараз і не може бути змінена після створення проєкту.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

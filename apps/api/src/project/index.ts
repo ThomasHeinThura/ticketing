@@ -1,5 +1,5 @@
 import type { ProjectReachFacts } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, exists, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -9,6 +9,7 @@ import {
   serviceCalendarTable,
   workspaceTable,
 } from "../database/schema";
+import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import {
   apiRouter,
   type BaseVariables,
@@ -269,7 +270,7 @@ const createProjectRoute = createRoute({
     200: jsonResponse("The created project", projectSchema),
     400: errorResponse("Invalid body, or workspace ID could not be determined"),
     403: errorResponse(
-      "No workspace access, or missing project:create permission",
+      "No workspace access, missing project:create permission, or instance_admin_required_for_new_customer_organisation",
     ),
     422: errorResponse(
       "PR-9, same-workspace service calendar, or customer organisation validation failed",
@@ -287,13 +288,12 @@ const listCustomerOrganisationsRoute = createRoute({
   description:
     "Active, live customer organisations (never the internal one), for the create-project " +
     "selector, each with the service calendar a new project for it inherits in this " +
-    "workspace. Requires project:create in the workspace.",
+    "workspace. Instance admins see all; other callers see only organisations served by a non-deleted project in this workspace. Requires project:create in the workspace.",
   middleware: [
     workspaceAccess.fromQuery(),
     // STRICT capability check, not the legacy `requireWorkspacePermission`: the legacy
     // statements give the default `member` role `project:create`, while the permission
-    // matrix (rbac.md) grants it to owner/admin/manager only. This list is instance-wide, so
-    // it must follow the matrix.
+    // matrix (rbac.md) grants it to owner/admin/manager only.
     requireWorkspaceCapability("project:create"),
   ] as const,
   request: { query: workspaceIdQuery },
@@ -1021,6 +1021,14 @@ const project = apiRouter<
 >()
   .openapi(listCustomerOrganisationsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
+    const session = c.get("session") as {
+      impersonatedBy?: string | null;
+    } | null;
+    const instanceAdmin =
+      !!session &&
+      !c.get("apiKey") &&
+      !session.impersonatedBy &&
+      (await isCurrentInstanceAdmin(c.get("userId")));
     const [workspace] = await db
       .select({
         defaultServiceCalendarId: workspaceTable.defaultServiceCalendarId,
@@ -1053,6 +1061,20 @@ const project = apiRouter<
           eq(organisationTable.active, true),
           eq(organisationTable.isInternal, false),
           isNull(organisationTable.deletedAt),
+          instanceAdmin
+            ? undefined
+            : exists(
+                db
+                  .select({ id: projectTable.id })
+                  .from(projectTable)
+                  .where(
+                    and(
+                      eq(projectTable.workspaceId, workspaceId),
+                      eq(projectTable.organisationId, organisationTable.id),
+                      isNull(projectTable.deletedAt),
+                    ),
+                  ),
+              ),
         ),
       )
       .orderBy(organisationTable.name);
@@ -1141,6 +1163,10 @@ const project = apiRouter<
         },
         c.get("userId"),
         c.get("apiKey")?.id,
+        Boolean(c.get("session")) &&
+          !c.get("apiKey") &&
+          !(c.get("session") as { impersonatedBy?: string | null } | null)
+            ?.impersonatedBy,
       );
       return c.json(newProject, 200);
     } catch (error) {

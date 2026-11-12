@@ -131,6 +131,7 @@
 				"organisationError": "Klantorganisaties konden niet worden geladen.",
 				"organisationRetry": "Opnieuw proberen",
 				"organisationEmpty": "Er zijn nog geen actieve klantorganisaties. Dit {{term_project_one}} wordt intern.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Geen (intern {{term_project_one}})",
 				"organisationHint": "Optioneel. Wordt nu gekozen en kan na het aanmaken van het {{term_project_one}} niet meer worden gewijzigd.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

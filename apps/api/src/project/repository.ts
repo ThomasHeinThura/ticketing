@@ -40,6 +40,26 @@ export async function isServableCustomerOrganisation(
   return workspaceOwner?.isInternal === true;
 }
 
+export async function workspaceServesOrganisation(
+  executor: Executor,
+  workspaceId: string,
+  organisationId: string,
+) {
+  const [project] = await executor
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.workspaceId, workspaceId),
+        eq(projectTable.organisationId, organisationId),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .for("share")
+    .limit(1);
+  return project !== undefined;
+}
+
 export async function lockProjectOrdering(
   executor: Executor,
   workspaceId: string,

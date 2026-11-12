@@ -2004,6 +2004,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
+| `project.customer_organisation_linked` | First project link between a workspace and a customer organisation |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](permissions.md#reach)) |
 | `project.restored` | A soft-deleted project is restored inside its 30-day window; record project/workspace ids and whether archive state remains, never project content |
 | `project.summary_updated` | The project summary (objective, scope, success criteria, status note) or lifecycle status is saved (`PATCH /api/project/{id}/summary`); record project/workspace ids, the changed field names and the before/after `status` only, never the summary text. Audit-only; no outbox event. |

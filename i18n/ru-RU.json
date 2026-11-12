@@ -131,6 +131,7 @@
 				"organisationError": "Не удалось загрузить организации клиентов.",
 				"organisationRetry": "Повторить",
 				"organisationEmpty": "Активных организаций клиентов пока нет. Этот {{term_project_one}} будет внутренним.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Нет (внутренний {{term_project_one}})",
 				"organisationHint": "Необязательно. Выбирается сейчас и не может быть изменена после создания проекта.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

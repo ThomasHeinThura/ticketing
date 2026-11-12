@@ -50,6 +50,7 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "membership.sees_all_granted",
   // `owner_team_id` or `parent_id` changed (rbac.md#reach).
   "project.reach_changed",
+  "project.customer_organisation_linked",
   "project.restored",
   // Overview (0213): the summary fields and lifecycle status; the contract and hour bank.
   "project.summary_updated",

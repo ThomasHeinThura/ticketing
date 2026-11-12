@@ -131,6 +131,7 @@
 				"organisationError": "顧客組織を読み込めませんでした。",
 				"organisationRetry": "再試行",
 				"organisationEmpty": "有効な顧客組織はまだありません。この{{term_project_other}}は社内向けになります。",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "なし (社内{{term_project_other}})",
 				"organisationHint": "任意です。今選択し、{{term_project_other}}作成後は変更できません。",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

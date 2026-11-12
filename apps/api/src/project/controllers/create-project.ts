@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   apikeyTable,
@@ -9,6 +10,7 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { enqueueOutboxEvent, eventScope } from "../../events/outbox";
+import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
 import { inheritedServiceCalendarId } from "../inherited-calendar";
@@ -24,6 +26,7 @@ import {
   insertProjectColumn,
   isServableCustomerOrganisation,
   lockProjectOrdering,
+  workspaceServesOrganisation,
 } from "../repository";
 
 export const DEFAULT_PROJECT_COLUMNS = [
@@ -83,6 +86,7 @@ async function createProject(
   configuration: ProjectConfiguration,
   creatorUserId: string,
   apiKeyId?: string,
+  eligibleAdminSession = false,
 ) {
   try {
     return await createProjectRow(
@@ -93,6 +97,7 @@ async function createProject(
       configuration,
       creatorUserId,
       apiKeyId,
+      eligibleAdminSession,
     );
   } catch (error) {
     // Exact constraint names, not a substring match on `"slug"` (issue #269): this
@@ -113,14 +118,6 @@ async function createProject(
   }
 }
 
-/**
- * The binding rule, evaluated in the creating transaction. The organisation row is locked
- * `FOR SHARE` so a concurrent deactivation or delete cannot slip between this check and the
- * insert. A customer organisation is instance-level (no workspace-to-customer link exists in
- * `data-model.md`), so "servable from this workspace" is: the organisation is a live, active
- * customer organisation, and the workspace is one of the internal organisation's own
- * (`multi-tenancy.md`: the internal organisation's staff work across the customer ones).
- */
 async function createProjectRow(
   workspaceId: string,
   name: string,
@@ -129,6 +126,7 @@ async function createProjectRow(
   configuration: ProjectConfiguration,
   creatorUserId: string,
   apiKeyId?: string,
+  eligibleAdminSession = false,
 ) {
   return db.transaction(async (tx) => {
     const [workspace] = await tx
@@ -141,6 +139,9 @@ async function createProjectRow(
       .limit(1);
     if (!workspace)
       throw new HTTPException(404, { message: "Workspace not found" });
+    // Serialize first-link checks and ordering with other creates in this workspace.
+    await lockProjectOrdering(tx, workspaceId);
+    let firstLink = false;
     let inheritedCalendarId: string | null = null;
     let inheritedSlaPolicyId: string | null = null;
     let hasOrganisationDefaults = false;
@@ -151,6 +152,20 @@ async function createProjectRow(
         configuration.organisationId,
       );
       if (!servable) throw new InvalidProjectOrganisationError();
+      firstLink = !(await workspaceServesOrganisation(
+        tx,
+        workspaceId,
+        configuration.organisationId,
+      ));
+      if (
+        firstLink &&
+        (!eligibleAdminSession ||
+          !(await isCurrentInstanceAdmin(creatorUserId, tx)))
+      ) {
+        throw new HTTPException(403, {
+          message: "instance_admin_required_for_new_customer_organisation",
+        });
+      }
       const [defaults] = await tx
         .select({
           serviceCalendarId: organisationProjectDefaultTable.serviceCalendarId,
@@ -196,12 +211,6 @@ async function createProjectRow(
         message:
           "PR-9: managed services require a support level and service calendar",
       });
-
-    // Serialize ordering writes per workspace: without this, two concurrent
-    // creates can read the same max(position) and land on the same slot, and a
-    // create can interleave with a reorder's renumber. `reorderProjects` takes
-    // the same lock with the same key.
-    await lockProjectOrdering(tx, workspaceId);
 
     // #261 F1's delta-confirmation (D1): a slug can be free among LIVE projects (so the
     // `project_slug_unique` constraint below would let it through) while still being
@@ -270,6 +279,20 @@ async function createProjectRow(
           workspaceId,
           projectId: createdProject.id,
           person: creator,
+        });
+      }
+
+      if (firstLink && configuration.organisationId && creator) {
+        await appendAuditLog(tx, {
+          actorId: creator.id,
+          actorType: "person",
+          workspaceId,
+          organisationId: configuration.organisationId,
+          projectId: createdProject.id,
+          action: "project.customer_organisation_linked",
+          entityType: "project",
+          entityId: createdProject.id,
+          after: { workspaceId, organisationId: configuration.organisationId },
         });
       }
 

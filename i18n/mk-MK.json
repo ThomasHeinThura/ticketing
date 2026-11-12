@@ -131,6 +131,7 @@
 				"organisationError": "Организациите на клиенти не може да се вчитаат.",
 				"organisationRetry": "Обиди се повторно",
 				"organisationEmpty": "Сè уште нема активни организации на клиенти. Овој {{term_project_one}} ќе биде интерен.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Нема (интерен {{term_project_one}})",
 				"organisationHint": "Опционално. Се избира сега и не може да се промени откако ќе се создаде проектот.",
 				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",

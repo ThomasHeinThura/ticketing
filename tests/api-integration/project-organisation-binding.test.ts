@@ -15,13 +15,27 @@ import { acceptSubmission } from "../../apps/api/src/intake/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
-  createWorkspaceMember,
   grantProjectManageAccess,
+  createWorkspaceMember as makeWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
 import { projectKey } from "./helpers/project-key";
 
 type ProjectRow = typeof schema.projectTable.$inferSelect;
+
+// Most existing binding cases exercise a first link and therefore need an instance admin.
+async function createWorkspaceMember(
+  options: Parameters<typeof makeWorkspaceMember>[0],
+) {
+  const member = await makeWorkspaceMember(options);
+  if (options?.role === "admin") {
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, member.user.id));
+  }
+  return member;
+}
 
 async function makeOrganisation(
   overrides: Partial<typeof schema.organisationTable.$inferInsert> = {},
@@ -66,6 +80,116 @@ async function projectOrganisation(projectId: string) {
 
 describe("API integration: project customer-organisation binding", () => {
   beforeEach(async () => resetTestDatabase());
+
+  it("limits managers to served customers and audits an instance admin's first link", async () => {
+    const caller = await createWorkspaceMember({
+      role: "manager",
+      seedDefaultRoleRow: false,
+    });
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: caller.workspace.id,
+      role: "manager",
+      permission: JSON.stringify({ project: ["create", "read"] }),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, caller.user.id));
+    const served = await makeOrganisation({ name: "Served" });
+    const other = await makeOrganisation({ name: "Other" });
+    mockAuthenticatedSession(caller.user);
+    const first = await createProjectRequest(caller.workspace.id, {
+      organisationId: served.id,
+    });
+    expect(first.status, await first.clone().text()).toBe(200);
+    const audits = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        eq(schema.auditLogTable.action, "project.customer_organisation_linked"),
+      );
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      workspaceId: caller.workspace.id,
+      organisationId: served.id,
+      actorType: "person",
+    });
+    const actor = await db.query.personTable.findFirst({
+      where: eq(schema.personTable.userId, caller.user.id),
+    });
+    expect(audits[0]?.actorId).toBe(actor?.id);
+    const { app } = createApp();
+    const adminList = await app.request(
+      `/api/project/organisations?workspaceId=${caller.workspace.id}`,
+    );
+    expect(
+      ((await adminList.json()) as { id: string }[])
+        .map((row) => row.id)
+        .sort(),
+    ).toEqual([served.id, other.id].sort());
+    await db
+      .update(schema.userTable)
+      .set({ role: "user" })
+      .where(eq(schema.userTable.id, caller.user.id));
+    const list = await app.request(
+      `/api/project/organisations?workspaceId=${caller.workspace.id}`,
+    );
+    expect(list.status).toBe(200);
+    expect(
+      ((await list.json()) as { id: string }[]).map((row) => row.id),
+    ).toEqual([served.id]);
+    const refused = await createProjectRequest(caller.workspace.id, {
+      organisationId: other.id,
+    });
+    expect(refused.status).toBe(403);
+    expect(await refused.text()).toContain(
+      "instance_admin_required_for_new_customer_organisation",
+    );
+    const allowed = await createProjectRequest(caller.workspace.id, {
+      organisationId: served.id,
+    });
+    expect(allowed.status).toBe(200);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          eq(
+            schema.auditLogTable.action,
+            "project.customer_organisation_linked",
+          ),
+        ),
+    ).toHaveLength(1);
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.projectTable.organisationId, served.id));
+    const afterDeletion = await app.request(
+      `/api/project/organisations?workspaceId=${caller.workspace.id}`,
+    );
+    expect(await afterDeletion.json()).toEqual([]);
+    expect(
+      (
+        await createProjectRequest(caller.workspace.id, {
+          organisationId: served.id,
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it("does not let an impersonated instance admin extend workspace reach", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    const organisation = await makeOrganisation();
+    mockAuthenticatedSession(admin.user, { impersonatedBy: "other-admin" });
+    const response = await createProjectRequest(admin.workspace.id, {
+      organisationId: organisation.id,
+    });
+    expect(response.status).toBe(403);
+  });
 
   it("binds a new project to an active customer organisation", async () => {
     const admin = await createWorkspaceMember({ role: "admin" });
@@ -394,6 +518,10 @@ describe("API integration: project customer-organisation binding", () => {
         createdAt: now,
         updatedAt: now,
       });
+      await db
+        .update(schema.userTable)
+        .set({ role: "user" })
+        .where(eq(schema.userTable.id, member.user.id));
       return member;
     }
 
@@ -438,6 +566,18 @@ describe("API integration: project customer-organisation binding", () => {
           `/api/project/organisations?workspaceId=${caller.workspace.id}`,
         );
         expect(list.status).toBe(200);
+        await db
+          .update(schema.userTable)
+          .set({ role: "admin" })
+          .where(eq(schema.userTable.id, caller.user.id));
+        const first = await createProjectRequest(caller.workspace.id, {
+          organisationId: organisation.id,
+        });
+        expect(first.status).toBe(200);
+        await db
+          .update(schema.userTable)
+          .set({ role: "user" })
+          .where(eq(schema.userTable.id, caller.user.id));
         const bound = await createProjectRequest(caller.workspace.id, {
           organisationId: organisation.id,
         });
