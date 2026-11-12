@@ -265,7 +265,7 @@ function TaskCard({
       style={style}
       {...dragListeners}
       onClick={handleTaskCardClick}
-      className={`kanban-board-task-card group relative m-0 block w-full min-w-0 max-w-none gap-0 rounded-lg border bg-background p-3 shadow-xs/5 [contain:layout_style] transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.98] ${
+      className={`kanban-board-task-card group relative m-0 block w-full min-w-0 max-w-none gap-0 rounded-lg border bg-background p-3 shadow-xs/5 [contain:layout_style] transition-[background-color,border-color,box-shadow,scale] press-feedback [--press-scale:0.98] ${
         disableDragDrop ? "cursor-default" : "cursor-move"
       } ${
         isDragging

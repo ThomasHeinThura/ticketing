@@ -234,7 +234,7 @@ function TaskRow({
       <Fieldset
         onClick={handleClick}
         className={cn(
-          "group relative m-0 flex w-full min-w-0 max-w-none flex-row items-center gap-3 border-0 p-0 px-4 py-1.5 transition-colors cursor-pointer",
+          "group relative m-0 flex w-full min-w-0 max-w-none flex-row items-center gap-3 border-0 p-0 px-4 py-1.5 transition-[color,background-color,scale] press-feedback [--press-scale:0.99] cursor-pointer",
           selected ? "bg-accent/45" : "hover:bg-accent/60",
         )}
         {...rowAttributes}

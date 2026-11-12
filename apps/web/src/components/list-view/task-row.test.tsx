@@ -417,3 +417,49 @@ it("P1R2-1: ignores clicks and drag starts React bubbles up from portalled picke
   expect(dndMocks.mouseDown).not.toHaveBeenCalled();
   expect(dndMocks.touchStart).not.toHaveBeenCalled();
 });
+
+it("uses shared press feedback on the clickable row and marks active drags", () => {
+  const onOpenTask = vi.fn();
+  const { rerender } = render(
+    <TaskRow
+      task={task}
+      projectSlug="kan"
+      taskIsCompleted={false}
+      displayPreferences={{
+        showAssignees: false,
+        showPriority: false,
+        showDueDates: false,
+        showLabels: false,
+        showTaskNumbers: true,
+      }}
+      onOpenTask={onOpenTask}
+      t={mockT}
+    />,
+  );
+
+  const row = screen.getByRole("group");
+  expect(row).toHaveClass("press-feedback", "[--press-scale:0.99]");
+  expect(row).not.toHaveAttribute("data-task-dragging");
+
+  dndMocks.isDragging = true;
+  rerender(
+    <TaskRow
+      task={task}
+      projectSlug="kan"
+      taskIsCompleted={false}
+      displayPreferences={{
+        showAssignees: false,
+        showPriority: false,
+        showDueDates: false,
+        showLabels: false,
+        showTaskNumbers: true,
+      }}
+      onOpenTask={onOpenTask}
+      t={mockT}
+    />,
+  );
+  expect(screen.getByRole("group")).toHaveAttribute(
+    "data-task-dragging",
+    "true",
+  );
+});

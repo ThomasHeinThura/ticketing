@@ -592,13 +592,21 @@ describe("canonical work-item card", () => {
     fireEvent.keyDown(card, { key: " " });
     expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith(task.id);
   });
-  it("preserves enabled legacy drag activators", () => {
+  it("preserves enabled legacy drag activators and uses shared press feedback without scaling during drag", () => {
     const card = renderTaskCard();
     if (!(card instanceof HTMLElement)) throw new Error("Expected card");
+    expect(card).toHaveClass("press-feedback", "[--press-scale:0.98]");
+    expect(card.className).not.toMatch(/(?:^|\s)(?:duration|ease)-/);
+    expect(card).not.toHaveAttribute("data-task-dragging");
     fireEvent.pointerDown(card);
     fireEvent.keyDown(card, { key: " " });
     expect(mocks.dragStart).toHaveBeenCalledOnce();
     expect(mocks.dragKeyDown).toHaveBeenCalledOnce();
+
+    cleanup();
+    mocks.isDragging = true;
+    const draggingCard = renderTaskCard();
+    expect(draggingCard).toHaveAttribute("data-task-dragging", "true");
   });
 
   it("renders person assignment and delegates selection without touching the legacy task selection store", () => {

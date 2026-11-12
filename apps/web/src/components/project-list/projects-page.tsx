@@ -105,11 +105,13 @@ function SortableProjectRow({
     // `listeners` without `attributes`: the latter puts role="button" and a tab
     // stop on the row.
     <TableRow
+      interactive
       ref={setNodeRef}
       style={style}
+      data-dragging={isDragging ? "" : undefined}
       data-taskdesk-sortable=""
       className={cn(
-        "group/row cursor-pointer",
+        "group/row",
         isDragging && "relative z-10 bg-muted shadow-md",
       )}
       onClick={onClick}

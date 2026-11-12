@@ -2961,9 +2961,12 @@ pressed style (`:active`, or `[data-pressed]` on a trigger) applies with a 0 ms 
 it paints on the first frame, and releases over `--duration-fast`. It sets Tailwind's
 `--tw-duration` and `--tw-ease`, so each consumer keeps its own `transition-[...]` property
 list; a consumer must not add a `duration-*` or `ease-*` class (those write a literal and would
-beat it). `--press-scale` sets the pressed size (default 0.97): tabs use 0.98, sidebar items
-0.985, and a button that must not move sets `[--press-scale:1]`. Used by Button (so every icon
-button), tabs, and the sidebar menu buttons and actions.
+beat it). `--press-scale` sets the pressed size (default 0.97): tabs, interactive `Card`s and
+board task cards use 0.98, sidebar items 0.985, interactive `TableRow`s and list task rows 0.99,
+and a button that must not move sets `[--press-scale:1]`. Disabled controls and active drags
+(`data-dragging`, `data-task-dragging="true"`) suppress the pressed scale. Used by Button (so
+every icon button), tabs, the sidebar menu buttons and actions, `Card` (`interactive`),
+`TableRow` (`interactive`), and the clickable board/list task primitives.
 
 <a id="motion-what-does-not-animate"></a>
 ### What does not animate
@@ -2998,9 +3001,10 @@ The `!important` on `[data-kaneo-sortable]` is deliberate — dnd-kit sets inlin
 (The earlier block here declared custom properties outside any selector, which is invalid
 CSS and did nothing; corrected 2026-09-06.)
 Framer Motion uses `useReducedMotion()` to switch to instant variants. The 12 Nov 2026 additions
-follow the same rule: `press-feedback` consumers lose the pressed scale, the switch thumb snaps
-to its side with no spring or press stretch, the switch helper text keeps its fade and loses its
-slide, and the skeleton shimmer stops and drops its highlight band.
+follow the same rule: `press-feedback` consumers lose the pressed scale, the tab indicator snaps
+to the selected tab, the switch thumb snaps to its side with no spring or press stretch, the
+switch helper text keeps its fade and loses its slide, and the skeleton shimmer stops and drops
+its highlight band.
 
 Critically, **reduced motion removes the animation, not the affordance**. A dialog still
 appears; it simply appears without scaling. Nothing becomes unusable, and nothing becomes

@@ -111,8 +111,23 @@ describe("press feedback utility (D-H rule 1)", () => {
     expect(down?.[1]).toMatch(/scale:\s*var\(--press-scale,\s*0\.97\)/);
   });
 
-  it("is used by Button, tabs and the sidebar menu buttons", () => {
-    for (const file of ["button.tsx", "tabs.tsx", "sidebar.tsx"]) {
+  it("neutralizes pressed scale while disabled or actively dragging", () => {
+    const guard =
+      /&:is\(:disabled,\s*\[data-disabled\],\s*\[data-dragging\],\s*\[data-task-dragging="true"\]\)\s*\{([^}]*)\}/.exec(
+        utility,
+      );
+    expect(guard).not.toBeNull();
+    expect(guard?.[1]).toMatch(/scale:\s*none/);
+  });
+
+  it("is used by Button, tabs, the sidebar menu buttons and interactive Card/TableRow", () => {
+    for (const file of [
+      "button.tsx",
+      "tabs.tsx",
+      "sidebar.tsx",
+      "card.tsx",
+      "table.tsx",
+    ]) {
       expect(pressClassStrings(componentSource(file)).length).toBeGreaterThan(
         0,
       );
@@ -122,7 +137,13 @@ describe("press feedback utility (D-H rule 1)", () => {
   it("never sets its own duration or easing next to press-feedback", () => {
     // `duration-*` / `ease-*` write a literal transition-duration that beats the variables
     // press-feedback sets, so the instant press-down would silently stop working.
-    for (const file of ["button.tsx", "tabs.tsx", "sidebar.tsx"]) {
+    for (const file of [
+      "button.tsx",
+      "tabs.tsx",
+      "sidebar.tsx",
+      "card.tsx",
+      "table.tsx",
+    ]) {
       for (const classes of pressClassStrings(componentSource(file))) {
         expect(classes).not.toMatch(/(?:^|\s)(?:duration|ease)-/);
         expect(classes).not.toMatch(/(?:^|[\s:])active:scale-/);
@@ -148,6 +169,13 @@ describe("reduced-motion block (#676)", () => {
     expect(declarationsFor(block, ".press-feedback")).toMatch(
       /scale:\s*none\s*!important/,
     );
+  });
+
+  it("snaps the tab indicator to the selected tab without sliding or morphing width", () => {
+    const indicator = declarationsFor(block, '[data-slot="tab-indicator"]');
+    expect(indicator).toMatch(/transition:\s*none\s*!important/);
+    // Base UI positions the active indicator via translate; keep its resting placement intact.
+    expect(indicator).not.toMatch(/translate:\s*none/);
   });
 
   it("stops the switch thumb and keeps only the fade on the helper text", () => {
@@ -191,5 +219,19 @@ describe("reduced-motion block (#676)", () => {
     expect(sources.some((src) => src.includes('"data-slot": "button"'))).toBe(
       true,
     );
+    for (const slot of [
+      "tab-indicator",
+      "switch-thumb",
+      "switch-helper-line",
+      "skeleton",
+    ]) {
+      expect(
+        sources.some(
+          (src) =>
+            src.includes(`data-slot="${slot}"`) ||
+            src.includes(`"data-slot": "${slot}"`),
+        ),
+      ).toBe(true);
+    }
   });
 });

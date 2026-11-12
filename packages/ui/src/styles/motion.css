@@ -15,7 +15,7 @@
    --duration-fast. It sets --tw-duration / --tw-ease, the variables Tailwind's `transition-*`
    utilities read, so each consumer keeps its own `transition-[...]` property list and never
    sets `duration-*` / `ease-*` itself (those write a literal and would beat these).
-   --press-scale is the pressed size; wide rows and tabs set it to 1 and keep only the timing. */
+   --press-scale is the pressed size; disabled controls and active drags never scale. */
 @utility press-feedback {
   --tw-duration: var(--duration-fast);
   --tw-ease: var(--ease-out);
@@ -23,6 +23,9 @@
   &[data-pressed] {
     --tw-duration: 0ms;
     scale: var(--press-scale, 0.97);
+  }
+  &:is(:disabled, [data-disabled], [data-dragging], [data-task-dragging="true"]) {
+    scale: none;
   }
 }
 
@@ -58,10 +61,15 @@
     transition-property: box-shadow !important;
   }
 
-  /* Every other press-feedback consumer (tabs, sidebar items) loses the pressed scale too;
-     their background feedback is unchanged. */
+  /* Every other press-feedback consumer (tabs, sidebar items, interactive cards and rows)
+     loses the pressed scale too; their colour/shadow feedback is unchanged. */
   .press-feedback {
     scale: none !important;
+  }
+
+  /* Tab indicator snaps to the selected tab instead of sliding or morphing width. */
+  [data-slot="tab-indicator"] {
+    transition: none !important;
   }
 
   /* Switch: the thumb snaps to its new side instead of springing, and the press stretch

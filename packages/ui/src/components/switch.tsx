@@ -96,8 +96,10 @@ function SwitchWithHelper({
         checked={checkedProp}
         defaultChecked={defaultChecked}
         onCheckedChange={(next, eventDetails) => {
-          setUncontrolledChecked(next);
           onCheckedChange?.(next, eventDetails);
+          if (!eventDetails.isCanceled && checkedProp === undefined) {
+            setUncontrolledChecked(next);
+          }
         }}
       />
       <span

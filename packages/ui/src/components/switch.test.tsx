@@ -131,6 +131,36 @@ describe("Switch helper text", () => {
     );
   });
 
+  it("keeps the uncontrolled switch and helper line in sync when onCheckedChange cancels the change", () => {
+    const onCheckedChange = vi.fn(
+      (_next: boolean, eventDetails: { cancel: () => void }) => {
+        eventDetails.cancel();
+      },
+    );
+    render(
+      <Switch
+        aria-label="God Mode"
+        helper={helper}
+        onCheckedChange={onCheckedChange}
+      />,
+    );
+
+    const toggle = screen.getByRole("switch", { name: "God Mode" });
+    const off = screen.getByText("God Mode is off");
+    const on = screen.getByText("God Mode is on");
+
+    fireEvent.click(toggle);
+
+    expect(onCheckedChange).toHaveBeenCalledTimes(1);
+    expect(onCheckedChange.mock.calls[0][0]).toBe(true);
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(off).toHaveAttribute("data-active");
+    expect(off).not.toHaveAttribute("inert");
+    expect(on).not.toHaveAttribute("data-active");
+    expect(on).toHaveAttribute("inert");
+    expect(toggle).toHaveAttribute("aria-describedby", off.id);
+  });
+
   it("describes nothing when the active state has no helper text", () => {
     render(<Switch aria-label="God Mode" helper={{ checked: "On" }} />);
     expect(screen.getByRole("switch")).not.toHaveAttribute("aria-describedby");

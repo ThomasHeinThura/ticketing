@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectNoA11yViolations } from "../test/a11y";
 import {
   Table,
@@ -87,5 +87,80 @@ describe("Table", () => {
       </Table>,
     );
     expect(viewport()?.className).toContain("mask-r-from-");
+  });
+
+  it("adds shared press feedback only to interactive rows and suppresses scale during drag", () => {
+    const onRowClick = vi.fn();
+    const { rerender } = render(
+      <Table>
+        <TableHeader>
+          <TableRow data-testid="header-row">
+            <TableHead>Name</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow data-testid="static-row">
+            <TableCell>Static</TableCell>
+          </TableRow>
+          <TableRow
+            interactive
+            data-testid="clickable-row"
+            onClick={onRowClick}
+          >
+            <TableCell>Clickable</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+
+    const headerRow = screen.getByTestId("header-row");
+    const staticRow = screen.getByTestId("static-row");
+    const clickableRow = screen.getByTestId("clickable-row");
+
+    for (const row of [headerRow, staticRow]) {
+      expect(row).toHaveClass("transition-colors");
+      expect(row).not.toHaveClass("press-feedback", "cursor-pointer");
+      expect(row).not.toHaveAttribute("data-interactive");
+    }
+
+    expect(clickableRow).toHaveAttribute("data-interactive", "");
+    expect(clickableRow).toHaveClass(
+      "press-feedback",
+      "[--press-scale:0.99]",
+      "cursor-pointer",
+    );
+    expect(clickableRow).not.toHaveClass("transition-colors");
+
+    fireEvent.click(clickableRow);
+    expect(onRowClick).toHaveBeenCalledTimes(1);
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .press-feedback[data-pressed] { scale: var(--press-scale, 0.97); }
+      .press-feedback[data-dragging] { scale: none; }
+    `;
+    document.head.appendChild(style);
+    try {
+      rerender(
+        <Table>
+          <TableBody>
+            <TableRow
+              interactive
+              data-dragging=""
+              data-pressed=""
+              data-testid="clickable-row"
+              onClick={onRowClick}
+            >
+              <TableCell>Clickable</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>,
+      );
+      expect(getComputedStyle(screen.getByTestId("clickable-row")).scale).toBe(
+        "none",
+      );
+    } finally {
+      style.remove();
+    }
   });
 });
