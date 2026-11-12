@@ -2057,7 +2057,9 @@ describe("B-5: staff project reach", () => {
         rows: unknown[];
         metrics: Array<{ key: string; value: number | null }>;
       };
-      expect(reportAll.scope).toEqual({ kind: "reach", projectCount: 1 });
+      // D-E (Thomas, 12 Nov 2026): this positive control is world.projectMember,
+      // a workspace admin, who reaches both projects regardless of the tested outsider role.
+      expect(reportAll.scope).toEqual({ kind: "reach", projectCount: 2 });
       expect(reportAll.rows.length).toBeGreaterThan(0);
       expect(
         reportAll.metrics.find((metric) => metric.key === "created")?.value,
