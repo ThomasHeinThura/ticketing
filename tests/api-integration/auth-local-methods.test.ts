@@ -189,7 +189,15 @@ async function makeCustomerUser() {
   return user;
 }
 
-function passwordSignIn(app: App, portal: "agent" | "customer", email: string) {
+async function passwordSignIn(
+  app: App,
+  portal: "agent" | "customer",
+  email: string,
+) {
+  // Better Auth 1.7 defaults skipOriginCheck to true under NODE_ENV=test.
+  // Exercise its production origin/CSRF middleware, including after auth reloads.
+  const context = await (portal === "agent" ? auth : portalAuth).$context;
+  context.skipOriginCheck = false;
   const origin =
     portal === "agent"
       ? getConfiguredAgentOrigin()
@@ -811,6 +819,7 @@ describe("signed-in portal password change", () => {
         }),
       });
     expect((await change(undefined, PASSWORD)).status).toBe(401);
+    expect((await change(agentCookie, PASSWORD)).status).toBe(401);
     expect(
       (
         await change(
