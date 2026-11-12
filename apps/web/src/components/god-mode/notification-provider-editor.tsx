@@ -161,6 +161,7 @@ function ProviderForm({
   const [smtpDraft, setSmtpDraft] = useState<EmailProviderConfig | null>(null);
   const [recipient, setRecipient] = useState(user?.email ?? "");
   const [testResult, setTestResult] = useState<EmailTestResult | null>(null);
+  const [edited, setEdited] = useState(false);
   const [sandboxDismissed, setSandboxDismissed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -188,6 +189,21 @@ function ProviderForm({
   const sesIncomplete = sesSelected && !config.region;
   const credentialsMissing =
     kindChanged && !password && !clearPassword && !captureSelected;
+  const saved = provider.config;
+  const destinationChanged =
+    saved !== null &&
+    (kindOf(config) !== kindOf(saved) ||
+      (config.region ?? null) !== (saved.region ?? null) ||
+      config.host !== saved.host ||
+      config.port !== saved.port ||
+      config.secure !== saved.secure ||
+      config.requireTLS !== saved.requireTLS ||
+      config.username !== saved.username);
+  function markEdited() {
+    setEdited(true);
+    setTestResult(null);
+    setNotice(null);
+  }
   const visibleSettingsForm = {
     ...settingsForm,
     fields: settingsForm.fields.filter((field) => {
@@ -233,6 +249,7 @@ function ProviderForm({
         : {};
   function selectKind(next: EmailProviderKind) {
     if (next === kind) return;
+    markEdited();
     if (next === "ses") {
       setSmtpDraft(config);
       setConfig(
@@ -269,6 +286,7 @@ function ProviderForm({
   function selectRegion(region: string) {
     const option = provider.sesRegions.find((item) => item.region === region);
     if (!option) return;
+    markEdited();
     setConfig((previous) => ({
       ...previous,
       provider: "ses",
@@ -284,6 +302,7 @@ function ProviderForm({
     key: K,
     value: EmailProviderConfig[K],
   ) {
+    markEdited();
     if (key === "captureToMailpit") {
       if (value === true && localMailpitCaptureAvailable) {
         setOrdinaryConfigBeforeCapture(config);
@@ -386,6 +405,14 @@ function ProviderForm({
       setError(t("credentialsRequired"));
       return;
     }
+    if (
+      destinationChanged &&
+      provider.passwordConfigured &&
+      (!password || clearPassword || captureSelected)
+    ) {
+      setError(t("testDestinationPasswordRequired"));
+      return;
+    }
     const intent = lifecycle.capture();
     setError(null);
     setNotice(null);
@@ -409,7 +436,11 @@ function ProviderForm({
             ? "conflict"
             : cause instanceof HttpError && cause.status === 429
               ? "rateLimited"
-              : "operationFailed",
+              : cause instanceof HttpError &&
+                  cause.message ===
+                    "smtp_test_password_required_for_changed_destination"
+                ? "testDestinationPasswordRequired"
+                : "operationFailed",
         ),
       );
     }
@@ -418,7 +449,18 @@ function ProviderForm({
     <Card>
       <CardHeader>
         <CardTitle>{t("email")}</CardTitle>
-        <TestStatusLine status={provider.testStatus} />
+        <TestStatusLine
+          status={
+            edited
+              ? {
+                  state: "stale",
+                  testedAt: null,
+                  smtpCode: null,
+                  category: null,
+                }
+              : provider.testStatus
+          }
+        />
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -526,7 +568,10 @@ function ProviderForm({
           <SchemaSettingsForm
             manifest={visibleSettingsForm}
             enabled={enabled}
-            onEnabledChange={setEnabled}
+            onEnabledChange={(value) => {
+              markEdited();
+              setEnabled(value);
+            }}
             config={
               config as unknown as Record<
                 string,
@@ -541,11 +586,15 @@ function ProviderForm({
             requireConfig={requireConfig}
             disabled={busy}
             password={password}
-            onPasswordChange={setPassword}
+            onPasswordChange={(value) => {
+              markEdited();
+              setPassword(value);
+            }}
             passwordConfigured={passwordKept}
             passwordPreview={provider.passwordPreview}
             clearPassword={clearPassword}
             onClearPasswordChange={(value) => {
+              markEdited();
               setClearPassword(value);
               if (value) setPassword("");
             }}
@@ -562,7 +611,10 @@ function ProviderForm({
                 disabled={busy}
                 id="email-provider-test-recipient"
                 inputMode="email"
-                onChange={(event) => setRecipient(event.target.value)}
+                onChange={(event) => {
+                  markEdited();
+                  setRecipient(event.target.value);
+                }}
                 value={recipient}
               />
               <Button

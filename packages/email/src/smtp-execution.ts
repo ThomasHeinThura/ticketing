@@ -37,7 +37,8 @@ export async function resolveSmtpConfiguration(): Promise<SmtpConfiguration | nu
 /**
  * The server's own answer to a failed attempt, kept only in a sanitised form: the three-digit
  * reply code, the failing command's fixed verb and the reply text with addresses, host names,
- * IP addresses, key identifiers, long tokens and the configured credentials removed. It is
+ * IP addresses, key identifiers and long tokens removed. Free-form text is omitted entirely
+ * when authentication is configured, because replies may echo credential fragments. It is
  * attached only when the caller asks for it (`includeReply`), which today is the God Mode test
  * send; delivery paths never carry it.
  */
@@ -151,7 +152,9 @@ export function sanitiseSmtpReplyText(
   text: string,
   redact: readonly (string | undefined | null)[] = [],
 ): string | null {
-  let result = stripControlCharacters(text.slice(0, 2_000));
+  // Reject, rather than truncate through a credential or address.
+  if (text.length > 2_000) return null;
+  let result = stripControlCharacters(text);
   const secrets = redact
     .filter((value): value is string => typeof value === "string")
     .map(stripControlCharacters)
@@ -189,6 +192,7 @@ export function sanitiseSmtpReplyText(
 function smtpReply(
   error: unknown,
   redact: readonly (string | undefined | null)[],
+  hasAuthentication: boolean,
 ): SmtpReply | undefined {
   let current: unknown = error;
   const seen = new Set<object>();
@@ -213,7 +217,16 @@ function smtpReply(
     const command =
       "command" in current &&
       typeof current.command === "string" &&
-      /^[A-Z][A-Z0-9 -]{0,23}$/u.test(current.command)
+      [
+        "AUTH",
+        "AUTH PLAIN",
+        "AUTH LOGIN",
+        "AUTH XOAUTH2",
+        "STARTTLS",
+        "MAIL FROM",
+        "RCPT TO",
+        "DATA",
+      ].includes(current.command)
         ? current.command
         : null;
     if (response !== null || Number.isInteger(code)) {
@@ -221,7 +234,12 @@ function smtpReply(
       return {
         code: validCode ? code : null,
         command,
-        text: response ? sanitiseSmtpReplyText(response, redact) : null,
+        // A hostile server can echo any substring or encoding of an AUTH exchange. No
+        // pattern-based redactor can prove such fragments absent, so omit its free text.
+        text:
+          response && !hasAuthentication
+            ? sanitiseSmtpReplyText(response, redact)
+            : null,
       };
     }
     current = "cause" in current ? current.cause : undefined;
@@ -428,14 +446,18 @@ export async function executeSmtp(
       sending,
       smtpDiagnostic(error),
       input.includeReply
-        ? smtpReply(error, [
-            auth && "user" in auth ? auth.user : undefined,
-            auth && "pass" in auth ? auth.pass : undefined,
-            config.options.host,
-            config.from,
-            config.replyTo,
-            message?.to,
-          ])
+        ? smtpReply(
+            error,
+            [
+              auth && "user" in auth ? auth.user : undefined,
+              auth && "pass" in auth ? auth.pass : undefined,
+              config.options.host,
+              config.from,
+              config.replyTo,
+              message?.to,
+            ],
+            Boolean(auth),
+          )
         : undefined,
     );
   } finally {

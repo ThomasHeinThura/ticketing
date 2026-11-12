@@ -1375,7 +1375,7 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 | Cause | Fix |
 | --- | --- |
 | No recent notification rows or logged send failures | Check the notification preferences and SMTP/ntfy settings; inspect the persisted outbox/delivery state and current recipient eligibility; an inbox row alone is not provider delivery |
-| SMTP rejecting | Send a test email from God Mode. It shows the SMTP reply code, a plain-language cause and the provider's text with e-mail addresses, host names, IP addresses and credentials removed (12 Nov 2026); never credentials or the unfiltered provider reply. The last result and time stay on the screen |
+| SMTP rejecting | Send a test email from God Mode. It shows the SMTP reply code, a plain-language cause and the provider's text with e-mail addresses, host names and IP addresses removed for unauthenticated connections; authenticated attempts omit free-form replies because they may echo credential fragments. It never shows credentials or an unfiltered provider reply. The last result and time stay on the screen |
 | Webhook endpoint down | Delivery history shows status codes. Auto-disabled after 24 h |
 | User preference off | Not a fault |
 

@@ -147,10 +147,10 @@ export async function updateEmailProvider(
     if (input.enabled && config?.username && !secrets)
       throw new HTTPException(400, { message: "SMTP password required" });
     // A saved test result describes the settings it ran against. Changing the settings or the
-    // password (it cannot be compared, so any new value counts) invalidates it; switching
-    // delivery on or off does not.
+    // password (it cannot be compared, so any new value counts), or delivery state invalidates it.
     const settingsChanged =
       !stored ||
+      existing?.enabled !== input.enabled ||
       input.password !== undefined ||
       (input.config !== undefined &&
         !sameSmtpConfig(input.config, stored.config));
@@ -236,6 +236,24 @@ export async function testEmailProvider(
       if (!isValidMailpitCaptureConfig(config))
         throw new HTTPException(400, {
           message: "Invalid local mail capture configuration",
+        });
+    }
+    // Never send a saved credential to a different authentication endpoint or identity.
+    // Check before decryption and before any network or audit side effects.
+    if (input.password == null && row?.secrets) {
+      const saved = stored?.config;
+      if (
+        !saved ||
+        emailProviderKind(config) !== emailProviderKind(saved) ||
+        (config.region ?? null) !== (saved.region ?? null) ||
+        config.host !== saved.host ||
+        config.port !== saved.port ||
+        config.secure !== saved.secure ||
+        config.requireTLS !== saved.requireTLS ||
+        config.username !== saved.username
+      )
+        throw new HTTPException(400, {
+          message: "smtp_test_password_required_for_changed_destination",
         });
     }
     const password =

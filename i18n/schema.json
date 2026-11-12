@@ -26998,6 +26998,9 @@
 				},
 				"credentialsRequired": {
 					"type": "string"
+				},
+				"testDestinationPasswordRequired": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -27040,7 +27043,8 @@
 				"failureShort",
 				"failure",
 				"failureSes",
-				"credentialsRequired"
+				"credentialsRequired",
+				"testDestinationPasswordRequired"
 			]
 		},
 		"featureFlags": {

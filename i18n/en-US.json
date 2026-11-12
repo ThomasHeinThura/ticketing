@@ -6539,7 +6539,8 @@
 			"throttled": "Amazon SES is throttling this account (454). Wait a moment and try again.",
 			"starttls_required": "Amazon SES requires a STARTTLS connection (530). Keep “Require TLS before authentication” on and use port 587."
 		},
-		"credentialsRequired": "Enter the password for the new provider. A saved password is not reused when the provider changes."
+		"credentialsRequired": "Enter the password for the new provider. A saved password is not reused when the provider changes.",
+		"testDestinationPasswordRequired": "Enter the SMTP password again to test changed connection settings, or save cleared credentials before testing without authentication."
 	},
 	"featureFlags": {
 		"unavailable": "Feature switches are unavailable",

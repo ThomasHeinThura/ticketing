@@ -271,6 +271,7 @@ import { NotificationProviderEditor } from "./notification-provider-editor";
 
 afterEach(cleanup);
 beforeEach(() => {
+  mocks.version = 3;
   mocks.unconfigured = false;
   mocks.localMailpitCaptureAvailable = true;
   mocks.persistedCaptureSelected = false;
@@ -352,6 +353,9 @@ describe("runtime email configuration", () => {
     render(<NotificationProviderEditor />);
     fireEvent.change(screen.getByLabelText("host"), {
       target: { value: "smtp.draft.example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("password"), {
+      target: { value: "new-secret" },
     });
     fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
     await waitFor(() => expect(mocks.verify).toHaveBeenCalled());
@@ -499,6 +503,93 @@ describe("test status under the title", () => {
 });
 
 describe("sending a test email", () => {
+  it("requires a fresh password before testing a changed host", () => {
+    render(<NotificationProviderEditor />);
+    fireEvent.change(screen.getByLabelText("host"), {
+      target: { value: "other.example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "testDestinationPasswordRequired",
+    );
+    expect(mocks.verify).not.toHaveBeenCalled();
+  });
+
+  it.each(["host", "password"])(
+    "marks verification stale after editing %s and removes the old result",
+    async (field) => {
+      mocks.testStatus = {
+        state: "verified",
+        testedAt: "2026-11-12T10:00:00.000Z",
+        smtpCode: null,
+        category: null,
+      };
+      render(<NotificationProviderEditor />);
+      fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
+      expect(await screen.findByText("testSend.sent")).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText(field), {
+        target: { value: "changed-value" },
+      });
+      expect(screen.getByTestId("email-test-status")).toHaveTextContent(
+        "status.stale",
+      );
+      expect(screen.getByTestId("email-test-status")).not.toHaveTextContent(
+        "status.lastTested",
+      );
+      expect(screen.queryByText("testSend.sent")).not.toBeInTheDocument();
+    },
+  );
+
+  it("marks verification stale when the SES region changes", async () => {
+    mocks.savedConfig = sesConfig;
+    mocks.testStatus = {
+      state: "verified",
+      testedAt: "2026-11-12T10:00:00.000Z",
+      smtpCode: null,
+      category: null,
+    };
+    render(<NotificationProviderEditor />);
+    fireEvent.click(screen.getByLabelText("ses.regionLabel"));
+    fireEvent.keyDown(
+      await screen.findByRole("option", { name: /us-east-1/ }),
+      { key: "Enter" },
+    );
+    expect(screen.getByTestId("email-test-status")).toHaveTextContent(
+      "status.stale",
+    );
+    expect(screen.getByLabelText("host")).toHaveValue(
+      "email-smtp.us-east-1.amazonaws.com",
+    );
+  });
+
+  it("shows the server's stale status after saving changed settings", async () => {
+    mocks.testStatus = {
+      state: "verified",
+      testedAt: "2026-11-12T10:00:00.000Z",
+      smtpCode: null,
+      category: null,
+    };
+    const { rerender } = render(<NotificationProviderEditor />);
+    fireEvent.change(screen.getByLabelText("host"), {
+      target: { value: "changed.example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledOnce());
+    mocks.version += 1;
+    mocks.testStatus = {
+      state: "stale",
+      testedAt: null,
+      smtpCode: null,
+      category: null,
+    };
+    rerender(<NotificationProviderEditor />);
+    expect(screen.getByTestId("email-test-status")).toHaveTextContent(
+      "status.stale",
+    );
+    expect(screen.getByTestId("email-test-status")).not.toHaveTextContent(
+      "status.lastTested",
+    );
+  });
   it("shows the failure category, the SMTP code and the provider text", async () => {
     mocks.verify.mockResolvedValue({
       ok: false,

@@ -189,11 +189,91 @@ describe("SMTP reply sanitising", () => {
     expect((withReply as SmtpAttemptError).reply).toEqual({
       code: 535,
       command: "AUTH PLAIN",
-      text: "5.7.8 Authentication failed for [removed]",
+      text: null,
     });
     expect(JSON.stringify(withReply)).not.toContain("synthetic-user");
     expect(JSON.stringify(withReply)).not.toContain("synthetic-password-1");
     expect(String(withReply)).not.toContain("synthetic-user");
+  });
+
+  it("drops oversized replies without exposing boundary fragments", () => {
+    for (const value of [
+      "pw-Synthetic-Secret-1",
+      "user@example.test",
+      "smtp.example.test",
+    ]) {
+      expect(
+        sanitiseSmtpReplyText(`535 ${" ".repeat(1988)}${value}`, [value]),
+      ).toBeNull();
+    }
+  });
+
+  it("never propagates an SMTP command containing an authentication payload", async () => {
+    transport.sendMail.mockRejectedValue(
+      Object.assign(new Error("failure"), {
+        code: "EAUTH",
+        command: "AUTH PLAIN SECRET",
+        response: "535 refused",
+        responseCode: 535,
+      }),
+    );
+    const error = await executeSmtp(
+      {
+        options: { auth: { user: "user", pass: "secret" } },
+        from: "sender@example.test",
+      },
+      message,
+      { includeReply: true },
+    ).catch((cause: unknown) => cause);
+    expect((error as SmtpAttemptError).reply).toEqual({
+      code: 535,
+      command: null,
+      text: null,
+    });
+    expect(JSON.stringify(error)).not.toContain("SECRET");
+  });
+
+  it.each([
+    "pw-Synth",
+    "synthetic-user",
+    "c3ludGhldGljLXVzZXI=",
+    "AUTH PLAIN c2VjcmV0",
+    "synthetic-password-1",
+  ])("does not expose echoed authentication content %s", async (echo) => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    transport.sendMail.mockRejectedValue(
+      Object.assign(new Error(echo), {
+        code: "EAUTH",
+        command: "AUTH PLAIN",
+        response: `535 ${echo}`,
+        responseCode: 535,
+      }),
+    );
+    const error = await executeSmtp(
+      {
+        options: {
+          host: "smtp.example.test",
+          auth: { user: "synthetic-user", pass: "synthetic-password-1" },
+        },
+        from: "sender@example.test",
+      },
+      message,
+      { includeReply: true },
+    ).catch((cause: unknown) => cause);
+    expect((error as SmtpAttemptError).reply).toEqual({
+      code: 535,
+      command: "AUTH PLAIN",
+      text: null,
+    });
+    expect(JSON.stringify(error)).not.toContain(echo);
+    expect(
+      JSON.stringify([log.mock.calls, warn.mock.calls, errorLog.mock.calls]),
+    ).not.toContain(echo);
+    log.mockRestore();
+    warn.mockRestore();
+    errorLog.mockRestore();
   });
 
   it("reads the code from the reply text when the error carries no numeric code and keeps nothing for a bare error", async () => {

@@ -56,6 +56,7 @@ vi.mock("../../../apps/api/src/instance/observability/runtime", () => ({
   recordAuditWriteFailure: vi.fn(),
 }));
 
+import { decryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
 import {
   getEmailProvider,
   testEmailProvider,
@@ -328,7 +329,7 @@ describe("saved test status", () => {
     expect(result.testStatus.state).toBe("stale");
   });
 
-  it("keeps the result when the same settings are saved again or only delivery is toggled", async () => {
+  it("keeps the result when the same settings are saved again and resets it when delivery is toggled", async () => {
     mocks.currentRow = sesRow(verified);
     await updateEmailProvider(
       { version: 4, enabled: true, config: { ...sesConfig, replyTo: null } },
@@ -341,7 +342,10 @@ describe("saved test status", () => {
       actor,
       mocks.spend,
     );
-    expect(savedConfig().lastTest).toEqual(verified);
+    expect(savedConfig().lastTest).toMatchObject({
+      state: "stale",
+      testedAt: null,
+    });
     expect(mocks.currentRow).toMatchObject({
       enabled: false,
       configVersion: 6,
@@ -366,6 +370,70 @@ describe("saved test status", () => {
 
 const recipient = "admin@example.test";
 describe("test send", () => {
+  it.each([
+    ["host", { host: "attacker.example.test" }],
+    ["port", { port: 2525 }],
+    ["implicit TLS", { secure: true }],
+    ["STARTTLS", { requireTLS: false }],
+    ["user name", { username: "other-user" }],
+    ["provider", { provider: "smtp" as const }],
+    ["region", { region: "us-east-1" as const }],
+  ])(
+    "never decrypts or sends a stored password after changing %s",
+    async (_name, change) => {
+      mocks.currentRow = sesRow();
+      vi.mocked(decryptIdentityClientSecret).mockClear();
+      await expect(
+        testEmailProvider(
+          { version: 4, recipient, config: { ...sesConfig, ...change } },
+          actor,
+        ),
+      ).rejects.toMatchObject({
+        status: 400,
+        message: "smtp_test_password_required_for_changed_destination",
+      });
+      expect(decryptIdentityClientSecret).not.toHaveBeenCalled();
+      expect(mocks.executeSmtp).not.toHaveBeenCalled();
+      expect(mocks.audit).not.toHaveBeenCalled();
+    },
+  );
+
+  it("uses a newly typed password for a changed destination", async () => {
+    mocks.currentRow = sesRow();
+    vi.mocked(decryptIdentityClientSecret).mockClear();
+    await testEmailProvider(
+      {
+        version: 4,
+        recipient,
+        config: { ...sesConfig, host: "smtp.example.test" },
+        password: "new-secret",
+      },
+      actor,
+    );
+    expect(decryptIdentityClientSecret).not.toHaveBeenCalled();
+    expect(mocks.executeSmtp.mock.calls[0]?.[0]).toMatchObject({
+      options: { auth: { pass: "new-secret" } },
+    });
+  });
+
+  it("refuses an explicit clear for a changed destination until it is saved", async () => {
+    mocks.currentRow = sesRow();
+    await expect(
+      testEmailProvider(
+        {
+          version: 4,
+          recipient,
+          config: { ...sesConfig, host: "smtp.example.test", username: null },
+          password: null,
+        },
+        actor,
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "smtp_test_password_required_for_changed_destination",
+    });
+    expect(mocks.executeSmtp).not.toHaveBeenCalled();
+  });
   it("sends one real fixed message to the typed recipient and stores the verified status", async () => {
     mocks.currentRow = sesRow();
     const result = await testEmailProvider({ version: 4, recipient }, actor);
