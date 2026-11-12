@@ -37,6 +37,7 @@ import {
   grantWorkItemProjectAccess,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
+import { createSeesAllWorkspaceMember } from "./helpers/project-reach-world";
 import { addMember } from "./helpers/reach-world";
 import { ensureCreationWorkflow } from "./helpers/workflow";
 
@@ -2333,7 +2334,8 @@ describe("#323 Opus S2 — evidence is attributed to the route that actually ran
     timeout: 60_000,
   }, async () => {
     const fresh = await createAppWithShadow("on");
-    const owner = await createWorkspaceMember({ role: "owner" });
+    // Production workspace creation also persists the owner's workspace sees_all grant.
+    const owner = await createSeesAllWorkspaceMember({ role: "owner" });
     await backfillPersons();
     fresh.mockUser(owner.user);
     const fixture = await createProjectFixture({
