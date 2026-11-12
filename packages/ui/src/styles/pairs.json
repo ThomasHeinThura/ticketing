@@ -18571,7 +18571,7 @@
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
-			"apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
+			"apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
 			"apps/web/src/components/common/group-control.tsx::GroupControl::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/header/project-layout-controls-fallback.tsx::ProjectLayoutControlsFallback::div[0]/div[0]/span[0]::text-foreground#0",
@@ -18883,7 +18883,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
 			},
@@ -18894,7 +18894,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
 					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]"
 				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
 			},
@@ -21460,7 +21460,7 @@
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
-			"apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
+			"apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
 			"apps/web/src/components/common/group-control.tsx::GroupControl::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/common/header/project-layout-controls-fallback.tsx::ProjectLayoutControlsFallback::div[0]/div[0]/span[0]::text-foreground#0",
@@ -21773,7 +21773,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
 			},
@@ -21784,7 +21784,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
 					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]"
 				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
 			},
