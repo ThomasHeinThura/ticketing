@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { getConfiguredAgentOrigin } from "../../apps/api/src/auth";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
 import { ensureNotFirstSignup } from "./helpers/organization-http";
@@ -40,7 +41,10 @@ async function signUp(app: ReturnType<typeof createApp>["app"]) {
 
   const response = await app.request("/api/auth/sign-up/email", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      origin: getConfiguredAgentOrigin(),
+      "content-type": "application/json",
+    },
     body: JSON.stringify({
       email: "avatar-session@example.com",
       password: "correct horse battery staple",
@@ -80,7 +84,11 @@ describe("API integration: session freshness without a cookie cache", () => {
 
     const update = await app.request("/api/auth/update-user", {
       method: "POST",
-      headers: { "content-type": "application/json", cookie: cookies },
+      headers: {
+        origin: getConfiguredAgentOrigin(),
+        "content-type": "application/json",
+        cookie: cookies,
+      },
       body: JSON.stringify({ image: "/api/user/avatar/new-avatar-id" }),
     });
     expect(update.status).toBe(200);
@@ -101,7 +109,11 @@ describe("API integration: session freshness without a cookie cache", () => {
 
     await app.request("/api/auth/update-user", {
       method: "POST",
-      headers: { "content-type": "application/json", cookie: cookies },
+      headers: {
+        origin: getConfiguredAgentOrigin(),
+        "content-type": "application/json",
+        cookie: cookies,
+      },
       body: JSON.stringify({ name: "Renamed User" }),
     });
 

@@ -102,6 +102,7 @@ from the spec — see [Typed client](#api-design-typed-client).
    browser with `Cache-Control: no-store`; custom unsafe cookie-session requests must echo it
    in `X-TaskDesk-CSRF`. Better Auth bootstrap/login endpoints keep their own trusted-origin
    checks. The detailed token, cookie, fallback and error contract is in the security model.
+   Better Auth's origin check for `/api/auth/*` is explicitly enforced in configuration for both hosts, independently of the environment.
 
 <a id="api-design-base-paths"></a>
 ### Base paths

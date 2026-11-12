@@ -198,10 +198,6 @@ async function passwordSignIn(
   portal: "agent" | "customer",
   email: string,
 ) {
-  // Better Auth 1.7 defaults skipOriginCheck to true under NODE_ENV=test.
-  // Exercise its production origin/CSRF middleware, including after auth reloads.
-  const context = await (portal === "agent" ? auth : portalAuth).$context;
-  context.skipOriginCheck = false;
   const origin =
     portal === "agent"
       ? getConfiguredAgentOrigin()
@@ -639,7 +635,7 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
         cookie,
       );
       expect(challenge.status).toBe(200);
-      const binding = (await challenge.json()) as {
+      const { challengeId, nonce } = (await challenge.json()) as {
         challengeId: string;
         nonce: string;
       };
@@ -653,19 +649,24 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
             kind: "operation",
             operation: "auth_local_methods_update",
             ...requested,
-            ...binding,
+            challengeId,
+            nonce,
             method,
             ...(method === "password" ? { password: PASSWORD } : {}),
           }),
         },
         cookie,
       );
-      expect(proof.status).toBe(403);
+      expect(proof.status, await proof.clone().text()).toBe(403);
       expect(await proof.text()).toContain("Enroll a second factor");
     }
     const enabled = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
-      headers: { cookie, "content-type": "application/json" },
+      headers: {
+        cookie,
+        origin: getConfiguredAgentOrigin(),
+        "content-type": "application/json",
+      },
       body: JSON.stringify({ password: PASSWORD, issuer: "TaskDesk" }),
     });
     expect(enabled.status).toBe(200);
@@ -677,6 +678,7 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
       method: "POST",
       headers: {
         cookie,
+        origin: getConfiguredAgentOrigin(),
         "content-type": "application/json",
         "x-forwarded-for": nextClientIp(),
       },
@@ -703,7 +705,7 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
       enrolledCookie,
     );
     expect(challenge.status).toBe(200);
-    const binding = (await challenge.json()) as {
+    const { challengeId, nonce } = (await challenge.json()) as {
       challengeId: string;
       nonce: string;
     };
@@ -717,7 +719,8 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
           kind: "operation",
           operation: "auth_local_methods_update",
           ...requested,
-          ...binding,
+          challengeId,
+          nonce,
           method: "password",
           password: PASSWORD,
         }),
@@ -738,7 +741,8 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
           kind: "operation",
           operation: "auth_local_methods_update",
           ...requested,
-          ...binding,
+          challengeId,
+          nonce,
           method: "totp",
           code: await createOTP(rawSecret).totp(),
         }),
