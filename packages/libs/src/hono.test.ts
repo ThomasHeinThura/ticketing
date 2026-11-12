@@ -585,7 +585,13 @@ describe("server error references", () => {
       const headerId = "b".repeat(32);
       const response = Response.json(
         { message: "factor_policy_unavailable", requestId: bodyId },
-        { status: 503, headers: { "x-taskdesk-request-id": headerId } },
+        {
+          status: 503,
+          headers: {
+            "x-taskdesk-request-id": headerId,
+            "content-length": "128",
+          },
+        },
       );
       const fetcher = createApiFetch(async () => response, {
         apiBaseUrl,
@@ -658,6 +664,153 @@ describe("server error references", () => {
       ]);
       expect(result).toBe(response);
       streamController?.close();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it.each([
+    ["oversized", "application/json", "16385"],
+    ["html", "text/html", "40"],
+    ["streaming", "application/json", undefined],
+  ])(
+    "uses the header without cloning a %s response",
+    async (_kind, type, length) => {
+      const target = new EventTarget();
+      vi.stubGlobal("window", target);
+      try {
+        const listener = vi.fn();
+        target.addEventListener("taskdesk:server-error", listener);
+        const headers = new Headers({
+          "content-type": type,
+          "x-taskdesk-request-id": "b".repeat(32),
+        });
+        if (length) headers.set("content-length", length);
+        const stream = new ReadableStream<Uint8Array>({
+          pull() {
+            return new Promise<void>(() => {});
+          },
+        });
+        const response = new Response(stream, { status: 503, headers });
+        const clone = vi.spyOn(response, "clone");
+        const fetcher = createApiFetch(async () => response, {
+          apiBaseUrl,
+          agentCsrfToken: false,
+        });
+        expect(await fetcher(`${apiBaseUrl}/projects`)).toBe(response);
+        expect(clone).not.toHaveBeenCalled();
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(
+          (listener.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail,
+        ).toEqual({ reference: "b".repeat(32), status: 503 });
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
+  it("cancels an inspection that exceeds its declared length", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    try {
+      const listener = vi.fn();
+      target.addEventListener("taskdesk:server-error", listener);
+      const response = new Response("unused", {
+        status: 503,
+        headers: {
+          "content-type": "application/json",
+          "content-length": "5",
+          "x-taskdesk-request-id": "b".repeat(32),
+        },
+      });
+      const cancel = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(response, "clone").mockReturnValue({
+        body: {
+          getReader: () => ({
+            read: async () => ({ done: false, value: new Uint8Array(6) }),
+            cancel,
+          }),
+        },
+      } as unknown as Response);
+      const fetcher = createApiFetch(async () => response, {
+        apiBaseUrl,
+        agentCsrfToken: false,
+      });
+      expect(await fetcher(`${apiBaseUrl}/projects`)).toBe(response);
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(
+        (listener.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail,
+      ).toEqual({ reference: "b".repeat(32), status: 503 });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("falls back once when the inspection stream aborts", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    try {
+      const listener = vi.fn();
+      target.addEventListener("taskdesk:server-error", listener);
+      const response = new Response("unused", {
+        status: 503,
+        headers: {
+          "content-type": "application/json",
+          "content-length": "5",
+          "x-taskdesk-request-id": "b".repeat(32),
+        },
+      });
+      const cancel = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(response, "clone").mockReturnValue({
+        body: {
+          getReader: () => ({
+            read: () => Promise.reject(new Error("aborted")),
+            cancel,
+          }),
+        },
+      } as unknown as Response);
+      const fetcher = createApiFetch(async () => response, {
+        apiBaseUrl,
+        agentCsrfToken: false,
+      });
+      expect(await fetcher(`${apiBaseUrl}/projects`)).toBe(response);
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(
+        (listener.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail,
+      ).toEqual({ reference: "b".repeat(32), status: 503 });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("cancels an inspection that exceeds the deadline", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    try {
+      const listener = vi.fn();
+      target.addEventListener("taskdesk:server-error", listener);
+      const response = new Response("unused", {
+        status: 503,
+        headers: {
+          "content-type": "application/json",
+          "content-length": "100",
+          "x-taskdesk-request-id": "b".repeat(32),
+        },
+      });
+      const cancel = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(response, "clone").mockReturnValue({
+        body: {
+          getReader: () => ({ read: () => new Promise(() => {}), cancel }),
+        },
+      } as unknown as Response);
+      const fetcher = createApiFetch(async () => response, {
+        apiBaseUrl,
+        agentCsrfToken: false,
+      });
+      expect(await fetcher(`${apiBaseUrl}/projects`)).toBe(response);
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(
+        (listener.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail,
+      ).toEqual({ reference: "b".repeat(32), status: 503 });
     } finally {
       vi.unstubAllGlobals();
     }

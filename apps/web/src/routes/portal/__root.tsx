@@ -86,7 +86,11 @@ async function readPortalSession() {
   const result = await portalAuthClient.getSession();
   if (result.error) {
     if (result.error.status >= 500)
-      throw new HttpError(result.error.status, "session_unavailable");
+      throw new HttpError(
+        result.error.status,
+        "session_unavailable",
+        result.error.requestId,
+      );
     return null;
   }
   return result.data?.session ? result.data : null;

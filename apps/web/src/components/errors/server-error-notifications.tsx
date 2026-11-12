@@ -1,6 +1,7 @@
 import { toastManager } from "@taskdesk/ui";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { copyErrorReference } from "@/lib/copy-error-reference";
 
 /** One reference notification for each distinct server failure, replacing the previous one. */
 export function ServerErrorNotifications() {
@@ -41,7 +42,7 @@ export function ServerErrorNotifications() {
         actionProps: {
           children: t("common:error.copyReference"),
           onClick: () => {
-            void navigator.clipboard?.writeText(reference).catch(() => {});
+            void copyErrorReference(reference);
           },
         },
       });

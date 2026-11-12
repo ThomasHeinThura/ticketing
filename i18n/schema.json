@@ -403,6 +403,9 @@
 						"copyReference": {
 							"type": "string"
 						},
+						"copyReferenceFailed": {
+							"type": "string"
+						},
 						"serverReferenceToast": {
 							"type": "string"
 						},
@@ -542,6 +545,7 @@
 					"required": [
 						"reference",
 						"copyReference",
+						"copyReferenceFailed",
 						"serverReferenceToast",
 						"title",
 						"description",

@@ -1,5 +1,7 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { CONNECT_FAILURE_REASONS } from "../imports/engine/adapter";
+import { ImportConnectError } from "../imports/engine/connect-error";
 import { ensurePolicyRequestId } from "../permissions/shadow-context";
 import type { TaskDeskLogEvent } from "./logger";
 
@@ -62,5 +64,14 @@ export function handleServerError(
     err.message === "factor_policy_unavailable"
       ? "factor_policy_unavailable"
       : "Internal Server Error";
+  if (
+    err instanceof ImportConnectError &&
+    (CONNECT_FAILURE_REASONS as readonly string[]).includes(err.reason)
+  ) {
+    return c.json(
+      { message: "Source connection failed", reason: err.reason, requestId },
+      502,
+    );
+  }
   return c.json({ message, requestId }, status as 500);
 }

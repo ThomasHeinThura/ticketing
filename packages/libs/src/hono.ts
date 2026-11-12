@@ -318,11 +318,15 @@ export function createApiFetch(
   return Object.assign(apiFetchImpl, { primeCsrfToken });
 }
 
-function notifyServerError(response: Response): Response {
+const MAX_REFERENCE_BODY_BYTES = 16 * 1024;
+const REFERENCE_READ_TIMEOUT_MS = 250;
+
+/** Best-effort event; preserve response identity and never wait for inspection. */
+export function notifyServerError(response: Response): Response {
   if (response.status < 500 || typeof window === "undefined") return response;
   try {
-    const status = response.status;
     const targetWindow = window;
+    const status = response.status;
     const header = response.headers.get("x-taskdesk-request-id");
     const notify = (bodyId?: unknown) => {
       const reference =
@@ -338,28 +342,82 @@ function notifyServerError(response: Response): Response {
           }),
         );
       } catch {
-        /* Notifications never affect the request. */
+        /* Notification is best effort. */
       }
     };
+    const contentType = response.headers.get("content-type") ?? "";
+    const length = response.headers.get("content-length");
+    if (
+      !/^application\/(?:[a-z0-9.+-]*\+)?json(?:\s*;|\s*$)/i.test(
+        contentType,
+      ) ||
+      response.headers.has("transfer-encoding") ||
+      !length ||
+      !/^\d+$/.test(length) ||
+      Number(length) > MAX_REFERENCE_BODY_BYTES
+    ) {
+      notify();
+      return response;
+    }
     try {
-      void response
-        .clone()
-        .json()
-        .then(
-          (body: unknown) => {
-            notify(
-              body && typeof body === "object" && "requestId" in body
-                ? body.requestId
-                : undefined,
+      const reader = response.clone().body?.getReader();
+      if (!reader) {
+        notify();
+        return response;
+      }
+      void (async () => {
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let completed = false;
+        try {
+          const timeout = new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error("reference inspection timeout")),
+              REFERENCE_READ_TIMEOUT_MS,
             );
-          },
-          () => notify(),
-        );
+          });
+          while (true) {
+            const part = await Promise.race([reader.read(), timeout]);
+            if (part.done) {
+              completed = true;
+              break;
+            }
+            size += part.value.byteLength;
+            if (size > MAX_REFERENCE_BODY_BYTES || size > Number(length))
+              throw new Error("reference body too large");
+            chunks.push(part.value);
+          }
+          const bytes = new Uint8Array(size);
+          let offset = 0;
+          for (const chunk of chunks) {
+            bytes.set(chunk, offset);
+            offset += chunk.byteLength;
+          }
+          const body: unknown = JSON.parse(new TextDecoder().decode(bytes));
+          notify(
+            body && typeof body === "object" && "requestId" in body
+              ? body.requestId
+              : undefined,
+          );
+        } catch {
+          notify();
+        } finally {
+          if (timer !== undefined) clearTimeout(timer);
+          if (!completed) {
+            try {
+              void reader.cancel().catch(() => {});
+            } catch {
+              /* Inspection cancellation is best effort. */
+            }
+          }
+        }
+      })();
     } catch {
       notify();
     }
   } catch {
-    /* Failure to inspect a response must never change it. */
+    /* Inspection never alters the caller's response. */
   }
   return response;
 }

@@ -1,5 +1,6 @@
 import { Button } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import { copyErrorReference } from "@/lib/copy-error-reference";
 import { HttpError } from "@/lib/http-error";
 
 export function ErrorReference({ error }: { error: unknown }) {
@@ -13,7 +14,7 @@ export function ErrorReference({ error }: { error: unknown }) {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => void navigator.clipboard.writeText(id)}
+        onClick={() => void copyErrorReference(id)}
       >
         {t("common:error.copyReference")}
       </Button>

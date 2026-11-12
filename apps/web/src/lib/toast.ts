@@ -1,4 +1,5 @@
 import { toastManager } from "@taskdesk/ui";
+import { copyErrorReference } from "@/lib/copy-error-reference";
 import { HttpError } from "@/lib/http-error";
 import { i18n } from "@/lib/i18n";
 
@@ -63,7 +64,7 @@ const error = (value: string | Error, options?: ToastOptions): string => {
     action: {
       label: i18n.t("common:error.copyReference"),
       onClick: () => {
-        void navigator.clipboard.writeText(requestId);
+        void copyErrorReference(requestId);
       },
     },
   });

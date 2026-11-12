@@ -59,7 +59,10 @@ export async function httpErrorFromResponse(
   response: Response,
   fallback: string,
 ): Promise<HttpError> {
-  const detail = await readErrorDetail(response.clone(), fallback);
+  const detail =
+    response.status >= 500
+      ? fallback
+      : await readErrorDetail(response.clone(), fallback);
   let requestId: string | undefined;
   if (response.status >= 500) {
     try {

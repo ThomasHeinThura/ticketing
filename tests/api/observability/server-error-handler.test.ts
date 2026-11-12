@@ -74,3 +74,22 @@ it("preserves the established 503 factor policy code and returns the reference",
   expect(body.message).toBe("factor_policy_unavailable");
   expect(body.requestId).toBe(response.headers.get("x-taskdesk-request-id"));
 });
+
+it("does not surface untrusted 502 response reasons", async () => {
+  const app = new Hono();
+  app.get("/test", () => {
+    throw new HTTPException(502, {
+      message: "Source connection failed",
+      res: Response.json(
+        { reason: "private_secret", detail: "internal" },
+        { status: 502 },
+      ),
+    });
+  });
+  app.onError((error, context) => handleServerError(error, context, vi.fn()));
+  const response = await app.request("/test");
+  const body = await response.json();
+  expect(body).toMatchObject({ message: "Internal Server Error" });
+  expect(JSON.stringify(body)).not.toContain("private_secret");
+  expect(JSON.stringify(body)).not.toContain("internal");
+});

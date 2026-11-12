@@ -5,6 +5,7 @@ export {
   client,
   createApiFetch,
   FACTOR_ENROLLMENT_REQUIRED,
+  notifyServerError,
   onFactorEnrollmentRequired,
   primeCsrfToken,
   windowId,

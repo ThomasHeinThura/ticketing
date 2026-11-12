@@ -75,6 +75,7 @@
 		"error": {
 			"reference": "Reference: {{id}}",
 			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
 			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "문제가 발생했습니다",
 			"troubleshooting": "문제 해결 단계:",

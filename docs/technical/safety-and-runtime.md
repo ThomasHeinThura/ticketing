@@ -2143,7 +2143,7 @@ For an unhandled HTTP 5xx, `http.server_error` records the server request id, re
 route, method, status, bounded error class and up to 15 sanitized stack locations. Stack
 message lines, unrecognized or unresolvable frames, absolute prefixes, and dependency
 paths below the package name are discarded; exception messages are never included. The
-JSON response contains a generic message and the same `requestId` as the response header. The existing 503 `factor_policy_unavailable` message is retained as a fixed public code.
+JSON response contains a generic message and the same `requestId` as the response header. The existing 503 `factor_policy_unavailable` message is retained as a fixed public code. Import connection failures retain their fixed, allowlisted 502 reason code.
 
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
