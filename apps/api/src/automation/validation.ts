@@ -1,4 +1,4 @@
-import { Cron } from "croner";
+import { Cron, CronPattern } from "croner";
 import {
   type AutomationAction,
   BUILTIN_ACTION_TYPES,
@@ -79,17 +79,18 @@ export function validateRuleDefinition(
       if (valid) {
         try {
           const parsed = new Cron(cron, { paused: true, timezone: "UTC" });
-          // Two complete eligible days cover all minute/hour pairs, including midnight.
-          const runs = parsed.nextRuns(2881, new Date("2024-01-01T00:00:00Z"));
+          const start = new Date();
+          const horizon = new Date(start);
+          horizon.setUTCFullYear(horizon.getUTCFullYear() + 5);
+          const next = parsed.nextRun(start);
           parsed.stop();
+          valid = next !== null && next <= horizon;
+          // At most 1,440 simple array checks; no enumeration of thousands of runs.
+          const fields = new CronPattern(cron, "UTC");
           if (
-            runs.some(
-              (run, i) =>
-                i > 0 &&
-                run.getTime() -
-                  (runs[i - 1]?.getTime() ?? Number.NEGATIVE_INFINITY) <
-                  300_000,
-            )
+            scheduleMinimumGap(fields, false) < 5 ||
+            (scheduleMinimumGap(fields) < 5 &&
+              scheduleHasAdjacentDays(cron, start, horizon))
           ) {
             problems.push({
               code: "invalid",
@@ -301,4 +302,55 @@ export function validateRuleDefinition(
 /** Does any stored action need the triggering event to carry a work item? */
 export function actionsNeedWorkItem(actions: readonly AutomationAction[]) {
   return actions.some((action) => action.type !== "call_webhook");
+}
+
+/** Fixed upper bound: 24 hour checks and at most 1,440 minute checks. */
+export function scheduleMinimumGap(
+  fields: { hour: number[]; minute: number[] },
+  includeMidnight = true,
+): number {
+  const minutes: number[] = [];
+  for (let h = 0; h < 24; h++) {
+    if (!fields.hour[h]) continue;
+    for (let m = 0; m < 60; m++) if (fields.minute[m]) minutes.push(h * 60 + m);
+  }
+  return Math.min(
+    ...minutes.map(
+      (m, i) =>
+        m -
+        (minutes[i - 1] ??
+          (includeMidnight
+            ? (minutes.at(-1) ?? 0) - 1440
+            : Number.NEGATIVE_INFINITY)),
+    ),
+  );
+}
+
+/** Only midnight gaps need calendar checks. At most 1,828 UTC day matches. */
+function scheduleHasAdjacentDays(
+  pattern: string,
+  start: Date,
+  end: Date,
+): boolean {
+  const calendar = new Cron(`0 0 ${pattern.split(/\s+/).slice(2).join(" ")}`, {
+    paused: true,
+    timezone: "UTC",
+  });
+  try {
+    let previous = false;
+    const day = new Date(start);
+    day.setUTCHours(0, 0, 0, 0);
+    for (
+      let i = 0;
+      i < 1828 && day <= end;
+      i++, day.setUTCDate(day.getUTCDate() + 1)
+    ) {
+      const matches = calendar.match(day);
+      if (matches && previous) return true;
+      previous = matches;
+    }
+    return false;
+  } finally {
+    calendar.stop();
+  }
 }

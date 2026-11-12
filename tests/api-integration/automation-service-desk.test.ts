@@ -4,10 +4,12 @@
  * outbox event -> parent consumer -> claimed run -> executor.
  */
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { enqueueAutomationRuns } from "../../apps/api/src/automation/consumer";
 import {
+  abandonStaleRuns,
   claimNextAutomationEvent,
   processNextAutomationEvent,
 } from "../../apps/api/src/automation/executor";
@@ -32,6 +34,9 @@ import { enqueueOutboxEvent } from "../../apps/api/src/events/outbox";
 import { parseParentEnvelope } from "../../apps/api/src/events/outbox-consumer";
 import { createApp } from "../../apps/api/src/index";
 import * as scheduler from "../../apps/api/src/scheduler";
+import transitionWorkItem, {
+  TransitionConflictError,
+} from "../../apps/api/src/work-item/controllers/transition-work-item";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -517,17 +522,20 @@ describe("G-1 service desk automations", () => {
     await runAutomationSchedule();
     await processNextAutomationEvent();
     expect(await w.currentState()).toBe(w.resolved.id);
-    if (mode === "other_workspace")
+    if (
+      [
+        "other_workspace",
+        "filter",
+        "archived_item",
+        "deleted_item",
+        "other_project",
+      ].includes(mode)
+    )
       expect(
         await db
           .select()
           .from(automationRunTable)
-          .where(
-            and(
-              eq(automationRunTable.workspaceId, w.workspace.id),
-              eq(automationRunTable.workItemId, w.item.id),
-            ),
-          ),
+          .where(and(eq(automationRunTable.workItemId, w.item.id))),
       ).toHaveLength(0);
     if (mode === "edited") {
       const runs = await db
@@ -541,6 +549,24 @@ describe("G-1 service desk automations", () => {
         );
       expect(runs[0]?.error).toBe("candidate_unavailable");
     }
+  });
+  it("pins both tenant predicates in candidate SQL", () => {
+    // Composite FKs prohibit inconsistent workspace fixtures; pin each defence
+    // separately as well as testing the valid cross-tenant matrix above.
+    const source = readFileSync(
+      new URL("../../apps/api/src/automation/schedule.ts", import.meta.url),
+      "utf8",
+    );
+    const candidateSql = source.slice(
+      source.indexOf("const items = await tx"),
+      source.indexOf("const facts = await loadWorkItemsByKey"),
+    );
+    expect(candidateSql).toContain(
+      "eq(projectTable.workspaceId, rule.workspaceId)",
+    );
+    expect(candidateSql).toContain(
+      "eq(workItemTable.workspaceId, rule.workspaceId)",
+    );
   });
   it("does not enqueue nonmatching items", async () => {
     const w = await serviceWorld();
@@ -647,39 +673,251 @@ describe("G-1 service desk automations", () => {
       );
     expect(pending).toHaveLength(50);
   });
-  it("prioritises event runs and rotates workspaces within the lane", async () => {
-    const a = await serviceWorld();
-    const b = await serviceWorld();
-    const ar = await a.closeRule();
-    const br = await b.closeRule();
+  it("reserves one in five claims for schedules and preserves event FIFO", async () => {
+    const w = await serviceWorld();
+    const rule = await w.closeRule();
     await db.insert(automationRunTable).values([
       {
-        automationId: ar.id,
-        workspaceId: a.workspace.id,
-        eventId: "old-schedule",
+        automationId: rule.id,
+        workspaceId: w.workspace.id,
+        eventId: "waiting-schedule",
         origin: "schedule",
         triggeredAt: new Date(0),
       },
-      ...Array.from({ length: 4 }, (_, i) => ({
-        automationId: ar.id,
-        workspaceId: a.workspace.id,
-        eventId: `a-event-${i}`,
+      ...Array.from({ length: 20 }, (_, i) => ({
+        automationId: rule.id,
+        workspaceId: w.workspace.id,
+        eventId: `fifo-${i}`,
         origin: "event",
+        triggeredAt: new Date(1000 + i),
       })),
-      {
-        automationId: br.id,
-        workspaceId: b.workspace.id,
-        eventId: "b-event",
-        origin: "event",
-      },
     ]);
-    const first = await claimNextAutomationEvent();
-    const second = await claimNextAutomationEvent();
-    expect(first[0]?.origin).toBe("event");
-    expect(second[0]?.origin).toBe("event");
-    expect(new Set([first[0]?.workspaceId, second[0]?.workspaceId]).size).toBe(
-      2,
+    const claimed = [];
+    for (let i = 0; i < 5; i++)
+      claimed.push((await claimNextAutomationEvent())[0]);
+    expect(claimed.some((r) => r?.origin === "schedule")).toBe(true);
+    expect(
+      claimed.filter((r) => r?.origin === "event").map((r) => r?.eventId),
+    ).toEqual(["fifo-0", "fifo-1", "fifo-2", "fifo-3"]);
+  });
+  it.each(["missing_edge", "abandoned", "capability", "permanent", "approval"])(
+    "retries with bounded history: %s",
+    async (mode) => {
+      const w = await serviceWorld();
+      await w.resolve(4);
+      const rule = await w.closeRule();
+      const now = new Date();
+      const edge = requireRow(
+        await db
+          .select()
+          .from(schema.workflowTransitionTable)
+          .where(
+            and(
+              eq(
+                schema.workflowTransitionTable.fromStateTemplateId,
+                w.resolved.stateTemplateId,
+              ),
+              eq(schema.workflowTransitionTable.toStateTemplateId, w.closed.id),
+            ),
+          ),
+        "close edge",
+      );
+      if (mode === "missing_edge" || mode === "permanent")
+        await db
+          .delete(schema.workflowTransitionTable)
+          .where(eq(schema.workflowTransitionTable.id, edge.id));
+      if (mode === "approval")
+        await db
+          .update(schema.workflowTransitionTable)
+          .set({ requiresApproval: true, approvalPolicy: "any" })
+          .where(eq(schema.workflowTransitionTable.id, edge.id));
+      if (mode === "capability")
+        await db
+          .update(schema.roleTable)
+          .set({ capabilities: ["work_item:read"] })
+          .where(eq(schema.roleTable.id, w.role.id));
+      await runAutomationSchedule(now);
+      if (mode === "abandoned") {
+        const claimed = await claimNextAutomationEvent();
+        expect(claimed[0]?.workItemId).toBe(w.item.id);
+        await db
+          .update(automationRunTable)
+          .set({ leaseExpiresAt: new Date(0) })
+          .where(
+            eq(automationRunTable.id, requireRow(claimed, "claimed run").id),
+          );
+      } else await processNextAutomationEvent();
+      const events = await db.select().from(schema.outboxTable);
+      for (let i = 1; i <= 10; i++) {
+        await runAutomationSchedule(new Date(now.getTime() + i * 3600000));
+        await processNextAutomationEvent();
+      }
+      const runs = () =>
+        db
+          .select()
+          .from(automationRunTable)
+          .where(
+            and(
+              eq(automationRunTable.automationId, rule.id),
+              eq(automationRunTable.workItemId, w.item.id),
+            ),
+          );
+      expect(await runs()).toHaveLength(1);
+      expect(await db.select().from(schema.outboxTable)).toHaveLength(
+        events.length,
+      );
+      if (mode === "missing_edge")
+        await db.insert(schema.workflowTransitionTable).values(edge);
+      if (mode === "capability")
+        await db
+          .update(schema.roleTable)
+          .set({ capabilities: ["work_item:read", "work_item:transition"] })
+          .where(eq(schema.roleTable.id, w.role.id));
+      await runAutomationSchedule(new Date(now.getTime() + 25 * 3600000));
+      await processNextAutomationEvent();
+      const retried = await runs();
+      expect(retried).toHaveLength(2);
+      expect(new Set(retried.map((r) => r.eventId)).size).toBe(2);
+      expect(await w.currentState()).toBe(
+        ["permanent", "approval"].includes(mode)
+          ? w.resolved.id
+          : w.closedState.id,
+      );
+      expect(retried.filter((r) => r.state === "failed")).toHaveLength(
+        ["permanent", "approval"].includes(mode)
+          ? 2
+          : mode === "abandoned"
+            ? 0
+            : 1,
+      );
+      expect(await abandonStaleRuns()).toBe(0);
+      const progress = requireRow(
+        await db
+          .select()
+          .from(automationRunTable)
+          .where(eq(automationRunTable.id, `schedule-progress:${rule.id}`)),
+        "progress",
+      );
+      expect(JSON.stringify(progress.results)).not.toContain("evaluated");
+    },
+  );
+  it("an unchanged day-two candidate closes on day three", async () => {
+    const w = await serviceWorld();
+    await w.resolve(2);
+    const rule = await w.closeRule();
+    await runAutomationSchedule();
+    expect(await w.currentState()).toBe(w.resolved.id);
+    // Advance the clock for both the sweep and executor without changing item/rule facts.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(Date.now() + 86400000 + 60000);
+      await runAutomationSchedule();
+      await processNextAutomationEvent();
+      expect(await w.currentState()).toBe(w.closedState.id);
+      expect(
+        (
+          await db
+            .select()
+            .from(automationRunTable)
+            .where(eq(automationRunTable.automationId, rule.id))
+        ).filter((r) => r.workItemId),
+      ).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("refuses a transition when the evaluated snapshot changed", async () => {
+    const w = await serviceWorld();
+    await w.resolve(4);
+    await expect(
+      transitionWorkItem(
+        w.item.id,
+        null,
+        null,
+        "automation-test",
+        "automation",
+        { toStateTemplateId: w.closed.id },
+        undefined,
+        { roleId: w.role.id, expectedStateId: "stale-state" },
+      ),
+    ).rejects.toBeInstanceOf(TransitionConflictError);
+    const facts = (await loadWorkItemsByKey(w.workspace.id, [w.item.key])).get(
+      w.item.key,
     );
+    await expect(
+      transitionWorkItem(
+        w.item.id,
+        null,
+        null,
+        "automation-test",
+        "automation",
+        { toStateTemplateId: w.closed.id },
+        undefined,
+        {
+          roleId: w.role.id,
+          expectedStateId: w.resolved.id,
+          expectedResolvedAt: new Date(0),
+        },
+      ),
+    ).rejects.toBeInstanceOf(TransitionConflictError);
+    expect(facts?.facts.resolvedAt).toBeTruthy();
+    expect(await w.currentState()).toBe(w.resolved.id);
+  });
+  it("refreshes the snapshot between scheduled transitions", async () => {
+    const w = await serviceWorld();
+    await w.resolve(4);
+    const rule = await w.closeRule();
+    const edge = requireRow(
+      await db
+        .select()
+        .from(schema.workflowTransitionTable)
+        .where(
+          and(
+            eq(
+              schema.workflowTransitionTable.fromStateTemplateId,
+              w.resolved.stateTemplateId,
+            ),
+            eq(schema.workflowTransitionTable.toStateTemplateId, w.closed.id),
+          ),
+        ),
+      "edge",
+    );
+    await db
+      .update(schema.workflowTransitionTable)
+      .set({ isReopen: false })
+      .where(
+        and(
+          eq(schema.workflowTransitionTable.versionId, edge.versionId),
+          eq(schema.workflowTransitionTable.isReopen, true),
+        ),
+      );
+    await db.insert(schema.workflowTransitionTable).values({
+      versionId: edge.versionId,
+      fromStateTemplateId: w.closed.id,
+      toStateTemplateId: w.rows.template.id,
+      isReopen: true,
+    });
+    await db
+      .update(automationTable)
+      .set({
+        actions: [
+          { type: "transition", toStateTemplateId: w.closed.id },
+          { type: "transition", toStateTemplateId: w.rows.template.id },
+        ],
+      })
+      .where(eq(automationTable.id, rule.id));
+    await runAutomationSchedule();
+    await processNextAutomationEvent();
+    expect(await w.currentState()).toBe(w.rows.state.id);
+    const run = requireRow(
+      await db
+        .select()
+        .from(automationRunTable)
+        .where(eq(automationRunTable.workItemId, w.item.id)),
+      "run",
+    );
+    expect(run.state).toBe("done");
+    expect(run.results).toHaveLength(2);
   });
   it("records a refused transition without forcing it", async () => {
     const w = await serviceWorld();

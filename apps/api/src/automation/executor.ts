@@ -46,14 +46,15 @@ import type { AutomationRow } from "./repository";
  * transaction-scoped advisory lock on the event id so two replicas never split a group and
  * break the ordering. Actions then commit on their own connections (they are the same domain
  * code a person's request runs), which is why a `running` run whose lease expires is marked
- * `abandoned` and is **never re-run**: its actions may already have committed, and executing
+ * `abandoned` and the event run is **never re-run**: its actions may already have committed, and executing
  * them twice would be the "silently starts changing hundreds of items" failure the contract
- * names as the worst outcome.
+ * names as the worst outcome. Scheduled rules re-evaluate fresh facts on later due sweeps
+ * after a bounded backoff; they never replay the abandoned action snapshot.
  */
 
 type ClaimedRun = typeof automationRunTable.$inferSelect;
 
-let lastClaimedWorkspace = "";
+let claimsSinceSchedule = 0;
 
 export async function claimNextAutomationEvent(): Promise<ClaimedRun[]> {
   return db.transaction(async (tx) => {
@@ -64,9 +65,8 @@ export async function claimNextAutomationEvent(): Promise<ClaimedRun[]> {
     }>(sql`
       SELECT "event_id", "id", "workspace_id" FROM "automation_run"
       WHERE "state" = 'pending'
-      ORDER BY CASE WHEN "origin" = 'schedule' THEN 1 ELSE 0 END,
-        CASE WHEN "workspace_id" > ${lastClaimedWorkspace} THEN 0 ELSE 1 END,
-        "workspace_id", "triggered_at" ASC, "id" ASC
+      ORDER BY CASE WHEN "origin" = 'schedule' THEN ${claimsSinceSchedule >= 4 ? 0 : 1} ELSE ${claimsSinceSchedule >= 4 ? 1 : 0} END,
+        "triggered_at" ASC, "id" ASC
       LIMIT 25
     `);
     const seen = new Set<string>();
@@ -95,7 +95,8 @@ export async function claimNextAutomationEvent(): Promise<ClaimedRun[]> {
         )
         .returning();
       if (claimed.length > 0) {
-        lastClaimedWorkspace = candidate.workspace_id;
+        claimsSinceSchedule =
+          claimed[0]?.origin === "schedule" ? 0 : claimsSinceSchedule + 1;
         return claimed.sort(
           (a, b) => a.position - b.position || a.id.localeCompare(b.id),
         );
@@ -274,7 +275,7 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
       return null;
     return item;
   };
-  const item = await loadItem();
+  let item = await loadItem();
   if (
     (run.origin === "schedule" && key && !item) ||
     (run.origin === "schedule" &&
@@ -331,9 +332,11 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
         envelope,
         loadItem:
           run.origin === "schedule" ? async () => item ?? null : loadItem,
+        scheduled: run.origin === "schedule",
         instance: instanceUrl(),
       }),
     );
+    if (run.origin === "schedule") item = await loadItem();
   }
 
   const failures = results.filter((entry) => !entry.ok);
@@ -349,7 +352,10 @@ export async function executeRun(run: ClaimedRun): Promise<RunOutcome> {
     state: failures.length > 0 ? ("failed" as const) : ("done" as const),
     matched: true,
     results,
-    error,
+    error:
+      error && run.origin === "schedule"
+        ? `${error}; schedule retry after 24h on a later due sweep`
+        : error,
   };
   if (failures.length > 0) {
     // P0R1-05: the failed run state and its `automation.run_failed` event commit together,

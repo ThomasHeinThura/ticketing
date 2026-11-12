@@ -3,8 +3,14 @@ import {
   type ConditionFacts,
   evaluateCondition,
 } from "../../../apps/api/src/automation/conditions";
-import { scheduleDue } from "../../../apps/api/src/automation/schedule";
-import { validateRuleDefinition } from "../../../apps/api/src/automation/validation";
+import {
+  scheduleDue,
+  scheduleOccurrence,
+} from "../../../apps/api/src/automation/schedule";
+import {
+  scheduleMinimumGap,
+  validateRuleDefinition,
+} from "../../../apps/api/src/automation/validation";
 
 describe("service desk automation vocabulary", () => {
   it("accepts both target rules and fails closed without the scheduler", () => {
@@ -95,6 +101,12 @@ describe("service desk automation vocabulary", () => {
   it("refuses frequent expressions and accepts the presets", () => {
     for (const [scheduleCron, expected] of [
       ["* * * * *", false],
+      ["0 0 30 2 *", false],
+      ["0 0 31 2 *", false],
+      ["0 0 29 2 *", true],
+      ["0,59 0,23 1 1 *", true],
+      ["58,0 * * * *", false],
+      ["0,59 0,23 1,31 1,12 *", false],
       ["1,4 * * * *", false],
       ["*/5 * * * *", true],
       ["0 * * * *", true],
@@ -127,11 +139,37 @@ describe("service desk automation vocabulary", () => {
         ) {
           if (scheduleDue("0 0 * * *", now, last[i])) {
             counts[i] = (counts[i] ?? 0) + 1;
-            last[i] = now;
+            last[i] = scheduleOccurrence("0 0 * * *", now) ?? undefined;
           }
         }
       }
       expect(counts.every((c) => c === 1)).toBe(true);
     },
   );
+});
+
+it("due computation never throws for impossible dates", () => {
+  expect(scheduleOccurrence("0 0 31 2 *", new Date())).toBeNull();
+  expect(scheduleOccurrence("invalid", new Date())).toBeNull();
+});
+
+it("interval validation has a fixed bound independent of occurrence count", () => {
+  let reads = 0;
+  const field = new Proxy(Array<number>(100000).fill(1), {
+    get(target, key, receiver) {
+      reads++;
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  expect(scheduleMinimumGap({ hour: field, minute: field })).toBe(1);
+  expect(reads).toBeLessThanOrEqual(2880);
+});
+
+it("finds the last leap-day occurrence with a bounded forward fallback", () => {
+  expect(
+    scheduleOccurrence(
+      "0 0 29 2 *",
+      new Date("2030-01-01T00:00:00Z"),
+    )?.toISOString(),
+  ).toBe("2028-02-29T00:00:00.000Z");
 });

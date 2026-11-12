@@ -79,6 +79,7 @@ export type ActionContext = {
   /** The triggering item, re-read before each action. */
   loadItem: () => Promise<LoadedWorkItem | null>;
   instance: string;
+  scheduled?: boolean;
 };
 
 /** Stable machine reasons recorded in run history (and used to flag a rule). */
@@ -376,7 +377,7 @@ async function transitionItem(
 ): Promise<
   { ok: true; detail?: Record<string, unknown> } | { ok: false; error: string }
 > {
-  if (item.stateTemplateId === action.toStateTemplateId)
+  if (ctx.scheduled && item.stateTemplateId === action.toStateTemplateId)
     return { ok: true, detail: { reason: "no_change_needed" } };
   try {
     const result = await runAsAutomation(
@@ -397,8 +398,12 @@ async function transitionItem(
           undefined,
           {
             roleId: ctx.role.id,
-            expectedStateId: item.stateId,
-            expectedResolvedAt: item.facts.resolvedAt,
+            ...(ctx.scheduled
+              ? {
+                  expectedStateId: item.stateId,
+                  expectedResolvedAt: item.facts.resolvedAt,
+                }
+              : {}),
           },
         ),
     );
@@ -519,6 +524,7 @@ async function executeActionInner(
     return failure(ACTION_ERRORS.noWorkItem);
 
   if (
+    ctx.scheduled &&
     action.type === "transition" &&
     item?.stateTemplateId === action.toStateTemplateId
   )

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { Cron } from "croner";
 import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import db from "../database";
@@ -20,20 +20,41 @@ export const SCHEDULE_BATCH = 50;
 
 /** One catch-up occurrence, never a replay of every missed window. */
 export function scheduleOccurrence(pattern: string, now: Date): Date | null {
-  const cron = new Cron(pattern, { paused: true, timezone: "UTC" });
-  const occurrence =
-    cron.previousRuns(
-      1,
-      new Date(Math.floor(now.getTime() / 60_000) * 60_000 + 1000),
-    )[0] ?? null;
-  cron.stop();
-  return occurrence;
+  let cron: Cron | undefined;
+  try {
+    cron = new Cron(pattern, { paused: true, timezone: "UTC" });
+    return (
+      cron.previousRuns(
+        1,
+        new Date(Math.floor(now.getTime() / 60_000) * 60_000 + 1000),
+      )[0] ?? null
+    );
+  } catch {
+    // Croner's backwards walker fails for leap-day schedules. Walk forwards
+    // across the five-year validation horizon, with a hard occurrence cap.
+    try {
+      const start = new Date(now);
+      start.setUTCFullYear(start.getUTCFullYear() - 5);
+      let at = cron?.nextRun(start) ?? null;
+      let latest: Date | null = null;
+      for (let i = 0; at && at <= now && i < 10; i++) {
+        latest = at;
+        at = cron?.nextRun(at) ?? null;
+      }
+      return at && at <= now ? null : latest;
+    } catch {
+      return null;
+    }
+  } finally {
+    cron?.stop();
+  }
 }
 export function scheduleDue(pattern: string, now: Date, last?: Date): boolean {
   const occurrence = scheduleOccurrence(pattern, now);
   return occurrence !== null && (!last || occurrence > last);
 }
 export const SCHEDULE_PENDING_CAP = 50;
+export const SCHEDULE_RETRY_MS = 24 * 60 * 60 * 1000;
 
 /** Persist a sweep cursor in a schedule run with no item; candidates use ordinary run rows.
  * The per-rule transaction lock fences cursor advances even if the outer job lease expires.
@@ -75,6 +96,31 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
             ),
           )
           .limit(1);
+        if (!scheduleOccurrence(rule.scheduleCron, now)) {
+          await tx
+            .insert(automationRunTable)
+            .values({
+              id: `schedule-progress:${rule.id}`,
+              automationId: rule.id,
+              workspaceId: rule.workspaceId,
+              projectId: rule.projectId,
+              origin: "schedule",
+              state: "skipped",
+              finishedAt: now,
+              error: "schedule_occurrence_unavailable",
+              results: [],
+            })
+            .onConflictDoUpdate({
+              target: automationRunTable.id,
+              set: {
+                state: "skipped",
+                finishedAt: now,
+                error: "schedule_occurrence_unavailable",
+                results: [],
+              },
+            });
+          return 0;
+        }
         let cursor = "";
         const progress = (
           Array.isArray(sweep?.results) ? sweep.results[0] : undefined
@@ -85,11 +131,8 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
               version?: number;
               occurrence?: string;
               candidates?: number;
-              evaluated?: Record<string, string>;
             }
           | undefined;
-        const evaluated =
-          progress?.version === rule.version ? (progress.evaluated ?? {}) : {};
         if (
           sweep &&
           progress?.complete === false &&
@@ -128,7 +171,6 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
                   version: rule.version,
                   occurrence: window.toISOString(),
                   candidates: 0,
-                  evaluated,
                 },
               ],
             })
@@ -144,7 +186,6 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
                     version: rule.version,
                     occurrence: window.toISOString(),
                     candidates: 0,
-                    evaluated,
                   },
                 ],
               },
@@ -158,6 +199,24 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
           : Array.isArray(rule.projectFilter)
             ? (rule.projectFilter as string[])
             : null;
+        await tx
+          .update(automationRunTable)
+          .set({
+            state: "abandoned",
+            finishedAt: now,
+            leaseExpiresAt: null,
+            error:
+              "interrupted: expired lease; scheduled candidate retries after 24h on a later due sweep",
+          })
+          .where(
+            and(
+              eq(automationRunTable.workspaceId, rule.workspaceId),
+              eq(automationRunTable.automationId, rule.id),
+              eq(automationRunTable.origin, "schedule"),
+              eq(automationRunTable.state, "running"),
+              sql`${automationRunTable.leaseExpiresAt} < ${now.toISOString()}::timestamptz`,
+            ),
+          );
         const pending = await tx
           .select({ count: sql<number>`count(*)::int` })
           .from(automationRunTable)
@@ -240,6 +299,16 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
           .where(
             and(
               ...predicates,
+              // Existing automation_run_automation_triggered_idx indexes the rule history;
+              // this anti-join needs no per-item sweep metadata or collation assumptions.
+              sql`NOT EXISTS (SELECT 1 FROM automation_run prior
+                WHERE prior.automation_id = ${rule.id}
+                  AND prior.workspace_id = ${rule.workspaceId}
+                  AND prior.work_item_id = ${workItemTable.id}
+                  AND prior.origin = 'schedule'
+                  AND starts_with(prior.event_id, ${`schedule:${rule.id}:${rule.version}:`})
+                  AND (prior.state IN ('pending', 'running', 'done')
+                    OR prior.triggered_at > ${new Date(now.getTime() - SCHEDULE_RETRY_MS).toISOString()}::timestamptz))`,
               targets.length
                 ? sql`${stateTable.stateTemplateId} NOT IN (${sql.join(
                     targets.map((t) => sql`${t}`),
@@ -272,55 +341,8 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
               .matched
           )
             continue;
-          const fingerprint = createHash("sha256")
-            .update(
-              JSON.stringify({
-                stateId: loaded.stateId,
-                projectId: loaded.projectId,
-                actions: (Array.isArray(rule.actions) ? rule.actions : []).map(
-                  (a: { type: string }) => [
-                    a.type,
-                    a.type === "assign"
-                      ? loaded.facts.assigneeId
-                      : a.type === "set_priority"
-                        ? loaded.facts.priority
-                        : a.type === "add_label" || a.type === "remove_label"
-                          ? [...loaded.facts.labels].sort()
-                          : null,
-                  ],
-                ),
-                conditions: conditions.map((c) => {
-                  const f = loaded.facts;
-                  const value =
-                    c.field === "age"
-                      ? c.basis === "resolved_at"
-                        ? f.resolvedAt
-                        : c.basis === "updated_at"
-                          ? f.updatedAt
-                          : f.createdAt
-                      : (
-                          {
-                            type: f.typeKey,
-                            state: f.stateKey,
-                            "state.group": f.stateGroup,
-                            priority: f.priority,
-                            assignee: f.assigneeId,
-                            requester: f.requesterId,
-                            label: [...f.labels].sort(),
-                            organisation: f.organisationId,
-                            project: f.projectKey,
-                            sla_state: f.slaState,
-                          } as Record<string, unknown>
-                        )[c.field];
-                  return [c.field, value];
-                }),
-              }),
-            )
-            .digest("hex");
           if (!(await automationsEnabled(rule.workspaceId, item.projectId)))
             continue;
-          if (evaluated[item.id] === fingerprint) continue;
-          evaluated[item.id] = fingerprint;
           await tx
             .insert(automationRunTable)
             .values({
@@ -330,7 +352,14 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
               workItemId: item.id,
               workItemKey: item.key,
               origin: "schedule",
-              eventId: `schedule:${rule.id}:${rule.version}:${item.id}:${fingerprint}`,
+              eventId: `schedule:${rule.id}:${rule.version}:${item.id}:${randomUUID()}`,
+              triggeredAt: now,
+              results: [
+                {
+                  retryPolicy:
+                    "retry after 24h on a later due sweep unless successful; expired leases are abandoned",
+                },
+              ],
               position: rule.position,
             })
             .onConflictDoNothing();
@@ -349,7 +378,6 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
                   ((sweep.results as { candidates?: number }[])[0]
                     ?.candidates ?? 0) + enqueued,
                 version: rule.version,
-                evaluated,
               },
             ],
           })
