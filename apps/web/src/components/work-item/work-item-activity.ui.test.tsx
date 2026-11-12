@@ -57,12 +57,14 @@ const { mocks, translate } = vi.hoisted(() => ({
         "activity:timeline.internalVisibilityUnavailableCanReply":
           "Internal notes are unavailable for your permissions. This draft will not be sent unless you switch to Reply to customer.",
         "activity:timeline.publicVisibilityUnavailableCanNote":
-          "Customer replies are unavailable for your permissions. This draft will not be sent unless you switch to Internal note.",
+          "This draft was written as a reply to the customer, which you cannot send. It will not be sent unless you keep it as an internal note.",
         "activity:timeline.commentVisibilityUnavailableNone":
           "You can no longer post comments on this item. Your draft has been kept.",
         "activity:timeline.switchToReplyToCustomer":
           "Switch to Reply to customer",
-        "activity:timeline.switchToInternalNote": "Switch to Internal note",
+        "activity:timeline.keepAsInternalNote": "Keep as internal note",
+        "activity:timeline.draftKeptAsInternalNote":
+          "Draft kept as an internal note.",
         "activity:timeline.cannedResponseSwitchedToInternal":
           "Switched to an internal note for this canned response.",
         "activity:timeline.cannedResponsePublicChoiceNotice":

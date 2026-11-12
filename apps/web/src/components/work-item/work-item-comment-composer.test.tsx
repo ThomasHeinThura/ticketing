@@ -856,7 +856,7 @@ describe("F-11 unmistakable customer reply vs internal note composer", () => {
     );
     fireEvent.click(
       within(ui.composer).getByRole("button", {
-        name: "activity:timeline.switchToInternalNote",
+        name: "activity:timeline.keepAsInternalNote",
       }),
     );
     expect(shownCard(ui.composer)).toHaveAttribute(
@@ -1326,5 +1326,301 @@ describe("F-11 unmistakable customer reply vs internal note composer", () => {
     fireEvent.keyDown(internalTab, { key: " " });
     fireEvent.keyUp(internalTab, { key: " " });
     expect(mocks.createComment).not.toHaveBeenCalled();
+  });
+
+  it("presents only internal chrome with an unavailable-draft status notice and blocks submit until Keep as internal note when an internal-only caller restores a saved public draft", async () => {
+    const savedBody = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Customer follow-up draft" }],
+        },
+      ],
+    };
+    const assertInternalChromeAndBlockedPublicDraft = async (
+      ui: ReturnType<typeof renderComposer>,
+    ) => {
+      const editorNode = await ui.editor();
+      expect(editorNode.textContent).toContain("Customer follow-up draft");
+
+      const card = shownCard(ui.composer);
+      expect(card).toHaveAttribute("data-visibility", "internal");
+      expect(card).toHaveClass("border-warning/32", "bg-warning/4");
+      expect(within(ui.composer).queryByRole("tablist")).toBeNull();
+      expect(
+        within(ui.composer).getByText("activity:timeline.internalNote"),
+      ).toBeVisible();
+      expect(
+        within(ui.composer).getByTestId("comment-audience-notice"),
+      ).toHaveTextContent("activity:timeline.onlyTeamSeesThis");
+
+      const sendButton = within(ui.composer).getByRole("button", {
+        name: "activity:timeline.addInternalNote",
+      });
+      expect(sendButton).toBeDisabled();
+
+      // No public header, button label, or customer-visibility claim anywhere in the composer.
+      expect(
+        within(ui.composer).queryByText("activity:timeline.replyToCustomer"),
+      ).toBeNull();
+      expect(
+        within(ui.composer).queryByText("activity:timeline.sendToCustomer"),
+      ).toBeNull();
+      expect(
+        within(ui.composer).queryByText("activity:timeline.visibleToCustomer"),
+      ).toBeNull();
+      expect(
+        within(ui.composer).queryByText(
+          "activity:timeline.shareFilesWithCustomer",
+        ),
+      ).toBeNull();
+
+      const notice = within(ui.composer).getByTestId(
+        "comment-visibility-unavailable-notice",
+      );
+      expect(notice).toHaveAttribute("role", "status");
+      expect(notice).toHaveTextContent(
+        "activity:timeline.publicVisibilityUnavailableCanNote",
+      );
+      const noticeButtons = within(notice).getAllByRole("button");
+      expect(noticeButtons).toHaveLength(1);
+      expect(noticeButtons[0]).toHaveAccessibleName(
+        "activity:timeline.keepAsInternalNote",
+      );
+
+      // Submit is blocked via button click, Ctrl+Enter, and Cmd+Enter.
+      fireEvent.click(sendButton);
+      fireEvent.keyDown(editorNode, { key: "Enter", ctrlKey: true });
+      fireEvent.keyDown(editorNode, { key: "Enter", metaKey: true });
+      expect(mocks.createComment).not.toHaveBeenCalled();
+
+      return { editorNode, notice };
+    };
+
+    // 1. Capabilities already settled as internal-only when the saved public draft restores.
+    mocks.permissions.public = false;
+    mocks.permissions.internal = true;
+    window.localStorage.setItem(
+      "taskdesk:comment-draft:user-1:OPS-17",
+      JSON.stringify({
+        text: "Customer follow-up draft",
+        document: savedBody,
+        visibility: "public",
+      }),
+    );
+
+    const restored = renderComposer("public", { isCustomerVisible: true });
+    restored.stage("triage-notes.pdf");
+    expect(await screen.findByText("triage-notes.pdf")).toBeVisible();
+    const { editorNode, notice } =
+      await assertInternalChromeAndBlockedPublicDraft(restored);
+
+    fireEvent.click(
+      within(notice).getByRole("button", {
+        name: "activity:timeline.keepAsInternalNote",
+      }),
+    );
+    expect(mocks.createComment).not.toHaveBeenCalled();
+    expect(
+      within(restored.composer).queryByTestId(
+        "comment-visibility-unavailable-notice",
+      ),
+    ).toBeNull();
+    const keptNotice = within(restored.composer).getByTestId(
+      "comment-kept-internal-notice",
+    );
+    expect(keptNotice).toHaveAttribute("role", "status");
+    expect(keptNotice).toHaveTextContent(
+      "activity:timeline.draftKeptAsInternalNote",
+    );
+    expect(editorNode.textContent).toContain("Customer follow-up draft");
+    expect(screen.getByText("triage-notes.pdf")).toBeVisible();
+    expect(
+      JSON.parse(
+        window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17") ??
+          "{}",
+      ),
+    ).toMatchObject({
+      text: "Customer follow-up draft",
+      visibility: "internal",
+    });
+
+    await restored.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenCalledWith({
+      key: "OPS-17",
+      body: savedBody,
+      visibility: "internal",
+    });
+    await waitFor(() => expect(mocks.presign).toHaveBeenCalledTimes(1));
+    expect(presignBodies()[0]).not.toHaveProperty("customerVisible");
+    cleanup();
+    window.localStorage.clear();
+    mocks.createComment.mockReset().mockResolvedValue({ id: "comment-2" });
+    mocks.presign
+      .mockReset()
+      .mockResolvedValue(new Response("refused", { status: 500 }));
+
+    // 2. Capabilities finish loading as internal-only after mount with a saved public draft.
+    resetPermissionState();
+    mocks.permissions.checking = true;
+    mocks.permissions.public = false;
+    mocks.permissions.internal = true;
+    window.localStorage.setItem(
+      "taskdesk:comment-draft:user-1:OPS-17",
+      JSON.stringify({
+        text: "Customer follow-up draft",
+        document: savedBody,
+        visibility: "public",
+      }),
+    );
+
+    const delayed = renderComposer("public", { isCustomerVisible: true });
+    expect(delayed.composer).toHaveAttribute("hidden");
+    expect(
+      within(delayed.composer).queryByText("activity:timeline.replyToCustomer"),
+    ).toBeNull();
+    expect(
+      within(delayed.composer).queryByText("activity:timeline.sendToCustomer"),
+    ).toBeNull();
+    expect(
+      within(delayed.composer).queryByText(
+        "activity:timeline.visibleToCustomer",
+      ),
+    ).toBeNull();
+
+    mocks.permissions.checking = false;
+    delayed.rerender("public", { isCustomerVisible: true });
+    await waitFor(() => expect(delayed.composer).not.toHaveAttribute("hidden"));
+    const { notice: delayedNotice } =
+      await assertInternalChromeAndBlockedPublicDraft(delayed);
+
+    fireEvent.click(
+      within(delayedNotice).getByRole("button", {
+        name: "activity:timeline.keepAsInternalNote",
+      }),
+    );
+    await delayed.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenCalledWith({
+      key: "OPS-17",
+      body: savedBody,
+      visibility: "internal",
+    });
+  });
+
+  it("presents only internal chrome, preserves body and staged files, and blocks submit until Keep as internal note when public capability is revoked mid-draft", async () => {
+    const ui = renderComposer("public", { isCustomerVisible: true });
+    const editorNode = await ui.type("Drafted while customer reply allowed");
+    ui.stage("customer-pack.pdf");
+    const shareSwitch = await within(ui.composer).findByRole("switch", {
+      name: SHARE,
+    });
+    fireEvent.click(shareSwitch);
+    expect(shareSwitch).toBeChecked();
+
+    const bodyBeforeRevocation = JSON.parse(
+      window.localStorage.getItem("taskdesk:comment-draft:user-1:OPS-17") ??
+        "{}",
+    ).document;
+    expect(bodyBeforeRevocation).toBeTruthy();
+
+    // Public capability is revoked while the public draft is open (including a permission re-check).
+    mocks.permissions.checking = true;
+    ui.rerender("public", { isCustomerVisible: true });
+    expect(ui.composer).toHaveAttribute("hidden");
+
+    mocks.permissions.checking = false;
+    mocks.permissions.public = false;
+    mocks.permissions.internal = true;
+    ui.rerender("public", { isCustomerVisible: true });
+    expect(ui.composer).not.toHaveAttribute("hidden");
+
+    const card = shownCard(ui.composer);
+    expect(card).toHaveAttribute("data-visibility", "internal");
+    expect(card).toHaveClass("border-warning/32", "bg-warning/4");
+    expect(within(ui.composer).queryByRole("tablist")).toBeNull();
+    expect(
+      within(ui.composer).getByText("activity:timeline.internalNote"),
+    ).toBeVisible();
+    expect(
+      within(ui.composer).getByTestId("comment-audience-notice"),
+    ).toHaveTextContent("activity:timeline.onlyTeamSeesThis");
+
+    const sendButton = within(ui.composer).getByRole("button", {
+      name: "activity:timeline.addInternalNote",
+    });
+    expect(sendButton).toBeDisabled();
+
+    // No public mode chrome or customer-visibility claim anywhere in the composer.
+    expect(
+      within(ui.composer).queryByText("activity:timeline.replyToCustomer"),
+    ).toBeNull();
+    expect(
+      within(ui.composer).queryByText("activity:timeline.sendToCustomer"),
+    ).toBeNull();
+    expect(
+      within(ui.composer).queryByText("activity:timeline.visibleToCustomer"),
+    ).toBeNull();
+    expect(within(ui.composer).queryByRole("switch", { name: SHARE })).toBe(
+      null,
+    );
+    expect(
+      within(ui.composer).queryByText(
+        "activity:timeline.shareFilesWithCustomer",
+      ),
+    ).toBeNull();
+    expect(screen.getByText("customer-pack.pdf")).toBeVisible();
+
+    const notice = within(ui.composer).getByTestId(
+      "comment-visibility-unavailable-notice",
+    );
+    expect(notice).toHaveAttribute("role", "status");
+    expect(notice).toHaveTextContent(
+      "activity:timeline.publicVisibilityUnavailableCanNote",
+    );
+    const noticeButtons = within(notice).getAllByRole("button");
+    expect(noticeButtons).toHaveLength(1);
+    expect(noticeButtons[0]).toHaveAccessibleName(
+      "activity:timeline.keepAsInternalNote",
+    );
+
+    // Submit stays blocked by button and by Ctrl/Cmd+Enter until Keep as internal note is pressed.
+    fireEvent.click(sendButton);
+    fireEvent.keyDown(editorNode, { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(editorNode, { key: "Enter", metaKey: true });
+    expect(mocks.createComment).not.toHaveBeenCalled();
+    expect(mocks.presign).not.toHaveBeenCalled();
+
+    fireEvent.click(noticeButtons[0]);
+    expect(mocks.createComment).not.toHaveBeenCalled();
+    expect(
+      within(ui.composer).queryByTestId(
+        "comment-visibility-unavailable-notice",
+      ),
+    ).toBeNull();
+    const keptNotice = within(ui.composer).getByTestId(
+      "comment-kept-internal-notice",
+    );
+    expect(keptNotice).toHaveAttribute("role", "status");
+    expect(keptNotice).toHaveTextContent(
+      "activity:timeline.draftKeptAsInternalNote",
+    );
+    expect(editorNode.textContent).toContain(
+      "Drafted while customer reply allowed",
+    );
+    expect(screen.getByText("customer-pack.pdf")).toBeVisible();
+    expect(sendButton).toBeEnabled();
+
+    fireEvent.keyDown(editorNode, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenCalledWith({
+      key: "OPS-17",
+      body: bodyBeforeRevocation,
+      visibility: "internal",
+    });
+    await waitFor(() => expect(mocks.presign).toHaveBeenCalledTimes(1));
+    expect(presignBodies()[0]).not.toHaveProperty("customerVisible");
   });
 });

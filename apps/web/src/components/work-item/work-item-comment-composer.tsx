@@ -200,6 +200,7 @@ export default function WorkItemCommentComposer({
   });
   const [customerVisibilityFallback, setCustomerVisibilityFallback] =
     useState(false);
+  const [keptAsInternalNotice, setKeptAsInternalNotice] = useState(false);
   const [cannedVisibilityNotice, setCannedVisibilityNotice] = useState<
     "switched_to_internal" | "public_choice_available" | null
   >(null);
@@ -239,18 +240,21 @@ export default function WorkItemCommentComposer({
   }
 
   const isInitialized = isReady && loadedDraftKey === draftStorageKey;
-  // Draft audience intent (`visibility`) stays separate from `allowedCommentVisibilities`:
-  // when a capability is revoked or a saved draft's audience is disallowed, we block sending
-  // and ask for an explicit choice instead of silently flipping to another audience.
+  // Draft audience intent (`visibility`) stays separate from `allowedCommentVisibilities`
+  // and `presentedVisibility`: when a capability is revoked or a saved draft's audience is
+  // disallowed, we block sending, never present unpermitted public chrome, and require an
+  // explicit choice instead of silently flipping or sending.
   const isAudienceUnavailable =
     isInitialized && !allowedCommentVisibilities.includes(visibility);
+  const presentedVisibility: "public" | "internal" =
+    visibility === "public" && canPostPublic ? "public" : "internal";
 
   // A-07 / AT-3: files on a public comment stay internal unless staff choose to share them.
   // The choice is per comment; it never applies to an internal comment (AT-4).
   const shareSwitchId = useId();
   const [shareFiles, setShareFiles] = useState(false);
   const sharesFiles =
-    visibility === "public" && !isAudienceUnavailable && shareFiles;
+    presentedVisibility === "public" && !isAudienceUnavailable && shareFiles;
 
   const mentionCandidates = useQuery({
     queryKey: [
@@ -330,7 +334,10 @@ export default function WorkItemCommentComposer({
     }
   };
 
-  const updateVisibility = (nextVisibility: "public" | "internal") => {
+  const updateVisibility = (
+    nextVisibility: "public" | "internal",
+    options?: { announceKeptInternal?: boolean },
+  ) => {
     if (
       submitInProgressRef.current ||
       snippetInsertPending.current ||
@@ -343,6 +350,7 @@ export default function WorkItemCommentComposer({
     setVisibility(nextVisibility);
     setCustomerVisibilityFallback(false);
     setCannedVisibilityNotice(null);
+    setKeptAsInternalNotice(Boolean(options?.announceKeptInternal));
     if (nextVisibility === "internal") {
       sharesFilesRef.current = false;
       setShareFiles(false);
@@ -357,6 +365,7 @@ export default function WorkItemCommentComposer({
     if (initializedDraftKeyRef.current !== draftStorageKey && !isReady) {
       setLoadedDraftKey(null);
       setCustomerVisibilityFallback(false);
+      setKeptAsInternalNotice(false);
       setCannedVisibilityNotice(null);
       return;
     }
@@ -427,6 +436,7 @@ export default function WorkItemCommentComposer({
     sharesFilesRef.current = false;
     setShareFiles(false);
     setCustomerVisibilityFallback(fallbackOnRestore);
+    setKeptAsInternalNotice(false);
     setCannedVisibilityNotice(null);
     setLoadedDraftKey(draftStorageKey);
 
@@ -460,6 +470,7 @@ export default function WorkItemCommentComposer({
         setVisibility("internal");
         sharesFilesRef.current = false;
         setShareFiles(false);
+        setKeptAsInternalNotice(false);
         setCannedVisibilityNotice(null);
         setCustomerVisibilityFallback(true);
         if (persistedDraftRef.current.text.trim()) {
@@ -563,6 +574,7 @@ export default function WorkItemCommentComposer({
         sharesFilesRef.current = false;
         setShareFiles(false);
         setCustomerVisibilityFallback(false);
+        setKeptAsInternalNotice(false);
         setCannedVisibilityNotice(null);
         // The next comment starts from the project's default visibility when allowed (CA-2).
         const preferredDefault: "public" | "internal" =
@@ -594,7 +606,7 @@ export default function WorkItemCommentComposer({
     }
   };
 
-  const isInternalMode = visibility === "internal";
+  const isInternalMode = presentedVisibility === "internal";
   const shouldHideComposer =
     !isInitialized || (allowedCommentVisibilities.length === 0 && !hasContent);
 
@@ -647,12 +659,26 @@ export default function WorkItemCommentComposer({
                 variant="outline"
                 size="xs"
                 disabled={composerBusy}
-                onClick={() => updateVisibility("internal")}
+                onClick={() =>
+                  updateVisibility("internal", { announceKeptInternal: true })
+                }
               >
-                {t("activity:timeline.switchToInternalNote")}
+                {t("activity:timeline.keepAsInternalNote")}
               </Button>
             </AlertAction>
           ) : null}
+        </Alert>
+      ) : null}
+      {!isAudienceUnavailable && keptAsInternalNotice ? (
+        <Alert
+          variant="warning"
+          role="status"
+          className="mb-2"
+          data-testid="comment-kept-internal-notice"
+        >
+          <AlertDescription>
+            {t("activity:timeline.draftKeptAsInternalNote")}
+          </AlertDescription>
         </Alert>
       ) : null}
       {!isAudienceUnavailable && cannedVisibilityNotice ? (
@@ -682,7 +708,8 @@ export default function WorkItemCommentComposer({
           ) : null}
         </Alert>
       ) : null}
-      {mentionPreflight.data?.unreachablePersonIds.length ? (
+      {!isAudienceUnavailable &&
+      mentionPreflight.data?.unreachablePersonIds.length ? (
         <Alert variant="warning" role="status" className="mb-2">
           <AlertDescription>
             {t("activity:timeline.mentionWarning", {
@@ -697,7 +724,7 @@ export default function WorkItemCommentComposer({
             })}
           </AlertDescription>
         </Alert>
-      ) : mentionPreflight.isError ? (
+      ) : !isAudienceUnavailable && mentionPreflight.isError ? (
         <p className="mb-2 text-sm text-warning-foreground" role="status">
           {t("activity:timeline.mentionCheckFailed")}
         </p>
@@ -710,13 +737,13 @@ export default function WorkItemCommentComposer({
         </Alert>
       ) : null}
       <CommentComposerPresentation
-        data-visibility={visibility}
+        data-visibility={presentedVisibility}
         tinted={isInternalMode}
         header={
           <>
             {allowedCommentVisibilities.length > 1 ? (
               <Tabs
-                value={visibility}
+                value={presentedVisibility}
                 onValueChange={(next) => {
                   if (
                     !composerBusy &&
@@ -780,11 +807,15 @@ export default function WorkItemCommentComposer({
             onFilesSelected={canAttach ? staged.stage : undefined}
             enableMentions
             disabled={composerBusy}
-            mentionMembers={(mentionCandidates.data ?? []).map((candidate) => ({
-              id: candidate.personId,
-              label: candidate.name,
-              image: candidate.image,
-            }))}
+            mentionMembers={
+              isAudienceUnavailable
+                ? []
+                : (mentionCandidates.data ?? []).map((candidate) => ({
+                    id: candidate.personId,
+                    label: candidate.name,
+                    image: candidate.image,
+                  }))
+            }
             placeholder={t("activity:comment.leavePlaceholder")}
             className={COMMENT_COMPOSER_EDITOR_CLASS}
             onSubmitShortcut={() => void submit()}
@@ -798,7 +829,7 @@ export default function WorkItemCommentComposer({
                 onRemove={staged.remove}
                 disabled={composerBusy}
               />
-              {visibility === "public" && !isAudienceUnavailable ? (
+              {presentedVisibility === "public" && !isAudienceUnavailable ? (
                 <div className="flex items-center gap-2">
                   <Switch
                     id={shareSwitchId}
@@ -882,12 +913,14 @@ export default function WorkItemCommentComposer({
                         setVisibility("internal");
                         sharesFilesRef.current = false;
                         setShareFiles(false);
+                        setKeptAsInternalNotice(false);
                         setCannedVisibilityNotice("switched_to_internal");
                       } else if (
                         response.visibilityDefault === "public" &&
                         visibilityRef.current === "internal" &&
                         allowedVisibilitiesRef.current.includes("public")
                       ) {
+                        setKeptAsInternalNotice(false);
                         setCannedVisibilityNotice("public_choice_available");
                       } else {
                         setCannedVisibilityNotice(null);

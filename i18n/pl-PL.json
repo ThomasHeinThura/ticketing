@@ -1205,10 +1205,11 @@
 			"visibleToCustomer": "Visible to the customer",
 			"customerVisibilityLostFallback": "No longer visible to a customer — switched to an internal note.",
 			"internalVisibilityUnavailableCanReply": "Internal notes are unavailable for your permissions. This draft will not be sent unless you switch to Reply to customer.",
-			"publicVisibilityUnavailableCanNote": "Customer replies are unavailable for your permissions. This draft will not be sent unless you switch to Internal note.",
+			"publicVisibilityUnavailableCanNote": "This draft was written as a reply to the customer, which you cannot send. It will not be sent unless you keep it as an internal note.",
 			"commentVisibilityUnavailableNone": "You can no longer post comments on this item. Your draft has been kept.",
 			"switchToReplyToCustomer": "Switch to Reply to customer",
-			"switchToInternalNote": "Switch to Internal note",
+			"keepAsInternalNote": "Keep as internal note",
+			"draftKeptAsInternalNote": "Draft kept as an internal note.",
 			"cannedResponseSwitchedToInternal": "Switched to an internal note for this canned response.",
 			"cannedResponsePublicChoiceNotice": "This canned response defaults to a customer reply. Kept as an internal note until you choose Reply to customer."
 		}

@@ -10170,7 +10170,10 @@
 						"switchToReplyToCustomer": {
 							"type": "string"
 						},
-						"switchToInternalNote": {
+						"keepAsInternalNote": {
+							"type": "string"
+						},
+						"draftKeptAsInternalNote": {
 							"type": "string"
 						},
 						"cannedResponseSwitchedToInternal": {
@@ -10236,7 +10239,8 @@
 						"publicVisibilityUnavailableCanNote",
 						"commentVisibilityUnavailableNone",
 						"switchToReplyToCustomer",
-						"switchToInternalNote",
+						"keepAsInternalNote",
+						"draftKeptAsInternalNote",
 						"cannedResponseSwitchedToInternal",
 						"cannedResponsePublicChoiceNotice"
 					]
