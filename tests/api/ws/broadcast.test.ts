@@ -18,6 +18,7 @@ import {
   removeConnection,
   shutdownWebSocketAdapter,
 } from "../../../apps/api/src/ws/index";
+import { legacyWindowOrigin } from "../../../apps/api/src/ws/window-id";
 
 function makeFakeWs() {
   return {
@@ -40,6 +41,125 @@ describe("broadcastToProject", () => {
   afterEach(async () => {
     await shutdownWebSocketAdapter();
   });
+
+  it("does not suppress an old socket for an invalid request tab header", async () => {
+    const ws = makeFakeWs();
+    const conn = addConnection(
+      "proj-1",
+      ws,
+      "user-1",
+      "user-1",
+      async () => true,
+    );
+    broadcastToProject(
+      "proj-1",
+      { type: "TASK_UPDATED", projectId: "proj-1", taskId: "t1" },
+      legacyWindowOrigin("user-1", "bad.id"),
+    );
+    await vi.waitFor(
+      () =>
+        expect(
+          (ws as { send: ReturnType<typeof vi.fn> }).send,
+        ).toHaveBeenCalledOnce(),
+      { timeout: 300 },
+    );
+    removeConnection("proj-1", conn);
+  });
+
+  it("flushes queued keys in their original order after 100 ms", async () => {
+    vi.useFakeTimers();
+    const ws = makeFakeWs();
+    const connection = addConnection(
+      "proj-1",
+      ws,
+      "user-1",
+      "init-1",
+      async () => true,
+    );
+    try {
+      broadcastToProject(
+        "proj-1",
+        { type: "TASK_UPDATED", projectId: "proj-1", taskId: "first" },
+        "other",
+      );
+      broadcastToProject(
+        "proj-1",
+        { type: "TASK_UPDATED", projectId: "proj-1", taskId: "second" },
+        "other",
+      );
+      broadcastToProject(
+        "proj-1",
+        { type: "TASK_UPDATED", projectId: "proj-1", taskId: "first" },
+        "different",
+      );
+      await vi.advanceTimersByTimeAsync(99);
+      expect(
+        (ws as { send: ReturnType<typeof vi.fn> }).send,
+      ).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      const calls = (ws as { send: ReturnType<typeof vi.fn> }).send.mock.calls;
+      expect(calls.map(([payload]) => JSON.parse(payload).taskId)).toEqual([
+        "first",
+        "second",
+      ]);
+    } finally {
+      removeConnection("proj-1", connection);
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ["same window", ["init-1", "init-1"], [0, 1]],
+    ["different windows", ["init-1", "init-2", "init-1"], [1, 1]],
+    ["system event", ["init-1", undefined], [1, 1]],
+    ["system event first", [undefined, "init-1"], [1, 1]],
+  ])(
+    "coalesces %s without losing another origin",
+    async (_name, origins, counts) => {
+      const first = makeFakeWs();
+      const second = makeFakeWs();
+      const a = addConnection(
+        "proj-1",
+        first,
+        "user-1",
+        "init-1",
+        async () => true,
+      );
+      const b = addConnection(
+        "proj-1",
+        second,
+        "user-2",
+        "init-2",
+        async () => true,
+      );
+      const message = {
+        type: "TASK_UPDATED",
+        projectId: "proj-1",
+        taskId: "t1",
+      };
+      for (const origin of origins)
+        broadcastToProject("proj-1", message, origin);
+      expect(
+        (first as { send: ReturnType<typeof vi.fn> }).send,
+      ).not.toHaveBeenCalled();
+      expect(
+        (second as { send: ReturnType<typeof vi.fn> }).send,
+      ).not.toHaveBeenCalled();
+      await vi.waitFor(
+        () => {
+          expect(
+            (first as { send: ReturnType<typeof vi.fn> }).send,
+          ).toHaveBeenCalledTimes(counts[0] as number);
+          expect(
+            (second as { send: ReturnType<typeof vi.fn> }).send,
+          ).toHaveBeenCalledTimes(counts[1] as number);
+        },
+        { timeout: 300 },
+      );
+      removeConnection("proj-1", a);
+      removeConnection("proj-1", b);
+    },
+  );
 
   it("delivers messages to connected clients after batch timeout", async () => {
     const ws = makeFakeWs();

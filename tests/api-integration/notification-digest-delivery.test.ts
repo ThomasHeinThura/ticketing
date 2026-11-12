@@ -196,6 +196,7 @@ async function fixture() {
       },
     },
     { userId: actor.user.id, personId: actorPerson.id },
+    async () => undefined,
   );
   return { actor, recipient, recipientPerson, actorPerson, item, project };
 }
@@ -378,6 +379,7 @@ async function customerDigestFixture() {
       },
     },
     { userId: actor.user.id, personId: actorPerson.id },
+    async () => undefined,
   );
   const comment = await createComment(
     item.id,
@@ -558,6 +560,7 @@ async function customerTransitionDigestFixture() {
       },
     },
     { userId: actor.user.id, personId: actorPerson.id },
+    async () => undefined,
   );
   const eventId = `transition-${randomUUID()}`;
   const event = {

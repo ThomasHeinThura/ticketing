@@ -41,23 +41,20 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  pushRecentItem,
-  type RecentItem,
-  readRecentItems,
-} from "@/components/search-command-menu/recent-items";
+import { pushRecentItem } from "@/components/search-command-menu/recent-items";
 import {
   type PaletteEntry,
   projectSearchGroups,
   type SearchResultItem,
 } from "@/components/search-command-menu/search-targets";
+import { useRecentItems } from "@/components/search-command-menu/use-recent-items";
 import WorkItemCreateDialogHost from "@/components/work-item/work-item-create-dialog-host";
 import { isWorkItemCreateDialogOpen } from "@/components/work-item/work-item-create-dialog-open";
 import { shortcuts } from "@/constants/shortcuts";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
-import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { authClient } from "@/lib/auth-client";
 import { routes } from "@/lib/routes";
@@ -128,11 +125,9 @@ export function CommandPalette({
   const navigate = useNavigate();
   const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
-  const { data: session } = authClient.useSession();
-  const { data: config } = useGetConfig();
-  const isAdmin = session?.user?.role === "admin";
-  const canCreateWorkspace =
-    isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
+  const canCreateWorkspace = useCanCreateWorkspace();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
@@ -173,13 +168,8 @@ export function CommandPalette({
   const handledRequest = useRef<number | null>(null);
   useEffect(() => {
     if (!request || handledRequest.current === request.id) return;
-    if (
-      request.intent === "create-workspace" &&
-      !canCreateWorkspace &&
-      config === undefined &&
-      !isAdmin
-    )
-      return;
+    // Wait for the signed-in role before deciding, so the request is not dropped while it loads.
+    if (request.intent === "create-workspace" && sessionPending) return;
     // A cold load of a project URL (or the shortcut pressed before the project and its
     // permissions have loaded) waits for them instead of dropping the request.
     if (
@@ -210,8 +200,7 @@ export function CommandPalette({
   }, [
     request,
     canCreateWorkspace,
-    config,
-    isAdmin,
+    sessionPending,
     navigate,
     onRequestHandled,
     projectKey,
@@ -259,13 +248,7 @@ export function CommandPalette({
     [onOpenChange],
   );
 
-  const recentItems = useMemo<RecentItem[]>(
-    () =>
-      open && workspace?.id && session?.user?.id
-        ? readRecentItems(session.user.id, workspace.id)
-        : [],
-    [open, workspace?.id, session?.user?.id],
-  );
+  const recentItems = useRecentItems(open, session?.user?.id, workspace?.id);
 
   const searchGroups = useMemo(
     () =>

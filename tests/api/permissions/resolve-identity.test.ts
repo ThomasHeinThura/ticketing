@@ -92,7 +92,11 @@ describe("resolveIdentityFromFacts — a member with each built-in workspace rol
 
       expect(identity).not.toBeNull();
       expect(identity?.memberships).toEqual([
-        { scope: "workspace", scopeId: "ws-1", seesAll: false },
+        {
+          scope: "workspace",
+          scopeId: "ws-1",
+          seesAll: ["owner", "admin", "manager"].includes(role),
+        },
       ]);
       expect(identity?.authority).toEqual([
         {
@@ -103,7 +107,11 @@ describe("resolveIdentityFromFacts — a member with each built-in workspace rol
           capabilities: BUILT_IN_ROLES[role].capabilities,
         },
       ]);
-      expect(identity?.reach).toEqual({ kind: "membership" });
+      expect(identity?.reach).toEqual(
+        ["owner", "admin", "manager"].includes(role)
+          ? { kind: "membership_with_workspaces", workspaceIds: ["ws-1"] }
+          : { kind: "membership" },
+      );
     });
   }
 });
@@ -141,7 +149,7 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
     );
 
     expect(identity?.memberships).toEqual([
-      { scope: "workspace", scopeId: "ws-1", seesAll: false },
+      { scope: "workspace", scopeId: "ws-1", seesAll: true },
       { scope: "workspace", scopeId: "ws-2", seesAll: false },
     ]);
     expect(identity?.authority.map((grant) => grant.roleKey)).toEqual([
@@ -485,13 +493,13 @@ describe("resolveIdentityFromFacts — sees_all", () => {
     ).toBe(true);
   });
 
-  it("does not grant reach 'all' when no membership carries sees_all", () => {
+  it("does not grant reach 'all' to an ordinary workspace member", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
           {
             workspaceId: "ws-1",
-            role: "admin",
+            role: "member",
             seesAll: false,
             isSystemRole: true,
           },

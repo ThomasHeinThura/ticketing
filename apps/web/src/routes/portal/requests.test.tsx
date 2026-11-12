@@ -24,6 +24,7 @@ const fakeSubmissionsQuery = vi.hoisted(() => ({
         project: { key: "CCY", name: "Customer Work" },
         createdBy: { name: null, isYou: true },
         isRequester: true,
+        raisedBySupport: false,
         customerVisibility: "organisation",
         sla: null,
       },
@@ -39,6 +40,7 @@ const fakeSubmissionsQuery = vi.hoisted(() => ({
         project: null,
         createdBy: { name: "Bob Colleague", isYou: false },
         isRequester: false,
+        raisedBySupport: true,
         customerVisibility: "organisation",
         sla: null,
       },
@@ -221,9 +223,7 @@ describe("PortalRequestsPage", () => {
       "href",
       "/requests/$ref",
     );
-    // A colleague's view names the requester; "raised for you" is the requester's only.
-    expect(screen.getByText("cases.raisedByTeamFor")).toBeTruthy();
-    expect(screen.queryByText("cases.raisedByTeam")).toBeNull();
+    expect(screen.getByText("cases.raisedBy: cases.supportTeam")).toBeTruthy();
     expect(screen.queryByText(/assignee/i)).toBeNull();
   });
 

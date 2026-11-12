@@ -1,13 +1,45 @@
 /*
  * Duration and easing tokens (design-tokens.md#reduced-motion).
  *
- * The easing curves themselves (--ease-out, --ease-in-out) are declared inside
- * theme.css's @theme inline block, exactly where kaneo defines them — they are not
- * duplicated here. This file carries the other motion token: the reduced-motion
- * override, copied verbatim from kaneo's apps/web/src/index.css at extraction.
- * It deliberately does NOT collapse every duration to zero — it keeps the opacity
- * feedback and drops only movement and container morphs.
+ * The easing curves (--ease-out, --ease-in-out, --ease-spring) and the three durations
+ * (--duration-fast, --duration-base, --duration-slow) are declared inside theme.css's
+ * @theme inline block, next to each other — they are not duplicated here. This file carries
+ * the shared press utility and the reduced-motion override. The override started as kaneo's
+ * apps/web/src/index.css block, copied verbatim at extraction. It deliberately does NOT
+ * collapse every duration to zero — it keeps the opacity feedback and drops only movement
+ * and container morphs.
  */
+
+/* Press feedback (design-and-decisions.md#motion-press-feedback): the one shared press rule.
+   Down is instant (0 ms: the pressed style paints on the first frame); pointer release takes
+   --duration-fast, while keyboard activation keeps --tw-duration at 0 ms through release so
+   keyboard actions never animate (plan section 6 rule 8). It sets --tw-duration / --tw-ease,
+   the variables Tailwind's `transition-*` utilities read, so each consumer keeps its own
+   `transition-[...]` property list and never sets `duration-*` / `ease-*` itself (those write
+   a literal and would beat these). --press-scale is the pressed size; disabled controls and
+   active drags never scale. */
+@utility press-feedback {
+  --tw-duration: var(--duration-fast);
+  --tw-ease: var(--ease-out);
+  &[data-keyboard-press] {
+    --tw-duration: 0ms;
+  }
+  &:active,
+  &[data-pressed] {
+    --tw-duration: 0ms;
+    scale: var(--press-scale, 0.97);
+  }
+  &:is(
+      :disabled,
+      [data-disabled],
+      [aria-disabled="true"],
+      [data-dragging],
+      [data-task-dragging="true"]
+    ) {
+    scale: none;
+  }
+}
+
 /* Reduced motion: keep opacity feedback, drop movement (scale/translate) and
    container morphs. Tailwind v4 scale/translate utilities use the standalone
    CSS properties, so forcing them here neutralizes entrance/exit movement
@@ -38,6 +70,38 @@
   [data-slot="button"] {
     scale: none !important;
     transition-property: box-shadow !important;
+  }
+
+  /* Every other press-feedback consumer (tabs, sidebar items, interactive cards and rows)
+     loses the pressed scale too; their colour/shadow feedback is unchanged. */
+  .press-feedback {
+    scale: none !important;
+  }
+
+  /* Tab indicator snaps to the selected tab instead of sliding or morphing width. */
+  [data-slot="tab-indicator"] {
+    transition: none !important;
+  }
+
+  /* Switch: the thumb snaps to its new side instead of springing, and the press stretch
+     is dropped. The state is still shown by the thumb side and the track colour. */
+  [data-slot="switch-thumb"] {
+    scale: none !important;
+    transition: none !important;
+  }
+
+  /* Switch helper text keeps its fade and drops the slide. */
+  [data-slot="switch-helper-line"] {
+    translate: none !important;
+    transition-property: opacity, visibility !important;
+  }
+
+  /* Skeleton shimmer is movement: stop the sweep and drop the highlight band, so the
+     placeholder is a flat muted block. */
+  [data-slot="skeleton"],
+  .animate-skeleton {
+    --skeleton-highlight: transparent !important;
+    animation: none !important;
   }
 
   [data-slot="sidebar-gap"],

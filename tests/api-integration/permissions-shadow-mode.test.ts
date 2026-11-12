@@ -21,7 +21,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import db from "../../apps/api/src/database";
+import db, { schema } from "../../apps/api/src/database";
 import type { createApp } from "../../apps/api/src/index";
 import {
   policyShadowEventTable,
@@ -68,6 +68,13 @@ vi.unmock("../../apps/api/src/index");
  * their intended scenario instead of S7's `missing_identity` case.
  */
 async function backfillPersons(): Promise<void> {
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: { staffSelfRegistrationEnabled: true },
+    });
   await seedInternalOrganisationAndStaffPersons();
 }
 

@@ -1,6 +1,10 @@
+import { eq } from "drizzle-orm";
 import { auditWrongPortalAccept } from "../../customer-invitation/service";
-import db from "../../database";
+import db, { schema } from "../../database";
 import { resolveIdentity } from "../../permissions/resolve-identity";
+import { findPendingInvitation } from "../../utils/registration.repository";
+import { ensureStaffPersonForUser } from "../../utils/seed-internal-organisation";
+import { roleGrantsOwner } from "../../utils/workspace-member-roles";
 import { WorkspaceRoleNotFoundError } from "../../workspace/controllers/workspace-membership-errors";
 import {
   InsufficientPermissionToGrantError,
@@ -71,18 +75,31 @@ async function acceptInvitation(
   invitationId: string,
   callerId: string,
 ): Promise<AcceptedInvitation> {
-  const identity = await resolveIdentity({
+  const initialIdentity = await resolveIdentity({
     userId: callerId,
     credential: "session",
   });
-  if (!identity) throw new NotInvitationRecipientError();
-
-  const pre = await findInvitationWorkspaceId(identity, invitationId);
+  const [user] = initialIdentity
+    ? []
+    : await db
+        .select({ email: schema.userTable.email })
+        .from(schema.userTable)
+        .where(eq(schema.userTable.id, callerId))
+        .limit(1);
+  const pre = initialIdentity
+    ? await findInvitationWorkspaceId(initialIdentity, invitationId)
+    : user &&
+      (await findPendingInvitation({
+        email: user.email,
+        invitationId,
+        now: new Date(),
+      }));
   if (!pre) {
     // CP-25: a customer-scope id on the staff route is a wrong-portal refusal; record it.
     await auditWrongPortalAccept(callerId, invitationId);
+    if (!initialIdentity) throw new NotInvitationRecipientError();
     const recipientMatch = await findInvitationRecipientMatch(
-      identity,
+      initialIdentity,
       invitationId,
     );
     if (recipientMatch === undefined) throw new InvitationNotFoundError();
@@ -91,6 +108,11 @@ async function acceptInvitation(
 
   return db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, pre.workspaceId);
+    if (!initialIdentity) await ensureStaffPersonForUser(callerId, tx);
+    const identity =
+      initialIdentity ??
+      (await resolveIdentity({ userId: callerId, credential: "session" }, tx));
+    if (!identity) throw new NotInvitationRecipientError();
 
     const invitation = await findInvitationForAccept(
       tx,
@@ -126,7 +148,10 @@ async function acceptInvitation(
       throw new AlreadyWorkspaceMemberError();
     }
 
-    const role = invitation.role ?? "member";
+    const role = invitation.role;
+    if (!role || roleGrantsOwner(role)) {
+      throw new InvitationRoleNotAssignableError();
+    }
     const roleRow = await findWorkspaceRoleId(tx, invitation.workspaceId, role);
     if (!roleRow) {
       throw new WorkspaceRoleNotFoundError(role);

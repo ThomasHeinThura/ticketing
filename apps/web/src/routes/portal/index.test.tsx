@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   },
   caseQueries: [] as unknown[],
   projects: [] as Array<Record<string, unknown>>,
+  pending: false,
 }));
 
 const ROLLOUT = {
@@ -36,6 +37,7 @@ const ROLLOUT = {
 vi.mock("@/components/portal/portal-orientation", () => ({
   PortalOrientation: () => null,
 }));
+vi.mock("@/query-client", () => ({ default: {} }));
 vi.mock("@/fetchers/portal/cases", () => ({
   getPortalHome: vi.fn(),
   getPortalCases: vi.fn(),
@@ -52,11 +54,17 @@ vi.mock("@tanstack/react-query", () => ({
         data: { data: state.projects },
         isSuccess: true,
         isPending: false,
+        isLoading: state.pending,
         isError: false,
         refetch: vi.fn(),
       };
     if (queryKey[2] === "home")
-      return { data: state.home, isError: false, refetch: vi.fn() };
+      return {
+        data: state.home,
+        isLoading: state.pending,
+        isError: false,
+        refetch: vi.fn(),
+      };
     state.caseQueries.push(queryKey[3]);
     return {
       data: {
@@ -73,6 +81,7 @@ vi.mock("@tanstack/react-query", () => ({
             project: null,
             createdBy: { name: null, isYou: true },
             isRequester: true,
+            raisedBySupport: false,
             customerVisibility: "private",
             sla: null,
           },
@@ -81,6 +90,7 @@ vi.mock("@tanstack/react-query", () => ({
         meta: { total: 12 },
       },
       isError: false,
+      isLoading: state.pending,
       refetch: vi.fn(),
     };
   },
@@ -142,11 +152,24 @@ afterEach(() => {
   state.search = {};
   state.caseQueries = [];
   state.projects = [];
+  state.pending = false;
   state.home.averageFirstResponse = { seconds: 5400, sampleSize: 2 };
   state.home.actionRequired = { total: 3, cases: 2, approvals: 1 };
 });
 
 describe("Portal dashboard", () => {
+  it("keeps the shared portal placeholder until the dashboard reads finish", () => {
+    state.pending = true;
+    const Component = Route as unknown as React.ComponentType;
+    const view = render(<Component />);
+    const loading = screen.getByTestId("page-loading");
+    expect(loading).toHaveAttribute("aria-busy", "true");
+    expect(loading).toHaveClass("sm:p-6");
+    state.pending = false;
+    view.rerender(<Component />);
+    expect(screen.queryByTestId("page-loading")).toBeNull();
+    expect(screen.getByText("Action required")).toBeVisible();
+  });
   it("shows the KPI cards, each linking to the list it counts", () => {
     const Component = Route as unknown as React.ComponentType;
     render(<Component />);

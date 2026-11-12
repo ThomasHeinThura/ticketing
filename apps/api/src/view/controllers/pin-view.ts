@@ -1,3 +1,4 @@
+import type { Executor } from "../../database/executor";
 import { publishEvent } from "../../events";
 import { type SavedViewAuditActor, writeSavedViewAudit } from "../audit";
 import { togglePinnedView } from "../repository";
@@ -15,17 +16,27 @@ async function pinView(
   personId: string,
   userId: string,
   auditActor: SavedViewAuditActor,
+  assertQueryReach?: (
+    row: { workspaceId: string; query: unknown },
+    executor: Executor,
+  ) => Promise<void>,
 ) {
   // workspaceAccess.fromSavedView establishes workspace reach, but private/team
   // visibility is a separate SV-15..SV-18 rule. Apply the same check as direct reads
   // before writing the caller's preference, so knowing an id cannot pin an invisible view.
   const view = await getView(viewId, personId, userId);
 
-  const mutation = await togglePinnedView(personId, view.workspaceId, viewId, {
+  const mutation = await togglePinnedView(
     personId,
-    userId,
-    apiKeyId: auditActor.apiKeyId ?? undefined,
-  });
+    view.workspaceId,
+    viewId,
+    {
+      personId,
+      userId,
+      apiKeyId: auditActor.apiKeyId ?? undefined,
+    },
+    assertQueryReach,
+  );
 
   await writeSavedViewAudit({
     actor: auditActor,

@@ -1,9 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import type { Executor } from "../../database/executor";
 import type { AuditFailureOperation } from "../../observability/metrics.js";
 
-export async function isCurrentInstanceAdmin(userId: string): Promise<boolean> {
-  const [admin] = await db
+export async function isCurrentInstanceAdmin(
+  userId: string,
+  executor: Executor = db,
+): Promise<boolean> {
+  const [admin] = await executor
     .select({ id: schema.userTable.id })
     .from(schema.userTable)
     .innerJoin(

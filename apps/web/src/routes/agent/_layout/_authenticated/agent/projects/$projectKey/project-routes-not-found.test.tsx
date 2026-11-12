@@ -5,8 +5,8 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, screen, within } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 
@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   projects: [] as Array<Record<string, unknown>> | undefined,
   projectsError: false,
   backlogItems: [] as Array<Record<string, unknown>>,
+  backlogLoading: false,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -86,7 +87,7 @@ vi.mock("@/hooks/queries/work-item/use-get-work-items", () => ({
 vi.mock("@/hooks/queries/work-item/use-get-board-work-items", () => ({
   default: () => ({
     data: { pages: [{ items: state.backlogItems }] },
-    isLoading: false,
+    isLoading: state.backlogLoading,
     isError: false,
     refetch: vi.fn(),
   }),
@@ -136,6 +137,7 @@ beforeEach(() => {
   ];
   state.projectsError = false;
   state.backlogItems = [];
+  state.backlogLoading = false;
 });
 
 afterEach(() => {
@@ -176,6 +178,26 @@ describe("Work items route for a missing or out-of-reach Project", () => {
 });
 
 describe("Backlog route", () => {
+  it("shows the shared page placeholder while rows are loading", async () => {
+    state.backlogLoading = true;
+    stubRoute(BacklogRoute, "WLP", {});
+    const Component = BacklogRoute.options.component as () => React.JSX.Element;
+    let refresh!: () => void;
+    function Harness() {
+      const [, setVersion] = useState(0);
+      refresh = () => setVersion((value) => value + 1);
+      return <Component />;
+    }
+    renderInRouter(<Harness />);
+    expect(await screen.findByTestId("page-loading")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    state.backlogLoading = false;
+    act(() => refresh());
+    expect(await screen.findByTestId("project-backlog-page")).toBeVisible();
+    expect(screen.queryByTestId("page-loading")).toBeNull();
+  });
   it("shows the not-found denial for a missing Project instead of an empty backlog", async () => {
     stubRoute(BacklogRoute, "NOPE", {});
     const Component = BacklogRoute.options.component as () => React.JSX.Element;

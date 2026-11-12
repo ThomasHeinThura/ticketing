@@ -1606,7 +1606,7 @@ no account.
 <a id="auth-and-identity-invitations"></a>
 ### Invitations
 
-1. A staff member with `member:invite` invites an email into an organisation with a role.
+1. A staff member with `member:invite` chooses a workspace role for a staff invitation. The picker lists only roles at or below the inviter’s rank whose capabilities the inviter holds; owner is never offered. Pending rows show the role. On resend an omitted role retains the stored role; a supplied role replaces it. Either is reauthorised against the resender’s current authority, who becomes the authorising inviter for acceptance; a new invitation requires a role. Create and resend write an invitation audit record with the actor, role, previous role on resend and a hash of the normalized invitee address. Acceptance refuses a missing or owner role and rechecks the authorising inviter and stored role under the membership and role locks.
 2. A token (≥ 128 bits, CSPRNG) is generated; only its SHA-256 hash is stored. Default
    expiry **7 days**. Redemption is **bound to the invited email address** — the account
    completing sign-up must verify that address — so an intercepted link is not bearer
@@ -2139,6 +2139,12 @@ from adding log data. This witness does not change request processing or shadow 
 **Never logged:** passwords, tokens, API keys, plugin secrets, session cookies, request
 bodies containing custom field values, attachment contents, or arbitrary exception text.
 
+For an unhandled HTTP 5xx, `http.server_error` records the server request id, registered
+route, method, status, bounded error class and up to 15 sanitized stack locations. Stack
+message lines, unrecognized or unresolvable frames, absolute prefixes, and dependency
+paths below the package name are discarded; exception messages are never included. The
+JSON response contains a generic message and the same `requestId` as the response header. The existing 503 `factor_policy_unavailable` message is retained as a fixed public code. Import connection failures retain their fixed, allowlisted 502 reason code.
+
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
 
@@ -2633,8 +2639,14 @@ thing that is hashed or executed.
   `oidc_group_mapping_update`, `scim_admin_update`, `scim_token_rotate`,
   `scim_token_revoke`, `mfa_reset`, `instance_admin_grant`,
   `instance_admin_suspend`, `impersonation_start`, `secrets_rotate`, `webhook_create`,
-  `webhook_update_url` and `webhook_rotate_secret` (Thomas, 23 Oct, for the first two; the three
-  webhook keys implement `WH-15` and are pending his sign-off). Pending-action binding
+  `webhook_update_url`, `webhook_rotate_secret`, `workspace_role_create`,
+  `workspace_role_update`, `service_key_create`, `service_key_reattest`,
+  `workspace_ownership_transfer`, `organisation_restore`, `webhook_rotate_all`,
+  `change_freeze_override`, `audit_export`, `auth_local_methods_update`,
+  `storage_config_save`, `storage_config_test` and `notification_provider_save`.
+  Email-provider challenge and proof payloads nest the validated write under `request`,
+  keeping the SMTP credential in `request.password` separate from the administrator's
+  password factor. Pending-action binding
   uses its existing `pending_action.id`
   and `payload_hash`; operation binding uses the exact fixed route key, operation key,
   expected resource version and server-computed canonical request-binding hash. The client

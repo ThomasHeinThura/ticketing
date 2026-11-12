@@ -23,6 +23,7 @@ const factorStatusResponse = z.object({
   enabled: z.boolean(),
   required: z.boolean(),
   passwordRequiredForEnrollment: z.boolean(),
+  hasLocalPassword: z.boolean(),
   policyMode: z.enum([
     "off",
     "optional",
@@ -43,6 +44,10 @@ const statusRoute = createRoute({
     "Returns the current user's local factor enrollment state and whether instance policy requires a factor. Never returns factor secrets or recovery codes.",
   responses: {
     200: jsonResponse("Current local factor state", factorStatusResponse),
+    401: jsonResponse(
+      "A session is required",
+      z.object({ message: z.string() }),
+    ),
     403: jsonResponse(
       "The caller's identity is inactive",
       z.object({ message: z.string() }),
@@ -55,17 +60,20 @@ const statusRoute = createRoute({
 });
 
 const factorStatus = apiRouter().openapi(statusRoute, async (c) => {
+  if (!c.get("session") || c.get("apiKey")) {
+    setShadowLegacyAuthorization(c, "denied");
+    return c.json({ message: "Unauthorized" }, 401);
+  }
   setShadowLegacyAuthorization(c, "allowed");
   try {
     const state = await loadLocalFactorState(c.get("userId"));
     const required =
       state.required || (await isIncompleteBootstrapSession(c.get("userId")));
-    const credentials = state.enabled
-      ? []
-      : await getPasswordCredential(c.get("userId"));
-    const passwordRequiredForEnrollment = credentials.some((credential) =>
+    const credentials = await getPasswordCredential(c.get("userId"));
+    const hasLocalPassword = credentials.some((credential) =>
       Boolean(credential.password),
     );
+    const passwordRequiredForEnrollment = !state.enabled && hasLocalPassword;
     const availableMethods: Array<
       "password" | "totp" | "backup_code" | "sso_prompt_login"
     > = [];
@@ -129,6 +137,7 @@ const factorStatus = apiRouter().openapi(statusRoute, async (c) => {
         enabled: state.enabled,
         required,
         passwordRequiredForEnrollment,
+        hasLocalPassword,
         policyMode: state.policy.mode,
         availableMethods,
       },

@@ -1538,8 +1538,22 @@
 		{
 			"idx": 219,
 			"version": "7",
-			"when": 1794472515116,
-			"tag": "0219_customer_project_access",
+			"when": 1794461069672,
+			"tag": "0219_notification_provider_step_up",
+			"breakpoints": true
+		},
+		{
+			"idx": 220,
+			"version": "7",
+			"when": 1794465850849,
+			"tag": "0220_staff_self_registration",
+			"breakpoints": true
+		},
+		{
+			"idx": 222,
+			"version": "7",
+			"when": 1794465850850,
+			"tag": "0222_customer_project_access",
 			"breakpoints": true
 		}
 	]

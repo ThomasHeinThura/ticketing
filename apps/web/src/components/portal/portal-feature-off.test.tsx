@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { headingLevels } from "@/test/headings";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: undefined }),
@@ -56,6 +57,8 @@ describe("portal feature-off state (P3-R2-03, P4R2-L1)", () => {
     expect(screen.getByText("unavailable.title")).toBeTruthy();
     expect(screen.getByText("unavailable.description")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
+    // The state is the whole portal page: its title is the page's one h1.
+    expect(headingLevels()).toEqual([1]);
   });
 
   it("unavailable: says it is temporary and offers a retry", () => {
@@ -63,6 +66,7 @@ describe("portal feature-off state (P3-R2-03, P4R2-L1)", () => {
     vi.stubGlobal("location", { ...window.location, reload });
     render(<PortalFeatureOff state="unavailable" />);
     expect(screen.getByText("temporarilyUnavailable.title")).toBeTruthy();
+    expect(headingLevels()).toEqual([1]);
     fireEvent.click(
       screen.getByRole("button", { name: "common:actions.tryAgain" }),
     );

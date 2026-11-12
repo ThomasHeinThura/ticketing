@@ -127,12 +127,14 @@ export const PROJECT_SOCKET_ROUTE_KEYS = ["GET /api/ws/{projectId}"] as const;
 /**
  * Workspace-level LIST and SEARCH routes that return rows from more than one project (#740).
  * Each declares `requireReachFilteredList` and restricts its rows to the caller's reachable
- * projects in SQL; `project-reach-reads.test.ts` drives them for sessions and API keys.
+ * projects in SQL; behavioural coverage is in `project-reach-reads.test.ts` and
+ * `b5-staff-project-reach.test.ts` for service aggregates.
  */
 export const PROJECT_LIST_ROUTE_KEYS = [
   "GET /api/label/workspace/{workspaceId}",
   "GET /api/project",
   "GET /api/search",
+  "GET /api/services",
   "GET /api/views",
   "GET /api/submissions/{ref}/duplicates",
 ] as const;

@@ -335,7 +335,7 @@ held as plaintext configuration.
 | **Generic OIDC** | `CUSTOM_OAUTH_DISCOVERY_URL`, `CUSTOM_OAUTH_AUTHORIZATION_URL`, `CUSTOM_OAUTH_TOKEN_URL`, `CUSTOM_OAUTH_USER_INFO_URL`, `CUSTOM_OAUTH_LOGOUT_URL`, `CUSTOM_OAUTH_SCOPES`, `CUSTOM_OAUTH_RESPONSE_TYPE`, `CUSTOM_OAUTH_AUTO_LOGIN`, `CUSTOM_AUTH_PKCE`, `CUSTOM_OAUTH_CLIENT_ID` | `identity_connection` | no |
 | **OIDC secret** | `CUSTOM_OAUTH_CLIENT_SECRET` | `identity_connection` | **yes — encrypted** |
 | **Social providers** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `identity_connection` | secret half **encrypted** |
-| **Instance switches** | `DISABLE_REGISTRATION`, `DISABLE_LOGIN_FORM`, `DISABLE_PASSWORD_REGISTRATION`, `DISABLE_EMAIL_OTP_SIGN_IN`, `DISABLE_WORKSPACE_CREATION` | instance settings | no |
+| **Instance switches** | `DISABLE_REGISTRATION`, `DISABLE_LOGIN_FORM`, `DISABLE_PASSWORD_REGISTRATION`, `DISABLE_EMAIL_OTP_SIGN_IN`, `DISABLE_WORKSPACE_CREATION` (name retained; no effect since D-A, workspace creation is always instance-administrator only) | instance settings | no |
 | **Origins / cookies** | `CORS_ORIGINS`, `COOKIE_DOMAIN` | derived from `TASKDESK_AGENT_URL` + `TASKDESK_PORTAL_URL`, or instance settings | no |
 | **Valkey topology** | `REDIS_CLUSTER_NODES`, `REDIS_SENTINELS`, `REDIS_SENTINEL_MASTER_NAME`, `REDIS_SENTINEL_TLS` | operational; fold into `TASKDESK_VALKEY_URL` or an operational row | no |
 | **Valkey credentials** | `REDIS_PASSWORD`, `REDIS_SENTINEL_PASSWORD` | as above | **yes** |
@@ -806,7 +806,7 @@ Contract: `put`, `get`, `delete`, `presignUpload`, `presignDownload`, `stat`.
 
 | Plugin id | Notes |
 | --- | --- |
-| `notify.email` | SMTP. Config includes host, port, TLS, credentials, from-address. **Core** — sign-in codes, invitations, setup and notification email all depend on it |
+| `notify.email` | SMTP, either a custom server or Amazon SES through its SMTP interface (region picks the host; port 587 with STARTTLS). Config includes provider, region, host, port, TLS, credentials, from-address and the last test result. **Core** — sign-in codes, invitations, setup and notification email all depend on it |
 | `notify.webhook` | Generic JSON POST with HMAC signature. SSRF-guarded. Core (P4) |
 | `notify.teams` → `notify.slack` → `notify.telegram` → `notify.viber` → others | **Future, in that order** (decided 2026-09-05). Not in the three-to-four-month core scope. kaneo's inherited Slack/Discord/Telegram routers are **removed at fork**, not kept dormant ([inherited-features.md](#inherited-features)); the `notify.*` contract is the extension point they come back through |
 | `notify.discord` · `notify.ntfy` · `notify.gotify` | Future, unprioritised |
@@ -1524,6 +1524,8 @@ Three levels, following Plane, with clear ownership at each.
 | **Instance** | `/god-mode/*` (agent host root; sign-in at `/god-mode/sign-in`) | Everything about the deployment |
 
 Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) and `/agent/god-mode/*` URLs redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
+
+An unknown agent page has a focused page heading, an explanation, a workspace home link and a history Back action. Protected routes continue to send signed-out visitors to sign-in; the invitation acceptance route remains separate.
 
 Old `/agent/settings/*` URLs (including `/agent/settings/profile/*`) redirect to these pages, keeping search and hash (L-03, Thomas 30 Oct 2026).
 

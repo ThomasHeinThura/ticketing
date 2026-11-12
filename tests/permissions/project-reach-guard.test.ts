@@ -148,6 +148,8 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
   "GET /api/sla-policies/{id}": "one SLA policy definition; configuration row",
   "GET /api/workflows/{id}": "one workflow definition; configuration row",
   "GET /api/workspace/{workspaceId}": "the workspace row itself",
+  "GET /api/workspace/{workspaceId}/invitation-roles":
+    "workspace role options bounded by the inviter authority; no project rows",
   "GET /api/workspace/{workspaceId}/invitations":
     "workspace invitations; no project rows",
   "GET /api/workspace/{workspaceId}/members":
@@ -197,8 +199,6 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
   // P5 service management, change management and releases.
   "GET /api/service-catalogue/status":
     "feature flag and the caller's own manage capabilities; no rows",
-  "GET /api/services":
-    "service definitions (name, category, owner team, status); links to projects are only on the detail route, which is reach-filtered. Incident and open-change counts are workspace-wide per-service aggregates (SVC-3), with no project or work item ids, names or titles",
   "GET /api/change-freezes":
     "freeze window definitions (name, reason, start, end); workspace configuration rows, not project rows",
   "GET /api/releases":

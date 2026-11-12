@@ -35,6 +35,7 @@ type CaseRow = {
   project: { key: string; name: string } | null;
   createdBy: { name: string | null; isYou: boolean };
   isRequester: boolean;
+  raisedBySupport: boolean;
   customerVisibility: string;
   sla: unknown;
 };
@@ -603,6 +604,7 @@ describe("portal cases (S4b)", () => {
         "isRequester",
         "priority",
         "project",
+        "raisedBySupport",
         "ref",
         "requestTypeName",
         "sla",
@@ -710,6 +712,71 @@ describe("portal cases (S4b)", () => {
     }
   });
 
+  it("keeps the support creator marker after a requester change without exposing staff identity", async () => {
+    const s = await seed();
+    const before = await list(s.contoso, s.alice, "scope=mine");
+    expect(
+      before.cases.find((row) => row.ref === s.directAlice.key)
+        ?.raisedBySupport,
+    ).toBe(true);
+    expect(
+      before.cases.find((row) => row.ref === s.aliceNew.ref)?.raisedBySupport,
+    ).toBe(false);
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: s.bob.person.id })
+      .where(eq(schema.workItemTable.id, s.directAlice.id));
+    const after = await list(s.contoso, s.bob, "scope=mine");
+    expect(
+      after.cases.find((row) => row.ref === s.directAlice.key)?.raisedBySupport,
+    ).toBe(true);
+    const response = await portalRequest(
+      s.contoso,
+      s.bob,
+      `/api/portal/requests/${s.directAlice.key}`,
+    );
+    expect(response.status).toBe(200);
+    const detail = await response.text();
+    expect(JSON.parse(detail)).toMatchObject({ raisedBySupport: true });
+    expect(detail).not.toContain(s.contoso.requester.user.email);
+    expect(detail).not.toContain(s.contoso.requester.user.id);
+    // Conversion writes a person ID rather than the direct-create user ID. A later
+    // requester change makes that item a direct row, but not a staff-raised case.
+    await db
+      .update(schema.activityTable)
+      .set({ actorId: s.contoso.requesterPerson.id, actorType: "person" })
+      .where(
+        and(
+          eq(schema.activityTable.workItemId, s.waitingItem.id),
+          eq(schema.activityTable.verb, "created"),
+        ),
+      );
+    await db
+      .update(schema.workItemTable)
+      .set({ requesterId: s.bob.person.id })
+      .where(eq(schema.workItemTable.id, s.waitingItem.id));
+    const converted = await list(s.contoso, s.bob, "scope=mine");
+    expect(
+      converted.cases.find((row) => row.ref === s.waitingItem.key)
+        ?.raisedBySupport,
+    ).toBe(false);
+    // A customer-created item remains unmarked even when the requester changes.
+    await db
+      .update(schema.activityTable)
+      .set({ actorId: s.alice.user.id, actorType: "person" })
+      .where(
+        and(
+          eq(schema.activityTable.workItemId, s.directAlice.id),
+          eq(schema.activityTable.verb, "created"),
+        ),
+      );
+    const selfRaised = await list(s.contoso, s.bob, "scope=mine");
+    expect(
+      selfRaised.cases.find((row) => row.ref === s.directAlice.key)
+        ?.raisedBySupport,
+    ).toBe(false);
+  });
+
   it("exports the filtered cases as escaped CSV", async () => {
     const s = await seed();
     const response = await portalRequest(
@@ -724,7 +791,7 @@ describe("portal cases (S4b)", () => {
     const csv = await response.text();
     const lines = csv.trimEnd().split("\r\n");
     expect(lines[0]).toBe(
-      "Reference,Title,Request type,Severity,Status,Project,Created by,Created,Updated",
+      "Reference,Title,Request type,Severity,Status,Project,Requester,Raised by,Created,Updated",
     );
     expect(lines).toHaveLength(6);
     // CSV injection: the formula is neutralised, and quotes and commas are escaped.

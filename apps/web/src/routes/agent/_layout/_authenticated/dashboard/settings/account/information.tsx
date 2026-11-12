@@ -304,7 +304,7 @@ function RouteComponent() {
                         type="button"
                         aria-label={t("settings:informationPage.avatar.edit")}
                         disabled={isUploadingAvatar || isRemovingAvatar}
-                        className="group relative rounded-full outline-none transition-transform duration-150 ease-out active:scale-97 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+                        className="group relative rounded-full outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
                       />
                     }
                   >

@@ -15,13 +15,11 @@ type InviteWorkspaceMemberRequest = InviteWorkspaceMemberBody & {
 // `role` of `"owner"` and sends the invitation email itself on success.
 const inviteWorkspaceMember = async ({
   workspaceId,
-  email,
-  role,
-  resend,
+  ...body
 }: InviteWorkspaceMemberRequest) => {
   const response = await client.workspace[":workspaceId"].invitations.$post({
     param: { workspaceId },
-    json: { email, role, resend },
+    json: body,
   });
 
   if (!response.ok) {

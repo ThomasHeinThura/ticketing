@@ -1,5 +1,5 @@
 import type { ProjectReachFacts } from "@taskdesk/permissions";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, exists, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
 import {
@@ -9,6 +9,7 @@ import {
   serviceCalendarTable,
   workspaceTable,
 } from "../database/schema";
+import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import {
   apiRouter,
   type BaseVariables,
@@ -27,6 +28,7 @@ import {
 } from "../utils/has-project-reach";
 import {
   listReachOf,
+  requireReachContext,
   requireReachFilteredList,
 } from "../utils/reach-filtered-list";
 import { apiKeyScopeSatisfies } from "../utils/require-api-key-permission-scope";
@@ -103,6 +105,7 @@ import {
   PREREQUISITE_DELETION_ROUTE,
   PROJECT_DELETION_ROUTE,
 } from "./project-deletion-target";
+import { projectServesCustomer } from "./repository";
 import {
   customerOrganisationListSchema,
   documentLinkSchema,
@@ -140,6 +143,7 @@ import {
   updateStakeholderBody,
   workspaceIdQuery,
 } from "./schema";
+import { projectSeenOnlyViaWorkspaceRole } from "./see-all-only";
 
 async function assertProjectCalendar(
   workspaceId: string,
@@ -273,7 +277,7 @@ const createProjectRoute = createRoute({
     200: jsonResponse("The created project", projectSchema),
     400: errorResponse("Invalid body, or workspace ID could not be determined"),
     403: errorResponse(
-      "No workspace access, or missing project:create permission",
+      "No workspace access, missing project:create permission, or instance_admin_required_for_new_customer_organisation",
     ),
     422: errorResponse(
       "PR-9, same-workspace service calendar, or customer organisation validation failed",
@@ -291,13 +295,12 @@ const listCustomerOrganisationsRoute = createRoute({
   description:
     "Active, live customer organisations (never the internal one), for the create-project " +
     "selector, each with the service calendar a new project for it inherits in this " +
-    "workspace. Requires project:create in the workspace.",
+    "workspace. Instance admins see all; other callers see only organisations served by a live or recoverable project in this workspace. Requires project:create in the workspace.",
   middleware: [
     workspaceAccess.fromQuery(),
     // STRICT capability check, not the legacy `requireWorkspacePermission`: the legacy
     // statements give the default `member` role `project:create`, while the permission
-    // matrix (rbac.md) grants it to owner/admin/manager only. This list is instance-wide, so
-    // it must follow the matrix.
+    // matrix (rbac.md) grants it to owner/admin/manager only.
     requireWorkspaceCapability("project:create"),
   ] as const,
   request: { query: workspaceIdQuery },
@@ -363,10 +366,11 @@ const reorderProjectsRoute = createRoute({
   tags: ["Projects"],
   summary: "Reorder projects",
   description:
-    "Set the sidebar order of a workspace's projects. The given positions express relative order only -- the workspace is renumbered to 0..n-1.",
+    "Set the sidebar order of reachable workspace projects. The given positions express relative order only; unreachable projects are unchanged.",
   middleware: [
     workspaceAccess.fromQuery(),
     requireWorkspacePermission({ project: ["update"] }),
+    requireReachContext,
   ] as const,
   request: {
     query: workspaceIdQuery,
@@ -383,6 +387,7 @@ const reorderProjectsRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    404: errorResponse("A project is missing or out of reach"),
   },
 });
 
@@ -585,14 +590,7 @@ const restoreProjectRoute = createRoute({
   },
 });
 
-// ── Issue #25's bounded slice: milestones, prerequisites, stakeholders, document ───────
-// links (`docs/03-features/projects-and-engagements.md` § API). Project members,
-// ownership (parent_id/owner_team_id) and health are NOT part of this slice -- see the
-// PR description for the three tracked gaps that block them. Every route below shares
-// `project:update`'s enforcement (`requireWorkspacePermission({ project: ["update"] })`)
-// -- the spec's own permission table: "Manage stakeholders, milestones, prerequisites,
-// document links; set health | project:update" -- and `workspaceAccess.fromProject()`
-// against the same `{id}` path param the parent project routes already use.
+// Project-scoped writes retain the workspace and API-key gates as well as project reach.
 
 const listMilestonesRoute = createRoute({
   method: "get",
@@ -1025,6 +1023,14 @@ const project = apiRouter<
 >()
   .openapi(listCustomerOrganisationsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
+    const session = c.get("session") as {
+      impersonatedBy?: string | null;
+    } | null;
+    const instanceAdmin =
+      !!session &&
+      !c.get("apiKey") &&
+      !session.impersonatedBy &&
+      (await isCurrentInstanceAdmin(c.get("userId")));
     const [workspace] = await db
       .select({
         defaultServiceCalendarId: workspaceTable.defaultServiceCalendarId,
@@ -1057,6 +1063,20 @@ const project = apiRouter<
           eq(organisationTable.active, true),
           eq(organisationTable.isInternal, false),
           isNull(organisationTable.deletedAt),
+          instanceAdmin
+            ? undefined
+            : exists(
+                db
+                  .select({ id: projectTable.id })
+                  .from(projectTable)
+                  .where(
+                    and(
+                      eq(projectTable.workspaceId, workspaceId),
+                      eq(projectTable.organisationId, organisationTable.id),
+                      projectServesCustomer(),
+                    ),
+                  ),
+              ),
         ),
       )
       .orderBy(organisationTable.name);
@@ -1117,7 +1137,24 @@ const project = apiRouter<
       includeDeleted === "true",
       readableProjectIds,
     );
-    return c.json(projects, 200);
+    const facts = new Map(
+      (await reach.projectFactsFor([workspaceId])).map((fact) => [
+        fact.id,
+        fact,
+      ]),
+    );
+    return c.json(
+      projects.map((project) => {
+        const fact = facts.get(project.id);
+        return {
+          ...project,
+          seenOnlyViaWorkspaceRole: fact
+            ? projectSeenOnlyViaWorkspaceRole(reach.identity, fact)
+            : false,
+        };
+      }),
+      200,
+    );
   })
   .openapi(createProjectRoute, async (c) => {
     const {
@@ -1145,6 +1182,10 @@ const project = apiRouter<
         },
         c.get("userId"),
         c.get("apiKey")?.id,
+        Boolean(c.get("session")) &&
+          !c.get("apiKey") &&
+          !(c.get("session") as { impersonatedBy?: string | null } | null)
+            ?.impersonatedBy,
       );
       return c.json(newProject, 200);
     } catch (error) {
@@ -1201,7 +1242,12 @@ const project = apiRouter<
   .openapi(reorderProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     const { projects } = c.req.valid("json");
-    const reordered = await reorderProjectsCtrl(workspaceId, projects);
+    const reachable = await listReachOf(c).reachableProjectIds([workspaceId]);
+    const reordered = await reorderProjectsCtrl(
+      workspaceId,
+      projects,
+      reachable,
+    );
     return c.json(reordered, 200);
   })
   .openapi(updateProjectRoute, async (c) => {

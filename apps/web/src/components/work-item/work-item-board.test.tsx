@@ -85,6 +85,11 @@ vi.mock("@tanstack/react-virtual", async (importOriginal) => {
   };
 });
 const rankWorkItem = vi.hoisted(() => vi.fn());
+// A refused move is explained in a library toast, not an inline alert.
+const toastError = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/toast", () => ({
+  toast: { error: (...args: unknown[]) => toastError(...args) },
+}));
 const transitionWorkItem = vi.hoisted(() => vi.fn());
 const getWorkItemTransitions = vi.hoisted(() => vi.fn());
 // Lets one test make `rankNeighbours` find nothing to rank against, the stale-column case the
@@ -145,6 +150,7 @@ function item(
     assigneeId: null,
     assigneeName: null,
     position,
+    version: 1,
     unavailableFields: [],
     ...overrides,
   } as WorkItemRow;
@@ -257,6 +263,7 @@ beforeEach(() => {
   drag.cancelCalls = 0;
   drag.endCalls = 0;
   useUserPreferencesStore.getState().resetDisplayPreferences();
+  toastError.mockReset();
   rankWorkItem.mockReset();
   rankWorkItem.mockResolvedValue({});
   transitionWorkItem.mockReset();
@@ -826,9 +833,9 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
   it("without transition capability a cross-column drop is refused locally and writes nothing", async () => {
     board({ canRank: true });
     await dragTo("WLP-1", "WLP-5");
-    expect(
-      await screen.findByText(translate("workItems:board.transitionForbidden")),
-    ).toBeInTheDocument();
+    expect(toastError).toHaveBeenCalledWith(
+      translate("workItems:board.transitionForbidden"),
+    );
     expect(getWorkItemTransitions).not.toHaveBeenCalled();
     expect(transitionWorkItem).not.toHaveBeenCalled();
   });
@@ -846,9 +853,8 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
     ]);
     board({ canTransition: true });
     await dragTo("WLP-1", stateId("Done"));
-    expect(
-      await screen.findByTestId("work-item-board-error"),
-    ).toHaveTextContent(
+    expect(toastError).toHaveBeenCalledOnce();
+    expect(toastError).toHaveBeenCalledWith(
       "WLP-1 can't move there right now (a note is required). Open it to add what's missing.",
     );
     expect(transitionWorkItem).not.toHaveBeenCalled();
@@ -868,17 +874,17 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
     transitionWorkItem.mockRejectedValue(new HttpError(400, "x"));
     board({ canTransition: true });
     await dragTo("WLP-1", stateId("Done"));
-    expect(
-      await screen.findByTestId("work-item-board-error"),
-    ).toHaveTextContent("The state change for WLP-1 was not valid.");
+    expect(toastError).toHaveBeenCalledWith(
+      expect.stringContaining("The state change for WLP-1 was not valid."),
+    );
   });
 
   it("reports no edge to that state as unavailable", async () => {
     board({ canTransition: true });
     await dragTo("WLP-1", stateId("Done"));
-    expect(
-      await screen.findByTestId("work-item-board-error"),
-    ).toHaveTextContent("WLP-1 can't move to that state right now.");
+    expect(toastError).toHaveBeenCalledWith(
+      "WLP-1 can't move to that state right now.",
+    );
   });
 
   it("says the move stood but the position was not saved when only the rank step fails", async () => {
@@ -895,10 +901,10 @@ describe("drag to rank and transition (VW-9, VW-10)", () => {
     rankWorkItem.mockRejectedValue(new HttpError(409, "x"));
     board({ canTransition: true, canRank: true });
     await dragTo("WLP-1", "WLP-5");
-    expect(
-      await screen.findByTestId("work-item-board-error"),
-    ).toHaveTextContent(
-      "WLP-1 moved to Done, but its position there was not saved.",
+    expect(toastError).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "WLP-1 moved to Done, but its position there was not saved.",
+      ),
     );
   });
 });
@@ -924,11 +930,10 @@ describe("failure handling for rank (404, 409, 422, 400, 403)", () => {
       const { client } = board({ canRank: true });
       const invalidate = vi.spyOn(client, "invalidateQueries");
       await dragTo("WLP-1", "WLP-2");
-      const alert = await screen.findByTestId("work-item-board-error");
-      expect(alert).toHaveTextContent(text);
-      expect(alert).toHaveAttribute("role", "alert");
+      expect(toastError).toHaveBeenCalledOnce();
+      expect(toastError).toHaveBeenCalledWith(text);
       expect(invalidate).toHaveBeenCalledWith({
-        queryKey: ["work-items", "proj_1"],
+        queryKey: ["work-items", "proj_1", "board"],
       });
     },
   );
@@ -973,7 +978,7 @@ describe("DnD lifecycle, keyboard and concurrency", () => {
     expect(rankWorkItem).not.toHaveBeenCalled();
     expect(getWorkItemTransitions).not.toHaveBeenCalled();
   });
-  it("accepts only one write in flight and allows a new drag after completion", async () => {
+  it("shows the dropped card at once and sends two quick drops in order without locking the board", async () => {
     let finish!: (value: unknown) => void;
     rankWorkItem.mockImplementationOnce(
       () =>
@@ -988,22 +993,237 @@ describe("DnD lifecycle, keyboard and concurrency", () => {
         activatorEvent: new MouseEvent("mousedown"),
       }),
     );
-    let pending: Promise<unknown>;
+    let first!: Promise<unknown>;
+    act(() => {
+      first = callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "id-WLP-3" },
+      });
+    });
+    // The server has not answered, yet the card is already where it was dropped.
+    expect(keysIn("Open")).toEqual(["WLP-2", "WLP-3", "WLP-1"]);
+    await waitFor(() => expect(rankWorkItem).toHaveBeenCalledTimes(1));
+    // Another card can be dragged and dropped while the first write is still in flight.
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-2" },
+        activatorEvent: new MouseEvent("mousedown"),
+      }),
+    );
+    let second!: Promise<unknown>;
+    act(() => {
+      second = callDrag("onDragEnd", {
+        active: { id: "id-WLP-2" },
+        over: { id: "id-WLP-1" },
+      });
+    });
+    expect(keysIn("Open")).toEqual(["WLP-3", "WLP-1", "WLP-2"]);
+    // The second write waits for the first, so neither ranks against stale neighbours.
+    expect(rankWorkItem).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish({});
+      await first;
+      await second;
+    });
+    expect(rankWorkItem.mock.calls.map(([input]) => input)).toEqual([
+      { key: "WLP-1", beforeId: "id-WLP-3" },
+      { key: "WLP-2", beforeId: "id-WLP-1" },
+    ]);
+    expect(toastError).not.toHaveBeenCalled();
+  });
+  it("marks only the moving card as pending and refuses a new drag of it", async () => {
+    let finish!: (value: unknown) => void;
+    rankWorkItem.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const view = board({ canRank: true });
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new MouseEvent("mousedown"),
+      }),
+    );
+    let pending!: Promise<unknown>;
     act(() => {
       pending = callDrag("onDragEnd", {
         active: { id: "id-WLP-1" },
         over: { id: "id-WLP-2" },
       });
     });
-    await dragTo("WLP-3", "s-done");
+    await waitFor(() => expect(rankWorkItem).toHaveBeenCalledTimes(1));
+    expect(card("WLP-1")).toHaveAttribute("data-pending", "true");
+    expect(card("WLP-1")).toHaveAttribute("aria-busy", "true");
+    expect(card("WLP-2")).not.toHaveAttribute("data-pending");
+    expect(card("WLP-3")).not.toHaveAttribute("data-pending");
+    // The moving card cannot be picked up again until its write is confirmed.
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new MouseEvent("mousedown"),
+      }),
+    );
+    await act(async () => {
+      await callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "id-WLP-3" },
+      });
+    });
     expect(rankWorkItem).toHaveBeenCalledTimes(1);
-    expect(getWorkItemTransitions).not.toHaveBeenCalled();
     await act(async () => {
       finish({});
       await pending;
     });
+    // The card is released when the reloaded rows arrive.
+    view.rerender({
+      workItems: baseItems.map((entry) =>
+        entry.key === "WLP-1"
+          ? { ...entry, position: "2.5", version: entry.version + 1 }
+          : entry,
+      ),
+    });
+    await waitFor(() =>
+      expect(card("WLP-1")).not.toHaveAttribute("data-pending"),
+    );
     await dragTo("WLP-3", "WLP-1");
     expect(rankWorkItem).toHaveBeenCalledTimes(2);
+  });
+  it("keeps the card in the target column while a transition is in flight, then puts it back on refusal", async () => {
+    let refuse!: (error: unknown) => void;
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        available: true,
+        blockedBy: [],
+      },
+    ]);
+    transitionWorkItem.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          refuse = reject;
+        }),
+    );
+    board({ canTransition: true, canRank: true });
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new MouseEvent("mousedown"),
+      }),
+    );
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "id-WLP-5" },
+      });
+    });
+    expect(keysIn("Done")).toEqual(["WLP-4", "WLP-1", "WLP-5"]);
+    expect(keysIn("Open")).toEqual(["WLP-2", "WLP-3"]);
+    await waitFor(() => expect(transitionWorkItem).toHaveBeenCalledOnce());
+    expect(keysIn("Done")).toEqual(["WLP-4", "WLP-1", "WLP-5"]);
+    await act(async () => {
+      refuse(new HttpError(409, "conflict"));
+      await pending;
+    });
+    expect(keysIn("Open")).toEqual(["WLP-1", "WLP-2", "WLP-3"]);
+    expect(keysIn("Done")).toEqual(["WLP-4", "WLP-5"]);
+    expect(toastError).toHaveBeenCalledOnce();
+    expect(rankWorkItem).not.toHaveBeenCalled();
+  });
+  it("restores keyboard focus and announces a refused cross-column move", async () => {
+    let refuse!: (error: unknown) => void;
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        available: true,
+        blockedBy: [],
+      },
+    ]);
+    transitionWorkItem.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          refuse = reject;
+        }),
+    );
+    const view = board({ canTransition: true, canRank: true });
+    card("WLP-1").querySelector<HTMLElement>("[data-task-id]")?.focus();
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new KeyboardEvent("keydown", { code: "Space" }),
+      }),
+    );
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "s-done" },
+      });
+    });
+    await waitFor(() => expect(transitionWorkItem).toHaveBeenCalledOnce());
+    expect(document.activeElement).toBe(
+      card("WLP-1").querySelector("[data-task-id]"),
+    );
+    await act(async () => {
+      refuse(new HttpError(409, "conflict"));
+      await pending;
+    });
+    expect(keysIn("Open")).toContain("WLP-1");
+    expect(document.activeElement).toBe(
+      card("WLP-1").querySelector("[data-task-id]"),
+    );
+    expect(
+      within(screen.getByTestId("work-item-board")).getByRole("status"),
+    ).toHaveTextContent("Move refused. WLP-1 is back in Open.");
+    const other = card("WLP-2").querySelector<HTMLElement>("[data-task-id]");
+    other?.focus();
+    view.rerender({ workItems: [...baseItems] });
+    expect(document.activeElement).toBe(other);
+  });
+  it("restores keyboard focus and announces a cancelled transition note", async () => {
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        notePolicy: "required",
+        available: false,
+        blockedBy: [{ reasonCode: "note.required" }],
+      },
+    ]);
+    board({ canTransition: true, canRank: true });
+    card("WLP-1").querySelector<HTMLElement>("[data-task-id]")?.focus();
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new KeyboardEvent("keydown", { code: "Space" }),
+      }),
+    );
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "s-done" },
+      });
+    });
+    await screen.findByRole("textbox", {
+      name: translate("workItems:properties.transitionNote"),
+    });
+    await act(async () => {
+      screen.getByRole("button", { name: "Cancel" }).click();
+      await pending;
+    });
+    expect(keysIn("Open")).toContain("WLP-1");
+    expect(document.activeElement).toBe(
+      card("WLP-1").querySelector("[data-task-id]"),
+    );
+    expect(
+      within(screen.getByTestId("work-item-board")).getByRole("status"),
+    ).toHaveTextContent("Move cancelled. WLP-1 is back in Open.");
+    expect(transitionWorkItem).not.toHaveBeenCalled();
   });
   it("restores keyboard focus to the moved card after persisted rows change", async () => {
     const view = board({ canRank: true });
@@ -1039,16 +1259,40 @@ describe("DnD lifecycle, keyboard and concurrency", () => {
       noNeighbours.active = false;
     }
   });
-  it("does not fabricate success or leave an unhandled error if refreshing fails", async () => {
-    const { client } = board({ canRank: true });
+  it("keeps a saved move saved and quiet when the background reload fails", async () => {
+    const { client, rerender } = board({ canRank: true });
     vi.spyOn(client, "invalidateQueries").mockRejectedValue(
       new Error("offline"),
     );
     await dragTo("WLP-1", "WLP-2");
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    // The reload is not awaited and its failure is swallowed: no error is invented for a
+    // write the server confirmed, and nothing is left unhandled.
+    expect(toastError).not.toHaveBeenCalled();
     expect(
       within(screen.getByTestId("work-item-board")).getByRole("status"),
-    ).toBeEmptyDOMElement();
+    ).toHaveTextContent("WLP-1 moved to position 2 of 3 in Open.");
+    // The card holds its new slot until fresh rows arrive, then follows them.
+    expect(keysIn("Open")).toEqual(["WLP-2", "WLP-1", "WLP-3"]);
+    rerender({
+      workItems: baseItems.map((entry) =>
+        entry.key === "WLP-1"
+          ? { ...entry, position: "2.5", version: entry.version + 1 }
+          : entry,
+      ),
+    });
+    await waitFor(() =>
+      expect(card("WLP-1")).not.toHaveAttribute("data-pending"),
+    );
+    expect(keysIn("Open")).toEqual(["WLP-2", "WLP-1", "WLP-3"]);
+  });
+  it("explains a network failure in a toast and puts the card back", async () => {
+    rankWorkItem.mockRejectedValue(new TypeError("Failed to fetch"));
+    board({ canRank: true });
+    await dragTo("WLP-1", "WLP-3");
+    expect(toastError).toHaveBeenCalledWith(
+      translate("workItems:board.failure.network", { key: "WLP-1" }),
+    );
+    expect(keysIn("Open")).toEqual(["WLP-1", "WLP-2", "WLP-3"]);
   });
 });
 describe("selection", () => {
@@ -1260,10 +1504,9 @@ it.each([
     transitionWorkItem.mockRejectedValueOnce(new HttpError(status, "blocked"));
     board({ canRank: true, canTransition: true });
     await dragTo("WLP-1", "s-done");
-    expect(screen.getByTestId("work-item-board-error")).toHaveTextContent(
-      message,
-    );
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining(message));
     expect(keysIn("Open")).toContain("WLP-1");
+    expect(keysIn("Done")).not.toContain("WLP-1");
     expect(rankWorkItem).not.toHaveBeenCalled();
     transitionWorkItem.mockResolvedValueOnce({});
     await dragTo("WLP-1", "s-done");
@@ -1315,15 +1558,11 @@ it.each(["offer", "write"])(
       );
     board({ canTransition: true });
     await dragTo("WLP-1", "s-done");
-    const alert = screen.getByTestId("work-item-board-error");
-    expect(alert).not.toHaveTextContent("cab.pending");
-    expect(alert).not.toHaveTextContent("secret-account");
-    expect(alert).toHaveTextContent(
-      translate("workItems:journey.reasonCabPending"),
-    );
-    expect(alert).toHaveTextContent(
-      translate("workItems:journey.reasonUnknown"),
-    );
+    const [shown] = toastError.mock.calls.map(([text]) => String(text));
+    expect(shown).not.toContain("cab.pending");
+    expect(shown).not.toContain("secret-account");
+    expect(shown).toContain(translate("workItems:journey.reasonCabPending"));
+    expect(shown).toContain(translate("workItems:journey.reasonUnknown"));
     expect(rankWorkItem).not.toHaveBeenCalled();
   },
 );

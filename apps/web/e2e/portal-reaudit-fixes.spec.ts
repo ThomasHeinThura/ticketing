@@ -50,6 +50,7 @@ const session = {
 
 const baseCase = {
   requestTypeName: "Incident",
+  raisedBySupport: false,
   createdAt: "2026-11-01T09:00:00.000Z",
   updatedAt: "2026-11-03T21:59:00.000Z",
   project: { key: "HELP", name: "Help desk" },
@@ -67,6 +68,7 @@ const cases = [
     customerStatus: "in_progress",
     createdBy: { name: null, isYou: true },
     isRequester: true,
+    raisedBySupport: true,
   },
   {
     ...baseCase,
@@ -77,6 +79,7 @@ const cases = [
     customerStatus: "need_more_info",
     createdBy: { name: "Dana Customer", isYou: false },
     isRequester: false,
+    raisedBySupport: true,
   },
   {
     ...baseCase,
@@ -553,16 +556,20 @@ for (const theme of THEMES)
         await page.goto(`${PORTAL_ORIGIN}/requests`);
         await shellReady(page);
         const mine = page.getByRole("row").filter({ hasText: "HELP-7" });
-        await expect(
-          mine.getByText("Raised by our team for you"),
-        ).toBeVisible();
+        // D-K: a case raised by staff names the customer as Requester and shows the neutral
+        // "Raised by: Support team" line, never a staff name.
+        await expect(mine.getByText("Raised by: Support team")).toBeVisible();
         const colleague = page.getByRole("row").filter({ hasText: "HELP-8" });
         await expect(
-          colleague.getByText("Raised by our team for Dana Customer"),
+          colleague.getByText("Raised by: Support team"),
         ).toBeVisible();
+        // The requester shows in the Requester column on wide frames and under the title on
+        // narrow ones; only one of the two is visible at a time.
         await expect(
-          colleague.getByText("Raised by our team for you"),
-        ).toHaveCount(0);
+          colleague.getByText("Dana Customer").locator("visible=true").first(),
+        ).toBeVisible();
+        const selfRaised = page.getByRole("row").filter({ hasText: "SUB-5" });
+        await expect(selfRaised.getByText("Raised by")).toHaveCount(0);
         await expect(page.locator("main")).toHaveCount(1);
         await expect(page).toHaveTitle("Support Requests · Customer portal");
         const link = page.getByRole("link", { name: "HELP-7", exact: true });
@@ -630,8 +637,9 @@ for (const theme of THEMES)
         await expect(page).toHaveTitle(
           "VPN drops every 10 minutes · HELP-7 · Customer portal",
         );
+        await expect(page.getByText("Incident", { exact: true })).toBeVisible();
         await expect(
-          page.getByText("Incident · Raised by our team for you"),
+          page.getByText("Support team", { exact: true }),
         ).toBeVisible();
         await expect(page.locator("main")).toHaveCount(1);
         await page.locator("input[type=file]").setInputFiles([

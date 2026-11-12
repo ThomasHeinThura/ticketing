@@ -127,6 +127,7 @@ import {
   resolveMembershipRoleFrom,
 } from "../utils/workspace-member-roles";
 import { hasCanonicalCustomerMembership } from "./customer-membership";
+import { workspaceRoleSeesAllProjects } from "./workspace-project-reach";
 
 /* ------------------------------------------------------------------ *
  * The pure mapper
@@ -519,7 +520,9 @@ export function resolveIdentityFromFacts(
       memberships.push({
         scope: "workspace",
         scopeId: workspaceId,
-        seesAll: rows.some((row) => row.seesAll),
+        seesAll:
+          rows.some((row) => row.seesAll) ||
+          workspaceRoleSeesAllProjects(resolution.role),
       });
       authority.push({
         roleKey: resolution.role,
@@ -548,7 +551,9 @@ export function resolveIdentityFromFacts(
       continue;
     }
     const builtIn = BUILT_IN_ROLES[resolution.role];
-    const seesAll = rows.some((row) => row.seesAll);
+    const seesAll =
+      rows.some((row) => row.seesAll) ||
+      workspaceRoleSeesAllProjects(resolution.role);
     memberships.push({
       scope: "workspace",
       scopeId: workspaceId,

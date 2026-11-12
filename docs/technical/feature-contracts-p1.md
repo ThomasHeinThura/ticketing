@@ -373,6 +373,7 @@ Backlog is a separate destination rather than a layout, because it has different
 **Shared across layouts**
 
 - `VW-1` Filter, sort, grouping and search live in the URL and survive a layout switch. The board and timeline grouping is `group` (`assignee` or `priority`; `state` is the default and never written), the calendar range is `calendarView` (`week` or `day`) anchored on `date` (`YYYY-MM-DD`), and `month` still names the month view.
+- Clearing the project search returns focus to its input, including when the input is in a popover. The calendar toolbar wraps on phones so its range, navigation, view and permitted selection controls remain usable without horizontal overflow.
 - `VW-2` Layout choice is remembered per project per user, and the URL always wins. See
   [Per-user preferences](feature-contracts-p1.md#views-per-user-preferences).
 - `VW-3` Every layout supports multi-select and the same bulk action bar.
@@ -781,8 +782,7 @@ rebound, and existing projects are not backfilled. `GET /api/project/organisatio
 `project:create`) lists the organisations the create-project selector offers, each with
 `inheritedServiceCalendarId`: the calendar a new project for it inherits in the queried
 workspace (null when none resolves, so a managed service must name one; decision log
-4 November 2026). The list is
-instance-wide (customer organisations are not tied to a workspace), and both it and a create
+4 November 2026). Current instance admins using a non-impersonated browser session see all active customer organisations; other callers see only organisations served by a live project or a soft-deleted project still within its recovery window in that workspace. After permanent deletion or recovery-window expiry the link ends unless another qualifying project exists. A first link requires a current instance admin with a non-impersonated browser session and is audited; other attempts receive 403 `instance_admin_required_for_new_customer_organisation`, whether the unserved ID exists or not. Both the list and a create
 that carries an `organisationId` require the strict `project:create` capability, held by
 owner, admin and manager only; the legacy member permission does not suffice. Creating an
 internal project (no `organisationId`) keeps its existing check. Custom roles cannot bind until the capability migration (#7); the create-project
@@ -1907,7 +1907,7 @@ project — `visibility`, `shared_with_team_id`, `name`, `query`, `layout`), `us
 - `SV-4` Typing a work item key jumps straight to it.
 - `SV-5` Results appear within 100 ms for typical queries. This is a hard requirement — a
   slow palette stops being used, and then the navigation depth becomes a real problem.
-- `SV-6` Recent items appear before any query is typed.
+- `SV-6` Recent items appear before any query is typed. Stored palette recents are rechecked through search on opening; only current, reachable search results and their current titles are shown. If a recent cannot be revalidated it is omitted.
 
 <a id="search-and-saved-views-search-backend"></a>
 ### Search backend
@@ -1985,6 +1985,11 @@ search validator, current viewer reach, and field permissions as direct work-ite
   it by id (get, update, delete request, pin, run, count) answers exactly like a missing view
   (404), before any capability gate, and writes nothing. Creating a view with a project scope
   needs reach to that project; an unreachable project gets the same 400 as a missing one.
+  A workspace-scoped view whose stored query names an unreachable project is likewise omitted
+  from lists and search, and its id routes return 404, because its query exposes that project.
+  This rule applies to project filter fields and project ID properties, not to unrelated text
+  values that happen to match a project identifier. ID routes check the materialized view
+  against current reach before using it, and mutations recheck the locked view.
   Workspace-scoped views are unaffected.
 - `SV-21` Duplicating a view is one click, which is how most views actually get made.
 

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { BUILT_IN_ROLES, defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { refreshStaffRegistration } from "../../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
 import {
@@ -99,7 +100,9 @@ beforeEach(async () => {
   await db.insert(schema.instanceSettingTable).values({
     id: "singleton",
     setupCompletedAt: new Date(),
+    staffSelfRegistrationEnabled: true,
   });
+  await refreshStaffRegistration();
   await db
     .insert(schema.instanceFeatureFlagTable)
     .values({ featureKey: "feature.customer_portal", enabled: true })
@@ -479,6 +482,67 @@ describe("OIDC JIT first login (IP-9, IP-10)", () => {
       ).toBe(false);
     },
   );
+
+  it("refuses uninvited first login and admits a verified invited staff user", async () => {
+    const target = await seedAgent("jit-invitation-connection");
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ staffSelfRegistrationEnabled: false })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    await refreshStaffRegistration();
+    await signIn("jit-invitation-connection", "agent");
+    expect(
+      await db
+        .select()
+        .from(schema.userTable)
+        .where(eq(schema.userTable.email, "jit-first-login@example.test")),
+    ).toHaveLength(0);
+    await db.insert(schema.invitationTable).values({
+      workspaceId: WORKSPACE_ID,
+      inviterId: "jit-login-creator",
+      email: "jit-first-login@example.test",
+      role: "member",
+      status: "pending",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    const admitted = await signIn("jit-invitation-connection", "agent");
+    expect(admitted.status).toBe(302);
+    await expectJitIdentity("jit-invitation-connection", "agent", target);
+  });
+
+  it("admits an invited Entra user with no email_verified claim", async () => {
+    const target = await seedAgent("jit-unverified-invitation");
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ staffSelfRegistrationEnabled: false })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    await refreshStaffRegistration();
+    await db.insert(schema.invitationTable).values({
+      workspaceId: WORKSPACE_ID,
+      inviterId: "jit-login-creator",
+      email: "jit-first-login@example.test",
+      role: "member",
+      status: "pending",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    vi.mocked(validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => ({
+        ok: true,
+        claims: {
+          iss: expectation.issuer,
+          tid: expectation.tenantId,
+          oid: SUBJECT,
+          email: "jit-first-login@example.test",
+          name: "JIT First Login",
+          acct: 0,
+          roles: ["TaskDesk.User"],
+        },
+      }),
+    );
+    const result = await signIn("jit-unverified-invitation", "agent");
+    expect(result.status).toBe(302);
+    await expectJitIdentity("jit-unverified-invitation", "agent", target);
+  });
 
   it("creates the user, person, account, identity and default grant for an agent", async () => {
     const target = await seedAgent("jit-agent-connection");
@@ -1426,6 +1490,25 @@ describe("first OIDC login of a SCIM-provisioned identity (IP-19, IP-30)", () =>
 
   it("links the user-less identity by exact connection and subject, clears the placeholder, then logs in normally (agent)", async () => {
     await seedAgent("scim-agent-connection");
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ staffSelfRegistrationEnabled: false })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    await refreshStaffRegistration();
+    vi.mocked(validateEntraIdToken).mockImplementation(
+      (_token, _jwks, expectation) => ({
+        ok: true,
+        claims: {
+          iss: expectation.issuer,
+          tid: expectation.tenantId,
+          oid: SUBJECT,
+          email: "jit-first-login@example.test",
+          name: "JIT First Login",
+          acct: 0,
+          roles: ["TaskDesk.User"],
+        },
+      }),
+    );
     const internal = await ensureInternalOrganisation();
     const { person, identity } = await scimIdentity({
       connectionId: "scim-agent-connection",

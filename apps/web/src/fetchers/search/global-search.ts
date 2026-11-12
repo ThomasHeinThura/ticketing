@@ -8,6 +8,7 @@ type SearchParams = {
     | "work_items"
     | "people"
     | "views"
+    | "pages"
     | "kb_articles"
     | "projects"
     | "workspaces"

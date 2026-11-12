@@ -59,6 +59,7 @@ async function enableEmail(s: IntakeSeed) {
       },
     },
     { userId: s.t.requester.user.id, personId: actor.id },
+    async () => undefined,
   );
 }
 

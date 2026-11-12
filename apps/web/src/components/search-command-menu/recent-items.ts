@@ -1,4 +1,10 @@
-import type { PaletteResultType } from "./search-targets";
+import globalSearch from "@/fetchers/search/global-search";
+import {
+  PALETTE_RESULT_TYPES,
+  type PaletteResultType,
+  projectSearchGroups,
+  type SearchResultItem,
+} from "./search-targets";
 
 /**
  * SV-6: items the user opened from the palette, shown before any query is typed. This is a
@@ -40,6 +46,7 @@ function isRecentItem(value: unknown): value is RecentItem {
   const item = value as Record<string, unknown>;
   return (
     typeof item.type === "string" &&
+    (PALETTE_RESULT_TYPES as readonly string[]).includes(item.type) &&
     typeof item.id === "string" &&
     typeof item.title === "string" &&
     typeof item.href === "string" &&
@@ -61,6 +68,48 @@ export function readRecentItems(
   } catch {
     return [];
   }
+}
+
+/** Re-authorize and refresh stored titles before rendering them in the palette. */
+export async function resolveRecentItems(
+  userId: string,
+  workspaceId: string,
+  signal?: AbortSignal,
+): Promise<RecentItem[]> {
+  const typeMap = {
+    work_item: "work_items",
+    person: "people",
+    saved_view: "views",
+    kb_article: "kb_articles",
+    page: "pages",
+    project: "projects",
+    workspace: "workspaces",
+  } as const;
+  const resolved = await Promise.all(
+    readRecentItems(userId, workspaceId).map(async (item) => {
+      const type = typeMap[item.type];
+      if (!type) return null;
+      const q =
+        item.type === "work_item" ? item.title.split(/\s+/, 1)[0] : item.title;
+      if (!q) return null;
+      try {
+        const response = await globalSearch(
+          { q, type, workspaceId, limit: 50 },
+          signal,
+        );
+        const match = (response.results as SearchResultItem[]).find(
+          (result) => result.id === item.id && result.type === item.type,
+        );
+        if (!match) return null;
+        return (
+          projectSearchGroups(q, [match], [], (key) => key)[0]?.items[0] ?? null
+        );
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return resolved.filter((item): item is RecentItem => item !== null);
 }
 
 export function pushRecentItem(

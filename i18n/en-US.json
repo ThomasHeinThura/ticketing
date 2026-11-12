@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"pageLoading": "Loading page",
 		"audit": {
 			"columns": {
 				"timestamp": "Timestamp",
@@ -97,6 +98,10 @@
 			"unknown": "Unknown"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"copyReferenceFailed": "Could not copy. Select and copy the reference below.",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Something went wrong",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"troubleshooting": "Troubleshooting steps:",
@@ -156,6 +161,7 @@
 				"organisationError": "Could not load customer organisations.",
 				"organisationRetry": "Retry",
 				"organisationEmpty": "No active customer organisations yet. This {{term_project_one}} will be internal.",
+				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "None (internal {{term_project_one}})",
 				"organisationHint": "Optional. Chosen now: it cannot be changed after the {{term_project_one}} is created.",
 				"kindLabel": "Kind",
@@ -247,6 +253,20 @@
 		"retry": "Retry",
 		"navigation": {
 			"auditLog": "Audit log"
+		},
+		"featureOff": {
+			"turnOn": "Turn on in Features"
+		},
+		"states": {
+			"back": "Back",
+			"noAccess": {
+				"title": "You don't have access",
+				"description": "Ask a workspace admin."
+			},
+			"error": {
+				"title": "This could not be loaded",
+				"description": "Check your connection and try again."
+			}
 		}
 	},
 	"auth": {
@@ -313,7 +333,8 @@
 			"toggleLink": "Sign in",
 			"instanceStatusError": "Couldn't reach the server. Please retry in a moment.",
 			"instanceAdminTitle": "Set up your TaskDesk instance",
-			"instanceAdminSubtitle": "This account becomes the instance administrator with full access."
+			"instanceAdminSubtitle": "This account becomes the instance administrator with full access.",
+			"invitationOnly": "Accounts are by invitation. Ask your administrator for an invitation."
 		},
 		"verifyOtp": {
 			"pageTitle": "Verify Code",
@@ -378,6 +399,21 @@
 			"title": "Sign in to God Mode",
 			"subtitle": "Instance administrators sign in with their password and authenticator code. Single sign-on is not available here.",
 			"passwordDisabled": "Password sign-in is turned off on this instance, so God Mode cannot be opened from this page. Ask the operator to enable local sign-in."
+		},
+		"changePassword": {
+			"title": "Change password",
+			"currentPassword": "Current password",
+			"newPassword": "New password",
+			"confirmPassword": "Confirm new password",
+			"revoke": "Sign out of other sessions",
+			"required": "Enter your current password.",
+			"tooLong": "Password must be at most 128 characters.",
+			"mismatch": "Passwords do not match.",
+			"wrongCurrent": "Your current password is incorrect.",
+			"failed": "Could not change your password. Please try again.",
+			"success": "Password changed.",
+			"submit": "Change password",
+			"saving": "Changing password…"
 		},
 		"accountSecurity": {
 			"pageTitle": "Account security",
@@ -471,6 +507,11 @@
 			},
 			"validation": {
 				"workspaceNameRequired": "Workspace name is required"
+			},
+			"noWorkspace": {
+				"title": "You are not a member of any workspace yet.",
+				"description": "Ask an administrator for an invitation.",
+				"viewInvitations": "View my invitations"
 			}
 		},
 		"profileSetup": {
@@ -496,6 +537,20 @@
 			"useCustomerPortal": "This is a customer account. Sign in on your customer portal instead.",
 			"useAgentSignIn": "This is a staff account. Use the agent sign-in page instead.",
 			"customerPortalUnavailable": "This account cannot sign in to the customer portal. Contact your support team."
+		},
+		"passwordRecovery": {
+			"forgot": "Forgot password?",
+			"requestTitle": "Reset your password",
+			"confirmation": "If an account exists for that address, we sent a link",
+			"send": "Send reset link",
+			"back": "Back to sign in",
+			"resetTitle": "Choose a new password",
+			"newPassword": "New password",
+			"confirmPassword": "Confirm new password",
+			"mismatch": "Passwords do not match",
+			"invalid": "This link is invalid, expired, or already used. Request a new link.",
+			"success": "Your password has been reset.",
+			"reset": "Reset password"
 		}
 	},
 	"settings": {
@@ -1898,7 +1953,8 @@
 				"frozenDescription": "The key is limited to what you tick now and never to more than you hold yourself. It is not widened later and is not clamped to anyone's current role.",
 				"readIncluded": "Read access is always included. Tick any write access the key needs.",
 				"submit": "Create key",
-				"creating": "Creating..."
+				"creating": "Creating...",
+				"failed": "Failed to create the service key"
 			},
 			"ownershipTransferred": "Owned by workspace administrators",
 			"reattestationRequired": "Re-attestation required",
@@ -2033,7 +2089,8 @@
 			"checking": "Checking your access",
 			"loadErrorTitle": "Could not check your access",
 			"loadErrorDescription": "Your permissions could not be loaded. Try again."
-		}
+		},
+		"openSettingsMenu": "Open settings menu"
 	},
 	"navigation": {
 		"projectViews": {
@@ -2965,6 +3022,7 @@
 	},
 	"workspace": {
 		"projects": {
+			"notMember": "You are not a member of this project",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "Create {{term_project_one}}",
 			"title": "Title",
@@ -3041,7 +3099,14 @@
 			"creating": "Creating...",
 			"submit": "Create workspace",
 			"success": "Workspace created successfully",
-			"error": "Failed to create workspace"
+			"error": "Failed to create workspace",
+			"ownerLabel": "Workspace owner",
+			"ownerPlaceholder": "Search staff by name or email",
+			"ownerHelp": "The owner manages the workspace. You become a member only if you choose yourself.",
+			"ownerEmpty": "No matching active staff users.",
+			"ownerError": "Could not load staff users.",
+			"ownerLoading": "Searching…",
+			"successHandedOver": "Workspace created. It now belongs to the owner you chose."
 		}
 	},
 	"team": {
@@ -3068,6 +3133,9 @@
 		"inviteModal": {
 			"title": "Invite Team Member",
 			"emailLabel": "Email",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
 			"sendInvitation": "Send Invitation",
 			"success": "Invitation sent successfully",
@@ -3559,6 +3627,8 @@
 			"transitionForbidden": "You don't have permission to change the state of {{term_work_item_other}}.",
 			"transitionBlocked": "{{key}} can't move there right now ({{reason}}). Open it to add what's missing.",
 			"transitionUnavailable": "{{key}} can't move to that state right now.",
+			"moveRefusedReturned": "Move refused. {{key}} is back in {{state}}.",
+			"moveCancelledReturned": "Move cancelled. {{key}} is back in {{state}}.",
 			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
 			"changeState": "Change state",
 			"changeStateFor": "Change state of {{key}}",
@@ -3576,6 +3646,7 @@
 				"invalid": "The {{term_work_item_other}} around {{key}} changed, so its position wasn't saved. The board was refreshed.",
 				"forbidden": "You don't have permission to move {{key}}.",
 				"unknown": "Couldn't move {{key}}. The board was refreshed.",
+				"network": "Couldn't confirm the move for {{key}}. Check your connection and refresh.",
 				"transitionInvalid": "The state change for {{key}} was not valid. The board was refreshed."
 			},
 			"groupUnassigned": "Unassigned",
@@ -3965,7 +4036,8 @@
 			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
-			"reject": "Reject"
+			"reject": "Reject",
+			"emptyDescription": "Approval requests from the support team appear here."
 		},
 		"unavailable": {
 			"title": "Customer portal unavailable",
@@ -4271,6 +4343,8 @@
 			}
 		},
 		"cases": {
+			"raisedBy": "Raised by",
+			"supportTeam": "Support team",
 			"outstandingTitle": "Outstanding {{term_request_other}}",
 			"outstandingDescription": "Open {{term_request_other}} that are received, in progress, or waiting for you.",
 			"viewAll": "View all {{term_request_other}}",
@@ -4301,6 +4375,7 @@
 				"project": "Project",
 				"severity": "Severity",
 				"status": "Status",
+				"requester": "Requester",
 				"createdBy": "Created by",
 				"assignedTo": "Assigned to",
 				"created": "Created"
@@ -4958,7 +5033,8 @@
 		"loadError": "The {{term_submission_other}} could not be loaded.",
 		"featureOff": {
 			"title": "Intake is off for this workspace",
-			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
+			"manageDescription": "Turn on Intake in the workspace feature settings. Existing {{term_submission_other}} come back when it is switched on."
 		}
 	},
 	"requestTypes": {
@@ -5279,6 +5355,10 @@
 			"action": "Request deletion",
 			"requested": "Deletion requested. Approve it in Pending actions.",
 			"failed": "The deletion could not be requested."
+		},
+		"clientErrors": {
+			"update": "Failed to update the webhook",
+			"test": "Failed to send the test event"
 		}
 	},
 	"automations": {
@@ -5717,6 +5797,9 @@
 			"confirmRequest": "Request deletion",
 			"deleteRequested": "Deletion requested. Approve it to complete.",
 			"deleteError": "Deletion could not be requested."
+		},
+		"clientErrors": {
+			"importHolidays": "Failed to import holidays"
 		}
 	},
 	"teams": {
@@ -6082,7 +6165,8 @@
 			"rate_limited": "Too many verification attempts. Wait a few minutes and try again.",
 			"unavailable": "The identity service is temporarily unavailable. Nothing was changed; try again.",
 			"unknown": "The request could not be completed. Nothing was changed.",
-			"factor_required": "Enter the selected verification factor to confirm this change."
+			"factor_required": "Enter the selected verification factor to confirm this change.",
+			"enroll_factor": "Enroll a second factor before changing staff self-registration."
 		},
 		"editor": {
 			"addTitle": "Add Entra connection",
@@ -6369,13 +6453,19 @@
 			"changeOff": "{{method}} for {{audience}}: off",
 			"cancel": "Cancel",
 			"confirm": "Save changes",
-			"failed": "Sign-in methods were not saved"
+			"failed": "Sign-in methods were not saved",
+			"staffRegistration": "Allow staff self-registration",
+			"staffRegistrationDescription": "Allow people to create staff accounts without an invitation.",
+			"customerInvitationOnly": "Customer portal: invitation only",
+			"registrationEnvironmentDisabled": "The environment disables staff self-registration.",
+			"registrationOn": "Allow staff self-registration",
+			"registrationOff": "Require invitations for staff registration"
 		}
 	},
 	"notificationProvider": {
 		"title": "Notification delivery",
 		"email": "Email provider",
-		"description": "Configure the SMTP connection used for email across this instance.",
+		"description": "Configure how this instance sends email: password-reset and invitation links, notifications and sign-in codes.",
 		"enabled": "Enable email delivery",
 		"sources": {
 			"runtime": "Using saved instance configuration.",
@@ -6393,9 +6483,6 @@
 		"requireTLS": "Require TLS before authentication",
 		"clearPassword": "Remove the saved password",
 		"save": "Save configuration",
-		"test": "Test connection",
-		"testHelp": "Checks connection and authentication without sending an email.",
-		"verified": "Connection verified. No email was sent.",
 		"saved": "Email configuration saved.",
 		"conflict": "The configuration changed. Reload this page before saving again.",
 		"rateLimited": "Too many connection tests. Wait before trying again.",
@@ -6445,12 +6532,6 @@
 			"saved": "Comment email preference saved.",
 			"saveFailed": "The comment preference could not be saved. Try again."
 		},
-		"diagnostics": {
-			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
-			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
-			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings.",
-			"smtp_timeout": "The SMTP server did not respond before the connection deadline."
-		},
 		"teamNotification": {
 			"title": "Team notifications",
 			"description": "Email notifications sent to your teams by automation rules.",
@@ -6467,7 +6548,112 @@
 		},
 		"captureToMailpit": "Capture email in local Mailpit inbox (local Compose only)",
 		"captureHelp": "Local testing only. Messages are captured in the Mailpit inbox instead of being sent externally.",
-		"captureUnavailable": "Local Mailpit capture is unavailable in this deployment. Enter a public SMTP configuration to continue."
+		"captureUnavailable": "Local Mailpit capture is unavailable in this deployment. Enter a public SMTP configuration to continue.",
+		"provider": "Provider",
+		"region": "Region",
+		"providerChoice": {
+			"label": "Send email through",
+			"smtp": "Custom SMTP",
+			"ses": "Amazon SES"
+		},
+		"ses": {
+			"regionLabel": "AWS region",
+			"regionPlaceholder": "Choose a region",
+			"regionOption": "{{name}} ({{region}})",
+			"regionHelp": "The region decides the SMTP host. Port 587 with STARTTLS is fixed and shown read-only.",
+			"username": "SES SMTP user name",
+			"password": "SES SMTP password",
+			"credentialsHelp": "Create these in the SES console under SMTP settings. They are not your AWS access key.",
+			"fromHelp": "Must be an identity verified in Amazon SES, either this address or its domain.",
+			"sandboxTitle": "New Amazon SES accounts start in the sandbox",
+			"sandboxBody": "In the sandbox SES only delivers to verified addresses. Until your account has production access, use “Copy link” on invitations to send them by hand.",
+			"dismiss": "Dismiss",
+			"regions": {
+				"us-east-1": "US East (N. Virginia)",
+				"us-east-2": "US East (Ohio)",
+				"us-west-1": "US West (N. California)",
+				"us-west-2": "US West (Oregon)",
+				"ap-south-1": "Asia Pacific (Mumbai)",
+				"ap-northeast-1": "Asia Pacific (Tokyo)",
+				"ap-northeast-2": "Asia Pacific (Seoul)",
+				"ap-northeast-3": "Asia Pacific (Osaka)",
+				"ap-southeast-1": "Asia Pacific (Singapore)",
+				"ap-southeast-2": "Asia Pacific (Sydney)",
+				"ca-central-1": "Canada (Central)",
+				"eu-central-1": "Europe (Frankfurt)",
+				"eu-north-1": "Europe (Stockholm)",
+				"eu-west-1": "Europe (Ireland)",
+				"eu-west-2": "Europe (London)",
+				"eu-west-3": "Europe (Paris)",
+				"sa-east-1": "South America (São Paulo)",
+				"us-gov-east-1": "AWS GovCloud (US-East)",
+				"us-gov-west-1": "AWS GovCloud (US-West)"
+			}
+		},
+		"status": {
+			"never": "Never tested",
+			"verified": "Verified",
+			"failed": "Failed",
+			"stale": "Not tested since change",
+			"lastTested": "Last tested {{time}}: {{result}}",
+			"resultVerified": "test email sent",
+			"resultFailed": "{{reason}}",
+			"resultFailedCode": "{{reason}} (SMTP {{code}})"
+		},
+		"testSend": {
+			"button": "Send test email",
+			"recipientLabel": "Send the test email to",
+			"help": "Sends one short email to this address using the values in this form, saved or not. Testing does not save anything.",
+			"sending": "Sending…",
+			"recipientRequired": "Enter the address that should receive the test email.",
+			"sent": "Test email accepted by the mail server. Check the inbox of the address above.",
+			"notSaved": "These values are not saved yet. Save them, then test again to record the result.",
+			"replyWithCode": "Server reply {{code}}: {{text}}",
+			"replyCodeOnly": "Server reply {{code}}",
+			"replyTextOnly": "Server reply: {{text}}",
+			"failedTitle": "The test email was not sent"
+		},
+		"failureShort": {
+			"authentication": "wrong SMTP credentials",
+			"starttls_required": "STARTTLS required",
+			"message_rejected": "sender or recipient not accepted",
+			"throttled": "throttled",
+			"temporary": "temporary server problem",
+			"rejected": "message refused",
+			"connection": "server unreachable",
+			"tls": "secure connection could not be verified",
+			"timeout": "timed out",
+			"failed": "send failed"
+		},
+		"failure": {
+			"authentication": "Wrong SMTP credentials: the server rejected the user name or password.",
+			"starttls_required": "The server requires a STARTTLS connection. Keep “Require TLS before authentication” on and use port 587.",
+			"message_rejected": "The server did not accept the sender or the recipient.",
+			"throttled": "The server is limiting how fast mail may be sent. Wait a moment and try again.",
+			"temporary": "The server reported a temporary problem. Try again shortly.",
+			"rejected": "The server refused the message.",
+			"connection": "The host could not be reached. Check the host, the port and network access.",
+			"tls": "The secure connection could not be verified. Check the certificate and the TLS settings.",
+			"timeout": "The server did not answer in time.",
+			"failed": "The test email could not be sent."
+		},
+		"failureSes": {
+			"authentication": "Amazon SES rejected the SMTP credentials (535). Use the SES SMTP user name and password from the SES console, not your AWS access key.",
+			"message_rejected": "Amazon SES refused the message (554). The From address must be a verified SES identity, and while the account is in the sandbox the recipient must be verified too.",
+			"throttled": "Amazon SES is throttling this account (454). Wait a moment and try again.",
+			"starttls_required": "Amazon SES requires a STARTTLS connection (530). Keep “Require TLS before authentication” on and use port 587."
+		},
+		"credentialsRequired": "Enter the password for the new provider. A saved password is not reused when the provider changes.",
+		"testDestinationPasswordRequired": "Enter the SMTP password again to test changed connection settings, or save cleared credentials before testing without authentication.",
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"verified": "Connection verified. No email was sent.",
+		"diagnostics": {
+			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
+			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
+			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings.",
+			"smtp_timeout": "The SMTP server did not respond before the connection deadline."
+		}
 	},
 	"featureFlags": {
 		"unavailable": "Feature switches are unavailable",
@@ -6718,6 +6904,54 @@
 		"cspModeOptions": {
 			"reportOnly": "Report only",
 			"enforce": "Enforced"
+		},
+		"observability": {
+			"optional": "Optional",
+			"allStaff": "All staff",
+			"selectedRole": "Selected role",
+			"conflict": "Settings changed in another session. Reload and retry.",
+			"requestFailed": "The request could not be completed.",
+			"unavailable": "Observability settings are unavailable.",
+			"saveFailed": "Settings could not be saved.",
+			"factorSaveFailed": "The factor policy could not be saved.",
+			"rotateFailed": "Token rotation could not be completed.",
+			"description": "Configure safe server log levels and the internal metrics scrape credential.",
+			"copyToken": "<strong>Copy this token now.</strong> It will not be shown again.",
+			"tokenSaved": "I saved the token",
+			"factorPolicy": "Local factor policy",
+			"factorHelp": "Require verified TOTP or one-use backup codes for the selected audience. Unsupported upstream MFA is not accepted as proof.",
+			"requiredAudience": "Required audience",
+			"roleId": "Role ID",
+			"saveFactor": "Save factor policy",
+			"logLevels": "Structured log levels",
+			"defaultLevel": "Default level",
+			"saveLevels": "Save log levels",
+			"metricsToken": "Metrics scrape token",
+			"metricsHelp": "The listener is internal to the service. The token is stored as a digest and is only returned once after rotation.",
+			"configured": "A token is configured.",
+			"notConfigured": "No token is configured.",
+			"configuredRotated": "A token is configured. Last rotated {{when}}.",
+			"notConfiguredRotated": "No token is configured. Last rotated {{when}}.",
+			"freshFactorProof": "Fresh factor proof",
+			"factorProofType": "Factor proof type",
+			"verifyPassword": "Verify password and rotate",
+			"verifyFactor": "Verify factor and rotate",
+			"loading": "Loading observability settings…",
+			"modules": {
+				"http": "http",
+				"auth": "auth",
+				"database": "database",
+				"jobs": "jobs",
+				"audit": "audit",
+				"plugins": "plugins",
+				"realtime": "realtime"
+			},
+			"levels": {
+				"error": "error",
+				"warn": "warn",
+				"info": "info",
+				"debug": "debug"
+			}
 		}
 	},
 	"godModeHealth": {
@@ -6806,7 +7040,8 @@
 			"blockedDescription": "{{count}} people still hold this role. Move them to another role on the People tab first.",
 			"blockedTitle": "Move the people first",
 			"description": "Deleting a role is a request you approve next. It cannot be undone.",
-			"title": "Delete this role"
+			"title": "Delete this role",
+			"failed": "Failed to delete the role"
 		},
 		"detail": {
 			"allRoles": "All roles",
@@ -6909,7 +7144,8 @@
 			"suspended": "Suspended",
 			"title": "People",
 			"confirmDescription_one": "Move {{count}} person from {{from}} to {{to}}? Their permissions change immediately.",
-			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately."
+			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately.",
+			"moveFailed": "Failed to move the people to the other role"
 		},
 		"preview": {
 			"actions": "Actions on a work item",
@@ -6956,6 +7192,176 @@
 		},
 		"stepUp": {
 			"failedTitle": "Fresh verification failed. Nothing was changed."
+		},
+		"capabilityCatalog": {
+			"groups": {
+				"labels_fields": "Labels & fields",
+				"service_desk": "Service desk",
+				"time_cost": "Time & cost",
+				"knowledge": "Knowledge",
+				"integrations": "Integrations"
+			},
+			"labels": {
+				"workspace__read": "Workspace: read",
+				"workspace__update": "Workspace: update",
+				"workspace__delete": "Workspace: delete",
+				"workspace__manage_members": "Workspace: manage members",
+				"workspace__manage_roles": "Workspace: manage roles",
+				"workspace__manage_settings": "Workspace: manage settings",
+				"workspace__transfer_ownership": "Workspace: transfer ownership",
+				"project__create": "Project: create",
+				"project__read": "Project: read",
+				"project__update": "Project: update",
+				"project__manage_members": "Project: manage members",
+				"project__manage_settings": "Project: manage settings",
+				"project__archive": "Project: archive",
+				"project__delete": "Project: delete",
+				"work_item__read": "Work item: read",
+				"work_item__create": "Work item: create",
+				"work_item__update": "Work item: update",
+				"work_item__delete": "Work item: delete",
+				"work_item__assign": "Work item: assign",
+				"work_item__transition": "Work item: transition",
+				"work_item__rank": "Work item: rank",
+				"work_item__set_priority": "Work item: set priority",
+				"work_item__escalate_priority": "Work item: escalate priority",
+				"work_item__export": "Work item: export",
+				"comment__create": "Comment: create",
+				"comment__create_internal": "Comment: create internal",
+				"comment__update_own": "Comment: update own",
+				"comment__delete_own": "Comment: delete own",
+				"comment__update_any": "Comment: update any",
+				"comment__delete_any": "Comment: delete any",
+				"attachment__create": "Attachment: create",
+				"attachment__delete_own": "Attachment: delete own",
+				"attachment__delete_any": "Attachment: delete any",
+				"label__manage": "Label: manage",
+				"custom_field__manage": "Custom field: manage",
+				"saved_view__read": "Saved view: read",
+				"saved_view__create": "Saved view: create",
+				"saved_view__share": "Saved view: share",
+				"sla_policy__read": "Sla policy: read",
+				"sla_policy__manage": "Sla policy: manage",
+				"workflow__read": "Workflow: read",
+				"workflow__manage": "Workflow: manage",
+				"request_type__read": "Request type: read",
+				"request_type__manage": "Request type: manage",
+				"intake__triage": "Intake: triage",
+				"approval__request": "Approval: request",
+				"approval__request_cab": "Approval: request cab",
+				"approval__decide": "Approval: decide",
+				"approval__decide_cab": "Approval: decide cab",
+				"time_entry__create": "Time entry: create",
+				"time_entry__update_own": "Time entry: update own",
+				"time_entry__delete_own": "Time entry: delete own",
+				"time_entry__read_any": "Time entry: read any",
+				"time_entry__update_any": "Time entry: update any",
+				"time_entry__delete_any": "Time entry: delete any",
+				"time_entry__log_backdated": "Time entry: log backdated",
+				"time_entry__manage_rates": "Time entry: manage rates",
+				"budget__read": "Budget: read",
+				"budget__manage": "Budget: manage",
+				"report__read": "Report: read",
+				"report__read_all": "Report: read all",
+				"report__export": "Report: export",
+				"kb_article__read": "Kb article: read",
+				"kb_article__write": "Kb article: write",
+				"kb_article__publish": "Kb article: publish",
+				"service__read": "Service: read",
+				"service__manage": "Service: manage",
+				"change__manage": "Change: manage",
+				"release__manage": "Release: manage",
+				"member__invite": "Member: invite",
+				"member__remove": "Member: remove",
+				"api_key__manage": "Api key: manage",
+				"webhook__manage": "Webhook: manage",
+				"automation__manage": "Automation: manage"
+			},
+			"descriptions": {
+				"workspace__read": "See the workspace and its settings",
+				"workspace__update": "Edit workspace general settings",
+				"workspace__delete": "Delete the workspace",
+				"workspace__manage_members": "Add and remove workspace members",
+				"workspace__manage_roles": "Create and edit roles",
+				"workspace__manage_settings": "Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, workspace terminology",
+				"workspace__transfer_ownership": "Transfer ownership of the workspace to another existing member",
+				"project__create": "Create a project or managed service",
+				"project__read": "See a project in reach",
+				"project__update": "Edit project fields, health, milestones, prerequisites, stakeholders, document links — not parent_id or owner_team_id",
+				"project__manage_members": "Manage the project roster and per-project roles, and the two reach-affecting fields parent_id and owner_team_id (see Reach)",
+				"project__manage_settings": "Project states, features, labels, SLA and calendar assignment, automations",
+				"project__archive": "Archive and restore",
+				"project__delete": "Soft-delete",
+				"work_item__read": "See work items in reach",
+				"work_item__create": "Create work items",
+				"work_item__update": "Edit title, description, dates, labels, custom fields; archive",
+				"work_item__assign": "Assign to anyone on the roster",
+				"work_item__transition": "Change state, subject to workflow legality",
+				"work_item__rank": "Re-order within a state or backlog",
+				"work_item__set_priority": "Set priority up or down",
+				"work_item__escalate_priority": "Raise priority only — the customer capability",
+				"work_item__export": "Export a view or list to CSV/XLSX",
+				"comment__create": "Comment publicly",
+				"comment__create_internal": "Comment internally",
+				"comment__update_own": "Edit own comments within the window",
+				"comment__delete_own": "Delete own comments",
+				"comment__update_any": "Edit anyone's comment",
+				"comment__delete_any": "Delete anyone's comment",
+				"attachment__create": "Upload to a work item or comment",
+				"attachment__delete_own": "Delete own attachments",
+				"attachment__delete_any": "Delete anyone's attachments",
+				"label__manage": "Create, edit, delete labels",
+				"custom_field__manage": "Define custom fields and sections",
+				"saved_view__read": "List and open saved views and queues shared with you",
+				"saved_view__create": "Create private saved views and queues",
+				"saved_view__share": "Share a view with a team or the workspace",
+				"sla_policy__read": "Read SLA policies and service calendars",
+				"sla_policy__manage": "Author policies and calendars",
+				"workflow__read": "Read workflows",
+				"workflow__manage": "Create, edit, publish workflows",
+				"request_type__read": "Read request types (triage needs this)",
+				"request_type__manage": "Author request types and per-organisation catalogues",
+				"intake__triage": "Claim, accept, decline, merge, clarify submissions; manage queues",
+				"approval__request": "Request a customer approval",
+				"approval__request_cab": "Request a CAB approval (staff only)",
+				"approval__decide": "Decide an approval addressed to you",
+				"approval__decide_cab": "Decide a CAB approval — and be a member of the CAB team",
+				"time_entry__create": "Log own time; start/stop own timer",
+				"time_entry__update_own": "Edit own entries",
+				"time_entry__delete_own": "Delete own entries",
+				"time_entry__read_any": "See anyone's entries",
+				"time_entry__update_any": "Edit anyone's entries",
+				"time_entry__delete_any": "Delete anyone's entries",
+				"time_entry__log_backdated": "Log beyond the workspace backdating limit",
+				"time_entry__manage_rates": "Rates, cost types; see cost data",
+				"budget__read": "See budgets",
+				"budget__manage": "Create and edit budgets",
+				"report__read": "Reports for your reach",
+				"report__read_all": "Reports across all projects the person can reach; this capability does not grant project reach",
+				"report__export": "Export a report",
+				"kb_article__read": "Read articles",
+				"kb_article__write": "Draft and edit articles",
+				"kb_article__publish": "Publish, archive, manage categories",
+				"service__read": "See services",
+				"service__manage": "Manage services, dependencies and service state",
+				"change__manage": "Change details, freezes, freeze override (elevated)",
+				"release__manage": "Releases and checklists",
+				"member__invite": "Invite people",
+				"member__remove": "Remove people",
+				"webhook__manage": "Webhooks, secret rotation, redelivery",
+				"automation__manage": "Rules at project scope (workspace scope also needs workspace:manage_settings)",
+				"instance__admin": "Administer the whole deployment (God Mode)",
+				"instance__read_audit": "Read the instance audit log",
+				"instance__manage_plugins": "Configure, test, enable and disable plugins",
+				"instance__manage_jobs": "Change job cadence, enable/disable, trigger manually",
+				"instance__manage_terminology": "Edit instance-level terminology overrides"
+			}
+		},
+		"clientErrors": {
+			"create": "Failed to create the role",
+			"previewImpact": "Failed to preview the role impact",
+			"save": "Failed to save the role",
+			"unexpectedDryRun": "Role dry-run returned a mutation result"
 		}
 	},
 	"agile": {
@@ -6983,32 +7389,40 @@
 		"featureOff": {
 			"cycles": {
 				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
+				"manageDescription": "Turn on {{term_cycle_other}} in this {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} come back when it is switched on."
 			},
 			"modules": {
 				"title": "{{term_module_other}} are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
+				"manageDescription": "Turn on {{term_module_other}} in this {{term_project_one}}'s feature settings. Existing {{term_module_other}} come back when it is switched on."
 			},
 			"estimates": {
 				"title": "Estimates are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Estimates in this {{term_project_one}}'s feature settings. Existing estimates come back when it is switched on."
 			},
 			"calendar": {
 				"title": "Calendar is off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"manageDescription": "Turn on Calendar in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"timeline": {
 				"title": "The timeline is off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"manageDescription": "Turn on the timeline in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"sla": {
 				"title": "SLAs are off for this workspace",
-				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on."
+				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Service levels in the workspace feature settings to use SLA policies and service calendars."
 			},
 			"pages": {
 				"title": "Pages are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on."
-			}
+				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Pages in this {{term_project_one}}'s feature settings. Existing pages come back when it is switched on."
+			},
+			"openSettings": "Open feature settings"
 		},
 		"cycles": {
 			"pageTitle": "{{term_cycle_other}}",
@@ -7525,7 +7939,8 @@
 		},
 		"disabled": {
 			"title": "{{term_service_one}} catalogue is off",
-			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches."
+			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature settings.",
+			"manageDescription": "Turn on the {{term_service_one}} catalogue in the workspace feature settings."
 		},
 		"common": {
 			"cancel": "Cancel",
@@ -9096,7 +9511,8 @@
 		"errors": {
 			"disabled": {
 				"title": "Reports are off",
-				"description": "An administrator can turn this feature on in the workspace feature settings."
+				"description": "An administrator can turn this feature on in the workspace feature settings.",
+				"manageDescription": "Turn on Reports in the workspace feature settings to see reports and dashboards."
 			},
 			"forbidden": {
 				"title": "Not available to you",

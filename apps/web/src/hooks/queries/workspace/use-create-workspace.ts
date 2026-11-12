@@ -12,18 +12,11 @@ type CreateWorkspaceRequest = {
   logo?: string;
   slug?: string;
   /**
-   * Plugin-era options, kept only so existing call sites still type-check.
-   * The native route (S4) always selects the creating session's new
-   * workspace/team (effects 7+8 of the create contract) and always derives
-   * the owner from the session — there is no "keep current active org" or
-   * "create on behalf of another user" native equivalent, and no call site
-   * relies on either doing anything: `keepCurrentActiveOrganization` is
-   * never passed `true` anywhere in the tree, and the one caller that passes
-   * `userId` (onboarding) always passes the current session's own id, which
-   * is what the server derives anyway.
+   * The user who becomes the workspace owner. Only an instance administrator may create a
+   * workspace (owner decision D-A, 12 Nov 2026) and the request names the owner; the
+   * administrator is a member only by naming themselves.
    */
-  keepCurrentActiveOrganization?: boolean;
-  userId?: string;
+  ownerUserId: string;
 };
 
 function useCreateWorkspace() {
@@ -33,6 +26,7 @@ function useCreateWorkspace() {
       description,
       logo,
       slug,
+      ownerUserId,
     }: CreateWorkspaceRequest) => {
       // Issue #100 (S3 gap): native replacement for
       // authClient.organization.list(), used only to seed the local
@@ -54,6 +48,7 @@ function useCreateWorkspace() {
             name,
             slug: workspaceSlug,
             logo: logo || undefined,
+            ownerUserId,
             // Preserves the plugin-era behaviour of omitting an empty
             // description rather than persisting "" (createWorkspaceCtrl
             // stores `input.description ?? null`).

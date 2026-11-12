@@ -2131,6 +2131,25 @@ export async function findPortalSubmission(
     messages: loaded.messages,
   };
   const isRequester = portalRow.submission.requesterId === viewer.personId;
+  const [requester] = await db
+    .select({
+      name: sql<
+        string | null
+      >`COALESCE(NULLIF(btrim(${schema.personTable.displayName}), ''), NULLIF(btrim(${schema.userTable.name}), ''))`,
+    })
+    .from(schema.personTable)
+    .leftJoin(
+      schema.userTable,
+      eq(schema.userTable.id, schema.personTable.userId),
+    )
+    .where(
+      and(
+        eq(schema.personTable.id, portalRow.submission.requesterId),
+        eq(schema.personTable.organisationId, viewer.organisationId),
+        eq(schema.personTable.side, "customer"),
+      ),
+    )
+    .limit(1);
   const formSchema = portalRow.version.formSchema as FormSchema;
   // One visibility result for the stored answers, as stored: the `fields` list and the
   // `formData` below both come from it, so they cannot disagree, and a stored key the form never
@@ -2258,6 +2277,11 @@ export async function findPortalSubmission(
       statusFacts,
     ),
     isRequester,
+    createdBy: {
+      name: isRequester ? null : (requester?.name ?? null),
+      isYou: isRequester,
+    },
+    raisedBySupport: false,
     // CP-16: attachments are requester-only, so a colleague's view hides them.
     canViewAttachments: isRequester,
     canUpload: isRequester,

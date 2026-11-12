@@ -1,20 +1,31 @@
 import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { readPendingDeletion } from "@/fetchers/pending-action/read-pending-deletion";
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 import type { ApiKey, CreateApiKeyResponse } from "@/types/api-key";
 
 /** `X-TaskDesk-Step-Up-Token`: the one-use PA-15 proof an elevated write spends. */
 const STEP_UP_HEADER = "X-TaskDesk-Step-Up-Token";
 
-async function ensureOk(response: Response, message: string) {
+async function ensureOk(
+  response: Response,
+  message: string,
+  fallbackKey?: string,
+) {
   if (response.ok) return;
-  throw new HttpError(
-    response.status,
+  if (response.status >= 500)
+    throw await httpErrorFromResponse(response, message, fallbackKey);
+  const detail =
     response.status === 400 || response.status === 403
       ? await readErrorDetail(response, message)
-      : message,
-  );
+      : message;
+  throw new HttpError(response.status, detail, undefined, {
+    fallbackKey: detail === message ? fallbackKey : undefined,
+  });
 }
 
 const base = (workspaceId: string) =>
@@ -54,7 +65,11 @@ export async function createServiceKey(
     },
     body: JSON.stringify(input),
   });
-  await ensureOk(response, "Failed to create the service key");
+  await ensureOk(
+    response,
+    "Failed to create the service key",
+    "settings:serviceKeys.create.failed",
+  );
   return (await response.json()) as CreateApiKeyResponse;
 }
 
@@ -66,7 +81,11 @@ export async function revokeServiceKey(
     getApiUrl(`${base(workspaceId)}/${encodeURIComponent(keyId)}/revoke`),
     { method: "POST", credentials: "include" },
   );
-  await ensureOk(response, "Failed to revoke the service key");
+  await ensureOk(
+    response,
+    "Failed to revoke the service key",
+    "settings:serviceKeys.toastRevokeError",
+  );
   return (await response.json()) as ApiKey;
 }
 
@@ -105,5 +124,9 @@ export async function requestServiceKeyDeletion(
     getApiUrl(`${base(workspaceId)}/${encodeURIComponent(keyId)}`),
     { method: "DELETE", credentials: "include" },
   );
-  return readPendingDeletion(response, "Failed to request the deletion");
+  return readPendingDeletion(
+    response,
+    "Failed to request the deletion",
+    "settings:serviceKeys.deleteFailed",
+  );
 }

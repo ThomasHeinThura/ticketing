@@ -186,6 +186,8 @@ const portalSubmissionResponseSchema = z.object({
   customerStatus: portalCustomerStatusSchema,
   /** CP-16: true for the requester; a colleague or participant has a read-only view. */
   isRequester: z.boolean(),
+  createdBy: z.object({ name: z.string().nullable(), isYou: z.boolean() }),
+  raisedBySupport: z.boolean(),
   /** CP-16: attachments stay requester-only (list, download, upload); other readers get false so the UI hides them. */
   canViewAttachments: z.boolean(),
   canUpload: z.boolean(),

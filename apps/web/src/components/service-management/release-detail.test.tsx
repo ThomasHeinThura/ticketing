@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReleaseDetail } from "@/fetchers/service-management";
 import { translate } from "@/test/en-translation";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   update: vi.fn(),
@@ -43,7 +44,11 @@ vi.mock("@/hooks/queries/service-management", () => ({
         }
       : { data: release, isLoading: false, isError: false },
   useInvalidateServiceManagement: () => vi.fn(),
-  isFeatureDisabled: () => false,
+  isFeatureDisabled: (error: unknown) =>
+    (error as { status?: number } | null)?.status === 409,
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({ canManageWorkspaceSettings: () => false }),
 }));
 vi.mock("@/fetchers/service-management", () => ({
   RELEASE_STATUSES: ["planned", "in_progress", "released", "cancelled"],
@@ -147,5 +152,15 @@ describe("ReleaseDetailView unknown release", () => {
         name: translate("serviceManagement:common.retry"),
       }),
     ).toBeInTheDocument();
+  });
+
+  // UX-1a: with the catalogue off the page keeps its title as the one h1 and the off state sits
+  // under it as h2.
+  it("keeps one h1 with the catalogue-off state under it when the catalogue is off (409)", async () => {
+    const { HttpError } = await import("@/lib/http-error");
+    mocks.releaseError = new HttpError(409, "feature_disabled");
+    setup();
+    expect(screen.getByTestId("service-catalogue-off")).toBeInTheDocument();
+    expect(headingLevels()).toEqual([1, 2]);
   });
 });
