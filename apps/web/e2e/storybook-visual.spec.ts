@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 type StorybookIndex = {
@@ -6,7 +7,7 @@ type StorybookIndex = {
 
 test("every exported Storybook story has a visual baseline @visual", async ({
   page,
-}) => {
+}, testInfo) => {
   test.setTimeout(12 * 60 * 1000);
   const response = await fetch("http://127.0.0.1:6006/index.json");
   expect(response.ok).toBeTruthy();
@@ -46,6 +47,19 @@ test("every exported Storybook story has a visual baseline @visual", async ({
         requestAnimationFrame(() => resolve()),
       );
     });
+    if (!existsSync(testInfo.snapshotPath(`${story.id}.png`))) {
+      // A new story has no baseline yet. Attach what would be compared, so the image can be
+      // inspected and committed; the assertion below still fails the run.
+      await testInfo.attach(`${story.id}-new-baseline.png`, {
+        body: await page.screenshot({
+          animations: "disabled",
+          caret: "hide",
+          fullPage: true,
+          scale: "css",
+        }),
+        contentType: "image/png",
+      });
+    }
     await expect
       .soft(page, `Storybook story ${story.id}`)
       .toHaveScreenshot(`${story.id}.png`, {
