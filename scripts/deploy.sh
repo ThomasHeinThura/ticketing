@@ -15,8 +15,8 @@
 #   --profile s3        also run the opt-in SeaweedFS object store
 #   --no-verify         skip the cosign signature check (loud, deliberate)
 #   --no-probe          skip the post-deploy API probe (CI only; never routine)
-#   --seed              run the SIT account seeder (local and sit only). It resets passwords,
-#                       turns off two-factor and deletes sessions, so it is never the default.
+#   --seed              run the clean-install demo seed (local and sit only). Requires verified setup;
+#                       seed credentials stay private and existing accounts stay unchanged.
 #
 # It is idempotent. It generates any missing secret and never regenerates one
 # that already has a value.
@@ -458,27 +458,58 @@ print_setup_token() {
   fi
 }
 
-seed_if_permitted() {
+seed_if_permitted() (
   [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || return 0
   if [ "$SEED" -ne 1 ]; then
-    say "not seeding SIT accounts (pass --seed to run the seeder; it resets passwords and sessions)"
+    say "not seeding demo data (pass --seed after first-administrator setup)"
     return 0
   fi
-  say "seeding SIT accounts, catalogue and submissions inside the application container"
-  # The seed writes the generated passwords to a new private file; the container's only
-  # writable path is its /tmp tmpfs, so the file is copied out (0600, outside the checkout)
-  # and removed from the container.
-  local in_container="/tmp/sit-credentials-$$.json"
-  local credentials="$HOME/.taskdesk/sit-credentials.json"
-  dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit --credentials-file "$in_container" \
-    || die "SIT seeding failed. The stack is up; fix the error above and rerun scripts/deploy.sh."
+  local in_container="/tmp/demo-credentials-$$.json"
+  local credentials="$HOME/.taskdesk/demo-credentials.json"
   mkdir -p "$(dirname "$credentials")"
   chmod 700 "$(dirname "$credentials")"
-  (umask 077; dc exec -T taskdesk cat "$in_container" > "$credentials") \
-    || die "could not copy the SIT credentials out of the container"
-  dc exec -T taskdesk rm -f "$in_container" || true
-  ok "SIT account passwords are in $credentials (0600)"
-}
+  local had_credentials=0
+  [ ! -f "$credentials" ] || { had_credentials=1; chmod 600 "$credentials"; }
+  # Preserve existing credentials; recover a newly generated file only after verification.
+  recover_demo_credentials() {
+    local rc=$? copy_rc=0
+    trap - EXIT
+    if [ "$had_credentials" -eq 0 ] && dc exec -T taskdesk test -f "$in_container"; then
+      local pending="" source_hash="" copied_hash=""
+      pending=$(mktemp "$credentials.pending.XXXXXX") || copy_rc=1
+      source_hash=$(dc exec -T taskdesk sha256sum "$in_container") || copy_rc=1
+      if [ "$copy_rc" -eq 0 ]; then
+        (umask 077; dc exec -T taskdesk cat "$in_container" > "$pending") &&
+          chmod 600 "$pending" || copy_rc=1
+        if command -v sha256sum >/dev/null 2>&1; then
+          copied_hash=$(sha256sum "$pending") || copy_rc=1
+        else
+          copied_hash=$(shasum -a 256 "$pending") || copy_rc=1
+        fi
+        if [ "$copy_rc" -eq 0 ] && [ "${source_hash%% *}" = "${copied_hash%% *}" ]; then
+          mv -f "$pending" "$credentials" || copy_rc=1
+        else
+          copy_rc=1
+        fi
+      fi
+      [ -z "$pending" ] || rm -f "$pending"
+    fi
+    dc exec -T taskdesk rm -f "$in_container" || copy_rc=1
+    if [ "$copy_rc" -ne 0 ]; then
+      warn "could not verify and recover demo credentials"
+      exit 1
+    fi
+    exit "$rc"
+  }
+  trap recover_demo_credentials EXIT
+  if [ -f "$credentials" ]; then
+    dc exec -T taskdesk sh -c 'umask 077; cat > "$1"' sh "$in_container" < "$credentials" \
+      || die "could not restore private seed credentials"
+  fi
+  dc exec -T taskdesk node apps/api/dist/seed-uat.js --uat --credentials-file "$in_container" \
+    || die "Demo seeding failed. Finish first-administrator setup, fix the error above and rerun with --seed."
+  ok "Demo account passwords are in $credentials (0600)"
+)
 
 print_urls() {
   local domain="${DOMAIN:-localhost}"
