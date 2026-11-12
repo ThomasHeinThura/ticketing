@@ -5,6 +5,7 @@ import { translate } from "@/test/en-translation";
 import SortableProjectList from "./nav-projects-sortable";
 
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: vi.fn() },
   useTranslation: () => ({ t: translate }),
 }));
 

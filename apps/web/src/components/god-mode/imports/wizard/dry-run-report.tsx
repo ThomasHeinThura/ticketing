@@ -14,6 +14,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Frame,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -358,10 +359,15 @@ export function DryRunStep({
       ) : null}
       {running ? null : !report.isError &&
         (report.isPending || placeholderVisible) ? (
-        <Skeleton
-          className="h-48 w-full"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-48 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : report.isError ? (
         <Alert variant="error">
           <AlertTitle>{t("wizard.dryRun.loadErrorTitle")}</AlertTitle>

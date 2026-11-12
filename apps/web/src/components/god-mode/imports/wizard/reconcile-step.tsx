@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
   Frame,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -84,7 +85,10 @@ export function ReconcileStep({
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
-  const placeholderVisible = useDelayedPending(losses.isPending);
+  const placeholderVisible = useDelayedPending(losses.isPending, {
+    releaseNow:
+      losses.isSuccess && (losses.data.pages[0]?.summary.length ?? 0) === 0,
+  });
   const done = COUNTERS.reduce((sum, key) => sum + (run.stats[key] ?? 0), 0);
   const total = run.dryRun?.total;
   const pages = losses.data?.pages ?? [];
@@ -214,10 +218,17 @@ export function ReconcileStep({
         </CardHeader>
         <CardContent className="space-y-4">
           {!losses.isError && (losses.isPending || placeholderVisible) ? (
-            <Skeleton
-              className="h-24 w-full"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-24 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : losses.isError ? (
             <Alert variant="error">
               <AlertTitle>{t("wizard.losses.errorTitle")}</AlertTitle>

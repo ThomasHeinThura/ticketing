@@ -1,33 +1,20 @@
-let cachedDocument: Document | undefined;
-const cachedTokens = new Map<string, string>();
+// Kept in sync with theme.css by motion-tokens.test.ts.
+export const motionTokens = {
+  fast: "120ms",
+  base: "200ms",
+  slow: "300ms",
+  out: "cubic-bezier(0.23, 1, 0.32, 1)",
+  spring:
+    "linear(0, 0.044, 0.149, 0.28, 0.417, 0.546, 0.66, 0.755, 0.832, 0.891, 0.935, 0.967, 0.988, 1.002, 1.01, 1.014, 1.015, 1.014, 1.013, 1.011, 1.009, 1.007, 1.005, 1.004, 1)",
+} as const;
 
-function readMotionToken(name: string): string {
-  if (typeof document === "undefined") return "";
-  if (cachedDocument !== document) {
-    cachedDocument = document;
-    cachedTokens.clear();
-  }
-  const cached = cachedTokens.get(name);
-  if (cached) return cached;
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim();
-  if (value) cachedTokens.set(name, value);
-  return value;
-}
-
-/** Read the same CSS motion tokens used by utility classes for JS animation APIs. */
+/** Read static counterparts of the CSS tokens without a render-time style read. */
 export function motionDurationMs(token: "fast" | "base" | "slow"): number {
-  if (typeof window === "undefined") return 0;
-  const value = readMotionToken(`--duration-${token}`);
-  const parsed = Number.parseFloat(value);
-  if (!Number.isFinite(parsed)) return 0;
-  return value.endsWith("ms") ? parsed : parsed * 1000;
+  return Number.parseFloat(motionTokens[token]);
 }
 
 export function motionEasing(token: "out" | "spring"): string {
-  if (typeof window === "undefined") return "linear";
-  return readMotionToken(`--ease-${token}`) || "linear";
+  return motionTokens[token];
 }
 
 /** Framer Motion accepts an easing function rather than CSS's sampled linear() curve. */

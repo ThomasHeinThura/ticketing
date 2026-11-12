@@ -313,7 +313,13 @@ function RequestTypesEditor() {
   };
   const loading =
     types.isLoading || groupOrder.isLoading || workItemTypes.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      !loading &&
+      types.isSuccess &&
+      (types.data as unknown as { requestTypes: RequestType[] }).requestTypes
+        .length === 0,
+  });
   const groupOrderChanged =
     groupOrder.data !== undefined &&
     (groupOrder.data.groups.length !== groupOrderDraft.length ||

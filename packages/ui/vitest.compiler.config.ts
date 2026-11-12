@@ -16,12 +16,22 @@ const config = mergeConfig(
   base,
   defineConfig({
     plugins: [babel({ presets: [reactCompilerPreset()] })],
-    test: { include: ["src/components/toast-recovery.test.tsx"] },
+    test: {
+      include: [
+        "src/components/toast-recovery.test.tsx",
+        "src/styles/reduced-motion.test.tsx",
+        "src/lib/motion-tokens.test.ts",
+      ],
+    },
   }),
 );
 
 config.test = {
   ...config.test,
-  include: ["src/components/toast-recovery.test.tsx"],
+  include: [
+    "src/components/toast-recovery.test.tsx",
+    "src/styles/reduced-motion.test.tsx",
+    "src/lib/motion-tokens.test.ts",
+  ],
 };
 export default config;

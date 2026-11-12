@@ -182,7 +182,9 @@ export function AutomationRulesPanel({
     queryKey,
     queryFn: () => listAutomations(scope),
   });
-  const placeholderVisible = useDelayedPending(query.isLoading);
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && query.data.data.length === 0,
+  });
   // The whole family, so a rule created or switched here also refreshes the other scope's list.
   const refresh = () =>
     cache.invalidateQueries({ queryKey: ["automations"], refetchType: "all" });

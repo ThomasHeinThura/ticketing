@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
@@ -53,8 +54,10 @@ function Kpi({
 }) {
   const { t } = useTranslation();
   const result = useReport(workspaceId, report, {});
-  const placeholderVisible = useDelayedPending(result.isLoading);
   const found = result.data?.metrics.find((entry) => entry.key === metric);
+  const placeholderVisible = useDelayedPending(result.isLoading, {
+    releaseNow: result.isSuccess && (!found || result.data.empty !== null),
+  });
   return (
     <Link
       to={routes.reportDetail.path}
@@ -69,10 +72,17 @@ function Kpi({
             })}
           </p>
           {!result.isError && (result.isLoading || placeholderVisible) ? (
-            <Skeleton
-              className="h-8 w-20"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-8 w-20"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : found?.value === null ? (
             // RP-1's sentence is body copy, not a figure, so the tile keeps its size.
             <p className="text-muted-foreground text-sm">
@@ -184,8 +194,16 @@ function ReportsIndexScreen({
   const category = search.category;
   const cataloguePlaceholder = useDelayedPending(
     catalogue.isLoading || !workspace,
+    {
+      releaseNow:
+        Boolean(workspace) &&
+        catalogue.isSuccess &&
+        (views.isError || catalogue.data.data.length === 0),
+    },
   );
-  const viewsPlaceholder = useDelayedPending(views.isLoading);
+  const viewsPlaceholder = useDelayedPending(views.isLoading, {
+    releaseNow: views.isSuccess && saved.length === 0,
+  });
   const categories = REPORT_CATEGORIES.filter((candidate) =>
     catalogue.data?.data.some((entry) => entry.category === candidate),
   );
@@ -220,10 +238,17 @@ function ReportsIndexScreen({
         </div>
         {!catalogue.isError &&
         (catalogue.isLoading || !workspace || cataloguePlaceholder) ? (
-          <Skeleton
-            className="h-40 w-full"
-            style={{ visibility: cataloguePlaceholder ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={cataloguePlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-40 w-full"
+              style={{
+                visibility: cataloguePlaceholder ? "visible" : "hidden",
+              }}
+            />
+          </LoadingStatus>
         ) : catalogue.isError || !catalogue.data ? (
           <ReportError error={catalogue.error} />
         ) : (
@@ -300,12 +325,19 @@ function ReportsIndexScreen({
                 </p>
               </div>
               {!views.isError && (views.isLoading || viewsPlaceholder) ? (
-                <Skeleton
-                  className="h-16 w-full"
-                  style={{
-                    visibility: viewsPlaceholder ? "visible" : "hidden",
-                  }}
-                />
+                <LoadingStatus
+                  visible={viewsPlaceholder}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-16 w-full"
+                    style={{
+                      visibility: viewsPlaceholder ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
+              ) : views.isError ? (
+                <ReportError error={views.error} />
               ) : saved.length === 0 ? (
                 <Alert variant="info">
                   <AlertDescription>

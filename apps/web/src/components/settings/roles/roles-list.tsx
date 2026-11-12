@@ -36,7 +36,9 @@ export function RolesList() {
   const authority = useCallerRoleAuthority(workspace?.id);
   const [creating, setCreating] = useState(false);
   const loading = workspaceLoading || roles.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && roles.isSuccess && roles.data.length === 0,
+  });
   const formatDate = (value: Date | string | null | undefined) =>
     value
       ? new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" }).format(

@@ -26,6 +26,7 @@ import {
   FieldDescription,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -644,10 +645,15 @@ export function KbArticleEditor({
     (detail.isLoading || (placeholderVisible && detail.data))
   )
     return (
-      <Skeleton
-        className="m-6 h-40"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="m-6 h-40"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (detail.isError || !detail.data) {
     const missing =

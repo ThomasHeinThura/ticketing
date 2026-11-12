@@ -11,6 +11,7 @@ import {
   EmptyTitle,
   Frame,
   Label,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -94,20 +95,31 @@ export function ImportRunsPanel({
     enabled: Boolean(selectedWorkspaceId),
     retry: false,
   });
-  const runsPlaceholder = useDelayedPending(runs.isPending);
+  const runsPlaceholder = useDelayedPending(runs.isPending, {
+    releaseNow:
+      runs.isSuccess && runs.data.pages.every((page) => page.runs.length === 0),
+  });
 
-  const workspacesPlaceholderVisible = useDelayedPending(workspaces.isPending);
+  const workspacesPlaceholderVisible = useDelayedPending(workspaces.isPending, {
+    releaseNow: workspaces.isSuccess && availableWorkspaces.length === 0,
+  });
   if (
     !workspaces.isError &&
-    (workspaces.isPending || (workspacesPlaceholderVisible && workspaces.data))
+    (workspaces.isPending ||
+      (workspacesPlaceholderVisible && workspaces.data && !runs.isError))
   )
     return (
-      <Skeleton
-        className="h-72 w-full"
-        style={{
-          visibility: workspacesPlaceholderVisible ? "visible" : "hidden",
-        }}
-      />
+      <LoadingStatus
+        visible={workspacesPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-72 w-full"
+          style={{
+            visibility: workspacesPlaceholderVisible ? "visible" : "hidden",
+          }}
+        />
+      </LoadingStatus>
     );
   if (workspaces.error instanceof HttpError && workspaces.error.status === 403)
     return (
@@ -194,10 +206,15 @@ export function ImportRunsPanel({
           </EmptyHeader>
         </Empty>
       ) : !runs.isError && (runs.isPending || runsPlaceholder) ? (
-        <Skeleton
-          className="h-64 w-full"
-          style={{ visibility: runsPlaceholder ? "visible" : "hidden" }}
-        />
+        <LoadingStatus
+          visible={runsPlaceholder}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-64 w-full"
+            style={{ visibility: runsPlaceholder ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : runs.isError ? (
         <Alert variant="error">
           <AlertTitle>{t("loadErrorTitle")}</AlertTitle>

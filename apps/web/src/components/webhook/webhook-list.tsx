@@ -87,7 +87,9 @@ export function WebhookList() {
   });
   const loading =
     workspaceLoading || isCheckingPermissions || (canManage && query.isLoading);
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && query.isSuccess && query.data.length === 0,
+  });
   const webhooks = query.data ?? [];
 
   return (

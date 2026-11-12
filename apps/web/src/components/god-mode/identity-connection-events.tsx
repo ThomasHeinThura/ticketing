@@ -49,7 +49,9 @@ export function IdentityConnectionEvents({
 }) {
   const { t, i18n } = useTranslation("identityConnections");
   const events = useIdentityConnectionEvents(connectionId, cursor, true);
-  const placeholderVisible = useDelayedPending(events.isPending);
+  const placeholderVisible = useDelayedPending(events.isPending, {
+    releaseNow: events.isSuccess && events.data.data.length === 0,
+  });
   const page = events.data;
 
   return (

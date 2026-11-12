@@ -11,6 +11,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
+  LoadingStatus,
   Skeleton,
   Spinner,
   useDelayedPending,
@@ -121,10 +122,15 @@ function ReportExportPageScreen({ exportId }: { exportId: string }) {
           </p>
         </div>
         {state === "loading" || (placeholderVisible && !exported.isError) ? (
-          <Skeleton
-            className="h-48 w-full"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-48 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : (
           <ExportState
             state={state}

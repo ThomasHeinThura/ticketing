@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -51,6 +52,7 @@ export function ImportRunCreateDialog({
   });
   const placeholderVisible = useDelayedPending(
     Boolean(workspaceId) && projects.isPending,
+    { releaseNow: projects.isSuccess && projects.data?.length === 0 },
   );
   const permission = useWorkspacePermission(
     workspaceId || undefined,
@@ -139,12 +141,17 @@ export function ImportRunCreateDialog({
           <div className="space-y-2">
             <Label htmlFor="import-run-project">{t("project")}</Label>
             {!projects.isError && (projects.isPending || placeholderVisible) ? (
-              <Skeleton
-                className="h-10 w-full"
-                style={{
-                  visibility: placeholderVisible ? "visible" : "hidden",
-                }}
-              />
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
+              >
+                <Skeleton
+                  className="h-10 w-full"
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                />
+              </LoadingStatus>
             ) : (
               <Select
                 items={(projects.data ?? []).map((project) => ({

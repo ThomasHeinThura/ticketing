@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -212,16 +213,21 @@ export function WorkspaceProjectDefaultsPanel({
   if (!isCheckingPermissions && !canEdit) return null;
   if (!loadError && (loading || placeholderVisible)) {
     return (
-      <section
-        className="space-y-3"
-        aria-busy="true"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        data-testid="workspace-project-defaults-loading"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </section>
+        <section
+          className="space-y-3"
+          aria-busy="true"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          data-testid="workspace-project-defaults-loading"
+        >
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+        </section>
+      </LoadingStatus>
     );
   }
 

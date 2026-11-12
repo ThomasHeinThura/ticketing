@@ -184,7 +184,9 @@ function ArticlesView({
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   });
-  const placeholderVisible = useDelayedPending(articles.isLoading);
+  const placeholderVisible = useDelayedPending(articles.isLoading, {
+    releaseNow: articles.isSuccess && articles.data.articles.length === 0,
+  });
   const total = articles.data?.total ?? 0;
   const lastPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
   return (

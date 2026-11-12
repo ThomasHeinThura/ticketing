@@ -126,6 +126,10 @@ export function ProjectKindFields({
   const managed = values.kind === "managed_service";
   const placeholderVisible = useDelayedPending(
     managed && options.slaOn && options.calendars.isPending,
+    {
+      releaseNow:
+        options.calendars.isSuccess && options.calendars.data.data.length === 0,
+    },
   );
   const calendarList = options.calendars.data?.data ?? [];
   // Nothing resolves: the default is not offered and a calendar must be chosen.

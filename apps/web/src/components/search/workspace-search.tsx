@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Input,
+  LoadingStatus,
   ToggleGroup,
   ToggleGroupItem,
   useDelayedPending,
@@ -87,7 +88,9 @@ export default function WorkspaceSearch({
     limit: 20,
   });
   const pending = hasQuery && (isLoading || isFetching);
-  const placeholderVisible = useDelayedPending(pending);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow: !pending && data?.results.length === 0,
+  });
   const showLoading = hasQuery && (pending || placeholderVisible);
 
   const groups = useMemo(
@@ -140,10 +143,17 @@ export default function WorkspaceSearch({
             autoFocus
           />
           {showLoading && (
-            <Loader2
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground"
-            />
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("workspace:search.searching")}
+            >
+              <Loader2
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground"
+              />
+            </LoadingStatus>
           )}
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">

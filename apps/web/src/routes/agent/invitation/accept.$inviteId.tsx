@@ -8,6 +8,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  LoadingStatus,
   useDelayedPending,
 } from "@taskdesk/ui";
 import {
@@ -115,12 +116,17 @@ function AcceptInvitation() {
       <>
         <PageTitle title={t("auth:invitation.pageTitleAccept")} />
         <AuthLayout title={t("auth:invitation.loadingTitle")}>
-          <div
-            className="flex items-center justify-center py-8"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
           >
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
+            <div
+              className="flex items-center justify-center py-8"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          </LoadingStatus>
         </AuthLayout>
       </>
     );

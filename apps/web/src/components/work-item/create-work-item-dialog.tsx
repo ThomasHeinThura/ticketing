@@ -1,4 +1,4 @@
-import { Button, DelayedSuspense, Skeleton } from "@taskdesk/ui";
+import { Button, DelayedSuspense, LoadingStatus, Skeleton } from "@taskdesk/ui";
 import { lazy } from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateWorkItemDialogProps } from "./create-work-item-dialog-form";
@@ -15,20 +15,23 @@ export function CreateWorkItemDialogContent({
   workspaceId,
   initialState,
 }: CreateWorkItemDialogProps) {
+  const { t } = useTranslation();
   return (
     <DelayedSuspense
-      fallback={
-        <div
-          className="flex flex-col flex-1 min-h-0 space-y-6 px-6"
-          aria-busy="true"
-          data-testid="create-work-item-dialog-loading"
-        >
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="min-h-[200px] w-full" />
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-9 w-32 self-end" />
-        </div>
-      }
+      fallback={(visible) => (
+        <LoadingStatus visible={visible} label={t("common:empty.loading")}>
+          <div
+            className="flex flex-col flex-1 min-h-0 space-y-6 px-6"
+            aria-busy="true"
+            data-testid="create-work-item-dialog-loading"
+          >
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="min-h-[200px] w-full" />
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-9 w-32 self-end" />
+          </div>
+        </LoadingStatus>
+      )}
     >
       <DefaultCreateWorkItemDialogForm
         onClose={onClose}

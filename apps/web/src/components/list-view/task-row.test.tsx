@@ -95,6 +95,30 @@ const task: Task = {
 };
 
 describe("TaskRow", () => {
+  it("does not read computed styles while rendering the motion transition", () => {
+    const computedStyle = vi.spyOn(window, "getComputedStyle");
+    try {
+      render(
+        <TaskRow
+          task={task}
+          projectSlug="kan"
+          taskIsCompleted={false}
+          displayPreferences={{
+            showAssignees: true,
+            showPriority: true,
+            showDueDates: true,
+            showLabels: true,
+            showTaskNumbers: true,
+          }}
+          onOpenTask={vi.fn()}
+          t={mockT}
+        />,
+      );
+      expect(computedStyle).not.toHaveBeenCalled();
+    } finally {
+      computedStyle.mockRestore();
+    }
+  });
   it("renders row details from its shared parent-provided context", () => {
     render(
       <TaskRow

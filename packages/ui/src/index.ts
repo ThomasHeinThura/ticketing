@@ -337,6 +337,7 @@ export {
 } from "./components/input-otp";
 export { Kbd, KbdGroup, KbdSequence } from "./components/kbd";
 export { Label } from "./components/label";
+export { LoadingStatus } from "./components/loading-status";
 export {
   Menu,
   Menu as DropdownMenu,

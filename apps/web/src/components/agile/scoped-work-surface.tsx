@@ -103,7 +103,9 @@ export function ScopedWorkSurface({
       : undefined;
   return (
     <ScopedMembershipContext.Provider value={membership}>
-      <DelayedSuspense fallback={<WorkItemListLoading />}>
+      <DelayedSuspense
+        fallback={(visible) => <WorkItemListLoading visible={visible} />}
+      >
         {layout === "list" ? (
           <ScopedList
             project={project}

@@ -28,6 +28,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
+  LoadingStatus,
   motionDurationMs,
   motionEasing,
   Progress,
@@ -162,7 +163,6 @@ export default function ProjectsPage({
     includeArchived: recoveryMode,
     includeDeleted: recoveryMode,
   });
-  const placeholderVisible = useDelayedPending(isLoading);
   const projects = recoveryMode
     ? listedProjects?.filter((project) => project.deletedAt !== null)
     : listedProjects;
@@ -207,6 +207,13 @@ export default function ProjectsPage({
         : orderedProjects,
     [orderedProjects, kindFilter],
   );
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading &&
+      !isError &&
+      Boolean(visibleProjects) &&
+      visibleProjects?.length === 0,
+  });
 
   const { canCreateProjects, canUpdateProjects, canArchiveProjects } =
     useWorkspacePermission();
@@ -344,47 +351,52 @@ export default function ProjectsPage({
           ) : null
         }
       >
-        <Table data-testid="workspace-projects-loading">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-foreground font-medium">
-                {t("workspace:projects.title")}
-              </TableHead>
-              <TableHead className="text-foreground font-medium">
-                {t("workspace:projects.progress")}
-              </TableHead>
-              <TableHead className="text-foreground font-medium">
-                {t("workspace:projects.targetDate")}
-              </TableHead>
-              <TableHead className="text-foreground font-medium">
-                {t("workspace:projects.status")}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          >
-            {[1, 2, 3].map((i) => (
-              <TableRow key={i}>
-                <TableCell className="py-3">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-5 w-5" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                </TableCell>
-                <TableCell className="py-3">
-                  <Skeleton className="h-2 w-20" />
-                </TableCell>
-                <TableCell className="py-3">
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
-                <TableCell className="py-3">
-                  <Skeleton className="h-5 w-16" />
-                </TableCell>
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Table data-testid="workspace-projects-loading">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.title")}
+                </TableHead>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.progress")}
+                </TableHead>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.targetDate")}
+                </TableHead>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.status")}
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
+              {[1, 2, 3].map((i) => (
+                <TableRow key={i}>
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-5 w-5" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Skeleton className="h-2 w-20" />
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Skeleton className="h-5 w-16" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </LoadingStatus>
         <PageTitle title={t("workspace:projects.pageTitle")} />
         <h1 className="sr-only">{t("workspace:projects.pageTitle")}</h1>
       </WorkspaceLayout>

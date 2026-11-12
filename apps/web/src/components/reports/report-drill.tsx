@@ -9,6 +9,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -216,7 +217,13 @@ export function DrillItemsDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const placeholderVisible = useDelayedPending(items.isLoading);
+  const placeholderVisible = useDelayedPending(items.isLoading, {
+    releaseNow:
+      !items.isLoading &&
+      !items.isError &&
+      Boolean(items.data) &&
+      items.data?.data.length === 0,
+  });
   const list = items.data?.data ?? [];
   const kind = list[0]?.kind ?? "work_item";
   return (
@@ -242,10 +249,17 @@ export function DrillItemsDialog({
               {t("reports:drill.loadError")}
             </p>
           ) : items.isLoading || placeholderVisible ? (
-            <Skeleton
-              className="h-24 w-full"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-24 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : list.length === 0 ? (
             <Empty>
               <EmptyHeader>

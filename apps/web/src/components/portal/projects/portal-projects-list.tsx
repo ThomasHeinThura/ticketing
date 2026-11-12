@@ -14,6 +14,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -79,7 +80,6 @@ export function PortalProjectsList({
     staleTime: 60_000,
     refetchOnMount: "always",
   });
-  const placeholderVisible = useDelayedPending(projects.isLoading);
   const all = projects.data?.data ?? [];
   const visible = all.filter(
     (project) =>
@@ -99,6 +99,10 @@ export function PortalProjectsList({
       replace: true,
     });
   }
+
+  const placeholderVisible = useDelayedPending(projects.isLoading, {
+    releaseNow: projects.isSuccess && visible.length === 0,
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
@@ -160,17 +164,18 @@ export function PortalProjectsList({
           </AlertDescription>
         </Alert>
       ) : projects.isLoading || placeholderVisible ? (
-        <Card style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
-          <CardContent
-            className="flex flex-col gap-3 p-4"
-            role="status"
-            aria-label={t("projects.title")}
-          >
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Card>
+            <CardContent className="flex flex-col gap-3 p-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </LoadingStatus>
       ) : visible.length === 0 ? (
         <Card>
           <CardContent className="p-8">

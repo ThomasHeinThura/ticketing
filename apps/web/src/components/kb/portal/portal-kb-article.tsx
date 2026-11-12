@@ -11,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
   Textarea,
   useDelayedPending,
@@ -137,12 +138,14 @@ export function PortalKbArticleView({
     (article.isLoading || (placeholderVisible && article.data))
   )
     return (
-      <div
-        className="mx-auto w-full max-w-3xl p-6"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-40 w-full" />
-      </div>
+        <div className="mx-auto w-full max-w-3xl p-6">
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </LoadingStatus>
     );
   if (article.isError || !article.data) {
     const missing =

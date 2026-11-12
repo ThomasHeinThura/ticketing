@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -94,6 +95,31 @@ describe("portal notification inbox", () => {
   });
 
   afterEach(() => cleanup());
+
+  it("shows a slow empty result as soon as it arrives", async () => {
+    vi.useFakeTimers();
+    try {
+      let resolve!: (value: PortalNotificationPage) => void;
+      mocks.get.mockReturnValue(
+        new Promise((done) => {
+          resolve = done;
+        }),
+      );
+      renderInbox();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(screen.getByRole("status")).toBeVisible();
+      await act(async () => {
+        resolve({ ...page, data: [], unreadCount: 0 });
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.getByText("notifications.empty")).toBeVisible();
+      expect(screen.queryByRole("status")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it("P2R1-04: links a customer approver's approval event to the Approvals screen", async () => {
     mocks.get.mockReset().mockResolvedValue({

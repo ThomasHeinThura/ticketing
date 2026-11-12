@@ -39,6 +39,7 @@ function IdentityConnectionsRoute() {
   const connections = useIdentityConnections(isAdmin);
   const placeholderVisible = useDelayedPending(
     isAdmin && connections.isPending,
+    { releaseNow: connections.isSuccess && connections.data.length === 0 },
   );
 
   if (location.pathname.startsWith(`${routes.identityConnections.path}/`))

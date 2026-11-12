@@ -131,7 +131,7 @@ function WorkItemDetailRouteComponent() {
       <div className="flex h-full min-w-0 w-full flex-1 flex-col overflow-hidden bg-background">
         <DelayedSuspense
           immediate={isNotFound || isError}
-          fallback={<WorkItemDetailLoading />}
+          fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
         >
           {item && !detailPlaceholder ? (
             <WorkItemDetailWithProject
@@ -175,7 +175,7 @@ function WorkItemDetailRouteComponent() {
               <div
                 style={{ visibility: detailPlaceholder ? "visible" : "hidden" }}
               >
-                <WorkItemDetailLoading />
+                <WorkItemDetailLoading visible={detailPlaceholder} />
               </div>
             </TaskPageFrame>
           ) : (

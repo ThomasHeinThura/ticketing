@@ -60,7 +60,9 @@ function GodModeOrganisationsRoute() {
     enabled: isAdmin,
     staleTime: 15_000,
   });
-  const placeholderVisible = useDelayedPending(isAdmin && query.isPending);
+  const placeholderVisible = useDelayedPending(isAdmin && query.isPending, {
+    releaseNow: query.isSuccess && query.data.data.length === 0,
+  });
   if (!isAdmin)
     return (
       <>

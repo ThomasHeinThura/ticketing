@@ -338,25 +338,33 @@ describe("WorkItemList", () => {
   });
 
   it("renders the loading skeleton state", () => {
-    renderWithQueryClient(
-      <WorkItemList
-        {...baseProps}
-        workItems={undefined}
-        isLoading={true}
-        isError={false}
-      />,
-    );
+    vi.useFakeTimers();
+    try {
+      renderWithQueryClient(
+        <WorkItemList
+          {...baseProps}
+          workItems={undefined}
+          isLoading={true}
+          isError={false}
+        />,
+      );
 
-    const loading = screen.getByTestId("work-item-list-loading");
-    expect(loading).toBeInTheDocument();
-    expect(loading).toHaveAttribute("aria-busy", "true");
-    expect(loading).toHaveAttribute("aria-live", "polite");
-    expect(
-      document.querySelector("[data-primary-content-ready='true']"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId("work-item-list-populated"),
-    ).not.toBeInTheDocument();
+      const loading = screen.getByTestId("work-item-list-loading");
+      expect(loading).toBeInTheDocument();
+      expect(loading).toHaveAttribute("aria-busy", "true");
+      expect(screen.queryByRole("status")).toBeNull();
+      act(() => vi.advanceTimersByTime(150));
+      expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
+      expect(
+        document.querySelector("[data-primary-content-ready='true']"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("work-item-list-populated"),
+      ).not.toBeInTheDocument();
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
   });
 
   it("renders the error state, with a retry action", () => {

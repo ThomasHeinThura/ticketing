@@ -115,7 +115,8 @@ vi.mock("@/components/common/action-tooltip", () => ({
   ActionTooltip: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-vi.mock("@taskdesk/ui", () => {
+vi.mock("@taskdesk/ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@taskdesk/ui")>();
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   );
@@ -132,6 +133,7 @@ vi.mock("@taskdesk/ui", () => {
     </button>
   );
   return {
+    ...actual,
     AlertDialog: passthrough,
     AlertDialogClose: button,
     AlertDialogContent: passthrough,

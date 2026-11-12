@@ -25,6 +25,7 @@ import {
   DialogTitle,
   Frame,
   FramePanel,
+  LoadingStatus,
   Table,
   TableBody,
   TableCell,
@@ -174,7 +175,9 @@ export function ServiceKeysCard() {
       !(error instanceof HttpError && error.status === 403) && count < 2,
   });
 
-  const placeholderVisible = useDelayedPending(query.isLoading);
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && query.data.length === 0,
+  });
 
   const revoke = useMutation({
     mutationFn: (key: ApiKey) => revokeServiceKey(workspaceId, key.id),
@@ -235,17 +238,22 @@ export function ServiceKeysCard() {
         <Card className="!rounded-none">
           <CardPanel>
             {!query.isError && (query.isLoading || placeholderVisible) ? (
-              <Frame
-                style={{
-                  visibility: placeholderVisible ? "visible" : "hidden",
-                }}
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
               >
-                <FramePanel className="p-8">
-                  <p className="text-center text-sm text-muted-foreground">
-                    {t("settings:serviceKeys.loading")}
-                  </p>
-                </FramePanel>
-              </Frame>
+                <Frame
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                >
+                  <FramePanel className="p-8">
+                    <p className="text-center text-sm text-muted-foreground">
+                      {t("settings:serviceKeys.loading")}
+                    </p>
+                  </FramePanel>
+                </Frame>
+              </LoadingStatus>
             ) : keys.length === 0 ? (
               <Frame>
                 <FramePanel className="p-8">

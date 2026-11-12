@@ -8,6 +8,7 @@ import {
   Button,
   Checkbox,
   Label,
+  LoadingStatus,
   ScrollArea,
   Select,
   SelectContent,
@@ -391,10 +392,15 @@ export default function WorkItemChangeSection({
     (change.isLoading || (placeholderVisible && change.data))
   )
     return (
-      <Skeleton
-        className="h-24 w-full"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-24 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (change.isError || !change.data)
     return (

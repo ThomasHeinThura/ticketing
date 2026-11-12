@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
+  LoadingStatus,
   RadioGroup,
   RadioGroupItem,
   Skeleton,
@@ -115,7 +116,11 @@ export function BulkAgileDialog({
       : (modules.data?.data.map((mod) => ({ id: mod.id, name: mod.name })) ??
         []);
   const loading = kind === "cycle" ? cycles.isLoading : modules.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      (kind === "cycle" ? cycles.isSuccess : modules.isSuccess) &&
+      targets.length === 0,
+  });
 
   const add = useMutation({
     mutationFn: async () => {
@@ -212,12 +217,17 @@ export function BulkAgileDialog({
             ) : null}
             {!(kind === "cycle" ? cycles.isError : modules.isError) &&
             (loading || placeholderVisible) ? (
-              <Skeleton
-                className="h-16 w-full"
-                style={{
-                  visibility: placeholderVisible ? "visible" : "hidden",
-                }}
-              />
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
+              >
+                <Skeleton
+                  className="h-16 w-full"
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                />
+              </LoadingStatus>
             ) : targets.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 {t(`bulk.none.${kind}`)}

@@ -38,6 +38,17 @@ describe("useDelayedPending", () => {
     expect(result.current).toBe(false);
   });
 
+  it("releases a known empty result at 200ms without retaining the placeholder", () => {
+    const { result, rerender } = renderHook(
+      ({ pending, empty }) => useDelayedPending(pending, { releaseNow: empty }),
+      { initialProps: { pending: true, empty: false } },
+    );
+    act(() => vi.advanceTimersByTime(200));
+    expect(result.current).toBe(true);
+    rerender({ pending: false, empty: true });
+    expect(result.current).toBe(false);
+  });
+
   it("cleans timers on unmount and handles StrictMode effect replay", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <StrictMode>{children}</StrictMode>

@@ -8,6 +8,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
   Tabs,
   TabsList,
@@ -73,10 +74,15 @@ export function ImportWizard({
     (query.isPending || (queryPlaceholderVisible && query.data))
   )
     return (
-      <Skeleton
-        className="h-80 w-full"
-        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-80 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (query.error instanceof HttpError && query.error.status === 403)
     return (

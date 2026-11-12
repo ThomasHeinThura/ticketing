@@ -75,7 +75,11 @@ export function PortalNotificationInbox({
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
-  const placeholderVisible = useDelayedPending(inbox.isLoading);
+  const placeholderVisible = useDelayedPending(inbox.isLoading, {
+    releaseNow:
+      inbox.isSuccess &&
+      inbox.data.pages.every((page) => page.data.length === 0),
+  });
   const loadingView = !inbox.isError && (inbox.isLoading || placeholderVisible);
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: portalNotificationQueryKey });
@@ -151,7 +155,7 @@ export function PortalNotificationInbox({
           <AlertDescription>{t("notifications.loadFailed")}</AlertDescription>
         </Alert>
       ) : null}
-      {loadingView ? (
+      {loadingView && placeholderVisible ? (
         <p
           role="status"
           className="text-sm text-muted-foreground"

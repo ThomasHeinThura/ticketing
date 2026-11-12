@@ -13,6 +13,7 @@ import {
   AlertDescription,
   Badge,
   Button,
+  LoadingStatus,
   Progress,
   Skeleton,
   ToggleGroup,
@@ -284,12 +285,17 @@ export function ModuleDetailScreen({
                   canEditItems={module.canEditItems}
                 />
               ) : (
-                <Skeleton
-                  className="h-40 w-full"
-                  style={{
-                    visibility: projectPlaceholder ? "visible" : "hidden",
-                  }}
-                />
+                <LoadingStatus
+                  visible={projectPlaceholder}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-40 w-full"
+                    style={{
+                      visibility: projectPlaceholder ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
               )}
             </DropSurface>
           </section>

@@ -4,6 +4,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -89,7 +90,10 @@ function ReportDetailScreen({
   const catalogue = useReportCatalogue(workspaceId);
   const entry = catalogue.data?.data.find((report) => report.key === reportKey);
   const report = useReport(workspaceId, reportKey, search);
-  const placeholderVisible = useDelayedPending(report.isLoading || !workspace);
+  const placeholderVisible = useDelayedPending(report.isLoading || !workspace, {
+    releaseNow:
+      Boolean(workspace) && report.isSuccess && report.data.empty !== null,
+  });
   const [drilling, setDrilling] = useState<string | null>(search.drill ?? null);
   const exporting = useExportAction(() =>
     exportReport(workspaceId, reportKey, search),
@@ -149,10 +153,15 @@ function ReportDetailScreen({
         />
         {!report.isError &&
         (report.isLoading || !workspace || placeholderVisible) ? (
-          <Skeleton
-            className="h-48 w-full"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-48 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : report.isError || !report.data ? (
           <ReportError error={report.error} />
         ) : (

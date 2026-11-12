@@ -78,7 +78,9 @@ export function RolePeoplePanel({
   const queryClient = useQueryClient();
   const openPendingAction = useOpenPendingAction();
   const holders = useRoleHolders(workspaceId, role.id);
-  const placeholderVisible = useDelayedPending(holders.isLoading);
+  const placeholderVisible = useDelayedPending(holders.isLoading, {
+    releaseNow: holders.isSuccess && holders.data.holders.length === 0,
+  });
   const [selected, setSelected] = useState<string[]>([]);
   const [target, setTarget] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);

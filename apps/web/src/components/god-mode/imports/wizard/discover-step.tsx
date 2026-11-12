@@ -13,6 +13,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -131,10 +132,15 @@ export function DiscoverStep({
       {running ? null : !mapping.isError &&
         run.phase !== "created" &&
         (mapping.isPending || placeholderVisible) ? (
-        <Skeleton
-          className="h-40 w-full"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-40 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : discovery ? (
         <>
           <Card>

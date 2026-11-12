@@ -606,8 +606,12 @@ export function AnnouncementsList() {
   const canManage = status.data?.canManageServices === true && !catalogueOff;
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const announcements = useAnnouncements(workspaceId, canManage);
-  const statusPlaceholder = useDelayedPending(status.isLoading || !workspace);
-  const listPlaceholder = useDelayedPending(announcements.isLoading);
+  const statusPlaceholder = useDelayedPending(status.isLoading || !workspace, {
+    releaseNow: Boolean(status.data && workspace && announcements.isError),
+  });
+  const listPlaceholder = useDelayedPending(announcements.isLoading, {
+    releaseNow: announcements.isSuccess && announcements.data.length === 0,
+  });
   const [editing, setEditing] = useState<Announcement | "new" | null>(null);
   return (
     <>

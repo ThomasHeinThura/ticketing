@@ -12,6 +12,7 @@ import {
   CardTitle,
   Input,
   Label,
+  LoadingStatus,
   RadioGroup,
   RadioGroupItem,
   Select,
@@ -99,10 +100,15 @@ export function NotificationProviderEditor() {
   const placeholderVisible = useDelayedPending(pending);
   if (!query.isError && !pluginQuery.isError && (pending || placeholderVisible))
     return (
-      <Skeleton
-        className="h-48 w-full"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-48 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (query.isError)
     return (

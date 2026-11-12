@@ -55,9 +55,12 @@ export default function NotificationInbox({
   const { mutate: markAsUnread } = useMarkNotificationAsUnread();
   const openNotification = useNotificationClick();
 
-  const placeholderVisible = useDelayedPending(isLoading);
   const unreadCount = notifications?.pages[0]?.unreadCount ?? 0;
   const visible = notifications?.pages.flatMap((page) => page.data) ?? [];
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading && !isError && Boolean(notifications) && visible.length === 0,
+  });
   const emptyKey = {
     all: "notifications:emptyTitle",
     unread: "navigation:inbox.emptyUnread",

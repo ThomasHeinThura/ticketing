@@ -41,6 +41,12 @@
 /* Reduced motion: state changes remain, but animations and transitions stop.
    The slot-specific rules below also neutralize pressed scale and skeleton shimmer. */
 @media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+
   /* Stop CSS and Tailwind animation, including inline transitions and pseudo-elements. */
   *,
   *::before,

@@ -41,8 +41,10 @@ export default function CommentVersionHistory({
     commentId,
     enabled: open,
   });
-  const placeholderVisible = useDelayedPending(open && history.isLoading);
   const versions = history.data?.pages.flatMap((page) => page.data) ?? [];
+  const placeholderVisible = useDelayedPending(open && history.isLoading, {
+    releaseNow: history.isSuccess && versions.length === 0,
+  });
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

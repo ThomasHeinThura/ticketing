@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: vi.fn() },
   useTranslation: (namespace?: string) => ({
     t: (rawKey: string, options: Record<string, unknown> = {}) =>
       translate(

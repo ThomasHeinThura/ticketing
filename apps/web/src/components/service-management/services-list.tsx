@@ -300,7 +300,9 @@ export function ServicesList({ q }: { q?: string }) {
   }, [catalogueOn]);
   const [draft, setDraft] = useState(q ?? "");
   const loading = workspaceLoading || status.isLoading || services.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && services.isSuccess && services.data.length === 0,
+  });
   return (
     <>
       <PageTitle title={t("services.list.title")} />

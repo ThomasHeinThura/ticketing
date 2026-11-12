@@ -315,7 +315,9 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
   });
 
   const loading = workspaceLoading || fields.isLoading || sections.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && sections.isSuccess && sections.data.length === 0,
+  });
   const allFields = fields.data?.data ?? [];
   const active = allFields.filter((field) => field.deletedAt === null);
   const orderedSections = sections.data ?? [];

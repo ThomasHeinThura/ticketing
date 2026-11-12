@@ -222,7 +222,13 @@ export function IntakeQueuePanel({
   );
   const pending =
     queue.isLoading || results.isLoading || !queue.data || !results.data;
-  const placeholderVisible = useDelayedPending(pending);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow:
+      !pending &&
+      results.isSuccess &&
+      results.data.submissions.submissions.length === 0 &&
+      results.data.workItems.data.length === 0,
+  });
   const sorts = currentSort(queue.data, workItemQuery?.sorts);
   const columns = currentColumns(queue.data, workItemQuery?.columns);
   const storedFilter = record(queueWorkItemQuery(queue.data).filter);

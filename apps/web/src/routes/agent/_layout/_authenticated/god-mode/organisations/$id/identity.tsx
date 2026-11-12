@@ -47,7 +47,9 @@ function OrganisationIdentityRoute() {
   const navigate = useNavigate({ from: Route.fullPath });
   const isAdmin = useInstanceAdminSignal();
   const query = useOrganisationIdentityConnection(id, isAdmin);
-  const placeholderVisible = useDelayedPending(isAdmin && query.isPending);
+  const placeholderVisible = useDelayedPending(isAdmin && query.isPending, {
+    releaseNow: query.isSuccess && query.data === null,
+  });
 
   const tab: IdentityConnectionTab = search.tab ?? "connection";
   const go = (next: IdentityConnectionEditorSearch) =>

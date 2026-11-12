@@ -199,7 +199,9 @@ export default function WorkItemGroupedBoard({
     isLoading ||
     (field === "assignee" && peopleQuery.isLoading) ||
     (field === "label" && labelsQuery.isLoading);
-  const placeholderVisible = useDelayedPending(pending);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow: !pending && groups.length === 0,
+  });
   const [retainFocusId, setRetainFocusId] = useState<string>();
   const onRetainFocus = useCallback(() => setRetainFocusId(undefined), []);
 
@@ -232,7 +234,7 @@ export default function WorkItemGroupedBoard({
   if (pending || placeholderVisible) {
     return (
       <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
-        <WorkItemBoardSkeleton />
+        <WorkItemBoardSkeleton visible={placeholderVisible} />
       </div>
     );
   }

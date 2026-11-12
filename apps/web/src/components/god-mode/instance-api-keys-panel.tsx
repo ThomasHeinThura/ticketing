@@ -6,6 +6,7 @@ import {
   Badge,
   Frame,
   FramePanel,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -34,13 +35,20 @@ export function InstanceApiKeysPanel() {
     retry: false,
   });
 
-  const placeholderVisible = useDelayedPending(query.isPending);
+  const placeholderVisible = useDelayedPending(query.isPending, {
+    releaseNow: query.isSuccess && query.data.apiKeys.length === 0,
+  });
   if (!query.isError && (query.isPending || (placeholderVisible && query.data)))
     return (
-      <Skeleton
-        className="h-64 w-full"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-64 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (query.error instanceof HttpError && query.error.status === 403)
     return (

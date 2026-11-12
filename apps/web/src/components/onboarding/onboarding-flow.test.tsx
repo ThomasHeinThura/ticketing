@@ -79,6 +79,16 @@ afterEach(() => {
 });
 
 describe("OnboardingFlow (D-A, 12 Nov 2026)", () => {
+  it("does not read computed styles while rendering the motion transition", () => {
+    mocks.canCreate = true;
+    const computedStyle = vi.spyOn(window, "getComputedStyle");
+    try {
+      render(<OnboardingFlow />);
+      expect(computedStyle).not.toHaveBeenCalled();
+    } finally {
+      computedStyle.mockRestore();
+    }
+  });
   it("shows the no-workspace screen, and no create form, to a person who may not create workspaces", () => {
     render(<OnboardingFlow />);
 

@@ -76,7 +76,12 @@ export function WorkspaceOwnerPicker({
     limit: "20",
     ...(query ? { q: query } : {}),
   });
-  const placeholderVisible = useDelayedPending(isPending);
+  const placeholderVisible = useDelayedPending(isPending, {
+    releaseNow:
+      !isPending &&
+      !isError &&
+      data?.data.filter((user) => !user.isSuspended).length === 0,
+  });
   const options = useMemo<OwnerOption[]>(
     () =>
       (data?.data ?? [])
@@ -114,7 +119,9 @@ export function WorkspaceOwnerPicker({
             t("workspace:create.ownerError")
           ) : isPending || placeholderVisible ? (
             <span
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+              style={{
+                visibility: placeholderVisible ? "visible" : "hidden",
+              }}
             >
               {t("workspace:create.ownerLoading")}
             </span>

@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   Label,
+  LoadingStatus,
   Skeleton,
   Switch,
   Table,
@@ -124,13 +125,20 @@ export default function WorkItemTime({
   });
 
   const pending = entries.isLoading || activities.isLoading;
-  const placeholderVisible = useDelayedPending(pending);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow: !pending && entries.isSuccess && entries.data.data.length === 0,
+  });
   if (!entries.isError && (pending || (placeholderVisible && list)))
     return (
-      <Skeleton
-        className="h-16 w-full"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-16 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   // A-10: tracking is off for this item's project; say so instead of a load failure.
   if (entries.error instanceof TimeTrackingDisabledError)

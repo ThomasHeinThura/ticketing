@@ -110,7 +110,9 @@ export function MilestonesPanel({
     onError: (error) => toast.error(failure(error)),
   });
 
-  const placeholderVisible = useDelayedPending(query.isLoading);
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && query.data.length === 0,
+  });
   const milestones = query.data ?? [];
   const states = milestoneStates(milestones);
 

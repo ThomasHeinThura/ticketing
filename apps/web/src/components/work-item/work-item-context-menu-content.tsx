@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
   Button,
   ContextMenuItem,
+  LoadingStatus,
   useDelayedPending,
 } from "@taskdesk/ui";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -109,19 +110,28 @@ export default function WorkItemContextMenuContent(props: Props) {
         keyboardAnchor={props.keyboardAnchor}
         onCopyLink={() => void copyLink()}
         status={
-          <ContextMenuItem
-            disabled
-            style={{
-              visibility:
-                detail.isError || detailPlaceholder ? "visible" : "hidden",
-            }}
-          >
-            {t(
-              detail.isError
-                ? "workItems:properties.saveFailed"
-                : "common:empty.loading",
-            )}
-          </ContextMenuItem>
+          <>
+            <LoadingStatus
+              visible={detailPlaceholder && !detail.isError}
+              label={t("common:empty.loading")}
+            >
+              {null}
+            </LoadingStatus>
+            <ContextMenuItem
+              aria-hidden={!detail.isError}
+              disabled
+              style={{
+                visibility:
+                  detail.isError || detailPlaceholder ? "visible" : "hidden",
+              }}
+            >
+              {t(
+                detail.isError
+                  ? "workItems:properties.saveFailed"
+                  : "common:empty.loading",
+              )}
+            </ContextMenuItem>
+          </>
         }
       />
     );
@@ -202,9 +212,11 @@ function CanonicalMenuActions({
     people.isFetchedAfterMount && !people.isFetching && !people.isError;
   const offersPlaceholder = useDelayedPending(
     open && !offersReady && !offers.isError,
+    { releaseNow: offersReady && offers.data?.length === 0 },
   );
   const peoplePlaceholder = useDelayedPending(
     open && !peopleReady && !people.isError,
+    { releaseNow: peopleReady && people.data?.length === 0 },
   );
   const deletion = useWorkItemDeletion(item, onAccessLost);
   useEffect(() => {
@@ -424,11 +436,20 @@ function CanonicalMenuActions({
                 onChange: (transitionId) =>
                   void execute({ kind: "state", transitionId }),
                 emptyLabel:
-                  !offersReady || offersPlaceholder
-                    ? offersPlaceholder
-                      ? t("workItems:journey.loadingTransitions")
-                      : ""
-                    : t("workItems:journey.transitionsEmpty"),
+                  !offersReady || offersPlaceholder ? (
+                    offersPlaceholder ? (
+                      <LoadingStatus
+                        visible={offersPlaceholder}
+                        label={t("workItems:journey.loadingTransitions")}
+                      >
+                        {t("workItems:journey.loadingTransitions")}
+                      </LoadingStatus>
+                    ) : (
+                      ""
+                    )
+                  ) : (
+                    t("workItems:journey.transitionsEmpty")
+                  ),
               }
             : undefined
         }
@@ -456,11 +477,20 @@ function CanonicalMenuActions({
                 onChange: choosePerson,
                 canUnassign: Boolean(canUnassign),
                 emptyLabel:
-                  !peopleReady || peoplePlaceholder
-                    ? peoplePlaceholder
-                      ? t("workItems:journey.loadingPeople")
-                      : ""
-                    : t("workItems:journey.noPeople"),
+                  !peopleReady || peoplePlaceholder ? (
+                    peoplePlaceholder ? (
+                      <LoadingStatus
+                        visible={peoplePlaceholder}
+                        label={t("workItems:journey.loadingPeople")}
+                      >
+                        {t("workItems:journey.loadingPeople")}
+                      </LoadingStatus>
+                    ) : (
+                      ""
+                    )
+                  ) : (
+                    t("workItems:journey.noPeople")
+                  ),
               }
             : undefined
         }

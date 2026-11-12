@@ -176,7 +176,9 @@ export function PagesList({ projectKey }: { projectKey: string }) {
     retry: (count, error) =>
       !(error instanceof HttpError && error.status < 500) && count < 2,
   });
-  const placeholderVisible = useDelayedPending(query.isLoading);
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && query.data.pages.length === 0,
+  });
   const restore = useMutation({
     mutationFn: (id: string) => undeletePage(projectKey, id),
     onSuccess: async () => {

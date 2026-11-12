@@ -5,7 +5,7 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { Skeleton, useDelayedPending } from "@taskdesk/ui";
+import { LoadingStatus, Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
@@ -94,12 +94,14 @@ function AgentHome() {
   const workspace = activeWorkspace ?? workspaces?.[0];
   const pending = !workspace && (isLoading || isWorkspacesLoading);
   const placeholderVisible = useDelayedPending(pending);
-  const fallback = (
+  const fallback = (visible: boolean) => (
     <WorkspaceLayout title={t("navigation:sidebar.projects")}>
-      <div className="flex flex-col gap-4 p-6">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
+      <LoadingStatus visible={visible} label={t("common:empty.loading")}>
+        <div className="flex flex-col gap-4 p-6">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </LoadingStatus>
     </WorkspaceLayout>
   );
   // No active workspace yet (activation still landing): show the first one. No workspace at
@@ -107,7 +109,7 @@ function AgentHome() {
   if (!workspacesError && (pending || placeholderVisible))
     return (
       <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
-        {fallback}
+        {fallback(placeholderVisible)}
       </div>
     );
   if (!workspace) {
@@ -124,7 +126,7 @@ function AgentHome() {
     return <Navigate to="/onboarding" />;
   }
   return (
-    <Suspense fallback={fallback}>
+    <Suspense fallback={fallback(true)}>
       <ProjectsPage
         workspaceId={workspace.id}
         recoveryMode={recovery === "deleted"}

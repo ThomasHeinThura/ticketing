@@ -307,7 +307,6 @@ function WorkItemActivity({
     key: workItemKey,
     comment: focusedComment,
   });
-  const placeholderVisible = useDelayedPending(activity.isLoading);
   const queryClient = useQueryClient();
   const updateComment = useUpdateWorkItemComment();
   const canReadPeople =
@@ -386,6 +385,9 @@ function WorkItemActivity({
   // The API returns newest first; grouping reverses once so the rendered list
   // reads chronologically with the newest entry at the bottom.
   const visibleRows = filterActivityRows(rows, filter);
+  const placeholderVisible = useDelayedPending(activity.isLoading, {
+    releaseNow: activity.isSuccess && visibleRows.length === 0,
+  });
   const hasFocusedComment = Boolean(
     focusedComment &&
       visibleRows.some((row) => isComment(row) && row.id === focusedComment),

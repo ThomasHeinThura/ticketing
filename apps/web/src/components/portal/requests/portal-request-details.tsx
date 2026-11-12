@@ -84,12 +84,19 @@ export function PortalRequestDetails({
     retry: (count, error) =>
       !(error instanceof HttpError && error.status === 404) && count < 2,
   });
-  const placeholderVisible = useDelayedPending(page.isLoading);
   const request = page.data;
   const files = useQuery({
     queryKey: [...queryKey, "files"],
     queryFn: () => getPortalRequestFiles(requestRef),
     enabled: request?.canViewAttachments === true,
+  });
+  const placeholderVisible = useDelayedPending(page.isLoading, {
+    releaseNow:
+      page.isSuccess &&
+      request?.canViewAttachments === true &&
+      (files.isError ||
+        (files.isSuccess &&
+          files.data.every((file) => file.state !== "ready"))),
   });
   const notFound = page.error instanceof HttpError && page.error.status === 404;
 
@@ -381,8 +388,11 @@ function Files({
   locale: string | undefined;
 }) {
   const { t } = usePortalTranslation("portal");
-  const placeholderVisible = useDelayedPending(loading);
   const ready = (files ?? []).filter((file) => file.state === "ready");
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      !loading && !failed && files !== undefined && ready.length === 0,
+  });
   return (
     <section className="flex flex-col gap-3" aria-labelledby="request-files">
       <h2 id="request-files" className="font-medium">

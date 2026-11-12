@@ -11,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -30,16 +31,23 @@ export function PluginsCatalog() {
     throwOnError: false,
   });
 
-  const queryPlaceholderVisible = useDelayedPending(query.isPending);
+  const queryPlaceholderVisible = useDelayedPending(query.isPending, {
+    releaseNow: query.isSuccess && query.data.plugins.length === 0,
+  });
   if (
     !query.isError &&
     (query.isPending || (queryPlaceholderVisible && query.data))
   )
     return (
-      <Skeleton
-        className="h-40 w-full"
-        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-40 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (query.error instanceof HttpError && query.error.status === 403)
     return (

@@ -154,7 +154,13 @@ function TimesheetContent({ search, onSearchChange }: Props) {
   const pending = Boolean(
     workspaceLoading || probe.isLoading || (start && entries.isLoading),
   );
-  const placeholderVisible = useDelayedPending(pending);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow:
+      !pending &&
+      everyone &&
+      entries.isSuccess &&
+      entries.data.data.length === 0,
+  });
   if (!probe.error && !entries.error && (pending || placeholderVisible))
     return (
       <TimesheetFrame>

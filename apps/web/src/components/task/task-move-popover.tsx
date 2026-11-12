@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Label,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -72,6 +73,9 @@ export default function TaskMovePopover({
 
   const placeholderVisible = useDelayedPending(
     Boolean(selectedProjectId && isProjectLoading),
+    {
+      releaseNow: !isProjectLoading && destinationProject?.columns.length === 0,
+    },
   );
   const destinationColumns = destinationProject?.columns ?? [];
   const canKeepCurrentStatus = destinationColumns.some(
@@ -227,16 +231,21 @@ export default function TaskMovePopover({
           {selectedProjectId &&
             !isProjectError &&
             (isProjectLoading || placeholderVisible) && (
-              <div
-                className="flex items-center justify-center py-2"
-                style={{
-                  visibility: placeholderVisible ? "visible" : "hidden",
-                }}
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
               >
-                <span className="text-xs text-muted-foreground">
-                  {t("tasks:move.statusLabel")}…
-                </span>
-              </div>
+                <div
+                  className="flex items-center justify-center py-2"
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                >
+                  <span className="text-xs text-muted-foreground">
+                    {t("tasks:move.statusLabel")}…
+                  </span>
+                </div>
+              </LoadingStatus>
             )}
 
           {selectedProjectId && isProjectError && (

@@ -11,6 +11,7 @@ import {
   CardTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -146,10 +147,15 @@ export function InstanceSettingsForm() {
     (query.isPending || (queryPlaceholderVisible && query.data))
   )
     return (
-      <Skeleton
-        className="h-64 w-full"
-        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-64 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (query.isError)
     return (

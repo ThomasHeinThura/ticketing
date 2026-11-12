@@ -57,7 +57,11 @@ export function PortalAnnouncementsList({
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     retry: false,
   });
-  const placeholderVisible = useDelayedPending(announcements.isPending);
+  const placeholderVisible = useDelayedPending(announcements.isPending, {
+    releaseNow:
+      announcements.isSuccess &&
+      announcements.data.pages.every((page) => page.data.length === 0),
+  });
   const entries = announcements.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (

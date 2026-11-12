@@ -120,6 +120,16 @@ function mount() {
 }
 type MountedDragHook = Pick<ReturnType<typeof mount>, "result">;
 
+it("does not read computed styles while rendering the drag hook", () => {
+  const computedStyle = vi.spyOn(window, "getComputedStyle");
+  try {
+    mount();
+    expect(computedStyle).not.toHaveBeenCalled();
+  } finally {
+    computedStyle.mockRestore();
+  }
+});
+
 function start(hook: MountedDragHook, id = "one") {
   act(() =>
     hook.result.current.startDrag({

@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardPanel,
   CardTitle,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -93,12 +94,13 @@ export function PortalProjectsCards({
     // The dashboard loader refreshes on entry and the mount reuses that read.
     refetchOnMount: prefetched ? false : "always",
   });
-  const placeholderVisible = useDelayedPending(projects.isLoading);
   const visible = (projects.data?.data ?? []).filter(
     (project) => !projectKey || project.key === projectKey,
   );
-  if (projects.isSuccess && visible.length === 0 && !placeholderVisible)
-    return null;
+  const placeholderVisible = useDelayedPending(projects.isLoading, {
+    releaseNow: projects.isSuccess && visible.length === 0,
+  });
+  if (projects.isSuccess && visible.length === 0) return null;
 
   return (
     <section
@@ -131,15 +133,15 @@ export function PortalProjectsCards({
           </AlertDescription>
         </Alert>
       ) : projects.isPending || placeholderVisible ? (
-        <div
-          className="grid gap-3 sm:grid-cols-2"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          role="status"
-          aria-label={t("projects.dashboard.title")}
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
         >
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </LoadingStatus>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {visible.map((project) => (

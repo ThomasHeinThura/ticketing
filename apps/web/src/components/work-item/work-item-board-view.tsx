@@ -333,7 +333,9 @@ export default function WorkItemBoardView({
         />
       )}
       {!isLoading && realtimeProjectId === project.id ? (
-        <DelayedSuspense fallback={<WorkItemListLoading />}>
+        <DelayedSuspense
+          fallback={(visible) => <WorkItemListLoading visible={visible} />}
+        >
           <WorkItemListRealtime
             key={project.id}
             projectId={project.id}

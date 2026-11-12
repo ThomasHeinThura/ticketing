@@ -23,6 +23,7 @@ import {
   AlertDescription,
   Badge,
   Button,
+  LoadingStatus,
   motionDurationMs,
   motionEasing,
   Select,
@@ -218,18 +219,25 @@ export default function ProjectStatesEditor({
     }
   };
 
-  const placeholderVisible = useDelayedPending(isLoading);
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && (states?.length === 0 || inheritance.isError),
+  });
   if (!isError && (isLoading || (placeholderVisible && states))) {
     return (
-      <div
-        aria-busy="true"
-        className="space-y-2"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        data-testid="project-states-loading"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
+        <div
+          aria-busy="true"
+          className="space-y-2"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          data-testid="project-states-loading"
+        >
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </LoadingStatus>
     );
   }
 

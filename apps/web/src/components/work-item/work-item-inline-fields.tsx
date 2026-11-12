@@ -216,8 +216,14 @@ export default function WorkItemInlineFields({
   });
   const transitionsPlaceholder = useDelayedPending(
     stateOpen && transitions.isLoading,
+    { releaseNow: transitions.isSuccess && transitions.data.length === 0 },
   );
-  const peoplePlaceholder = useDelayedPending(assigneeOpen && people.isLoading);
+  const peoplePlaceholder = useDelayedPending(
+    assigneeOpen && people.isLoading,
+    {
+      releaseNow: people.isSuccess && people.data.length === 0,
+    },
+  );
   const editingCustomField = customFieldColumns.find(
     (field) => field.key === editingCustomFieldKey,
   );

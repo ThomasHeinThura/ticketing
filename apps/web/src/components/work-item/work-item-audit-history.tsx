@@ -5,6 +5,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -51,9 +52,16 @@ export default function WorkItemAuditHistory({
   const [at, setAt] = useState<string | null>(null);
   const history = useGetWorkItemAuditHistory(workItemKey, open);
   const snapshot = useGetWorkItemReconstruction(workItemKey, at);
-  const historyPlaceholder = useDelayedPending(open && history.isLoading);
+  const historyPlaceholder = useDelayedPending(open && history.isLoading, {
+    releaseNow: history.isSuccess && history.data.rows.length === 0,
+  });
   const snapshotPlaceholder = useDelayedPending(
     Boolean(at) && snapshot.isLoading,
+    {
+      releaseNow:
+        snapshot.isSuccess &&
+        Object.keys(snapshot.data?.snapshot?.fields ?? {}).length === 0,
+    },
   );
   const fields = Object.entries(snapshot.data?.snapshot?.fields ?? {});
   const states = useGetProjectStates(projectId, open);
@@ -102,10 +110,17 @@ export default function WorkItemAuditHistory({
       <CollapsibleContent>
         <div className="mt-2 flex flex-col gap-3">
           {!history.isError && (history.isLoading || historyPlaceholder) && (
-            <Skeleton
-              className="h-16 w-full"
-              style={{ visibility: historyPlaceholder ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={historyPlaceholder}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-16 w-full"
+                style={{
+                  visibility: historyPlaceholder ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           )}
           {history.isError && (
             <Alert variant="error">
@@ -182,12 +197,17 @@ export default function WorkItemAuditHistory({
               </p>
               {!snapshot.isError &&
                 (snapshot.isLoading || snapshotPlaceholder) && (
-                  <Skeleton
-                    className="h-12 w-full"
-                    style={{
-                      visibility: snapshotPlaceholder ? "visible" : "hidden",
-                    }}
-                  />
+                  <LoadingStatus
+                    visible={snapshotPlaceholder}
+                    label={t("common:empty.loading")}
+                  >
+                    <Skeleton
+                      className="h-12 w-full"
+                      style={{
+                        visibility: snapshotPlaceholder ? "visible" : "hidden",
+                      }}
+                    />
+                  </LoadingStatus>
                 )}
               {snapshot.isError && (
                 <Alert variant="error">

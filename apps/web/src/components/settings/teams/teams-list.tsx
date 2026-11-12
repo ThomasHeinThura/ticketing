@@ -158,7 +158,9 @@ export function TeamsList() {
   const canManage = canManageWorkspaceSettings() && !isCheckingPermissions;
   const [creating, setCreating] = useState(false);
   const loading = workspaceLoading || teams.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && teams.isSuccess && teams.data.length === 0,
+  });
   return (
     <>
       <PageTitle title={t("teams:list.title")} />

@@ -187,7 +187,9 @@ export function DeliveryHistory({ webhookId }: { webhookId: string }) {
 
   const rows = query.data?.pages.flatMap((page) => page.data) ?? [];
   const loading = workspaceLoading || isCheckingPermissions || query.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && query.isSuccess && rows.length === 0,
+  });
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">

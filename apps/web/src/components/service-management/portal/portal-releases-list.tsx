@@ -37,7 +37,11 @@ export function PortalReleasesList({
       getPortalReleases({ limit: 20, cursor: pageParam }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
-  const placeholderVisible = useDelayedPending(releases.isPending);
+  const placeholderVisible = useDelayedPending(releases.isPending, {
+    releaseNow:
+      releases.isSuccess &&
+      releases.data.pages.every((page) => page.data.length === 0),
+  });
   const entries = releases.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (

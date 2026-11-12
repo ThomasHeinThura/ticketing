@@ -210,7 +210,9 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     key: item.key,
     enabled: open || noteFor !== null,
   });
-  const placeholderVisible = useDelayedPending(open && transitions.isLoading);
+  const placeholderVisible = useDelayedPending(open && transitions.isLoading, {
+    releaseNow: transitions.isSuccess && transitions.data.length === 0,
+  });
   const triggerRef = useRef<HTMLButtonElement>(null);
   useAccessLostOnQueryError(transitions.error, onAccessLost);
   const refresh = useRefreshWorkItem(item);
@@ -594,7 +596,9 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     projectId: item.projectId,
     enabled: open,
   });
-  const placeholderVisible = useDelayedPending(open && people.isLoading);
+  const placeholderVisible = useDelayedPending(open && people.isLoading, {
+    releaseNow: people.isSuccess && people.data.length === 0,
+  });
   useAccessLostOnQueryError(people.error, onAccessLost);
   const refresh = useRefreshWorkItem(item);
   const assign = useMutation({
@@ -886,7 +890,9 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
     projectId: item.projectId,
     enabled: open && canEdit,
   });
-  const placeholderVisible = useDelayedPending(open && candidates.isLoading);
+  const placeholderVisible = useDelayedPending(open && candidates.isLoading, {
+    releaseNow: candidates.isSuccess && candidates.data.length === 0,
+  });
   useAccessLostOnQueryError(candidates.error, onAccessLost);
   const dispatching = useRef(false);
   const name = item.requesterId

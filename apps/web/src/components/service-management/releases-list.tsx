@@ -254,12 +254,17 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
   // the Services list does; the off state comes before the filter and New release.
   const catalogueOff = status.data?.enabled === false;
   const statusPending = !status.data && !status.isError;
-  const statusPlaceholder = useDelayedPending(statusPending);
   const listReady = status.data?.enabled === true || status.isError;
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const services = useServices(listReady ? workspaceId : "");
   const releases = useReleases(listReady ? workspaceId : "", search.serviceId);
-  const listPlaceholder = useDelayedPending(releases.isLoading || !workspace);
+  const statusPlaceholder = useDelayedPending(statusPending, {
+    releaseNow: Boolean(status.data && releases.isError),
+  });
+  const listPlaceholder = useDelayedPending(releases.isLoading || !workspace, {
+    releaseNow:
+      Boolean(workspace) && releases.isSuccess && releases.data.length === 0,
+  });
   const [creating, setCreating] = useState(false);
   return (
     <>

@@ -234,9 +234,12 @@ function MappingForm({
   }
 
   const loadingOptions = targets.isPending;
-  const optionsPlaceholder = useDelayedPending(loadingOptions);
+  const optionsPlaceholder = useDelayedPending(loadingOptions, {
+    releaseNow: targets.isSuccess && agentTargets?.data.length === 0,
+  });
   const rolesPlaceholder = useDelayedPending(
     Boolean(draft.scopeId && roles.isPending),
+    { releaseNow: roles.isSuccess && agentRoles.length === 0 },
   );
   return (
     <form

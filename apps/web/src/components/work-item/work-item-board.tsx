@@ -213,7 +213,12 @@ export default function WorkItemBoard({
       ),
     [itemsByState],
   );
-  const placeholderVisible = useDelayedPending(isLoading || !states);
+  const placeholderVisible = useDelayedPending(isLoading || !states, {
+    releaseNow:
+      !isLoading &&
+      Boolean(states) &&
+      (states?.length === 0 || workItems?.length === 0),
+  });
   const [retainFocusId, setRetainFocusId] = useState<string>();
   const onRetainFocus = useCallback(() => setRetainFocusId(undefined), []);
 
@@ -234,7 +239,7 @@ export default function WorkItemBoard({
   if (isLoading || !states || placeholderVisible) {
     return (
       <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
-        <WorkItemBoardSkeleton />
+        <WorkItemBoardSkeleton visible={placeholderVisible} />
       </div>
     );
   }

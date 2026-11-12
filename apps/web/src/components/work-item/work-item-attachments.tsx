@@ -80,7 +80,6 @@ export default function WorkItemAttachments({
         showRecoverable ? "recoverable" : "live",
       ),
   });
-  const placeholderVisible = useDelayedPending(list.isLoading);
   // Person IDs to names: the same reach-filtered source the comment composer mentions from.
   const people = useQuery({
     queryKey: [
@@ -177,6 +176,13 @@ export default function WorkItemAttachments({
   const recoverable = rows.filter(
     (attachment) => attachment.state === "deleted",
   );
+  const placeholderVisible = useDelayedPending(list.isLoading, {
+    releaseNow:
+      list.isSuccess &&
+      (showRecoverable
+        ? recoverable.length === 0
+        : ready.length === 0 && uploads.length === 0),
+  });
   const images = useMemo(
     () => ready.filter((attachment) => isInlineImage(attachment.mimeType)),
     [ready],

@@ -2,6 +2,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -56,15 +57,16 @@ function GodModeSignIn() {
         <div className="mt-6" data-testid="god-mode-sign-in-content">
           {!isError &&
           (isLoading || (placeholderVisible && !config?.disableLoginForm)) ? (
-            <div
-              className="space-y-3"
-              data-testid="god-mode-sign-in-loading"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
             >
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
+              <div className="space-y-3" data-testid="god-mode-sign-in-loading">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            </LoadingStatus>
           ) : config?.disableLoginForm ? (
             // The API refuses local sign-in on this instance, so offer no form that would fail.
             <Alert variant="error">

@@ -13,6 +13,7 @@ import {
   EmptyTitle,
   Frame,
   Label,
+  LoadingStatus,
   Skeleton,
   Switch,
   Table,
@@ -260,16 +261,25 @@ export function MappingStep({
     },
   });
 
-  const mappingPlaceholderVisible = useDelayedPending(mapping.isPending);
+  const mappingPlaceholderVisible = useDelayedPending(mapping.isPending, {
+    releaseNow: mapping.isSuccess && mapping.data.entries.length === 0,
+  });
   if (
     !mapping.isError &&
     (mapping.isPending || (mappingPlaceholderVisible && mapping.data))
   )
     return (
-      <Skeleton
-        className="h-72 w-full"
-        style={{ visibility: mappingPlaceholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={mappingPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-72 w-full"
+          style={{
+            visibility: mappingPlaceholderVisible ? "visible" : "hidden",
+          }}
+        />
+      </LoadingStatus>
     );
   if (mapping.isError)
     return (

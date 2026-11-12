@@ -14,6 +14,7 @@ import {
   DialogTitle,
   EmptyState,
   Label,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -55,7 +56,9 @@ function PortalApprovals() {
     queryKey: ["portal", portalUserId, "approvals"],
     queryFn: getPortalApprovals,
   });
-  const placeholderVisible = useDelayedPending(query.isPending);
+  const placeholderVisible = useDelayedPending(query.isPending, {
+    releaseNow: query.isSuccess && query.data.approvals.length === 0,
+  });
   const [noteDraft, setNoteDraft] = useState({ id: selectedId, value: "" });
   const note = noteDraft.id === selectedId ? noteDraft.value : "";
   const [announcement, setAnnouncement] = useState("");
@@ -105,13 +108,16 @@ function PortalApprovals() {
             {t("common:actions.retry")}
           </Button>
         </Alert>
-      ) : query.isPending ? (
-        <Skeleton
-          className="h-24 w-full"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        />
-      ) : placeholderVisible ? (
-        <Skeleton className="h-24 w-full" />
+      ) : query.isPending || placeholderVisible ? (
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-24 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : !query.data.approvals.length ? (
         // UX-1a (CP-4): the shared empty look, with the way back to the customer's requests.
         <EmptyState

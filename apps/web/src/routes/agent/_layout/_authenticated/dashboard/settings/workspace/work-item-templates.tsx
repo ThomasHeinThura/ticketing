@@ -23,6 +23,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -503,8 +504,11 @@ function WorkItemTemplatesPage() {
     isCheckingPermissions ||
     (canManage && (templates.isLoading || checklists.isLoading));
   const failed = templates.isError || checklists.isError;
-  const placeholderVisible = useDelayedPending(busy);
   const rows = showChecklists ? filteredChecklists : filteredTemplates;
+  const placeholderVisible = useDelayedPending(busy, {
+    releaseNow:
+      !busy && templates.isSuccess && checklists.isSuccess && rows.length === 0,
+  });
   return (
     <>
       <PageTitle title={t("settings:workItemTemplates.title")} />
@@ -530,10 +534,15 @@ function WorkItemTemplatesPage() {
           ) : null}
         </div>
         {!failed && (busy || (placeholderVisible && canManage)) ? (
-          <Skeleton
-            className="h-24 w-full"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-24 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : !canManage ? (
           <Alert>
             <AlertDescription>

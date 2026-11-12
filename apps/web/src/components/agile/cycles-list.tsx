@@ -71,7 +71,9 @@ export function CyclesList({ projectKey }: { projectKey: string }) {
       !(error instanceof FeatureDisabledError) && count < 2,
   });
 
-  const placeholderVisible = useDelayedPending(query.isLoading);
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && query.data.data.length === 0,
+  });
 
   if (query.error instanceof FeatureDisabledError)
     return (

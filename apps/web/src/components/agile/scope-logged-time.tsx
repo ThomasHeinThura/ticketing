@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   Badge,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -70,10 +71,15 @@ export function ScopeLoggedTime({
     (summary.isLoading || (placeholderVisible && summary.data))
   )
     return (
-      <Skeleton
-        className="h-14 w-48"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-14 w-48"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (summary.isError || !summary.data)
     return (

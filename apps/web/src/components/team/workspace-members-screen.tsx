@@ -40,7 +40,13 @@ export function WorkspaceMembersContent({
     isLoading,
     isError,
   } = useGetFullWorkspace({ workspaceId });
-  const placeholderVisible = useDelayedPending(isLoading);
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading &&
+      !isError &&
+      workspace?.members.length === 0 &&
+      workspace?.pendingInvitations.length === 0,
+  });
   return (
     <>
       {!isError && (isLoading || (placeholderVisible && workspace)) ? (

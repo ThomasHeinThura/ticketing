@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   Skeleton,
   Switch,
   useDelayedPending,
@@ -65,10 +66,15 @@ export function FeatureFlagsPanel({ target }: { target: FeatureLevel }) {
     (query.isPending || (queryPlaceholderVisible && query.data))
   )
     return (
-      <Skeleton
-        className="h-64 w-full"
-        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-64 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   // The server decides who may read or change features (`workspace:manage_settings`, or
   // `project:manage_settings` at the project, including a project-only grant), so a refusal says

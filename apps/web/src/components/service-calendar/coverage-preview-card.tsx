@@ -7,6 +7,7 @@ import {
   CardTitle,
   Input,
   Label,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -82,10 +83,17 @@ export function CoveragePreviewCard({
             </p>
           ) : !preview.isError &&
             (preview.isLoading || (placeholderVisible && preview.data)) ? (
-            <Skeleton
-              className="h-20 w-full"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-20 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : preview.isError ? (
             <div className="space-y-2">
               <p className="text-sm text-destructive">

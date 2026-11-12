@@ -97,6 +97,7 @@ function CreateProjectModal({
   );
   const organisationsPlaceholder = useDelayedPending(
     open && canBindOrganisation && organisations.isPending,
+    { releaseNow: organisations.isSuccess && organisations.data.length === 0 },
   );
   const customerOrganisations = organisations.data ?? [];
   const selectedOrganisation = customerOrganisations.find(

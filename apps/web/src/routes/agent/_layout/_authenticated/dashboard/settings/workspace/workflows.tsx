@@ -157,7 +157,10 @@ function WorkflowListView({
     queryFn: () => getWorkflows(workspaceId ?? ""),
     enabled: Boolean(workspaceId),
   });
-  const listPlaceholder = useDelayedPending(list.isLoading || !workspaceId);
+  const listPlaceholder = useDelayedPending(list.isLoading || !workspaceId, {
+    releaseNow:
+      Boolean(workspaceId) && list.isSuccess && list.data.length === 0,
+  });
   const [creating, setCreating] = useState(false);
   return (
     <>

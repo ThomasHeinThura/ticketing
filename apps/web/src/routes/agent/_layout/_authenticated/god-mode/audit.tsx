@@ -12,6 +12,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Input,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -45,7 +46,9 @@ function GodModeAuditRoute() {
     action: actionFilter.trim() || undefined,
   });
 
-  const placeholderVisible = useDelayedPending(isAdmin && query.isLoading);
+  const placeholderVisible = useDelayedPending(isAdmin && query.isLoading, {
+    releaseNow: query.isSuccess && query.data.rows.length === 0,
+  });
   if (!isAdmin) {
     return (
       <>
@@ -150,15 +153,18 @@ function GodModeAuditRoute() {
             </AlertDescription>
           </Alert>
         ) : query.isLoading || placeholderVisible ? (
-          <Card
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
           >
-            <CardContent className="flex flex-col gap-3 p-4">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </CardContent>
-          </Card>
+            <Card>
+              <CardContent className="flex flex-col gap-3 p-4">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </CardContent>
+            </Card>
+          </LoadingStatus>
         ) : rows.length === 0 ? (
           <Card>
             <CardContent className="p-8">

@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { Button, useDelayedPending } from "@taskdesk/ui";
+import { Button, LoadingStatus, useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import TaskLayout from "@/components/common/task-layout";
 import PageTitle from "@/components/page-title";
@@ -70,9 +70,16 @@ function RouteComponent() {
       />
       {isLoading ||
       (placeholderVisible && task && project?.slug && task.number) ? (
-        <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
-          <TaskDetailsSkeleton />
-        </div>
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <div
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
+            <TaskDetailsSkeleton />
+          </div>
+        </LoadingStatus>
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <h1 className="text-2xl font-bold">

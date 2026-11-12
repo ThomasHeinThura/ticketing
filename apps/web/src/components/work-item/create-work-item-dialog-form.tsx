@@ -5,6 +5,7 @@ import {
   AlertTitle,
   Button,
   DelayedSuspense,
+  LoadingStatus,
   Skeleton,
 } from "@taskdesk/ui";
 import { Layers, TriangleAlert } from "lucide-react";
@@ -354,15 +355,21 @@ export default function CreateWorkItemDialogForm({
           maxLength={TITLE_MAX_LENGTH}
           placeholder={t("common:modals.createTask.taskTitlePlaceholder")}
           autoFocus
+          data-autofocus
           required
           disabled={locked}
           data-testid="create-work-item-title"
         />
         <div className="min-h-[200px]">
           <DelayedSuspense
-            fallback={
-              <Skeleton className="min-h-44 w-full" aria-hidden="true" />
-            }
+            fallback={(visible) => (
+              <LoadingStatus
+                visible={visible}
+                label={t("common:empty.loading")}
+              >
+                <Skeleton className="min-h-44 w-full" />
+              </LoadingStatus>
+            )}
           >
             <CommentEditor
               value={description}

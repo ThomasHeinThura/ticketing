@@ -119,8 +119,10 @@ export function AutomationRunsDialog({
     getNextPageParam: (last) =>
       last.page.hasMore ? (last.page.nextBefore ?? undefined) : undefined,
   });
-  const placeholderVisible = useDelayedPending(query.isLoading);
   const rows = query.data?.pages.flatMap((page) => page.data) ?? [];
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && rows.length === 0,
+  });
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent

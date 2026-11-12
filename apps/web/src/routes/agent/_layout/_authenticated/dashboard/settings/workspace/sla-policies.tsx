@@ -74,7 +74,9 @@ function SlaPoliciesRouteContent() {
     `${routes.slaPolicies.path}/`,
   );
   const loading = isWorkspaceLoading || isLoading;
-  const placeholderVisible = useDelayedPending(!onChildRoute && loading);
+  const placeholderVisible = useDelayedPending(!onChildRoute && loading, {
+    releaseNow: !loading && !isError && policies?.data.length === 0,
+  });
   if (onChildRoute) {
     return <Outlet />;
   }

@@ -131,7 +131,10 @@ function PortalCatalogueContent() {
     catalogue.isLoading ||
     (needsSelectionMetadata && selectionMetadata.isLoading) ||
     (Boolean(key) && selectedType.isLoading);
-  const placeholderVisible = useDelayedPending(primaryLoading);
+  const placeholderVisible = useDelayedPending(primaryLoading, {
+    releaseNow:
+      !primaryLoading && !key && catalogue.isSuccess && entries.length === 0,
+  });
   const storageKey =
     selected && portalUserId
       ? `taskdesk:intake-draft:${encodeURIComponent(portalUserId)}:${encodeURIComponent(selected.key)}:${selected.version}`

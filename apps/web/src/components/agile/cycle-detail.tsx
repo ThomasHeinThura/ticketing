@@ -13,6 +13,7 @@ import {
   AlertDescription,
   Badge,
   Button,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -264,7 +265,9 @@ export function CycleDetailScreen({
     onError: () => toast.error(t("cycles.deleteFailed")),
   });
 
-  const placeholderVisible = useDelayedPending(cycleQuery.isLoading);
+  const placeholderVisible = useDelayedPending(cycleQuery.isLoading, {
+    releaseNow: cycleQuery.isSuccess && burndownQuery.isError,
+  });
   const burndownPlaceholder = useDelayedPending(burndownQuery.isLoading);
   const projectPlaceholder = useDelayedPending(!project);
 
@@ -384,10 +387,15 @@ export function CycleDetailScreen({
         <h2 className="font-medium text-sm">{t("burndown.title")}</h2>
         {!burndownQuery.isError &&
         (burndownQuery.isLoading || burndownPlaceholder) ? (
-          <Skeleton
-            className="h-40 w-full"
-            style={{ visibility: burndownPlaceholder ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={burndownPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-40 w-full"
+              style={{ visibility: burndownPlaceholder ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : burndownQuery.isError || !burndownQuery.data ? (
           <Alert variant="error">
             <AlertDescription>{t("burndown.loadFailed")}</AlertDescription>
@@ -435,12 +443,17 @@ export function CycleDetailScreen({
                   canEditItems={cycle.canEditItems}
                 />
               ) : (
-                <Skeleton
-                  className="h-40 w-full"
-                  style={{
-                    visibility: projectPlaceholder ? "visible" : "hidden",
-                  }}
-                />
+                <LoadingStatus
+                  visible={projectPlaceholder}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-40 w-full"
+                    style={{
+                      visibility: projectPlaceholder ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
               )}
             </DropSurface>
           </section>

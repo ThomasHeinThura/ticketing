@@ -50,7 +50,7 @@ export default function TaskContextMenuPresentation({
       disabled?: boolean;
     }[];
     onChange: (value: string) => void;
-    emptyLabel?: string;
+    emptyLabel?: ReactNode;
   };
   dueDate?: {
     value: Date | undefined;
@@ -62,7 +62,7 @@ export default function TaskContextMenuPresentation({
     options: TaskMenuPerson[];
     onChange: (value: string) => void;
     canUnassign?: boolean;
-    emptyLabel?: string;
+    emptyLabel?: ReactNode;
   };
   onArchive?: () => void;
   extraArchiveAction?: ReactNode;

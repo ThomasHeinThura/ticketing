@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -102,7 +103,9 @@ function RatesSettingsContent() {
   const people = rates.data?.people ?? [];
   const chosenPerson = people.find((person) => person.personId === personId);
   const loading = workspaceLoading || rates.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && rates.isSuccess && rates.data.data.length === 0,
+  });
   const canSubmit =
     Boolean(personId) &&
     minor !== null &&
@@ -111,11 +114,16 @@ function RatesSettingsContent() {
   return (
     <RatesSettingsFrame>
       {!rates.isError && (loading || (placeholderVisible && rates.data)) ? (
-        <Skeleton
-          className="h-32 w-full"
-          role="status"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-32 w-full"
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : isForbiddenError(rates.error) ? (
         <Alert variant="error">
           <AlertTitle>{t("timeTracking:rates.forbiddenTitle")}</AlertTitle>

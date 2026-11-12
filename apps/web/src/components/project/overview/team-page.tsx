@@ -22,6 +22,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Menu,
   MenuItem,
   MenuPopup,
@@ -96,11 +97,17 @@ export function TeamPage({ projectKey }: { projectKey: string }) {
   });
 
   const pending = isLoading || Boolean(projectId && stakeholders.isLoading);
-  const placeholderVisible = useDelayedPending(pending);
-  const rosterPlaceholder = useDelayedPending(roster.isLoading);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow:
+      !pending && stakeholders.isSuccess && stakeholders.data.length === 0,
+  });
+  const rosterPlaceholder = useDelayedPending(roster.isLoading, {
+    releaseNow: roster.isSuccess && roster.data.members.length === 0,
+  });
   if (
     !stakeholders.isError &&
-    (pending || (placeholderVisible && project && stakeholders.data))
+    (pending ||
+      (placeholderVisible && project && stakeholders.data && !roster.isError))
   )
     return (
       <div
@@ -264,10 +271,15 @@ export function TeamPage({ projectKey }: { projectKey: string }) {
       >
         {!roster.isError &&
         (roster.isLoading || (rosterPlaceholder && roster.data)) ? (
-          <Skeleton
-            className="h-16 w-full"
-            style={{ visibility: rosterPlaceholder ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={rosterPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-16 w-full"
+              style={{ visibility: rosterPlaceholder ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : roster.isError || !roster.data ? (
           <p className="text-muted-foreground text-sm">
             {t("team.rosterUnavailable")}

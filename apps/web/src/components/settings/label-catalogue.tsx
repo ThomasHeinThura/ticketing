@@ -90,7 +90,9 @@ export function LabelCatalogue({
     ? (projectQuery.data ?? [])
     : (workspaceQuery.data ?? []).filter((label) => !label.taskId);
   const query = projectId ? projectQuery : workspaceQuery;
-  const placeholderVisible = useDelayedPending(query.isPending);
+  const placeholderVisible = useDelayedPending(query.isPending, {
+    releaseNow: query.isSuccess && workspaceLabels.length === 0,
+  });
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({

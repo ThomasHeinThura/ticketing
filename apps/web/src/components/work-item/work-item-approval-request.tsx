@@ -17,6 +17,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -126,10 +127,16 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
   });
   const contextPlaceholder = useDelayedPending(
     Boolean(state) && context.isPending,
+    { releaseNow: context.isSuccess && candidates.isError },
   );
   const candidatesPlaceholder = useDelayedPending(
     Boolean(state && canRequest && kindAllowed && validTransition) &&
       candidates.isPending,
+    {
+      releaseNow:
+        candidates.isSuccess &&
+        candidates.data.pages.every((page) => page.data.length === 0),
+    },
   );
   const accessLost =
     candidates.error instanceof HttpError &&
@@ -210,10 +217,17 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
             </DialogDescription>
           </DialogHeader>
           {!context.isError && (context.isPending || contextPlaceholder) ? (
-            <Skeleton
-              className="h-12 w-full"
-              style={{ visibility: contextPlaceholder ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={contextPlaceholder}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-12 w-full"
+                style={{
+                  visibility: contextPlaceholder ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : context.isError ? (
             <Alert role="alert">
               <AlertDescription>

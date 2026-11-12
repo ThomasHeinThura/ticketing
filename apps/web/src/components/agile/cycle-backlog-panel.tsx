@@ -4,6 +4,7 @@ import {
   AlertDescription,
   Badge,
   Button,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -97,7 +98,6 @@ export function CycleBacklogPanel({
     dir: "asc",
     realtimeStatus: "connecting",
   });
-  const placeholderVisible = useDelayedPending(query.isLoading);
   const items = useMemo(
     () =>
       (query.data?.pages.flatMap((page) => page.items) ?? []).filter(
@@ -111,6 +111,9 @@ export function CycleBacklogPanel({
       ),
     [query.data, kind],
   );
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && items.length === 0,
+  });
   return (
     <section
       aria-label={t(kind === "cycle" ? "backlog.title" : "backlog.moduleTitle")}
@@ -126,10 +129,15 @@ export function CycleBacklogPanel({
           : t("backlog.readOnly")}
       </p>
       {!query.isError && (query.isLoading || placeholderVisible) ? (
-        <Skeleton
-          className="h-20 w-full"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-20 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : query.isError ? (
         <Alert variant="error">
           <AlertDescription>{t("backlog.loadFailed")}</AlertDescription>

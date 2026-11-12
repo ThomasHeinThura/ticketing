@@ -98,7 +98,9 @@ export function DocumentsPage({ projectKey }: { projectKey: string }) {
   });
 
   const pending = isLoading || Boolean(projectId && query.isLoading);
-  const placeholderVisible = useDelayedPending(pending);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow: !pending && query.isSuccess && query.data.length === 0,
+  });
   if (
     !query.isError &&
     (pending || (placeholderVisible && project && query.data))

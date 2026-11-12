@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -52,10 +53,15 @@ export function QuietHoursPreference() {
       <CardContent className="space-y-4">
         {!preferences.isError &&
         (preferences.isLoading || placeholderVisible) ? (
-          <Skeleton
-            className="h-12 w-full"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-12 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : preferences.isError ? (
           <Alert variant="error">
             <AlertDescription>{t("quietHours.unavailable")}</AlertDescription>

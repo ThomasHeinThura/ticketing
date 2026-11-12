@@ -28,6 +28,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -270,7 +271,9 @@ function CannedResponsesPage() {
   );
   const busy =
     !workspace || isCheckingPermissions || (canManage && library.isLoading);
-  const placeholderVisible = useDelayedPending(busy);
+  const placeholderVisible = useDelayedPending(busy, {
+    releaseNow: !busy && library.isSuccess && filtered.length === 0,
+  });
   return (
     <>
       <PageTitle title={t("settings:cannedResponses.title")} />
@@ -294,10 +297,15 @@ function CannedResponsesPage() {
           ) : null}
         </div>
         {!library.isError && (busy || (placeholderVisible && canManage)) ? (
-          <Skeleton
-            className="h-24 w-full"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-24 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : !canManage ? (
           <Alert>
             <AlertDescription>

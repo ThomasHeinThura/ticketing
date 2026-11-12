@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -10,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { mocks } = vi.hoisted(() => ({
   mocks: {
     canManage: true,
+    statesLoading: false,
+    inheritanceError: false,
     states: [] as Array<Record<string, unknown>>,
     inheritance: {
       projectId: "p1",
@@ -73,7 +76,7 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({
     data: mocks.inheritance,
     isLoading: false,
-    isError: false,
+    isError: mocks.inheritanceError,
     refetch: vi.fn(),
   }),
 }));
@@ -85,7 +88,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
 vi.mock("@/hooks/queries/project/use-get-project-states", () => ({
   default: () => ({
     data: mocks.states,
-    isLoading: false,
+    isLoading: mocks.statesLoading,
     isError: false,
     refetch: vi.fn(),
   }),
@@ -122,6 +125,8 @@ const state = (id: string, name: string, isDefault = false) => ({
 });
 
 beforeEach(() => {
+  mocks.statesLoading = false;
+  mocks.inheritanceError = false;
   mocks.canManage = true;
   mocks.states = [
     state("a", "Open", true),
@@ -133,7 +138,10 @@ beforeEach(() => {
   mocks.inheritStateSet.mockReset().mockResolvedValue(mocks.inheritance);
   mocks.setQueryData.mockReset();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("project states editor reorder (PR-17)", () => {
   it("is a dnd-kit sortable list with a labelled, focusable handle per state, not HTML5 draggable", () => {
@@ -203,4 +211,20 @@ describe("project states editor reorder (PR-17)", () => {
       }),
     );
   });
+});
+
+it("shows an inheritance error immediately when states resolve during retention", () => {
+  vi.useFakeTimers();
+  mocks.statesLoading = true;
+  const view = render(<ProjectStatesEditor projectId="p1" workspaceId="w1" />);
+  act(() => vi.advanceTimersByTime(200));
+  mocks.statesLoading = false;
+  mocks.inheritanceError = true;
+  view.rerender(<ProjectStatesEditor projectId="p1" workspaceId="w1" />);
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "settings:projectInheritance.loadError",
+  );
+  expect(
+    screen.queryByText("settings:projectStates.loading"),
+  ).not.toBeInTheDocument();
 });

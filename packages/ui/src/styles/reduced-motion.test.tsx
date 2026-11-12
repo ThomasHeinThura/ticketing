@@ -289,3 +289,21 @@ describe("compiled reduced motion CSS", () => {
     }
   });
 });
+
+it("disables compiled View Transition animations under reduced motion", async () => {
+  const compiled = await mountCompiledMotionStyles([]);
+  const reduced = emulateReducedMotion(compiled.css);
+  try {
+    const rules = reduced.textContent ?? "";
+    for (const name of ["group", "old", "new"]) {
+      expect(rules).toMatch(
+        new RegExp(
+          `::view-transition-${name}\\(\\*\\)[^{]*\\{[^}]*animation:\\s*none\\s*!important`,
+        ),
+      );
+    }
+  } finally {
+    reduced.remove();
+    compiled.cleanup();
+  }
+});

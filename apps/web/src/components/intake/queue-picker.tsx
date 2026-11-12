@@ -161,7 +161,9 @@ export function IntakeQueuePicker({
       onSelect(queue.id);
     },
   });
-  const placeholderVisible = useDelayedPending(queues.isLoading);
+  const placeholderVisible = useDelayedPending(queues.isLoading, {
+    releaseNow: queues.isSuccess && queues.data.length === 0,
+  });
   const selectable =
     queues.data?.some((queue) => queue.id === queueId) ?? false;
 

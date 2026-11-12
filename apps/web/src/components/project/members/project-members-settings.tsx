@@ -19,6 +19,7 @@ import {
   DialogPopup,
   DialogTitle,
   Label,
+  LoadingStatus,
   Menu,
   MenuItem,
   MenuPopup,
@@ -88,19 +89,26 @@ function ProjectMembersSettings({ projectId }: Props) {
   const [inheritedNotice, setInheritedNotice] =
     useState<RosterMemberView | null>(null);
 
-  const placeholderVisible = useDelayedPending(isLoading);
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && !isError && data?.members.length === 0,
+  });
   if (!isError && (isLoading || (placeholderVisible && data))) {
     return (
-      <section
-        aria-busy="true"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        aria-label={t("settings:projectMembers.title")}
-        className="space-y-3"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-      </section>
+        <section
+          aria-busy="true"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          aria-label={t("settings:projectMembers.title")}
+          className="space-y-3"
+        >
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </section>
+      </LoadingStatus>
     );
   }
 

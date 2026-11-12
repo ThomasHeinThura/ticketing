@@ -1,6 +1,7 @@
 import {
   Button,
   Input,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -32,7 +33,9 @@ type ColumnEditorProps = {
 export default function ColumnEditor({ projectId }: ColumnEditorProps) {
   const { t } = useTranslation();
   const { data: columns, isLoading } = useGetColumns(projectId);
-  const placeholderVisible = useDelayedPending(isLoading);
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && columns?.length === 0,
+  });
   const { mutateAsync: createColumn } = useCreateColumn();
   const { mutateAsync: updateColumn } = useUpdateColumn();
   const { mutateAsync: deleteColumn } = useDeleteColumn();
@@ -204,12 +207,17 @@ export default function ColumnEditor({ projectId }: ColumnEditorProps) {
 
   if (isLoading || placeholderVisible) {
     return (
-      <div
-        className="text-sm text-muted-foreground"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        {t("settings:columnEditor.loading")}
-      </div>
+        <div
+          className="text-sm text-muted-foreground"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
+          {t("settings:columnEditor.loading")}
+        </div>
+      </LoadingStatus>
     );
   }
 

@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -80,13 +81,15 @@ function ReparentPreviewDialog({
   const { t } = useTranslation();
   const open = parentId !== undefined;
   const preview = useGetReparentPreview(projectId, parentId);
-  const placeholderVisible = useDelayedPending(open && preview.isLoading);
   const data = preview.data;
   const nothingChanges =
     data !== undefined &&
     data.gains.length === 0 &&
     data.losses.length === 0 &&
     data.roleChanges.length === 0;
+  const placeholderVisible = useDelayedPending(open && preview.isLoading, {
+    releaseNow: preview.isSuccess && nothingChanges,
+  });
 
   return (
     <AlertDialog open={open} onOpenChange={(next) => !next && onCancel()}>
@@ -106,14 +109,21 @@ function ReparentPreviewDialog({
 
         <div className="space-y-3" data-testid="reparent-preview">
           {!preview.isError && (preview.isLoading || placeholderVisible) ? (
-            <div
-              aria-busy="true"
-              className="space-y-2"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
             >
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-4 w-40" />
-            </div>
+              <div
+                aria-busy="true"
+                className="space-y-2"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              >
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-4 w-40" />
+              </div>
+            </LoadingStatus>
           ) : null}
           {preview.isError ? (
             <Alert variant="error" role="alert">

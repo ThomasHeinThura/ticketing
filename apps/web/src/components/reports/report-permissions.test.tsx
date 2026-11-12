@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,6 +19,9 @@ const state = vi.hoisted(() => ({
   memberFetchStatus: "idle" as "idle" | "fetching" | "paused",
   memberError: false,
   member: { role: "member" } as { role: string } | null | undefined,
+  dashboardList: undefined as unknown,
+  dashboardResult: undefined as unknown,
+  catalogueResult: undefined as unknown,
   workspaceLoading: false,
   memberLoading: false,
   workspace: { id: "workspace-1" } as { id: string } | undefined,
@@ -93,7 +96,7 @@ vi.mock("@/hooks/queries/report", () => ({
   reportKeys: { all: (id: string) => ["reports", id] },
   useReportCatalogue: (...args: unknown[]) => {
     calls.catalogue(...args);
-    return idle;
+    return state.catalogueResult ?? idle;
   },
   useReport: (...args: unknown[]) => {
     calls.report(...args);
@@ -105,14 +108,15 @@ vi.mock("@/hooks/queries/report", () => ({
   },
   useDashboards: (...args: unknown[]) => {
     calls.dashboards(...args);
-    return idle;
+    return state.dashboardList ?? idle;
   },
   useDashboard: (...args: unknown[]) => {
     calls.dashboard(...args);
-    return idle;
+    return state.dashboardResult ?? idle;
   },
 }));
 
+import { HttpError } from "@/lib/http-error";
 import { DashboardView } from "./dashboard-view";
 import { ReportBuilder } from "./report-builder";
 import { ReportsIndex } from "./reports-index";
@@ -129,6 +133,9 @@ const MEMBER = { createSavedViews: true };
 const LEAD = { createSavedViews: true, shareSavedViews: true };
 
 beforeEach(() => {
+  state.dashboardList = undefined;
+  state.dashboardResult = undefined;
+  state.catalogueResult = undefined;
   state.caps = {};
   state.checking = false;
   state.permissionsFetching = false;
@@ -374,6 +381,40 @@ describe("report builder audiences (saved_view:share)", () => {
 });
 
 describe("reports index entry points", () => {
+  it("shows a saved-view denial while the catalogue placeholder is retained", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = () => (
+      <QueryClientProvider client={client}>
+        <ReportsIndex search={{}} onSearchChange={vi.fn()} />
+      </QueryClientProvider>
+    );
+    const view = render(tree());
+    await screen.findByText("reports:index.title");
+    vi.useFakeTimers();
+    try {
+      act(() => vi.advanceTimersByTime(200));
+      calls.savedViews.mockRejectedValueOnce(new HttpError(403, "Denied"));
+      state.catalogueResult = {
+        data: { data: [] },
+        isLoading: false,
+        isError: false,
+        isSuccess: true,
+      };
+      view.rerender(tree());
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20);
+      });
+      expect(
+        screen.getByText("reports:errors.forbidden.title"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("reports:index.savedEmpty")).toBeNull();
+      view.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("hides 'New custom report' from a role that cannot save one", async () => {
     state.caps = VIEWER;
     render(withClient(<ReportsIndex search={{}} onSearchChange={vi.fn()} />));
@@ -433,4 +474,41 @@ describe("feature.reports off", () => {
     expect(screen.queryByText("reports:errors.disabled.title")).toBeNull();
     expect(calls.dashboards).not.toHaveBeenCalled();
   });
+});
+
+it("shows a chosen dashboard denial immediately during retained list loading", async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const tree = () => (
+    <QueryClientProvider client={client}>
+      <DashboardView search={{}} onSearchChange={vi.fn()} />
+    </QueryClientProvider>
+  );
+  const view = render(tree());
+  await screen.findByText("reports:dashboard.manage");
+  vi.useFakeTimers();
+  try {
+    act(() => vi.advanceTimersByTime(200));
+    state.dashboardList = {
+      data: { data: [{ id: "d", name: "D", isDefault: true }] },
+      isLoading: false,
+      isError: false,
+    };
+    view.rerender(tree());
+    act(() => vi.advanceTimersByTime(20));
+    state.dashboardResult = {
+      isLoading: false,
+      isError: true,
+      error: new HttpError(403, "Denied"),
+    };
+    view.rerender(tree());
+    expect(
+      screen.getByText("reports:errors.forbidden.title"),
+    ).toBeInTheDocument();
+    expect(view.container.querySelector('[data-slot="skeleton"]')).toBeNull();
+    view.unmount();
+  } finally {
+    vi.useRealTimers();
+  }
 });

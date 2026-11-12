@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Skeleton,
   Switch,
   Table,
@@ -402,7 +403,9 @@ export function CostTypesSection({ workspaceId }: { workspaceId: string }) {
   const allowed = canManageRates() && !isCheckingPermissions;
   const costTypes = useCostTypes(workspaceId, allowed);
   const [editing, setEditing] = useState<CostType | null>(null);
-  const placeholderVisible = useDelayedPending(allowed && costTypes.isLoading);
+  const placeholderVisible = useDelayedPending(allowed && costTypes.isLoading, {
+    releaseNow: costTypes.isSuccess && costTypes.data.length === 0,
+  });
   if (!allowed) return null;
   return (
     <section
@@ -420,11 +423,16 @@ export function CostTypesSection({ workspaceId }: { workspaceId: string }) {
       </div>
       {!costTypes.isError &&
       (costTypes.isLoading || (placeholderVisible && costTypes.data)) ? (
-        <Skeleton
-          className="h-24 w-full"
-          role="status"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-24 w-full"
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : costTypes.error instanceof TimeTrackingDisabledError ? (
         <Alert variant="info">
           <AlertTitle>{t("timeTracking:rates.disabledTitle")}</AlertTitle>

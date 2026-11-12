@@ -13,6 +13,7 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ clear: vi.fn() }),
 }));
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: vi.fn() },
   useTranslation: () => ({ t: translate }),
 }));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({

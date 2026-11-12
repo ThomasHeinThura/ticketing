@@ -183,7 +183,7 @@ function WorkItemDetail({
   if (isLoading || !item || placeholderVisible) {
     return (
       <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
-        <WorkItemDetailLoading />
+        <WorkItemDetailLoading visible={placeholderVisible} />
       </div>
     );
   }

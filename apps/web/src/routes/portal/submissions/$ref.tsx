@@ -320,11 +320,17 @@ function PortalSubmissionContent() {
   const generalUpload =
     canUpload && openForFiles && formFileFields.length === 0;
   const replyUpload = canUpload && acceptedForFiles;
-  const placeholderVisible = useDelayedPending(page.isLoading);
   const attachments = useQuery({
     queryKey: ["portal", portalUserId, "submission", ref, "attachments"],
     queryFn: () => getPortalSubmissionAttachments(ref),
     enabled: canViewAttachments,
+  });
+  const placeholderVisible = useDelayedPending(page.isLoading, {
+    releaseNow:
+      page.isSuccess &&
+      canViewAttachments &&
+      (attachments.isError ||
+        (attachments.isSuccess && attachments.data.length === 0)),
   });
   const actions = usePortalRequestActions(portalUserId, ref);
   const canRaisePriority =

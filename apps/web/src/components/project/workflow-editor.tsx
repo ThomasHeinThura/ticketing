@@ -1,4 +1,5 @@
 import {
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -39,16 +40,23 @@ export default function WorkflowEditor({ projectId }: WorkflowEditorProps) {
   const { canManageProjectSettings, isCheckingPermissions } =
     useWorkspacePermission();
   const canEdit = !isCheckingPermissions && canManageProjectSettings();
-  const placeholderVisible = useDelayedPending(columnsLoading || rulesLoading);
+  const placeholderVisible = useDelayedPending(columnsLoading || rulesLoading, {
+    releaseNow: !columnsLoading && !rulesLoading && columns?.length === 0,
+  });
 
   if (columnsLoading || rulesLoading || placeholderVisible) {
     return (
-      <div
-        className="text-sm text-muted-foreground"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        {t("settings:workflowEditor.loading")}
-      </div>
+        <div
+          className="text-sm text-muted-foreground"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
+          {t("settings:workflowEditor.loading")}
+        </div>
+      </LoadingStatus>
     );
   }
 

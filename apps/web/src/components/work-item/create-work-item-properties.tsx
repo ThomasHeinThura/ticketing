@@ -62,7 +62,12 @@ export default function CreateWorkItemProperties(props: Props) {
     (person) => person.personId === assigneeId,
   );
   const defaultState = options.states.find((state) => state.isDefault);
-  const statePlaceholder = useDelayedPending(options.statesLoading);
+  const statePlaceholder = useDelayedPending(options.statesLoading, {
+    releaseNow:
+      !options.statesLoading &&
+      !options.statesError &&
+      options.states.length === 0,
+  });
   const selectedLabels = options.labels.filter((label) =>
     labelIds.includes(label.id),
   );

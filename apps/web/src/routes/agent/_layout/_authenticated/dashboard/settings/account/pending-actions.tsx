@@ -50,7 +50,10 @@ function PendingActionsList() {
     onSuccess: async () =>
       queryClient.invalidateQueries({ queryKey: ["me", "pending-actions"] }),
   });
-  const placeholderVisible = useDelayedPending(pendingActions.isLoading);
+  const placeholderVisible = useDelayedPending(pendingActions.isLoading, {
+    releaseNow:
+      pendingActions.isSuccess && pendingActions.data.data.length === 0,
+  });
   const page = pendingActions.data;
 
   return (

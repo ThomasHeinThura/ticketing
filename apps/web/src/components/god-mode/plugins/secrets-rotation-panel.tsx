@@ -11,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -54,10 +55,15 @@ export function SecretsRotationPanel() {
       <CardContent className="space-y-4">
         {!query.isError &&
         (query.isPending || (placeholderVisible && check)) ? (
-          <Skeleton
-            className="h-12 w-full"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-12 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : query.isError || !check ? (
           <Alert variant="error">
             <AlertTitle>{t("unavailable")}</AlertTitle>

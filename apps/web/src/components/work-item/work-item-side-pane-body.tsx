@@ -107,12 +107,12 @@ export default function WorkItemSidePaneBody({
           <div
             style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           >
-            <WorkItemDetailLoading />
+            <WorkItemDetailLoading visible={placeholderVisible} />
           </div>
         ) : (
           <DelayedSuspense
             immediate={isNotFound || isError}
-            fallback={<WorkItemDetailLoading />}
+            fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
           >
             {item ? (
               <SidePaneDetailWithProject

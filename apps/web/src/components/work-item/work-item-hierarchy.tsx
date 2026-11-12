@@ -6,6 +6,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -168,10 +169,12 @@ export default function WorkItemHierarchy({
           </p>
         ) : null}
         {!currentFatal && (currentQuery.isPending || currentPlaceholder) ? (
-          <Skeleton
-            className="h-8 w-full"
-            style={{ visibility: currentPlaceholder ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={currentPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton className="h-8 w-full" />
+          </LoadingStatus>
         ) : currentFatal ? (
           <HierarchyError onRetry={() => void currentQuery.refetch()} />
         ) : treeMode && path[0] ? (
@@ -235,6 +238,11 @@ function HierarchyNode({
   const query = isCurrent ? currentQuery : otherQuery;
   const childPlaceholder = useDelayedPending(
     open && node.hasChildren && query.isPending,
+    {
+      releaseNow:
+        query.isSuccess &&
+        query.data.pages.every((page) => page.data.length === 0),
+    },
   );
   const fatalError = query.isError && !query.isFetchNextPageError;
   const data = fatalError ? undefined : query.data;
@@ -433,10 +441,15 @@ function HierarchyNode({
       {open && node.hasChildren ? (
         <div className={hideRow ? undefined : "ml-4"}>
           {!fatalError && (query.isPending || childPlaceholder) ? (
-            <Skeleton
-              className="h-8 w-full"
-              style={{ visibility: childPlaceholder ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={childPlaceholder}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-8 w-full"
+                style={{ visibility: childPlaceholder ? "visible" : "hidden" }}
+              />
+            </LoadingStatus>
           ) : fatalError ? (
             <HierarchyError onRetry={() => void query.refetch()} />
           ) : (

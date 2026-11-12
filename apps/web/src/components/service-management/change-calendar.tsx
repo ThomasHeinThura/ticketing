@@ -137,7 +137,12 @@ function CalendarTab({
   const from = weeks[0]?.[0] ?? startOfMonth(visibleMonth);
   const last = weeks.at(-1)?.at(-1) ?? endOfMonth(visibleMonth);
   const calendar = useChangeCalendar(workspaceId, from, addDays(last, 1));
-  const placeholderVisible = useDelayedPending(calendar.isLoading);
+  const placeholderVisible = useDelayedPending(calendar.isLoading, {
+    releaseNow:
+      calendar.isSuccess &&
+      calendar.data.changes.length === 0 &&
+      calendar.data.freezes.length === 0,
+  });
   const tasks = useMemo(
     () =>
       calendar.data
@@ -324,7 +329,9 @@ function FreezesTab({
   const invalidate = useInvalidateServiceManagement();
   const [showCancelled, setShowCancelled] = useState(false);
   const freezes = useFreezes(workspaceId, showCancelled);
-  const placeholderVisible = useDelayedPending(freezes.isLoading);
+  const placeholderVisible = useDelayedPending(freezes.isLoading, {
+    releaseNow: freezes.isSuccess && freezes.data.length === 0,
+  });
   const cancel = useMutation({
     mutationFn: (freeze: Freeze) =>
       updateFreeze(freeze.id, { cancel: true, version: freeze.version }),
@@ -434,7 +441,9 @@ function OverridesTab({
 }) {
   const { t } = useTranslation("serviceManagement");
   const overrides = useFreezeOverrides(workspaceId, enabled);
-  const placeholderVisible = useDelayedPending(overrides.isLoading);
+  const placeholderVisible = useDelayedPending(overrides.isLoading, {
+    releaseNow: overrides.isSuccess && overrides.data.length === 0,
+  });
   if (!enabled)
     return (
       <p className="text-sm text-muted-foreground">{t("overrides.denied")}</p>

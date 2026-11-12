@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -137,10 +138,17 @@ function VersionPreview({
         </DialogHeader>
         <div className="max-h-[60vh] space-y-3 overflow-y-auto px-6">
           {!version.isError && (version.isLoading || versionPlaceholder) ? (
-            <Skeleton
-              className="h-32 w-full"
-              style={{ visibility: versionPlaceholder ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={versionPlaceholder}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-32 w-full"
+                style={{
+                  visibility: versionPlaceholder ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : null}
           {version.isError ? (
             <Alert variant={missing ? "info" : "error"}>
@@ -191,7 +199,9 @@ function History({
     queryKey: pageKeys.versions(projectKey, page.id),
     queryFn: () => getPageVersions(projectKey, page.id),
   });
-  const versionsPlaceholder = useDelayedPending(versions.isLoading);
+  const versionsPlaceholder = useDelayedPending(versions.isLoading, {
+    releaseNow: versions.isSuccess && versions.data.versions.length === 0,
+  });
   const restore = useMutation({
     mutationFn: async (number: number) =>
       restorePageVersion(projectKey, page.id, number, await beforeRestore()),
@@ -228,10 +238,15 @@ function History({
       </CardHeader>
       <CardContent className="space-y-3">
         {!versions.isError && (versions.isLoading || versionsPlaceholder) ? (
-          <Skeleton
-            className="h-20 w-full"
-            style={{ visibility: versionsPlaceholder ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={versionsPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-20 w-full"
+              style={{ visibility: versionsPlaceholder ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : null}
         {versions.isError ? (
           <Alert variant="error">

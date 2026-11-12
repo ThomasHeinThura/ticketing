@@ -18,6 +18,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Textarea,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -394,13 +395,18 @@ export function RoleCapabilitiesPanel({
                 ) : impactPreview.isError ? (
                   t("common:error.title")
                 ) : (
-                  <span
-                    style={{
-                      visibility: impactPlaceholder ? "visible" : "hidden",
-                    }}
+                  <LoadingStatus
+                    visible={impactPlaceholder}
+                    label={t("common:empty.loading")}
                   >
-                    {t("common:empty.loading")}
-                  </span>
+                    <span
+                      style={{
+                        visibility: impactPlaceholder ? "visible" : "hidden",
+                      }}
+                    >
+                      {t("common:empty.loading")}
+                    </span>
+                  </LoadingStatus>
                 )}
               </DialogDescription>
             </DialogHeader>

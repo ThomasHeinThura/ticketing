@@ -14,6 +14,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -364,19 +365,31 @@ export function PendingActionApproval({
             </DialogTitle>
           </DialogHeader>
           <DialogPanel aria-busy="true">
-            <Skeleton
-              className="h-32 w-full"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-32 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           </DialogPanel>
         </>
       );
     return (
       <div className="w-full p-5 lg:p-8" aria-busy="true">
-        <Skeleton
-          className="h-48 w-full"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-48 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       </div>
     );
   }

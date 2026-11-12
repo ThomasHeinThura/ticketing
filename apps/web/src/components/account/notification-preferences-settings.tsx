@@ -4,6 +4,7 @@ import {
   Checkbox,
   Input,
   Label,
+  LoadingStatus,
   NumberField,
   NumberFieldDecrement,
   NumberFieldGroup,
@@ -573,7 +574,9 @@ function ReportExportEmailPreference() {
 export function NotificationPreferencesSettings() {
   const { t } = useTranslation();
   const { data: preferences, isLoading } = useGetNotificationPreferences();
-  const placeholderVisible = useDelayedPending(isLoading);
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && !preferences,
+  });
   const { data: workspacesData } = useGetWorkspaces();
   const { mutateAsync: updatePreferences, isPending: isSavingPreferences } =
     useUpdateNotificationPreferences();
@@ -665,14 +668,19 @@ export function NotificationPreferencesSettings() {
 
   if (isLoading || placeholderVisible) {
     return (
-      <div
-        className="space-y-4"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <div className="h-24 animate-pulse rounded-md bg-muted" />
-        <div className="h-24 animate-pulse rounded-md bg-muted" />
-        <div className="h-48 animate-pulse rounded-md bg-muted" />
-      </div>
+        <div
+          className="space-y-4"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
+          <div className="h-24 animate-pulse rounded-md bg-muted" />
+          <div className="h-24 animate-pulse rounded-md bg-muted" />
+          <div className="h-48 animate-pulse rounded-md bg-muted" />
+        </div>
+      </LoadingStatus>
     );
   }
 

@@ -4,6 +4,7 @@ import {
   AlertDescription,
   Button,
   Input,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -228,7 +229,12 @@ export function WorkspaceStateTemplatesPanel({
   };
 
   const pending = isCheckingPermissions || templatesQuery.isLoading;
-  const placeholderVisible = useDelayedPending(pending);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow:
+      !pending &&
+      templatesQuery.isSuccess &&
+      templatesQuery.data.templates.length === 0,
+  });
   if (!isCheckingPermissions && !canEdit) {
     return <SettingsAccessDenied />;
   }
@@ -239,16 +245,21 @@ export function WorkspaceStateTemplatesPanel({
 
   if (!templatesQuery.isError && (pending || (placeholderVisible && canEdit))) {
     return (
-      <section
-        className="space-y-3"
-        aria-busy="true"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        data-testid="workspace-state-templates-loading"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </section>
+        <section
+          className="space-y-3"
+          aria-busy="true"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          data-testid="workspace-state-templates-loading"
+        >
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </section>
+      </LoadingStatus>
     );
   }
 

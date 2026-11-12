@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -60,14 +61,16 @@ export function PortalHomeKpis({
           </AlertDescription>
         </Alert>
       ) : !figures || placeholderVisible ? (
-        <div
-          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
         >
-          {[0, 1, 2, 3].map((index) => (
-            <Skeleton key={index} className="h-22 w-full rounded-xl" />
-          ))}
-        </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[0, 1, 2, 3].map((index) => (
+              <Skeleton key={index} className="h-22 w-full rounded-xl" />
+            ))}
+          </div>
+        </LoadingStatus>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <ActionRequiredCard

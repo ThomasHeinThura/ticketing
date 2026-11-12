@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -88,6 +89,19 @@ export function CanonicalMentionPreference() {
     );
   return (
     <div className="space-y-4">
+      <LoadingStatus
+        visible={
+          placeholderVisible &&
+          !preferences.isError &&
+          (preferences.isLoading ||
+            Boolean(
+              preference || teamNotificationPreference || commentPreference,
+            ))
+        }
+        label={t("common:empty.loading")}
+      >
+        {null}
+      </LoadingStatus>
       <div
         ref={mentionTarget}
         tabIndex={-1}
@@ -122,6 +136,7 @@ export function CanonicalMentionPreference() {
             {!preferences.isError &&
             (preferences.isLoading || (placeholderVisible && preference)) ? (
               <Skeleton
+                aria-hidden="true"
                 className="h-12 w-full"
                 style={{
                   visibility: placeholderVisible ? "visible" : "hidden",
@@ -169,6 +184,7 @@ export function CanonicalMentionPreference() {
             (preferences.isLoading ||
               (placeholderVisible && teamNotificationPreference)) ? (
               <Skeleton
+                aria-hidden="true"
                 className="h-12 w-full"
                 style={{
                   visibility: placeholderVisible ? "visible" : "hidden",
@@ -207,6 +223,7 @@ export function CanonicalMentionPreference() {
             (preferences.isLoading ||
               (placeholderVisible && commentPreference)) ? (
               <Skeleton
+                aria-hidden="true"
                 className="h-12 w-full"
                 style={{
                   visibility: placeholderVisible ? "visible" : "hidden",

@@ -1168,7 +1168,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           </Alert>
         ) : null}
         {isTabularLayout ? (
-          <DelayedSuspense fallback={<WorkItemListLoading />}>
+          <DelayedSuspense
+            fallback={(visible) => <WorkItemListLoading visible={visible} />}
+          >
             <WorkItemsPanel
               layout={layout === "list" ? "list" : "table"}
               project={project}
@@ -1209,10 +1211,12 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               visibility: boardModulePlaceholder ? "visible" : "hidden",
             }}
           >
-            <WorkItemListLoading />
+            <WorkItemListLoading visible={boardModulePlaceholder} />
           </div>
         ) : project ? (
-          <DelayedSuspense fallback={<WorkItemListLoading />}>
+          <DelayedSuspense
+            fallback={(visible) => <WorkItemListLoading visible={visible} />}
+          >
             <WorkItemBoardView
               group={boardGroup}
               customField={registeredCustomField}
@@ -1237,7 +1241,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             />
           </DelayedSuspense>
         ) : (
-          <DelayedSuspense fallback={<WorkItemListLoading />}>
+          <DelayedSuspense
+            fallback={(visible) => <WorkItemListLoading visible={visible} />}
+          >
             <WorkItemsPanel
               layout={layout === "list" ? "list" : "table"}
               project={project}

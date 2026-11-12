@@ -87,8 +87,13 @@ function InstanceUsersPage() {
     ],
   );
   const directory = useInstanceUsers(filters);
-  const directoryPlaceholder = useDelayedPending(directory.isPending);
   const selected = useInstanceUser(search.user);
+  const directoryPlaceholder = useDelayedPending(directory.isPending, {
+    releaseNow:
+      directory.isSuccess &&
+      (directory.data.data.length === 0 ||
+        Boolean(search.user && selected.isError)),
+  });
   const actions = useInstanceUserActions();
   const action = search.action;
   const [reason, setReason] = useState("");
@@ -367,6 +372,17 @@ function InstanceUsersPage() {
         />
       </section>
 
+      {search.user && selected.isError ? (
+        <UserDetails
+          user={selected.data}
+          isLoading={selected.isPending}
+          isError={selected.isError}
+          onClose={() => navigateSearch({ user: undefined })}
+          onAction={(nextAction) =>
+            navigateSearch({ action: nextAction ?? undefined })
+          }
+        />
+      ) : null}
       {!directory.isError &&
       (directory.isPending || (directoryPlaceholder && directory.data)) ? (
         <div
@@ -537,7 +553,7 @@ function InstanceUsersPage() {
             </CardContent>
           </Card>
 
-          {search.user && (
+          {search.user && !selected.isError && (
             <UserDetails
               user={selected.data}
               isLoading={selected.isPending}

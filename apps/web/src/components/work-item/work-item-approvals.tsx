@@ -70,7 +70,10 @@ function WorkItemApprovals({
   const isInstanceAdmin =
     (user as { role?: string | null } | null | undefined)?.role === "admin";
   const approvalsQuery = useGetWorkItemApprovals({ key: workItemKey });
-  const placeholderVisible = useDelayedPending(approvalsQuery.isLoading);
+  const placeholderVisible = useDelayedPending(approvalsQuery.isLoading, {
+    releaseNow:
+      approvalsQuery.isSuccess && approvalsQuery.data.approvals.length === 0,
+  });
   const withdraw = useWithdrawApproval();
   // The approvals addressed to the viewer (`GET /me/approvals`) are the ones they may decide.
   const myApprovals = useGetMyApprovals();

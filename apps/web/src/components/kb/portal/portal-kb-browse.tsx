@@ -98,7 +98,9 @@ export function PortalKbBrowse({
         limit: 50,
       }),
   });
-  const placeholderVisible = useDelayedPending(articles.isLoading);
+  const placeholderVisible = useDelayedPending(articles.isLoading, {
+    releaseNow: articles.isSuccess && articles.data.articles.length === 0,
+  });
   const tree = flatten(categories.data?.categories ?? []);
   return (
     <div className="@container mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">

@@ -15,6 +15,7 @@ import {
   FieldLabel,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -134,8 +135,12 @@ export function SlaPolicyEditor({ id }: { id: string }) {
   const [conflict, setConflict] = useState(false);
   const hydratedPolicyId = useRef<string | null>(null);
   const loading = !isNew && isLoading;
-  const placeholderVisible = useDelayedPending(loading);
-  const typesPlaceholder = useDelayedPending(typesLoading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && Boolean(policy) && (typesError || calendarsError),
+  });
+  const typesPlaceholder = useDelayedPending(typesLoading, {
+    releaseNow: !typesLoading && !typesError && types?.length === 0,
+  });
   const saving = createPolicy.isPending || updatePolicy.isPending;
   const publishing = publishPolicy.isPending;
   const hasInvalidTarget = selectedTypeIds.some((typeId) =>
@@ -521,12 +526,17 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                 </p>
                 {!typesError &&
                 (typesLoading || (typesPlaceholder && types)) ? (
-                  <Skeleton
-                    className="h-10 w-full"
-                    style={{
-                      visibility: typesPlaceholder ? "visible" : "hidden",
-                    }}
-                  />
+                  <LoadingStatus
+                    visible={typesPlaceholder}
+                    label={t("common:empty.loading")}
+                  >
+                    <Skeleton
+                      className="h-10 w-full"
+                      style={{
+                        visibility: typesPlaceholder ? "visible" : "hidden",
+                      }}
+                    />
+                  </LoadingStatus>
                 ) : typesError ? (
                   <p className="text-sm text-destructive" role="alert">
                     {t("editor.typesError")}

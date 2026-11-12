@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   Skeleton,
   Switch,
   useDelayedPending,
@@ -43,16 +44,27 @@ export function KbReport({
       queryClient.invalidateQueries({ queryKey: kbKeys.settings(workspaceId) }),
     onError: (error) => toast.error(error.message),
   });
-  const placeholderVisible = useDelayedPending(report.isLoading);
+  const placeholderVisible = useDelayedPending(report.isLoading, {
+    releaseNow:
+      report.isSuccess &&
+      report.data.deflection.articles.length === 0 &&
+      report.data.unhelpful.length === 0 &&
+      report.data.overdue.length === 0,
+  });
   if (
     !report.isError &&
     (report.isLoading || (placeholderVisible && report.data))
   )
     return (
-      <Skeleton
-        className="h-40 w-full"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-40 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (report.isError || !report.data)
     return (

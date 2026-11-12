@@ -27,6 +27,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -914,10 +915,15 @@ function DashboardEditorScreen({ search }: { search: DashboardSearch }) {
           !workspace ||
           dashboard.isLoading ||
           placeholderVisible) ? (
-          <Skeleton
-            className="h-48 w-full"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-48 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : dashboards.isError ? (
           <ReportError error={dashboards.error} />
         ) : dashboard.isError || !dashboard.data ? (

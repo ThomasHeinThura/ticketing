@@ -1,5 +1,6 @@
 import {
   DelayedSuspense,
+  LoadingStatus,
   motionDurationMs,
   Sheet,
   SheetContent,
@@ -26,23 +27,26 @@ type TaskDetailsSheetProps = {
   onClose: () => void;
 };
 
-function TaskDetailsSheetLoading() {
+function TaskDetailsSheetLoading({ visible }: { visible: boolean }) {
+  const { t } = useTranslation();
   return (
-    <div
-      aria-busy="true"
-      className="flex flex-col flex-1 min-h-0 overflow-hidden"
-    >
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-background shrink-0">
-        <div className="h-4 w-24 rounded bg-muted" />
-        <div className="h-8 w-20 rounded bg-muted" />
-      </div>
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <TaskPropertiesSidebarSkeleton className="w-full bg-sidebar border-b border-border flex flex-col gap-0 overflow-y-auto shrink-0" />
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <TaskDetailsSkeleton className="px-4 py-4" />
+    <LoadingStatus visible={visible} label={t("common:empty.loading")}>
+      <div
+        aria-busy="true"
+        className="flex flex-col flex-1 min-h-0 overflow-hidden"
+      >
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-background shrink-0">
+          <div className="h-4 w-24 rounded bg-muted" />
+          <div className="h-8 w-20 rounded bg-muted" />
+        </div>
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <TaskPropertiesSidebarSkeleton className="w-full bg-sidebar border-b border-border flex flex-col gap-0 overflow-y-auto shrink-0" />
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <TaskDetailsSkeleton className="px-4 py-4" />
+          </div>
         </div>
       </div>
-    </div>
+    </LoadingStatus>
   );
 }
 
@@ -105,7 +109,9 @@ export default function TaskDetailsSheet({
   return (
     <TaskDetailsSheetFrame itemId={taskId} onClose={onClose}>
       {(visibleTaskId) => (
-        <DelayedSuspense fallback={<TaskDetailsSheetLoading />}>
+        <DelayedSuspense
+          fallback={(visible) => <TaskDetailsSheetLoading visible={visible} />}
+        >
           <TaskDetailsSheetBody
             key={visibleTaskId}
             taskId={visibleTaskId}

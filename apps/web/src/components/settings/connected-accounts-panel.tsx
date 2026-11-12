@@ -63,7 +63,11 @@ export function ConnectedAccountsPanel({
     queryFn: getIdentityLinks,
     retry: false,
   });
-  const placeholderVisible = useDelayedPending(links.isPending);
+  const placeholderVisible = useDelayedPending(links.isPending, {
+    releaseNow:
+      links.isSuccess &&
+      (links.data === null || links.data.targets.length === 0),
+  });
   const intent = useQuery({
     queryKey: ["identity-link-intent", intentId],
     queryFn: () => {

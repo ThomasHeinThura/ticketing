@@ -11,6 +11,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -118,7 +119,6 @@ export function DashboardWidgetCard({
 }) {
   const { t } = useTranslation();
   const data = useWidgetData(workspaceId, dashboardId, widget.id, version);
-  const placeholderVisible = useDelayedPending(data.isLoading);
   const [showing, setShowing] = useState<"chart" | "table">("chart");
   const { size: contentSize, measureRef } = useElementSize();
   const report = data.data;
@@ -137,6 +137,12 @@ export function DashboardWidgetCard({
     : !report?.chart?.series.some((series) =>
         series.values.some((value) => value !== null),
       );
+  const placeholderVisible = useDelayedPending(data.isLoading, {
+    releaseNow:
+      data.isSuccess &&
+      (Boolean(report?.empty) ||
+        (widget.chartType === "number" ? !first : noPlottableData)),
+  });
   return (
     <Card
       className="flex h-full flex-col overflow-hidden"
@@ -210,12 +216,17 @@ export function DashboardWidgetCard({
               {footer}
               {!data.isError &&
               (data.isLoading || (placeholderVisible && data.data)) ? (
-                <Skeleton
-                  className="h-full min-h-16 w-full"
-                  style={{
-                    visibility: placeholderVisible ? "visible" : "hidden",
-                  }}
-                />
+                <LoadingStatus
+                  visible={placeholderVisible}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-full min-h-16 w-full"
+                    style={{
+                      visibility: placeholderVisible ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
               ) : data.isError || !report ? (
                 <ReportError error={data.error} />
               ) : report.empty ? (

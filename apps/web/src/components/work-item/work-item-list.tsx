@@ -457,7 +457,9 @@ function WorkItemListPresentation({
   onColumnWidthCommit,
   onColumnWidthCancel,
 }: WorkItemListProps & ResizeProps) {
-  const placeholderVisible = useDelayedPending(Boolean(isLoading));
+  const placeholderVisible = useDelayedPending(Boolean(isLoading), {
+    releaseNow: !isLoading && Boolean(workItems) && workItems?.length === 0,
+  });
   const queryClient = useQueryClient();
   const router = useRouter();
   const { t } = useTranslation();
@@ -676,7 +678,7 @@ function WorkItemListPresentation({
   if (isLoading || placeholderVisible) {
     return (
       <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
-        <WorkItemListLoading />
+        <WorkItemListLoading visible={placeholderVisible} />
       </div>
     );
   }

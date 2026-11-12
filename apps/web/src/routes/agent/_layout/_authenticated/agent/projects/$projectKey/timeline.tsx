@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Skeleton, useDelayedPending } from "@taskdesk/ui";
+import { LoadingStatus, Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { ProjectFeatureOff } from "@/components/agile/feature-off";
 import ProjectNotFound from "@/components/project/project-not-found";
 import ProjectTimeline, {
@@ -23,10 +24,13 @@ export const Route = createFileRoute(
 });
 
 function LoadingState({ visible }: { visible: boolean }) {
+  const { t } = useTranslation();
   return (
-    <div className="p-4" style={{ visibility: visible ? "visible" : "hidden" }}>
-      <Skeleton className="h-10 w-full" />
-    </div>
+    <LoadingStatus visible={visible} label={t("common:empty.loading")}>
+      <div className="p-4">
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </LoadingStatus>
   );
 }
 

@@ -369,7 +369,10 @@ function WorkItemsPanel({
       {previewable ? (
         <Suspense fallback={listFallback}>{listContent}</Suspense>
       ) : (
-        <DelayedSuspense fallback={fallbackContent} immediate={isError}>
+        <DelayedSuspense
+          fallback={(visible) => <WorkItemListLoading visible={visible} />}
+          immediate={isError}
+        >
           {listContent}
         </DelayedSuspense>
       )}

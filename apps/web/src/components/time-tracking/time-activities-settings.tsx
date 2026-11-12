@@ -7,6 +7,7 @@ import {
   Button,
   Input,
   Label,
+  LoadingStatus,
   Skeleton,
   Switch,
   Table,
@@ -137,17 +138,25 @@ function TimeActivitiesSettingsContent() {
     onError: (error) => toast.error(message(error)),
   });
   const loading = workspaceLoading || activities.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      !loading && activities.isSuccess && activities.data.length === 0,
+  });
   const disabled = activities.error instanceof TimeTrackingDisabledError;
   return (
     <TimeActivitiesSettingsFrame>
       {!activities.isError &&
       (loading || (placeholderVisible && activities.data)) ? (
-        <Skeleton
-          className="h-32 w-full"
-          role="status"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-32 w-full"
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : disabled ? (
         <Alert variant="info">
           <AlertTitle>{t("timeTracking:timesheet.disabledTitle")}</AlertTitle>

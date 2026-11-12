@@ -136,7 +136,9 @@ function MyWorkItems({ lens }: { lens: "assigned" | "watching" }) {
 function MyApprovals() {
   const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useGetMyApprovals();
-  const placeholderVisible = useDelayedPending(isLoading);
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && !isError && data?.approvals.length === 0,
+  });
   if (!isError && (isLoading || placeholderVisible)) {
     return (
       <p

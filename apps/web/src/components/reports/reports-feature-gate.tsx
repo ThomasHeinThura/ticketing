@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   FeatureOff,
+  LoadingStatus,
   PageContainer,
   PageHeader,
   Skeleton,
@@ -87,11 +88,16 @@ function ReportsOff({
       <PageContainer>
         <PageHeader title={title} />
         {loading ? (
-          <Skeleton
-            className="h-40 w-full"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            data-testid="reports-feature-loading"
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-40 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+              data-testid="reports-feature-loading"
+            />
+          </LoadingStatus>
         ) : (
           // UX-1a (SR-02): the shared off state, with the way to switch it on for an admin.
           <FeatureOff

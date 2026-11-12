@@ -13,6 +13,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Frame,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -65,10 +66,17 @@ export function ImportRunDetailPanel({
     (engine.isPending || (enginePlaceholderVisible && engine.data))
   )
     return (
-      <Skeleton
-        className="h-80 w-full"
-        style={{ visibility: enginePlaceholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={enginePlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-80 w-full"
+          style={{
+            visibility: enginePlaceholderVisible ? "visible" : "hidden",
+          }}
+        />
+      </LoadingStatus>
     );
   if (engine.data)
     return (
@@ -126,18 +134,28 @@ function McpImportRunDetail({
     refetchInterval: run.data?.state === "running" ? 3000 : false,
     retry: false,
   });
-  const reportPlaceholder = useDelayedPending(report.isPending);
+  const reportPlaceholder = useDelayedPending(report.isPending, {
+    releaseNow: report.isSuccess && report.data.chunks.length === 0,
+  });
   useEffect(() => {
     if (run.data?.workspaceId) onWorkspaceResolved?.(run.data.workspaceId);
   }, [onWorkspaceResolved, run.data?.workspaceId]);
 
   const runPlaceholderVisible = useDelayedPending(run.isPending);
-  if (!run.isError && (run.isPending || (runPlaceholderVisible && run.data)))
+  if (
+    !run.isError &&
+    (run.isPending || (runPlaceholderVisible && run.data && !report.isError))
+  )
     return (
-      <Skeleton
-        className="h-80 w-full"
-        style={{ visibility: runPlaceholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={runPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-80 w-full"
+          style={{ visibility: runPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (run.error instanceof HttpError && run.error.status === 403)
     return (
@@ -283,10 +301,15 @@ function McpImportRunDetail({
         </CardHeader>
         <CardContent>
           {!report.isError && (report.isPending || reportPlaceholder) ? (
-            <Skeleton
-              className="h-32 w-full"
-              style={{ visibility: reportPlaceholder ? "visible" : "hidden" }}
-            />
+            <LoadingStatus
+              visible={reportPlaceholder}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-32 w-full"
+                style={{ visibility: reportPlaceholder ? "visible" : "hidden" }}
+              />
+            </LoadingStatus>
           ) : reportMissing ? (
             <Empty>
               <EmptyHeader>

@@ -7,6 +7,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  LoadingStatus,
   useDelayedPending,
 } from "@taskdesk/ui";
 import { KeyRound } from "lucide-react";
@@ -201,11 +202,16 @@ function SignIn() {
           title={t("auth:signIn.title")}
           subtitle={t("auth:signIn.subtitle")}
         >
-          <div
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
           >
-            <SignInFormSkeleton />
-          </div>
+            <div
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
+              <SignInFormSkeleton />
+            </div>
+          </LoadingStatus>
         </AuthLayout>
       </>
     );

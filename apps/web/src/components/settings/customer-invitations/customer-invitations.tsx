@@ -18,6 +18,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -258,9 +259,13 @@ export function CustomerInvitations({
   const [inviting, setInviting] = useState(false);
   const loading =
     workspaceLoading || isCheckingPermissions || organisations.isLoading;
-  const placeholderVisible = useDelayedPending(loading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      !loading && organisations.isSuccess && organisations.data.length === 0,
+  });
   const invitationsPlaceholder = useDelayedPending(
     Boolean(selected) && invitations.isLoading,
+    { releaseNow: invitations.isSuccess && invitations.data.length === 0 },
   );
 
   return (
@@ -284,7 +289,8 @@ export function CustomerInvitations({
           ) : null}
         </div>
         {!organisations.isError &&
-        (loading || (placeholderVisible && canInvite)) ? (
+        (loading ||
+          (placeholderVisible && canInvite && !invitations.isError)) ? (
           <div
             role="status"
             style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
@@ -358,12 +364,17 @@ export function CustomerInvitations({
               </Empty>
             ) : !invitations.isError &&
               (invitations.isLoading || invitationsPlaceholder) ? (
-              <Skeleton
-                className="h-24 w-full"
-                style={{
-                  visibility: invitationsPlaceholder ? "visible" : "hidden",
-                }}
-              />
+              <LoadingStatus
+                visible={invitationsPlaceholder}
+                label={t("common:empty.loading")}
+              >
+                <Skeleton
+                  className="h-24 w-full"
+                  style={{
+                    visibility: invitationsPlaceholder ? "visible" : "hidden",
+                  }}
+                />
+              </LoadingStatus>
             ) : invitations.isError ? (
               <Alert variant="error">
                 <AlertTitle>

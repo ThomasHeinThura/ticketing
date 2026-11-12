@@ -86,9 +86,6 @@ function SavedViewsIndexRoute() {
     queryFn: () => getSavedViews(workspaceId ?? ""),
     enabled: Boolean(workspaceId && user?.id),
   });
-  const placeholderVisible = useDelayedPending(
-    isWorkspaceLoading || views.isLoading,
-  );
   const teamAudiences = useQuery({
     queryKey: savedViewKeys.teamAudiences(workspaceId, user?.id),
     queryFn: () => getShareableViewTeams(workspaceId ?? ""),
@@ -163,6 +160,13 @@ function SavedViewsIndexRoute() {
 
   const visibleViews = (views.data ?? []).filter((view) =>
     view.name.toLocaleLowerCase().includes(query?.toLocaleLowerCase() ?? ""),
+  );
+  const placeholderVisible = useDelayedPending(
+    isWorkspaceLoading || views.isLoading,
+    {
+      releaseNow:
+        !isWorkspaceLoading && views.isSuccess && visibleViews.length === 0,
+    },
   );
   const counts = useQueries({
     queries: visibleViews.map((view) => ({

@@ -318,7 +318,10 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
 
   const isLoading =
     isWorkspaceLoading || isProjectsLoading || itemsQuery.isLoading;
-  const placeholderVisible = useDelayedPending(isLoading);
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading && itemsQuery.isSuccess && flatBacklogItems.length === 0,
+  });
   const isError = isProjectsError || itemsQuery.isError;
   // The list loaded and this key is not in it: the Project does not exist or is out of reach.
   // A failed list keeps the Retry alert below, since a retry may then help.

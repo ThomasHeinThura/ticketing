@@ -32,7 +32,9 @@ export default function WorkItemSidePane({
       ariaLabel={t("workItems:sidePane.ariaLabel", { key: itemKey ?? "" })}
     >
       {(visibleItemKey) => (
-        <DelayedSuspense fallback={<WorkItemDetailLoading />}>
+        <DelayedSuspense
+          fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
+        >
           <WorkItemSidePaneBody
             key={visibleItemKey}
             itemKey={visibleItemKey}

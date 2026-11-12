@@ -5,6 +5,7 @@ import {
   Button,
   Calendar,
   Label,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -187,17 +188,22 @@ function ProjectPlanningSettings({
   const placeholderVisible = useDelayedPending(pending);
   if (!isError && (pending || (placeholderVisible && project))) {
     return (
-      <section
-        aria-busy="true"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        aria-label={t("settings:projectGeneral.planning.title")}
-        className="space-y-3"
-        data-testid="project-planning-loading"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-      </section>
+        <section
+          aria-busy="true"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          aria-label={t("settings:projectGeneral.planning.title")}
+          className="space-y-3"
+          data-testid="project-planning-loading"
+        >
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </section>
+      </LoadingStatus>
     );
   }
 

@@ -273,7 +273,9 @@ export function RoleHistoryPanel({
     dateStyle: "medium",
     timeStyle: "short",
   });
-  const placeholderVisible = useDelayedPending(history.isLoading);
+  const placeholderVisible = useDelayedPending(history.isLoading, {
+    releaseNow: history.isSuccess && history.data.length === 0,
+  });
   if (
     !history.isError &&
     (history.isLoading || (placeholderVisible && history.data))

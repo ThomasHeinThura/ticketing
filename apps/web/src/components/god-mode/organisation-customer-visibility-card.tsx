@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -45,10 +46,15 @@ export function OrganisationCustomerVisibilityCard({
     (query.isPending || (queryPlaceholderVisible && query.data))
   )
     return (
-      <Skeleton
-        className="h-48 w-full"
-        style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
-      />
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-48 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
     );
   if (query.isError)
     return (

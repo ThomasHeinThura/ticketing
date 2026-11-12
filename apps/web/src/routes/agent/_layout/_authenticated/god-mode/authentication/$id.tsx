@@ -53,6 +53,11 @@ function IdentityConnectionEditorRoute() {
   const connections = useIdentityConnections(!creating && isAdmin);
   const placeholderVisible = useDelayedPending(
     isAdmin && !creating && connections.isPending,
+    {
+      releaseNow:
+        connections.isSuccess &&
+        !connections.data.some((item) => item.id === id),
+    },
   );
 
   const tab: IdentityConnectionTab = search.tab ?? "connection";

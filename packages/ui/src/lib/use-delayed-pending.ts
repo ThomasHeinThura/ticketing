@@ -4,13 +4,25 @@ import { useEffect, useRef, useState } from "react";
  * render errors immediately, even while the indicator is being retained. */
 export function useDelayedPending(
   pending: boolean,
-  delayMs = 150,
-  minVisibleMs = 300,
+  {
+    releaseNow = false,
+    delayMs = 150,
+    minVisibleMs = 300,
+  }: {
+    releaseNow?: boolean;
+    delayMs?: number;
+    minVisibleMs?: number;
+  } = {},
 ): boolean {
   const [visible, setVisible] = useState(false);
   const shownAt = useRef<number | null>(null);
 
   useEffect(() => {
+    if (releaseNow) {
+      shownAt.current = null;
+      setVisible(false);
+      return;
+    }
     if (pending) {
       if (shownAt.current !== null) return;
       const timer = setTimeout(() => {
@@ -29,7 +41,7 @@ export function useDelayedPending(
       setVisible(false);
     }, remaining);
     return () => clearTimeout(timer);
-  }, [pending, delayMs, minVisibleMs]);
+  }, [pending, releaseNow, delayMs, minVisibleMs]);
 
-  return visible;
+  return visible && !releaseNow;
 }

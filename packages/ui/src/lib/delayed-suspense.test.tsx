@@ -110,3 +110,69 @@ describe("DelayedSuspense", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+it.each([40, 200])(
+  "preserves initial focus when content resolves at %sms",
+  async (delay) => {
+    let resolve!: (module: { default: () => React.ReactElement }) => void;
+    const Component = lazy(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    render(
+      <DelayedSuspense fallback={<div>Loading</div>}>
+        <Component />
+      </DelayedSuspense>,
+    );
+    await act(async () => {
+      vi.advanceTimersByTime(delay);
+      resolve({
+        default: () => (
+          <input
+            aria-label="title"
+            data-autofocus
+            ref={(node) => node?.focus()}
+          />
+        ),
+      });
+    });
+    if (delay > 150) {
+      act(() => vi.advanceTimersByTime(450 - delay));
+    }
+    expect(screen.getByLabelText("title")).toHaveFocus();
+  },
+);
+
+it("restores initial focus in a dialog after a slow lazy load", async () => {
+  let resolve!: (module: { default: () => React.ReactElement }) => void;
+  const Component = lazy(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  render(
+    <div role="dialog" aria-label="Create" tabIndex={-1}>
+      <DelayedSuspense fallback={<div>Loading</div>}>
+        <Component />
+      </DelayedSuspense>
+    </div>,
+  );
+  screen.getByRole("dialog").focus();
+  await act(async () => {
+    vi.advanceTimersByTime(200);
+    resolve({
+      default: () => (
+        <input
+          data-autofocus
+          aria-label="title"
+          ref={(node) => node?.focus()}
+        />
+      ),
+    });
+  });
+  act(() => vi.advanceTimersByTime(250));
+  expect(screen.getByLabelText("title")).toHaveFocus();
+});

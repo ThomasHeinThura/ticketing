@@ -5,6 +5,7 @@ import TaskRelations from "./task-relations";
 const mocks = vi.hoisted(() => ({ useGetTasks: vi.fn() }));
 
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: vi.fn() },
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));

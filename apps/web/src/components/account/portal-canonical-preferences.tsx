@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -117,20 +118,20 @@ export function PortalCanonicalPreferencesPage({
         !mention ||
         !comment ||
         placeholderVisible ? (
-        <Card
-          style={{
-            visibility:
-              placeholderVisible ||
-              (!preferences.isLoading && (!mention || !comment))
-                ? "visible"
-                : "hidden",
-          }}
+        <LoadingStatus
+          visible={
+            placeholderVisible ||
+            (!preferences.isLoading && (!mention || !comment))
+          }
+          label={t("common:empty.loading")}
         >
-          <CardContent className="space-y-3 p-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </LoadingStatus>
       ) : (
         <div className="space-y-4">
           {selector && !supported ? (

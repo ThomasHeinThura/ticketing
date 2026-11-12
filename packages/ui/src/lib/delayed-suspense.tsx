@@ -27,7 +27,7 @@ export function DelayedSuspense({
   immediate = false,
 }: {
   children: ReactNode;
-  fallback: ReactNode;
+  fallback: ReactNode | ((visible: boolean) => ReactNode);
   immediate?: boolean;
 }) {
   const [pending, setPending] = useState(false);
@@ -55,9 +55,30 @@ export function DelayedSuspense({
     return () => observer.disconnect();
   }, [visible, pending]);
   const hold = visible && !hasAlert && !immediate;
+  const wasHeld = useRef(false);
+  useLayoutEffect(() => {
+    const node = content.current;
+    if (wasHeld.current && !hold && node) {
+      const active = document.activeElement;
+      const dialog = node.closest('[role="dialog"]');
+      if (
+        active === document.body ||
+        node.contains(active) ||
+        active === dialog
+      ) {
+        node
+          .querySelector<HTMLElement>("[autofocus], [data-autofocus]")
+          ?.focus();
+      }
+    }
+    wasHeld.current = hold;
+  }, [hold]);
   return (
     <>
-      <div ref={content} style={{ display: hold ? "none" : "contents" }}>
+      <div
+        ref={content}
+        style={hold ? { display: "none" } : { display: "contents" }}
+      >
         <Suspense fallback={<PendingMarker onPending={onPending} />}>
           {children}
         </Suspense>
@@ -69,7 +90,7 @@ export function DelayedSuspense({
             visibility: visible ? "visible" : "hidden",
           }}
         >
-          {fallback}
+          {typeof fallback === "function" ? fallback(visible) : fallback}
         </div>
       ) : null}
     </>

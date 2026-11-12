@@ -228,7 +228,12 @@ export default function ProjectTimeline({
   });
 
   const hasFilterChips = buildScheduleFilterChips(search).length > 0;
-  const placeholderVisible = useDelayedPending(isLoading);
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading &&
+      Boolean(project) &&
+      (parsedTasks.length === 0 || scheduledTasks.length === 0),
+  });
   const loadStatus = scheduleViewStatus({
     isLoading: isLoading || placeholderVisible,
     isError,

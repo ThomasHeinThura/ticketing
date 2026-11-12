@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -122,17 +123,22 @@ function ProjectEngagementSettings({
   const placeholderVisible = useDelayedPending(pending);
   if (!isError && (pending || (placeholderVisible && project))) {
     return (
-      <section
-        aria-busy="true"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        aria-label={t("settings:projectGeneral.engagement.title")}
-        className="space-y-3"
-        data-testid="project-engagement-loading"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-      </section>
+        <section
+          aria-busy="true"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          aria-label={t("settings:projectGeneral.engagement.title")}
+          className="space-y-3"
+          data-testid="project-engagement-loading"
+        >
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </section>
+      </LoadingStatus>
     );
   }
 
@@ -543,15 +549,20 @@ function ProjectInheritanceSettings({
     (pendingInheritance || (inheritancePlaceholder && current))
   ) {
     return (
-      <div
-        className="space-y-2"
-        aria-busy="true"
-        style={{ visibility: inheritancePlaceholder ? "visible" : "hidden" }}
-        data-testid="project-inheritance-loading"
+      <LoadingStatus
+        visible={inheritancePlaceholder}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-9 w-full" />
-      </div>
+        <div
+          className="space-y-2"
+          aria-busy="true"
+          style={{ visibility: inheritancePlaceholder ? "visible" : "hidden" }}
+          data-testid="project-inheritance-loading"
+        >
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      </LoadingStatus>
     );
   }
   if (query.isError || !current || slaQuery.isError || calendarQuery.isError) {

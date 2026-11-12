@@ -170,7 +170,9 @@ function StatusCard({
 function ImpactCard({ serviceId }: { serviceId: string }) {
   const { t } = useTranslation("serviceManagement");
   const impact = useServiceImpact(serviceId);
-  const impactPlaceholder = useDelayedPending(impact.isLoading);
+  const impactPlaceholder = useDelayedPending(impact.isLoading, {
+    releaseNow: impact.isSuccess && impact.data.impacted.length === 0,
+  });
   return (
     <Card>
       <CardHeader>

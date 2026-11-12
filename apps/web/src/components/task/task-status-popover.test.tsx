@@ -96,7 +96,9 @@ describe("TaskStatusPopover", () => {
     fireEvent.click(screen.getByRole("button", { name: "Status" }));
 
     await waitFor(() =>
-      expect(screen.getByText("common:empty.loading")).toBeVisible(),
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "common:empty.loading",
+      ),
     );
   });
 
