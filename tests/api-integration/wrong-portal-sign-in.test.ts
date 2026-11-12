@@ -3,9 +3,11 @@ import { createRequire } from "node:module";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  getConfiguredAgentOrigin,
   getConfiguredCustomerOrigin,
   reloadAuthConfiguration,
 } from "../../apps/api/src/auth";
+import { signResetToken } from "../../apps/api/src/auth/password-reset";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
@@ -17,6 +19,7 @@ import {
   ensureCustomerRole,
   insertOrganisation,
 } from "./helpers/p5-invite";
+import { emailMock, sentPasswordResetEmails } from "./mocks/email";
 
 /**
  * A-05: a password sign-in on the wrong host answers 403 with a code naming the right door. It
@@ -134,6 +137,8 @@ async function expectRefused(
 }
 
 beforeEach(async () => {
+  sentPasswordResetEmails.length = 0;
+  emailMock.failTransport = false;
   await resetTestDatabase();
   await db
     .insert(schema.instanceSettingTable)
@@ -167,6 +172,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  emailMock.failTransport = false;
   await db
     .delete(schema.instancePluginConfigTable)
     .where(inArray(schema.instancePluginConfigTable.pluginId, PROVIDER_IDS));
@@ -222,5 +228,133 @@ describe("A-05 password sign-in on the wrong host", () => {
     );
     expect(onAgent.status, await onAgent.clone().text()).toBe(200);
     expect(await sessionCount(staff.user.id)).toBe(1);
+  });
+});
+
+describe("password recovery portal and credential boundaries", () => {
+  async function requestReset(door: Door, email: string) {
+    return sharedApp().request(
+      `${base(door)}/api/auth/request-password-reset`,
+      {
+        method: "POST",
+        headers: {
+          host: door === "portal" ? PORTAL_HOST : new URL(AGENT_ORIGIN).host,
+          origin: base(door),
+          "content-type": "application/json",
+          "x-forwarded-for": nextClientIp(),
+        },
+        body: JSON.stringify({ email }),
+      },
+    );
+  }
+  async function complete(door: Door, token: string) {
+    return sharedApp().request(`${base(door)}/api/auth/reset-password`, {
+      method: "POST",
+      headers: {
+        host: door === "portal" ? PORTAL_HOST : new URL(AGENT_ORIGIN).host,
+        origin: base(door),
+        "content-type": "application/json",
+        "x-forwarded-for": nextClientIp(),
+      },
+      body: JSON.stringify({ token, newPassword: "new-secure-password" }),
+    });
+  }
+  async function insertToken(
+    userId: string,
+    portal: "agent" | "customer",
+    expired = false,
+  ) {
+    const token = randomUUID();
+    await db.insert(schema.verificationTable).values({
+      identifier: `reset-password:${token}`,
+      value: userId,
+      expiresAt: new Date(Date.now() + (expired ? -1000 : 3600000)),
+    });
+    return signResetToken(
+      token,
+      portal,
+      process.env.TASKDESK_AUTH_SECRET as string,
+    );
+  }
+  it("refuses the other portal, wrong account side, SSO-only, and expired tokens", async () => {
+    const staff = await staffUser();
+    const customer = await admittedCustomer();
+    const staffToken = await insertToken(staff.user.id, "agent");
+    expect((await complete("portal", staffToken)).status).toBe(400);
+    expect(
+      (await complete("agent", await insertToken(customer.user.id, "agent")))
+        .status,
+    ).toBe(400);
+    expect(
+      (await complete("agent", await insertToken(staff.user.id, "agent", true)))
+        .status,
+    ).toBe(400);
+    await db
+      .delete(schema.accountTable)
+      .where(eq(schema.accountTable.userId, staff.user.id));
+    expect((await complete("agent", staffToken)).status).toBe(400);
+    await requestReset("agent", staff.user.email);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(sentPasswordResetEmails).toHaveLength(0);
+  });
+  it("sends on the right host, revokes sessions and accepts the token only once", async () => {
+    const staff = await staffUser();
+    expect(
+      (await passwordSignIn("agent", staff.user.email, staff.password)).status,
+    ).toBe(200);
+    expect((await requestReset("agent", staff.user.email)).status).toBe(200);
+    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
+    const message = sentPasswordResetEmails[0];
+    if (!message) throw new Error("Reset email not delivered");
+    const link = new URL(message.resetLink);
+    expect(link.origin).toBe(new URL(getConfiguredAgentOrigin()).origin);
+    const token = link.searchParams.get("token") as string;
+    expect((await complete("agent", token)).status).toBe(200);
+    expect(await sessionCount(staff.user.id)).toBe(0);
+    expect((await complete("agent", token)).status).toBe(400);
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.password_reset_completed"));
+    expect(audit).toHaveLength(1);
+  });
+  it("sends customer links only for customer requests on the portal host", async () => {
+    const customer = await admittedCustomer();
+    const staff = await staffUser();
+    expect((await requestReset("agent", customer.user.email)).status).toBe(200);
+    expect((await requestReset("portal", staff.user.email)).status).toBe(200);
+    expect((await requestReset("portal", customer.user.email)).status).toBe(
+      200,
+    );
+    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
+    const message = sentPasswordResetEmails[0];
+    if (!message) throw new Error("Reset email not delivered");
+    const link = new URL(message.resetLink);
+    expect(link.origin).toBe(new URL(getConfiguredCustomerOrigin()).origin);
+    expect(link.pathname).toBe("/reset-password");
+    expect(
+      (await complete("portal", link.searchParams.get("token") ?? "")).status,
+    ).toBe(200);
+  });
+  it("limits repeated requests for the same address across IPs", async () => {
+    const staff = await staffUser();
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const response = await requestReset("agent", staff.user.email);
+      expect(response.status).toBe(200);
+    }
+    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(3));
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.password_reset_requested"));
+    expect(audit).toHaveLength(4);
+  });
+  it("returns identical responses for missing users and failed mail", async () => {
+    const staff = await staffUser();
+    emailMock.failTransport = true;
+    const present = await requestReset("agent", staff.user.email);
+    const missing = await requestReset("agent", `${randomUUID()}@example.test`);
+    expect(present.status).toBe(missing.status);
+    expect(await present.json()).toEqual(await missing.json());
   });
 });

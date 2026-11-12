@@ -1,29 +1,25 @@
 import { useMutation } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import { portalAuthClient } from "@/lib/portal-auth-client";
 
-type ChangePasswordRequest = {
-  currentPassword: string;
-  newPassword: string;
-};
-
-function useChangePassword() {
+export default function useSendPasswordReset() {
   return useMutation({
     mutationFn: async ({
-      currentPassword,
-      newPassword,
-    }: ChangePasswordRequest) => {
-      const { data, error } = await authClient.changePassword({
-        currentPassword,
-        newPassword,
-      });
-
-      if (error) {
-        throw new Error(error.message || "Failed to change password");
-      }
-
+      email,
+      redirectTo,
+    }: {
+      email: string;
+      redirectTo: string;
+    }) => {
+      const { data, error } = await portalAuthClient.$fetch(
+        "/request-password-reset",
+        {
+          method: "POST",
+          body: { email, redirectTo },
+        },
+      );
+      if (error)
+        throw new Error(error.message || "Password reset request failed");
       return data;
     },
   });
 }
-
-export default useChangePassword;

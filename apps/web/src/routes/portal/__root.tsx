@@ -65,6 +65,8 @@ function PortalError({ reset }: { reset: () => void }) {
 // (the invitee signs in from the accept page).
 const isSignIn = (pathname: string) =>
   pathname === "/sign-in" ||
+  pathname === "/forgot-password" ||
+  pathname === "/reset-password" ||
   pathname === "/portal/sign-in" ||
   pathname.startsWith("/invite/");
 

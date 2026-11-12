@@ -1,6 +1,10 @@
 import { createHmac } from "node:crypto";
 import { apiKey } from "@better-auth/api-key";
-import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
+import {
+  sendMagicLinkEmail,
+  sendOtpEmail,
+  sendPasswordResetEmail,
+} from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
@@ -22,6 +26,13 @@ import {
   isSanctionedAdminEndpoint,
 } from "./auth/impersonation-context";
 import { loadLocalFactorState } from "./auth/local-factor-service";
+import {
+  canResetPassword,
+  consumeResetAddressLimit,
+  lockResetUser,
+  signResetToken,
+  verifyResetToken,
+} from "./auth/password-reset";
 import {
   auditPortalSignInRefusal,
   markUserCreatedInRequest,
@@ -222,6 +233,11 @@ function withExplicitServerCredentialMutations<T extends object>(
                   Reflect.apply(targetMethod, thisArgument, args),
                 );
               }
+              if (apiMethod === "resetPassword") {
+                return withTotpSessionEnrollment(() =>
+                  Reflect.apply(targetMethod, thisArgument, args),
+                );
+              }
               if (apiMethod === "verifyTOTP") {
                 return withTotpSessionEnrollment(() =>
                   Reflect.apply(targetMethod, thisArgument, args),
@@ -417,6 +433,7 @@ function getAuthEmailCopy(locale?: string | null) {
     return {
       magicLinkSubject: "Anmeldelink fuer TaskDesk",
       otpSubject: "Bestaetigungscode fuer TaskDesk",
+      resetSubject: "TaskDesk-Passwort zuruecksetzen",
     };
   }
 
@@ -424,6 +441,7 @@ function getAuthEmailCopy(locale?: string | null) {
     return {
       magicLinkSubject: "Liên kết đăng nhập TaskDesk",
       otpSubject: "Mã xác minh TaskDesk",
+      resetSubject: "Đặt lại mật khẩu TaskDesk",
     };
   }
 
@@ -431,12 +449,14 @@ function getAuthEmailCopy(locale?: string | null) {
     return {
       magicLinkSubject: "TaskDesk ログインリンク",
       otpSubject: "TaskDesk 認証コード",
+      resetSubject: "TaskDesk のパスワードをリセット",
     };
   }
 
   return {
     magicLinkSubject: "Login for TaskDesk",
     otpSubject: "Authentication code for TaskDesk",
+    resetSubject: "Reset your TaskDesk password",
   };
 }
 
@@ -493,6 +513,55 @@ function createAuth(
       // customer invitation credential for the same address (CP-12, CP-24).
       disableSignUp: false,
       autoSignIn: true,
+      resetPasswordTokenExpiresIn: 3600,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, token }) => {
+        // Do not let SMTP latency disclose whether the address exists.
+        void (async () => {
+          try {
+            if (!(await canResetPassword(user.id, portal))) return;
+            const link = new URL(
+              portal === "agent" ? "/auth/reset-password" : "/reset-password",
+              baseURL,
+            );
+            link.searchParams.set(
+              "token",
+              signResetToken(token, portal, authSecret),
+            );
+            const locale = await getUserLocale(user.email);
+            await sendPasswordResetEmail(
+              user.email,
+              getAuthEmailCopy(locale).resetSubject,
+              {
+                resetLink: link.href,
+                userName: user.name,
+                locale,
+              },
+            );
+          } catch {
+            logTaskDesk({
+              module: "auth",
+              message: "auth.failure",
+              level: "error",
+              result: "failed",
+            });
+          }
+        })();
+      },
+      onPasswordReset: async ({ user }) => {
+        const tx = currentTotpEnrollmentTransaction();
+        await appendAuditLog(tx, {
+          action: "auth.password_reset_completed",
+          actorId: user.id,
+          actorType: "person",
+          entityType: "person",
+          entityId: user.id,
+          after: { portal },
+        });
+        afterTotpEnrollmentCommit(() =>
+          invalidateNativeAuthorization({ userId: user.id }),
+        );
+      },
       password: {
         hash: async (password) => {
           return await bcrypt.hash(password, 10);
@@ -957,6 +1026,44 @@ function createAuth(
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        if (
+          ctx.path === "/request-password-reset" &&
+          typeof ctx.body?.email === "string"
+        ) {
+          const allowed = await consumeResetAddressLimit(
+            ctx.body.email,
+            authSecret,
+          );
+          await db.transaction((tx) =>
+            appendAuditLog(tx, {
+              action: "auth.password_reset_requested",
+              actorId: null,
+              actorType: "system",
+              entityType: "authentication",
+              entityId: portal,
+              after: { portal },
+            }),
+          );
+          if (!allowed)
+            return ctx.json({
+              status: true,
+              message:
+                "If this email exists in our system, check your email for the reset link",
+            });
+        }
+        if (ctx.path === "/reset-password") {
+          const signed =
+            typeof ctx.body?.token === "string" ? ctx.body.token : "";
+          const token = verifyResetToken(signed, portal, authSecret);
+          const tx = currentTotpEnrollmentTransaction();
+          if (!token || !(await lockResetUser(token, portal, tx))) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Invalid or expired reset token",
+              code: "INVALID_TOKEN",
+            });
+          }
+          return { context: { body: { ...ctx.body, token } } };
+        }
         // The admin plugin is kept as a session primitive only (role, banned,
         // impersonatedBy fields and ban enforcement). Its HTTP endpoints
         // (set-role, create-user, set-user-password, impersonate-user,

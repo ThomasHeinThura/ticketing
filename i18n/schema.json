@@ -1978,6 +1978,62 @@
 						"useAgentSignIn",
 						"customerPortalUnavailable"
 					]
+				},
+				"passwordRecovery": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"forgot": {
+							"type": "string"
+						},
+						"requestTitle": {
+							"type": "string"
+						},
+						"confirmation": {
+							"type": "string"
+						},
+						"send": {
+							"type": "string"
+						},
+						"back": {
+							"type": "string"
+						},
+						"resetTitle": {
+							"type": "string"
+						},
+						"newPassword": {
+							"type": "string"
+						},
+						"confirmPassword": {
+							"type": "string"
+						},
+						"mismatch": {
+							"type": "string"
+						},
+						"invalid": {
+							"type": "string"
+						},
+						"success": {
+							"type": "string"
+						},
+						"reset": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"forgot",
+						"requestTitle",
+						"confirmation",
+						"send",
+						"back",
+						"resetTitle",
+						"newPassword",
+						"confirmPassword",
+						"mismatch",
+						"invalid",
+						"success",
+						"reset"
+					]
 				}
 			},
 			"required": [
@@ -1996,7 +2052,8 @@
 				"invitation",
 				"onboarding",
 				"profileSetup",
-				"wrongPortal"
+				"wrongPortal",
+				"passwordRecovery"
 			]
 		},
 		"settings": {

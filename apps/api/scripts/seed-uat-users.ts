@@ -1172,9 +1172,10 @@ You can follow progress and reply to the service desk from **My requests**.`,
     customerVisible: true,
     markdown: `# Reset your password
 
-If you have forgotten your password, use **Forgot password** on the sign-in page.
+On the customer portal sign-in page, choose **Forgot password?** and enter your email address. If an account exists, we send a link to that address. Open the link and enter and confirm a new password, then return to sign in.
 
-- The reset link is valid for one hour.
+- The reset link is valid for one hour and can be used once.
+- Accounts that use single sign-on should contact their identity provider or service desk.
 - Check your junk folder if the email does not arrive.
 - Contact the service desk if your account is locked.`,
   },
