@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { headingLevels } from "@/test/headings";
@@ -7,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   statusLoading: false,
   canManageSettings: false,
   calendarWorkspace: vi.fn(),
+  error: undefined as { status: number } | undefined,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -23,6 +25,7 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
   useNavigate: () => vi.fn(),
+  useRouter: () => ({ history: { canGoBack: () => false }, navigate: vi.fn() }),
 }));
 vi.mock("react-i18next", async () => ({
   ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
@@ -63,10 +66,27 @@ vi.mock("@/hooks/queries/service-management", () => ({
   }),
   useChangeCalendar: (workspaceId: string) => {
     mocks.calendarWorkspace(workspaceId);
-    return { data: undefined, isError: false };
+    return {
+      data: undefined,
+      isError: Boolean(mocks.error),
+      error: mocks.error,
+      refetch: vi.fn(),
+    };
   },
-  useFreezes: () => ({ data: [], isLoading: false, isError: false }),
-  useFreezeOverrides: () => ({ data: [], isLoading: false, isError: false }),
+  useFreezes: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: Boolean(mocks.error),
+    error: mocks.error,
+    refetch: vi.fn(),
+  }),
+  useFreezeOverrides: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: Boolean(mocks.error),
+    error: mocks.error,
+    refetch: vi.fn(),
+  }),
   useInvalidateServiceManagement: () => vi.fn(),
   isFeatureDisabled: () => false,
 }));
@@ -79,6 +99,7 @@ afterEach(() => {
   mocks.statusLoading = false;
   mocks.canManageSettings = false;
   mocks.calendarWorkspace.mockClear();
+  mocks.error = undefined;
 });
 
 // UX-1a (SR-03): with the catalogue off the shared off state replaces the sub-tabs, the calendar
@@ -122,4 +143,37 @@ describe("ChangeCalendarView with the catalogue off", () => {
     expect(screen.queryByTestId("service-catalogue-off")).toBeNull();
     expect(mocks.calendarWorkspace).not.toHaveBeenCalled();
   });
+});
+
+describe("ChangeCalendarView main read failures", () => {
+  it.each(["calendar", "freezes", "overrides"] as const)(
+    "replaces the whole %s page on 403",
+    (tab) => {
+      mocks.enabled = true;
+      mocks.error = { status: 403 };
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <ChangeCalendarView search={{ tab }} />
+        </QueryClientProvider>,
+      );
+      expect(screen.getByTestId("settings-access-denied")).toBeInTheDocument();
+      expect(screen.queryByRole("tablist")).toBeNull();
+      expect(screen.queryByText("common.retry")).toBeNull();
+    },
+  );
+
+  it.each(["calendar", "freezes", "overrides"] as const)(
+    "keeps Retry for a transient %s failure",
+    (tab) => {
+      mocks.enabled = true;
+      mocks.error = { status: 500 };
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <ChangeCalendarView search={{ tab }} />
+        </QueryClientProvider>,
+      );
+      expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+      expect(screen.getByText("common.retry")).toBeInTheDocument();
+    },
+  );
 });

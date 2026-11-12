@@ -18,6 +18,7 @@ export function getProjectSettingsMenuItems(
     canManageProjectSettings: boolean;
     canManageFeatures?: boolean;
     canReadBudgets?: boolean;
+    canLogTime?: boolean;
     canReadEstimates?: boolean;
   },
 ): Array<{
@@ -75,8 +76,8 @@ export function getProjectSettingsMenuItems(
       icon: Ruler,
       segment: "estimates",
     });
-  // Budget needs budget:read (members hold it, project settings rights are not required).
-  if (access.canReadBudgets)
+  // The page also serves billable settings, which require workspace time_entry:create.
+  if (access.canReadBudgets || access.canLogTime)
     items.push({
       title: t("timeTracking:budget.navTitle"),
       icon: PiggyBank,

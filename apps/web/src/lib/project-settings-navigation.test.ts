@@ -37,7 +37,7 @@ describe("project settings navigation", () => {
     ]);
   });
 
-  it("gates Budget on budget:read alone, independent of project settings rights", () => {
+  it("offers Budget for either budget read or time settings access", () => {
     const budgetOnly = getProjectSettingsMenuItems((key) => key, {
       canManageProjectSettings: false,
       canReadBudgets: true,
@@ -49,6 +49,12 @@ describe("project settings navigation", () => {
       "workflow",
       "budget",
     ]);
+    const timeOnly = getProjectSettingsMenuItems((key) => key, {
+      canManageProjectSettings: false,
+      canReadBudgets: false,
+      canLogTime: true,
+    });
+    expect(timeOnly.map(({ segment }) => segment)).toContain("budget");
     const settingsOnly = getProjectSettingsMenuItems((key) => key, {
       canManageProjectSettings: true,
       canReadBudgets: false,
