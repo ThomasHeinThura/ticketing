@@ -3613,3 +3613,5 @@ Only obsolete workflow/delegation provenance may remain here; product clauses mu
 ### 12 Nov 2026 — Thomas: staff invitation roles (D-C)
 
 The inviter chooses the staff role. A `member:invite`-scoped read returns only assignable role keys, labels and ranks, without widening the roles administration read. Resend keeps the stored role when omitted, or replaces it when supplied, and rechecks the resender’s current authority; a new invitation requires a role.
+
+**D-K — 12 Nov 2026, Thomas.** Portal cases label the customer person as Requester. When the work item was created by an internal staff person and its current requester is a customer, show Raised by: Support team, including after a requester change; do not expose the staff member's name or email. Customer submissions show no Raised by. This reverses the prior Created by presentation of the requester under D5; requester visibility and reach remain unchanged.

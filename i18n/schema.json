@@ -17439,6 +17439,12 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"raisedBy": {
+							"type": "string"
+						},
+						"supportTeam": {
+							"type": "string"
+						},
 						"outstandingTitle": {
 							"type": "string"
 						},
@@ -17531,6 +17537,9 @@
 								"status": {
 									"type": "string"
 								},
+								"requester": {
+									"type": "string"
+								},
 								"createdBy": {
 									"type": "string"
 								},
@@ -17547,6 +17556,7 @@
 								"project",
 								"severity",
 								"status",
+								"requester",
 								"createdBy",
 								"assignedTo",
 								"created"
@@ -17680,6 +17690,8 @@
 						}
 					},
 					"required": [
+						"raisedBy",
+						"supportTeam",
 						"outstandingTitle",
 						"outstandingDescription",
 						"viewAll",
