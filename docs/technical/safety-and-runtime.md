@@ -1606,7 +1606,7 @@ no account.
 <a id="auth-and-identity-invitations"></a>
 ### Invitations
 
-1. A staff member with `member:invite` invites an email into an organisation with a role.
+1. A staff member with `member:invite` chooses a workspace role for a staff invitation. The picker lists only roles at or below the inviter’s rank whose capabilities the inviter holds; owner is never offered. Pending rows show the role. On resend an omitted role retains the stored role; a supplied role replaces it. Either is reauthorised against the resender’s current authority, and a new invitation requires a role.
 2. A token (≥ 128 bits, CSPRNG) is generated; only its SHA-256 hash is stored. Default
    expiry **7 days**. Redemption is **bound to the invited email address** — the account
    completing sign-up must verify that address — so an intercepted link is not bearer

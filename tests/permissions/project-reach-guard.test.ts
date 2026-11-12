@@ -148,6 +148,8 @@ const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
   "GET /api/sla-policies/{id}": "one SLA policy definition; configuration row",
   "GET /api/workflows/{id}": "one workflow definition; configuration row",
   "GET /api/workspace/{workspaceId}": "the workspace row itself",
+  "GET /api/workspace/{workspaceId}/invitation-roles":
+    "workspace role options bounded by the inviter authority; no project rows",
   "GET /api/workspace/{workspaceId}/invitations":
     "workspace invitations; no project rows",
   "GET /api/workspace/{workspaceId}/members":

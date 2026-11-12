@@ -96,6 +96,135 @@ async function roleOf(workspaceId: string, userId: string) {
 }
 
 describe("role assignment compares capabilities (H1)", () => {
+  it("limits invitation options and denies callers without invite authority", async () => {
+    const { app, owner, workspaceId } = await setup();
+    await adminClone(app, owner.cookie, workspaceId);
+    const lead = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "lead",
+    );
+    const member = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+    const path = `/api/workspace/${workspaceId}/invitation-roles`;
+    const denied = await app.request(path, {
+      headers: { cookie: member.cookie },
+    });
+    expect(denied.status).toBe(403);
+    const response = await app.request(path, {
+      headers: { cookie: lead.cookie },
+    });
+    expect(response.status).toBe(200);
+    const roles = (await response.json()) as Array<{
+      id: string;
+      name: string;
+      rank: number;
+    }>;
+    expect(roles.some((role) => role.id === "lead")).toBe(true);
+    expect(roles.map((role) => role.id)).not.toContain("admin");
+    expect(roles.map((role) => role.id)).not.toContain("owner");
+    expect(roles.map((role) => role.id)).not.toContain("integrations");
+    expect(Object.keys(roles[0] ?? {}).sort()).toEqual(["id", "name", "rank"]);
+    const invite = await inviteWorkspaceMemberNative(
+      app,
+      lead.cookie,
+      workspaceId,
+      { email: "admin-target@example.com", role: "admin" },
+    );
+    expect(invite.status).toBe(403);
+  });
+
+  it("preserves a resend role and rechecks current authority", async () => {
+    const { app, owner, workspaceId } = await setup();
+    const lead = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "lead",
+    );
+    const email = "resend-admin@example.com";
+    expect(
+      (
+        await inviteWorkspaceMemberNative(app, owner.cookie, workspaceId, {
+          email,
+          role: "admin",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await inviteWorkspaceMemberNative(app, lead.cookie, workspaceId, {
+          email,
+          resend: true,
+        })
+      ).status,
+    ).toBe(403);
+    const resent = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email, resend: true },
+    );
+    expect(resent.status).toBe(200);
+    expect(((await resent.json()) as { role: string }).role).toBe("admin");
+    const changed = await inviteWorkspaceMemberNative(
+      app,
+      lead.cookie,
+      workspaceId,
+      { email, role: "member", resend: true },
+    );
+    expect(changed.status).toBe(200);
+    expect(((await changed.json()) as { role: string }).role).toBe("member");
+    expect(
+      (
+        await inviteWorkspaceMemberNative(app, owner.cookie, workspaceId, {
+          email: "no-role@example.com",
+          resend: true,
+        })
+      ).status,
+    ).toBe(400);
+  });
+
+  it("allows a custom inviter without workspace read to load assignable options", async () => {
+    const { app, owner, workspaceId } = await setup();
+    const member = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+    await db.insert(schema.roleTable).values({
+      scope: "workspace",
+      workspaceId,
+      key: "inviter",
+      name: "Inviter",
+      rank: 40,
+      capabilities: ["member:invite"],
+    });
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "inviter" })
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, workspaceId),
+          eq(schema.workspaceUserTable.userId, member.user.id),
+        ),
+      );
+    const response = await app.request(
+      `/api/workspace/${workspaceId}/invitation-roles`,
+      { headers: { cookie: member.cookie } },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const roles = (await response.json()) as Array<{ id: string }>;
+    expect(roles.map((role) => role.id)).toContain("inviter");
+    expect(roles.map((role) => role.id)).not.toContain("admin");
+  });
+
   it("a manager cannot move themselves into a lower-ranked role that holds more", async () => {
     const { app, owner, workspaceId } = await setup();
     await adminClone(app, owner.cookie, workspaceId);

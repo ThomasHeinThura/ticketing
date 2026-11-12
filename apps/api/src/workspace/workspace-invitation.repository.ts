@@ -53,7 +53,10 @@ export async function findPendingWorkspaceInvitation(
   now: Date,
 ) {
   return await executor
-    .select({ id: schema.invitationTable.id })
+    .select({
+      id: schema.invitationTable.id,
+      role: schema.invitationTable.role,
+    })
     .from(schema.invitationTable)
     .where(
       and(

@@ -78,7 +78,7 @@ export const transferWorkspaceOwnershipBody = z.object({
 // controller, not a fixed enum.
 export const inviteWorkspaceMemberBody = z.object({
   email: z.string().email(),
-  role: z.string().min(1),
+  role: z.string().min(1).optional(),
   resend: z.boolean().optional(),
 });
 

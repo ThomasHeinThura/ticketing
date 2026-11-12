@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { sendNativeWorkspaceInvitationEmail } from "../../utils/send-workspace-invitation-email";
 import { MAX_PENDING_INVITATIONS_PER_WORKSPACE } from "../../utils/workspace-invitation-limits";
@@ -28,7 +29,7 @@ import {
 export type InviteWorkspaceMemberInput = {
   workspaceId: string;
   email: string;
-  role: string;
+  role?: string;
   inviterId: string;
   resend?: boolean;
 };
@@ -89,26 +90,8 @@ async function inviteWorkspaceMember(
 ): Promise<InvitedWorkspaceMember> {
   const email = input.email.trim().toLowerCase();
 
-  if (roleGrantsOwner(input.role)) {
-    throw new OwnerRoleNotAssignableHereError();
-  }
-
   const invitation = await db.transaction(async (tx) => {
     await lockWorkspaceRoleAssignment(tx, input.workspaceId);
-
-    const [roleRow] = await findWorkspaceInvitationRole(
-      tx,
-      input.workspaceId,
-      input.role,
-    );
-    if (!roleRow) {
-      throw new WorkspaceRoleNotFoundError(input.role);
-    }
-    await assertMayAssignRole(tx, {
-      workspaceId: input.workspaceId,
-      actorUserId: input.inviterId,
-      targetRoleKey: input.role,
-    });
 
     const [existingMember] = await findExistingWorkspaceMemberByEmail(
       tx,
@@ -127,20 +110,36 @@ async function inviteWorkspaceMember(
       now,
     );
 
+    if (existingInvitation && !input.resend) {
+      throw new InvitationAlreadyPendingError();
+    }
+    const role =
+      input.role ?? (input.resend ? existingInvitation?.role : undefined);
+    if (!role) throw new HTTPException(400, { message: "A role is required" });
+    if (roleGrantsOwner(role)) throw new OwnerRoleNotAssignableHereError();
+    const [roleRow] = await findWorkspaceInvitationRole(
+      tx,
+      input.workspaceId,
+      role,
+    );
+    if (!roleRow) throw new WorkspaceRoleNotFoundError(role);
+    await assertMayAssignRole(tx, {
+      workspaceId: input.workspaceId,
+      actorUserId: input.inviterId,
+      targetRoleKey: role,
+    });
+
     const invitationLifetimeHours = await readInvitationLifetimeHours(tx);
     const expiresAt = new Date(
       now.getTime() + invitationLifetimeHours * 3_600_000,
     );
 
     if (existingInvitation) {
-      if (!input.resend) {
-        throw new InvitationAlreadyPendingError();
-      }
       const [updated] = await refreshWorkspaceInvitation(
         tx,
         existingInvitation.id,
         expiresAt,
-        input.role,
+        role,
       );
       if (!updated) {
         throw new Error("invitation update returned no row");
@@ -184,7 +183,7 @@ async function inviteWorkspaceMember(
     const [created] = await insertWorkspaceInvitation(tx, {
       workspaceId: input.workspaceId,
       email,
-      role: input.role,
+      role,
       status: "pending",
       expiresAt,
       createdAt: now,
