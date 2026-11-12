@@ -1061,12 +1061,7 @@
 			"title": "Ροή εργασίας",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsTitle": "Στήλες",
-			"columnsDescription": "Διαχειριστείτε τις στήλες που εμφανίζονται στον πίνακά σας. Σύρετε για αναδιάταξη. Ενεργοποιήστε τη \"Στήλη ολοκλήρωσης\" για στάδια που αντιπροσωπεύουν ολοκληρωμένη {{term_work_item_one}}.",
-			"automationTitle": "Κανόνες αυτοματοποίησης",
-			"automationDescription": "Αντιστοιχίστε γεγονότα ενσωμάτωσης σε στήλες. Όταν συμβαίνει ένα γεγονός, η συνδεδεμένη {{term_work_item_one}} μετακινείται στην καθορισμένη στήλη.",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Επιλέξτε {{term_project_one}}",
@@ -3091,8 +3086,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Επιστροφή στον πίνακα ελέγχου"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Δημιουργία χώρου εργασίας",

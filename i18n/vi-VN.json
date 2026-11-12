@@ -1226,12 +1226,7 @@
 			"title": "Quy trình làm việc",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsTitle": "Cột",
-			"columnsDescription": "Quản lý các cột xuất hiện trên bảng của bạn. Kéo để sắp xếp lại. Bật \"Cột hoàn thành\" cho các giai đoạn thể hiện công việc đã hoàn tất.",
-			"automationTitle": "Quy tắc tự động hóa",
-			"automationDescription": "Ánh xạ sự kiện tích hợp với các cột. Khi một sự kiện xảy ra, công việc liên kết sẽ chuyển sang cột được chỉ định.",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Chọn {{term_project_other}}",
@@ -3080,8 +3075,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Quay lại bảng điều khiển"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Tạo không gian làm việc",

@@ -950,12 +950,7 @@
 			"title": "Flujo de trabajo",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsTitle": "Columnas",
-			"columnsDescription": "Gestiona las columnas de tu tablero. Arrastra para reordenar. Activa la columna  \"Hecho\" para representar el trabajo completado.",
-			"automationTitle": "Reglas de automatización",
-			"automationDescription": "Mapea eventos de integración y columnas integration. Cuando un evento ocurre, la {{term_work_item_one}} vinculada se moverá a la columna especificada.",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Selecciona {{term_project_one}}",
@@ -3102,8 +3097,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Volver al panel de control"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Crear espacio de trabajo",

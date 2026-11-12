@@ -1228,12 +1228,7 @@
 			"title": "Flusso di Lavoro",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsTitle": "Colonne",
-			"columnsDescription": "Gestisci le colonne che appaiono sulla tua board. Trascina per riordinare. Attiva \"Colonna completata\" per le fasi che rappresentano lavoro concluso.",
-			"automationTitle": "Regole di Automazione",
-			"automationDescription": "Mappa eventi di integrazione alle colonne. Quando si verifica un evento, l'{{term_work_item_one}} collegata si sposta nella colonna specificata.",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Seleziona {{term_project_one}}",
@@ -3102,8 +3097,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Torna alla Dashboard"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Crea Workspace",

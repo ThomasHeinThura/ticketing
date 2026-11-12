@@ -1061,12 +1061,7 @@
 			"title": "Alur Kerja",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsTitle": "Kolom",
-			"columnsDescription": "Kelola kolom yang muncul di papan Anda. Seret untuk mengurutkan ulang. Aktifkan \"Kolom selesai\" untuk tahap yang mewakili pekerjaan selesai.",
-			"automationTitle": "Aturan Otomatisasi",
-			"automationDescription": "Petakan event integrasi ke kolom. Saat event terjadi, {{term_work_item_one}} tertaut berpindah ke kolom yang ditentukan.",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Pilih {{term_project_other}}",
@@ -3080,8 +3075,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Kembali ke Dasbor"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Buat Ruang Kerja",

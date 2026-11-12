@@ -950,12 +950,7 @@
 			"title": "Workflow",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsTitle": "Kolommen",
-			"columnsDescription": "Beheer de kolommen op je bord. Sleep om de volgorde te wijzigen. Schakel \"Gereed-kolom\" in voor stadia die voltooid werk vertegenwoordigen.",
-			"automationTitle": "Automatiseringsregels",
-			"automationDescription": "Koppel integratie-gebeurtenissen aan kolommen. Bij een gebeurtenis verplaatst de {{term_work_item_one}} automatisch naar de gekozen kolom.",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_one}} selecteren",
@@ -3091,8 +3086,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Terug naar dashboard"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Werkruimte maken",

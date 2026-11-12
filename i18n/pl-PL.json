@@ -885,8 +885,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Wróć do pulpitu"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Utwórz obszar roboczy",
@@ -1963,12 +1962,7 @@
 			"title": "Obieg pracy",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"automationDescription": "Mapuj zdarzenia integracji na kolumny. Gdy wystąpi zdarzenie, powiązane {{term_work_item_one}} zostanie przeniesione do wybranej kolumny.",
-			"automationTitle": "Reguły automatyzacji",
-			"columnsDescription": "Zarządzaj kolumnami wyświetlanymi na tablicy. Przeciągaj, aby zmieniać kolejność. Włącz „Kolumna ukończona” dla etapów oznaczających wykonaną pracę.",
-			"columnsTitle": "Kolumny",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"repositoryBrowser": {
 			"description": "Wybierz repozytorium, w którym zainstalowano aplikację GitHub, aby włączyć synchronizację zgłoszeń.",

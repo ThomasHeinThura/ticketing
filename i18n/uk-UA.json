@@ -1061,12 +1061,7 @@
 			"title": "Робочий процес",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsTitle": "Колонки",
-			"columnsDescription": "Керуйте колонками, які відображаються на вашій дошці. Перетягуйте для зміни порядку. Увімкніть «Колонка готовності» для етапів, які означають завершену роботу.",
-			"automationTitle": "Правила автоматизації",
-			"automationDescription": "Зіставте події інтеґрацій із колонками. Коли подія відбувається, пов'язане {{term_work_item_one}} переміщується до вказаної колонки.",
-			"columnsNote": "These columns belong to the original {{term_work_item_other}} board. The states {{term_work_item_one}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "Обрати {{term_project_one}}",
@@ -3113,8 +3108,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Повернутися до панелі керування"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Створення робочого простору",

@@ -1061,12 +1061,7 @@
 			"title": "Workflow",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States",
-			"columnsTitle": "Spalten",
-			"columnsDescription": "Verwalte die Spalten, die auf deinem Board erscheinen. Ziehe sie, um sie neu anzuordnen. Aktiviere „Fertige Spalte“ für Phasen, die abgeschlossene Arbeit darstellen.",
-			"automationTitle": "Automatisierungsregeln",
-			"automationDescription": "Ordne Integrationsereignisse Spalten zu. Wenn ein Ereignis eintritt, wird die verknüpfte {{term_work_item_one}} in die angegebene Spalte verschoben.",
-			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
+			"statesTitle": "States"
 		},
 		"projectSwitcher": {
 			"selectProject": "{{term_project_one}} auswählen",
@@ -3091,8 +3086,7 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable",
-			"backToDashboard": "Zurück zum Dashboard"
+			"unavailableTitle": "Workspace unavailable"
 		},
 		"create": {
 			"pageTitle": "Workspace erstellen",
