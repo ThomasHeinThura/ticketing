@@ -3068,6 +3068,9 @@
 		"inviteModal": {
 			"title": "Πρόσκληση μέλους ομάδας",
 			"emailLabel": "Email",
+			"roleLabel": "Role",
+			"rolePlaceholder": "Choose a role",
+			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
 			"sendInvitation": "Αποστολή πρόσκλησης",
 			"success": "Η πρόσκληση στάλθηκε με επιτυχία",
@@ -5851,6 +5854,7 @@
 		"captureHelp": "Local testing only. Messages are captured in the Mailpit inbox instead of being sent externally.",
 		"captureUnavailable": "Local Mailpit capture is unavailable in this deployment. Enter a public SMTP configuration to continue.",
 		"credentialsRequired": "Enter the password for the new provider. A saved password is not reused when the provider changes.",
+		"testDestinationPasswordRequired": "Enter the SMTP password again to test changed connection settings, or save cleared credentials before testing without authentication.",
 		"failure": {
 			"authentication": "Wrong SMTP credentials: the server rejected the user name or password.",
 			"connection": "The host could not be reached. Check the host, the port and network access.",
