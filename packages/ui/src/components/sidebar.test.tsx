@@ -236,3 +236,80 @@ describe("Sidebar", () => {
     expect(screen.queryByRole("link")).toBeNull();
   });
 });
+
+// UX-10: the agent shell switches to the off-canvas sheet below `lg` (1024 px) so a 768 px
+// tablet gets the full width; other shells keep the 768 px default.
+describe("SidebarProvider mobileBreakpoint", () => {
+  const originalWidth = window.innerWidth;
+  afterEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: originalWidth,
+    });
+  });
+
+  function setWidth(width: number) {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: width,
+    });
+  }
+
+  function renderShell(mobileBreakpoint?: number) {
+    return render(
+      <SidebarProvider mobileBreakpoint={mobileBreakpoint}>
+        <Sidebar
+          closeLabel="Close navigation"
+          mobileDescription="Navigate TaskDesk sections."
+          mobileTitle="Main navigation"
+        >
+          <SidebarContent nativeScroll>Work items</SidebarContent>
+        </Sidebar>
+        <SidebarInset>
+          <SidebarTrigger toggleLabel="Toggle sidebar" />
+          <StateReadout />
+        </SidebarInset>
+      </SidebarProvider>,
+    );
+  }
+
+  it("uses the sheet below the given breakpoint without touching the persisted state", async () => {
+    setWidth(768);
+    renderShell(1024);
+    expect(document.querySelector('[data-slot="sidebar"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle sidebar" }));
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-slot="sidebar"][data-mobile="true"]'),
+      ).toBeInTheDocument();
+    });
+    // The desktop open/closed state (and its cookie) is left as it was.
+    expect(screen.getByTestId("state")).toHaveTextContent("expanded");
+    expect(cookieStore.set).not.toHaveBeenCalled();
+  });
+
+  it("keeps the docked sidebar from the given breakpoint up", () => {
+    setWidth(1024);
+    renderShell(1024);
+    expect(
+      document.querySelector('[data-slot="sidebar"]:not([data-mobile])'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle sidebar" }));
+
+    expect(screen.getByTestId("state")).toHaveTextContent("collapsed");
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "sidebar_state", value: "false" }),
+    );
+  });
+
+  it("keeps the 768 px default when no breakpoint is given", () => {
+    setWidth(900);
+    renderShell();
+    expect(
+      document.querySelector('[data-slot="sidebar"]:not([data-mobile])'),
+    ).toBeInTheDocument();
+  });
+});

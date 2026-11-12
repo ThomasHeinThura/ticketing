@@ -1,7 +1,8 @@
-import { SidebarInset, SidebarProvider } from "@taskdesk/ui";
+import { SidebarInset, SidebarProvider, useIsMobile } from "@taskdesk/ui";
 import type React from "react";
 import { type ReactNode, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CloseSidebarSheetOnNavigate } from "@/components/close-sidebar-sheet-on-navigate";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { cn } from "@/lib/cn";
 import { importWithRetry, resettableLazy } from "@/lib/lazy-retry";
@@ -76,9 +77,14 @@ function LayoutContent({ children, className }: ContentProps) {
 // Once the sidebar has mounted after a first paint, later pages show it straight away.
 let sidebarReady = false;
 
+// Below `lg` the sidebar is the off-canvas sheet, so a 768 px tablet gives pages the full
+// width instead of about 520 px beside the docked sidebar (UX-10).
+const SIDEBAR_SHEET_BREAKPOINT = 1024;
+
 function Layout({ children, className }: LayoutProps) {
   const { t } = useTranslation();
   const { sidebarDefaultOpen } = useUserPreferencesStore();
+  const sheetSidebar = useIsMobile(SIDEBAR_SHEET_BREAKPOINT);
   // The page paints first (on the work list and boards, its rows); the sidebar mounts once
   // the main thread is idle after that (G11).
   const [showSidebar, setShowSidebar] = useState(sidebarReady);
@@ -100,22 +106,25 @@ function Layout({ children, className }: LayoutProps) {
     );
     return () => abort.abort();
   }, []);
-  const placeholder = sidebarDefaultOpen ? (
-    // Same width as the sidebar it stands in for (none when collapsed), so nothing shifts.
-    // `peer` + `data-variant="inset"` give the inset the same margins the real inset sidebar
-    // does, so nothing shifts when it arrives.
-    <div
-      aria-hidden="true"
-      className="peer hidden w-(--sidebar-width) shrink-0 md:block"
-      data-variant="inset"
-      data-state="expanded"
-    />
-  ) : null;
+  // Below lg the sidebar is a sheet over the page, so there is no docked width to hold.
+  const placeholder =
+    sidebarDefaultOpen && !sheetSidebar ? (
+      // Same width as the sidebar it stands in for (none when collapsed), so nothing shifts.
+      // `peer` + `data-variant="inset"` give the inset the same margins the real inset sidebar
+      // does, so nothing shifts when it arrives.
+      <div
+        aria-hidden="true"
+        className="peer hidden w-(--sidebar-width) shrink-0 lg:block"
+        data-variant="inset"
+        data-state="expanded"
+      />
+    ) : null;
 
   return (
     <div className="flex w-full bg-background">
       <SidebarProvider
         defaultOpen={sidebarDefaultOpen}
+        mobileBreakpoint={SIDEBAR_SHEET_BREAKPOINT}
         // WCAG 2.4.1: the first Tab stop skips the sidebar to the inset `main`.
         skipLinkLabel={t("common:a11y.skipToContent")}
         style={
@@ -125,6 +134,7 @@ function Layout({ children, className }: LayoutProps) {
           } as React.CSSProperties
         }
       >
+        <CloseSidebarSheetOnNavigate />
         {showSidebar ? (
           <Suspense fallback={placeholder}>
             <AppSidebar.Component />
@@ -134,7 +144,8 @@ function Layout({ children, className }: LayoutProps) {
         )}
         <SidebarInset
           className={cn(
-            "m-2 flex flex-1 flex-col overflow-auto rounded-xl border border-border/80 bg-background shadow-sm/5",
+            // Phones drop the card's margin, radius and border so content gets the full width.
+            "m-2 flex flex-1 flex-col overflow-auto rounded-xl border border-border/80 bg-background shadow-sm/5 max-md:m-0 max-md:rounded-none max-md:border-0 max-md:shadow-none",
             className,
           )}
         >

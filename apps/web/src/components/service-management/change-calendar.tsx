@@ -152,6 +152,7 @@ function CalendarTab({
     <div className="flex min-h-0 flex-col gap-4">
       <div className="flex min-h-[32rem] flex-col overflow-hidden rounded-md border">
         <CalendarToolbar
+          headingLevel={2}
           visibleMonth={visibleMonth}
           onPreviousMonth={() => go(addMonths(visibleMonth, -1))}
           onNextMonth={() => go(addMonths(visibleMonth, 1))}

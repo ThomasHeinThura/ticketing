@@ -19,6 +19,7 @@ type CalendarToolbarProps = {
   onToday: () => void;
   /** Extra controls placed before the range navigation (the selection switch). */
   actions?: ReactNode;
+  headingLevel?: 1 | 2;
 };
 
 function rangeLabel(
@@ -54,26 +55,32 @@ export default function CalendarToolbar({
   onNextMonth,
   onToday,
   actions,
+  headingLevel = 1,
 }: CalendarToolbarProps): JSX.Element {
   const { t } = useTranslation();
+  const Heading = headingLevel === 1 ? "h1" : "h2";
 
   return (
     <div className="border-b border-border/80 px-3 py-3 sm:px-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <h1 className="truncate text-sm font-semibold text-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <Heading className="text-sm font-semibold text-foreground">
             {t("tasks:calendar.title")}
-          </h1>
+          </Heading>
           <span
-            className="truncate text-sm text-muted-foreground"
+            className="text-sm text-muted-foreground"
             data-testid="calendar-month-label"
           >
             {rangeLabel(view, visibleMonth, anchor, rangeDays)}
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
-          {actions}
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
+          {actions ? (
+            <div className="[&_button]:min-h-11 [&_button]:min-w-11 sm:[&_button]:min-h-0 sm:[&_button]:min-w-0">
+              {actions}
+            </div>
+          ) : null}
           {onViewChange ? (
             <fieldset
               aria-label={t("tasks:calendar.viewGroup")}
@@ -84,7 +91,7 @@ export default function CalendarToolbar({
                   key={mode}
                   variant="ghost"
                   type="button"
-                  className={`inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors ${view === mode ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"}`}
+                  className={`inline-flex min-h-11 min-w-11 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors sm:h-6 sm:min-h-0 sm:min-w-0 ${view === mode ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"}`}
                   aria-pressed={view === mode}
                   onClick={() => onViewChange(mode)}
                 >
@@ -93,44 +100,46 @@ export default function CalendarToolbar({
               ))}
             </fieldset>
           ) : null}
-          <Button
-            variant="outline"
-            size="icon-xs"
-            className="min-h-11 touch-manipulation sm:min-h-0"
-            aria-label={t(
-              view === "month"
-                ? "tasks:calendar.previousMonth"
-                : view === "week"
-                  ? "tasks:calendar.previousWeek"
-                  : "tasks:calendar.previousDay",
-            )}
-            onClick={onPreviousMonth}
-          >
-            <ChevronLeft />
-          </Button>
-          <Button
-            variant="outline"
-            size="xs"
-            className="min-h-11 touch-manipulation sm:min-h-0"
-            onClick={onToday}
-          >
-            {t("tasks:calendar.today")}
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-xs"
-            className="min-h-11 touch-manipulation sm:min-h-0"
-            aria-label={t(
-              view === "month"
-                ? "tasks:calendar.nextMonth"
-                : view === "week"
-                  ? "tasks:calendar.nextWeek"
-                  : "tasks:calendar.nextDay",
-            )}
-            onClick={onNextMonth}
-          >
-            <ChevronRight />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="min-h-11 min-w-11 touch-manipulation sm:min-h-0 sm:min-w-0"
+              aria-label={t(
+                view === "month"
+                  ? "tasks:calendar.previousMonth"
+                  : view === "week"
+                    ? "tasks:calendar.previousWeek"
+                    : "tasks:calendar.previousDay",
+              )}
+              onClick={onPreviousMonth}
+            >
+              <ChevronLeft />
+            </Button>
+            <Button
+              variant="outline"
+              size="xs"
+              className="min-h-11 min-w-11 touch-manipulation sm:min-h-0 sm:min-w-0"
+              onClick={onToday}
+            >
+              {t("tasks:calendar.today")}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="min-h-11 min-w-11 touch-manipulation sm:min-h-0 sm:min-w-0"
+              aria-label={t(
+                view === "month"
+                  ? "tasks:calendar.nextMonth"
+                  : view === "week"
+                    ? "tasks:calendar.nextWeek"
+                    : "tasks:calendar.nextDay",
+              )}
+              onClick={onNextMonth}
+            >
+              <ChevronRight />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -65,11 +65,13 @@ export default function SettingsSidebar({
 
   return (
     <>
-      <aside className="hidden w-64 shrink-0 md:block">{children}</aside>
+      {/* Docked from lg up; below lg (768 px tablets too) the same menu opens as a sheet so
+          the settings page gets the full width (UX-10). */}
+      <aside className="hidden w-64 shrink-0 lg:block">{children}</aside>
       <Sheet onOpenChange={setMenuOpen} open={menuOpen}>
         <SheetPopup
           side="left"
-          className="w-64 bg-sidebar p-0 text-sidebar-foreground md:hidden"
+          className="w-64 bg-sidebar p-0 text-sidebar-foreground lg:hidden"
           closeLabel={t("common:actions.close")}
         >
           <SheetHeader className="sr-only">
