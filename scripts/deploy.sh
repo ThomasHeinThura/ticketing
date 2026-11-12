@@ -15,8 +15,8 @@
 #   --profile s3        also run the opt-in SeaweedFS object store
 #   --no-verify         skip the cosign signature check (loud, deliberate)
 #   --no-probe          skip the post-deploy API probe (CI only; never routine)
-#   --seed              run the SIT account seeder (local and sit only). It resets passwords,
-#                       turns off two-factor and deletes sessions, so it is never the default.
+#   --seed              run the clean-install demo seed (local and sit only). Requires verified setup;
+#                       seed credentials stay private and existing accounts stay unchanged.
 #
 # It is idempotent. It generates any missing secret and never regenerates one
 # that already has a value.
@@ -456,16 +456,20 @@ print_setup_token() {
 seed_if_permitted() {
   [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || return 0
   if [ "$SEED" -ne 1 ]; then
-    say "not seeding SIT accounts (pass --seed to run the seeder; it resets passwords and sessions)"
+    say "not seeding demo data (pass --seed after first-administrator setup)"
     return 0
   fi
-  say "seeding SIT accounts, catalogue and submissions inside the application container"
+  say "seeding clean-install demo data inside the application container"
   # The seed writes the generated passwords to a new private file; the container's only
   # writable path is its /tmp tmpfs, so the file is copied out (0600, outside the checkout)
   # and removed from the container.
   local in_container="/tmp/sit-credentials-$$.json"
-  local credentials="$HOME/.taskdesk/sit-credentials.json"
-  dc exec -T taskdesk node apps/api/dist/seed-sit-users.js --sit --credentials-file "$in_container" \
+  local credentials="$HOME/.taskdesk/demo-credentials.json"
+  if [ -f "$credentials" ]; then
+    dc exec -T taskdesk sh -c 'umask 077; cat > "$1"' sh "$in_container" < "$credentials" \
+      || die "could not restore private seed credentials"
+  fi
+  dc exec -T taskdesk node apps/api/dist/seed-uat.js --uat --credentials-file "$in_container" \
     || die "SIT seeding failed. The stack is up; fix the error above and rerun scripts/deploy.sh."
   mkdir -p "$(dirname "$credentials")"
   chmod 700 "$(dirname "$credentials")"

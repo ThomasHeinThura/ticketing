@@ -15,6 +15,7 @@ import bcrypt from "bcryptjs";
 import { config } from "dotenv-mono";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
+import { appendAuditLog } from "../src/audit/audit-writer";
 import { completeFirstUserSetup } from "../src/auth/repository";
 import db, { getDatabasePool, schema } from "../src/database";
 import { resolveDatabaseConfig } from "../src/database/resolve-database-url";
@@ -33,8 +34,11 @@ import {
   transitionArticle,
 } from "../src/kb/repository";
 import { lockWorkspaceLabelNames } from "../src/label/repository";
+import { enqueueNotificationEvent } from "../src/notification/fanout";
+import { resolveWorkspaceCreatedRecipient } from "../src/notification/recipient-resolvers";
 import { createPage } from "../src/pages/repository";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
+import { changeProjectCustomerAccess } from "../src/project/members/customer-access";
 import { ensureProjectLeadRole } from "../src/project/project-creator-grant";
 import { seedDefaultCabWorkflowInTransaction } from "../src/service-management/cab-template";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
@@ -56,22 +60,21 @@ import {
   UAT_SECOND_CONTOSO_ORGANISATION,
   UAT_SECOND_CONTOSO_PROJECT_ID,
 } from "./uat-customer-project-plan";
+import {
+  seedG1Automations,
+  seedG1Entities,
+  seedG1PendingCustomer,
+  seedG1Report,
+} from "./uat-seed-entities";
+import {
+  G1_ACCOUNTS,
+  G1_SERVICE_STATES,
+  g1StaffProjects,
+} from "./uat-seed-plan";
 
-/**
- * UAT seed: one additional workspace, `uat-ws` ("Northwind Service Desk (UAT)"), with realistic
- * accounts for every role, three projects, ~45 work items, SLA, approvals, request types,
- * knowledge-base articles and Pages. It runs on a database that may already hold the SIT seed
- * (`seed-sit-users.ts`) and is STRICTLY ADDITIVE:
- *
- * - every row it writes directly has a `uat-` id; rows written by domain helpers (state
- *   templates, types, teams' defaults, request types, submissions, KB, Pages) carry generated
- *   ids but live only inside `uat-ws` or its projects;
- * - it never updates or deletes a row it did not create, and on a rerun it updates nothing,
- *   except that it marks first-run setup complete when the marker is unset (seeded accounts never
- *   go through first sign-up, and without the marker every staff session answers 403
- *   `mfa_enrollment_required`); an existing marker, including the SIT seed's, is left as it is;
- * - a `uat-` row (or a reserved email, slug or key) that exists but does not match what this
- *   seed would write is a conflict: the seed throws before writing anything.
+/** Clean-install demo seed for local SIT and UAT after verified first-admin setup.
+ * Existing demo rows are checked and retained. Credentials live only in the caller's
+ * private file. The historical SIT reset utility is never invoked by this seed.
  */
 
 export const UAT_WORKSPACE_ID = "uat-ws";
@@ -80,7 +83,13 @@ const STAFF_DOMAIN = "uat.taskdesk.test";
 
 type UatSide = "staff" | "customer";
 type UatOrg = "internal" | "contoso" | "fabrikam";
-type UatWorkspaceRole = "owner" | "admin" | "lead" | "member" | "viewer";
+type UatWorkspaceRole =
+  | "owner"
+  | "admin"
+  | "manager"
+  | "lead"
+  | "member"
+  | "viewer";
 type UatProjectRole = "cab" | "agent" | "viewer";
 
 export type UatAccount = SeedAccount & {
@@ -105,118 +114,7 @@ function account(
   };
 }
 
-export const UAT_ACCOUNTS: readonly UatAccount[] = [
-  account({
-    key: "owner",
-    email: `owner@${STAFF_DOMAIN}`,
-    name: "Olivia Owens",
-    roleLabel: "Workspace owner",
-    userRole: "user",
-    side: "staff",
-    org: "internal",
-    workspaceRole: "owner",
-    projectRole: null,
-  }),
-  account({
-    key: "admin",
-    email: `admin@${STAFF_DOMAIN}`,
-    name: "Arjun Patel",
-    roleLabel: "Workspace admin",
-    userRole: "user",
-    side: "staff",
-    org: "internal",
-    workspaceRole: "admin",
-    projectRole: null,
-  }),
-  account({
-    key: "lead",
-    email: `lead@${STAFF_DOMAIN}`,
-    name: "Laura Chen",
-    roleLabel: "Project lead and change approver",
-    userRole: "user",
-    side: "staff",
-    org: "internal",
-    workspaceRole: "lead",
-    projectRole: "cab",
-  }),
-  account({
-    key: "agent1",
-    email: `agent1@${STAFF_DOMAIN}`,
-    name: "Marcus Reid",
-    roleLabel: "Service desk agent (member)",
-    userRole: "user",
-    side: "staff",
-    org: "internal",
-    workspaceRole: "member",
-    projectRole: "agent",
-  }),
-  account({
-    key: "agent2",
-    email: `agent2@${STAFF_DOMAIN}`,
-    name: "Sofia Alvarez",
-    roleLabel: "Service desk agent (member)",
-    userRole: "user",
-    side: "staff",
-    org: "internal",
-    workspaceRole: "member",
-    projectRole: "agent",
-  }),
-  account({
-    key: "viewer",
-    email: `viewer@${STAFF_DOMAIN}`,
-    name: "Victor Nguyen",
-    roleLabel: "Read-only viewer",
-    userRole: "user",
-    side: "staff",
-    org: "internal",
-    workspaceRole: "viewer",
-    projectRole: "viewer",
-  }),
-  account({
-    key: "contoso1",
-    email: `emma.clarke@contoso.${STAFF_DOMAIN}`,
-    name: "Emma Clarke",
-    roleLabel: "Customer, Contoso Ltd",
-    userRole: "user",
-    side: "customer",
-    org: "contoso",
-    workspaceRole: null,
-    projectRole: null,
-  }),
-  account({
-    key: "contoso2",
-    email: `james.wright@contoso.${STAFF_DOMAIN}`,
-    name: "James Wright",
-    roleLabel: "Customer, Contoso Ltd",
-    userRole: "user",
-    side: "customer",
-    org: "contoso",
-    workspaceRole: null,
-    projectRole: null,
-  }),
-  account({
-    key: "fabrikam1",
-    email: `nina.berg@fabrikam.${STAFF_DOMAIN}`,
-    name: "Nina Berg",
-    roleLabel: "Customer, Fabrikam Inc",
-    userRole: "user",
-    side: "customer",
-    org: "fabrikam",
-    workspaceRole: null,
-    projectRole: null,
-  }),
-  account({
-    key: "godmode",
-    email: `godmode@${STAFF_DOMAIN}`,
-    name: "Grace Morgan",
-    roleLabel: "Instance admin (God Mode)",
-    userRole: "admin",
-    side: "staff",
-    org: "internal",
-    workspaceRole: null,
-    projectRole: null,
-  }),
-];
+export const UAT_ACCOUNTS: readonly UatAccount[] = G1_ACCOUNTS.map(account);
 
 const CUSTOMER_ORGS = {
   contoso: {
@@ -388,7 +286,7 @@ const SUP_ITEMS: ItemSpec[] = [
     priority: "medium",
     state: "to-do",
     assignee: "agent2",
-    requester: "contoso2",
+    requester: "contoso3",
     due: 6,
     labels: ["Hardware"],
     description:
@@ -414,7 +312,7 @@ const SUP_ITEMS: ItemSpec[] = [
     priority: "low",
     state: "done",
     assignee: "agent2",
-    requester: "contoso2",
+    requester: "contoso3",
     due: -3,
     labels: ["Access"],
     description:
@@ -440,7 +338,7 @@ const SUP_ITEMS: ItemSpec[] = [
     priority: "medium",
     state: "to-do",
     assignee: "agent1",
-    requester: "contoso2",
+    requester: "contoso3",
     due: 12,
     description:
       "The projects site is at 95% of its quota. Please increase it or advise on archiving.",
@@ -465,7 +363,7 @@ const SUP_ITEMS: ItemSpec[] = [
     priority: "high",
     state: "in-progress",
     assignee: "agent2",
-    requester: "contoso2",
+    requester: "contoso3",
     due: 3,
     labels: ["Network"],
     description:
@@ -478,7 +376,7 @@ const SUP_ITEMS: ItemSpec[] = [
     priority: "medium",
     state: "to-do",
     assignee: "agent2",
-    requester: "contoso2",
+    requester: "contoso3",
     due: 2,
     parent: 8,
     description:
@@ -491,7 +389,7 @@ const SUP_ITEMS: ItemSpec[] = [
     priority: "high",
     state: "done",
     assignee: "agent1",
-    requester: "contoso2",
+    requester: "contoso3",
     due: -2,
     visibility: "private",
     labels: ["Access", "Security"],
@@ -517,7 +415,7 @@ const SUP_ITEMS: ItemSpec[] = [
     priority: "low",
     state: "cancelled",
     assignee: "agent1",
-    requester: "contoso2",
+    requester: "contoso3",
     due: -4,
     description:
       "Cancelled: duplicate of the new starter request, the update is included in the new laptop build.",
@@ -1125,7 +1023,7 @@ const SUBMISSIONS: SubmissionSpec[] = [
     visibility: "organisation",
   },
   {
-    requester: "contoso2",
+    requester: "contoso3",
     requestType: "Change request",
     summary: "Add two new cost centres to the expenses system",
     details: "Cost centres 4410 and 4420 from 1 December for the new team.",
@@ -1134,7 +1032,7 @@ const SUBMISSIONS: SubmissionSpec[] = [
     acceptedBy: "agent1",
   },
   {
-    requester: "contoso2",
+    requester: "contoso3",
     requestType: "Access request",
     summary: "Payroll system access for my new deputy",
     details: "Read-only access for Priya Shah from next Monday.",
@@ -1210,20 +1108,17 @@ On the customer portal sign-in page, choose **Forgot password?** and enter your 
 - Contact the service desk if your account is locked.`,
   },
   {
-    title: "Connect to the VPN from home",
+    title: "What request statuses mean",
     category: "Troubleshooting",
     customerVisible: true,
-    markdown: `# Connect to the VPN
+    markdown: `# Request statuses
 
-1. Open the VPN client from the system tray.
-2. Choose the **Head office** profile and select **Connect**.
-3. Approve the sign-in request on your phone.
-
-## If it keeps disconnecting
-
-- Restart your home router.
-- Make sure the client is the latest version.
-- Report a problem in the portal and include the time it dropped.`,
+- **New**: your request has arrived and is waiting for triage.
+- **Open**: the service desk is working on the request.
+- **Waiting on customer**: reply with the requested information.
+- **On hold**: work is paused while a dependency is addressed.
+- **Resolved**: a solution has been provided. Reply if you still need help.
+- **Closed**: the request is complete. Raise a new request for a new problem.`,
   },
   {
     title: "What our priority levels mean",
@@ -1511,6 +1406,14 @@ async function precheck(credentialsLoaded: boolean) {
     await db.execute<{ name: string }>(sql`SELECT current_database() AS name`)
   ).rows;
   assertNotLiveDatabase(name);
+  const [setup] = await db
+    .select()
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"));
+  if (!setup?.setupCompletedAt)
+    throw new Error(
+      "Complete first-administrator setup with verified TOTP before running the clean-install seed.",
+    );
 
   let accountsExist = false;
   for (const account of UAT_ACCOUNTS) {
@@ -1632,6 +1535,20 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
   await completeFirstUserSetup(tx);
   const date = (days: number) => new Date(now.getTime() + days * 86_400_000);
   const internalOrg = await ensureInternalOrganisation(tx);
+  const [administrator] = await tx
+    .select()
+    .from(schema.userTable)
+    .where(
+      and(
+        eq(schema.userTable.role, "admin"),
+        eq(schema.userTable.twoFactorEnabled, true),
+      ),
+    )
+    .limit(1);
+  if (!administrator)
+    throw new Error(
+      "Complete first-administrator setup with verified TOTP before running the clean-install seed.",
+    );
 
   for (const org of Object.values(CUSTOMER_ORGS))
     await ensureById(
@@ -1765,6 +1682,20 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     "workspace",
   );
   if (workspaceCreated) {
+    await appendAuditLog(tx, {
+      actorId: administrator.id,
+      actorType: "person",
+      workspaceId: UAT_WORKSPACE_ID,
+      organisationId: internalOrg.id,
+      action: "workspace.created",
+      entityType: "workspace",
+      entityId: UAT_WORKSPACE_ID,
+      after: {
+        createdBy: administrator.id,
+        ownerUserId: user("owner"),
+        name: "Northwind Service Desk (UAT)",
+      },
+    });
     await seedWorkspaceBuiltInRoles(tx, UAT_WORKSPACE_ID);
     await tx.insert(schema.workspaceRoleTable).values(
       DEFAULT_ROLE_NAMES.map((role) => ({
@@ -1797,14 +1728,70 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       ["workspaceId", "userId", "role"],
       "workspace member",
     );
+    await ensureById(
+      tx,
+      schema.invitationTable,
+      {
+        id: `uat-staff-invite-${account.key}`,
+        workspaceId: UAT_WORKSPACE_ID,
+        email: account.email,
+        role:
+          account.workspaceRole === "owner" ? "member" : account.workspaceRole,
+        status: "accepted",
+        scope: "staff",
+        inviterId: administrator.id,
+        expiresAt: date(28),
+        acceptedAt: now,
+        acceptedPersonId: account.personId,
+      },
+      ["workspaceId", "email", "role"],
+      "staff invitation",
+    );
     // Owner and admin reach comes from the real sees_all grant writer.
     if (
       inserted &&
-      (account.workspaceRole === "owner" || account.workspaceRole === "admin")
+      (account.workspaceRole === "owner" ||
+        account.workspaceRole === "admin" ||
+        account.workspaceRole === "manager")
     )
       await syncWorkspaceAdminReach(tx, UAT_WORKSPACE_ID, user(account.key));
   }
 
+  if (workspaceCreated) {
+    await enqueueNotificationEvent(
+      tx,
+      {
+        id: "uat-workspace-created",
+        kind: "workspace.created",
+        occurredAt: now.toISOString(),
+        actor: {
+          type: "person",
+          id: administrator.id,
+          name: administrator.name,
+        },
+        scope: {
+          workspaceId: UAT_WORKSPACE_ID,
+          organisationId: internalOrg.id,
+        },
+        payload: {
+          workspaceId: UAT_WORKSPACE_ID,
+          workspaceName: "Northwind Service Desk (UAT)",
+          ownerId: user("owner"),
+        },
+        causationId: null,
+        depth: 0,
+        originAutomationId: null,
+      },
+      {
+        resolveRecipients: (resolverTx, envelope) =>
+          resolveWorkspaceCreatedRecipient(
+            resolverTx,
+            envelope,
+            async () => [],
+          ),
+      },
+    );
+  }
   await ensureById(
     tx,
     schema.teamTable,
@@ -1834,6 +1821,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
   );
   for (const [id, teamId, key] of [
     ["uat-team-default-owner", "uat-team-default", "owner"],
+    ["uat-team-default-agent1", "uat-team-default", "agent1"],
     ["uat-team-cab-lead", "uat-team-cab", "lead"],
   ] as const)
     await ensureById(
@@ -1885,18 +1873,91 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     .from(schema.workItemTypeTable)
     .where(eq(schema.workItemTypeTable.workspaceId, UAT_WORKSPACE_ID));
   const typeIds = new Map(types.map((row) => [row.key, row.id]));
-  const templates = await tx
-    .select({
-      id: schema.stateTemplateTable.id,
-      key: schema.stateTemplateTable.key,
-    })
-    .from(schema.stateTemplateTable)
-    .where(eq(schema.stateTemplateTable.workspaceId, UAT_WORKSPACE_ID));
-  const template = (key: StateKey) => {
-    const row = templates.find((candidate) => candidate.key === key);
-    if (!row) throw new Error(`Missing UAT state template ${key}`);
-    return row.id;
-  };
+  for (const state of G1_SERVICE_STATES)
+    await ensureById(
+      tx,
+      schema.stateTemplateTable,
+      {
+        id: `uat-service-template-${state.key}`,
+        workspaceId: UAT_WORKSPACE_ID,
+        ...state,
+      },
+      ["workspaceId", "key", "name", "group"],
+      "service state template",
+    );
+
+  // Service names have their own real workflow and types. Binding the generic default
+  // workflow to these templates would leave seeded support items unable to move.
+  const serviceWorkflowCreated = await ensureById(
+    tx,
+    schema.workflowTable,
+    {
+      id: "uat-service-workflow",
+      workspaceId: UAT_WORKSPACE_ID,
+      key: "uat-service",
+      name: "Customer support lifecycle",
+    },
+    ["workspaceId", "key"],
+    "service workflow",
+  );
+  if (serviceWorkflowCreated) {
+    await tx.insert(schema.workflowVersionTable).values({
+      id: "uat-service-workflow-v1",
+      workflowId: "uat-service-workflow",
+      number: 1,
+    });
+    for (const from of G1_SERVICE_STATES)
+      for (const to of G1_SERVICE_STATES) {
+        if (from.key === to.key) continue;
+        await tx.insert(schema.workflowTransitionTable).values({
+          id: `uat-service-${from.key}-${to.key}`,
+          versionId: "uat-service-workflow-v1",
+          fromStateTemplateId: `uat-service-template-${from.key}`,
+          toStateTemplateId: `uat-service-template-${to.key}`,
+          requiresApproval: false,
+          requiresCab: false,
+          notePolicy: "none",
+          noteVisibility: "internal",
+        });
+      }
+    await tx
+      .update(schema.workflowVersionTable)
+      .set({ publishedAt: now, publishedBy: person("admin") })
+      .where(eq(schema.workflowVersionTable.id, "uat-service-workflow-v1"));
+    await tx
+      .update(schema.workflowTable)
+      .set({ publishedVersionId: "uat-service-workflow-v1" })
+      .where(eq(schema.workflowTable.id, "uat-service-workflow"));
+  }
+  for (const key of [
+    "incident",
+    "service-request",
+    "problem",
+    "change",
+  ] as const) {
+    const [base] = await tx
+      .select()
+      .from(schema.workItemTypeTable)
+      .where(eq(schema.workItemTypeTable.id, typeIds.get(key) ?? ""));
+    if (!base) throw new Error(`Missing service base type ${key}`);
+    const id = `uat-service-type-${key}`;
+    await ensureById(
+      tx,
+      schema.workItemTypeTable,
+      {
+        id,
+        workspaceId: UAT_WORKSPACE_ID,
+        key: `uat-service-${key}`,
+        name: `${base.name} (service)`,
+        category: base.category,
+        isChange: base.isChange,
+        workflowId: "uat-service-workflow",
+      },
+      ["workspaceId", "key", "workflowId"],
+      "service work item type",
+    );
+    typeIds.set(`service-${key}`, id);
+  }
 
   // Business-hours calendar with holidays, SLA policy and a CAB change workflow.
   await ensureById(
@@ -1979,29 +2040,31 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     ["workflowId", "number"],
     "workflow version",
   );
-  for (const [from, to, approval] of [
-    ["backlog", "to-do", false],
-    ["to-do", "in-progress", true],
-    ["in-progress", "done", false],
-    ["to-do", "cancelled", false],
+  for (const [id, from, to, approval] of [
+    ["uat-change-to-do-in-progress", "new", "open", true],
+    ["uat-change-open-resolved", "open", "resolved", false],
+    ["uat-change-open-on-hold", "open", "on-hold", false],
+    ["uat-change-on-hold-open", "on-hold", "open", false],
+    ["uat-change-resolved-closed", "resolved", "closed", false],
   ] as const)
     await ensureById(
       tx,
       schema.workflowTransitionTable,
       {
-        id: `uat-change-${from}-${to}`,
+        id,
         versionId: "uat-change-workflow-v1",
-        fromStateTemplateId: template(from),
-        toStateTemplateId: template(to),
+        fromStateTemplateId: `uat-service-template-${from}`,
+        toStateTemplateId: `uat-service-template-${to}`,
         requiresApproval: approval,
         requiresCab: approval,
         approvalPolicy: approval ? "any" : null,
         notePolicy: "none",
         noteVisibility: "internal",
       },
-      ["versionId"],
+      ["versionId", "fromStateTemplateId", "toStateTemplateId"],
       "workflow transition",
     );
+
   if (workflowCreated)
     await tx
       .update(schema.workflowTable)
@@ -2044,6 +2107,10 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       "change",
       "bug",
       "uat-change",
+      "service-incident",
+      "service-service-request",
+      "service-problem",
+      "service-change",
     ])
       for (const metric of ["first_response", "resolution"] as const)
         for (const priority of ["low", "medium", "high", "urgent"] as const)
@@ -2079,7 +2146,12 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
         id: project.id,
         workspaceId: UAT_WORKSPACE_ID,
         organisationId: project.org ? CUSTOMER_ORGS[project.org].id : null,
-        kind: "project",
+        kind: key === "SUP" ? "managed_service" : "project",
+        supportLevel: key === "SUP" ? "L2" : null,
+        serviceCalendarMode: key === "SUP" ? "override" : "inherit",
+        serviceCalendarId: key === "SUP" ? "uat-calendar-business" : null,
+        managerId: person("manager"),
+        ownerTeamId: key === "OPS" ? "uat-team-default" : null,
         slug: project.slug,
         name: project.name,
         description: project.description,
@@ -2103,10 +2175,24 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
           ...column,
         })),
       );
-      await seedProjectStates(project.id, UAT_WORKSPACE_ID, tx);
+      if (key === "SUP") {
+        for (const [position, state] of G1_SERVICE_STATES.entries()) {
+          await tx.insert(schema.stateTable).values({
+            id: `uat-service-state-${state.key}`,
+            projectId: project.id,
+            stateTemplateId: `uat-service-template-${state.key}`,
+            position,
+            isDefault: position === 0,
+          });
+        }
+      } else await seedProjectStates(project.id, UAT_WORKSPACE_ID, tx);
     }
     for (const account of UAT_ACCOUNTS) {
-      if (!account.projectRole) continue;
+      if (
+        !account.projectRole ||
+        !g1StaffProjects(account.key).includes(project.id)
+      )
+        continue;
       if (
         !(await membershipExists(tx, account.personId, "project", project.id))
       )
@@ -2135,9 +2221,11 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       workspaceId: UAT_WORKSPACE_ID,
       organisationId: CUSTOMER_ORGS[UAT_SECOND_CONTOSO_ORGANISATION].id,
       kind: "project",
+      managerId: person("manager"),
       slug: "CMGT",
-      name: "Contoso Managed Service",
-      description: "Managed service for the second Contoso customer.",
+      name: "Contoso Delivery",
+      description:
+        "Delivery engagement for Contoso alongside its managed support service.",
       icon: "Server",
       position: 3,
       lastTaskNumber: 0,
@@ -2163,6 +2251,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
   for (const account of UAT_ACCOUNTS) {
     if (
       !account.projectRole ||
+      !g1StaffProjects(account.key).includes(secondContosoProjectId) ||
       (await membershipExists(
         tx,
         account.personId,
@@ -2184,12 +2273,61 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       "uat",
     );
   }
-  const customerProjects = uatCustomerProjectSeedPlan();
-  for (const { personId, projectId } of customerProjects) {
+
+  const [deliveryState] = await tx
+    .select()
+    .from(schema.stateTable)
+    .where(
+      and(
+        eq(schema.stateTable.projectId, secondContosoProjectId),
+        eq(schema.stateTable.isDefault, true),
+      ),
+    )
+    .limit(1);
+  if (!deliveryState) throw new Error("Missing delivery default state");
+  const deliveryCreated = await ensureById(
+    tx,
+    schema.workItemTable,
+    {
+      id: "uat-wi-cmgt-1",
+      workspaceId: UAT_WORKSPACE_ID,
+      projectId: secondContosoProjectId,
+      typeId: typeId("task"),
+      stateId: deliveryState.id,
+      number: 1,
+      key: "CMGT-1",
+      title: "Agree the Contoso delivery acceptance checklist",
+      description: paragraphDoc(
+        "Review the handover criteria with James before scheduling the delivery.",
+      ),
+      priority: "medium",
+      assigneeId: person("agent2"),
+      requesterId: person("contoso2"),
+      position: "1",
+      customerVisibility: "private",
+    },
+    ["projectId", "key", "number"],
+    "delivery work item",
+  );
+  if (deliveryCreated) {
+    await recordWorkItemActivity(tx, [
+      {
+        workspaceId: UAT_WORKSPACE_ID,
+        workItemId: "uat-wi-cmgt-1",
+        actorId: person("agent2"),
+        actorType: "person",
+        verb: "created",
+        payload: {
+          key: "CMGT-1",
+          title: "Agree the Contoso delivery acceptance checklist",
+        },
+        createdAt: now,
+      },
+    ]);
     await tx
-      .insert(schema.customerProjectAccessTable)
-      .values({ personId, projectId })
-      .onConflictDoNothing();
+      .update(schema.projectTable)
+      .set({ lastTaskNumber: 1 })
+      .where(eq(schema.projectTable.id, secondContosoProjectId));
   }
 
   await lockWorkspaceLabelNames(
@@ -2232,7 +2370,17 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
       )
       .where(eq(schema.stateTable.projectId, project.id));
     const state = (stateKey: StateKey) => {
-      const row = states.find((candidate) => candidate.key === stateKey);
+      const serviceKey = {
+        backlog: "new",
+        "to-do": "open",
+        "in-progress": "waiting-on-customer",
+        done: "resolved",
+        cancelled: "closed",
+      }[stateKey];
+      const row = states.find(
+        (candidate) =>
+          candidate.key === (key === "SUP" ? serviceKey : stateKey),
+      );
       if (!row) throw new Error(`Missing ${project.slug} state ${stateKey}`);
       return row.id;
     };
@@ -2271,12 +2419,21 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
           id,
           projectId: project.id,
           workspaceId: UAT_WORKSPACE_ID,
-          typeId: typeId(item.type),
+          typeId: typeId(
+            key === "SUP" && item.type !== "uat-change"
+              ? `service-${item.type}`
+              : item.type,
+          ),
           number: item.n,
           key: `${project.slug}-${item.n}`,
           title: item.title,
           description: paragraphDoc(item.description),
-          stateId: state(item.state),
+          stateId:
+            key === "SUP" && item.n === 11
+              ? "uat-service-state-new"
+              : key === "SUP" && item.n === 8
+                ? "uat-service-state-on-hold"
+                : state(item.state),
           priority: item.priority,
           assigneeId: item.assignee ? person(item.assignee) : null,
           requesterId: item.requester ? person(item.requester) : null,
@@ -2388,6 +2545,7 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     "approval",
   );
 
+  await seedG1Entities(tx, now);
   return { people, users, typeIds };
 }
 
@@ -2441,7 +2599,7 @@ async function seedIntake(seeded: Seeded) {
             description: def.description,
             group: def.group,
             workItemTypeId: typeId,
-            defaultProjectId: PROJECTS.SUP.id,
+            defaultProjectId: null,
             formSchema: { fields: def.fields.map((field) => ({ ...field })) },
             autoAccept: false,
             customerVisible: true,
@@ -2508,7 +2666,13 @@ async function seedIntake(seeded: Seeded) {
     const requestType = REQUEST_TYPES.find(
       (row) => row.name === spec.requestType,
     );
-    const typeId = requestType && seeded.typeIds.get(requestType.type);
+    const typeId =
+      requestType &&
+      seeded.typeIds.get(
+        spec.acceptInto === "SUP"
+          ? `service-${requestType.type}`
+          : requestType.type,
+      );
     if (!typeId) throw new Error("UAT accept type is missing.");
     await acceptSubmission(
       formatSubmissionReference(submission.number),
@@ -2655,7 +2819,12 @@ async function signInReport() {
 export async function runUatSeed(argv: readonly string[] = process.argv) {
   const { credentialsFile } = parseArgs(argv);
   config();
-  assertNotLiveDatabase(resolveDatabaseConfig().database);
+  const database = resolveDatabaseConfig();
+  if (database.port === 62870)
+    throw new Error(
+      "UAT seed refused: native PostgreSQL port 62870 is protected.",
+    );
+  assertNotLiveDatabase(database.database);
   const destination = resolveCredentialsDestination(credentialsFile);
   const credentialsLoaded = loadExistingCredentials(destination);
   const now = new Date();
@@ -2681,9 +2850,20 @@ export async function runUatSeed(argv: readonly string[] = process.argv) {
         { mode: 0o600, flag: "wx" },
       );
     const seeded = await db.transaction((tx) => seedCore(tx, now));
+    for (const grant of uatCustomerProjectSeedPlan())
+      await changeProjectCustomerAccess({
+        ...grant,
+        workspaceId: UAT_WORKSPACE_ID,
+        actorId: "uat-user-owner",
+        actorPersonId: "uat-person-owner",
+        granted: true,
+      });
+    await seedG1PendingCustomer();
+    await seedG1Automations();
     const accepted = await seedIntake(seeded);
     await seedKnowledgeBase(seeded);
     await seedPages(seeded);
+    await seedG1Report();
     const report = await signInReport();
     const [{ count } = { count: 0 }] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -2695,9 +2875,9 @@ export async function runUatSeed(argv: readonly string[] = process.argv) {
     console.log(
       `Local factor (MFA) policy: ${report.mode}. ${
         report.mode === "off" || report.mode === "optional"
-          ? "No MFA enrolment is required at first sign-in, including the God Mode account."
+          ? "No MFA enrolment is required at first sign-in, for demo staff."
           : report.mode === "required_staff"
-            ? "Staff accounts, including God Mode, must enrol an authenticator at first sign-in; customers do not."
+            ? "Staff accounts must enrol an authenticator at first sign-in; customers do not."
             : report.mode === "required_everyone"
               ? "Every UAT account, customers included, must enrol an authenticator at first sign-in."
               : `Only holders of the required role (${report.requiredRoleId ?? "not set"}) must enrol an authenticator at first sign-in.`

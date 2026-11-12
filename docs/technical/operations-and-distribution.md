@@ -706,6 +706,48 @@ The old local overlays and alternate-port examples are not the canonical SIT dep
 <a id="environments-seed-data"></a>
 #### Seed data
 
+For a **fresh installation after first-administrator setup and verified TOTP**, the current
+demo is `scripts/seed-uat.mjs --uat --credentials-file <private-file-outside-checkout>`
+(run through `pnpm --filter @taskdesk/api exec tsx ../../scripts/seed-uat.mjs ...` from
+source, or `node apps/api/dist/seed-uat.js ...` inside the shipping image).
+It supersedes the old SIT account-reset demo. `scripts/deploy.sh local|sit --seed` opts in;
+without `--seed` deployment does not seed. Complete setup before opting in. The deploy
+wrapper keeps `~/.taskdesk/demo-credentials.json` private and reuses it on later runs;
+direct callers must reuse their original credentials file. Never use either seed to
+repair or overwrite an existing environment. No email provider is configured by the seed.
+
+| Person / role | Projects reached |
+| --- | --- |
+| Existing first instance administrator | God Mode; no demo workspace membership is added |
+| Olivia Owens / owner | All four projects |
+| Arjun Patel / admin | All four projects |
+| Maya Brooks / manager, PM on each project | All four projects |
+| Laura Chen / lead and CAB approver | Customer Support, IT Operations, Website Relaunch |
+| Marcus Reid / member | Customer Support, Website Relaunch; IT Operations through its owning team |
+| Sofia Alvarez / member | All four through explicit project memberships |
+| Victor Nguyen / viewer | Website Relaunch only |
+| Contoso: Emma Clarke | Customer Support managed service only |
+| Contoso: James Wright | Contoso Delivery only |
+| Contoso: Alex Morgan | Both Contoso engagements |
+| Contoso: pending invitee | No access yet; both Contoso engagements selected in invitation |
+| Fabrikam: Nina Berg | Website Relaunch only |
+
+Staff logins use their role key at `uat.taskdesk.test` (`agent1` for Marcus, `agent2` for
+Sofia); customer emails and all passwords are in the private credentials file. Staff
+invitation history records the chosen role; Olivia was invited as member before the
+instance administrator named her owner. The workspace includes planning, time, budgets,
+reports, documents, attachments, intake, SLA, useful portal articles and a pending CAB
+change. The example webhook is disabled. Service statuses are New, Open, Waiting on
+customer, On hold, Resolved and Closed. The two target automations are declared in the
+seed plan; unavailable product abilities print explicit skip reasons and create no rule.
+
+Verify locally with `node scripts/test-uat-seed.mjs`: it owns one disposable PostgreSQL 18
+container on a random port, migrates, finalizes a verified first-admin fixture, seeds twice,
+checks permissions and relationships, and compares every persisted row across the rerun.
+It prints the full container ID on creation and removal and removes its private test files.
+
+The `minimal`, `realistic` and `hostile` profiles below remain separate developer fixtures:
+
 ```bash
 pnpm seed minimal      # 1 org, 1 project, 10 items — fast tests
 pnpm seed realistic    # 5 orgs, 50 projects, 10k items, 200 people

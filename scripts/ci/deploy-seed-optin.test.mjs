@@ -1,5 +1,5 @@
-// scripts/deploy.sh must never re-run the SIT account seeder on its own: the seeder resets
-// passwords, turns off two-factor and deletes sessions. It runs only with --seed.
+// Deployment only runs the current clean-install demo after an explicit --seed.
+// The historical SIT password/session reset utility must never be invoked here.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -20,7 +20,7 @@ test("the seeder is off by default and enabled only by --seed", () => {
 test("seed_if_permitted returns before touching the container unless --seed is set", () => {
   const body = script.slice(script.indexOf("seed_if_permitted() {"));
   const guard = body.indexOf('if [ "$SEED" -ne 1 ]; then');
-  const exec = body.indexOf("seed-sit-users");
+  const exec = body.indexOf("seed-uat");
   assert.ok(guard > 0, "guard is missing");
   assert.ok(exec > guard, "the seeder call must come after the guard");
   assert.match(
@@ -28,4 +28,14 @@ test("seed_if_permitted returns before touching the container unless --seed is s
     /return 0/,
     "the guard must return before the seeder runs",
   );
+});
+
+test("the opt-in uses the current demo and reuses its private credentials", () => {
+  assert.match(
+    script,
+    /node apps\/api\/dist\/seed-uat\.js --uat --credentials-file/,
+  );
+  assert.doesNotMatch(script, /node apps\/api\/dist\/seed-sit-users/);
+  assert.match(script, /umask 077; cat > "\$1"/);
+  assert.match(script, /< "\$credentials"/);
 });

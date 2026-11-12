@@ -1,4 +1,4 @@
-/** Explicit UAT customer access. Contoso 2 shares Support to retain existing seeded cases. */
+/** Explicit per-person access for the clean-install demo. */
 export const UAT_SECOND_CONTOSO_PROJECT_ID = "uat-proj-contoso-managed";
 export const UAT_SECOND_CONTOSO_ORGANISATION = "contoso";
 
@@ -20,12 +20,17 @@ export function customerProjectSeedPlan(input: {
       projectId: input.supportProjectId,
     },
     {
-      account: "contoso2",
+      account: "contoso3",
       organisation: "contoso",
       projectId: input.supportProjectId,
     },
     {
       account: "contoso2",
+      organisation: "contoso",
+      projectId: input.secondContosoProjectId,
+    },
+    {
+      account: "contoso3",
       organisation: "contoso",
       projectId: input.secondContosoProjectId,
     },
@@ -37,7 +42,7 @@ export function customerProjectSeedPlan(input: {
   ] as const;
   return definitions.map(({ account, organisation, projectId }) => {
     const person = input.accounts.find((row) => row.key === account);
-    if (!person || person.side !== "customer" || person.org !== organisation)
+    if (person?.side !== "customer" || person.org !== organisation)
       throw new Error(`Invalid UAT customer ${account}`);
     return { personId: person.personId, projectId };
   });

@@ -1,59 +1,103 @@
 import { describe, expect, it } from "vitest";
+import { customerProjectSeedPlan } from "../../../apps/api/scripts/uat-customer-project-plan";
 import {
-  UAT_ACCOUNTS,
-  uatCustomerEngagementSeedPlan,
-  uatCustomerProjectSeedPlan,
-} from "../../../apps/api/scripts/seed-uat-users";
-import {
-  customerProjectSeedPlan,
-  UAT_SECOND_CONTOSO_PROJECT_ID,
-} from "../../../apps/api/scripts/uat-customer-project-plan";
+  G1_ACCOUNTS,
+  G1_AUTOMATIONS,
+  G1_PROJECT_IDS,
+  G1_PROJECT_MANAGERS,
+  G1_SERVICE_STATES,
+  g1StaffProjects,
+} from "../../../apps/api/scripts/uat-seed-plan";
 
-describe("UAT customer project seed plan", () => {
-  it("assigns the intended engagements and retains the explicit shared Support assignment", () => {
-    const plan = uatCustomerProjectSeedPlan();
-    const engagements = uatCustomerEngagementSeedPlan();
-    const person = (key: string) =>
-      UAT_ACCOUNTS.find((row) => row.key === key)?.personId;
-    expect(plan).toEqual([
-      { personId: person("contoso1"), projectId: "uat-proj-support" },
-      { personId: person("contoso2"), projectId: "uat-proj-support" },
-      {
-        personId: person("contoso2"),
-        projectId: UAT_SECOND_CONTOSO_PROJECT_ID,
-      },
-      { personId: person("fabrikam1"), projectId: "uat-proj-web" },
+describe("clean-install demo plan", () => {
+  it("covers every staff role and assigns one PM to each project", () => {
+    expect(
+      new Set(
+        G1_ACCOUNTS.flatMap((a) => (a.workspaceRole ? [a.workspaceRole] : [])),
+      ),
+    ).toEqual(
+      new Set(["owner", "admin", "manager", "lead", "member", "viewer"]),
+    );
+    expect(G1_PROJECT_MANAGERS.map((p) => p.projectId)).toEqual([
+      ...G1_PROJECT_IDS,
     ]);
-    expect(person("contoso1")).toBeTruthy();
-    expect(person("contoso2")).not.toBe(person("contoso1"));
-    expect(
-      engagements
-        .filter((row) => row.organisation === "contoso")
-        .map((row) => row.projectId),
-    ).toEqual(["uat-proj-support", UAT_SECOND_CONTOSO_PROJECT_ID]);
-    for (const grant of plan) {
-      const account = UAT_ACCOUNTS.find(
-        (row) => row.personId === grant.personId,
-      );
-      const engagement = engagements.find(
-        (row) => row.projectId === grant.projectId,
-      );
-      expect(account?.org).toBe(engagement?.organisation);
-    }
-    expect(
-      new Set(plan.map((row) => `${row.personId}:${row.projectId}`)).size,
-    ).toBe(plan.length);
+    for (const id of G1_PROJECT_IDS)
+      expect(
+        G1_PROJECT_MANAGERS.filter((p) => p.projectId === id),
+      ).toHaveLength(1);
+    expect(g1StaffProjects("viewer")).toEqual(["uat-proj-web"]);
+    expect(g1StaffProjects("lead")).not.toContain("uat-proj-contoso-managed");
+    expect(g1StaffProjects("agent1")).not.toContain("uat-proj-itops");
   });
-  it("rejects a customer account from the wrong organisation", () => {
+  it("separates customer engagements and organisations", () => {
+    const grants = customerProjectSeedPlan({
+      accounts: G1_ACCOUNTS.map((row) => ({
+        ...row,
+        personId: `uat-person-${row.key}`,
+      })),
+      supportProjectId: "uat-proj-support",
+      secondContosoProjectId: "uat-proj-contoso-managed",
+      fabrikamProjectId: "uat-proj-web",
+    });
+    const projects = (key: string) =>
+      grants
+        .filter((g) => g.personId === `uat-person-${key}`)
+        .map((g) => g.projectId);
+    expect(projects("contoso1")).toEqual(["uat-proj-support"]);
+    expect(projects("contoso2")).toEqual(["uat-proj-contoso-managed"]);
+    expect(projects("contoso3")).toEqual([
+      "uat-proj-support",
+      "uat-proj-contoso-managed",
+    ]);
+    expect(projects("fabrikam1")).toEqual(["uat-proj-web"]);
+    expect(projects("pending")).toEqual([]);
+    expect(
+      new Set(grants.map((g) => `${g.personId}:${g.projectId}`)).size,
+    ).toBe(grants.length);
+  });
+  it("rejects a customer belonging to the wrong organisation", () => {
     expect(() =>
       customerProjectSeedPlan({
-        accounts: UAT_ACCOUNTS.map((row) =>
-          row.key === "contoso1" ? { ...row, org: "fabrikam" } : row,
-        ),
-        supportProjectId: "p1",
-        secondContosoProjectId: "p2",
-        fabrikamProjectId: "p3",
+        accounts: G1_ACCOUNTS.map((row) => ({
+          ...row,
+          personId: `uat-person-${row.key}`,
+          org: row.key === "contoso1" ? "fabrikam" : row.org,
+        })),
+        supportProjectId: "uat-proj-support",
+        secondContosoProjectId: "uat-proj-contoso-managed",
+        fabrikamProjectId: "uat-proj-web",
       }),
     ).toThrow("Invalid UAT customer contoso1");
+  });
+  it("declares the exact service statuses and both target automations", () => {
+    expect(G1_SERVICE_STATES.map((s) => s.name)).toEqual([
+      "New",
+      "Open",
+      "Waiting on customer",
+      "On hold",
+      "Resolved",
+      "Closed",
+    ]);
+    expect(G1_AUTOMATIONS.map((a) => [a.name, a.requires])).toEqual([
+      [
+        "A customer reply reopens a resolved item",
+        "customer comment author condition",
+      ],
+      [
+        "Resolved items close after 3 days",
+        "time-based automation trigger and resolved timestamp age condition",
+      ],
+    ]);
+    expect(G1_AUTOMATIONS[0].definition.conditions).toContainEqual({
+      field: "actor_role",
+      op: "eq",
+      value: "customer",
+    });
+    expect(G1_AUTOMATIONS[1].definition.conditions).toContainEqual({
+      field: "age",
+      op: "gte",
+      value: 4320,
+      basis: "resolved_at",
+    });
   });
 });
