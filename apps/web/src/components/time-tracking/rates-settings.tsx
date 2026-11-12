@@ -3,9 +3,9 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Button,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -217,10 +217,18 @@ function RatesSettingsContent() {
                 onChange={setEffectiveFrom}
               />
             </div>
-            <Button type="submit" disabled={!canSubmit}>
+            <SaveButton
+              type="submit"
+              disabled={!canSubmit && !add.isPending}
+              pending={add.isPending}
+              success={add.isSuccess}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               <Plus aria-hidden="true" />
               {t("timeTracking:rates.add")}
-            </Button>
+            </SaveButton>
           </form>
           <p className="max-w-2xl text-muted-foreground text-xs">
             {t("timeTracking:rates.snapshotNote")}

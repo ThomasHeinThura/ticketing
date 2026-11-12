@@ -47,6 +47,21 @@ const team = {
 afterEach(cleanup);
 
 describe("TeamSettingsCard", () => {
+  it("reports a successful save after refreshing team data", async () => {
+    mocks.updateTeam.mockReset().mockResolvedValue({});
+    const onSaved = vi.fn();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TeamSettingsCard team={team} onSaved={onSaved} />
+      </QueryClientProvider>,
+    );
+    fireEvent.change(screen.getByLabelText("teams:fields.name"), {
+      target: { value: "Help desk" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "teams:detail.save" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    expect(mocks.updateTeam).toHaveBeenCalledOnce();
+  });
   it.each(["viewer", "member", "lead"])(
     "shows values without edit controls to a %s without team management",
     () => {

@@ -200,12 +200,22 @@ function ScimPanelLoaded({
           <AlertDescription>{t("scim.enableInvalidHint")}</AlertDescription>
         </Alert>
       ) : null}
-      {notice ? (
-        <Alert variant="success">
-          <AlertTitle>{t("scim.savedTitle")}</AlertTitle>
-          <AlertDescription>{t(`scim.notice.${notice}`)}</AlertDescription>
-        </Alert>
-      ) : null}
+      <div
+        role="status"
+        aria-atomic="true"
+        aria-live={
+          notice === "mappingCreated" || notice === "mappingUpdated"
+            ? "off"
+            : "polite"
+        }
+      >
+        {notice ? (
+          <Alert variant="success" role="presentation">
+            <AlertTitle>{t("scim.savedTitle")}</AlertTitle>
+            <AlertDescription>{t(`scim.notice.${notice}`)}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
 
       <ScimTokenSettings
         connectionId={connectionId}

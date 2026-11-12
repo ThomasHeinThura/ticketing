@@ -114,6 +114,16 @@ describe("instance MCP rate setting", () => {
         changes: { mcpWriteCeilingPerMinute: 12 },
       }),
     );
+    expect(
+      await screen.findByRole("button", {
+        name: translate("common:actions.saved"),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText(
+        translate("godModeSettings:fields.mcpWriteCeilingPerMinute.label"),
+      ),
+    ).toHaveValue(12);
   });
   it("edits the persisted burst threshold separately from the write ceiling", async () => {
     mocks.patch.mockResolvedValue({

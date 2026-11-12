@@ -11,6 +11,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Input,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -486,27 +487,26 @@ function RequestTypesEditor() {
                     </Button>
                   </Alert>
                 ) : null}
-                {saveGroupOrder.isSuccess ? (
-                  <p role="status" className="text-sm text-muted-foreground">
-                    {t("groupOrderSaved", {
-                      defaultValue: "Group order saved.",
-                    })}
-                  </p>
-                ) : null}
+                <p role="status" className="text-sm text-muted-foreground">
+                  {saveGroupOrder.isSuccess
+                    ? t("groupOrderSaved", {
+                        defaultValue: "Group order saved.",
+                      })
+                    : null}
+                </p>
                 {groupOrderDraft.length > 1 ? (
-                  <Button
-                    disabled={!groupOrderChanged || saveGroupOrder.isPending}
+                  <SaveButton
+                    disabled={!groupOrderChanged && !saveGroupOrder.isPending}
+                    pending={saveGroupOrder.isPending}
+                    success={saveGroupOrder.isSuccess}
+                    announceSuccess={false}
+                    savedLabel={t("common:actions.saved")}
+                    workingLabel={t("common:actions.saving")}
                     onClick={() => void saveGroupOrder.mutate()}
                     type="button"
                   >
-                    {saveGroupOrder.isPending
-                      ? t("savingGroupOrder", {
-                          defaultValue: "Saving group order…",
-                        })
-                      : t("saveGroupOrder", {
-                          defaultValue: "Save group order",
-                        })}
-                  </Button>
+                    {t("saveGroupOrder", { defaultValue: "Save group order" })}
+                  </SaveButton>
                 ) : null}
               </section>
             ) : null}
@@ -1270,17 +1270,20 @@ function RequestTypesEditor() {
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              <Button
+              <SaveButton
                 onClick={() => save.mutate()}
+                pending={save.isPending}
+                success={save.isSuccess}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
                 disabled={
                   !draft.name.trim() ||
                   !draft.group.trim() ||
-                  !draft.workItemTypeId ||
-                  save.isPending
+                  !draft.workItemTypeId
                 }
               >
                 {t("save")}
-              </Button>
+              </SaveButton>
               {selected && (
                 <Button
                   onClick={() => action.mutate("publish")}

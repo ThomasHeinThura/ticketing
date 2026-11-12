@@ -26,6 +26,7 @@ import {
   FormMessage,
   Input,
   Label,
+  SaveButton,
   ScrollArea,
   Select,
   SelectContent,
@@ -181,6 +182,7 @@ export function CreateApiKeyDialog({
   };
 
   const onSubmit = async (data: FormValues) => {
+    if (isSubmitting) return;
     const expiresInValue =
       data.expiresIn === "never"
         ? null
@@ -215,6 +217,7 @@ export function CreateApiKeyDialog({
 
       form.reset();
       setWriteCapabilities(new Set());
+      toast.success(t("common:actions.saved"));
       onSuccess(result);
       // The plaintext key now lives only in the parent's dialog state; drop the copy React Query
       // keeps in its mutation cache.
@@ -512,11 +515,16 @@ export function CreateApiKeyDialog({
               >
                 {t("common:actions.cancel")}
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? t("settings:apiKey.createDialog.creating")
-                  : t("settings:apiKey.createDialog.create")}
-              </Button>
+              <SaveButton
+                type="submit"
+                pending={isSubmitting}
+                success={false}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+                announceSuccess={false}
+              >
+                {t("settings:apiKey.createDialog.create")}
+              </SaveButton>
             </DialogFooter>
           </form>
         </Form>

@@ -172,6 +172,12 @@
 						"save": {
 							"type": "string"
 						},
+						"saved": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
 						"previous": {
 							"type": "string"
 						},
@@ -198,6 +204,8 @@
 						"markRead",
 						"markUnread",
 						"save",
+						"saved",
+						"saving",
 						"previous",
 						"next",
 						"refresh"

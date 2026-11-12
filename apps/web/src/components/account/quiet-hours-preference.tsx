@@ -9,6 +9,8 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -16,7 +18,7 @@ import {
   SelectValue,
   Skeleton,
 } from "@taskdesk/ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TimeField } from "@/components/service-calendar/time-field";
 import type { QuietHours } from "@/fetchers/notification-preferences/get-notification-preferences";
@@ -40,6 +42,12 @@ function timeZones(current: string): string[] {
 export function QuietHoursPreference() {
   const { t } = useTranslation("notificationProvider");
   const preferences = useGetNotificationPreferences();
+  const [completed, setCompleted] = useState(false);
+  useEffect(() => {
+    if (!completed) return;
+    const timer = setTimeout(() => setCompleted(false), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [completed]);
   const quietHours = preferences.data?.quietHours ?? null;
   return (
     <Card>
@@ -61,14 +69,30 @@ export function QuietHoursPreference() {
             </Button>
           </Alert>
         ) : (
-          <QuietHoursForm key={JSON.stringify(quietHours)} saved={quietHours} />
+          <QuietHoursForm
+            key={JSON.stringify(quietHours)}
+            saved={quietHours}
+            completed={completed}
+            onStart={() => setCompleted(false)}
+            onSaved={() => setCompleted(true)}
+          />
         )}
       </CardContent>
     </Card>
   );
 }
 
-function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
+function QuietHoursForm({
+  saved,
+  completed,
+  onStart,
+  onSaved,
+}: {
+  saved: QuietHours | null;
+  completed: boolean;
+  onStart: () => void;
+  onSaved: () => void;
+}) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
   const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -76,14 +100,17 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
   const [end, setEnd] = useState(saved?.end ?? "07:00");
   const [timezone, setTimezone] = useState(saved?.timezone ?? browserZone);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeIsSave, setNoticeIsSave] = useState(false);
   const zones = useMemo(() => timeZones(timezone), [timezone]);
   const mutation = useMutation({
     mutationFn: saveQuietHours,
     onSuccess: async (_data, variables) => {
+      setNoticeIsSave(Boolean(variables));
       setNotice(variables ? t("quietHours.saved") : t("quietHours.cleared"));
       await queryClient.invalidateQueries({
         queryKey: ["notification-preferences"],
       });
+      if (variables) onSaved();
     },
   });
   const startMinutes = parseClockTime(start, false);
@@ -101,6 +128,7 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
         event.preventDefault();
         if (mutation.isPending || !valid || !dirty) return;
         setNotice(null);
+        onStart();
         mutation.mutate({ start, end, timezone });
       }}
     >
@@ -171,14 +199,25 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
         </p>
       )}
       {notice && (
-        <p role="status" className="text-sm">
+        <p role={noticeIsSave ? undefined : "status"} className="text-sm">
           {notice}
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" disabled={mutation.isPending || !valid || !dirty}>
+        <SaveButton
+          type="submit"
+          disabled={
+            ((!valid || !dirty) && !mutation.isPending) ||
+            (mutation.isPending && mutation.variables === null)
+          }
+          pending={mutation.isPending && mutation.variables !== null}
+          success={completed}
+          retainedSuccess
+          savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+        >
           {t("quietHours.save")}
-        </Button>
+        </SaveButton>
         {saved && (
           <Button
             type="button"
@@ -186,6 +225,7 @@ function QuietHoursForm({ saved }: { saved: QuietHours | null }) {
             disabled={mutation.isPending}
             onClick={() => {
               setNotice(null);
+              onStart();
               mutation.mutate(null);
             }}
           >

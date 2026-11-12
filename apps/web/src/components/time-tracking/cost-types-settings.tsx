@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  SaveButton,
   Skeleton,
   Switch,
   Table,
@@ -195,6 +196,7 @@ function CostTypeEditDialog({
     mutationFn: () => updateCostType(costType.id, workspaceId, changes),
     onSuccess: async () => {
       await invalidate();
+      toast.success(t("common:actions.saved"));
       onClose();
     },
     onError: (error) => toast.error(message(error)),
@@ -240,9 +242,17 @@ function CostTypeEditDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={!valid || !dirty || save.isPending}>
+            <SaveButton
+              type="submit"
+              disabled={(!valid || !dirty) && !save.isPending}
+              pending={save.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("timeTracking:actions.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -382,10 +392,18 @@ function CostTypeAddForm({ workspaceId }: { workspaceId: string }) {
           setDraft((current) => ({ ...current, ...changes }))
         }
       />
-      <Button type="submit" disabled={!valid || add.isPending}>
+      <SaveButton
+        type="submit"
+        disabled={!valid && !add.isPending}
+        pending={add.isPending}
+        success={add.isSuccess}
+        savedLabel={t("common:actions.saved")}
+        workingLabel={t("common:actions.saving")}
+        announceSuccess={false}
+      >
         <Plus aria-hidden="true" />
         {t("timeTracking:costTypes.add")}
-      </Button>
+      </SaveButton>
     </form>
   );
 }

@@ -20,6 +20,8 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Skeleton,
   Table,
   TableBody,
@@ -29,7 +31,7 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { ChevronLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -315,6 +317,7 @@ function CreateWorkflowDialog({
       await cache.invalidateQueries({ queryKey: ["workflows"] });
       setKey("");
       setName("");
+      toast.success(t("common:actions.saved"));
       onOpenChange(false);
       onCreated(workflow.id);
     },
@@ -376,12 +379,17 @@ function CreateWorkflowDialog({
           >
             {t("common:actions.cancel")}
           </Button>
-          <Button
-            disabled={!key.trim() || !name.trim() || create.isPending}
+          <SaveButton
+            disabled={(!key.trim() || !name.trim()) && !create.isPending}
+            pending={create.isPending}
+            success={false}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => create.mutate()}
           >
             {t("settings:workflows.create.submit")}
-          </Button>
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -414,6 +422,12 @@ function WorkflowDetailView({
     null,
   );
   const [adding, setAdding] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  useEffect(() => {
+    if (!draftSaved) return;
+    const timer = setTimeout(() => setDraftSaved(false), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [draftSaved]);
   const [validating, setValidating] = useState<{
     number: number;
     report: WorkflowValidation | undefined;
@@ -455,6 +469,7 @@ function WorkflowDetailView({
     onSuccess: async (version) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
       setWorking(null);
+      setDraftSaved(true);
       toast.success(
         t("settings:workflows.draftSaved", { number: version.number }),
       );
@@ -608,24 +623,38 @@ function WorkflowDetailView({
               </div>
               {canManage ? (
                 <div className="flex items-center gap-2">
-                  {working ? (
+                  {working || draftSaved ? (
                     <>
-                      <Badge variant="warning">
-                        {t("settings:workflows.transitions.unsaved")}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        disabled={saveDraft.isPending}
-                        onClick={() => setWorking(null)}
-                      >
-                        {t("settings:workflows.transitions.discard")}
-                      </Button>
-                      <Button
-                        disabled={saveDraft.isPending}
-                        onClick={() => saveDraft.mutate()}
+                      {working && (
+                        <Badge variant="warning">
+                          {t("settings:workflows.transitions.unsaved")}
+                        </Badge>
+                      )}
+                      {working && (
+                        <Button
+                          variant="outline"
+                          disabled={saveDraft.isPending}
+                          onClick={() => setWorking(null)}
+                        >
+                          {t("settings:workflows.transitions.discard")}
+                        </Button>
+                      )}
+                      <SaveButton
+                        disabled={!working && !saveDraft.isPending}
+                        pending={saveDraft.isPending}
+                        success={draftSaved}
+                        savedLabel={t("common:actions.saved")}
+                        workingLabel={t("common:actions.saving")}
+                        announceSuccess={false}
+                        onClick={() => {
+                          if (working) {
+                            setDraftSaved(false);
+                            saveDraft.mutate();
+                          }
+                        }}
                       >
                         {t("settings:workflows.transitions.saveDraft")}
-                      </Button>
+                      </SaveButton>
                     </>
                   ) : null}
                   <Button variant="outline" onClick={() => setAdding(true)}>

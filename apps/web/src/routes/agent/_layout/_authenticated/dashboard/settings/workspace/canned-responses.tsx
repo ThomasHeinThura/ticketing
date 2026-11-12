@@ -28,6 +28,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -207,9 +208,17 @@ function CannedResponseEditor({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={pending || !name.trim()}>
+            <SaveButton
+              type="submit"
+              disabled={!name.trim() && !pending}
+              pending={pending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:cannedResponses.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -275,6 +284,7 @@ function CannedResponsesPageContent() {
         return;
       }
       await cache.invalidateQueries({ queryKey: ["canned-responses"] });
+      toast.success(t("common:actions.saved"));
       close();
     },
   });

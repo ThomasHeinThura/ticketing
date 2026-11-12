@@ -2,12 +2,14 @@ import {
   Button,
   Checkbox,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@taskdesk/ui";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type {
   ScimAdminRequest,
@@ -50,6 +52,8 @@ export function ScimSettingsSection({
 }: Props) {
   const { t } = useTranslation("identityConnections");
   const request = buildScimSettingsRequest(settings, draft);
+  const [saving, setSaving] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   function toggleOptional(name: ScimMatchAttribute, checked: boolean) {
     const optional = OPTIONAL_MATCH_ATTRIBUTES.filter((candidate) =>
@@ -191,13 +195,27 @@ export function ScimSettingsSection({
         ))}
       </fieldset>
 
-      <Button
-        disabled={step.busy || request === null}
-        onClick={() => request && void run(request, "settings")}
+      <SaveButton
+        disabled={!saving && (step.busy || request === null)}
+        pending={saving}
+        success={completed}
+        announceSuccess={false}
+        savedLabel={t("common:actions.saved")}
+        workingLabel={t("common:actions.saving")}
+        onClick={async () => {
+          if (!request || step.busy) return;
+          setCompleted(false);
+          setSaving(true);
+          try {
+            setCompleted(await run(request, "settings"));
+          } finally {
+            setSaving(false);
+          }
+        }}
         type="button"
       >
-        {step.busy ? t("common.saving") : t("scim.settings.save")}
-      </Button>
+        {t("scim.settings.save")}
+      </SaveButton>
     </section>
   );
 }
@@ -211,6 +229,8 @@ export function ScimProfileMappingSection({
 }: Props) {
   const { t } = useTranslation("identityConnections");
   const request = buildScimProfileRequest(settings, draft);
+  const [saving, setSaving] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   function setField<K extends Exclude<keyof ScimProfileMapping, "version">>(
     key: K,
@@ -265,13 +285,27 @@ export function ScimProfileMappingSection({
           </div>
         ))}
       </div>
-      <Button
-        disabled={step.busy || request === null}
-        onClick={() => request && void run(request, "profile")}
+      <SaveButton
+        disabled={!saving && (step.busy || request === null)}
+        pending={saving}
+        success={completed}
+        announceSuccess={false}
+        savedLabel={t("common:actions.saved")}
+        workingLabel={t("common:actions.saving")}
+        onClick={async () => {
+          if (!request || step.busy) return;
+          setCompleted(false);
+          setSaving(true);
+          try {
+            setCompleted(await run(request, "profile"));
+          } finally {
+            setSaving(false);
+          }
+        }}
         type="button"
       >
-        {step.busy ? t("common.saving") : t("scim.profile.save")}
-      </Button>
+        {t("scim.profile.save")}
+      </SaveButton>
     </section>
   );
 }

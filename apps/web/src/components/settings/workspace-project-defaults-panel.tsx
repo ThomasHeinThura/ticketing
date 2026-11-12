@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -95,6 +96,7 @@ export function WorkspaceProjectDefaultsPanel({
   const [calendarId, setCalendarId] = useState<string>(NONE);
   const [draftVersion, setDraftVersion] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [failure, setFailure] = useState<
     "stale" | "forbidden" | "generic" | null
   >(null);
@@ -169,6 +171,7 @@ export function WorkspaceProjectDefaultsPanel({
     if (!current || !dirty || saving || !canEdit) return;
     setFailure(null);
     setSaving(true);
+    setSaveSuccess(false);
     try {
       const updated = await patchWorkspaceProjectSettings(workspaceId, {
         expectedVersion: current.version,
@@ -178,6 +181,7 @@ export function WorkspaceProjectDefaultsPanel({
       queryClient.setQueryData(queryKey, updated);
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
       setDraftVersion(`${workspaceId}:${updated.version}`);
+      setSaveSuccess(true);
     } catch (error) {
       setFailure(
         error instanceof WorkspaceSettingsError && error.status === 409
@@ -358,16 +362,18 @@ export function WorkspaceProjectDefaultsPanel({
             </Alert>
           )}
           {canEdit && (
-            <Button
+            <SaveButton
               type="button"
               size="sm"
-              disabled={!dirty || saving || isCheckingPermissions}
+              disabled={(!dirty && !saving) || isCheckingPermissions}
+              pending={saving}
+              success={saveSuccess}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
               onClick={() => void save()}
             >
-              {saving
-                ? t("settings:workspaceProjectDefaults.saving")
-                : t("settings:workspaceProjectDefaults.save")}
-            </Button>
+              {t("settings:workspaceProjectDefaults.save")}
+            </SaveButton>
           )}
         </div>
       )}

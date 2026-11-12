@@ -15,6 +15,7 @@ import {
   FieldLabel,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -204,7 +205,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
       setStableKeyError(true);
       return;
     }
-    if (!canSubmit) return;
+    if (!canSubmit || saving || publishing) return;
     const data: SlaPolicyInput = {
       name: name.trim(),
       description: description.trim() || null,
@@ -654,13 +655,18 @@ export function SlaPolicyEditor({ id }: { id: string }) {
 
           <div className="flex flex-wrap items-center gap-3">
             {canManage && !isCheckingPermissions ? (
-              <Button
+              <SaveButton
                 type="submit"
-                disabled={!canSubmit || saving || publishing}
+                disabled={!canSubmit || publishing}
+                pending={saving}
+                success={!isNew && updatePolicy.isSuccess}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+                announceSuccess={false}
               >
                 <Save aria-hidden="true" />
-                {saving ? t("editor.saving") : t("editor.save")}
-              </Button>
+                {t("editor.save")}
+              </SaveButton>
             ) : null}
             {hasInvalidTarget ? (
               <p className="text-destructive text-xs" role="alert">

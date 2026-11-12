@@ -303,5 +303,10 @@ describe("workflow settings (WF-9)", () => {
         number: 3,
       }),
     );
+    expect(
+      await screen.findByText("common:actions.saved", {
+        selector: "span:not([aria-hidden])",
+      }),
+    ).toBeInTheDocument();
   });
 });

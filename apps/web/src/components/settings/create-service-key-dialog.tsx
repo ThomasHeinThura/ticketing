@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  SaveButton,
   ScrollArea,
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ import { translatedCapabilityDescription } from "@/components/settings/roles/cap
 import { createServiceKey } from "@/fetchers/service-keys";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { localizedAdminErrorMessage } from "@/lib/http-error";
+import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
 export const serviceKeysKey = (workspaceId: string) =>
@@ -104,6 +106,7 @@ export function CreateServiceKeyDialog({
       await queryClient.invalidateQueries({
         queryKey: serviceKeysKey(workspaceId),
       });
+      toast.success(t("common:actions.saved"));
       onCreated(created);
       onClose();
     },
@@ -272,14 +275,17 @@ export function CreateServiceKeyDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button
+            <SaveButton
               type="submit"
-              disabled={mutation.isPending || !nameValid || !stepUp.canRun}
+              disabled={!mutation.isPending && (!nameValid || !stepUp.canRun)}
+              pending={mutation.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
             >
-              {mutation.isPending
-                ? t("settings:serviceKeys.create.creating")
-                : t("settings:serviceKeys.create.submit")}
-            </Button>
+              {t("settings:serviceKeys.create.submit")}
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>

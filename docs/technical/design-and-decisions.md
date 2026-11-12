@@ -3645,6 +3645,8 @@ Thomas decided on 12 November 2026 (owner decision D-H, "the UI must feel premiu
 
 `SwitchField` wraps `Switch` with `helper={{ checked, unchecked }}` while `Switch` stays the bare control, so plain `Switch` callers keep an unchanged DOM and do not enter helper contrast tracing. Both helper lines share one grid cell, so the reserved height is the taller line and the layout never jumps. The active line describes the switch (`aria-describedby`); the other is `inert`. Resting colours, sizes and spacing do not change; only the Storybook `Primitives/Skeleton Default` (`primitives-skeleton--default`) baseline is expected to change because Storybook runs with `reducedMotion: "reduce"` and reduced-motion skeletons drop `--skeleton-highlight` to `transparent`.
 
+Save controls may use `SaveButton` for a delayed working indicator and a temporary saved state. It retains its focus during a pending save, ignores repeat activation, reserves space for both labels and uses caller-provided translated text. The deferred toast viewport draws a decorative line for timed success notifications and hides it when reduced motion is requested. The `--ease-progress` token is linear so the line tracks time remaining; it is a clock pace rather than a transition easing curve.
+
 ## Workspace creation is for instance administrators — 12 November 2026
 
 Thomas decided on 12 November 2026 (D-A, final): only a current instance administrator creates a workspace, and the administrator hands it to a named owner. **This reverses open workspace creation**, where `DISABLE_WORKSPACE_CREATION` was the only restriction and, left unset, every signed-in staff account could create a workspace and become its owner with see-all reach.

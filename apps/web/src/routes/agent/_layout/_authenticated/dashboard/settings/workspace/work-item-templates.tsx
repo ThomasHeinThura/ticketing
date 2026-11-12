@@ -23,6 +23,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -311,9 +312,17 @@ function TemplateEditor({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={pending || !valid}>
+            <SaveButton
+              type="submit"
+              disabled={!valid && !pending}
+              pending={pending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:workItemTemplates.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -415,9 +424,17 @@ function ChecklistEditor({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={pending || !name.trim()}>
+            <SaveButton
+              type="submit"
+              disabled={!name.trim() && !pending}
+              pending={pending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:workItemTemplates.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -477,6 +494,7 @@ function WorkItemTemplatesPageContent() {
         cache.invalidateQueries({ queryKey: ["work-item-templates"] }),
         cache.invalidateQueries({ queryKey: ["checklist-templates"] }),
       ]);
+      toast.success(t("common:actions.saved"));
       close();
     },
   });

@@ -1,8 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
 import {
-  Button,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -92,9 +92,17 @@ export function BackdateLimitSetting() {
         )}
       </div>
       {settings.data.canManage ? (
-        <Button type="submit" disabled={!dirty || !valid || save.isPending}>
+        <SaveButton
+          type="submit"
+          disabled={(!dirty || !valid) && !save.isPending}
+          pending={save.isPending}
+          success={save.isSuccess}
+          savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
+        >
           {t("timeTracking:actions.save")}
-        </Button>
+        </SaveButton>
       ) : null}
       <p className="basis-full text-muted-foreground text-xs">
         {t("timeTracking:settings.backdateHelp")}
@@ -293,10 +301,18 @@ export function AvailableHoursSetting() {
             onChange={setEffectiveFrom}
           />
         </div>
-        <Button type="submit" disabled={!canSubmit || add.isPending}>
+        <SaveButton
+          type="submit"
+          disabled={!canSubmit && !add.isPending}
+          pending={add.isPending}
+          success={add.isSuccess}
+          savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
+        >
           <Plus aria-hidden="true" />
           {t("timeTracking:availableHours.add")}
-        </Button>
+        </SaveButton>
       </form>
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">

@@ -244,6 +244,7 @@ export function useServiceCalendarEditor({
   }
 
   async function handleSave(values: CalendarMetadata) {
+    if (createCalendar.isPending || updateCalendar.isPending) return;
     if (!canManageServiceCalendars()) {
       toast.error(t("editor.readOnlyDescription"));
       return;
@@ -444,6 +445,7 @@ export function useServiceCalendarEditor({
     retroactiveImpact,
     dismissRetroactiveImpact: () => setRetroactiveImpact(0),
     saving: createCalendar.isPending || updateCalendar.isPending,
+    saveSucceeded: createCalendar.isSuccess || updateCalendar.isSuccess,
     canManageCalendars: canManageServiceCalendars(),
     isCheckingPermissions,
     capabilityCheckFailed,

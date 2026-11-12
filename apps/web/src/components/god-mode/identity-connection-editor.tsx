@@ -7,6 +7,7 @@ import {
   Checkbox,
   Input,
   Label,
+  SaveButton,
   Textarea,
 } from "@taskdesk/ui";
 import { useState } from "react";
@@ -27,6 +28,7 @@ import {
   draftFromConnection,
   emptyConnectionDraft,
 } from "@/lib/identity-connection-form";
+import { toast } from "@/lib/toast";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
 
 function Field({
@@ -136,6 +138,7 @@ export function IdentityConnectionEditor({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (step.busy) return;
     setSaved(null);
     setUnchanged(false);
     if (base === null) {
@@ -155,7 +158,12 @@ export function IdentityConnectionEditor({
         (token) => mutations.create.mutateAsync({ body: built.body, token }),
       );
       forgetClientSecret(mutations.create.reset);
-      if (result.ok) onCreated?.(result.value.id);
+      if (result.ok) {
+        if (onCreated) {
+          toast.success(t("common:actions.saved"));
+          onCreated(result.value.id);
+        } else setSaved(result.value.configVersion);
+      }
       return;
     }
     const built = buildConfigureBody(base, draft);
@@ -295,14 +303,16 @@ export function IdentityConnectionEditor({
           <AlertDescription>{t("editor.unchanged")}</AlertDescription>
         </Alert>
       ) : null}
-      {saved !== null ? (
-        <Alert variant="success">
-          <AlertTitle>{t("editor.saved")}</AlertTitle>
-          <AlertDescription>
-            {t("editor.savedDescription", { version: saved })}
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      <div role="status" aria-atomic="true">
+        {saved !== null ? (
+          <Alert variant="success" role="presentation">
+            <AlertTitle>{t("editor.saved")}</AlertTitle>
+            <AlertDescription>
+              {t("editor.savedDescription", { version: saved })}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
 
       <form className="grid items-start gap-4 md:grid-cols-2" onSubmit={submit}>
         <Field
@@ -499,13 +509,16 @@ export function IdentityConnectionEditor({
           <StepUpFields action={step} idPrefix="identity-editor" />
         </div>
         <div className="flex gap-2 md:col-span-2">
-          <Button disabled={step.busy} type="submit">
-            {step.busy
-              ? t("common.saving")
-              : creating
-                ? t("editor.createDisabled")
-                : t("editor.save")}
-          </Button>
+          <SaveButton
+            pending={step.busy}
+            success={saved !== null}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
+            type="submit"
+          >
+            {creating ? t("editor.createDisabled") : t("editor.save")}
+          </SaveButton>
         </div>
       </form>
 

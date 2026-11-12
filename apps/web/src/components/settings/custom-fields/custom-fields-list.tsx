@@ -25,6 +25,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Skeleton,
   Switch,
 } from "@taskdesk/ui";
@@ -93,6 +94,7 @@ function SectionDialog({
       await queryClient.invalidateQueries({
         queryKey: customFieldSectionsKey(workspaceId),
       });
+      toast.success(t("common:actions.saved"));
       onClose();
     },
   });
@@ -154,9 +156,17 @@ function SectionDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={save.isPending || !name.trim()}>
+            <SaveButton
+              type="submit"
+              disabled={!name.trim() && !save.isPending}
+              pending={save.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("customFields:editor.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>

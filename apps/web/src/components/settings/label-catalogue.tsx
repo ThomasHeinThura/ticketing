@@ -27,6 +27,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
 } from "@taskdesk/ui";
 import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -626,11 +627,18 @@ export function LabelCatalogue({
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               {t("common:actions.cancel", { defaultValue: "Cancel" })}
             </Button>
-            <Button onClick={handleCreate} disabled={createLabel.isPending}>
+            <SaveButton
+              onClick={handleCreate}
+              pending={createLabel.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:workspaceLabels.createLabel", {
                 defaultValue: "Create Label",
               })}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -743,11 +751,18 @@ export function LabelCatalogue({
             >
               {t("common:actions.cancel", { defaultValue: "Cancel" })}
             </Button>
-            <Button onClick={handleEdit} disabled={updateLabel.isPending}>
+            <SaveButton
+              onClick={handleEdit}
+              pending={updateLabel.isPending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:workspaceLabels.saveLabel", {
                 defaultValue: "Save",
               })}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

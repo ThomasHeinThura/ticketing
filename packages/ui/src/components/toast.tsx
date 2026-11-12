@@ -174,7 +174,12 @@ function DeferredToastViewport({
           )
         }
       >
-        <Contents position={position} anchored={anchored} onReady={onReady} />
+        <Contents
+          position={position}
+          anchored={anchored}
+          onReady={onReady}
+          timeout={timeout}
+        />
       </Suspense>
     </ToastContentsBoundary>
   );
