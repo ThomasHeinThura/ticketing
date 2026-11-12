@@ -595,19 +595,64 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
     const refused = await putMethods(app, cookie, requested);
     expect(refused.status).toBe(403);
     expect(await refused.text()).toContain("Enroll a second factor");
-    const passwordProof = await mintStepUpToken(
+    const unchanged = {
+      ...requested,
+      customer: { ...CUSTOMER_OFF, password: true },
+      staffSelfRegistrationEnabled: false,
+    };
+    const unchangedProof = await mintStepUpToken(
       app,
       cookie,
       "auth_local_methods_update",
-      requested,
+      unchanged,
       PASSWORD,
     );
-    expect(passwordProof).not.toBeNull();
-    const passwordOnly = await putMethods(app, cookie, requested, {
-      [STEP_UP_TOKEN_HEADER]: passwordProof as string,
+    expect(unchangedProof).not.toBeNull();
+    const unchangedSave = await putMethods(app, cookie, unchanged, {
+      [STEP_UP_TOKEN_HEADER]: unchangedProof as string,
     });
-    expect(passwordOnly.status).toBe(403);
-    expect(await passwordOnly.text()).toContain("Enroll a second factor");
+    expect(unchangedSave.status, await unchangedSave.clone().text()).toBe(200);
+    requested.expectedRevision = await currentRevision(app, cookie);
+    for (const method of ["password", "sso_prompt_login"] as const) {
+      const challenge = await csrfRequest(
+        app,
+        "/api/me/step-up/challenges",
+        {
+          method: "POST",
+          headers: { cookie, "content-type": "application/json" },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "auth_local_methods_update",
+            ...requested,
+          }),
+        },
+        cookie,
+      );
+      expect(challenge.status).toBe(200);
+      const binding = (await challenge.json()) as {
+        challengeId: string;
+        nonce: string;
+      };
+      const proof = await csrfRequest(
+        app,
+        "/api/me/step-up",
+        {
+          method: "POST",
+          headers: { cookie, "content-type": "application/json" },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "auth_local_methods_update",
+            ...requested,
+            ...binding,
+            method,
+            ...(method === "password" ? { password: PASSWORD } : {}),
+          }),
+        },
+        cookie,
+      );
+      expect(proof.status).toBe(403);
+      expect(await proof.text()).toContain("Enroll a second factor");
+    }
     const enabled = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
       headers: { cookie, "content-type": "application/json" },
@@ -652,6 +697,27 @@ describe("GET/PUT /api/instance/auth/local-methods (S6)", () => {
       challengeId: string;
       nonce: string;
     };
+    const passwordAfterEnrollment = await csrfRequest(
+      app,
+      "/api/me/step-up",
+      {
+        method: "POST",
+        headers: { cookie: enrolledCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "auth_local_methods_update",
+          ...requested,
+          ...binding,
+          method: "password",
+          password: PASSWORD,
+        }),
+      },
+      enrolledCookie,
+    );
+    expect(passwordAfterEnrollment.status).toBe(403);
+    expect(await passwordAfterEnrollment.text()).toContain(
+      "Use a second factor",
+    );
     const proof = await csrfRequest(
       app,
       "/api/me/step-up",

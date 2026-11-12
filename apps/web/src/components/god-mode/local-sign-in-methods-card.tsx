@@ -363,7 +363,9 @@ function SaveDialog({
 }) {
   const { t } = useTranslation("identityConnections");
   const queryClient = useQueryClient();
-  const stepUp = useStepUpAction();
+  const registrationChanged =
+    request.staffSelfRegistrationEnabled !== saved.staffSelfRegistrationEnabled;
+  const stepUp = useStepUpAction({ requireSecondFactor: registrationChanged });
   const changes = AUDIENCES.flatMap((audience) =>
     METHODS.filter(
       (method) => request[audience][method] !== saved[audience][method],
@@ -427,7 +429,13 @@ function SaveDialog({
               </li>
             ))}
           </ul>
-          <StepUpFields action={stepUp} idPrefix="sign-in-methods" />
+          {stepUp.needsFactorEnrollment ? (
+            <Alert variant="error">
+              <AlertDescription>{t("errors.enroll_factor")}</AlertDescription>
+            </Alert>
+          ) : (
+            <StepUpFields action={stepUp} idPrefix="sign-in-methods" />
+          )}
           <FailureAlert
             failure={stepUp.failure}
             onReload={onReload}

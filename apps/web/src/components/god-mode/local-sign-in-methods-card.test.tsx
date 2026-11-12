@@ -7,7 +7,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { IdentityAdminError } from "@/fetchers/god-mode/identity-admin-error";
 import type { LocalAuthMethods } from "@/fetchers/god-mode/local-auth-methods";
 import { translate } from "@/test/en-translation";
 
@@ -100,7 +99,12 @@ function renderCard() {
 describe("LocalSignInMethodsCard", () => {
   it("binds the registration switch to the step-up proof and shows the portal state", async () => {
     mocks.factorStatus.enabled = true;
-    mocks.factorStatus.availableMethods = ["totp"];
+    mocks.factorStatus.availableMethods = [
+      "password",
+      "sso_prompt_login",
+      "totp",
+      "backup_code",
+    ];
     mocks.update.mockResolvedValue({
       ...stored,
       staffSelfRegistrationEnabled: true,
@@ -117,6 +121,19 @@ describe("LocalSignInMethodsCard", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Save sign-in methods" }),
     );
+    fireEvent.click(
+      await screen.findByRole("combobox", { name: "Verification method" }),
+    );
+    expect(
+      screen.queryByRole("option", { name: "Password" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Organization sign-in" }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("option", { name: "Backup code" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Authenticator code" }));
     fireEvent.change(await screen.findByLabelText("Authenticator code"), {
       target: { value: "123456" },
     });
@@ -136,15 +153,7 @@ describe("LocalSignInMethodsCard", () => {
     );
   });
 
-  it("tells an admin without a factor to enroll one", async () => {
-    mocks.update.mockRejectedValue(
-      new IdentityAdminError(
-        403,
-        "failed",
-        "Enroll a second factor before changing staff self-registration.",
-        null,
-      ),
-    );
+  it("requires enrollment and offers no password for a registration change", async () => {
     renderCard();
     fireEvent.click(
       await screen.findByRole("switch", {
@@ -154,15 +163,14 @@ describe("LocalSignInMethodsCard", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Save sign-in methods" }),
     );
-    fireEvent.change(await screen.findByLabelText("Password"), {
-      target: { value: "correct horse" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(
       await screen.findByText(
         "Enroll a second factor before changing staff self-registration.",
       ),
     ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(mocks.prove).not.toHaveBeenCalled();
   });
 
   it("locks staff password on and starts with nothing to save", async () => {

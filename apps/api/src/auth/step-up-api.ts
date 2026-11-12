@@ -74,6 +74,7 @@ import {
   appendStepUpAudit,
 } from "./step-up-audit";
 import {
+  AUTH_LOCAL_METHODS_UPDATE_OPERATION,
   createExtChallenge,
   type ExtInput,
   type ExtOperation,
@@ -1651,6 +1652,45 @@ const routes = apiRouter()
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "step_up_unavailable" });
     }
+    const registrationChangeRequiresFactor = async (
+      executor: typeof db | StepUpExecutor,
+      lock = false,
+    ) => {
+      if (!ext || ext.operation !== AUTH_LOCAL_METHODS_UPDATE_OPERATION)
+        return false;
+      const query = executor
+        .select({
+          enabled: schema.instanceSettingTable.staffSelfRegistrationEnabled,
+        })
+        .from(schema.instanceSettingTable)
+        .where(eq(schema.instanceSettingTable.id, "singleton"))
+        .limit(1);
+      // The final proof revalidation holds a shared lock until issuance commits, so a
+      // concurrent settings save cannot turn an unchanged request into a change mid-grant.
+      const [setting] = lock ? await query.for("share") : await query;
+      return !setting || ext.staffSelfRegistrationEnabled !== setting.enabled;
+    };
+    const proofMethod = (input as { method: string }).method;
+    if (await registrationChangeRequiresFactor(db)) {
+      const enrollmentMissing = !actor.factor.enabled;
+      const wrongMethod =
+        proofMethod !== "totp" && proofMethod !== "backup_code";
+      if (enrollmentMissing || wrongMethod) {
+        await appendStepUpAudit(db, {
+          action: "auth.step_up_denied",
+          actorId: c.get("userId"),
+          personId: actor.factor.personId,
+          operation: AUTH_LOCAL_METHODS_UPDATE_OPERATION,
+          traceId: c.req.header("x-request-id"),
+        });
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, {
+          message: enrollmentMissing
+            ? "Enroll a second factor before changing staff self-registration."
+            : "Use a second factor when changing staff self-registration.",
+        });
+      }
+    }
     const operationInput = input as Exclude<
       Extract<typeof input, { kind: "operation" }>,
       { operation: ExtOperation }
@@ -2117,12 +2157,38 @@ const routes = apiRouter()
         proofBudgetRefusal = reservation;
         return null;
       }
-      const verified = await verifyCredential(executor);
+      const needsFactor = await registrationChangeRequiresFactor(executor);
+      const verified =
+        needsFactor && proofMethod !== "totp" && proofMethod !== "backup_code"
+          ? null
+          : await verifyCredential(executor);
       await settleStepUpProofAttempt(
         budgetSubject,
         reservation,
         verified !== null,
       );
+      if (ext?.operation === AUTH_LOCAL_METHODS_UPDATE_OPERATION && verified) {
+        const authMethod =
+          typeof verified === "string" ? verified : verified.authMethod;
+        const originalRevalidate =
+          typeof verified === "string" ? async () => true : verified.revalidate;
+        return {
+          ...(typeof verified === "string" ? { authMethod } : verified),
+          revalidate: async (finalExecutor: StepUpExecutor) => {
+            if (await registrationChangeRequiresFactor(finalExecutor, true)) {
+              if (authMethod !== "totp" && authMethod !== "backup_code")
+                return false;
+              const factor = await loadLocalFactorState(
+                c.get("userId"),
+                finalExecutor,
+              );
+              if (!factor.enabled || factor.personId !== actor.factor.personId)
+                return false;
+            }
+            return originalRevalidate(finalExecutor);
+          },
+        };
+      }
       return verified;
     };
     const refuseSpentProofBudget = () => {
