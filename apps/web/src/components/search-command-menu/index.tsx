@@ -35,8 +35,11 @@ import { useTranslation } from "react-i18next";
 import { shortcuts } from "@/constants/shortcuts";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
+import { openPaletteEntry } from "./open-search-entry";
 import {
   pushRecentItem,
   type RecentItem,
@@ -77,7 +80,9 @@ function SearchCommandMenu({
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data: workspace } = useActiveWorkspace();
+  const { data: workspaces } = useGetWorkspaces();
   const { data: session } = authClient.useSession();
+  const activeWorkspaceId = getActiveOrganizationId(session);
   const userId = session?.user?.id;
   const navigate = useNavigate();
 
@@ -116,7 +121,27 @@ function SearchCommandMenu({
     [open, workspace?.id, userId],
   );
 
-  const handleSelect = (entry: PaletteEntry) => {
+  const handleSelect = async (entry: PaletteEntry) => {
+    if (
+      entry.type === "workspace" &&
+      workspaces &&
+      !workspaces.some((candidate) => candidate.id === entry.id)
+    ) {
+      return;
+    }
+    navigatedRef.current = true;
+    setOpen(false);
+    setQuery("");
+    const opened = await openPaletteEntry({
+      entry,
+      activeWorkspaceId,
+      workspaces,
+      navigate,
+    });
+    if (!opened) {
+      navigatedRef.current = false;
+      return;
+    }
     if (workspace?.id && userId) {
       pushRecentItem(userId, workspace.id, {
         type: entry.type,
@@ -126,10 +151,6 @@ function SearchCommandMenu({
         href: entry.href,
       });
     }
-    navigatedRef.current = true;
-    setOpen(false);
-    setQuery("");
-    navigate({ to: entry.href as never });
   };
 
   const getItemIcon = (type: string) => {

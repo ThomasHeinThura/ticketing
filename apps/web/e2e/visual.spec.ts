@@ -7939,8 +7939,15 @@ test("project settings states screen @visual", async ({ page }) => {
   await page.goto("/agent/projects/help/settings/states");
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
-    page.getByRole("heading", { level: 1, name: "Workflow" }),
+    page.getByRole("heading", { level: 1, name: "Workflow", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "States", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Enabled state set", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("In progress", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-states.png", {
     animations: "disabled",
     caret: "hide",

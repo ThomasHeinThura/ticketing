@@ -34,9 +34,17 @@ import useProjectPagesFeature, {
 } from "@/hooks/queries/feature-flag/use-project-pages-feature";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { buildProjectViewSwitchUrl } from "@/lib/project-layout-navigation";
-import { routes } from "@/lib/routes";
+import {
+  PROJECT_BACKLOG_PATH,
+  PROJECT_BOARD_PATH,
+  PROJECT_CALENDAR_PATH,
+  PROJECT_GANTT_PATH,
+  routes,
+} from "@/lib/routes";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 
 const MobileProjectNav = lazy(
   () => import("@/components/common/header/mobile-project-nav"),
@@ -143,7 +151,31 @@ export default function ProjectLayoutControls({
   const navigate = useNavigate();
   const location = useLocation();
   const showsProjectMenu = useIsMobile(TAB_STRIP_BREAKPOINT);
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
+  const activeWorkspaceId = getActiveOrganizationId(session);
+  const isActiveWorkspace = Boolean(
+    !isSessionPending && activeWorkspaceId && activeWorkspaceId === workspaceId,
+  );
   const { data: workspaceProjects } = useGetProjects({ workspaceId });
+  const canonicalProjectSlug = (
+    targetProjectId: string,
+    candidateSlug: string | undefined,
+  ): string | undefined => {
+    if (!candidateSlug || !isActiveWorkspace) return undefined;
+    const canonical = workspaceProjects?.find(
+      (candidate) => candidate.slug === candidateSlug,
+    );
+    if (
+      !canonical ||
+      canonical.id !== targetProjectId ||
+      (canonical.workspaceId !== undefined &&
+        canonical.workspaceId !== workspaceId)
+    ) {
+      return undefined;
+    }
+    return candidateSlug;
+  };
   const permissions = useWorkspacePermission(workspaceId);
   const canCreateProject =
     !permissions.isCheckingPermissions && permissions.canCreateProjects();
@@ -267,92 +299,137 @@ export default function ProjectLayoutControls({
   const handleNavigateToOverviewView = (
     view: keyof typeof OVERVIEW_VIEW_ROUTES,
   ) => {
-    if (projectSlug)
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    if (resolvedSlug)
       void navigate({
-        href: OVERVIEW_VIEW_ROUTES[view].build({ projectKey: projectSlug }),
+        href: OVERVIEW_VIEW_ROUTES[view].build({ projectKey: resolvedSlug }),
       });
   };
   const handleNavigateToBacklog = () => {
-    if (projectSlug)
-      void navigate({
-        href: buildProjectViewSwitchUrl(
-          "backlog",
-          { workspaceId, projectId, projectKey: projectSlug },
-          location.searchStr,
-        ),
-      });
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    if (!projectSlug && !resolvedSlug) return;
+    if (!resolvedSlug && (!workspaceId || !projectId)) return;
+    void navigate({
+      href: buildProjectViewSwitchUrl(
+        "backlog",
+        { workspaceId, projectId, projectKey: resolvedSlug },
+        location.searchStr,
+      ),
+    });
   };
   const handleNavigateToBoard = () => {
-    if (projectSlug)
-      void navigate({
-        href: buildProjectViewSwitchUrl(
-          "board",
-          { workspaceId, projectId, projectKey: projectSlug },
-          location.searchStr,
-        ),
-      });
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    if (!projectSlug && !resolvedSlug) return;
+    if (!resolvedSlug && (!workspaceId || !projectId)) return;
+    void navigate({
+      href: buildProjectViewSwitchUrl(
+        "board",
+        { workspaceId, projectId, projectKey: resolvedSlug },
+        location.searchStr,
+      ),
+    });
   };
   const handleNavigateToCycles = () => {
-    if (projectSlug)
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    if (resolvedSlug)
       void navigate({
-        href: routes.projectCycles.build({ projectKey: projectSlug }),
+        href: routes.projectCycles.build({ projectKey: resolvedSlug }),
       });
   };
   const handleNavigateToPages = () => {
-    if (projectSlug)
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    if (resolvedSlug)
       void navigate({
-        href: routes.projectPages.build({ projectKey: projectSlug }),
+        href: routes.projectPages.build({ projectKey: resolvedSlug }),
       });
   };
   const handleNavigateToModules = () => {
-    if (projectSlug)
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
+    if (resolvedSlug)
       void navigate({
-        href: routes.projectModules.build({ projectKey: projectSlug }),
+        href: routes.projectModules.build({ projectKey: resolvedSlug }),
       });
   };
   const handleNavigateToCalendar = () => {
-    // The view state carries over to the canonical `/agent` Calendar when the project key is
-    // known, and to Kaneo's calendar URL otherwise.
+    // Use the canonical `/agent` Calendar only when this workspace is active and its project
+    // key resolves back to this exact project; otherwise keep workspace/project identity via
+    // Kaneo's ID-scoped calendar URL and its guarded redirect.
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
     const calendarUrl = buildProjectViewSwitchUrl(
       "calendar",
-      { workspaceId, projectId, projectKey: projectSlug },
+      { workspaceId, projectId, projectKey: resolvedSlug },
       location.searchStr,
     );
-    void navigate(projectSlug ? { href: calendarUrl } : { to: calendarUrl });
+    void navigate(
+      resolvedSlug || calendarUrl.includes("?")
+        ? { href: calendarUrl }
+        : { to: calendarUrl },
+    );
   };
   const handleNavigateToGantt = () => {
-    // The view state carries over to the canonical `/agent` Timeline when the project key is
-    // known, and to Kaneo's Gantt URL otherwise.
+    // Use the canonical `/agent` Timeline only when this workspace is active and its project
+    // key resolves back to this exact project; otherwise keep workspace/project identity via
+    // Kaneo's ID-scoped Gantt URL.
+    const resolvedSlug = canonicalProjectSlug(projectId, projectSlug);
     const timelineUrl = buildProjectViewSwitchUrl(
       "gantt",
-      { workspaceId, projectId, projectKey: projectSlug },
+      { workspaceId, projectId, projectKey: resolvedSlug },
       location.searchStr,
     );
-    void navigate(projectSlug ? { href: timelineUrl } : { to: timelineUrl });
+    void navigate(
+      resolvedSlug || timelineUrl.includes("?")
+        ? { href: timelineUrl }
+        : { to: timelineUrl },
+    );
   };
   const handleProjectSwitch = (nextProjectId: string) => {
     const nextProject = workspaceProjects?.find(
       (candidate) => candidate.id === nextProjectId,
     );
     if (!nextProject) return;
+    const nextCanonicalSlug = canonicalProjectSlug(
+      nextProject.id,
+      nextProject.slug,
+    );
     if (resolvedView in OVERVIEW_VIEW_ROUTES) {
-      void navigate({
-        href: OVERVIEW_VIEW_ROUTES[
-          resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
-        ].build({ projectKey: nextProject.slug }),
-      });
+      if (nextCanonicalSlug) {
+        void navigate({
+          href: OVERVIEW_VIEW_ROUTES[
+            resolvedView as keyof typeof OVERVIEW_VIEW_ROUTES
+          ].build({ projectKey: nextCanonicalSlug }),
+        });
+      } else {
+        void navigate({
+          to: PROJECT_BOARD_PATH,
+          params: { workspaceId, projectId: nextProject.id },
+        });
+      }
       return;
     }
     if (resolvedView === "gantt") {
-      void navigate({
-        href: routes.projectTimeline.build({ projectKey: nextProject.slug }),
-      });
+      if (nextCanonicalSlug) {
+        void navigate({
+          href: routes.projectTimeline.build({ projectKey: nextCanonicalSlug }),
+        });
+      } else {
+        void navigate({
+          to: PROJECT_GANTT_PATH,
+          params: { workspaceId, projectId: nextProject.id },
+        });
+      }
       return;
     }
     if (resolvedView === "calendar") {
-      void navigate({
-        href: routes.projectCalendar.build({ projectKey: nextProject.slug }),
-      });
+      if (nextCanonicalSlug) {
+        void navigate({
+          href: routes.projectCalendar.build({ projectKey: nextCanonicalSlug }),
+        });
+      } else {
+        void navigate({
+          to: PROJECT_CALENDAR_PATH,
+          params: { workspaceId, projectId: nextProject.id },
+        });
+      }
       return;
     }
     if (
@@ -362,20 +439,30 @@ export default function ProjectLayoutControls({
       resolvedView === "modules" ||
       resolvedView === "pages"
     ) {
+      if (!nextCanonicalSlug) {
+        void navigate({
+          to:
+            resolvedView === "backlog"
+              ? PROJECT_BACKLOG_PATH
+              : PROJECT_BOARD_PATH,
+          params: { workspaceId, projectId: nextProject.id },
+        });
+        return;
+      }
       void navigate({
         href:
           resolvedView === "backlog"
-            ? routes.projectBacklog.build({ projectKey: nextProject.slug })
+            ? routes.projectBacklog.build({ projectKey: nextCanonicalSlug })
             : resolvedView === "cycles"
-              ? routes.projectCycles.build({ projectKey: nextProject.slug })
+              ? routes.projectCycles.build({ projectKey: nextCanonicalSlug })
               : resolvedView === "pages"
-                ? routes.projectPages.build({ projectKey: nextProject.slug })
+                ? routes.projectPages.build({ projectKey: nextCanonicalSlug })
                 : resolvedView === "modules"
                   ? routes.projectModules.build({
-                      projectKey: nextProject.slug,
+                      projectKey: nextCanonicalSlug,
                     })
                   : routes.workItemList.build(
-                      { projectKey: nextProject.slug },
+                      { projectKey: nextCanonicalSlug },
                       { layout: "board" },
                     ),
       });

@@ -87,12 +87,35 @@ vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
         : false,
 }));
 
+const sessionState = vi.hoisted(() => ({
+  activeOrganizationId: "workspace-1" as string | null,
+  isPending: false,
+}));
+const projectsState = vi.hoisted(() => ({
+  data: [
+    { id: "project-1", workspaceId: "workspace-1", slug: "ENG" },
+    { id: "project-2", workspaceId: "workspace-1", slug: "OPS" },
+  ] as Array<{ id: string; workspaceId?: string; slug: string }>,
+}));
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: sessionState.activeOrganizationId
+        ? {
+            session: {
+              activeOrganizationId: sessionState.activeOrganizationId,
+            },
+          }
+        : { session: {} },
+      isPending: sessionState.isPending,
+    }),
+  },
+}));
+
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: () => ({
-    data: [
-      { id: "project-1", slug: "ENG" },
-      { id: "project-2", slug: "OPS" },
-    ],
+    data: projectsState.data,
   }),
 }));
 
@@ -139,6 +162,12 @@ beforeEach(() => {
   routerState.navigate.mockReset();
   featureState.calendar = true;
   featureState.timeline = true;
+  sessionState.activeOrganizationId = "workspace-1";
+  sessionState.isPending = false;
+  projectsState.data = [
+    { id: "project-1", workspaceId: "workspace-1", slug: "ENG" },
+    { id: "project-2", workspaceId: "workspace-1", slug: "OPS" },
+  ];
 });
 
 describe("ProjectLayoutControls permissions", () => {
@@ -357,6 +386,85 @@ describe("ProjectLayoutControls permissions", () => {
     fireEvent.click(screen.getByTestId("switch-project"));
     expect(routerState.navigate).toHaveBeenLastCalledWith({
       href: "/agent/projects/OPS/calendar",
+    });
+  });
+
+  it("keeps workspace identity on the ID-scoped calendar URL for a non-active workspace", () => {
+    sessionState.activeOrganizationId = "workspace-active";
+    projectsState.data = [
+      { id: "project-1", workspaceId: "workspace-2", slug: "ENG" },
+      { id: "project-2", workspaceId: "workspace-2", slug: "OPS" },
+    ];
+    routerState.pathname =
+      "/dashboard/workspace/workspace-2/project/project-1/board";
+    routerState.searchStr = "?q=urgent";
+
+    const { rerender } = render(
+      <ProjectLayoutControls
+        {...props}
+        workspaceId="workspace-2"
+        activeView="board"
+        showViewSwitcher
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/dashboard/workspace/workspace-2/project/project-1/calendar?q=urgent",
+    });
+
+    routerState.pathname =
+      "/dashboard/workspace/workspace-2/project/project-1/calendar";
+    rerender(
+      <ProjectLayoutControls
+        {...props}
+        workspaceId="workspace-2"
+        activeView="calendar"
+        showViewSwitcher
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("switch-project"));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
+      params: { workspaceId: "workspace-2", projectId: "project-2" },
+    });
+  });
+
+  it("keeps workspace and project identity on the ID-scoped calendar URL when a duplicate slug shadows the project", () => {
+    projectsState.data = [
+      { id: "shadow-eng", workspaceId: "workspace-1", slug: "ENG" },
+      { id: "project-1", workspaceId: "workspace-1", slug: "ENG" },
+      { id: "shadow-ops", workspaceId: "workspace-1", slug: "OPS" },
+      { id: "project-2", workspaceId: "workspace-1", slug: "OPS" },
+    ];
+    routerState.pathname =
+      "/dashboard/workspace/workspace-1/project/project-1/board";
+    routerState.searchStr = "?q=urgent";
+
+    const { rerender } = render(
+      <ProjectLayoutControls {...props} activeView="board" showViewSwitcher />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Calendar" }));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      href: "/dashboard/workspace/workspace-1/project/project-1/calendar?q=urgent",
+    });
+
+    routerState.pathname =
+      "/dashboard/workspace/workspace-1/project/project-1/calendar";
+    rerender(
+      <ProjectLayoutControls
+        {...props}
+        activeView="calendar"
+        showViewSwitcher
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("switch-project"));
+    expect(routerState.navigate).toHaveBeenLastCalledWith({
+      to: "/dashboard/workspace/$workspaceId/project/$projectId/calendar",
+      params: { workspaceId: "workspace-1", projectId: "project-2" },
     });
   });
 

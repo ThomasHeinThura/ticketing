@@ -1,15 +1,30 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import {
   type ChangeEventHandler,
   type PropsWithChildren,
+  type ReactNode,
   useState,
 } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import SearchCommandMenu from "./index";
+import type { PaletteEntry, SearchGroup } from "./search-targets";
 
 const mocks = vi.hoisted(() => ({
-  search: vi.fn((_params: { q: string }) => ({ data: undefined })),
+  search: vi.fn((_params: { q: string }) => ({ data: undefined as unknown })),
+  navigate: vi.fn(),
+  activateWorkspace: vi.fn((_workspaceId: string) =>
+    Promise.resolve({ id: "w2" }),
+  ),
+  workspaces: [{ id: "w1" }, { id: "w2" }] as Array<{ id: string }>,
+  activeOrganizationId: "w1" as string | null,
+  groups: [] as SearchGroup[],
   finalFocus: { current: null as null | (() => unknown) },
 }));
 
@@ -22,7 +37,7 @@ const mocks = vi.hoisted(() => ({
  */
 
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mocks.navigate,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -31,10 +46,23 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@/lib/auth-client", () => ({
-  authClient: { useSession: () => ({ data: { user: { id: "u1" } } }) },
+  authClient: {
+    useSession: () => ({
+      data: {
+        user: { id: "u1" },
+        session: { activeOrganizationId: mocks.activeOrganizationId },
+      },
+    }),
+  },
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "w1" } }),
+}));
+vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
+  default: () => ({ data: mocks.workspaces }),
+}));
+vi.mock("@/fetchers/workspace/activate-workspace", () => ({
+  default: (workspaceId: string) => mocks.activateWorkspace(workspaceId),
 }));
 
 vi.mock("@/hooks/queries/search/use-global-search", () => ({
@@ -42,12 +70,23 @@ vi.mock("@/hooks/queries/search/use-global-search", () => ({
 }));
 
 vi.mock("@taskdesk/ui", async () => {
-  const { Input } =
+  const { Button, Input } =
     await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const Null = ({ children }: PropsWithChildren) => <>{children}</>;
+  let currentGroupItems: PaletteEntry[] = [];
   return {
-    Command: Null,
-    CommandCollection: Null,
+    Command: ({
+      items,
+      children,
+    }: PropsWithChildren<{ items?: SearchGroup[] }>) => {
+      mocks.groups = items ?? [];
+      return <>{children}</>;
+    },
+    CommandCollection: ({
+      children,
+    }: {
+      children: (item: PaletteEntry) => ReactNode;
+    }) => <>{currentGroupItems.map((item) => children(item))}</>,
     CommandDialog: ({
       open,
       children,
@@ -61,17 +100,47 @@ vi.mock("@taskdesk/ui", async () => {
       return <>{children}</>;
     },
     CommandEmpty: Null,
-    CommandGroup: Null,
+    CommandGroup: ({
+      items,
+      children,
+    }: PropsWithChildren<{ items: PaletteEntry[] }>) => {
+      currentGroupItems = items;
+      return <div>{children}</div>;
+    },
     CommandGroupLabel: Null,
     CommandInput: (props: {
       value?: string;
       onChange?: ChangeEventHandler<HTMLInputElement>;
     }) => <Input aria-label="search query" {...props} />,
-    CommandItem: Null,
-    CommandList: () => null,
+    CommandItem: ({
+      children,
+      onClick,
+      "aria-label": ariaLabel,
+    }: PropsWithChildren<{
+      onClick?: () => void;
+      "aria-label"?: string;
+    }>) => (
+      <Button aria-label={ariaLabel} onClick={onClick} type="button">
+        {children}
+      </Button>
+    ),
+    CommandList: ({
+      children,
+    }: {
+      children: (group: SearchGroup, index: number) => ReactNode;
+    }) => <>{mocks.groups.map((group, index) => children(group, index))}</>,
     CommandPanel: Null,
     CommandSeparator: () => null,
   };
+});
+
+beforeEach(() => {
+  mocks.search.mockImplementation(() => ({ data: undefined }));
+  mocks.navigate.mockReset();
+  mocks.activateWorkspace.mockClear();
+  mocks.workspaces = [{ id: "w1" }, { id: "w2" }];
+  mocks.activeOrganizationId = "w1";
+  mocks.groups = [];
 });
 
 afterEach(() => {
@@ -93,6 +162,47 @@ describe("SearchCommandMenu (#407)", () => {
 
     expect(mocks.search).toHaveBeenLastCalledWith(
       expect.objectContaining({ q: "性能", workspaceId: "w1" }),
+    );
+  });
+
+  it("activates a non-active authorized workspace before navigating to /agent and refuses unauthorized workspaces", async () => {
+    mocks.search.mockImplementation(({ q }: { q: string }) => ({
+      data: q
+        ? {
+            results: [
+              { id: "w2", type: "workspace", title: "Ops Workspace" },
+              { id: "w-denied", type: "workspace", title: "Denied Workspace" },
+            ],
+          }
+        : undefined,
+    }));
+    const setOpen = vi.fn();
+
+    render(
+      <KeyboardShortcutsProvider>
+        <SearchCommandMenu open setOpen={setOpen} />
+      </KeyboardShortcutsProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText("search query"), {
+      target: { value: "Workspace" },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "workspace: Denied Workspace" }),
+    );
+    expect(mocks.activateWorkspace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "workspace: Ops Workspace" }),
+    );
+    await waitFor(() => {
+      expect(mocks.activateWorkspace).toHaveBeenCalledWith("w2");
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+    });
+    expect(mocks.activateWorkspace.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.navigate.mock.invocationCallOrder[0],
     );
   });
 
