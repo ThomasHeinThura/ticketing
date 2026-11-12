@@ -73,6 +73,9 @@
 			"unknown": "Onbekend"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Er is iets misgegaan",
 			"troubleshooting": "Stappen voor probleemoplossing:",
 			"tryAgain": "Opnieuw proberen",

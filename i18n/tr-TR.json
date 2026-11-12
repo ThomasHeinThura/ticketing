@@ -73,6 +73,9 @@
 			"unknown": "Bilinmiyor"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Bir şeyler ters gitti",
 			"troubleshooting": "Sorun giderme adımları:",
 			"tryAgain": "Tekrar dene",

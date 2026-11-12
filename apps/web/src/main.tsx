@@ -1,6 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import { Button, ToastProvider } from "@taskdesk/ui";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
@@ -8,6 +8,7 @@ import queryClient from "@/query-client";
 import "@/index.css";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { AppErrorBoundary } from "./components/app-error-boundary";
+import { ServerErrorNotifications } from "./components/errors/server-error-notifications";
 import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-launcher";
 import AuthProvider from "./components/providers/auth-provider";
 import { DeferredUserPreferencesSync } from "./components/providers/deferred-user-preferences-sync";
@@ -160,16 +161,19 @@ function bootstrapApplication() {
         <AppErrorBoundary fallback={RootCrashFallback}>
           <QueryClientProvider client={queryClient}>
             <ThemeProvider>
-              <UserPreferencesEffects />
-              <AuthProvider>
-                <DeferredUserPreferencesSync />
-                <AppI18nProvider>
-                  <KeyboardShortcutsProvider>
-                    <App />
-                    <KeyboardShortcutsHelpLauncher />
-                  </KeyboardShortcutsProvider>
-                </AppI18nProvider>
-              </AuthProvider>
+              <ToastProvider position="bottom-right">
+                <ServerErrorNotifications />
+                <UserPreferencesEffects />
+                <AuthProvider>
+                  <DeferredUserPreferencesSync />
+                  <AppI18nProvider>
+                    <KeyboardShortcutsProvider>
+                      <App />
+                      <KeyboardShortcutsHelpLauncher />
+                    </KeyboardShortcutsProvider>
+                  </AppI18nProvider>
+                </AuthProvider>
+              </ToastProvider>
             </ThemeProvider>
           </QueryClientProvider>
         </AppErrorBoundary>

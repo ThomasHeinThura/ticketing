@@ -2139,6 +2139,12 @@ from adding log data. This witness does not change request processing or shadow 
 **Never logged:** passwords, tokens, API keys, plugin secrets, session cookies, request
 bodies containing custom field values, attachment contents, or arbitrary exception text.
 
+For an unhandled HTTP 5xx, `http.server_error` records the server request id, registered
+route, method, status, bounded error class and up to 15 sanitized stack locations. Stack
+message lines, unrecognized or unresolvable frames, absolute prefixes, and dependency
+paths below the package name are discarded; exception messages are never included. The
+JSON response contains a generic message and the same `requestId` as the response header. The existing 503 `factor_policy_unavailable` message is retained as a fixed public code.
+
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
 

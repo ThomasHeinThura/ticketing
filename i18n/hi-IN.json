@@ -73,6 +73,9 @@
 			"unknown": "अज्ञात"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "कुछ गलत हो गया",
 			"troubleshooting": "समस्या निवारण कदम:",
 			"tryAgain": "पुनः प्रयास करें",

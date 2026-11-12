@@ -290,7 +290,8 @@ export function createApiFetch(
       ? { ...init, redirect: "error" as const }
       : init;
     const request = requestWithHeaders(input, requestInit, headers, "include");
-    if (!needsCsrf) return watchFactorEnrollment(await fetchImpl(request));
+    if (!needsCsrf)
+      return notifyServerError(watchFactorEnrollment(await fetchImpl(request)));
 
     // Keep the request body replayable for the single, narrowly-scoped retry.
     const retryBase = request.clone();
@@ -298,7 +299,7 @@ export function createApiFetch(
     const response = await fetchImpl(request);
     const failureMessage = await csrfFailureMessage(response);
     if (!failureMessage || !csrfFailureMessages.has(failureMessage)) {
-      return watchFactorEnrollment(response);
+      return notifyServerError(watchFactorEnrollment(response));
     }
 
     const retryHeaders = new Headers(retryBase.headers);
@@ -306,13 +307,61 @@ export function createApiFetch(
       "X-TaskDesk-CSRF",
       await readCsrfToken(fetchImpl, csrfEndpoint),
     );
-    return watchFactorEnrollment(
-      await fetchImpl(
-        requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
+    return notifyServerError(
+      watchFactorEnrollment(
+        await fetchImpl(
+          requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
+        ),
       ),
     );
   };
   return Object.assign(apiFetchImpl, { primeCsrfToken });
+}
+
+function notifyServerError(response: Response): Response {
+  if (response.status < 500 || typeof window === "undefined") return response;
+  try {
+    const status = response.status;
+    const targetWindow = window;
+    const header = response.headers.get("x-taskdesk-request-id");
+    const notify = (bodyId?: unknown) => {
+      const reference =
+        typeof bodyId === "string" && /^[0-9a-f]{32}$/.test(bodyId)
+          ? bodyId
+          : header;
+      const safeReference =
+        reference && /^[0-9a-f]{32}$/.test(reference) ? reference : null;
+      try {
+        targetWindow.dispatchEvent(
+          new CustomEvent("taskdesk:server-error", {
+            detail: { reference: safeReference, status },
+          }),
+        );
+      } catch {
+        /* Notifications never affect the request. */
+      }
+    };
+    try {
+      void response
+        .clone()
+        .json()
+        .then(
+          (body: unknown) => {
+            notify(
+              body && typeof body === "object" && "requestId" in body
+                ? body.requestId
+                : undefined,
+            );
+          },
+          () => notify(),
+        );
+    } catch {
+      notify();
+    }
+  } catch {
+    /* Failure to inspect a response must never change it. */
+  }
+  return response;
 }
 
 export const apiFetch = createApiFetch();

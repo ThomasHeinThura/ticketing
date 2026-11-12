@@ -1,6 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
-import { ToastProvider } from "@taskdesk/ui";
 import { whenAllNamespacesLoaded } from "@/lib/i18n";
 import { WORK_LIST_PATH_PATTERN } from "@/lib/i18n/work-route-namespaces";
 import { AgentRouteError } from "@/lib/lazy-retry-error";
@@ -30,11 +29,9 @@ export const Route = createRootRouteWithContext<{
 
 function RootComponent() {
   return (
-    <ToastProvider position="bottom-right">
-      <div className="flex h-svh w-full flex-row overflow-x-hidden overflow-y-hidden bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-muted">
-        <Outlet />
-      </div>
-    </ToastProvider>
+    <div className="flex h-svh w-full flex-row overflow-x-hidden overflow-y-hidden bg-background scrollbar-thin scrollbar-thumb-border scrollbar-track-muted">
+      <Outlet />
+    </div>
   );
 }
 

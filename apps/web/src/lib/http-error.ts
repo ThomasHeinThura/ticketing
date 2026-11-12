@@ -1,12 +1,6 @@
-export class HttpError extends Error {
-  status: number;
+import { HttpError } from "@taskdesk/libs/src/http-error";
 
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "HttpError";
-    this.status = status;
-  }
-}
+export { HttpError } from "@taskdesk/libs/src/http-error";
 
 export function isUnauthorizedError(error: unknown): boolean {
   return error instanceof HttpError && error.status === 401;
@@ -58,4 +52,30 @@ export async function readErrorDetail(
   )
     return fallback;
   return trimmed;
+}
+
+/** Preserve a server reference while leaving client-error messages unchanged. */
+export async function httpErrorFromResponse(
+  response: Response,
+  fallback: string,
+): Promise<HttpError> {
+  const detail = await readErrorDetail(response.clone(), fallback);
+  let requestId: string | undefined;
+  if (response.status >= 500) {
+    try {
+      const body: unknown = await response.clone().json();
+      if (
+        body &&
+        typeof body === "object" &&
+        "requestId" in body &&
+        typeof body.requestId === "string"
+      )
+        requestId = body.requestId;
+    } catch {
+      /* A non-JSON error has no body reference. */
+    }
+  }
+  if (!requestId || !/^[0-9a-f]{32}$/.test(requestId))
+    requestId = response.headers.get("x-taskdesk-request-id") ?? undefined;
+  return new HttpError(response.status, detail, requestId);
 }

@@ -73,6 +73,9 @@
 			"unknown": "Невідомо"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Щось пішло не так",
 			"troubleshooting": "Кроки для усунення проблеми:",
 			"tryAgain": "Спробувати ще раз",

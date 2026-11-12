@@ -73,6 +73,9 @@
 			"unknown": "Unbekannt"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Etwas ist schiefgelaufen",
 			"troubleshooting": "Schritte zur Fehlerbehebung:",
 			"tryAgain": "Erneut versuchen",

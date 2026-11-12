@@ -573,3 +573,132 @@ describe("factor enrolment refusal", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 });
+
+describe("server error references", () => {
+  it("returns the untouched response and reports body id before the header", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    try {
+      const listener = vi.fn();
+      target.addEventListener("taskdesk:server-error", listener);
+      const bodyId = "a".repeat(32);
+      const headerId = "b".repeat(32);
+      const response = Response.json(
+        { message: "factor_policy_unavailable", requestId: bodyId },
+        { status: 503, headers: { "x-taskdesk-request-id": headerId } },
+      );
+      const fetcher = createApiFetch(async () => response, {
+        apiBaseUrl,
+        agentCsrfToken: false,
+      });
+      const returned = await fetcher(`${apiBaseUrl}/projects`);
+      expect(returned).toBe(response);
+      expect(await returned.json()).toEqual({
+        message: "factor_policy_unavailable",
+        requestId: bodyId,
+      });
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+      expect(
+        (listener.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail,
+      ).toEqual({
+        reference: bodyId,
+        status: 503,
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("preserves an import 502 reason body", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    try {
+      const listener = vi.fn();
+      target.addEventListener("taskdesk:server-error", listener);
+      const response = Response.json(
+        { reason: "source_unavailable" },
+        { status: 502 },
+      );
+      const fetcher = createApiFetch(async () => response, {
+        apiBaseUrl,
+        agentCsrfToken: false,
+      });
+      expect(await (await fetcher(`${apiBaseUrl}/imports`)).json()).toEqual({
+        reason: "source_unavailable",
+      });
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+      expect(
+        (listener.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail,
+      ).toEqual({ reference: null, status: 502 });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("does not wait for an unfinished response body", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    try {
+      let streamController:
+        | ReadableStreamDefaultController<Uint8Array>
+        | undefined;
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          streamController = controller;
+        },
+      });
+      const response = new Response(stream, { status: 503 });
+      const fetcher = createApiFetch(async () => response, {
+        apiBaseUrl,
+        agentCsrfToken: false,
+      });
+      const result = await Promise.race([
+        fetcher(`${apiBaseUrl}/projects`),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("fetch blocked")), 500),
+        ),
+      ]);
+      expect(result).toBe(response);
+      streamController?.close();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("uses the header fallback and ignores 4xx and third-party responses", async () => {
+    const target = new EventTarget();
+    vi.stubGlobal("window", target);
+    try {
+      const listener = vi.fn();
+      target.addEventListener("taskdesk:server-error", listener);
+      const headerId = "b".repeat(32);
+      const fetcher = createApiFetch(
+        async () =>
+          new Response("failure", {
+            status: 503,
+            headers: { "x-taskdesk-request-id": headerId },
+          }),
+        { apiBaseUrl, agentCsrfToken: false },
+      );
+      expect((await fetcher(`${apiBaseUrl}/projects`)).status).toBe(503);
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+      expect(
+        (listener.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail,
+      ).toEqual({
+        reference: headerId,
+        status: 503,
+      });
+      await fetcher("https://elsewhere.test/api/projects");
+      const refusal = createApiFetch(
+        async () =>
+          new Response("forbidden", {
+            status: 403,
+            headers: { "x-taskdesk-request-id": headerId },
+          }),
+        { apiBaseUrl, agentCsrfToken: false },
+      );
+      expect((await refusal(`${apiBaseUrl}/projects`)).status).toBe(403);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(listener).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

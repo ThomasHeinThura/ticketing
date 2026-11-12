@@ -73,6 +73,9 @@
 			"unknown": "不明なユーザー"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "問題が発生しました",
 			"description": "ページが予期せずクラッシュしました。再読み込みすると解決することがあります。",
 			"troubleshooting": "トラブルシューティングの手順:",

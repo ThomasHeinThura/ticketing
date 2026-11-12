@@ -47,7 +47,7 @@ function PortalNotFound() {
   );
 }
 
-function PortalError({ reset }: { reset: () => void }) {
+function PortalError({ reset, error }: { reset: () => void; error: unknown }) {
   const router = useRouter();
   // Clearing the boundary alone would show the same failed match again: run the root's
   // beforeLoad (the session read) once more, then clear it.
@@ -56,7 +56,7 @@ function PortalError({ reset }: { reset: () => void }) {
   };
   return (
     <Suspense fallback={null}>
-      <PortalErrorState reset={tryAgain} />
+      <PortalErrorState reset={tryAgain} error={error} />
     </Suspense>
   );
 }

@@ -97,6 +97,9 @@
 			"unknown": "Unknown"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Something went wrong",
 			"description": "The page crashed unexpectedly. Refreshing usually fixes it.",
 			"troubleshooting": "Troubleshooting steps:",

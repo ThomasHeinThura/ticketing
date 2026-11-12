@@ -73,6 +73,9 @@
 			"unknown": "Άγνωστος"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Κάτι πήγε στραβά",
 			"troubleshooting": "Βήματα αντιμετώπισης προβλημάτων:",
 			"tryAgain": "Δοκιμάστε ξανά",

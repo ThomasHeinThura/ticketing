@@ -9,6 +9,7 @@ export {
   primeCsrfToken,
   windowId,
 } from "./hono";
+export { HttpError } from "./http-error";
 export type {
   ScimAdministrationDto,
   ScimAdministrationRequest,

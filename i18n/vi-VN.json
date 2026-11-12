@@ -77,6 +77,9 @@
 			"unknown": "Không xác định"
 		},
 		"error": {
+			"reference": "Reference: {{id}}",
+			"copyReference": "Copy reference",
+			"serverReferenceToast": "Something went wrong on the server. Reference {{id}}",
 			"title": "Đã xảy ra lỗi",
 			"troubleshooting": "Các bước khắc phục:",
 			"tryAgain": "Thử lại",
