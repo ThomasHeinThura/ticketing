@@ -20,6 +20,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -194,15 +195,15 @@ function WorkflowListView({
         </Alert>
       ) : null}
       {!list.isError && (list.isLoading || !workspaceId || listPlaceholder) ? (
-        <div
-          className="space-y-3"
-          role="status"
-          style={{ visibility: listPlaceholder ? "visible" : "hidden" }}
-          aria-label={t("settings:workflows.loading")}
+        <LoadingStatus
+          visible={listPlaceholder}
+          label={t("settings:workflows.loading")}
         >
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </LoadingStatus>
       ) : list.isError ? (
         <Alert variant="error">
           <AlertTitle>{t("settings:workflows.loadErrorTitle")}</AlertTitle>
@@ -507,15 +508,15 @@ function WorkflowDetailView({
       !workflow ||
       (detailPlaceholder && !detail.isError) ? (
         detail.isError ? null : (
-          <div
-            className="space-y-3"
-            role="status"
-            style={{ visibility: detailPlaceholder ? "visible" : "hidden" }}
-            aria-label={t("settings:workflows.loading")}
+          <LoadingStatus
+            visible={detailPlaceholder}
+            label={t("settings:workflows.loading")}
           >
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </LoadingStatus>
         )
       ) : (
         <>

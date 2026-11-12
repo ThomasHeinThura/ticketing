@@ -1,9 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import {
-  DropdownMenuItem,
-  LoadingStatus,
-  useDelayedPending,
-} from "@taskdesk/ui";
+import { DropdownMenuItem, useDelayedPending } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -99,6 +95,9 @@ function WorkItemCrumbOptions({
     (!last.nextCursor || query.data?.pageParams.includes(last.nextCursor));
   return (
     <TaskCrumbOptionsPresentation
+      busy={
+        !query.isError && (!query.isFetchedAfterMount || placeholderVisible)
+      }
       options={unique.map((row) => ({
         value: row.key,
         label: `${row.key} ${row.title}`,
@@ -111,17 +110,12 @@ function WorkItemCrumbOptions({
       empty={ready && !query.isError && !partial}
     >
       {!query.isError && (!query.isFetchedAfterMount || placeholderVisible) ? (
-        <LoadingStatus
-          visible={placeholderVisible}
-          label={t("common:empty.loading")}
+        <DropdownMenuItem
+          disabled
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         >
-          <DropdownMenuItem
-            disabled
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-          >
-            {t("workItems:list.loading")}
-          </DropdownMenuItem>
-        </LoadingStatus>
+          {t("workItems:list.loading")}
+        </DropdownMenuItem>
       ) : null}
       {partial ? (
         <DropdownMenuItem disabled>

@@ -4,6 +4,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  LoadingStatus,
   Skeleton,
   Tabs,
   TabsList,
@@ -117,15 +118,15 @@ function IdentityConnectionEditorRoute() {
 
         {!connections.isError &&
         (connections.isPending || placeholderVisible) ? (
-          <div
-            aria-label={t("detail.loading")}
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            className="space-y-3"
-            role="status"
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("detail.loading")}
           >
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-64 w-full" />
-          </div>
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </LoadingStatus>
         ) : null}
 
         {connections.isError ? (

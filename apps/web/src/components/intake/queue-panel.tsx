@@ -8,6 +8,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  LoadingStatus,
   useDelayedPending,
 } from "@taskdesk/ui";
 import { lazy, useEffect, useMemo, useState } from "react";
@@ -269,12 +270,9 @@ export function IntakeQueuePanel({
 
   if (pending || placeholderVisible) {
     return (
-      <p
-        role="status"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      >
-        {t("queue.loading")}
-      </p>
+      <LoadingStatus visible={placeholderVisible} label={t("queue.loading")}>
+        <p>{t("queue.loading")}</p>
+      </LoadingStatus>
     );
   }
 

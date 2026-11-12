@@ -424,15 +424,12 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                     </Command>
                     {!candidates.isError &&
                       (candidates.isPending || candidatesPlaceholder) && (
-                        <p
-                          style={{
-                            visibility: candidatesPlaceholder
-                              ? "visible"
-                              : "hidden",
-                          }}
+                        <LoadingStatus
+                          visible={candidatesPlaceholder}
+                          label={t("workItems:detail.approvals.loading")}
                         >
-                          {t("workItems:detail.approvals.loading")}
-                        </p>
+                          <p>{t("workItems:detail.approvals.loading")}</p>
+                        </LoadingStatus>
                       )}
                     {!candidates.isPending &&
                       !candidatesPlaceholder &&

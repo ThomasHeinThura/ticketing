@@ -741,15 +741,12 @@ export function PageDetail({
   const placeholderVisible = useDelayedPending(query.isLoading);
   if (!query.isError && (query.isLoading || placeholderVisible))
     return (
-      <div
-        className="mx-auto flex max-w-6xl flex-col gap-3 p-4"
-        role="status"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        aria-label={t("common.loading")}
-      >
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-40 w-full" />
-      </div>
+      <LoadingStatus visible={placeholderVisible} label={t("common.loading")}>
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 p-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </LoadingStatus>
     );
   if (query.error instanceof PagesDisabledError)
     return (

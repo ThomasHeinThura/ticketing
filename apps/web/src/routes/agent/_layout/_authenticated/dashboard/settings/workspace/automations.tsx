@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Skeleton, useDelayedPending } from "@taskdesk/ui";
+import { LoadingStatus, Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AutomationRulesPanel } from "@/components/automation/automation-rules-panel";
 import {
@@ -32,14 +32,11 @@ function WorkspaceAutomationsRoute() {
     (placeholderVisible && access === "allowed" && workspace)
   )
     return (
-      <div
-        className="p-6"
-        role="status"
-        aria-label={t("list.loading")}
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-      >
-        <Skeleton className="h-24 w-full" />
-      </div>
+      <LoadingStatus visible={placeholderVisible} label={t("list.loading")}>
+        <div className="p-6">
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </LoadingStatus>
     );
   if (access === "denied" || access === "error")
     return (

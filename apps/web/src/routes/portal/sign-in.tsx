@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -455,15 +456,14 @@ function PortalSignIn() {
             !authMethods.isError &&
             (authMethods.isPending ||
               (placeholderVisible && authMethods.data?.password)) ? (
-              <div
-                role="status"
-                aria-label={t("auth:signInForm.signingIn")}
-                style={{
-                  visibility: placeholderVisible ? "visible" : "hidden",
-                }}
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("auth:signInForm.signingIn")}
               >
-                <Skeleton className="h-10 w-full" />
-              </div>
+                <div>
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </LoadingStatus>
             ) : authMethods.data?.password ? (
               <form className="space-y-4" onSubmit={submitPassword}>
                 {/* Shown as wrapping text, not a read-only input, so a long address is never cut off. */}

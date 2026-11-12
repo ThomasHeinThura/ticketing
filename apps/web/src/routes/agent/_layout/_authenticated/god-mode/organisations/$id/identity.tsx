@@ -4,6 +4,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  LoadingStatus,
   Skeleton,
   Tabs,
   TabsList,
@@ -90,15 +91,15 @@ function OrganisationIdentityRoute() {
         <OrganisationCustomerVisibilityCard organisationId={id} />
 
         {!query.isError && (query.isPending || placeholderVisible) ? (
-          <div
-            aria-label={t("organisation.loading")}
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            className="space-y-3"
-            role="status"
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("organisation.loading")}
           >
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-64 w-full" />
-          </div>
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </LoadingStatus>
         ) : null}
 
         {query.isError ? (

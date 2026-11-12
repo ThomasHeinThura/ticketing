@@ -9,7 +9,6 @@ import {
   AlertDialogTitle,
   Button,
   ContextMenuItem,
-  LoadingStatus,
   useDelayedPending,
 } from "@taskdesk/ui";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -107,31 +106,23 @@ export default function WorkItemContextMenuContent(props: Props) {
   if (!ready || !item || detailPlaceholder)
     return (
       <TaskContextMenuPresentation
+        busy={!detail.isError && (!ready || detailPlaceholder)}
         keyboardAnchor={props.keyboardAnchor}
         onCopyLink={() => void copyLink()}
         status={
-          <>
-            <LoadingStatus
-              visible={detailPlaceholder && !detail.isError}
-              label={t("common:empty.loading")}
-            >
-              {null}
-            </LoadingStatus>
-            <ContextMenuItem
-              aria-hidden={!detail.isError}
-              disabled
-              style={{
-                visibility:
-                  detail.isError || detailPlaceholder ? "visible" : "hidden",
-              }}
-            >
-              {t(
-                detail.isError
-                  ? "workItems:properties.saveFailed"
-                  : "common:empty.loading",
-              )}
-            </ContextMenuItem>
-          </>
+          <ContextMenuItem
+            disabled
+            style={{
+              visibility:
+                detail.isError || detailPlaceholder ? "visible" : "hidden",
+            }}
+          >
+            {t(
+              detail.isError
+                ? "workItems:properties.saveFailed"
+                : "common:empty.loading",
+            )}
+          </ContextMenuItem>
         }
       />
     );
@@ -423,6 +414,7 @@ function CanonicalMenuActions({
           canAct && permission.canTransitionTasks() && !offers.isError
             ? {
                 value: item.stateId,
+                busy: !offersReady || offersPlaceholder,
                 options: (offersReady && !offersPlaceholder
                   ? (offers.data ?? [])
                   : []
@@ -436,20 +428,11 @@ function CanonicalMenuActions({
                 onChange: (transitionId) =>
                   void execute({ kind: "state", transitionId }),
                 emptyLabel:
-                  !offersReady || offersPlaceholder ? (
-                    offersPlaceholder ? (
-                      <LoadingStatus
-                        visible={offersPlaceholder}
-                        label={t("workItems:journey.loadingTransitions")}
-                      >
-                        {t("workItems:journey.loadingTransitions")}
-                      </LoadingStatus>
-                    ) : (
-                      ""
-                    )
-                  ) : (
-                    t("workItems:journey.transitionsEmpty")
-                  ),
+                  !offersReady || offersPlaceholder
+                    ? offersPlaceholder
+                      ? t("workItems:journey.loadingTransitions")
+                      : ""
+                    : t("workItems:journey.transitionsEmpty"),
               }
             : undefined
         }
@@ -466,6 +449,7 @@ function CanonicalMenuActions({
           canAssign && !people.isError
             ? {
                 value: item.assigneeId,
+                busy: !peopleReady || peoplePlaceholder,
                 options: (peopleReady && !peoplePlaceholder
                   ? (people.data ?? [])
                   : []
@@ -477,20 +461,11 @@ function CanonicalMenuActions({
                 onChange: choosePerson,
                 canUnassign: Boolean(canUnassign),
                 emptyLabel:
-                  !peopleReady || peoplePlaceholder ? (
-                    peoplePlaceholder ? (
-                      <LoadingStatus
-                        visible={peoplePlaceholder}
-                        label={t("workItems:journey.loadingPeople")}
-                      >
-                        {t("workItems:journey.loadingPeople")}
-                      </LoadingStatus>
-                    ) : (
-                      ""
-                    )
-                  ) : (
-                    t("workItems:journey.noPeople")
-                  ),
+                  !peopleReady || peoplePlaceholder
+                    ? peoplePlaceholder
+                      ? t("workItems:journey.loadingPeople")
+                      : ""
+                    : t("workItems:journey.noPeople"),
               }
             : undefined
         }

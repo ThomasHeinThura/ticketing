@@ -36,6 +36,7 @@ export default function TaskContextMenuPresentation({
   onDelete,
   disabled = false,
   status,
+  busy = false,
 }: {
   onCopyLink: () => void;
   keyboardAnchor?: ComponentProps<typeof ContextMenuContent>["anchor"];
@@ -51,6 +52,7 @@ export default function TaskContextMenuPresentation({
     }[];
     onChange: (value: string) => void;
     emptyLabel?: ReactNode;
+    busy?: boolean;
   };
   dueDate?: {
     value: Date | undefined;
@@ -63,16 +65,22 @@ export default function TaskContextMenuPresentation({
     onChange: (value: string) => void;
     canUnassign?: boolean;
     emptyLabel?: ReactNode;
+    busy?: boolean;
   };
   onArchive?: () => void;
   extraArchiveAction?: ReactNode;
   onDelete?: () => void;
   disabled?: boolean;
   status?: ReactNode;
+  busy?: boolean;
 }) {
   const { t } = useTranslation();
   return (
-    <ContextMenuContent className="w-46" anchor={keyboardAnchor}>
+    <ContextMenuContent
+      aria-busy={busy}
+      className="w-46"
+      anchor={keyboardAnchor}
+    >
       <ContextMenuItem onClick={onCopyLink}>
         <span>{t("tasks:contextMenu.copyLink")}</span>
       </ContextMenuItem>
@@ -111,7 +119,7 @@ export default function TaskContextMenuPresentation({
           <ContextMenuSubTrigger disabled={disabled}>
             <span>{t("tasks:status.label")}</span>
           </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-48">
+          <ContextMenuSubContent aria-busy={states.busy} className="w-48">
             {states.options.map((state) => (
               <ContextMenuCheckboxItem
                 key={state.value}
@@ -168,7 +176,7 @@ export default function TaskContextMenuPresentation({
           <ContextMenuSubTrigger disabled={disabled}>
             <span>{t("tasks:assignee.label")}</span>
           </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-48">
+          <ContextMenuSubContent aria-busy={assignee.busy} className="w-48">
             <ContextMenuCheckboxItem
               checked={!assignee.value}
               onCheckedChange={() => assignee.onChange("")}

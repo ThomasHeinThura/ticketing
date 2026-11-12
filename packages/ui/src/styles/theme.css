@@ -8,7 +8,7 @@
  * that gives Tailwind its class — e.g. --color-neutral-800 -> --foreground ->
  * (@theme inline) --color-foreground -> text-foreground.
  */
-@theme static inline {
+@theme inline {
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   /* TaskDesk motion tokens (12 Nov 2026, design-and-decisions.md#motion-tokens). Not in kaneo.

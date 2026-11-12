@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -302,4 +303,41 @@ describe("RoleCapabilitiesPanel", () => {
     expect(screen.getByLabelText("Rank")).toBeDisabled();
     expect(screen.getByLabelText("Description")).toBeEnabled();
   });
+});
+
+it("cannot confirm until the retained impact counts are displayed", async () => {
+  let resolve!: (value: unknown) => void;
+  mocks.update.mockImplementation(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  renderPanel();
+  fireEvent.click(box("Work item: update"));
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  fireEvent.change(await screen.findByLabelText("Password"), {
+    target: { value: "correct horse" },
+  });
+  await waitFor(() =>
+    expect(screen.getByRole("status")).not.toBeEmptyDOMElement(),
+  );
+  await act(async () =>
+    resolve({ affected: { people: 3, workItems: 12, projects: 2 } }),
+  );
+  const confirm = screen.getByRole("button", { name: "Save and apply now" });
+  expect(confirm).toBeDisabled();
+  expect(
+    screen.queryByText(
+      "Potential impact — people: 3; projects: 2; work items: 12.",
+    ),
+  ).toBeNull();
+  await waitFor(() =>
+    expect(
+      screen.getByText(
+        "Potential impact — people: 3; projects: 2; work items: 12.",
+      ),
+    ).toBeVisible(),
+  );
+  expect(confirm).toBeEnabled();
 });

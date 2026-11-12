@@ -4,7 +4,6 @@ import {
   Alert,
   AlertDescription,
   Button,
-  DelayedSuspense,
   useDelayedPending,
 } from "@taskdesk/ui";
 import { Filter, PanelsTopLeft, Rows3, Table2 } from "lucide-react";
@@ -1168,9 +1167,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           </Alert>
         ) : null}
         {isTabularLayout ? (
-          <DelayedSuspense
-            fallback={(visible) => <WorkItemListLoading visible={visible} />}
-          >
+          <Suspense fallback={<WorkItemListLoading visible />}>
             <WorkItemsPanel
               layout={layout === "list" ? "list" : "table"}
               project={project}
@@ -1202,7 +1199,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onOpenItem={openSidePane}
               onCreateInState={openCreateDialogInState}
             />
-          </DelayedSuspense>
+          </Suspense>
         ) : !isError &&
           project &&
           (!boardModuleReady || boardModulePlaceholder) ? (
@@ -1214,9 +1211,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             <WorkItemListLoading visible={boardModulePlaceholder} />
           </div>
         ) : project ? (
-          <DelayedSuspense
-            fallback={(visible) => <WorkItemListLoading visible={visible} />}
-          >
+          <Suspense fallback={<WorkItemListLoading visible />}>
             <WorkItemBoardView
               group={boardGroup}
               customField={registeredCustomField}
@@ -1239,11 +1234,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
                 boardGroup === "state" ? openCreateDialogInState : undefined
               }
             />
-          </DelayedSuspense>
+          </Suspense>
         ) : (
-          <DelayedSuspense
-            fallback={(visible) => <WorkItemListLoading visible={visible} />}
-          >
+          <Suspense fallback={<WorkItemListLoading visible />}>
             <WorkItemsPanel
               layout={layout === "list" ? "list" : "table"}
               project={project}
@@ -1260,7 +1253,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
               onRetry={handleRetry}
             />
-          </DelayedSuspense>
+          </Suspense>
         )}
         {mountSidePane ? (
           <Suspense fallback={null}>

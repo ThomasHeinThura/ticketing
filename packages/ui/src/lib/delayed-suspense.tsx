@@ -20,7 +20,9 @@ function PendingMarker({
   return null;
 }
 
-/** Holds an in-screen Suspense fallback for the same minimum as query placeholders. */
+/** Holds an in-screen Suspense fallback for the same minimum as query placeholders.
+ * Children mount hidden during retention: do not measure or focus on mount.
+ * Use data-autofocus for initial focus restored when content becomes visible. */
 export function DelayedSuspense({
   children,
   fallback,

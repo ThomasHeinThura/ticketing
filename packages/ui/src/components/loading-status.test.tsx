@@ -28,8 +28,10 @@ it("does not announce a fast request", () => {
 it("announces once only after 150ms and removes the status with content", () => {
   const view = render(<Example pending />);
   act(() => vi.advanceTimersByTime(149));
-  expect(screen.queryByRole("status")).toBeNull();
+  const region = screen.getByRole("status");
+  expect(region).toBeEmptyDOMElement();
   act(() => vi.advanceTimersByTime(1));
+  expect(screen.getByRole("status")).toBe(region);
   expect(screen.getAllByRole("status")).toHaveLength(1);
   expect(screen.getByRole("status")).toHaveTextContent("Chargement…");
   view.rerender(<Example pending={false} />);

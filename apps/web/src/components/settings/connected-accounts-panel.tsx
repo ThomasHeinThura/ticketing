@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  LoadingStatus,
   useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
@@ -137,12 +138,12 @@ export function ConnectedAccountsPanel({
         ) : null}
 
         {!links.isError && (links.isPending || placeholderVisible) ? (
-          <p
-            role="status"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("auth:accountSecurity.identityLinks.loading")}
           >
-            {t("auth:accountSecurity.identityLinks.loading")}
-          </p>
+            <p>{t("auth:accountSecurity.identityLinks.loading")}</p>
+          </LoadingStatus>
         ) : links.isError ? (
           <Alert variant="info">
             <AlertDescription>

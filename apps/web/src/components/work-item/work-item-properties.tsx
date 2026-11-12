@@ -1,3 +1,4 @@
+import { LoadingStatus } from "@taskdesk/ui";
 import { dayToIso, isoToDay } from "@/lib/work-item-date";
 
 export { dayToIso, isoToDay } from "@/lib/work-item-date";
@@ -369,14 +370,20 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
         }}
       >
         <DropdownMenuTrigger render={trigger} />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          {null}
+        </LoadingStatus>
         <DropdownMenuContent className="w-64" align="start">
           {error ? <InlineMessage>{error}</InlineMessage> : null}
           {!transitions.isError &&
           (transitions.isLoading || placeholderVisible) ? (
             <p
-              className="p-2 text-muted-foreground text-sm"
-              role="status"
+              aria-hidden="true"
               style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+              className="p-2 text-muted-foreground text-sm"
             >
               {t("common:empty.loading")}
             </p>
@@ -822,15 +829,14 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
               )}
             </Button>
             {!people.isError && (people.isLoading || placeholderVisible) ? (
-              <p
-                className="p-3 text-muted-foreground text-sm"
-                role="status"
-                style={{
-                  visibility: placeholderVisible ? "visible" : "hidden",
-                }}
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
               >
-                {t("common:empty.loading")}
-              </p>
+                <p className="p-3 text-muted-foreground text-sm">
+                  {t("common:empty.loading")}
+                </p>
+              </LoadingStatus>
             ) : people.isError && !isWorkItemAccessLost(people.error) ? (
               <p className="p-3 text-muted-foreground text-sm" role="alert">
                 {t("workItems:journey.peopleError")}
@@ -1006,13 +1012,14 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
           </Button>
           {!candidates.isError &&
           (candidates.isLoading || placeholderVisible) ? (
-            <p
-              className="p-3 text-muted-foreground text-sm"
-              role="status"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
             >
-              {t("common:empty.loading")}
-            </p>
+              <p className="p-3 text-muted-foreground text-sm">
+                {t("common:empty.loading")}
+              </p>
+            </LoadingStatus>
           ) : candidates.isError && !isWorkItemAccessLost(candidates.error) ? (
             <p className="p-3 text-muted-foreground text-sm" role="alert">
               {t("workItems:properties.requesterError")}

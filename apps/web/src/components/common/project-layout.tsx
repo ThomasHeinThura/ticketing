@@ -1,4 +1,4 @@
-import { DelayedSuspense, useDelayedPending } from "@taskdesk/ui";
+import { useDelayedPending } from "@taskdesk/ui";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import ProjectLayoutControlsFallback from "@/components/common/header/project-layout-controls-fallback";
@@ -108,7 +108,7 @@ export default function ProjectLayout({
               <span className="text-foreground text-xs">/</span>
             </div>
             {showProjectLayoutControls && !controlsPlaceholder ? (
-              <DelayedSuspense
+              <Suspense
                 fallback={
                   <ProjectLayoutControlsFallback
                     projectName={project?.name}
@@ -126,7 +126,7 @@ export default function ProjectLayout({
                   activeView={activeView}
                   onAddProject={() => setIsCreateProjectModalOpen(true)}
                 />
-              </DelayedSuspense>
+              </Suspense>
             ) : (
               <div
                 style={{

@@ -86,13 +86,8 @@
      loses the pressed scale too; their colour/shadow feedback is unchanged. */
   .press-feedback {
     scale: none !important;
-    transition-property: none !important;
   }
 
-  /* Toasts must not animate height or transform when entering or leaving. */
-  [data-slot="toast-popup"] {
-    transition: none !important;
-  }
 
   /* Tab indicator snaps to the selected tab instead of sliding or morphing width. */
   [data-slot="tab-indicator"] {
@@ -108,7 +103,6 @@
 
   [data-slot="menu-checkbox-thumb"] {
     scale: none !important;
-    transition: none !important;
   }
 
   /* Switch helper text changes instantly without sliding. */
@@ -119,9 +113,6 @@
 
   /* Skeleton shimmer is movement: stop the sweep and drop the highlight band, so the
      placeholder is a flat muted block. */
-  .animate-spin {
-    animation: none !important;
-  }
 
   [data-slot="skeleton"],
   .animate-skeleton {

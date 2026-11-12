@@ -136,8 +136,8 @@ describe("compiled reduced motion CSS", () => {
       expect(
         getComputedStyle(
           document.querySelector('[data-slot="switch-thumb"]') as Element,
-        ).transition,
-      ).toBe("none");
+        ).transitionDuration,
+      ).toMatch(/^0(?:s|ms)$/);
     } finally {
       reduced.remove();
       compiled.cleanup();
@@ -164,7 +164,9 @@ describe("compiled reduced motion CSS", () => {
       expect(thumb?.className).toContain(
         "scale_var(--duration-fast)_var(--ease-out)_var(--duration-fast)",
       );
-      expect(getComputedStyle(thumb as Element).transition).toBe("none");
+      expect(getComputedStyle(thumb as Element).transitionDuration).toMatch(
+        /^0(?:s|ms)$/,
+      );
       expect(getComputedStyle(thumb as Element).scale).toBe("none");
     } finally {
       reduced.remove();
@@ -191,8 +193,8 @@ describe("compiled reduced motion CSS", () => {
       );
       const card = screen.getByText("Card");
       const tab = screen.getByRole("tab", { name: "One" });
-      expect(getComputedStyle(card).transitionProperty).toBe("none");
-      expect(getComputedStyle(tab).transitionProperty).toBe("none");
+      expect(getComputedStyle(card).transitionDuration).toMatch(/^0(?:s|ms)$/);
+      expect(getComputedStyle(tab).transitionDuration).toMatch(/^0(?:s|ms)$/);
     } finally {
       reduced.remove();
       compiled.cleanup();
@@ -219,7 +221,9 @@ describe("compiled reduced motion CSS", () => {
       expect(toast?.className).toContain(
         "height_var(--duration-fast)_var(--ease-out)",
       );
-      expect(getComputedStyle(toast as Element).transition).toBe("none");
+      expect(getComputedStyle(toast as Element).transitionDuration).toMatch(
+        /^0(?:s|ms)$/,
+      );
     } finally {
       toastManager.close();
       reduced.remove();

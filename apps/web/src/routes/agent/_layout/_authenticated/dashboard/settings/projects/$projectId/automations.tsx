@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -37,14 +38,11 @@ function RouteComponent() {
   const placeholderVisible = useDelayedPending(pending);
   if (pending || (placeholderVisible && project))
     return (
-      <div
-        className="max-w-4xl mx-auto"
-        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-        role="status"
-        aria-label={t("list.loading")}
-      >
-        <Skeleton className="h-24 w-full" />
-      </div>
+      <LoadingStatus visible={placeholderVisible} label={t("list.loading")}>
+        <div className="max-w-4xl mx-auto">
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </LoadingStatus>
     );
   if (!project)
     return (

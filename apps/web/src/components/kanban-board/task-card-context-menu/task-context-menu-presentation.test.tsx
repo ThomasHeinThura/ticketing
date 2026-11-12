@@ -1,4 +1,5 @@
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
+import { expectNoA11yViolations } from "@taskdesk/ui/test/a11y";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
@@ -51,4 +52,17 @@ it("does not invent planned/archive-state aliases or unauthorized options", () =
   expect(screen.getByRole("menuitem")).toHaveTextContent(
     translate("tasks:contextMenu.copyLink"),
   );
+});
+
+it("keeps a loading menu valid for axe without nested live regions", async () => {
+  const { baseElement } = render(
+    <ContextMenu>
+      <ContextMenuTrigger>Task</ContextMenuTrigger>
+      <TaskContextMenuPresentation onCopyLink={vi.fn()} busy />
+    </ContextMenu>,
+  );
+  fireEvent.contextMenu(screen.getByText("Task"));
+  expect(screen.getByRole("menu")).toHaveAttribute("aria-busy", "true");
+  expect(screen.queryByRole("status")).toBeNull();
+  await expectNoA11yViolations(baseElement);
 });

@@ -291,15 +291,15 @@ export function CustomerInvitations({
         {!organisations.isError &&
         (loading ||
           (placeholderVisible && canInvite && !invitations.isError)) ? (
-          <div
-            role="status"
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            aria-label={t("customerInvitations:loading")}
-            className="space-y-3"
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("customerInvitations:loading")}
           >
-            <Skeleton className="h-10 w-72" />
-            <Skeleton className="h-24 w-full" />
-          </div>
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-72" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </LoadingStatus>
         ) : !canInvite ? (
           <Alert variant="info">
             <AlertTitle>{t("customerInvitations:denied.title")}</AlertTitle>

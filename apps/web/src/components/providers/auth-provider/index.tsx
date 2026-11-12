@@ -24,7 +24,7 @@ export const AuthContext = createContext<{
 
 function AuthProvider({ children }: PropsWithChildren) {
   const { data, isPending, refetch, error } = useSession();
-  const { t } = useTranslation();
+  const { t, ready } = useTranslation(undefined, { useSuspense: false });
   // Only show the loading skeleton during the *first* session fetch. Better
   // Auth re-fetches the session on window focus; if we kept returning the
   // skeleton while those background fetches are pending we'd unmount the
@@ -52,7 +52,7 @@ function AuthProvider({ children }: PropsWithChildren) {
     return (
       <LoadingStatus
         visible={placeholderVisible}
-        label={t("common:empty.loading")}
+        label={ready ? t("common:empty.loading") : ""}
       >
         <LoadingSkeleton />
       </LoadingStatus>

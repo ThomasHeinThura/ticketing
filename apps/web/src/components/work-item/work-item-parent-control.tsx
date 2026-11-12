@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Input,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -67,7 +68,7 @@ export default function WorkItemParentControl({
     retry: false,
   });
   const placeholderVisible = useDelayedPending(
-    open && validKey && candidate.isFetching,
+    open && validKey && candidate.isPending,
   );
   const reachableCandidate = candidate.isError ? undefined : candidate.data;
   const eligible = reachableCandidate?.projectId === item.projectId;
@@ -181,14 +182,15 @@ export default function WorkItemParentControl({
           />
           {validKey &&
           !candidate.isError &&
-          (candidate.isFetching || placeholderVisible) ? (
-            <p
-              role="status"
-              className="text-xs text-muted-foreground"
-              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          (candidate.isPending || placeholderVisible) ? (
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("workItems:parent.loading")}
             >
-              {t("workItems:parent.loading")}
-            </p>
+              <p className="text-xs text-muted-foreground">
+                {t("workItems:parent.loading")}
+              </p>
+            </LoadingStatus>
           ) : null}
           {validKey && !placeholderVisible && eligible && reachableCandidate ? (
             <p className="text-sm text-foreground">

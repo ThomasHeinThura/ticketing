@@ -489,6 +489,7 @@ export function RoleCapabilitiesPanel({
                   save.isPending ||
                   !impactPreview.data ||
                   impactPreview.isPending ||
+                  impactPlaceholder ||
                   !stepUp.canRun ||
                   (removesOwn && typedName.trim() !== role.name)
                 }

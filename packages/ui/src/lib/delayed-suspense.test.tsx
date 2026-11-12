@@ -4,8 +4,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DelayedSuspense } from "./delayed-suspense";
 
 beforeEach(() => vi.useFakeTimers());
+// jsdom otherwise allows focus in display:none, hiding reveal regressions.
+beforeEach(() => {
+  const focus = HTMLElement.prototype.focus;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (
+    this: HTMLElement,
+    options,
+  ) {
+    let node: HTMLElement | null = this;
+    while (node) {
+      if (node.style.display === "none") return;
+      node = node.parentElement;
+    }
+    focus.call(this, options);
+  });
+});
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -139,6 +155,8 @@ it.each([40, 200])(
       });
     });
     if (delay > 150) {
+      expect(screen.getByLabelText("title")).not.toBeVisible();
+      expect(screen.getByLabelText("title")).not.toHaveFocus();
       act(() => vi.advanceTimersByTime(450 - delay));
     }
     expect(screen.getByLabelText("title")).toHaveFocus();
@@ -173,6 +191,8 @@ it("restores initial focus in a dialog after a slow lazy load", async () => {
       ),
     });
   });
+  expect(screen.getByLabelText("title")).not.toBeVisible();
+  expect(screen.getByLabelText("title")).not.toHaveFocus();
   act(() => vi.advanceTimersByTime(250));
   expect(screen.getByLabelText("title")).toHaveFocus();
 });

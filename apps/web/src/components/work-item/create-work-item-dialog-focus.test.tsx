@@ -7,7 +7,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { useRef, useState } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import WorkItemCreateDialogShell from "./work-item-create-dialog-shell";
 
 const mocks = vi.hoisted(() => ({
@@ -201,8 +201,24 @@ vi.mock("./create-work-item-dialog-form", async () => {
   return mocks.formModule;
 });
 
+// jsdom otherwise allows focus in display:none, hiding reveal regressions.
+beforeEach(() => {
+  const focus = HTMLElement.prototype.focus;
+  vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(function (
+    this: HTMLElement,
+    options,
+  ) {
+    let node: HTMLElement | null = this;
+    while (node) {
+      if (node.style.display === "none") return;
+      node = node.parentElement;
+    }
+    focus.call(this, options);
+  });
+});
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -243,6 +259,8 @@ it("focuses the real lazy form after release and returns focus on close", async 
   await act(async () => {
     await vi.advanceTimersByTimeAsync(50);
   });
+  expect(screen.getByTestId("create-work-item-title")).not.toBeVisible();
+  expect(screen.getByTestId("create-work-item-title")).not.toHaveFocus();
   await act(async () => {
     await vi.advanceTimersByTimeAsync(250);
   });

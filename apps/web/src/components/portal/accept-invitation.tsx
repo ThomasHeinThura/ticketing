@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  LoadingStatus,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -200,13 +201,11 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
     );
   else if (session === "loading")
     body = (
-      <div
-        role="status"
-        aria-label={t("loading")}
-        style={{ visibility: readPlaceholderVisible ? "visible" : "hidden" }}
-      >
-        <Skeleton className="h-10 w-full" />
-      </div>
+      <LoadingStatus visible={readPlaceholderVisible} label={t("loading")}>
+        <div>
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </LoadingStatus>
     );
   else if (accountExists)
     body = (
@@ -219,15 +218,15 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
     );
   else if (session === "signed-in" && accept.isPending)
     body = (
-      <div role="status" aria-label={t("loading")}>
+      <LoadingStatus visible label={t("loading")}>
         <Skeleton className="h-10 w-full" />
-      </div>
+      </LoadingStatus>
     );
   else if (readPlaceholderVisible && credential && !authMethods.isError)
     body = (
-      <div role="status" aria-label={t("loading")}>
+      <LoadingStatus visible label={t("loading")}>
         <Skeleton className="h-10 w-full" />
-      </div>
+      </LoadingStatus>
     );
   else if (session === "signed-in" && credential)
     body = <p className="text-sm">{t("accept.ready")}</p>;
@@ -235,13 +234,11 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   else if (authMethods.isError) body = invalid;
   else if (authMethods.isPending)
     body = (
-      <div
-        role="status"
-        aria-label={t("loading")}
-        style={{ visibility: readPlaceholderVisible ? "visible" : "hidden" }}
-      >
-        <Skeleton className="h-10 w-full" />
-      </div>
+      <LoadingStatus visible={readPlaceholderVisible} label={t("loading")}>
+        <div>
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </LoadingStatus>
     );
   else if (authMethods.data?.password)
     body = (
