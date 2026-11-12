@@ -60,6 +60,7 @@ type PendingMove = {
   placement: Placement;
   /** Server version of the completed write; absent until writes settle. */
   settledVersion?: number;
+  concreteStateId?: string;
 };
 type PendingMoves = ReadonlyMap<string, PendingMove>;
 type WriteResult = {
@@ -68,6 +69,7 @@ type WriteResult = {
   notice: Notice;
   version?: number;
   rankFailed?: boolean;
+  concreteStateId?: string;
 };
 
 const NO_PENDING_MOVES: PendingMoves = new Map();
@@ -247,6 +249,15 @@ export default function useWorkItemDragDrop({
   // Cards whose move the server has not confirmed yet, in the order they were dropped.
   const [pending, setPending] = useState<PendingMoves>(NO_PENDING_MOVES);
   const pendingFocus = useRef<string | undefined>(undefined);
+  const rollbackFocus = useRef<string | undefined>(undefined);
+  const pendingRef = useRef<PendingMoves>(NO_PENDING_MOVES);
+  const rowsRef = useRef(workItems);
+  rowsRef.current = workItems;
+  function updatePending(update: (previous: PendingMoves) => PendingMoves) {
+    const next = update(pendingRef.current);
+    pendingRef.current = next;
+    setPending(next);
+  }
   const boardRef = useRef<HTMLDivElement>(null);
   // Writes for one project run one at a time, in drop order: a second move ranked while the
   // first is in flight would be placed against neighbours the server has not got yet.
@@ -262,6 +273,8 @@ export default function useWorkItemDragDrop({
     draggedRef.current = undefined;
     pendingFocus.current = undefined;
     offerRequests.current = new Map();
+    pendingRef.current = NO_PENDING_MOVES;
+    rollbackFocus.current = undefined;
     setPending(NO_PENDING_MOVES);
     setDragged(undefined);
     setNotice(undefined);
@@ -344,7 +357,7 @@ export default function useWorkItemDragDrop({
   // biome-ignore lint/correctness/useExhaustiveDependencies: retry reconciliation after writes settle.
   useEffect(() => {
     if (!workItems) return;
-    setPending((previous) => {
+    updatePending((previous) => {
       let next: Map<string, PendingMove> | undefined;
       for (const [id, move] of previous) {
         if (move.settledVersion === undefined) continue;
@@ -365,6 +378,13 @@ export default function useWorkItemDragDrop({
       return next ?? previous;
     });
   }, [workItems, pending, combined]);
+
+  useLayoutEffect(() => {
+    const id = rollbackFocus.current;
+    if (!id || pending.has(id)) return;
+    rollbackFocus.current = undefined;
+    focusTaskCard(boardRef.current, id);
+  }, [pending]);
 
   // Keyboard drag completion follows the real card across a persisted column change.
   useEffect(() => {
@@ -439,7 +459,7 @@ export default function useWorkItemDragDrop({
   }
 
   function dropPending(id: string) {
-    setPending((previous) => {
+    updatePending((previous) => {
       if (!previous.has(id)) return previous;
       const next = new Map(previous);
       next.delete(id);
@@ -487,7 +507,8 @@ export default function useWorkItemDragDrop({
     const queueKey = item.projectId;
     const depth = queueDepth.get(queueKey) ?? 0;
     queueDepth.set(queueKey, depth + 1);
-    setPending((previous) => new Map(previous).set(item.id, move));
+    const keyboardMove = pendingFocus.current === item.key;
+    updatePending((previous) => new Map(previous).set(item.id, move));
     const run = async () => {
       try {
         if (stale()) return;
@@ -507,7 +528,7 @@ export default function useWorkItemDragDrop({
         }
         publish(result.notice);
         if (result.committed) {
-          setPending((previous) => {
+          updatePending((previous) => {
             const current = previous.get(item.id);
             if (!current) return previous;
             const next = new Map(previous);
@@ -517,13 +538,35 @@ export default function useWorkItemDragDrop({
                 ? { placement: { kind: "canonical" } as const }
                 : {}),
               settledVersion: result.version ?? item.version + 1,
+              concreteStateId: result.concreteStateId,
             });
             return next;
           });
           void reload(item.key);
           return;
         }
+        if (keyboardMove) rollbackFocus.current = item.id;
+        pendingFocus.current = undefined;
         dropPending(item.id);
+        setNotice({
+          kind: "status",
+          text: t(
+            result.notice.kind === "error"
+              ? "workItems:board.moveRefusedReturned"
+              : "workItems:board.moveCancelledReturned",
+            {
+              key: item.key,
+              state:
+                states?.find(
+                  (state) =>
+                    state.id ===
+                    (combined && isCombinedWorkItemRow(item)
+                      ? item.stateTemplateId
+                      : item.stateId),
+                )?.name ?? item.stateName,
+            },
+          ),
+        });
         if (result.notice.kind === "error") void reload();
       } finally {
         const remaining = (queueDepth.get(queueKey) ?? 1) - 1;
@@ -586,6 +629,85 @@ export default function useWorkItemDragDrop({
     });
   }
 
+  function currentNeighbours(
+    item: WorkItemRow,
+    stateKey: string,
+    concreteStateId: string,
+    placement: Placement,
+  ): Neighbours | undefined {
+    if (placement.kind !== "slot") return undefined;
+    const pendingMoves = pendingRef.current;
+    const earlier = new Map<string, PendingMove>();
+    for (const [id, move] of pendingMoves) {
+      if (id === item.id) break;
+      earlier.set(id, move);
+    }
+    const rows = rowsRef.current ?? [];
+    for (const [id, move] of earlier) {
+      const row = rows.find((entry) => entry.id === id);
+      const state =
+        row && combined && isCombinedWorkItemRow(row)
+          ? row.stateTemplateId
+          : row?.stateId;
+      if (
+        row &&
+        move.settledVersion !== undefined &&
+        (row.version > move.settledVersion ||
+          (row.version === move.settledVersion && state === move.stateKey))
+      ) {
+        earlier.delete(id);
+      }
+    }
+    let partition = sortByRank(
+      rows
+        .filter((row) => {
+          if (row.projectId !== item.projectId) return false;
+          const move = earlier.get(row.id);
+          if (move)
+            return (
+              move.stateKey === stateKey &&
+              (!combined ||
+                (move.concreteStateId ?? row.stateId) === concreteStateId)
+            );
+          return row.stateId === concreteStateId;
+        })
+        .filter((row) => !earlier.has(row.id)),
+    );
+    for (const [id, move] of earlier) {
+      const row = rows.find((entry) => entry.id === id);
+      if (
+        !row ||
+        row.projectId !== item.projectId ||
+        move.stateKey !== stateKey ||
+        (combined && (move.concreteStateId ?? row.stateId) !== concreteStateId)
+      )
+        continue;
+      partition = placeInColumn(
+        partition,
+        row,
+        move.placement,
+        "position",
+        "asc",
+      );
+    }
+    partition = partition.filter((row) => row.id !== item.id);
+    const positioned = placeInColumn(
+      partition,
+      item,
+      placement,
+      "position",
+      "asc",
+    );
+    const index = positioned.findIndex((row) => row.id === item.id);
+    const before = positioned[index - 1];
+    const after = positioned[index + 1];
+    if (!before && !after) return undefined;
+    return {
+      ...(before ? { beforeId: before.id } : {}),
+      ...(after ? { afterId: after.id } : {}),
+    };
+  }
+
   function rankWithin(
     item: WorkItemRow,
     column: WorkItemRow[],
@@ -609,7 +731,12 @@ export default function useWorkItemDragDrop({
       },
       async () => {
         try {
-          const ranked = await rankWorkItem({ key: item.key, ...neighbours });
+          const current = currentNeighbours(item, stateKey, item.stateId, {
+            kind: "slot",
+            ...neighbours,
+          });
+          if (!current) return { committed: false, notice: SILENT };
+          const ranked = await rankWorkItem({ key: item.key, ...current });
           return {
             committed: true,
             version: ranked.version,
@@ -717,6 +844,7 @@ export default function useWorkItemDragDrop({
           committed: true,
           version,
           rankFailed: true,
+          concreteStateId: offer.toStateId,
           notice: {
             kind: "error",
             text: t("workItems:board.movedNotRanked", {
@@ -734,6 +862,7 @@ export default function useWorkItemDragDrop({
     return {
       committed: true,
       version,
+      concreteStateId: offer.toStateId,
       notice: {
         kind: "status",
         text: t("workItems:board.transitionSaved", {
@@ -812,7 +941,12 @@ export default function useWorkItemDragDrop({
           findOffer: (offers) =>
             offers.find((candidate) => candidate.toStateId === target.id),
           neighboursFor: () =>
-            targetColumn.length > 0 ? neighbours : undefined,
+            neighbours
+              ? currentNeighbours(item, target.id, target.id, {
+                  kind: "slot",
+                  ...neighbours,
+                })
+              : undefined,
           prefetched,
           context,
         }),
@@ -845,7 +979,11 @@ export default function useWorkItemDragDrop({
     const sourceColumn = (itemsByState.get(item.stateTemplateId) ?? []).filter(
       (candidate) =>
         candidate.projectId === item.projectId &&
-        candidate.stateId === item.stateId,
+        (pendingRef.current.get(candidate.id)?.concreteStateId ??
+          (pendingRef.current.get(candidate.id)?.stateKey ===
+          item.stateTemplateId
+            ? item.stateId
+            : candidate.stateId)) === item.stateId,
     );
     if (target.id === item.stateTemplateId) {
       if (!canRankItem(item) || !canReorder) {
@@ -855,7 +993,11 @@ export default function useWorkItemDragDrop({
       if (targetItem && targetItem.id !== item.id) {
         const samePartition =
           targetItem.projectId === item.projectId &&
-          targetItem.stateId === item.stateId;
+          (pendingRef.current.get(targetItem.id)?.concreteStateId ??
+            (pendingRef.current.get(targetItem.id)?.stateKey ===
+            item.stateTemplateId
+              ? item.stateId
+              : targetItem.stateId)) === item.stateId;
         if (!samePartition) {
           publish({
             kind: "error",
@@ -896,18 +1038,32 @@ export default function useWorkItemDragDrop({
       });
       return;
     }
+    const targetPartition = (itemsByState.get(target.id) ?? []).filter(
+      (candidate) => candidate.projectId === item.projectId,
+    );
+    const targetIndex =
+      targetItem?.projectId === item.projectId
+        ? targetPartition.findIndex(
+            (candidate) => candidate.id === targetItem.id,
+          )
+        : -1;
+    const at = targetIndex < 0 ? targetPartition.length : targetIndex;
+    const before = targetPartition[at - 1];
+    const after = targetPartition[at];
+    const placement: Placement = canRankItem(item)
+      ? {
+          kind: "slot",
+          ...(before ? { beforeId: before.id } : {}),
+          ...(after ? { afterId: after.id } : {}),
+        }
+      : { kind: "canonical" };
     await submit(
       item,
       {
         stateKey: target.id,
         stateName: target.name,
         stateCategory: target.group,
-        placement: canRankItem(item)
-          ? {
-              kind: "slot",
-              ...(targetItem ? { afterId: targetItem.id } : {}),
-            }
-          : { kind: "canonical" },
+        placement,
       },
       (context) =>
         transitionAndRank({
@@ -917,30 +1073,8 @@ export default function useWorkItemDragDrop({
             offers.find(
               (candidate) => candidate.toStateTemplateId === target.id,
             ),
-          neighboursFor: (offer) => {
-            if (!canRankItem(item)) return undefined;
-            const targetColumn = (itemsByState.get(target.id) ?? []).filter(
-              (candidate) =>
-                candidate.projectId === item.projectId &&
-                candidate.stateId === offer.toStateId,
-            );
-            if (targetColumn.length === 0) return undefined;
-            const sameProjectTarget =
-              targetItem?.projectId === item.projectId &&
-              targetItem.stateId === offer.toStateId;
-            const targetIndex = sameProjectTarget
-              ? targetColumn.findIndex(
-                  (candidate) => candidate.id === targetItem.id,
-                )
-              : targetColumn.length;
-            const at = targetIndex < 0 ? targetColumn.length : targetIndex;
-            const before = targetColumn[at - 1];
-            const after = targetColumn[at];
-            return {
-              ...(before ? { beforeId: before.id } : {}),
-              ...(after ? { afterId: after.id } : {}),
-            };
-          },
+          neighboursFor: (offer) =>
+            currentNeighbours(item, target.id, offer.toStateId, placement),
           prefetched,
           context,
         }),

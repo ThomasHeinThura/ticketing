@@ -3555,6 +3555,8 @@
 			"transitionForbidden": "You don't have permission to change the state of {{term_work_item_other}}.",
 			"transitionBlocked": "{{key}} can't move there right now ({{reason}}). Open it to add what's missing.",
 			"transitionUnavailable": "{{key}} can't move to that state right now.",
+			"moveRefusedReturned": "Move refused. {{key}} is back in {{state}}.",
+			"moveCancelledReturned": "Move cancelled. {{key}} is back in {{state}}.",
 			"movedNotRanked": "{{key}} moved to {{state}}, but its position there was not saved. {{reason}}",
 			"changeState": "Change state",
 			"changeStateFor": "Change state of {{key}}",

@@ -697,6 +697,189 @@ it("sends two quick drops in order, the second placed against the first", async 
   expect(order).toEqual([...order].sort((a, b) => (a ?? 0) - (b ?? 0)));
   expect(mocks.toastError).not.toHaveBeenCalled();
 });
+it("recalculates a queued drop after its pending neighbour is refused", async () => {
+  const first = pendingTransition();
+  const hook = mount();
+  start(hook, "one");
+  act(() => {
+    void end(hook, "done", "one");
+  });
+  start(hook, "two");
+  let second!: Promise<void>;
+  act(() => {
+    second = end(hook, "one", "two");
+  });
+  await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
+  await act(async () => {
+    first.reject(new HttpError(409, "conflict"));
+    await second;
+  });
+  expect(mocks.rank).toHaveBeenCalledWith({ key: "HELP-2", beforeId: "three" });
+  expect(itemIds(hook.result.current, "open")).toContain("one");
+});
+
+it("recalculates queued neighbours when realtime moves a target away", async () => {
+  const first = pendingTransition();
+  const hook = mount();
+  start(hook, "one");
+  act(() => {
+    void end(hook, "done", "one");
+  });
+  start(hook, "two");
+  let second!: Promise<void>;
+  act(() => {
+    second = end(hook, "three", "two");
+  });
+  await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
+  hook.rerender({
+    ...options(),
+    workItems: rows.map((row) =>
+      row.id === "three" ? { ...row, stateId: "open", version: 2 } : row,
+    ),
+  });
+  await act(async () => {
+    first.resolve();
+    await second;
+  });
+  expect(mocks.rank).toHaveBeenLastCalledWith({
+    key: "HELP-2",
+    beforeId: "one",
+  });
+  expect(
+    mocks.rank.mock.calls.every(
+      ([input]) => input.beforeId !== "three" && input.afterId !== "three",
+    ),
+  ).toBe(true);
+});
+
+it("ranks combined pending moves in their destination project partition", async () => {
+  mocks.offers.mockResolvedValue([
+    { ...offer[0], toStateTemplateId: "done-template" },
+  ]);
+  const first = pendingTransition();
+  const initial = combinedRows();
+  const hook = mountCombined("project", initial);
+  start(hook, "one");
+  act(() => {
+    void end(hook, "done-template", "one");
+  });
+  start(hook, "two");
+  let second!: Promise<void>;
+  act(() => {
+    second = end(hook, "one", "two");
+  });
+  expect(itemIds(hook.result.current, "done-template")).toEqual([
+    "three",
+    "two",
+    "one",
+  ]);
+  await waitFor(() => expect(mocks.transition).toHaveBeenCalledTimes(1));
+  await act(async () => {
+    first.resolve();
+    await second;
+  });
+  expect(mocks.rank.mock.calls.map(([input]) => input)).toEqual([
+    { key: "HELP-1", beforeId: "three" },
+    { key: "HELP-2", beforeId: "three", afterId: "one" },
+  ]);
+  hook.rerender({
+    projectId: "project",
+    states: [
+      { id: "open-template", name: "Open" },
+      { id: "done-template", name: "Done" },
+    ],
+    workItems: initial.map((row) =>
+      row.id === "one"
+        ? {
+            ...row,
+            stateId: "done",
+            stateTemplateId: "done-template",
+            position: "3",
+            version: 2,
+          }
+        : row.id === "two"
+          ? {
+              ...row,
+              stateId: "done",
+              stateTemplateId: "done-template",
+              position: "2",
+              version: 2,
+            }
+          : row,
+    ),
+    canRank: true,
+    canTransition: true,
+    combined: true,
+    canRankForProject: () => true,
+    canTransitionForProject: () => true,
+  });
+  await waitFor(() => expect(hook.result.current.pendingItemIds.size).toBe(0));
+  expect(itemIds(hook.result.current, "done-template")).toEqual([
+    "three",
+    "two",
+    "one",
+  ]);
+});
+
+it("never ranks a combined move against a different project", async () => {
+  mocks.offers.mockResolvedValue([
+    { ...offer[0], toStateTemplateId: "done-template" },
+  ]);
+  const initial = combinedRows("project", "child");
+  const original = initial[2];
+  if (!original) throw new Error("Missing target");
+  const other = {
+    ...original,
+    id: "four",
+    key: "CHILD-4",
+    projectId: "child",
+    position: "2",
+    sourceProject: { id: "child", key: "CHILD", name: "Child" },
+  };
+  const hook = mountCombined("project", [...initial, other]);
+  start(hook, "one");
+  await act(async () => {
+    await end(hook, "four", "one");
+  });
+  expect(mocks.rank).toHaveBeenCalledWith({ key: "HELP-1", beforeId: "three" });
+  expect(itemIds(hook.result.current, "done-template")).toEqual([
+    "three",
+    "one",
+    "four",
+  ]);
+});
+
+it("can reorder a combined card against a pending incoming card", async () => {
+  mocks.offers.mockResolvedValue([
+    { ...offer[0], toStateTemplateId: "done-template" },
+  ]);
+  const first = pendingTransition();
+  const initial = combinedRows().map((row) =>
+    row.id === "two"
+      ? { ...row, stateId: "done", stateTemplateId: "done-template" }
+      : row,
+  );
+  const hook = mountCombined("project", initial);
+  start(hook, "one");
+  act(() => {
+    void end(hook, "done-template", "one");
+  });
+  start(hook, "two");
+  let second!: Promise<void>;
+  act(() => {
+    second = end(hook, "one", "two");
+  });
+  await waitFor(() => expect(mocks.transition).toHaveBeenCalledOnce());
+  await act(async () => {
+    first.resolve();
+    await second;
+  });
+  expect(mocks.rank).toHaveBeenLastCalledWith({
+    key: "HELP-2",
+    beforeId: "one",
+  });
+});
+
 it("only the pending card refuses a drag, and it is released with fresh rows", async () => {
   const write = pendingTransition();
   const hook = mount();

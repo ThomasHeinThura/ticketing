@@ -1133,6 +1133,98 @@ describe("DnD lifecycle, keyboard and concurrency", () => {
     expect(toastError).toHaveBeenCalledOnce();
     expect(rankWorkItem).not.toHaveBeenCalled();
   });
+  it("restores keyboard focus and announces a refused cross-column move", async () => {
+    let refuse!: (error: unknown) => void;
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        available: true,
+        blockedBy: [],
+      },
+    ]);
+    transitionWorkItem.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          refuse = reject;
+        }),
+    );
+    const view = board({ canTransition: true, canRank: true });
+    card("WLP-1").querySelector<HTMLElement>("[data-task-id]")?.focus();
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new KeyboardEvent("keydown", { code: "Space" }),
+      }),
+    );
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "s-done" },
+      });
+    });
+    await waitFor(() => expect(transitionWorkItem).toHaveBeenCalledOnce());
+    expect(document.activeElement).toBe(
+      card("WLP-1").querySelector("[data-task-id]"),
+    );
+    await act(async () => {
+      refuse(new HttpError(409, "conflict"));
+      await pending;
+    });
+    expect(keysIn("Open")).toContain("WLP-1");
+    expect(document.activeElement).toBe(
+      card("WLP-1").querySelector("[data-task-id]"),
+    );
+    expect(
+      within(screen.getByTestId("work-item-board")).getByRole("status"),
+    ).toHaveTextContent("Move refused. WLP-1 is back in Open.");
+    const other = card("WLP-2").querySelector<HTMLElement>("[data-task-id]");
+    other?.focus();
+    view.rerender({ workItems: [...baseItems] });
+    expect(document.activeElement).toBe(other);
+  });
+  it("restores keyboard focus and announces a cancelled transition note", async () => {
+    getWorkItemTransitions.mockResolvedValue([
+      {
+        toStateId: "s-done",
+        toStateTemplateId: "tpl-done",
+        notePolicy: "required",
+        available: false,
+        blockedBy: [{ reasonCode: "note.required" }],
+      },
+    ]);
+    board({ canTransition: true, canRank: true });
+    card("WLP-1").querySelector<HTMLElement>("[data-task-id]")?.focus();
+    act(() =>
+      callDrag("onDragStart", {
+        active: { id: "id-WLP-1" },
+        activatorEvent: new KeyboardEvent("keydown", { code: "Space" }),
+      }),
+    );
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = callDrag("onDragEnd", {
+        active: { id: "id-WLP-1" },
+        over: { id: "s-done" },
+      });
+    });
+    await screen.findByRole("textbox", {
+      name: translate("workItems:properties.transitionNote"),
+    });
+    await act(async () => {
+      screen.getByRole("button", { name: "Cancel" }).click();
+      await pending;
+    });
+    expect(keysIn("Open")).toContain("WLP-1");
+    expect(document.activeElement).toBe(
+      card("WLP-1").querySelector("[data-task-id]"),
+    );
+    expect(
+      within(screen.getByTestId("work-item-board")).getByRole("status"),
+    ).toHaveTextContent("Move cancelled. WLP-1 is back in Open.");
+    expect(transitionWorkItem).not.toHaveBeenCalled();
+  });
   it("restores keyboard focus to the moved card after persisted rows change", async () => {
     const view = board({ canRank: true });
     await dragTo("WLP-1", "WLP-3", true);

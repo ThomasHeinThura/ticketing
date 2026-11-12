@@ -14615,6 +14615,12 @@
 						"transitionUnavailable": {
 							"type": "string"
 						},
+						"moveRefusedReturned": {
+							"type": "string"
+						},
+						"moveCancelledReturned": {
+							"type": "string"
+						},
 						"movedNotRanked": {
 							"type": "string"
 						},
@@ -14757,6 +14763,8 @@
 						"transitionForbidden",
 						"transitionBlocked",
 						"transitionUnavailable",
+						"moveRefusedReturned",
+						"moveCancelledReturned",
 						"movedNotRanked",
 						"changeState",
 						"changeStateFor",
