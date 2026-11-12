@@ -247,6 +247,20 @@
 		"retry": "Retry",
 		"navigation": {
 			"auditLog": "Audit log"
+		},
+		"featureOff": {
+			"turnOn": "Turn on in Features"
+		},
+		"states": {
+			"back": "Back",
+			"noAccess": {
+				"title": "You don't have access",
+				"description": "Ask a workspace admin."
+			},
+			"error": {
+				"title": "This could not be loaded",
+				"description": "Check your connection and try again."
+			}
 		}
 	},
 	"auth": {
@@ -3998,7 +4012,8 @@
 			"unavailable": "This approval is no longer awaiting your decision or is unavailable to you.",
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
-			"reject": "Reject"
+			"reject": "Reject",
+			"emptyDescription": "Approval requests from the support team appear here."
 		},
 		"unavailable": {
 			"title": "Customer portal unavailable",
@@ -4994,7 +5009,8 @@
 		"loadError": "The {{term_submission_other}} could not be loaded.",
 		"featureOff": {
 			"title": "Intake is off for this workspace",
-			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on."
+			"description": "A workspace admin can switch on Intake in the workspace's feature settings. Existing {{term_submission_other}} are kept and come back when it is switched on.",
+			"manageDescription": "Turn on Intake in the workspace feature settings. Existing {{term_submission_other}} come back when it is switched on."
 		}
 	},
 	"requestTypes": {
@@ -7019,32 +7035,40 @@
 		"featureOff": {
 			"cycles": {
 				"title": "{{term_cycle_other}} are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on {{term_cycle_other}} in the {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} are kept and come back when it is switched on.",
+				"manageDescription": "Turn on {{term_cycle_other}} in this {{term_project_one}}'s feature settings. Existing {{term_cycle_other}} come back when it is switched on."
 			},
 			"modules": {
 				"title": "{{term_module_other}} are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on {{term_module_other}} in the {{term_project_one}}'s feature settings. Existing {{term_module_other}} are kept and come back when it is switched on.",
+				"manageDescription": "Turn on {{term_module_other}} in this {{term_project_one}}'s feature settings. Existing {{term_module_other}} come back when it is switched on."
 			},
 			"estimates": {
 				"title": "Estimates are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on."
+				"description": "A {{term_project_one}} admin can switch on Estimates in the {{term_project_one}}'s feature settings. Existing estimates are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Estimates in this {{term_project_one}}'s feature settings. Existing estimates come back when it is switched on."
 			},
 			"calendar": {
 				"title": "Calendar is off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+				"description": "A {{term_project_one}} admin can switch on Calendar in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"manageDescription": "Turn on Calendar in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"timeline": {
 				"title": "The timeline is off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
+				"description": "A {{term_project_one}} admin can switch on the timeline in the {{term_project_one}}'s feature settings. Nothing is deleted while it is off.",
+				"manageDescription": "Turn on the timeline in this {{term_project_one}}'s feature settings. Nothing is deleted while it is off."
 			},
 			"sla": {
 				"title": "SLAs are off for this workspace",
-				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on."
+				"description": "A workspace admin can switch on SLAs in the workspace's feature settings. Existing SLA policies and service calendars are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Service levels in the workspace feature settings to use SLA policies and service calendars."
 			},
 			"pages": {
 				"title": "Pages are off for this {{term_project_one}}",
-				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on."
-			}
+				"description": "A {{term_project_one}} admin can switch on Pages in the {{term_project_one}}'s feature settings. Existing pages are kept and come back when it is switched on.",
+				"manageDescription": "Turn on Pages in this {{term_project_one}}'s feature settings. Existing pages come back when it is switched on."
+			},
+			"openSettings": "Open feature settings"
 		},
 		"cycles": {
 			"pageTitle": "{{term_cycle_other}}",
@@ -7561,7 +7585,8 @@
 		},
 		"disabled": {
 			"title": "{{term_service_one}} catalogue is off",
-			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature switches."
+			"description": "An administrator can turn on the {{term_service_one}} catalogue in the workspace feature settings.",
+			"manageDescription": "Turn on the {{term_service_one}} catalogue in the workspace feature settings."
 		},
 		"common": {
 			"cancel": "Cancel",
@@ -9126,7 +9151,8 @@
 		"errors": {
 			"disabled": {
 				"title": "Reports are off",
-				"description": "An administrator can turn this feature on in the workspace feature settings."
+				"description": "An administrator can turn this feature on in the workspace feature settings.",
+				"manageDescription": "Turn on Reports in the workspace feature settings to see reports and dashboards."
 			},
 			"forbidden": {
 				"title": "Not available to you",

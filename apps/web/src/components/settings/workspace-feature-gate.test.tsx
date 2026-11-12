@@ -1,11 +1,34 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { headingLevels } from "@/test/headings";
 
 const state = vi.hoisted(() => ({
   workspace: { id: "w1" } as { id: string } | undefined,
   workspaceLoading: false,
   sla: false,
   featuresLoading: false,
+  canManageSettings: false,
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children?: React.ReactNode;
+  }) => (
+    <a {...props} href={to}>
+      {children}
+    </a>
+  ),
+}));
+vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canManageWorkspaceSettings: () => state.canManageSettings,
+  }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -31,12 +54,18 @@ afterEach(() => {
     workspaceLoading: false,
     sla: false,
     featuresLoading: false,
+    canManageSettings: false,
   });
 });
 
 const renderGate = () =>
   render(
-    <WorkspaceFeatureGate feature="feature.sla" off="sla">
+    <WorkspaceFeatureGate
+      feature="feature.sla"
+      off="sla"
+      title="SLA policies"
+      description="Response and resolution targets."
+    >
       <p>SLA policies list</p>
     </WorkspaceFeatureGate>,
   );
@@ -67,5 +96,43 @@ describe("WorkspaceFeatureGate (P4R2-M1)", () => {
     state.workspaceLoading = true;
     const second = renderGate();
     expect(second.container).toBeEmptyDOMElement();
+  });
+
+  // UX-1a (S2, SR-05): the off page keeps its title and description, and only a settings
+  // manager gets the link to the workspace feature settings.
+  it("keeps the page title and description above the off state", () => {
+    renderGate();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "SLA policies" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Response and resolution targets.")).toBeTruthy();
+  });
+
+  it("has one h1, the page title, with the off state's title under it as h2", () => {
+    renderGate();
+    expect(headingLevels()).toEqual([1, 2]);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      within(screen.getByTestId("feature-off-sla")).getByRole("heading", {
+        level: 2,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks a non-manager to contact an admin and offers no link", () => {
+    renderGate();
+    expect(screen.getByText("featureOff.sla.description")).toBeTruthy();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("offers a settings manager Turn on in Features", () => {
+    state.canManageSettings = true;
+    renderGate();
+    expect(screen.getByText("featureOff.sla.manageDescription")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "common:featureOff.turnOn" })
+        .getAttribute("href"),
+    ).toBe("/dashboard/settings/workspace/features");
   });
 });

@@ -98,9 +98,14 @@ describe("portal announcements", () => {
   it("shows the empty state", async () => {
     mocks.list.mockResolvedValue({ data: [], nextCursor: null });
     renderWithQuery(<PortalAnnouncementsList scope="user-one" />);
+    const title = await screen.findByText("portal:announcements.emptyTitle");
+    expect(title).toBeInTheDocument();
+    // UX-1a (CP-10): the shared empty look, with a decorative icon.
     expect(
-      await screen.findByText("portal:announcements.emptyTitle"),
-    ).toBeInTheDocument();
+      title
+        .closest("[data-slot=empty]")
+        ?.querySelector("[data-slot=empty-media][aria-hidden=true] svg"),
+    ).not.toBeNull();
   });
 
   it("renders the body as plain text", async () => {

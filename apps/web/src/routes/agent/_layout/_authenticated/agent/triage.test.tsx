@@ -12,11 +12,13 @@ import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IntakeQueueSearch } from "@/lib/routes";
 import { translate } from "@/test/en-translation";
+import { headingLevels } from "@/test/headings";
 import { Route } from "./triage";
 
 const mocks = vi.hoisted(() => ({
   search: { state: "new" } as IntakeQueueSearch,
   canTriage: true,
+  canManageSettings: false,
   checkingPermissions: false,
   intakeOn: true,
   featuresLoading: false,
@@ -60,10 +62,13 @@ vi.mock("@tanstack/react-router", () => ({
     ...props
   }: {
     to: string;
-    params: { key: string };
+    params?: { key: string };
     children: React.ReactNode;
   }) => (
-    <a {...props} href={to.replace("$key", encodeURIComponent(params.key))}>
+    <a
+      {...props}
+      href={to.replace("$key", encodeURIComponent(params?.key ?? ""))}
+    >
       {children}
     </a>
   ),
@@ -72,6 +77,7 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canTriageIntake: () => mocks.canTriage,
+    canManageWorkspaceSettings: () => mocks.canManageSettings,
     canShareSavedViews: () => false,
     isCheckingPermissions: mocks.checkingPermissions,
   }),
@@ -178,6 +184,7 @@ describe("intake triage route", () => {
   beforeEach(() => {
     mocks.search = { state: "new" };
     mocks.canTriage = true;
+    mocks.canManageSettings = false;
     mocks.checkingPermissions = false;
     mocks.intakeOn = true;
     mocks.featuresLoading = false;
@@ -224,6 +231,59 @@ describe("intake triage route", () => {
     expect(mocks.getSubmissions).not.toHaveBeenCalled();
     expect(mocks.getRequestTypes).not.toHaveBeenCalled();
     expect(mocks.queuePickerProps).toBeUndefined();
+  });
+
+  // UX-1a (DS-01, SR-02): the title stays in Kaneo's header bar on every branch (no second
+  // large title in the content), and the shared feature-off state offers the Features link
+  // only to someone who can switch Intake on.
+  it.each([
+    ["the queue", () => undefined, [1]],
+    [
+      "Intake off",
+      () => {
+        mocks.intakeOn = false;
+      },
+      // The header-bar title, then the off state's title under it.
+      [1, 2],
+    ],
+    [
+      "no access",
+      () => {
+        mocks.canTriage = false;
+      },
+      [1],
+    ],
+  ])(
+    "keeps the page title as the one h1 in the header bar on %s",
+    async (_label, arrange, outline) => {
+      arrange();
+      const { container } = renderTriage();
+      expect(headingLevels()).toEqual(outline);
+      const [title] = screen.getAllByRole("heading", { level: 1 });
+      expect(title).toHaveTextContent("title");
+      expect(title).toHaveClass("px-2", "font-medium", "text-sm");
+      expect(title.closest("header")).not.toBeNull();
+      expect(container.querySelector("[data-slot=page-header]")).toBeNull();
+      await act(async () => {});
+    },
+  );
+
+  it("offers Turn on in Features with Intake off only to a settings manager", async () => {
+    mocks.intakeOn = false;
+    renderTriage();
+    expect(screen.getByText("featureOff.description")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+    cleanup();
+
+    mocks.canManageSettings = true;
+    renderTriage();
+    expect(
+      screen.getByText("featureOff.manageDescription"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "common:featureOff.turnOn" }),
+    ).toHaveAttribute("href", "/dashboard/settings/workspace/features");
+    await act(async () => {});
   });
 
   it("offers Retry, not the Intake-off state, when the feature read fails", async () => {

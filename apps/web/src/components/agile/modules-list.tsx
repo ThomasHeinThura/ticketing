@@ -23,7 +23,7 @@ import PageTitle from "@/components/page-title";
 import { FeatureDisabledError, getModules } from "@/fetchers/agile";
 import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { formatCalendarDate, MODULE_STATE_VARIANT } from "./agile-format";
-import { FeatureOff } from "./feature-off";
+import { ProjectFeatureOff } from "./feature-off";
 import { ModuleForecastText } from "./module-forecast";
 import { ModuleFormDialog } from "./module-form-dialog";
 
@@ -42,7 +42,13 @@ export function ModulesList({ projectKey }: { projectKey: string }) {
   });
 
   if (query.error instanceof FeatureDisabledError)
-    return <FeatureOff feature="modules" />;
+    return (
+      <ProjectFeatureOff
+        feature="modules"
+        headingLevel={1}
+        projectKey={projectKey}
+      />
+    );
   if (query.isLoading)
     return (
       <div

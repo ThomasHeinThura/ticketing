@@ -45,9 +45,11 @@ import {
   useServices,
 } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateMedium } from "@/lib/format";
 import { type ReleaseListSearch, routes } from "@/lib/routes";
 import {
+  CatalogueOff,
   LoadingRows,
   MutationError,
   PageFrame,
@@ -246,8 +248,15 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
   const status = useCatalogueStatus(workspaceId);
-  const services = useServices(workspaceId);
-  const releases = useReleases(workspaceId, search.serviceId);
+  // UX-1a (SR-03/SR-04): with the catalogue off the release APIs answer 409, so they are asked
+  // only once the status says it is on (or could not be read, so a real failure still shows), as
+  // the Services list does; the off state comes before the filter and New release.
+  const catalogueOff = status.data?.enabled === false;
+  const statusPending = !status.data && !status.isError;
+  const listReady = status.data?.enabled === true || status.isError;
+  const { canManageWorkspaceSettings } = useWorkspacePermission();
+  const services = useServices(listReady ? workspaceId : "");
+  const releases = useReleases(listReady ? workspaceId : "", search.serviceId);
   const [creating, setCreating] = useState(false);
   return (
     <>
@@ -256,7 +265,7 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
         title={t("releases.list.title")}
         description={t("releases.list.description")}
         actions={
-          status.data?.canManageReleases ? (
+          status.data?.canManageReleases && !catalogueOff ? (
             <Button onClick={() => setCreating(true)} disabled={!workspace}>
               <Plus aria-hidden="true" />
               {t("releases.list.new")}
@@ -265,80 +274,90 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
         }
       >
         <SectionNav active="releases" />
-        <div className="max-w-xs space-y-2">
-          <Label htmlFor="release-filter-service">
-            {t("releases.list.filterService")}
-          </Label>
-          <PickerPopover
-            id="release-filter-service"
-            className="w-full"
-            options={[
-              { value: ALL, label: t("releases.list.allServices") },
-              ...(services.data ?? []).map((service) => ({
-                value: service.id,
-                label: service.name,
-              })),
-            ]}
-            value={search.serviceId ?? ALL}
-            onChange={(value) =>
-              void navigate({
-                to: routes.serviceManagementReleases.path,
-                search: value && value !== ALL ? { serviceId: value } : {},
-              })
-            }
-          />
-        </div>
-        {releases.isLoading || !workspace ? (
+        {statusPending ? (
           <LoadingRows />
-        ) : releases.isError ? (
-          <QueryFailure
-            error={releases.error}
-            onRetry={() => void releases.refetch()}
-          />
-        ) : releases.data?.length ? (
-          <CardFrame>
-            {releases.data.map((release) => (
-              <Card key={release.id}>
-                <CardHeader>
-                  <CardTitle className="truncate">
-                    <Link
-                      className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      to={routes.serviceManagementReleaseDetail.path}
-                      params={{ id: release.id }}
-                    >
-                      {release.name}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription>
-                    {release.serviceName}
-                    {release.plannedDate
-                      ? ` · ${formatDateMedium(release.plannedDate)}`
-                      : ""}
-                    {" · "}
-                    {t("releases.list.changes", { count: release.changeCount })}
-                    {release.checklistTotal > 0
-                      ? ` · ${t("releases.list.checklist", {
-                          done: release.checklistDone,
-                          total: release.checklistTotal,
-                        })}`
-                      : ""}
-                  </CardDescription>
-                  <CardAction>
-                    <ReleaseStatusBadge status={release.status} />
-                  </CardAction>
-                </CardHeader>
-              </Card>
-            ))}
-          </CardFrame>
+        ) : catalogueOff ? (
+          <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>{t("releases.list.emptyTitle")}</EmptyTitle>
-              <EmptyDescription>
-                {t("releases.list.emptyDescription")}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <>
+            <div className="max-w-xs space-y-2">
+              <Label htmlFor="release-filter-service">
+                {t("releases.list.filterService")}
+              </Label>
+              <PickerPopover
+                id="release-filter-service"
+                className="w-full"
+                options={[
+                  { value: ALL, label: t("releases.list.allServices") },
+                  ...(services.data ?? []).map((service) => ({
+                    value: service.id,
+                    label: service.name,
+                  })),
+                ]}
+                value={search.serviceId ?? ALL}
+                onChange={(value) =>
+                  void navigate({
+                    to: routes.serviceManagementReleases.path,
+                    search: value && value !== ALL ? { serviceId: value } : {},
+                  })
+                }
+              />
+            </div>
+            {releases.isLoading || !workspace ? (
+              <LoadingRows />
+            ) : releases.isError ? (
+              <QueryFailure
+                error={releases.error}
+                onRetry={() => void releases.refetch()}
+              />
+            ) : releases.data?.length ? (
+              <CardFrame>
+                {releases.data.map((release) => (
+                  <Card key={release.id}>
+                    <CardHeader>
+                      <CardTitle className="truncate">
+                        <Link
+                          className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          to={routes.serviceManagementReleaseDetail.path}
+                          params={{ id: release.id }}
+                        >
+                          {release.name}
+                        </Link>
+                      </CardTitle>
+                      <CardDescription>
+                        {release.serviceName}
+                        {release.plannedDate
+                          ? ` · ${formatDateMedium(release.plannedDate)}`
+                          : ""}
+                        {" · "}
+                        {t("releases.list.changes", {
+                          count: release.changeCount,
+                        })}
+                        {release.checklistTotal > 0
+                          ? ` · ${t("releases.list.checklist", {
+                              done: release.checklistDone,
+                              total: release.checklistTotal,
+                            })}`
+                          : ""}
+                      </CardDescription>
+                      <CardAction>
+                        <ReleaseStatusBadge status={release.status} />
+                      </CardAction>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </CardFrame>
+            ) : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>{t("releases.list.emptyTitle")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("releases.list.emptyDescription")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </>
         )}
       </PageFrame>
       {creating && workspace ? (

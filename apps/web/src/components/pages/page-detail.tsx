@@ -32,7 +32,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FeatureOff } from "@/components/agile/feature-off";
+import { ProjectFeatureOff } from "@/components/agile/feature-off";
 import { DocumentEditor } from "@/components/editor/document-editor";
 import { LeaveUnsavedDialog } from "@/components/editor/leave-unsaved-dialog";
 import {
@@ -720,7 +720,13 @@ export function PageDetail({
       </div>
     );
   if (query.error instanceof PagesDisabledError)
-    return <FeatureOff feature="pages" />;
+    return (
+      <ProjectFeatureOff
+        feature="pages"
+        headingLevel={1}
+        projectKey={projectKey}
+      />
+    );
   if (query.isError || !query.data) {
     const missing =
       query.error instanceof HttpError && query.error.status === 404;

@@ -32,7 +32,7 @@ import {
 } from "@/fetchers/agile";
 import { toast } from "@/lib/toast";
 import { EstimatePreviewDialog } from "./estimate-preview-dialog";
-import { FeatureOff } from "./feature-off";
+import { ProjectFeatureOff } from "./feature-off";
 
 type DraftPoint = { key?: string; value: string };
 
@@ -140,7 +140,7 @@ export function EstimateSettings({
   });
 
   if (query.error instanceof FeatureDisabledError)
-    return <FeatureOff feature="estimates" />;
+    return <ProjectFeatureOff feature="estimates" projectKey={projectKey} />;
   if (query.isLoading)
     return (
       <div role="status" aria-label={t("common.loading")}>

@@ -268,6 +268,18 @@ export {
   EmptyTitle,
 } from "./components/empty";
 export {
+  EmptyState,
+  type EmptyStateAction,
+  type EmptyStateActionsProps,
+  type EmptyStateProps,
+  ErrorState,
+  type ErrorStateProps,
+  FeatureOff,
+  type FeatureOffProps,
+  NoAccess,
+  type NoAccessProps,
+} from "./components/empty-state";
+export {
   ErrorBoundary,
   type ErrorBoundaryFallbackProps,
   type ErrorBoundaryProps,
@@ -392,6 +404,13 @@ export {
   NumberFieldInput,
   NumberFieldScrubArea,
 } from "./components/number-field";
+export {
+  PageContainer,
+  type PageContainerProps,
+  PageHeader,
+  type PageHeaderProps,
+  pageContainerVariants,
+} from "./components/page-header";
 export {
   Pagination,
   PaginationContent,
