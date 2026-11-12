@@ -31,7 +31,9 @@ vi.mock("../../../apps/api/src/auth/staff-registration", () => ({
 }));
 
 import {
+  auth,
   customerLocalAuthMethods,
+  portalAuth,
   reloadAuthConfiguration,
 } from "../../../apps/api/src/auth";
 
@@ -67,6 +69,8 @@ describe("auth configuration reload while another reload is in flight", () => {
 
     // One shared follow-up read, and the swap reflects the committed row.
     expect(state.reads).toBe(2);
+    expect(auth.options.advanced?.disableOriginCheck).toBe(false);
+    expect(portalAuth.options.advanced?.disableOriginCheck).toBe(false);
     expect(customerLocalAuthMethods()).toEqual({
       password: true,
       magicLink: false,

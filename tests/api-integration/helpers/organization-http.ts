@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { getConfiguredAgentOrigin } from "../../../apps/api/src/auth";
 import { refreshStaffRegistration } from "../../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../../apps/api/src/database";
 import type { createApp } from "../../../apps/api/src/index";
@@ -137,6 +138,7 @@ export async function signUpUser(
   const response = await app.request("/api/auth/sign-up/email", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       "content-type": "application/json",
       "x-forwarded-for": overrides?.clientIp ?? nextClientIp(),
     },
@@ -187,6 +189,7 @@ export async function signUpInstanceAdmin(
   const response = await app.request("/api/auth/sign-up/email", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       "content-type": "application/json",
       "x-forwarded-for": overrides?.clientIp ?? nextClientIp(),
       "x-taskdesk-setup-token": setupToken,

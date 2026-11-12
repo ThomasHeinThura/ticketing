@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { getConfiguredAgentOrigin } from "../../../apps/api/src/auth";
 import db, { schema } from "../../../apps/api/src/database";
 import { csrfRequest } from "./csrf";
 import type { App } from "./organization-http";
@@ -104,7 +105,7 @@ function releaseInstanceAdmin(userId: string): Promise<void> {
 
 async function sessionUserId(app: App, cookie: string): Promise<string> {
   const response = await app.request("/api/auth/get-session", {
-    headers: { cookie },
+    headers: { cookie, origin: getConfiguredAgentOrigin() },
   });
   const body = (await response.json()) as { user?: { id?: string } } | null;
   const id = body?.user?.id;

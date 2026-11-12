@@ -1429,6 +1429,7 @@ describe("identity connection administration", () => {
       {
         method: "POST",
         headers: {
+          origin: getConfiguredAgentOrigin(),
           cookie: challenge.factorCookies,
           "content-type": "application/json",
         },
@@ -1499,6 +1500,7 @@ describe("identity connection administration", () => {
       {
         method: "POST",
         headers: {
+          origin: getConfiguredAgentOrigin(),
           cookie: httpChallenge.factorCookies,
           "content-type": "application/json",
         },
@@ -1598,6 +1600,7 @@ describe("identity connection administration", () => {
         {
           method: "POST",
           headers: {
+            origin: getConfiguredAgentOrigin(),
             cookie: challenge.factorCookies,
             "content-type": "application/json",
           },
