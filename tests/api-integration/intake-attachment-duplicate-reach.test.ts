@@ -1009,8 +1009,9 @@ describe("submission attachment lists respect the duplicate link (CP-16)", () =>
     ] as const) {
       await apply();
       const list = await portalRequest(t, s.owner, base);
-      expect(list.status, label).toBe(200);
-      expect(await names(list), label).toEqual([]);
+      expect(list.status, label).toBe(label === "project deleted" ? 404 : 200);
+      if (label !== "project deleted")
+        expect(await names(list), label).toEqual([]);
       for (const suffix of ["", "/preview"]) {
         const read = await portalRequest(
           t,

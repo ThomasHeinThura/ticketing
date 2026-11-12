@@ -96,6 +96,53 @@ async function unacceptableAddresses() {
 }
 
 describe("create (CP-20, CP-23)", () => {
+  it("grants only the selected organisation project on acceptance", async () => {
+    const [project] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.organisationId, w.org.id));
+    const [otherProject] = await db
+      .select({ id: schema.projectTable.id })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.organisationId, w.otherOrg.id));
+    if (!project || !otherProject)
+      throw new Error("Invitation projects missing");
+    const wrong = await w.call(w.owner.user, w.base(), {
+      method: "POST",
+      body: {
+        email: "wrong-project@example.test",
+        projectIds: [otherProject.id],
+      },
+    });
+    expect(wrong.status).toBe(404);
+    const response = await w.call(w.owner.user, w.base(), {
+      method: "POST",
+      body: { email: "selected@example.test", projectIds: [project.id] },
+    });
+    expect(response.status).toBe(201);
+    const sent = (await response.json()) as { id: string };
+    await runCustomerInvitationDeliveryJob();
+    const customer = await admittedCustomer("selected@example.test");
+    expect(
+      (
+        await accept(
+          customer.user,
+          sent.id,
+          credentialFor("selected@example.test", sent.id),
+        )
+      ).status,
+    ).toBe(200);
+    const access = await db
+      .select({ projectId: schema.customerProjectAccessTable.projectId })
+      .from(schema.customerProjectAccessTable)
+      .where(
+        eq(
+          schema.customerProjectAccessTable.personId,
+          customer.personId as string,
+        ),
+      );
+    expect(access).toEqual([{ projectId: project.id }]);
+  });
   it("stores a hash-only credential, mails the link with the credential in the fragment and never returns it", async () => {
     const response = await w.call(w.owner.user, w.base(), {
       method: "POST",

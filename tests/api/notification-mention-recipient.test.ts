@@ -158,7 +158,11 @@ describe("native mention recipient reach", () => {
         userId: "customer-user",
         side: "customer",
         memberships: [],
-        reach: { kind: "organisation", ids: ["organisation-1"] },
+        reach: {
+          kind: "organisation",
+          ids: ["organisation-1"],
+          projectIds: ["project-1"],
+        },
       }),
     );
 

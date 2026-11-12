@@ -41,6 +41,8 @@ export const customerInvitationPolicies = {
   "GET /api/workspace/{workspaceId}/customer-organisations": manage,
   "GET /api/workspace/{workspaceId}/organisations/{organisationId}/invitations":
     manage,
+  "GET /api/workspace/{workspaceId}/organisations/{organisationId}/invitation-projects":
+    manage,
   "POST /api/workspace/{workspaceId}/organisations/{organisationId}/invitations":
     manage,
   "POST /api/workspace/{workspaceId}/organisations/{organisationId}/invitations/{id}/resend":

@@ -35420,6 +35420,24 @@
 						"email": {
 							"type": "string"
 						},
+						"projectsTitle": {
+							"type": "string"
+						},
+						"projectsLoadError": {
+							"type": "string"
+						},
+						"accessTitle": {
+							"type": "string"
+						},
+						"accessError": {
+							"type": "string"
+						},
+						"grantAccess": {
+							"type": "string"
+						},
+						"revokeAccess": {
+							"type": "string"
+						},
 						"roleNote": {
 							"type": "string"
 						},
@@ -35427,7 +35445,19 @@
 							"type": "string"
 						}
 					},
-					"required": ["title", "description", "email", "roleNote", "submit"]
+					"required": [
+						"title",
+						"description",
+						"email",
+						"projectsTitle",
+						"projectsLoadError",
+						"accessTitle",
+						"accessError",
+						"grantAccess",
+						"revokeAccess",
+						"roleNote",
+						"submit"
+					]
 				},
 				"toasts": {
 					"type": "object",

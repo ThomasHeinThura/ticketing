@@ -35,6 +35,7 @@ import {
 } from "../workflow/customer-reopen";
 import { appendIntakeAudit } from "./audit";
 import { judgeEscalation, type PortalPriority } from "./portal-priority";
+import { portalSubmissionProjectPredicateForActor } from "./repository";
 
 function code(name: string, message: string): never {
   throw new HTTPException(name === "cannot_deescalate" ? 403 : 409, {
@@ -67,6 +68,7 @@ async function lockOwnSubmission(tx: Tx, number: number, personId: string) {
       and(
         eq(schema.submissionTable.number, number),
         eq(schema.submissionTable.requesterId, personId),
+        portalSubmissionProjectPredicateForActor(personId, tx),
       ),
     )
     .for("update", { of: schema.submissionTable })

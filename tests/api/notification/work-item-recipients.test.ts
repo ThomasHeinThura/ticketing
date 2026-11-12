@@ -208,7 +208,11 @@ function staffIdentity(personId: string, userId: string): ResolvedIdentity {
   } satisfies ResolvedIdentity;
 }
 
-function customerIdentity(personId: string, userId: string): ResolvedIdentity {
+function customerIdentity(
+  personId: string,
+  userId: string,
+  projectIds: readonly string[] = ["project-1"],
+): ResolvedIdentity {
   return {
     personId,
     userId,
@@ -218,7 +222,11 @@ function customerIdentity(personId: string, userId: string): ResolvedIdentity {
     credential: "session",
     memberships: [],
     teamIds: [],
-    reach: { kind: "organisation", ids: ["organisation-1"] },
+    reach: {
+      kind: "organisation",
+      ids: ["organisation-1"],
+      projectIds,
+    },
     authority: [
       {
         roleKey: "customer",

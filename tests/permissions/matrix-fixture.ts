@@ -134,7 +134,11 @@ export function identityFor(
       key === "instance_admin"
         ? { kind: "all" }
         : isCustomer
-          ? { kind: "organisation", ids: inReach ? [ORGANISATION_ID] : [] }
+          ? {
+              kind: "organisation",
+              ids: inReach ? [ORGANISATION_ID] : [],
+              projectIds: inReach ? [PROJECT_ID] : [],
+            }
           : { kind: "membership" },
     authority: [grantFor(key)],
   };

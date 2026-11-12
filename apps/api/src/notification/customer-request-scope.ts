@@ -13,12 +13,16 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Executor } from "../database/executor";
-import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
+import {
+  currentProjectReachPredicate,
+  customerProjectAccessExists,
+} from "../database/repositories/identity-scope.repository";
 import {
   commentTable,
   personTable,
   projectTable,
   requestTypeTable,
+  requestTypeVersionTable,
   submissionTable,
   workItemTable,
   workspaceTable,
@@ -55,10 +59,9 @@ function notLinkedToRequesterSubmission(
 /**
  * U-12 (D6, `CP-16`): a request staff raised for a customer (`direct`) belongs to its requester,
  * on the portal case list's direct-source conditions: the item's requester is this customer-side
- * person of the serving project's organisation, and the item, its live, unarchived project and
- * workspace still exist, and no submission of this requester links the item (the submission
- * rule covers that one). Only the requester owns it; a participant or an organisation colleague
- * reads the request but is not told about it, as on the submission side.
+ * person of the serving project's organisation who holds access to that project, and the item,
+ * its live, unarchived project and workspace still exist, and no submission of this requester
+ * links the item (the submission rule covers that one). Only the requester owns it.
  */
 function directOwnedRequestExists(
   personId: string,
@@ -92,6 +95,12 @@ function directOwnedRequestExists(
           isNull(project.deletedAt),
           isNull(project.archivedAt),
           isNull(workspace.deletedAt),
+          customerProjectAccessExists(
+            personId,
+            project.organisationId,
+            project.id,
+            executor,
+          ),
           notLinkedToRequesterSubmission(item.id, item.requesterId, executor),
           identity
             ? currentProjectReachPredicate(
@@ -157,6 +166,12 @@ function submissionOwnedRequestExists(
           isNull(item.archivedAt),
           isNull(project.deletedAt),
           isNull(workspace.deletedAt),
+          customerProjectAccessExists(
+            personId,
+            submission.organisationId,
+            project.id,
+            executor,
+          ),
           identity
             ? currentProjectReachPredicate(
                 identity,
@@ -180,6 +195,10 @@ function ownedSubmissionExists(
   const requestType = alias(
     requestTypeTable,
     "notification_owned_submission_type",
+  );
+  const version = alias(
+    requestTypeVersionTable,
+    "notification_owned_submission_version",
   );
   const workspace = alias(
     workspaceTable,
@@ -214,11 +233,13 @@ function ownedSubmissionExists(
         ),
       ),
   );
+  const defaultProjectId = sql`COALESCE(${version.defaultProjectId}, ${requestType.defaultProjectId})`;
   return exists(
     executor
       .select({ one: sql`1` })
       .from(submission)
       .innerJoin(requestType, eq(requestType.id, submission.requestTypeId))
+      .innerJoin(version, eq(version.id, submission.requestTypeVersionId))
       .innerJoin(workspace, eq(workspace.id, requestType.workspaceId))
       .where(
         and(
@@ -227,10 +248,24 @@ function ownedSubmissionExists(
           eq(submission.organisationId, identity.organisationId),
           // The workspace belongs to the provider organisation, the submission to the
           // customer's (A-01); comparing the two hid every submission notification. Reach is
-          // the requester and the customer organisation above.
+          // the requester, customer organisation, and per-person project access (D-D).
           eq(requestType.customerVisible, true),
           isNull(workspace.deletedAt),
-          or(isNull(submission.workItemId), linkedItem),
+          or(
+            and(
+              isNull(submission.workItemId),
+              or(
+                sql`${defaultProjectId} IS NULL`,
+                customerProjectAccessExists(
+                  identity.personId,
+                  identity.organisationId,
+                  defaultProjectId,
+                  executor,
+                ),
+              ),
+            ),
+            linkedItem,
+          ),
         ),
       ),
   );
@@ -329,6 +364,12 @@ export async function findLinkedRequestOwnerPersonIds(
         isNull(item.archivedAt),
         isNull(project.deletedAt),
         isNull(workspace.deletedAt),
+        customerProjectAccessExists(
+          submission.requesterId,
+          submission.organisationId,
+          project.id,
+          executor,
+        ),
       ),
     );
   // U-12: a direct request's customer requester owns it too (see `directOwnedRequestExists`).
@@ -362,6 +403,12 @@ export async function findLinkedRequestOwnerPersonIds(
         isNull(directProject.deletedAt),
         isNull(directProject.archivedAt),
         isNull(directWorkspace.deletedAt),
+        customerProjectAccessExists(
+          directRequester.id,
+          directProject.organisationId,
+          directProject.id,
+          executor,
+        ),
         notLinkedToRequesterSubmission(
           directItem.id,
           directItem.requesterId,

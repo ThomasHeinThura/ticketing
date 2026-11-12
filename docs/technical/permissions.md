@@ -100,6 +100,8 @@ Reach and authority are separate checks. Membership determines reachable resourc
 
 `project-lead` is the project-scope counterpart of `lead` (rank 50). Project authority overrides workspace authority for that project; it does not grant workspace-wide authority. The customer role is outside the staff ladder and stays portal-bound. Self-assignment and customer exceptions require their declared row predicate, not a role-name shortcut.
 
+**Customer project reach (Thomas, 12 November 2026, D-D):** A customer must have an explicit `customer_project_access` row and the project must belong to their organisation. Organisation membership alone does not grant project reach. Revocation removes access to project cases even for a requester or participant; project-free organisation request types remain available.
+
 Capability names persist in roles and credentials. Rename/removal requires a compatibility migration; adding a capability does not expand existing API-key ceilings. MCP uses ordinary capabilities intersected with the credential ceiling. Never add MCP-only capabilities.
 
 ## Policy kinds

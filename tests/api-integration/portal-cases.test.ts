@@ -290,7 +290,12 @@ async function seed() {
     .where(eq(schema.projectTable.id, fabrikamHosted.id));
 
   const support = await requestTypeFor(contoso, "Support", contoso.project.id);
-  const leaky = await requestTypeFor(contoso, "Access", fabrikamHosted.id);
+  const leaky = await requestTypeFor(contoso, "Access");
+  const foreignProjectType = await requestTypeFor(
+    contoso,
+    "Foreign project",
+    fabrikamHosted.id,
+  );
   const fabType = await requestTypeFor(fabrikam, "Fabrikam help");
 
   const now = Date.now();
@@ -311,6 +316,11 @@ async function seed() {
     summary: '=HYPERLINK("http://x","click"), with comma',
     severity: "low",
     createdAt: days(10),
+  });
+  const foreignProjectSubmission = await submission(foreignProjectType, {
+    organisationId: alice.orgId,
+    requesterId: alice.person.id,
+    summary: "Foreign project must stay hidden",
   });
   const aliceDeclined = await submission(support, {
     organisationId: alice.orgId,
@@ -442,6 +452,7 @@ async function seed() {
     frank,
     aliceNew,
     aliceFormula,
+    foreignProjectSubmission,
     aliceDeclined,
     aliceWaiting,
     waitingItem,
@@ -470,6 +481,7 @@ describe("portal cases (S4b)", () => {
   it("lists exactly the readable cases of the caller's organisation", async () => {
     const s = await seed();
     const all = await list(s.contoso, s.alice, "scope=all&limit=100");
+    expect(refs(all)).not.toContain(s.foreignProjectSubmission.ref);
     expect(refs(all)).toEqual(
       [
         s.aliceNew.ref,
@@ -731,7 +743,11 @@ describe("portal cases (S4b)", () => {
     );
     const foreignCsv = await foreign.text();
     expect(foreignCsv).toContain(s.fabrikamSubmission.ref);
-    expect(foreignCsv).not.toContain(s.aliceNew.ref);
+    expect(
+      foreignCsv
+        .split("\r\n")
+        .some((line) => line.startsWith(`${s.aliceNew.ref},`)),
+    ).toBe(false);
     expect(foreignCsv).not.toContain("Contoso");
   });
 

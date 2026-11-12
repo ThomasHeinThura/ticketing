@@ -3517,7 +3517,7 @@ Thomas's direction after UAT testing on 3 November 2026.
 - **The customer portal belongs to a customer organisation.** Each organisation has a few portal users (customers, typically five to seven) who open tickets, follow them and see their status.
 - **Each organisation has at least one engagement.** It may have several delivery projects and several managed services.
 - **Status dashboards belong to the engagement, not the organisation.**
-  - **Portal:** the Dashboard is the organisation's entry point. It shows the organisation's cases across all its engagements, plus one card per engagement. Each engagement's own status page lives at Project Details: health, status, KPIs and cases scoped to that engagement, subscription period, hours used and remaining, milestones, contacts and shared documents.
+  - **Portal:** the Dashboard is the organisation's entry point. It shows cases and engagement cards only for projects to which the customer person has access. Each engagement's own status page lives at Project Details: health, status, KPIs and cases scoped to that engagement, subscription period, hours used and remaining, milestones, contacts and shared documents.
   - **Agent app:** the engagement's Overview tab is the staff equivalent.
 - **Company members (staff) work tickets in the same engagements.** They raise tickets for a customer, update and resolve them. Their billable time counts against the engagement's hour bank, and progress feeds the engagement's status. A ticket staff raise for a customer appears in that customer's portal (decision D6). The customer must be able to open it and reply, which closes the D6 "known gap" above.
 
@@ -3534,6 +3534,8 @@ Thomas's direction after UAT testing on 3 November 2026.
 A page can be shared with the customer only by adding it to Documents as a customer-visible entry. Pages themselves never appear in the portal.
 
 **UI.** Kaneo stays the visual base. Screens added for UAT (Overview, portal) are adjusted to Kaneo's spacing, typography and tab behaviour. Where the project tab strip overflows, it scrolls and keeps the active tab visible.
+
+**12 November 2026, Thomas, D-D:** This reverses the 3 November assumption that every customer person reaches every engagement of their organisation. Each person sees only explicitly granted projects of their own organisation. An invitation defaults to no projects and may include projects chosen by an authorised inviter; staff can grant or revoke access. Revocation also removes access to that project's cases for requesters and participants. Organisation-level request types without a project remain available.
 
 **Portal files (CP-19; A-07, A-08; Thomas, 10 November 2026).** The portal host serves work-item and submission attachment files only through short-lived API links on both filesystem and S3. The portal `own_request` and `own_submission` routes mint them after their own ownership and reach check:
 - **Download** (`GET`/`HEAD /api/storage/portal-download`): a customer-visible file on the request or on a live public comment, never an internal or deleted comment's file. The API rechecks that reach on every byte request before reading storage; S3 never returns a bucket URL to the portal caller.

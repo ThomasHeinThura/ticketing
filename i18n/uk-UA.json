@@ -8403,6 +8403,12 @@
 		"create": {
 			"description": "The person receives an email with a link to accept on the customer portal. The link works once and expires.",
 			"email": "Email address",
+			"projectsTitle": "Projects (optional)",
+			"projectsLoadError": "Could not load projects. Try again.",
+			"accessTitle": "Customer access",
+			"accessError": "Could not load or update customer access.",
+			"grantAccess": "Grant access",
+			"revokeAccess": "Remove access",
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation",
 			"title": "Invite to this organisation"

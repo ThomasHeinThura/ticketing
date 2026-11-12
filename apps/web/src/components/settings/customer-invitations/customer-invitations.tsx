@@ -6,6 +6,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -39,6 +40,7 @@ import {
   type CustomerInvitation,
   type CustomerInvitationStatus,
   createCustomerInvitation,
+  listCustomerInvitationProjects,
   listCustomerInvitations,
   listInvitableOrganisations,
   requestCustomerInvitationRevoke,
@@ -80,9 +82,14 @@ function InviteDialog({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
+  const [projectIds, setProjectIds] = useState<string[]>([]);
+  const projects = useQuery({
+    queryKey: ["customer-invitation-projects", workspaceId, organisationId],
+    queryFn: () => listCustomerInvitationProjects(workspaceId, organisationId),
+  });
   const mutation = useMutation({
     mutationFn: () =>
-      createCustomerInvitation(workspaceId, organisationId, email),
+      createCustomerInvitation(workspaceId, organisationId, email, projectIds),
     onSuccess: async (sent) => {
       await queryClient.invalidateQueries({
         queryKey: customerInvitationsKey(workspaceId, organisationId),
@@ -133,6 +140,37 @@ function InviteDialog({
                 {t("customerInvitations:create.roleNote")}
               </p>
             </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">
+                {t("customerInvitations:create.projectsTitle")}
+              </legend>
+              {projects.isError ? (
+                <Alert variant="error">
+                  <AlertDescription>
+                    {t("customerInvitations:create.projectsLoadError")}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {projects.data?.map((project) => (
+                <div key={project.id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`invite-project-${project.id}`}
+                    checked={projectIds.includes(project.id)}
+                    disabled={mutation.isPending}
+                    onCheckedChange={(checked) =>
+                      setProjectIds((current) =>
+                        checked === true
+                          ? [...current, project.id]
+                          : current.filter((id) => id !== project.id),
+                      )
+                    }
+                  />
+                  <Label htmlFor={`invite-project-${project.id}`}>
+                    {project.name}
+                  </Label>
+                </div>
+              ))}
+            </fieldset>
             {mutation.error ? (
               <Alert variant="error">
                 <AlertDescription>{mutation.error.message}</AlertDescription>
@@ -148,7 +186,15 @@ function InviteDialog({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={mutation.isPending || !valid}>
+            <Button
+              type="submit"
+              disabled={
+                mutation.isPending ||
+                !valid ||
+                projects.isLoading ||
+                projects.isError
+              }
+            >
               {t("customerInvitations:create.submit")}
             </Button>
           </DialogFooter>

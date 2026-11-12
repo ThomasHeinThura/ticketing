@@ -96,13 +96,20 @@ describe("reaches() with inherited membership (PR-2..PR-3)", () => {
   it("customer-side callers never inherit", () => {
     const customer = staff(["a"], {
       side: "customer",
-      reach: { kind: "organisation", ids: ["org-customer"] },
+      reach: {
+        kind: "organisation",
+        ids: ["org-customer"],
+        projectIds: ["a"],
+      },
     });
     expect(reaches(customer, { ...facts("d"), organisationId: null })).toBe(
       false,
     );
     expect(
       reaches(customer, { ...facts("d"), organisationId: "org-other" }),
+    ).toBe(false);
+    expect(
+      reaches(customer, { ...facts("d"), organisationId: "org-customer" }),
     ).toBe(false);
   });
 });

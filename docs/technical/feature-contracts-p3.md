@@ -94,8 +94,10 @@ misconfigured away through the role editor.
 <a id="customer-portal-behaviour"></a>
 ### Behaviour
 
-- `CP-1` Reach is fixed to the customer's own organisation and cannot be widened by any
-  role.
+- `CP-1` A customer reaches a project only when it belongs to their organisation and the
+  person has an explicit project access grant. New customers have no project access unless
+  projects are chosen in their invitation (Thomas, 12 November 2026, D-D). A role cannot widen
+  this reach.
 - `CP-2` A request for another organisation's record returns **404**, never 403.
 - `CP-3` Internal comments are filtered server-side in the portal router. Never in the
   client.
@@ -148,7 +150,7 @@ misconfigured away through the role editor.
   portal — password, email OTP, magic link or SSO.
 - `CP-13` An invitation cannot grant a staff role or `instance:admin`.
 - `CP-20` **Customer invitations reuse the invitation record with a customer scope** (decided 23 Oct). A customer-scope invitation names exactly one customer organisation and the `customer` role; it is created only by a caller holding `member:invite` with reach to that organisation, over a session (never an API key or MCP key, matching the existing invitation routes). The staff invitation flow and its `/agent/invite` accept route are unchanged. `Contract-new`
-- `CP-21` Role is validated twice. At write, a customer-scope invitation whose role is anything other than `customer`, or that names a staff or custom role, `instance:admin`, a team or a workspace-level grant, is refused 422 and nothing is stored. At accept, the stored role and scope are re-read inside the accept transaction and refused if they are no longer a customer-scope invitation to a live organisation, so a row edited, imported or migrated into a staff role cannot be accepted. A staff-scope invitation cannot be accepted on the portal host and a customer-scope invitation cannot be accepted on the agent host; either returns the same generic not-found. `Contract-new`
+- `CP-21` Role is validated twice. At write, a customer-scope invitation whose role is anything other than `customer`, or that names a staff or custom role, `instance:admin`, a team or a workspace-level grant, is refused 422 and nothing is stored. The inviter may select projects of that organisation that the inviter can manage; an empty selection grants no projects. At accept, the stored role, scope and selected projects are revalidated and eligible project access is granted in the same transaction. A staff-scope invitation cannot be accepted on the portal host and a customer-scope invitation cannot be accepted on the agent host; either returns the same generic not-found. (Thomas, 12 November 2026, D-D.)
 - `CP-22` Expiry, resend and revoke. A customer invitation expires after the existing invitation lifetime unless an instance setting overrides it; an expired, accepted or revoked invitation cannot be accepted and the accept page shows one generic "invitation no longer valid" notice that does not say which. Resend issues a fresh accept credential, invalidates the previous one and extends expiry; revoke (the existing `DELETE /api/invitation/{id}` path, same `member:invite` policy) invalidates the credential immediately. An address that could never accept here (an active member of that organisation, staff anywhere, a customer of another organisation, a deactivated customer) is not refused: create stores a silent inert pending row with no credential and sends nothing, and the response is indistinguishable from a real invitation in status, body and `delivered`; the reason is recorded in the audit trail only (rationale: a refusal would be a cross-tenant account-existence oracle). `delivered` reports only whether an email provider is configured on the instance, identically for inert and real rows; a per-send transport failure is logged and audited but never changes the response. Resend and a re-create after expiry re-evaluate an inert row: once its address can be invited it gets a credential and a normal send, otherwise it stays inert and silent. The only 409 is "already pending". `Contract-new`
 - `CP-23` The accept credential is unguessable, single-use, and stored hash-only; the invitation id alone never grants acceptance. The agent surface lists customer invitations for an organisation with status (pending, accepted, revoked, expired) but never shows the credential after creation. `Contract-new`
 Thomas approved a narrow CP-23 exception on 25 October 2026: a purpose-bound encrypted email-delivery envelope may retain the acceptance credential for at most 15 minutes. The invitation row remains hash-only. Erase the envelope after sending, expiry, revoke or superseding resend; never expose it through API responses, audit rows or logs.
@@ -164,7 +166,10 @@ Thomas rejected an outage retention exception: expiry must be cryptographic. Per
   the requester and explicitly added participants; **`organisation`** — visible to permitted
   colleagues in the same customer organisation. Default `organisation`, set per organisation
   in God Mode (`organisation.default_customer_visibility`) and chosen by the requester at
-  submission time. A **request type may force `private`**; sensitive types — HR, finance,
+  submission time. For a project-bound request, the customer must also hold access to that
+  project; revocation removes access even for its requester and participants. Organisation-level
+  request types that are not tied to a project remain available (Thomas, 12 November 2026, D-D).
+  A **request type may force `private`**; sensitive types — HR, finance,
   legal, personal data, access requests, security-sensitive workflows — should. A colleague
   outside the allowed scope receives the **same constant-shape 404** as a user from another
   organisation ([rbac.md](permissions.md#reach)). Attachments stay requester-only: an organisation colleague or participant reads the request, its public messages and status but not its files, and the portal projection carries `canViewAttachments`/`canUpload` (true only for the requester) so the UI hides them instead of erroring.

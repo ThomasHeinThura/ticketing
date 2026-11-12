@@ -7433,3 +7433,72 @@ export const customerInvitationAuthContinuationTable = pgTable(
     ),
   ],
 );
+
+/**
+ * D-D (Thomas, 12 Nov 2026): explicit per-person customer reach to an engagement. A customer's
+ * authority remains their single organisation-scope `customer` role; reach requires both the
+ * project's `organisation_id` matching the customer's organisation and a row here.
+ */
+export const customerProjectAccessTable = pgTable(
+  "customer_project_access",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    grantedBy: text("granted_by").references(() => personTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "customer_project_access_pkey",
+      columns: [table.personId, table.projectId],
+    }),
+    index("customer_project_access_project_idx").on(table.projectId),
+  ],
+);
+
+/**
+ * D-D / CP-21 / CP-24: projects selected by the inviter on a customer-scope invitation, granted in
+ * `customer_project_access` inside the acceptance transaction.
+ */
+export const customerInvitationProjectTable = pgTable(
+  "customer_invitation_project",
+  {
+    invitationId: text("invitation_id")
+      .notNull()
+      .references(() => invitationTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "customer_invitation_project_pkey",
+      columns: [table.invitationId, table.projectId],
+    }),
+    index("customer_invitation_project_project_idx").on(table.projectId),
+  ],
+);

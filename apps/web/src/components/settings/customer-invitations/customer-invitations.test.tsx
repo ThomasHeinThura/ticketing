@@ -12,6 +12,7 @@ import type { CustomerInvitation } from "@/fetchers/customer-invitation";
 const mocks = vi.hoisted(() => ({
   listOrganisations: vi.fn(),
   listInvitations: vi.fn(),
+  listProjects: vi.fn(),
   create: vi.fn(),
   resend: vi.fn(),
   revoke: vi.fn(),
@@ -44,6 +45,8 @@ vi.mock("@/fetchers/customer-invitation", () => ({
     mocks.listOrganisations(...args),
   listCustomerInvitations: (...args: unknown[]) =>
     mocks.listInvitations(...args),
+  listCustomerInvitationProjects: (...args: unknown[]) =>
+    mocks.listProjects(...args),
   createCustomerInvitation: (...args: unknown[]) => mocks.create(...args),
   resendCustomerInvitation: (...args: unknown[]) => mocks.resend(...args),
   requestCustomerInvitationRevoke: (...args: unknown[]) =>
@@ -154,11 +157,15 @@ describe("customer invitations screen", () => {
     );
   });
 
-  it("sends an invitation with the address only; the role is not a field", async () => {
+  it("sends an invitation with the chosen projects; the role is not a field", async () => {
     mocks.listOrganisations.mockResolvedValue([
       { id: "o1", key: "acme", name: "Acme" },
     ]);
     mocks.listInvitations.mockResolvedValue([]);
+    mocks.listProjects.mockResolvedValue([
+      { id: "p1", name: "First project" },
+      { id: "p2", name: "Second project" },
+    ]);
     mocks.create.mockResolvedValue({
       ...invitation("n", "pending"),
       delivered: true,
@@ -169,9 +176,17 @@ describe("customer invitations screen", () => {
       "customerInvitations:create.email",
     );
     fireEvent.change(input, { target: { value: "new@example.test" } });
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "First project" }),
+    );
     fireEvent.click(screen.getByText("customerInvitations:create.submit"));
     await waitFor(() =>
-      expect(mocks.create).toHaveBeenCalledWith("w1", "o1", "new@example.test"),
+      expect(mocks.create).toHaveBeenCalledWith(
+        "w1",
+        "o1",
+        "new@example.test",
+        ["p1"],
+      ),
     );
     expect(screen.queryByLabelText(/role/i)).toBeNull();
   });

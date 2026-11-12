@@ -19,7 +19,10 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import type { Executor } from "../database/executor";
-import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
+import {
+  currentProjectReachPredicate,
+  customerProjectAccessExists,
+} from "../database/repositories/identity-scope.repository";
 import {
   organisationTable,
   personTable,
@@ -1099,19 +1102,24 @@ export async function softDeleteAnnouncement(
 // ------------------------------------------------------------------------------ portal side
 
 export type PortalAnnouncementScope = {
+  personId: string;
   organisationId: string;
   workspaceIds: string[];
 };
 
 /**
- * The caller's customer organisation and the workspaces that can show it announcements: a live
- * project of the organisation, `feature.customer_portal` on and the service catalogue on.
+ * The caller's customer person, organisation, and the workspaces that can show it announcements:
+ * a live project of the organisation the customer holds access to, `feature.customer_portal` on
+ * and the service catalogue on.
  */
 export async function resolvePortalAnnouncementScope(
   userId: string,
 ): Promise<PortalAnnouncementScope> {
   const [person] = await db
-    .select({ organisationId: personTable.organisationId })
+    .select({
+      personId: personTable.id,
+      organisationId: personTable.organisationId,
+    })
     .from(personTable)
     .where(
       and(
@@ -1131,6 +1139,11 @@ export async function resolvePortalAnnouncementScope(
         eq(projectTable.organisationId, person.organisationId),
         isNull(projectTable.deletedAt),
         isNull(projectTable.archivedAt),
+        customerProjectAccessExists(
+          person.personId,
+          person.organisationId,
+          projectTable.id,
+        ),
       ),
     );
   const portal = await customerPortalScope();
@@ -1143,13 +1156,15 @@ export async function resolvePortalAnnouncementScope(
     ),
   );
   return {
+    personId: person.personId,
     organisationId: person.organisationId,
     workspaceIds: enabled.filter((id): id is string => id !== null),
   };
 }
 
-/** A live, portal-on project of the organisation in the announcement's workspace. */
+/** A live, portal-on project of the organisation in the announcement's workspace that `personId` reaches. */
 function organisationProjectInWorkspace(
+  personId: string,
   organisationId: string,
   portal: CustomerPortalScope | null,
 ) {
@@ -1163,6 +1178,11 @@ function organisationProjectInWorkspace(
           eq(projectTable.organisationId, organisationId),
           isNull(projectTable.deletedAt),
           isNull(projectTable.archivedAt),
+          customerProjectAccessExists(
+            personId,
+            organisationId,
+            projectTable.id,
+          ),
           customerPortalOnSql(
             portal,
             projectTable.workspaceId,
@@ -1173,12 +1193,17 @@ function organisationProjectInWorkspace(
   );
 }
 
-/** The audience predicate: who the announcement addresses, evaluated for one organisation. */
+/** The audience predicate: who the announcement addresses, evaluated for one customer person. */
 function addressesOrganisation(
+  personId: string,
   organisationId: string,
   portal: CustomerPortalScope | null,
 ) {
-  const inWorkspace = organisationProjectInWorkspace(organisationId, portal);
+  const inWorkspace = organisationProjectInWorkspace(
+    personId,
+    organisationId,
+    portal,
+  );
   return or(
     and(eq(announcementTable.audience, "workspace"), inWorkspace),
     and(
@@ -1229,6 +1254,11 @@ function addressesOrganisation(
               eq(projectTable.organisationId, organisationId),
               isNull(projectTable.deletedAt),
               isNull(projectTable.archivedAt),
+              customerProjectAccessExists(
+                personId,
+                organisationId,
+                projectTable.id,
+              ),
               customerPortalOnSql(
                 portal,
                 projectTable.workspaceId,
@@ -1265,6 +1295,7 @@ function toPortal(row: AnnouncementRow): PortalAnnouncement {
 
 type PortalCursor = {
   v: 1;
+  personId: string;
   organisationId: string;
   startsAt: string;
   id: string;
@@ -1276,6 +1307,7 @@ function encodeCursor(cursor: PortalCursor) {
 
 function decodeCursor(
   value: string | undefined,
+  personId: string,
   organisationId: string,
 ): PortalCursor | null | false {
   if (value === undefined) return null;
@@ -1288,8 +1320,10 @@ function decodeCursor(
       return false;
     const parsed = candidate as Record<string, unknown>;
     if (
-      Object.keys(parsed).sort().join(",") !== "id,organisationId,startsAt,v" ||
+      Object.keys(parsed).sort().join(",") !==
+        "id,organisationId,personId,startsAt,v" ||
       parsed.v !== 1 ||
+      parsed.personId !== personId ||
       parsed.organisationId !== organisationId ||
       typeof parsed.id !== "string" ||
       parsed.id.length < 1 ||
@@ -1318,7 +1352,11 @@ export async function listPortalAnnouncements(
     severities?: readonly AnnouncementSeverity[];
   },
 ) {
-  const cursor = decodeCursor(input.cursor, scope.organisationId);
+  const cursor = decodeCursor(
+    input.cursor,
+    scope.personId,
+    scope.organisationId,
+  );
   if (cursor === false)
     throw new HTTPException(400, { message: "Invalid announcement cursor" });
   if (scope.workspaceIds.length === 0) return { data: [], nextCursor: null };
@@ -1331,6 +1369,7 @@ export async function listPortalAnnouncements(
         inArray(announcementTable.workspaceId, scope.workspaceIds),
         liveNow(now),
         addressesOrganisation(
+          scope.personId,
           scope.organisationId,
           await customerPortalScope(),
         ),
@@ -1359,6 +1398,7 @@ export async function listPortalAnnouncements(
       hasMore && last
         ? encodeCursor({
             v: 1,
+            personId: scope.personId,
             organisationId: scope.organisationId,
             startsAt: last.startsAt.toISOString(),
             id: last.id,
@@ -1381,6 +1421,7 @@ export async function getPortalAnnouncement(
         inArray(announcementTable.workspaceId, scope.workspaceIds),
         liveNow(new Date()),
         addressesOrganisation(
+          scope.personId,
           scope.organisationId,
           await customerPortalScope(),
         ),

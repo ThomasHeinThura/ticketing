@@ -60,6 +60,9 @@ export async function kbWorld() {
     .update(schema.projectTable)
     .set({ organisationId: customerA.orgId })
     .where(eq(schema.projectTable.id, projectA.id));
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: customerA.person.id, projectId: projectA.id });
   const member = await addMember(workspaceId, "member");
   const viewer = await addMember(workspaceId, "viewer");
   const reacher = await addMember(workspaceId, "member");

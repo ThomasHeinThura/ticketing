@@ -452,7 +452,16 @@ async function portalOwnSubmission(c: IntakeContext, next: Next) {
   const identity = await portalIdentity(c.get("userId"));
   const ref = c.req.param("ref");
   if (!ref) return notFound("Submission not found");
-  const row = await findSubmission(ref, undefined, identity.personId);
+  const row = await findSubmission(
+    ref,
+    undefined,
+    identity.personId,
+    undefined,
+    {
+      personId: identity.personId,
+      organisationId: identity.organisationId,
+    },
+  );
   await requireIntakeEnabled(row.workspaceId);
   c.set("portalPredicateSatisfied", true);
   c.set("policyOrganisationId", identity.organisationId);
@@ -1322,6 +1331,7 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
     const rows = await portalCatalogue(
       identity.organisationId,
       c.req.valid("query").q,
+      identity.personId,
     );
     const [organisation] = await db
       .select({
@@ -1352,9 +1362,9 @@ const requestTypeRouter = apiRouter<IntakeVariables>()
   })
   .openapi(catalogueDetailRoute, async (c) => {
     const identity = await portalIdentity(c.get("userId"));
-    const found = (await portalCatalogue(identity.organisationId)).find(
-      (row) => row.type.key === c.req.valid("param").key,
-    );
+    const found = (
+      await portalCatalogue(identity.organisationId, "", identity.personId)
+    ).find((row) => row.type.key === c.req.valid("param").key);
     if (!found) notFound("Request type not found");
     const response: z.infer<typeof portalCatalogueDetailResponseSchema> = {
       key: found.type.key,
@@ -1660,9 +1670,12 @@ const portalCasesRouter = apiRouter<IntakeVariables>()
     const [counts, approvals] = await Promise.all([
       portalHomeCounts(identity.personId, project),
       project
-        ? organisationProjectIds(identity.organisationId, project).then(
-            (projectIds) =>
-              countPortalPendingApprovals(c.get("userId"), projectIds),
+        ? organisationProjectIds(
+            identity.organisationId,
+            project,
+            identity.personId,
+          ).then((projectIds) =>
+            countPortalPendingApprovals(c.get("userId"), projectIds),
           )
         : countPortalPendingApprovals(c.get("userId")),
     ]);

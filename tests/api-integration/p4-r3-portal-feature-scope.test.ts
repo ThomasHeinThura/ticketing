@@ -68,6 +68,9 @@ async function secondWorkspace(seed: Seed) {
     .update(schema.projectTable)
     .set({ organisationId: seed.customer.orgId })
     .where(eq(schema.projectTable.id, other.project.id));
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: seed.customer.person.id, projectId: other.project.id });
   // Mirrors `ensureCustomerOrg` for the seed's own workspace.
   await db
     .update(schema.workspaceTable)

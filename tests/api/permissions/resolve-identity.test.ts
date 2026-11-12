@@ -696,7 +696,7 @@ describe("resolveIdentityFromFacts — S4 (PR #315 review): the key fact is requ
 });
 
 describe("resolveIdentityFromFacts — a portal (customer) session", () => {
-  it("holds exactly the built-in customer grant, and reach scoped to its own organisation", () => {
+  it("holds exactly the built-in customer grant, and reach scoped to its own organisation with no default projects (D-D)", () => {
     const identity = resolveIdentityFromFacts(
       facts({ person: CUSTOMER_PERSON, workspaceMemberships: [] }),
     );
@@ -706,6 +706,7 @@ describe("resolveIdentityFromFacts — a portal (customer) session", () => {
     expect(identity?.reach).toEqual({
       kind: "organisation",
       ids: ["org-acme"],
+      projectIds: [],
     });
     expect(identity?.authority).toEqual([
       {
@@ -717,6 +718,48 @@ describe("resolveIdentityFromFacts — a portal (customer) session", () => {
       },
     ]);
     expect(identity?.memberships).toEqual([]);
+  });
+
+  it("includes only live, same-organisation customer_project_access rows in customer reach (D-D)", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        person: CUSTOMER_PERSON,
+        workspaceMemberships: [],
+        customerProjectAccess: [
+          {
+            projectId: "proj-own-live",
+            projectOrganisationId: "org-acme",
+            projectDeleted: false,
+          },
+          {
+            projectId: "proj-own-live",
+            projectOrganisationId: "org-acme",
+            projectDeleted: false,
+          },
+          {
+            projectId: "proj-own-deleted",
+            projectOrganisationId: "org-acme",
+            projectDeleted: true,
+          },
+          {
+            projectId: "proj-other-org",
+            projectOrganisationId: "org-other",
+            projectDeleted: false,
+          },
+          {
+            projectId: "proj-internal",
+            projectOrganisationId: null,
+            projectDeleted: false,
+          },
+        ],
+      }),
+    );
+
+    expect(identity?.reach).toEqual({
+      kind: "organisation",
+      ids: ["org-acme"],
+      projectIds: ["proj-own-live"],
+    });
   });
 
   it.each([

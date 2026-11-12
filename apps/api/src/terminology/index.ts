@@ -483,9 +483,9 @@ export const portalTerminology = apiRouter().openapi(portalRoute, async (c) => {
   const query = c.req.valid("query");
   let workspaceId: string | null = null;
   if (query.requestTypeKey) {
-    const type = (await portalCatalogue(identity.organisationId)).find(
-      (item) => item.type.key === query.requestTypeKey,
-    );
+    const type = (
+      await portalCatalogue(identity.organisationId, "", identity.personId)
+    ).find((item) => item.type.key === query.requestTypeKey);
     if (!type) throw new HTTPException(404, { message: "Not found" });
     workspaceId = type.workspaceId;
   } else if (query.submissionRef) {
