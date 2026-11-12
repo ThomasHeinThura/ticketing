@@ -22,7 +22,6 @@ import {
   Progress,
   ProgressIndicator,
   ProgressTrack,
-  Skeleton,
 } from "@taskdesk/ui";
 import {
   AlertTriangle,
@@ -34,17 +33,18 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PageLoading } from "@/components/page-loading";
 import PageTitle from "@/components/page-title";
 import WorkItemCreateDialogHost from "@/components/work-item/work-item-create-dialog-host";
 import { preloadWorkItemCreateDialogShell } from "@/components/work-item/work-item-create-dialog-shell-loader";
 import archiveProject from "@/fetchers/project/archive-project";
 import type getProject from "@/fetchers/project/get-project";
 import {
-  getProjectOverview,
   type ProjectOverview,
   projectOverviewKeys,
 } from "@/fetchers/project/overview";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
+import { projectOverviewOptions } from "@/hooks/queries/project/project-overview-options";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
@@ -335,7 +335,13 @@ function ServiceLevelsPanel({ overview }: { overview: ProjectOverview }) {
  * inside the Kaneo project shell. Reads need `project:read`; edit controls appear only with
  * `project:update` (summary, milestones) or `project:manage_settings` (contract).
  */
-export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
+export function ProjectOverviewPage({
+  projectKey,
+  prefetched = false,
+}: {
+  projectKey: string;
+  prefetched?: boolean;
+}) {
   const { t, i18n } = useTranslation("projectOverview");
   const {
     project: listed,
@@ -392,12 +398,10 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
       ),
   });
   const overview = useQuery({
-    queryKey: projectOverviewKeys.overview(projectId),
-    queryFn: () => getProjectOverview(projectId),
+    ...projectOverviewOptions(projectId),
     enabled: Boolean(projectId),
-    // Counts derive from work items, which change on other tabs; the app-wide default
-    // (refetchOnMount: false) would keep showing the numbers from the first visit.
-    refetchOnMount: "always",
+    // The route refreshes counts on entry; mounting reuses that same request.
+    refetchOnMount: prefetched ? false : "always",
   });
   // The shared create dialog is not needed to paint, but Create should open without a network
   // wait, so fetch it once the page has painted.
@@ -412,23 +416,7 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
     };
   }, [canCreate]);
 
-  if (isLoading || (project && overview.isLoading))
-    return (
-      <div
-        className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 md:p-6"
-        role="status"
-        aria-label={t("loading")}
-      >
-        <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Skeleton className="h-20" />
-          <Skeleton className="h-20" />
-          <Skeleton className="h-20" />
-          <Skeleton className="h-20" />
-        </div>
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+  if (isLoading || (project && overview.isLoading)) return <PageLoading />;
   if (!project || overview.isError || !overview.data)
     return (
       <div className="mx-auto w-full max-w-6xl p-4 md:p-6">

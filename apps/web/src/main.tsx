@@ -10,6 +10,7 @@ import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import { ServerErrorNotifications } from "./components/errors/server-error-notifications";
 import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-launcher";
+import { PageLoadingAnnouncer } from "./components/page-loading-announcer";
 import AuthProvider from "./components/providers/auth-provider";
 import { DeferredUserPreferencesSync } from "./components/providers/deferred-user-preferences-sync";
 import { ThemeProvider } from "./components/providers/theme-provider";
@@ -20,6 +21,7 @@ import { AppI18nProvider } from "./lib/i18n/provider";
 import { initializeNotificationPreferenceHandoff } from "./lib/notification-preference-handoff";
 import { capturePasswordResetToken } from "./lib/password-reset-token";
 import { createRouterParseSearch } from "./lib/project-board-search";
+import { routePendingOptions } from "./lib/route-pending";
 import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
 import { routeTree } from "./routeTree.agent.gen";
 
@@ -76,6 +78,7 @@ function bootstrapApplication() {
       typeof window === "undefined" ? undefined : window.location.pathname,
     ),
     defaultPreload: "intent",
+    ...routePendingOptions,
     defaultPreloadStaleTime: 0,
     // UX-8: an unknown address shows the branded page inside whichever shell caught it, never
     // the router's bare "Not Found" text.
@@ -169,10 +172,12 @@ function bootstrapApplication() {
                 <AuthProvider>
                   <DeferredUserPreferencesSync />
                   <AppI18nProvider>
-                    <KeyboardShortcutsProvider>
-                      <App />
-                      <KeyboardShortcutsHelpLauncher />
-                    </KeyboardShortcutsProvider>
+                    <PageLoadingAnnouncer>
+                      <KeyboardShortcutsProvider>
+                        <App />
+                        <KeyboardShortcutsHelpLauncher />
+                      </KeyboardShortcutsProvider>
+                    </PageLoadingAnnouncer>
                   </AppI18nProvider>
                 </AuthProvider>
               </ToastProvider>

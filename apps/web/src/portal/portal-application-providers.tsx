@@ -3,6 +3,7 @@ import { ToastProvider } from "@taskdesk/ui";
 import { type PropsWithChildren, useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { ServerErrorNotifications } from "@/components/errors/server-error-notifications";
+import { PageLoadingAnnouncer } from "@/components/page-loading-announcer";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { getBrowserLocale, i18n, resolveLocale } from "@/lib/i18n";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
@@ -23,7 +24,7 @@ export function PortalApplicationProviders({ children }: PropsWithChildren) {
           <TerminologyProvider audience="customer" locale={locale}>
             <ToastProvider position="bottom-right">
               <ServerErrorNotifications />
-              {children}
+              <PageLoadingAnnouncer>{children}</PageLoadingAnnouncer>
             </ToastProvider>
           </TerminologyProvider>
         </I18nextProvider>

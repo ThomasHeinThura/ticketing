@@ -230,6 +230,21 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("ProjectOverviewPage", () => {
+  it("keeps the shared placeholder until the overview read finishes", async () => {
+    let finish!: (value: ReturnType<typeof overview>) => void;
+    mocks.getProjectOverview.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    renderPage();
+    expect(await screen.findByTestId("page-loading")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    await act(async () => finish(overview()));
+    expect(await screen.findByTestId("project-overview-page")).toBeVisible();
+  });
   it("shows the header line, KPIs, attention banner and summary", async () => {
     renderPage();
     const header = await screen.findByTestId("project-overview-header-line");
@@ -496,6 +511,21 @@ describe("ProjectOverviewPage", () => {
       expect(mocks.getProjectOverview).toHaveBeenCalledTimes(2);
       expect(mocks.getProjectContract).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("reuses the route's completed overview read on mount", async () => {
+    const client = appQueryClient();
+    const { projectOverviewOptions } = await import(
+      "@/hooks/queries/project/project-overview-options"
+    );
+    await client.prefetchQuery(projectOverviewOptions("p1"));
+    render(
+      <QueryClientProvider client={client}>
+        <ProjectOverviewPage projectKey="HELP" prefetched />
+      </QueryClientProvider>,
+    );
+    await screen.findByTestId("project-overview-header-line");
+    expect(mocks.getProjectOverview).toHaveBeenCalledTimes(1);
   });
 
   it("offers New item without Archive to a member who may only create", async () => {
