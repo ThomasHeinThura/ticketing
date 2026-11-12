@@ -70,8 +70,9 @@ export class RoleApiError extends HttpError {
     message: string,
     code: string | null,
     body: Record<string, unknown> | null,
+    fallbackKey?: string,
   ) {
-    super(status, message);
+    super(status, message, fallbackKey);
     this.name = "RoleApiError";
     this.code = code;
     this.body = body;
@@ -85,6 +86,7 @@ async function request<T>(
   path: string,
   init: { method?: string; body?: unknown; stepUpToken?: string } = {},
   fallback = "The request failed",
+  fallbackKey?: string,
 ): Promise<T> {
   const response = await apiFetch(getApiUrl(path), {
     method: init.method ?? "GET",
@@ -110,6 +112,7 @@ async function request<T>(
       message,
       typeof body?.error === "string" ? body.error : null,
       body,
+      message === fallback ? fallbackKey : undefined,
     );
   }
   return response.json() as Promise<T>;
@@ -180,6 +183,7 @@ export function createRole(
     base(workspaceId),
     { method: "POST", body: input, stepUpToken },
     "Failed to create the role",
+    "roles:clientErrors.create",
   );
 }
 
@@ -209,6 +213,9 @@ export function updateRole(
     options?.dryRun
       ? "Failed to preview the role impact"
       : "Failed to save the role",
+    options?.dryRun
+      ? "roles:clientErrors.previewImpact"
+      : "roles:clientErrors.save",
   );
 }
 

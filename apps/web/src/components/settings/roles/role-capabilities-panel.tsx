@@ -35,13 +35,15 @@ import {
 import { workspaceRolesKey } from "@/hooks/queries/workspace/use-workspace-roles";
 import { roleDetailKey } from "@/hooks/queries/workspace-roles/use-role-queries";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { localizedErrorMessage } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
 import {
   capabilityClosure,
-  capabilityLabel,
-  describeCapability,
   ROLE_CAPABILITY_ITEMS,
   requiredByMap,
+  translatedCapabilityDescription,
+  translatedCapabilityGroup,
+  translatedCapabilityLabel,
 } from "./capability-model";
 import type { RoleDraftState } from "./role-draft";
 
@@ -122,7 +124,9 @@ export function RoleCapabilitiesPanel({
       if (selected.has(item.id) && requirers && requirers.length > 0) {
         disabledIds.push(item.id);
         disabledReasons[item.id] = t("roles:matrix.requiredBy", {
-          names: requirers.map(capabilityLabel).join(", "),
+          names: requirers
+            .map((id) => translatedCapabilityLabel(id, t))
+            .join(", "),
         });
         continue;
       }
@@ -152,7 +156,7 @@ export function RoleCapabilitiesPanel({
         { dryRun: true },
       );
       if (!("affected" in result)) {
-        throw new Error("Role dry-run returned a mutation result");
+        throw new Error(t("roles:clientErrors.unexpectedDryRun"));
       }
       return result;
     },
@@ -281,7 +285,9 @@ export function RoleCapabilitiesPanel({
           <AlertTitle>{t("roles:matrix.impliedTitle")}</AlertTitle>
           <AlertDescription>
             {t("roles:matrix.impliedDescription", {
-              names: autoAdded.map(capabilityLabel).join(", "),
+              names: autoAdded
+                .map((id) => translatedCapabilityLabel(id, t))
+                .join(", "),
             })}
           </AlertDescription>
         </Alert>
@@ -291,9 +297,9 @@ export function RoleCapabilitiesPanel({
         aria-label={t("roles:matrix.label")}
         items={ROLE_CAPABILITY_ITEMS.map((item) => ({
           id: item.id,
-          label: item.label,
-          description: item.description,
-          group: item.group,
+          label: translatedCapabilityLabel(item.id, t),
+          description: translatedCapabilityDescription(item.id, t),
+          group: translatedCapabilityGroup(item.group, t),
         }))}
         selected={effective}
         disabled={disabled}
@@ -321,7 +327,9 @@ export function RoleCapabilitiesPanel({
             })}
           </AlertTitle>
           <AlertDescription className="space-y-2">
-            <span>{error.message}</span>
+            <span>
+              {localizedErrorMessage(error, t, t("roles:clientErrors.save"))}
+            </span>
             {error.code === "role_changed" ? (
               <Button
                 className="w-fit"
@@ -338,7 +346,7 @@ export function RoleCapabilitiesPanel({
             Array.isArray(error.body?.capabilities) ? (
               <ul className="list-disc ps-5">
                 {(error.body.capabilities as string[]).map((id) => (
-                  <li key={id}>{describeCapability(id)}</li>
+                  <li key={id}>{translatedCapabilityDescription(id, t)}</li>
                 ))}
               </ul>
             ) : null}
@@ -400,7 +408,7 @@ export function RoleCapabilitiesPanel({
                   <p className="font-medium text-sm">{t("roles:save.added")}</p>
                   <ul className="list-disc ps-5 text-sm">
                     {changes.added.map((id) => (
-                      <li key={id}>{capabilityLabel(id)}</li>
+                      <li key={id}>{translatedCapabilityLabel(id, t)}</li>
                     ))}
                   </ul>
                 </div>
@@ -412,7 +420,7 @@ export function RoleCapabilitiesPanel({
                   </p>
                   <ul className="list-disc ps-5 text-sm">
                     {changes.removed.map((id) => (
-                      <li key={id}>{capabilityLabel(id)}</li>
+                      <li key={id}>{translatedCapabilityLabel(id, t)}</li>
                     ))}
                   </ul>
                 </div>
@@ -438,7 +446,13 @@ export function RoleCapabilitiesPanel({
                 <Alert variant="error">
                   <AlertTitle>{t("common:error.title")}</AlertTitle>
                   <AlertDescription className="space-y-2">
-                    <span>{impactPreview.error.message}</span>
+                    <span>
+                      {localizedErrorMessage(
+                        impactPreview.error,
+                        t,
+                        t("roles:clientErrors.previewImpact"),
+                      )}
+                    </span>
                     <Button
                       variant="outline"
                       size="sm"
@@ -456,7 +470,13 @@ export function RoleCapabilitiesPanel({
               />
               {save.error && save.error.cause !== "step_up" ? (
                 <Alert variant="error">
-                  <AlertDescription>{save.error.message}</AlertDescription>
+                  <AlertDescription>
+                    {localizedErrorMessage(
+                      save.error,
+                      t,
+                      t("roles:clientErrors.save"),
+                    )}
+                  </AlertDescription>
                 </Alert>
               ) : null}
             </div>

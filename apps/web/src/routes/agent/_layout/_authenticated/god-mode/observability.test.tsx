@@ -26,8 +26,9 @@ vi.mock("@/fetchers/get-api-url", () => ({
   getApiUrl: (path: string) => path,
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/lib/format", () => ({ formatDateTime: () => "formatted-date" }));
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: mocks.t }),
+  useTranslation: () => ({ t: mocks.t, i18n: { language: "en-US" } }),
   Trans: ({ i18nKey }: { i18nKey: string }) => `translated:${i18nKey}`,
 }));
 

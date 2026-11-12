@@ -1,10 +1,12 @@
 export class HttpError extends Error {
   status: number;
+  readonly fallbackKey?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, fallbackKey?: string) {
     super(message);
     this.name = "HttpError";
     this.status = status;
+    this.fallbackKey = fallbackKey;
   }
 }
 
@@ -58,4 +60,15 @@ export async function readErrorDetail(
   )
     return fallback;
   return trimmed;
+}
+
+/** Translate only a client-generated fallback; retain useful server-provided detail. */
+export function localizedErrorMessage(
+  error: unknown,
+  translate: (key: string) => string,
+  fallback: string,
+): string {
+  if (error instanceof HttpError && error.fallbackKey)
+    return translate(error.fallbackKey);
+  return error instanceof Error && error.message ? error.message : fallback;
 }

@@ -227,6 +227,7 @@ export async function importServiceCalendarHolidays(input: {
     throw new HttpError(
       response.status,
       message || "Failed to import holidays",
+      message ? undefined : "serviceCalendars:clientErrors.importHolidays",
     );
   }
   return response.json();

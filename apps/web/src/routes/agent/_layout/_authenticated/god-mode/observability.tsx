@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/god-mode/observability",
@@ -51,7 +52,7 @@ type FactorPolicy = {
 };
 
 function ObservabilitySettings() {
-  const { t } = useTranslation("godModeSettings");
+  const { t, i18n } = useTranslation("godModeSettings");
   const translateRef = useRef(t);
   translateRef.current = t;
   // `items` lets the trigger show the label rather than the raw policy value.
@@ -425,9 +426,10 @@ function ObservabilitySettings() {
                         ? "observability.configuredRotated"
                         : "observability.notConfiguredRotated",
                       {
-                        when: new Date(
+                        when: formatDateTime(
                           settings.metricsTokenRotatedAt,
-                        ).toLocaleString(),
+                          i18n.language,
+                        ),
                       },
                     )
                   : t(

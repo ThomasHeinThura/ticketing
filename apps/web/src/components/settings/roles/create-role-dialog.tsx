@@ -31,6 +31,7 @@ import {
   workspaceRolesKey,
 } from "@/hooks/queries/workspace/use-workspace-roles";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { localizedErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 
 const NOTHING = "__nothing__";
@@ -211,7 +212,13 @@ export function CreateRoleDialog({
             />
             {mutation.error && mutation.error.cause !== "step_up" ? (
               <Alert variant="error">
-                <AlertDescription>{mutation.error.message}</AlertDescription>
+                <AlertDescription>
+                  {localizedErrorMessage(
+                    mutation.error,
+                    t,
+                    t("roles:clientErrors.create"),
+                  )}
+                </AlertDescription>
               </Alert>
             ) : null}
           </div>

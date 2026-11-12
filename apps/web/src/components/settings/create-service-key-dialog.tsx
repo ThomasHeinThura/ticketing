@@ -33,7 +33,7 @@ import {
   READ_CAPABILITIES,
   WRITE_CAPABILITY_GROUPS,
 } from "@/components/settings/create-api-key-dialog";
-import { describeCapability } from "@/components/settings/roles/capability-model";
+import { translatedCapabilityDescription } from "@/components/settings/roles/capability-model";
 import { createServiceKey } from "@/fetchers/service-keys";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import type { CreateApiKeyResponse } from "@/types/api-key";
@@ -225,7 +225,7 @@ export function CreateServiceKeyDialog({
                           >
                             <div className="min-w-0 flex-1 space-y-0.5">
                               <Label className="text-sm font-medium">
-                                {describeCapability(capability)}
+                                {translatedCapabilityDescription(capability, t)}
                               </Label>
                               <p className="text-xs text-muted-foreground">
                                 {capability}

@@ -79,11 +79,17 @@ export type UpdateWebhookInput = {
   version?: number;
 };
 
-async function ensureOk(response: Response, message: string) {
+async function ensureOk(
+  response: Response,
+  message: string,
+  fallbackKey?: string,
+) {
   if (response.ok) return;
+  const detail = await readErrorDetail(response, message);
   throw new HttpError(
     response.status,
-    await readErrorDetail(response, message),
+    detail,
+    detail === message ? fallbackKey : undefined,
   );
 }
 
@@ -144,7 +150,11 @@ export async function updateWebhook(
       body: JSON.stringify(input),
     },
   );
-  await ensureOk(response, "Failed to update the webhook");
+  await ensureOk(
+    response,
+    "Failed to update the webhook",
+    "webhooks:clientErrors.update",
+  );
   return (await response.json()) as Webhook;
 }
 
@@ -176,7 +186,11 @@ export async function sendWebhookTestEvent(
     getApiUrl(`/webhooks/${encodeURIComponent(id)}/test`),
     { method: "POST", credentials: "include" },
   );
-  await ensureOk(response, "Failed to send the test event");
+  await ensureOk(
+    response,
+    "Failed to send the test event",
+    "webhooks:clientErrors.test",
+  );
   return (await response.json()) as WebhookDelivery;
 }
 
@@ -229,6 +243,10 @@ export async function requestWebhookDeletion(
     getApiUrl(`/webhooks/${encodeURIComponent(id)}`),
     { method: "DELETE", credentials: "include" },
   );
-  await ensureOk(response, "Failed to request the deletion");
+  await ensureOk(
+    response,
+    "Failed to request the deletion",
+    "settings:serviceKeys.deleteFailed",
+  );
   return (await response.json()) as WebhookDeletionRequest;
 }

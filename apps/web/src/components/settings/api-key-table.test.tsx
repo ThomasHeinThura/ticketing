@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import type { ApiKey } from "@/types/api-key";
 import { ApiKeyTable } from "./api-key-table";
 
@@ -90,5 +91,27 @@ describe("personal API-key row actions", () => {
       }),
     );
     expect(mocks.revoke).not.toHaveBeenCalled();
+  });
+
+  it("translates the revoke fallback rather than showing the client English", async () => {
+    mocks.revoke.mockRejectedValue(
+      new HttpError(
+        500,
+        "Failed to revoke API key",
+        "settings:apiKey.table.toastRevokeError",
+      ),
+    );
+    render(<ApiKeyTable apiKeys={[apiKey]} isLoading={false} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:apiKey.table.revokeAria" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:apiKey.table.revoke" }),
+    );
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "settings:apiKey.table.toastRevokeError",
+      ),
+    );
   });
 });
