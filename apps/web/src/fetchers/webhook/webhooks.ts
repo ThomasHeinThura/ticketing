@@ -208,7 +208,11 @@ export async function listWebhookDeliveries(
     ),
     { credentials: "include", cache: "no-store" },
   );
-  await ensureOk(response, "Unable to load the delivery history");
+  await ensureOk(
+    response,
+    "Unable to load the delivery history",
+    "webhooks:deliveries.loadErrorDescription",
+  );
   return (await response.json()) as WebhookDeliveryPage;
 }
 
@@ -221,7 +225,11 @@ export async function redeliverWebhookDelivery(
     ),
     { method: "POST", credentials: "include" },
   );
-  await ensureOk(response, "Failed to redeliver");
+  await ensureOk(
+    response,
+    "Failed to redeliver",
+    "webhooks:deliveries.redeliveryFailed",
+  );
   return (await response.json()) as WebhookDelivery;
 }
 

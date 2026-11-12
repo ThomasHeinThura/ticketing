@@ -72,3 +72,14 @@ export function localizedErrorMessage(
     return translate(error.fallbackKey);
   return error instanceof Error && error.message ? error.message : fallback;
 }
+
+/** Admin screens display only translated client fallbacks, never raw response messages. */
+export function localizedAdminErrorMessage(
+  error: unknown,
+  translate: (key: string) => string,
+  fallback: string,
+): string {
+  return error instanceof HttpError && error.fallbackKey
+    ? translate(error.fallbackKey)
+    : fallback;
+}

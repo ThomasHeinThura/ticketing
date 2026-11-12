@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
+import { toast } from "@/lib/toast";
 import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
@@ -106,6 +107,7 @@ function renderCard() {
 }
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   mocks.list.mockReset();
   mocks.revoke.mockReset().mockResolvedValue(key({ enabled: false }));
   mocks.reattest.mockReset().mockResolvedValue(
@@ -216,5 +218,33 @@ describe("ServiceKeysCard", () => {
       expect(mocks.requestDeletion).toHaveBeenCalledWith("ws-1", "k1"),
     );
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalled());
+  });
+
+  it("shows the translated revoke error instead of a raw response", async () => {
+    mocks.list.mockResolvedValue([key()]);
+    mocks.revoke.mockRejectedValue(new Error("raw server refusal"));
+    renderCard();
+    fireEvent.click(await screen.findByLabelText("Revoke Pipeline"));
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        translate("settings:serviceKeys.toastRevokeError"),
+      ),
+    );
+  });
+
+  it("shows the translated deletion error and does not open a pending action", async () => {
+    mocks.list.mockResolvedValue([key()]);
+    mocks.requestDeletion.mockRejectedValue(new Error("raw server refusal"));
+    renderCard();
+    fireEvent.click(
+      await screen.findByLabelText("Request deletion of Pipeline"),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        translate("settings:serviceKeys.deleteFailed"),
+      ),
+    );
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

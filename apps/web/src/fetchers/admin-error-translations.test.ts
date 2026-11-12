@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { localizedErrorMessage } from "@/lib/http-error";
+import {
+  localizedAdminErrorMessage,
+  localizedErrorMessage,
+} from "@/lib/http-error";
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), holidayImport: vi.fn() }));
 vi.mock("@taskdesk/libs", () => ({
@@ -14,14 +17,30 @@ vi.mock("@/fetchers/get-api-url", () => ({
   getApiUrl: (path: string) => path,
 }));
 
-import { createMyApiKey, revokeMyApiKey } from "./api-keys";
+import {
+  createMyApiKey,
+  requestDeleteMyApiKey,
+  revokeMyApiKey,
+} from "./api-keys";
 import { importServiceCalendarHolidays } from "./service-calendar";
 import {
+  createServiceKey,
+  requestServiceKeyDeletion,
+  revokeServiceKey,
+} from "./service-keys";
+import {
+  listWebhookDeliveries,
+  redeliverWebhookDelivery,
   requestWebhookDeletion,
   sendWebhookTestEvent,
   updateWebhook,
 } from "./webhook/webhooks";
-import { createRole, updateRole } from "./workspace-roles";
+import {
+  createRole,
+  reassignRole,
+  requestRoleDeletion,
+  updateRole,
+} from "./workspace-roles";
 
 beforeEach(() => {
   mocks.fetch
@@ -106,5 +125,111 @@ describe("localized administrative failures", () => {
       localizedErrorMessage(error, () => "translated fallback", "generic"),
     ).toBe("Specific refusal");
     expect(error).toMatchObject({ status: 403, code: "rank_guard" });
+  });
+});
+
+const reviewedCases: Array<[string, () => Promise<unknown>, string]> = [
+  [
+    "service key creation",
+    () =>
+      createServiceKey(
+        "ws",
+        { name: "service", expiresIn: null, capabilities: [] },
+        "proof",
+      ),
+    "settings:serviceKeys.create.failed",
+  ],
+  [
+    "service key revocation",
+    () => revokeServiceKey("ws", "id"),
+    "settings:serviceKeys.toastRevokeError",
+  ],
+  [
+    "service key deletion",
+    () => requestServiceKeyDeletion("ws", "id"),
+    "settings:serviceKeys.deleteFailed",
+  ],
+  [
+    "personal key deletion",
+    () => requestDeleteMyApiKey("id"),
+    "settings:apiKey.table.toastDeleteError",
+  ],
+  [
+    "role reassignment",
+    () => reassignRole("ws", "id", { toRoleId: "new" }),
+    "roles:people.moveFailed",
+  ],
+  [
+    "role deletion",
+    () => requestRoleDeletion("ws", "id"),
+    "roles:delete.failed",
+  ],
+  [
+    "webhook history",
+    () => listWebhookDeliveries("id"),
+    "webhooks:deliveries.loadErrorDescription",
+  ],
+  [
+    "webhook redelivery",
+    () => redeliverWebhookDelivery("id"),
+    "webhooks:deliveries.redeliveryFailed",
+  ],
+];
+
+describe("round-two admin failure boundaries", () => {
+  it.each(reviewedCases)(
+    "selects the translated fallback for %s",
+    async (_label, request, key) => {
+      const error = await request().catch((cause: unknown) => cause);
+      expect(error).toHaveProperty("status", 500);
+      expect(
+        localizedAdminErrorMessage(
+          error,
+          (value) => `translated:${value}`,
+          "generic",
+        ),
+      ).toBe(`translated:${key}`);
+    },
+  );
+
+  it("hides raw server errors while preserving status and structured role code", async () => {
+    mocks.fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({ error: "rank_guard", message: "raw refusal" }),
+        { status: 403 },
+      ),
+    );
+    const error = await reassignRole("ws", "id", { toRoleId: "new" }).catch(
+      (cause: unknown) => cause,
+    );
+    expect(error).toMatchObject({ status: 403, code: "rank_guard" });
+    expect(
+      localizedAdminErrorMessage(
+        error,
+        () => "translated",
+        "localized fallback",
+      ),
+    ).toBe("localized fallback");
+  });
+
+  it("still opens the existing pending action on a repeated deletion", async () => {
+    mocks.fetch.mockResolvedValue(
+      new Response("pending_approval: existing-1", { status: 409 }),
+    );
+    await expect(requestDeleteMyApiKey("id")).resolves.toEqual({
+      pendingActionId: "existing-1",
+    });
+    mocks.fetch.mockResolvedValue(
+      new Response("pending_approval: existing-2", { status: 409 }),
+    );
+    await expect(requestServiceKeyDeletion("ws", "id")).resolves.toEqual({
+      pendingActionId: "existing-2",
+    });
+    mocks.fetch.mockResolvedValue(
+      new Response("pending_approval: existing-3", { status: 409 }),
+    );
+    await expect(requestRoleDeletion("ws", "id")).resolves.toEqual({
+      pendingActionId: "existing-3",
+    });
   });
 });

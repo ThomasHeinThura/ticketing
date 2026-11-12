@@ -10,6 +10,7 @@ const PENDING_APPROVAL = /^pending_approval: ([A-Za-z0-9_-]{1,64})$/;
 export async function readPendingDeletion(
   response: Response,
   fallback: string,
+  fallbackKey?: string,
 ): Promise<{ pendingActionId: string }> {
   if (response.status !== 202) {
     const detail = await readErrorDetail(response, fallback);
@@ -18,7 +19,11 @@ export async function readPendingDeletion(
     const existing =
       response.status === 409 ? PENDING_APPROVAL.exec(detail)?.[1] : undefined;
     if (existing) return { pendingActionId: existing };
-    throw new HttpError(response.status, detail);
+    throw new HttpError(
+      response.status,
+      detail,
+      detail === fallback ? fallbackKey : undefined,
+    );
   }
   const result: unknown = await response.json();
   if (

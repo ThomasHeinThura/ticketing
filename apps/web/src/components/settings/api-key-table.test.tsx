@@ -114,4 +114,18 @@ describe("personal API-key row actions", () => {
       ),
     );
   });
+
+  it("uses the translated deletion failure rather than a raw response", async () => {
+    mocks.requestDelete.mockRejectedValue(new Error("raw server refusal"));
+    render(<ApiKeyTable apiKeys={[apiKey]} isLoading={false} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:apiKey.table.deleteAria" }),
+    );
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "settings:apiKey.table.toastDeleteError",
+      ),
+    );
+    expect(mocks.openPendingAction).not.toHaveBeenCalled();
+  });
 });

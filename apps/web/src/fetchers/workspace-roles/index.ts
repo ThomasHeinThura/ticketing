@@ -228,6 +228,7 @@ export function reassignRole(
     `${base(workspaceId)}/${encodeURIComponent(roleId)}/reassign`,
     { method: "POST", body: input },
     "Failed to move the people to the other role",
+    "roles:people.moveFailed",
   );
 }
 
@@ -237,5 +238,9 @@ export async function requestRoleDeletion(workspaceId: string, roleId: string) {
     getApiUrl(`${base(workspaceId)}/${encodeURIComponent(roleId)}`),
     { method: "DELETE", credentials: "include" },
   );
-  return readPendingDeletion(response, "Failed to delete the role");
+  return readPendingDeletion(
+    response,
+    "Failed to delete the role",
+    "roles:delete.failed",
+  );
 }

@@ -73,5 +73,9 @@ export async function requestDeleteMyApiKey(
     getApiUrl(`/me/api-keys/${encodeURIComponent(id)}`),
     { method: "DELETE", credentials: "include" },
   );
-  return readPendingDeletion(response, "Unable to request API key deletion");
+  return readPendingDeletion(
+    response,
+    "Unable to request API key deletion",
+    "settings:apiKey.table.toastDeleteError",
+  );
 }

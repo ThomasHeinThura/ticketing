@@ -36,6 +36,7 @@ import {
 import { translatedCapabilityDescription } from "@/components/settings/roles/capability-model";
 import { createServiceKey } from "@/fetchers/service-keys";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { localizedAdminErrorMessage } from "@/lib/http-error";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
 export const serviceKeysKey = (workspaceId: string) =>
@@ -250,7 +251,13 @@ export function CreateServiceKeyDialog({
             />
             {mutation.error && mutation.error.cause !== "step_up" ? (
               <Alert variant="error">
-                <AlertDescription>{mutation.error.message}</AlertDescription>
+                <AlertDescription>
+                  {localizedAdminErrorMessage(
+                    mutation.error,
+                    t,
+                    t("settings:serviceKeys.create.failed"),
+                  )}
+                </AlertDescription>
               </Alert>
             ) : null}
           </div>

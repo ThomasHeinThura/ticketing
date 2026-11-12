@@ -7632,6 +7632,9 @@
 								},
 								"creating": {
 									"type": "string"
+								},
+								"failed": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -7646,7 +7649,8 @@
 								"frozenDescription",
 								"readIncluded",
 								"submit",
-								"creating"
+								"creating",
+								"failed"
 							]
 						},
 						"ownershipTransferred": {
@@ -28577,9 +28581,18 @@
 						},
 						"title": {
 							"type": "string"
+						},
+						"failed": {
+							"type": "string"
 						}
 					},
-					"required": ["action", "blockedTitle", "description", "title"]
+					"required": [
+						"action",
+						"blockedTitle",
+						"description",
+						"title",
+						"failed"
+					]
 				},
 				"detail": {
 					"type": "object",
@@ -29008,6 +29021,9 @@
 						},
 						"confirmDescription_other": {
 							"type": "string"
+						},
+						"moveFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -29027,7 +29043,8 @@
 						"selectPerson",
 						"status",
 						"suspended",
-						"title"
+						"title",
+						"moveFailed"
 					]
 				},
 				"preview": {

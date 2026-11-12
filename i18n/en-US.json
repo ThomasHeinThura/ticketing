@@ -1898,7 +1898,8 @@
 				"frozenDescription": "The key is limited to what you tick now and never to more than you hold yourself. It is not widened later and is not clamped to anyone's current role.",
 				"readIncluded": "Read access is always included. Tick any write access the key needs.",
 				"submit": "Create key",
-				"creating": "Creating..."
+				"creating": "Creating...",
+				"failed": "Failed to create the service key"
 			},
 			"ownershipTransferred": "Owned by workspace administrators",
 			"reattestationRequired": "Re-attestation required",
@@ -6952,7 +6953,8 @@
 			"blockedDescription": "{{count}} people still hold this role. Move them to another role on the People tab first.",
 			"blockedTitle": "Move the people first",
 			"description": "Deleting a role is a request you approve next. It cannot be undone.",
-			"title": "Delete this role"
+			"title": "Delete this role",
+			"failed": "Failed to delete the role"
 		},
 		"detail": {
 			"allRoles": "All roles",
@@ -7055,7 +7057,8 @@
 			"suspended": "Suspended",
 			"title": "People",
 			"confirmDescription_one": "Move {{count}} person from {{from}} to {{to}}? Their permissions change immediately.",
-			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately."
+			"confirmDescription_other": "Move {{count}} people from {{from}} to {{to}}? Their permissions change immediately.",
+			"moveFailed": "Failed to move the people to the other role"
 		},
 		"preview": {
 			"actions": "Actions on a work item",
