@@ -16,13 +16,16 @@ import {
 } from "@taskdesk/ui";
 import { LayoutDashboard, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { SettingsAccessChecking } from "@/components/settings/settings-access";
 import type { ReportCatalogueEntry } from "@/fetchers/report";
 import { getSavedViews } from "@/fetchers/saved-views";
 import { useReport, useReportCatalogue } from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { HttpError } from "@/lib/http-error";
 import {
   REPORT_CATEGORIES,
   type ReportsIndexSearch,
@@ -173,9 +176,12 @@ function ReportsIndexScreen({
     queryFn: () => getSavedViews(workspaceId),
     enabled: Boolean(workspaceId && catalogue.data),
   });
+  if (!workspace || catalogue.isLoading) return <SettingsAccessChecking />;
   const saved = (views.data ?? []).filter(
     (view) => view.layout === "table" || view.layout === "chart",
   );
+  if (catalogue.error instanceof HttpError && catalogue.error.status === 403)
+    return <NoAccessPage />;
   const category = search.category;
   const categories = REPORT_CATEGORIES.filter((candidate) =>
     catalogue.data?.data.some((entry) => entry.category === candidate),
@@ -209,9 +215,7 @@ function ReportsIndexScreen({
             ) : null}
           </div>
         </div>
-        {catalogue.isLoading || !workspace ? (
-          <Skeleton className="h-40 w-full" />
-        ) : catalogue.isError || !catalogue.data ? (
+        {catalogue.isError || !catalogue.data ? (
           <ReportError error={catalogue.error} />
         ) : (
           <>

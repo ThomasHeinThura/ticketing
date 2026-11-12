@@ -30,7 +30,9 @@ import {
 import { ArrowLeft, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   addTeamMember,
   removeTeamMember,
@@ -88,6 +90,29 @@ export function TeamSettingsCard({ team }: { team: TeamDetail }) {
     (capacity === "" ? null : Number(capacity)) !== team.capacityDaysPerWeek ||
     isCab !== team.isCab;
   const disabled = !team.canManageTeam || save.isPending;
+  if (!team.canManageTeam)
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("teams:detail.settingsTitle")}</CardTitle>
+          <CardDescription>
+            {t("teams:detail.settingsReadOnly")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl>
+            <dt>{t("teams:fields.name")}</dt>
+            <dd>{team.name}</dd>
+            <dt>{t("teams:fields.capacity")}</dt>
+            <dd>{team.capacityDaysPerWeek ?? "—"}</dd>
+            <dt>{t("teams:fields.cab")}</dt>
+            <dd>
+              {t(team.isCab ? "roles:compare.has" : "roles:compare.hasNot")}
+            </dd>
+          </dl>
+        </CardContent>
+      </Card>
+    );
   return (
     <Card>
       <CardHeader>
@@ -379,6 +404,7 @@ export function TeamDetailView({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const team = useTeam(teamId, showInactive);
+  if (isForbiddenError(team.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={team.data?.name ?? t("teams:detail.pageTitle")} />

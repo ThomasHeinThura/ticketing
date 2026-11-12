@@ -23,7 +23,9 @@ import {
 import { FlaskConical, History, Pencil, Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   type Automation,
   type AutomationScope,
@@ -220,6 +222,7 @@ export function AutomationRulesPanel({
 
   const rules = query.data?.data ?? [];
   const meta = query.data?.meta;
+  if (isForbiddenError(query.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={title} />

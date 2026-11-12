@@ -28,6 +28,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
     fullPath: "/dashboard/settings/workspace/request-types",
@@ -174,6 +178,19 @@ describe("request type editor", () => {
     },
   );
 
+  it("shows no access when the main read returns 403", async () => {
+    mocks.getRequestTypes.mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { status: 403 }),
+    );
+    renderPage();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
+    ).toHaveFocus();
+  });
+
   it.each(["lead", "member", "viewer"])(
     "shows the no-access state to a %s and sends no request",
     (role) => {
@@ -181,7 +198,12 @@ describe("request type editor", () => {
       renderPage();
       expect(screen.getByTestId("settings-access-denied")).toBeTruthy();
       expect(screen.queryByLabelText("Field key")).toBeNull();
-      expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+      expect(
+        screen.getByRole("heading", {
+          level: 1,
+          name: "states.noAccess.title",
+        }),
+      ).toHaveFocus();
       expect(screen.queryByTestId("settings-access-error")).toBeNull();
       expect(mocks.getRequestTypes).not.toHaveBeenCalled();
       expect(mocks.getRequestType).not.toHaveBeenCalled();

@@ -77,9 +77,13 @@ function RouteComponent() {
   );
   const menuItems = getProjectSettingsMenuItems(t, {
     canManageProjectSettings: canManageProjectSettings(),
+    canManageFeatures: knownProjectId
+      ? projectAccess.canManageProjectSettings()
+      : canManageProjectSettings(),
     canReadBudgets: knownProjectId
       ? projectAccess.canReadBudgets()
       : canReadBudgets(),
+    canReadEstimates: Boolean(knownProjectId),
   });
 
   const workspaceInitials = getInitials(workspace?.name, "WS");

@@ -55,4 +55,22 @@ describe("project settings navigation", () => {
     });
     expect(settingsOnly.map(({ segment }) => segment)).not.toContain("budget");
   });
+
+  it("offers the readable estimates page without management rights", () => {
+    const items = getProjectSettingsMenuItems((key) => key, {
+      canManageProjectSettings: false,
+      canReadEstimates: true,
+    });
+    expect(items.map(({ segment }) => segment)).toContain("estimates");
+    expect(items.map(({ segment }) => segment)).not.toContain("features");
+  });
+
+  it("offers features for a project-only settings grant without changing automations", () => {
+    const items = getProjectSettingsMenuItems((key) => key, {
+      canManageProjectSettings: false,
+      canManageFeatures: true,
+    });
+    expect(items.map(({ segment }) => segment)).toContain("features");
+    expect(items.map(({ segment }) => segment)).not.toContain("automations");
+  });
 });

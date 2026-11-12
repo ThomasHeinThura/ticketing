@@ -30,8 +30,14 @@ import {
 import { ArrowLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { CustomFieldValueInput } from "@/components/custom-field/custom-field-value-input";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import {
   type CustomField,
   type CustomFieldInput,
@@ -709,6 +715,23 @@ function EditorForm({
 
 /** `docs/screens.md` "Custom field editor". */
 export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
+  return fieldId === "new" ? (
+    <NewCustomField />
+  ) : (
+    <CustomFieldEditorContent fieldId={fieldId} />
+  );
+}
+
+function NewCustomField() {
+  const access = useSettingsAccess((permission) =>
+    permission.canManageCustomFields(),
+  );
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return <CustomFieldEditorContent fieldId="new" />;
+}
+
+function CustomFieldEditorContent({ fieldId }: { fieldId: string }) {
   const { t } = useTranslation();
   const isNew = fieldId === "new";
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
@@ -731,6 +754,8 @@ export function CustomFieldEditor({ fieldId }: { fieldId: string }) {
     ? t("customFields:editor.newTitle")
     : (field?.name ?? t("customFields:editor.pageTitle"));
 
+  if ([fields.error, sections.error, types.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={title} />

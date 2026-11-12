@@ -40,7 +40,13 @@ import { useTranslation } from "react-i18next";
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import {
   archiveChecklistTemplate,
   archiveWorkItemTemplate,
@@ -420,6 +426,15 @@ function ChecklistEditor({
 }
 
 function WorkItemTemplatesPage() {
+  const access = useSettingsAccess((permission) =>
+    permission.canManageWorkspaceSettings(),
+  );
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return <WorkItemTemplatesPageContent />;
+}
+
+function WorkItemTemplatesPageContent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -503,6 +518,8 @@ function WorkItemTemplatesPage() {
     (canManage && (templates.isLoading || checklists.isLoading));
   const failed = templates.isError || checklists.isError;
   const rows = showChecklists ? filteredChecklists : filteredTemplates;
+  if (isForbiddenError(templates.error) || isForbiddenError(checklists.error))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("settings:workItemTemplates.title")} />

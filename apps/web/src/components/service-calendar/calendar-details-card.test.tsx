@@ -79,7 +79,7 @@ describe("CalendarDetailsCard validation", () => {
     await waitFor(() => expect(input).toHaveValue("UTC"));
   });
 
-  it("closes timezone suggestions and disables input when permission is lost", async () => {
+  it("closes timezone suggestions and replaces editing controls when permission is lost", async () => {
     const { rerender } = render(<CalendarFormHarness />);
     const input = screen.getByRole("combobox", { name: "details.timezone" });
     input.focus();
@@ -94,7 +94,9 @@ describe("CalendarDetailsCard validation", () => {
     );
     rerender(<CalendarFormHarness disabled />);
     await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
-    expect(input).toBeDisabled();
+    expect(
+      screen.queryByRole("combobox", { name: "details.timezone" }),
+    ).toBeNull();
     rerender(<CalendarFormHarness />);
     expect(screen.queryByRole("listbox")).toBeNull();
   });

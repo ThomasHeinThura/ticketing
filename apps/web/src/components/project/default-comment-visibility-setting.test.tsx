@@ -65,7 +65,8 @@ vi.mock("@tanstack/react-query", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canManageProjectSettings: () => mocks.caps.manageProjectSettings,
-    canManageProjects: () => mocks.caps.manageProjects,
+    canUpdateProjects: () => mocks.caps.manageProjects,
+    isCheckingPermissions: false,
   }),
 }));
 vi.mock("@/hooks/queries/project/use-get-project", () => ({
@@ -117,6 +118,12 @@ describe("DefaultCommentVisibilitySetting (CA-2)", () => {
         "settings:projectGeneral.defaultCommentVisibilityLabel",
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides the control when the required project update gate is absent", () => {
+    mocks.caps = { manageProjectSettings: true, manageProjects: false };
+    renderSetting();
+    expect(screen.queryByRole("combobox")).toBeNull();
   });
 
   it("is shown with the capability and reflects the project's current default", () => {

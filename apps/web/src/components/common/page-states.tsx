@@ -5,9 +5,38 @@ import {
   type ErrorStateProps,
   NoAccess,
 } from "@taskdesk/ui";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import PageTitle from "@/components/page-title";
+import { routes } from "@/lib/routes";
 
 type Texts = Partial<Pick<EmptyStateProps, "title" | "description">>;
+
+/** A whole-page denial, with focus and a safe fallback for a direct link. */
+export function NoAccessPage() {
+  const { t } = useTranslation("common");
+  const router = useRouter();
+  const container = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const heading = container.current?.querySelector("h1");
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus();
+    }
+  }, []);
+  return (
+    <div ref={container} data-testid="settings-access-denied">
+      <PageTitle title={t("states.noAccess.title")} />
+      <NoAccessState
+        headingLevel={1}
+        onBack={() => {
+          if (router.history.canGoBack()) router.history.back();
+          else void router.navigate({ to: routes.agentHome.path });
+        }}
+      />
+    </div>
+  );
+}
 
 /**
  * "You don't have access. Ask a workspace admin." with a Back action (UX-1a): the shared

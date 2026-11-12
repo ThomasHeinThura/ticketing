@@ -12,8 +12,10 @@ import {
 } from "@taskdesk/ui";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { PickerPopover } from "@/components/common/picker-popover";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   useDashboard,
   useDashboards,
@@ -68,6 +70,8 @@ function DashboardViewScreen({
   const dashboard = useDashboard(workspaceId, chosen?.id ?? "");
   const catalogue = useReportCatalogue(workspaceId);
   const { wide, measureRef } = useWideGrid();
+  if ([dashboards.error, dashboard.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("reports:dashboard.title")} />

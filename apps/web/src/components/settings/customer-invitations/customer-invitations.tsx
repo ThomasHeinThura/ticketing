@@ -34,7 +34,13 @@ import {
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessGate,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
 import {
   type CustomerInvitation,
   type CustomerInvitationStatus,
@@ -237,6 +243,17 @@ export function CustomerInvitations({
 }: {
   organisationId: string | undefined;
 }) {
+  const access = useSettingsAccess((permission) => permission.canInviteUsers());
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return <CustomerInvitationsContent organisationId={organisationId} />;
+}
+
+function CustomerInvitationsContent({
+  organisationId,
+}: {
+  organisationId: string | undefined;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
@@ -252,12 +269,14 @@ export function CustomerInvitations({
   const invitations = useQuery({
     queryKey: customerInvitationsKey(workspaceId, selected?.id ?? ""),
     queryFn: () => listCustomerInvitations(workspaceId, selected?.id ?? ""),
-    enabled: Boolean(workspaceId) && Boolean(selected),
+    enabled: Boolean(workspaceId) && Boolean(selected) && canInvite,
   });
   const [inviting, setInviting] = useState(false);
   const loading =
     workspaceLoading || isCheckingPermissions || organisations.isLoading;
 
+  if ([organisations.error, invitations.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("customerInvitations:title")} />

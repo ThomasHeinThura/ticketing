@@ -49,10 +49,12 @@ export function HolidayListCard({
             {t("holidays.pastWarning")}
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={onAdd}>
-          <Plus aria-hidden="true" />
-          {t("holidays.add")}
-        </Button>
+        {!disabled ? (
+          <Button type="button" variant="outline" size="sm" onClick={onAdd}>
+            <Plus aria-hidden="true" />
+            {t("holidays.add")}
+          </Button>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {calendar && canImport ? (

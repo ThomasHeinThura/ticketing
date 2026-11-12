@@ -26,7 +26,14 @@ import {
 import { ArrowLeft, RefreshCw, Save, Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  SettingsAccessChecking,
+  SettingsAccessError,
+  useCapabilityCheckFailed,
+} from "@/components/settings/settings-access";
 import type {
   SlaPolicy,
   SlaPolicyGoal,
@@ -104,6 +111,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
     data: policy,
     isLoading,
     isError,
+    error,
     refetch,
   } = useSlaPolicy(id, !isNew);
   const {
@@ -118,6 +126,9 @@ export function SlaPolicyEditor({ id }: { id: string }) {
   } = useGetWorkItemTypes({ workspaceId: workspace?.id });
   const { canManageServiceCalendars, isCheckingPermissions } =
     useWorkspacePermission(workspace?.id);
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    isCheckingPermissions ? workspace?.id : undefined,
+  );
   const canManage = canManageServiceCalendars();
   const createPolicy = useCreateSlaPolicy(workspace?.id ?? "");
   const updatePolicy = useUpdateSlaPolicy();
@@ -269,6 +280,11 @@ export function SlaPolicyEditor({ id }: { id: string }) {
     }
   }
 
+  if (isForbiddenError(error)) {
+    if (capabilityCheckFailed) return <SettingsAccessError />;
+    if (isCheckingPermissions) return <SettingsAccessChecking />;
+    return <NoAccessPage />;
+  }
   if (loading) {
     return (
       <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
@@ -336,7 +352,7 @@ export function SlaPolicyEditor({ id }: { id: string }) {
               ) : null}
             </div>
           </div>
-          {policy?.draftVersion ? (
+          {canManage && !isCheckingPermissions && policy?.draftVersion ? (
             <Button
               onClick={() => void publishDraft()}
               disabled={
@@ -637,10 +653,15 @@ export function SlaPolicyEditor({ id }: { id: string }) {
           </Card>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={!canSubmit || saving || publishing}>
-              <Save aria-hidden="true" />
-              {saving ? t("editor.saving") : t("editor.save")}
-            </Button>
+            {canManage && !isCheckingPermissions ? (
+              <Button
+                type="submit"
+                disabled={!canSubmit || saving || publishing}
+              >
+                <Save aria-hidden="true" />
+                {saving ? t("editor.saving") : t("editor.save")}
+              </Button>
+            ) : null}
             {hasInvalidTarget ? (
               <p className="text-destructive text-xs" role="alert">
                 {t("editor.invalidTarget")}

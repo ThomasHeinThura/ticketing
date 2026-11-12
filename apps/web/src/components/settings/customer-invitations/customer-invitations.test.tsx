@@ -22,6 +22,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -192,7 +196,10 @@ describe("customer invitations screen", () => {
     mocks.canInvite = false;
     renderScreen();
     expect(
-      await screen.findByText("customerInvitations:denied.title"),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
     ).toBeTruthy();
     expect(mocks.listOrganisations).not.toHaveBeenCalled();
     expect(screen.queryByText("customerInvitations:invite")).toBeNull();

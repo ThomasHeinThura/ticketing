@@ -33,7 +33,9 @@ import type { CalendarTask } from "@/components/calendar/calendar-task-bar";
 import CalendarToolbar from "@/components/calendar/calendar-toolbar";
 import MonthGrid from "@/components/calendar/month-grid";
 import { buildMonthWeeks } from "@/components/calendar/month-grid-model";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   type CalendarChange,
   type Freeze,
@@ -504,6 +506,7 @@ export function ChangeCalendarView({
   const catalogueOff = status.data?.enabled === false;
   const statusPending = !status.data && !status.isError;
   const { canManageWorkspaceSettings } = useWorkspacePermission();
+  if ([status.error].some(isForbiddenError)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("changes.title")} />
@@ -515,7 +518,10 @@ export function ChangeCalendarView({
         }
         description={t("changes.description")}
       >
-        <SectionNav active="changes" />
+        <SectionNav
+          active="changes"
+          canManageServices={status.data?.canManageServices === true}
+        />
         {statusPending ? (
           <LoadingRows />
         ) : catalogueOff ? (

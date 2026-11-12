@@ -28,11 +28,13 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import {
   FailureAlert,
   StepUpFields,
 } from "@/components/god-mode/step-up-fields";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   createWebhook,
   listWebhooks,
@@ -166,6 +168,8 @@ export function WebhookEditor({ id }: { id: string }) {
     (canManage && !isNew && webhooks.isLoading);
 
   const pageTitle = t(isNew ? "editor.newTitle" : "editor.pageTitle");
+
+  if (isForbiddenError(webhooks.error)) return <NoAccessPage />;
 
   if (loading) {
     return (

@@ -9,7 +9,9 @@ import {
 import { ChevronLeft, Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { SettingsAccessChecking } from "@/components/settings/settings-access";
 import { exportReport, ReportsDisabledError } from "@/fetchers/report";
 import { useReport, useReportCatalogue } from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -90,6 +92,9 @@ function ReportDetailScreen({
   const exporting = useExportAction(() =>
     exportReport(workspaceId, reportKey, search),
   );
+  if (!workspace || report.isLoading) return <SettingsAccessChecking />;
+  if (report.error instanceof HttpError && report.error.status === 403)
+    return <NoAccessPage />;
   const title = t(`reports:catalogue.${reportKey}.title`, {
     defaultValue: entry?.title ?? report.data?.title ?? reportKey,
   });

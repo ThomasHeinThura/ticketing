@@ -25,6 +25,9 @@ const mocks = vi.hoisted(() => ({
   requestSavedViewDeletion: vi.fn(),
   openPending: vi.fn(),
   canShare: false,
+  canCreate: true,
+  checking: false,
+  personId: "person-1",
   canManage: false,
   audienceProps: undefined as Record<string, unknown> | undefined,
 }));
@@ -53,18 +56,26 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
   Outlet: () => <div data-testid="outlet" />,
   useLocation: () => ({ pathname: mocks.pathname }),
   useNavigate: () => mocks.navigate,
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
+  useTranslation: (namespace?: string) => ({
     t: (key: string, options?: Record<string, unknown>) =>
-      translate(
-        `savedViews:${
-          typeof options?.count === "number"
-            ? `${key}_${options.count === 1 ? "one" : "other"}`
-            : key
-        }`,
-        options,
-      ),
+      key.includes(":")
+        ? translate(key, options)
+        : namespace === "common"
+          ? translate(`common:${key}`, options)
+          : translate(
+              `savedViews:${
+                typeof options?.count === "number"
+                  ? `${key}_${options.count === 1 ? "one" : "other"}`
+                  : key
+              }`,
+              options,
+            ),
   }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
@@ -77,11 +88,16 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 vi.mock("@/hooks/use-open-pending-action", () => ({
   useOpenPendingAction: () => mocks.openPending,
 }));
+vi.mock("@/hooks/use-own-person-id", () => ({
+  useOwnPersonId: () => ({ data: mocks.personId }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canShareSavedViews: () => mocks.canShare,
+    canCreateSavedViews: () => mocks.canCreate,
+    member: { personId: mocks.personId },
     canManageWorkspaceSettings: () => mocks.canManage,
-    isCheckingPermissions: false,
+    isCheckingPermissions: mocks.checking,
   }),
 }));
 vi.mock("@/components/saved-view/saved-view-audience-fields", () => ({
@@ -170,6 +186,9 @@ beforeEach(() => {
   mocks.pathname = "/agent/views";
   mocks.search = {};
   mocks.canShare = false;
+  mocks.canCreate = true;
+  mocks.checking = false;
+  mocks.personId = "person-1";
   mocks.canManage = false;
   mocks.audienceProps = undefined;
   mocks.navigate.mockReset();
@@ -195,6 +214,45 @@ afterEach(() => {
 });
 
 describe("saved views index", () => {
+  it("does not show no access while the capability check is still loading", async () => {
+    mocks.checking = true;
+    mocks.getSavedViews.mockRejectedValueOnce(new HttpError(403, "Forbidden"));
+    renderIndex();
+    expect(
+      await screen.findByRole("status", { name: "Checking your access" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+  });
+  it("shows no access when the main view read is forbidden", async () => {
+    mocks.getSavedViews.mockRejectedValueOnce(new HttpError(403, "Forbidden"));
+    renderIndex();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "You don't have access",
+      }),
+    ).toHaveFocus();
+  });
+  it("hides create, duplicate and delete from a viewer", async () => {
+    mocks.canCreate = false;
+    renderIndex();
+    await screen.findByText("Escalations");
+    expect(
+      screen.queryByRole("form", { name: translate("savedViews:createForm") }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /duplicate/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
+  });
+
+  it("hides another person's delete action while retaining duplicate", async () => {
+    mocks.personId = "person-other";
+    renderIndex();
+    await screen.findByText("Escalations");
+    expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
+    expect(
+      screen.getAllByRole("button", { name: /duplicate/i }).length,
+    ).toBeGreaterThan(0);
+  });
   it("renders the child route's outlet instead of the index under /agent/views/{id}", () => {
     mocks.pathname = "/agent/views/v-pinned";
     renderIndex();

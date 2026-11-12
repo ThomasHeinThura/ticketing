@@ -24,6 +24,10 @@ vi.mock("@tanstack/react-router", () => ({
     <a href={to ?? "/"}>{children}</a>
   ),
   useNavigate: () => vi.fn(),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("react-i18next", async () => ({
   ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
@@ -144,6 +148,25 @@ describe("ServicesList", () => {
     expect(
       screen.queryByRole("button", { name: /services.list.new/u }),
     ).toBeNull();
+  });
+
+  it("shows the shared no-access page when the services read is forbidden", () => {
+    setup({ isError: true, error: new HttpError(403, "Forbidden") });
+    expect(
+      screen.getByRole("heading", { level: 1, name: "states.noAccess.title" }),
+    ).toHaveFocus();
+  });
+
+  it("offers the announcements link only to a service manager", () => {
+    setup({ data: [service()] }, { canManageServices: false });
+    expect(
+      screen.queryByRole("link", { name: "nav.announcements" }),
+    ).toBeNull();
+    cleanup();
+    setup({ data: [service()] }, { canManageServices: true });
+    expect(
+      screen.getByRole("link", { name: "nav.announcements" }),
+    ).toBeInTheDocument();
   });
 
   it("explains an empty catalogue", () => {

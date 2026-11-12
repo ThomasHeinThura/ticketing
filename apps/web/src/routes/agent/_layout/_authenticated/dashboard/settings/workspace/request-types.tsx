@@ -21,8 +21,10 @@ import {
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
+  isForbiddenError,
   SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
@@ -127,20 +129,14 @@ const blank = (
 });
 
 function RequestTypesPage() {
-  const { t } = useTranslation("requestTypes");
   const access = useSettingsAccess(
     (permission) => permission.canManageRequestTypes(),
     undefined,
     { refreshOnMount: true },
   );
-  return (
-    <>
-      <PageTitle title={t("title")} />
-      <SettingsAccessGate access={access}>
-        <RequestTypesEditor />
-      </SettingsAccessGate>
-    </>
-  );
+  if (access !== "allowed")
+    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  return <RequestTypesEditor />;
 }
 
 function RequestTypesEditor() {
@@ -358,8 +354,10 @@ function RequestTypesEditor() {
   const requiredFileValid = fields.every(
     (field) => field.type !== "file" || field.required !== true,
   );
+  if (isForbiddenError(types.error)) return <NoAccessPage />;
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+      <PageTitle title={t("title")} />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{t("title")}</h1>

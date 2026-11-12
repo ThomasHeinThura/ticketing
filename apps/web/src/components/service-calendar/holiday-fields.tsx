@@ -37,6 +37,24 @@ export function HolidayFields({
     saveLabel: t("common:actions.save"),
   });
 
+  if (disabled) {
+    const date =
+      "date" in holiday
+        ? holiday.date
+        : "from" in holiday
+          ? `${holiday.from} – ${holiday.to}`
+          : `${holiday.month}/${holiday.day}`;
+    return (
+      <div className="rounded-lg border border-border p-3">
+        <p>{t("holidays.item", { count: index + 1 })}</p>
+        <p>
+          {t(`holidays.${kind}`)}: {date}
+        </p>
+        {holiday.name ? <p>{holiday.name}</p> : null}
+      </div>
+    );
+  }
+
   return (
     <fieldset className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
       <legend className="px-1 text-sm font-medium">
