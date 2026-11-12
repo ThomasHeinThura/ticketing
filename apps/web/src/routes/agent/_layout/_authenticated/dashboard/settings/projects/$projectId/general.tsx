@@ -20,21 +20,28 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
+  Skeleton,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { ActionTooltip } from "@/components/common/action-tooltip";
+import { ErrorDisplay } from "@/components/errors/error-display";
 import PageTitle from "@/components/page-title";
 import DefaultCommentVisibilitySetting from "@/components/project/default-comment-visibility-setting";
 import ProjectEngagementSettings from "@/components/project/project-engagement-settings";
+import ProjectNotFound from "@/components/project/project-not-found";
 import {
   classifyPlanningFailure,
   projectKeyError,
 } from "@/components/project/project-planning-form";
 import ProjectPlanningSettings from "@/components/project/project-planning-settings";
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
+import {
+  isForbiddenError,
+  SettingsAccessDenied,
+} from "@/components/settings/settings-access";
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
@@ -78,17 +85,44 @@ function normalizeProjectValues(
   };
 }
 
+function isNotFoundError(error: unknown) {
+  if (error instanceof HttpError) return error.status === 404;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { status?: unknown }).status === 404
+  );
+}
+
 function RouteComponent() {
   const { t } = useTranslation();
   const { projectId: rawProjectId } = useParams({ strict: false });
   const projectId = rawProjectId ?? "";
-  const { data: workspace } = useActiveWorkspace();
+  const {
+    data: workspace,
+    isLoading: isWorkspaceLoading,
+    isError: isWorkspaceError,
+    error: workspaceError,
+  } = useActiveWorkspace();
   // The project itself (`GET /project/:id`), not the legacy board payload: this page needs
   // only its metadata, so it never loads or polls the old column and task data.
-  const { data: project } = useGetProject({
+  const {
+    data: projectData,
+    isLoading: isProjectLoading,
+    isError: isProjectError,
+    error: projectError,
+    refetch: refetchProject,
+  } = useGetProject({
     id: projectId,
     workspaceId: workspace?.id ?? "",
   });
+  const project =
+    projectData &&
+    projectData.id === projectId &&
+    workspace?.id &&
+    projectData.workspaceId === workspace?.id
+      ? projectData
+      : undefined;
   // PR-13: a key is 2-8 uppercase letters. The project's own stored key stays valid while
   // unchanged (legacy keys predate the rule); the server applies the same exemption.
   const storedKey = project?.slug ?? null;
@@ -138,9 +172,9 @@ function RouteComponent() {
   const deleteProjectButtonRef = useRef<HTMLButtonElement>(null);
   const { canManageProjects, canDeleteProjects, canExportTasks } =
     useWorkspacePermission();
-  const canEdit = canManageProjects();
-  const canDelete = canDeleteProjects();
-  const canExport = canExportTasks();
+  const canEdit = Boolean(project) && canManageProjects();
+  const canDelete = Boolean(project) && canDeleteProjects();
+  const canExport = Boolean(project) && canExportTasks();
 
   const projectForm = useForm<ProjectFormValues>({
     resolver: standardSchemaResolver(projectSchema),
@@ -154,7 +188,10 @@ function RouteComponent() {
   });
 
   useEffect(() => {
-    if (!project) return;
+    if (!project) {
+      lastSavedRef.current = null;
+      return;
+    }
 
     const nextValues = {
       name: project.name || "",
@@ -380,9 +417,9 @@ function RouteComponent() {
         const latest = projectFormRef.current.getValues() as ProjectFormValues;
         const normalized = normalizeProjectValues(latest);
         const last = lastSavedRef.current;
+        if (!last) return;
         // The key is excluded on purpose: leaving the page must never rename it (PR-14).
         const hasPendingChanges =
-          !last ||
           last.name !== normalized.name ||
           last.description !== normalized.description ||
           last.icon !== normalized.icon;
@@ -419,6 +456,75 @@ function RouteComponent() {
       );
     }
   }, [project?.id, deleteProject, openPendingAction, t]);
+
+  if (
+    isWorkspaceLoading ||
+    (Boolean(workspace?.id) && isProjectLoading && Boolean(projectId))
+  ) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div
+          aria-label={t("common:empty.loading")}
+          className="max-w-4xl mx-auto"
+          data-testid="project-general-loading"
+          role="status"
+        >
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </>
+    );
+  }
+
+  if (isWorkspaceError) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div className="max-w-4xl mx-auto">
+          <ErrorDisplay
+            error={workspaceError}
+            onRetry={() =>
+              void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+            }
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (isProjectError && isForbiddenError(projectError)) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div className="max-w-4xl mx-auto">
+          <SettingsAccessDenied />
+        </div>
+      </>
+    );
+  }
+
+  if (isProjectError && !isNotFoundError(projectError)) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div className="max-w-4xl mx-auto">
+          <ErrorDisplay
+            error={projectError}
+            onRetry={() => void refetchProject()}
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (!project) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <ProjectNotFound className="max-w-4xl mx-auto" />
+      </>
+    );
+  }
 
   return (
     <>

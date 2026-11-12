@@ -93,7 +93,12 @@ function AgentHome() {
   } = useGetWorkspaces();
   const fallback = (
     <WorkspaceLayout title={t("navigation:sidebar.projects")}>
-      <div className="flex flex-col gap-4 p-6">
+      <div
+        aria-label={t("common:empty.loading")}
+        className="flex flex-col gap-4 p-6"
+        data-testid="workspace-projects-route-pending"
+        role="status"
+      >
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
       </div>

@@ -93,3 +93,15 @@ export function legacyTaskHref(
   if (actualProjectId !== projectId) return undefined;
   return `/dashboard/workspace/${encodeURIComponent(workspaceId)}/project/${encodeURIComponent(projectId)}/task/${encodeURIComponent(taskId)}`;
 }
+
+/** Preserve both query parameters and `#` fragment when redirecting an old URL. */
+export function withLocationSuffix(
+  pathname: string,
+  location: { searchStr?: string; hash?: string },
+): string {
+  const searchBody = (location.searchStr ?? "").replace(/^\?/, "");
+  const hashBody = (location.hash ?? "").replace(/^#/, "");
+  const search = searchBody ? `?${searchBody}` : "";
+  const hash = hashBody ? `#${hashBody}` : "";
+  return `${pathname}${search}${hash}`;
+}

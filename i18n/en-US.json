@@ -3019,7 +3019,9 @@
 			"scopeLabel": "Search in",
 			"scopeAll": "Everything",
 			"scopeWorkItems": "{{term_work_item_other}}",
-			"scopeProjects": "{{term_project_other}}"
+			"scopeProjects": "{{term_project_other}}",
+			"unavailableTitle": "Workspace unavailable",
+			"unavailableDescription": "This workspace does not exist or your account does not have access to it."
 		},
 		"create": {
 			"pageTitle": "Create Workspace",

@@ -2494,21 +2494,6 @@
 				"chain": [
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
-					"jsx:div[0]/div[1]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/reports/dashboard-editor.tsx:NewDashboardDialog",
 					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
@@ -5324,21 +5309,6 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/project/project-states-editor.tsx:ProjectStatesEditor",
 					"jsx:div[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
-					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/select.tsx:SelectItem",
-					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
-					"jsx:div[0]/div[1]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -17002,23 +16972,7 @@
 				"chain": [
 					"apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
 					"jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::hover:text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
-					"jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -17037,6 +16991,20 @@
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
+					"jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
+					"opaque-backdrop:bg-background"
 				],
 				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -17048,9 +17016,11 @@
 				"chain": [
 					"apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
 					"jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
-					"opaque-backdrop:bg-background"
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -17409,23 +17379,7 @@
 				"chain": [
 					"apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
 					"jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::hover:text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
-					"jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
 					"opaque-backdrop:bg-background"
 				],
@@ -17444,6 +17398,20 @@
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
+					"jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
+					"opaque-backdrop:bg-background"
 				],
 				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -17455,9 +17423,11 @@
 				"chain": [
 					"apps/web/src/components/calendar/calendar-toolbar.tsx:CalendarToolbar",
 					"jsx:div[0]/div[0]/div[1]/fieldset[0]/Button[0]>bg-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]",
-					"opaque-backdrop:bg-background"
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[1]/fieldset[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -18852,21 +18822,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/calendar-task-bar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
 				],
 				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
@@ -18883,15 +18839,15 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
+				"usage": "apps/web/src/components/calendar/calendar-task-bar.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]"
 				],
 				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
@@ -18908,6 +18864,17 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
+				],
 				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/day-overflow-popover.tsx"
@@ -18916,8 +18883,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -20803,17 +20773,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/project-states-editor.tsx:ProjectStatesEditor",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -21742,21 +21701,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/calendar-task-bar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
 				],
 				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
@@ -21773,15 +21718,15 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
+				"usage": "apps/web/src/components/calendar/calendar-task-bar.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]"
 				],
 				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
@@ -21798,6 +21743,17 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/Heading[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
+				],
 				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/day-overflow-popover.tsx"
@@ -21806,8 +21762,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::hover:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -23693,17 +23652,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/project-states-editor.tsx:ProjectStatesEditor",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -24908,7 +24856,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
 					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
@@ -25352,7 +25300,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
 					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
@@ -34194,6 +34142,7 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/pages/page-detail.tsx::PageView::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]::text-muted-foreground#0",
@@ -34247,7 +34196,6 @@
 			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/documents-page.tsx::DocumentsPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -34260,10 +34208,6 @@
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#1",
-			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/p[0]::text-muted-foreground#0",
@@ -34507,9 +34451,6 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/members.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/features.tsx::WorkspaceFeatures::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -35019,21 +34960,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]"
 				],
 				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
@@ -35050,15 +34977,15 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/day-overflow-popover.tsx"
+				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
 				],
 				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
@@ -35075,6 +35002,17 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
+				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/calendar/day-overflow-popover.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
+				],
 				"id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::DndContext[0]/ScrollArea[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/month-grid.tsx"
@@ -35083,8 +35021,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::DndContext[0]/ScrollArea[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -36859,6 +36800,20 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/pages_.$pageId.tsx:/_layout/_authenticated/agent/projects/$projectKey/pages_/$pageId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -37830,22 +37785,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/members.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/members",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -38031,70 +37970,6 @@
 				"id": "apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/project/project-timeline.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/workflow-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/workflow-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/workflow-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/workflow-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -38467,7 +38342,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38494,7 +38369,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38521,7 +38396,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38548,7 +38423,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38575,7 +38450,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38602,7 +38477,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38629,7 +38504,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38656,7 +38531,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38716,7 +38591,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38743,7 +38618,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38770,7 +38645,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -38797,7 +38672,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -40397,6 +40272,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
+				],
+				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Archive[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
 					"jsx:div[0]/ScheduleSelectionBar[0]"
 				],
@@ -40438,10 +40324,10 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
 				],
-				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Archive[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Trash2[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx"
 			},
@@ -40481,17 +40367,6 @@
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Trash2[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
 				],
 				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Trash2[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -42657,40 +42532,8 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -42702,22 +42545,6 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -43217,54 +43044,6 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx"
 			},
@@ -44249,6 +44028,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
 					"jsx:div[0]/ScheduleSelectionBar[0]"
 				],
@@ -44365,17 +44155,6 @@
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -44863,17 +44642,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/project-states-editor.tsx:ProjectStatesEditor",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -46165,6 +45933,7 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/pages/page-detail.tsx::PageView::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]::text-muted-foreground#0",
@@ -46218,7 +45987,6 @@
 			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/documents-page.tsx::DocumentsPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -46231,10 +45999,6 @@
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/Button[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[1]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#1",
-			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/Link[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::DashboardEditorScreen::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/reports/dashboard-editor.tsx::EditorBody::div[0]/p[0]::text-muted-foreground#0",
@@ -46478,9 +46242,6 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/members.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/calendars.tsx::ServiceCalendarsRouteContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx::CannedResponsesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/features.tsx::WorkspaceFeatures::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -46991,21 +46752,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/CalendarToolbar[0]"
 				],
 				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
@@ -47022,15 +46769,15 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/calendar/day-overflow-popover.tsx"
+				"usage": "apps/web/src/components/calendar/calendar-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
 				],
 				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
@@ -47047,6 +46794,17 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
+				"id": "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/calendar/day-overflow-popover.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
+				],
 				"id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::DndContext[0]/ScrollArea[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/calendar/month-grid.tsx"
@@ -47055,8 +46813,11 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/MonthGrid[0]"
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/service-management/changes.tsx:/_layout/_authenticated/agent/service-management/changes",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::DndContext[0]/ScrollArea[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -48831,6 +48592,20 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/pages_.$pageId.tsx:/_layout/_authenticated/agent/projects/$projectKey/pages_/$pageId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -49802,22 +49577,6 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/members.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/members",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -50003,70 +49762,6 @@
 				"id": "apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/project/project-timeline.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/workflow-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]::text-muted-foreground#1",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/workflow-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/workflow-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/project/workflow-editor.tsx::WorkflowEditor::div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/workflow-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -50439,7 +50134,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50466,7 +50161,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50493,7 +50188,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50520,7 +50215,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50547,7 +50242,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50574,7 +50269,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50601,7 +50296,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50628,7 +50323,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50688,7 +50383,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50715,7 +50410,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50742,7 +50437,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -50769,7 +50464,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:SearchComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"jsx:WorkspaceLayout[0]/WorkspaceSearch[0]",
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
@@ -52369,6 +52064,17 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
+				],
+				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Archive[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "non-text",
+				"chain": [
 					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
 					"jsx:div[0]/ScheduleSelectionBar[0]"
 				],
@@ -52410,10 +52116,10 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
 				],
-				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Archive[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Trash2[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx"
 			},
@@ -52453,17 +52159,6 @@
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Trash2[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
 				],
 				"id": "apps/web/src/components/work-item/bulk-assign-toolbar.tsx::BulkAssignToolbar::Trash2[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -54629,40 +54324,8 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -54674,22 +54337,6 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"jsx:div[0]/Suspense[0]/VirtualizedWorkItemTable[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -55189,54 +54836,6 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[1]/div[0]/p[1]::text-muted-foreground#0",
-				"surfaceContext": "route-layout-body",
-				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx"
 			},
@@ -56221,6 +55820,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
 					"jsx:div[0]/ScheduleSelectionBar[0]"
 				],
@@ -56413,8 +56023,13 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]"
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background",
+					"transparent-wrapper:light"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -56914,17 +56529,6 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/project-states-editor.tsx:ProjectStatesEditor",
-					"Select->packages/ui/src/components/select.tsx:Select"
-				],
-				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/select.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/workflow-editor.tsx:renderRuleSection",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -59400,7 +59004,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
 					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
@@ -59413,7 +59017,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
 					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
@@ -64165,6 +63769,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/audit.tsx:GodModeAuditRoute",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -65148,7 +64763,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
 					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
@@ -65161,7 +64776,7 @@
 				"backdropLayers": [],
 				"category": "non-text",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
 					"jsx:ProjectLayout[0]/ProjectTaskSearchHeader[0]",
 					"component-slot:apps/web/src/components/common/project-layout.tsx:default.headerActions",
 					"component-slot:apps/web/src/components/common/layout.tsx:LayoutHeader.children"
@@ -69973,6 +69588,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/audit.tsx:GodModeAuditRoute",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -70942,8 +70568,8 @@
 				"chain": [
 					"apps/web/src/components/calendar/schedule-view-state.tsx:ScheduleViewState",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
-					"jsx:div[0]/ScheduleViewState[0]",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/ScheduleViewState[0]",
 					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -70956,8 +70582,8 @@
 				"chain": [
 					"apps/web/src/components/calendar/schedule-view-state.tsx:ScheduleViewState",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/ScheduleViewState[0]",
+					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
+					"jsx:div[0]/ScheduleViewState[0]",
 					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -72293,6 +71919,22 @@
 				"chain": [
 					"apps/web/src/components/project/project-not-found.tsx:ProjectNotFound",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/calendar.tsx:GatedRouteComponent",
+					"jsx:WorkspaceLayout[0]/ProjectNotFound[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/project-not-found.tsx:ProjectNotFound",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/timeline.tsx:/_layout/_authenticated/agent/projects/$projectKey/timeline",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -72327,6 +71969,24 @@
 				"chain": [
 					"apps/web/src/components/project/project-not-found.tsx:ProjectNotFound",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/project-not-found.tsx:ProjectNotFound",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/general",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
@@ -73250,6 +72910,20 @@
 				"chain": [
 					"apps/web/src/components/work-item/bulk-assign-toolbar.tsx:BulkAssignToolbar",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/bulk-assign-toolbar.tsx:BulkAssignToolbar",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
 					"jsx:div[0]/ScheduleSelectionBar[0]",
 					"opaque-backdrop:bg-background"
@@ -73287,20 +72961,6 @@
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/bulk-assign-toolbar.tsx:BulkAssignToolbar",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]",
-					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -75959,8 +75619,8 @@
 				"chain": [
 					"apps/web/src/components/calendar/schedule-view-state.tsx:ScheduleViewState",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
-					"jsx:div[0]/ScheduleViewState[0]",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/ScheduleViewState[0]",
 					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -75973,8 +75633,8 @@
 				"chain": [
 					"apps/web/src/components/calendar/schedule-view-state.tsx:ScheduleViewState",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/ScheduleViewState[0]",
+					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
+					"jsx:div[0]/ScheduleViewState[0]",
 					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -77310,6 +76970,22 @@
 				"chain": [
 					"apps/web/src/components/project/project-not-found.tsx:ProjectNotFound",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/calendar.tsx:GatedRouteComponent",
+					"jsx:WorkspaceLayout[0]/ProjectNotFound[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/project-not-found.tsx:ProjectNotFound",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/timeline.tsx:/_layout/_authenticated/agent/projects/$projectKey/timeline",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -77344,6 +77020,24 @@
 				"chain": [
 					"apps/web/src/components/project/project-not-found.tsx:ProjectNotFound",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/project-not-found.tsx:ProjectNotFound",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:/_layout/_authenticated/dashboard/settings/projects/$projectId/general",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx:/_layout/_authenticated/dashboard/settings/projects",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
@@ -78267,6 +77961,20 @@
 				"chain": [
 					"apps/web/src/components/work-item/bulk-assign-toolbar.tsx:BulkAssignToolbar",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/calendar/project-calendar-view.tsx:ProjectCalendarView",
+					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/bulk-assign-toolbar.tsx:BulkAssignToolbar",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/project/project-timeline.tsx:ProjectTimeline",
 					"jsx:div[0]/ScheduleSelectionBar[0]",
 					"opaque-backdrop:bg-background"
@@ -78304,20 +78012,6 @@
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/work-item/bulk-assign-toolbar.tsx:BulkAssignToolbar",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
-					"jsx:ProjectLayout[0]/div[0]/ScheduleSelectionBar[0]",
-					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -83698,6 +83392,23 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:RouteComponent",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId.tsx:/_layout/_authenticated/dashboard/workspace/$workspaceId",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
@@ -87586,6 +87297,7 @@
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]::text-muted-foreground#0",
@@ -89066,6 +88778,18 @@
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
 				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]",
+					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -93176,6 +92900,7 @@
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/span[1]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::div[0]::text-muted-foreground#0",
@@ -94656,6 +94381,18 @@
 					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
 				],
 				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/notification/notification-dropdown.tsx:<module>",
+					"jsx:DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]",
+					"DropdownMenuContent->packages/ui/src/components/menu-content.tsx:MenuPopup>bg-popover"
+				],
+				"id": "apps/web/src/components/notification/notification-dropdown.tsx::<module>::DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[0]/div[1]/DropdownMenuItem[0]/div[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/notification/notification-dropdown.tsx"
 			},
@@ -98882,128 +98619,6 @@
 	},
 	{
 		"fg": "--color-muted-foreground",
-		"bg": "--color-sidebar-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "apps/web/src/lib/column.tsx",
-		"backdrop": "--color-sidebar",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"dark": "hover:bg-sidebar-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-sidebar"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
-					"state-backdrop:hover:bg-sidebar-accent/50",
-					"opaque-backdrop:bg-sidebar"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": ["bg-sidebar"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
-					"state-backdrop:hover:bg-sidebar-accent/50",
-					"opaque-backdrop:bg-sidebar"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": ["bg-sidebar"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
-					"state-backdrop:hover:bg-sidebar-accent/50",
-					"opaque-backdrop:bg-sidebar"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			}
-		],
-		"backdropLayers": ["bg-sidebar"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-sidebar-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/lib/column.tsx",
-		"backdrop": "--color-sidebar",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"light": "hover:bg-sidebar-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-sidebar"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
-					"state-backdrop:hover:bg-sidebar-accent/50",
-					"opaque-backdrop:bg-sidebar"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": ["bg-sidebar"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
-					"state-backdrop:hover:bg-sidebar-accent/50",
-					"opaque-backdrop:bg-sidebar"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": ["bg-sidebar"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]",
-					"state-backdrop:hover:bg-sidebar-accent/50",
-					"opaque-backdrop:bg-sidebar"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			}
-		],
-		"backdropLayers": ["bg-sidebar"]
-	},
-	{
-		"fg": "--color-muted-foreground",
 		"bg": "--color-sidebar",
 		"category": "body",
 		"minRatio": 4.5,
@@ -99062,9 +98677,6 @@
 			"apps/web/src/components/project/project-states-editor.tsx::SortableStateRow::li[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/workspace-state-templates-panel.tsx::WorkspaceStateTemplatesPanel::section[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/workspace-state-templates-panel.tsx::WorkspaceStateTemplatesPanel::section[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -99696,39 +99308,6 @@
 				"id": "apps/web/src/components/settings/workspace-state-templates-panel.tsx::WorkspaceStateTemplatesPanel::section[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/settings/workspace-state-templates-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -100309,9 +99888,6 @@
 			"apps/web/src/components/project/project-states-editor.tsx::SortableStateRow::li[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/workspace-state-templates-panel.tsx::WorkspaceStateTemplatesPanel::section[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/workspace-state-templates-panel.tsx::WorkspaceStateTemplatesPanel::section[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-			"apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -100943,39 +100519,6 @@
 				"id": "apps/web/src/components/settings/workspace-state-templates-panel.tsx::WorkspaceStateTemplatesPanel::section[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/settings/workspace-state-templates-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/ActionTooltip[0]/PopoverTrigger[0]/Button[0]"
-				],
-				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/lib/column.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -106505,6 +106048,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/audit.tsx:GodModeAuditRoute",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -107366,6 +106920,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx:WorkflowListView",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/search.tsx:LegacyWorkspaceSearchRoute",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",

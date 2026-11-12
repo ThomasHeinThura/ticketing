@@ -7,8 +7,9 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 
 type Project = {
   id: string;
@@ -21,6 +22,13 @@ type Project = {
 
 const mocks = vi.hoisted(() => ({
   project: undefined as Project | undefined,
+  projectLoading: false,
+  projectError: null as unknown,
+  refetchProject: vi.fn(),
+  workspace: { id: "ws-1" } as { id: string } | undefined,
+  workspaceLoading: false,
+  workspaceError: null as unknown,
+  refetchWorkspace: vi.fn(),
   getProject: vi.fn(),
   getTasks: vi.fn(),
   updateProject: vi.fn(),
@@ -31,6 +39,9 @@ vi.mock("@tanstack/react-router", () => ({
     ...(options as Record<string, unknown>),
   }),
   useParams: () => ({ projectId: "p-1" }),
+  Link: ({ children, to }: { children?: ReactNode; to?: string }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -42,7 +53,13 @@ vi.mock("@/lib/toast", () => ({
 vi.mock("@/hooks/queries/project/use-get-project", () => ({
   default: (...args: unknown[]) => {
     mocks.getProject(...args);
-    return { data: mocks.project };
+    return {
+      data: mocks.project,
+      isLoading: mocks.projectLoading,
+      isError: Boolean(mocks.projectError),
+      error: mocks.projectError,
+      refetch: mocks.refetchProject,
+    };
   },
 }));
 // The old board payload must not be read here: nothing may call it.
@@ -53,7 +70,13 @@ vi.mock("@/hooks/queries/task/use-get-tasks", () => ({
   },
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "ws-1" } }),
+  default: () => ({
+    data: mocks.workspace,
+    isLoading: mocks.workspaceLoading,
+    isError: Boolean(mocks.workspaceError),
+    error: mocks.workspaceError,
+    refetch: mocks.refetchWorkspace,
+  }),
 }));
 vi.mock("@/hooks/mutations/project/use-update-project", () => ({
   default: () => ({ mutateAsync: mocks.updateProject }),
@@ -73,17 +96,17 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
 }));
 vi.mock("@/components/project/project-engagement-settings", () => ({
   default: ({ projectId }: { projectId: string }) => (
-    <div data-testid="engagement" data-project-id={projectId} />
+    <div data-project-id={projectId} data-testid="engagement" />
   ),
 }));
 vi.mock("@/components/project/project-planning-settings", () => ({
   default: ({ projectId }: { projectId: string }) => (
-    <div data-testid="planning" data-project-id={projectId} />
+    <div data-project-id={projectId} data-testid="planning" />
   ),
 }));
 vi.mock("@/components/project/default-comment-visibility-setting", () => ({
   default: ({ projectId }: { projectId: string }) => (
-    <div data-testid="comment-visibility" data-project-id={projectId} />
+    <div data-project-id={projectId} data-testid="comment-visibility" />
   ),
 }));
 vi.mock("@/components/project/tasks-import-export", () => ({
@@ -93,9 +116,9 @@ vi.mock("@/components/project/tasks-import-export", () => ({
     project: { workspaceId: string; slug: string };
   }) => (
     <div
+      data-slug={project.slug}
       data-testid="export"
       data-workspace-id={project.workspaceId}
-      data-slug={project.slug}
     />
   ),
 }));
@@ -126,6 +149,11 @@ beforeEach(() => {
     description: "Front line",
     icon: "Layout",
   };
+  mocks.projectLoading = false;
+  mocks.projectError = null;
+  mocks.workspace = { id: "ws-1" };
+  mocks.workspaceLoading = false;
+  mocks.workspaceError = null;
   mocks.updateProject.mockResolvedValue({});
 });
 afterEach(() => {
@@ -169,11 +197,54 @@ describe("project General settings load the project itself", () => {
     expect(screen.getByTestId("export")).toHaveAttribute("data-slug", "HELP");
   });
 
-  it("shows no settings sections until the project has loaded", () => {
+  it("renders a loading skeleton and no editable inputs while the project is loading", () => {
     mocks.project = undefined;
+    mocks.projectLoading = true;
     renderPage();
+    expect(screen.getByTestId("project-general-loading")).toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText(NAME_PLACEHOLDER),
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId("engagement")).not.toBeInTheDocument();
     expect(screen.queryByTestId("export")).not.toBeInTheDocument();
+  });
+
+  it("renders ProjectNotFound instead of an editable empty form when the project is missing or 404, without saving on unmount", () => {
+    mocks.project = undefined;
+    mocks.projectError = new HttpError(404, "Not found");
+    const { unmount } = renderPage();
+    expect(screen.getByTestId("project-not-found")).toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText(NAME_PLACEHOLDER),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("engagement")).not.toBeInTheDocument();
+    unmount();
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("renders SettingsAccessDenied instead of an editable empty form on 403, without saving on unmount", () => {
+    mocks.project = undefined;
+    mocks.projectError = new HttpError(403, "Forbidden");
+    const { unmount } = renderPage();
+    expect(screen.getByTestId("settings-access-denied")).toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText(NAME_PLACEHOLDER),
+    ).not.toBeInTheDocument();
+    unmount();
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("renders ErrorDisplay with retry on transient server failure instead of an empty form", () => {
+    mocks.project = undefined;
+    mocks.projectError = new HttpError(500, "Upstream unavailable");
+    renderPage();
+    expect(
+      screen.queryByPlaceholderText(NAME_PLACEHOLDER),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:error.tryAgain" }),
+    );
+    expect(mocks.refetchProject).toHaveBeenCalledOnce();
   });
 
   it("keeps a legacy key valid while it is unchanged and flags a bad new one (PR-13)", async () => {

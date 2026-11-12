@@ -630,7 +630,7 @@ test("mobile project navigation retains keyboard calendar and Timeline (Gantt) j
   await page
     .getByRole("button", { name: "Calendar", exact: true })
     .press("Enter");
-  await expect(page).toHaveURL(new RegExp(`${PROJECT_VIEW}/calendar`));
+  await expect(page).toHaveURL(/\/agent\/projects\/WLP\/calendar/);
   await expect(
     page
       .getByRole("main")

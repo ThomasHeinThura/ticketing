@@ -12458,6 +12458,12 @@
 						},
 						"scopeProjects": {
 							"type": "string"
+						},
+						"unavailableTitle": {
+							"type": "string"
+						},
+						"unavailableDescription": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12478,7 +12484,9 @@
 						"scopeLabel",
 						"scopeAll",
 						"scopeWorkItems",
-						"scopeProjects"
+						"scopeProjects",
+						"unavailableTitle",
+						"unavailableDescription"
 					]
 				},
 				"create": {
