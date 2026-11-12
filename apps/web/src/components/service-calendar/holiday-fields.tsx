@@ -99,7 +99,7 @@ export function HolidayFields({
               id={`holiday-${index}-date`}
               label={t("holidays.dateLabel")}
               dateEntry={dateEntry(t("holidays.dateLabel"))}
-              placeholder={t("customFields:value.notSet")}
+              placeholder={t("workItems:customFieldValue.notSet")}
               disabled={disabled}
               value={"date" in holiday ? holiday.date : ""}
               onChange={(date) => onPatch({ date })}
@@ -115,7 +115,7 @@ export function HolidayFields({
                 id={`holiday-${index}-from`}
                 label={t("holidays.from")}
                 dateEntry={dateEntry(t("holidays.from"))}
-                placeholder={t("customFields:value.notSet")}
+                placeholder={t("workItems:customFieldValue.notSet")}
                 disabled={disabled}
                 value={holiday.from}
                 onChange={(from) => onPatch({ from })}
@@ -129,7 +129,7 @@ export function HolidayFields({
                 id={`holiday-${index}-to`}
                 label={t("holidays.through")}
                 dateEntry={dateEntry(t("holidays.through"))}
-                placeholder={t("customFields:value.notSet")}
+                placeholder={t("workItems:customFieldValue.notSet")}
                 disabled={disabled}
                 value={holiday.to}
                 onChange={(to) => onPatch({ to })}

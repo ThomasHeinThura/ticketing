@@ -431,7 +431,7 @@ describe("WorkItemProperties", () => {
     for (const field of ["priority", "dueDate", "stateName"]) {
       expect(
         screen.getByTestId(`work-item-${field}-unavailable`),
-      ).toHaveTextContent("workItems:detail.unavailable");
+      ).toHaveTextContent("workItemExtras:detail.unavailable");
     }
     expect(screen.queryByTestId("work-item-priority-control")).toBeNull();
     expect(screen.queryByTestId("work-item-state-control")).toBeNull();

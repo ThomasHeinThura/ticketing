@@ -2,7 +2,7 @@ import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import getWorkItems, {
   type WorkItemAgileScope,
 } from "@/fetchers/work-item/get-work-items";
-import searchWorkItems from "@/fetchers/work-item/search-work-items";
+
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import type {
   WorkItemSearchColumn,
@@ -72,9 +72,9 @@ export function boardWorkItemsOptions({
               scope.moduleId ?? "",
             ]
           : ["work-items", projectId, "board", effectiveSort, effectiveDir],
-    queryFn: ({ pageParam }) =>
+    queryFn: async ({ pageParam }) =>
       structuredFilter || hasCustomFieldColumns
-        ? searchWorkItems({
+        ? (await import("@/fetchers/work-item/search-work-items")).default({
             workspaceId: workspaceId as string,
             projectSlug: projectSlug as string,
             filter: structuredFilter ?? "",

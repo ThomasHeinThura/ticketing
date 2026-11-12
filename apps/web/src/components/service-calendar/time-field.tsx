@@ -89,7 +89,7 @@ export function TimeField({
           ].map((part) => (
             <div key={part.name} className="flex flex-col gap-1">
               <Label htmlFor={`${id}-${part.name}`}>
-                {t(`customFields:value.${part.name}`)}
+                {t(`workItems:customFieldValue.${part.name}`)}
               </Label>
               <Select
                 value={part.value}
@@ -106,7 +106,7 @@ export function TimeField({
                   <SelectValue>{part.value}</SelectValue>
                 </SelectTrigger>
                 <SelectContent
-                  aria-label={t(`customFields:value.${part.name}`)}
+                  aria-label={t(`workItems:customFieldValue.${part.name}`)}
                 >
                   {part.values.map((choice) => (
                     <SelectItem key={choice} value={choice}>

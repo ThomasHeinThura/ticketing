@@ -98,7 +98,7 @@ export default function WorkItemSla({
         id="work-item-sla-heading"
         className={compact ? "font-medium text-sm" : "font-medium text-lg"}
       >
-        {t("workItems:detail.sla.heading")}
+        {t("workItemExtras:detail.sla.heading")}
       </h2>
       {query.isLoading ? (
         <p className="text-muted-foreground text-sm" role="status">
@@ -106,7 +106,7 @@ export default function WorkItemSla({
         </p>
       ) : query.isError || !Array.isArray(query.data?.metrics) ? (
         <p className="text-muted-foreground text-sm">
-          {t("workItems:detail.sla.unavailable")}
+          {t("workItemExtras:detail.sla.unavailable")}
         </p>
       ) : (
         <>
@@ -115,7 +115,7 @@ export default function WorkItemSla({
               className="text-muted-foreground text-xs"
               data-testid="work-item-sla-calendar"
             >
-              {t("workItems:detail.sla.calendar", { name: calendarName })}
+              {t("workItemExtras:detail.sla.calendar", { name: calendarName })}
             </p>
           ) : null}
           <ul className={compact ? "grid gap-2" : "grid gap-3 sm:grid-cols-2"}>
@@ -128,10 +128,10 @@ export default function WorkItemSla({
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-sm">
-                      {t(`workItems:detail.sla.metric.${metric.metric}`)}
+                      {t(`workItemExtras:detail.sla.metric.${metric.metric}`)}
                     </span>
                     <Badge variant={STATE_VARIANT[metric.state]}>
-                      {t(`workItems:detail.sla.state.${metric.state}`)}
+                      {t(`workItemExtras:detail.sla.state.${metric.state}`)}
                     </Badge>
                   </div>
                   {metric.state === "none" ? null : (
@@ -140,7 +140,7 @@ export default function WorkItemSla({
                         <Progress
                           value={Math.min(100, Math.max(0, metric.consumedPct))}
                           aria-label={t(
-                            `workItems:detail.sla.metric.${metric.metric}`,
+                            `workItemExtras:detail.sla.metric.${metric.metric}`,
                           )}
                         >
                           <ProgressTrack>
@@ -153,14 +153,17 @@ export default function WorkItemSla({
                           <span
                             role="img"
                             aria-label={t(
-                              "workItems:detail.sla.atRiskMarkerAt",
+                              "workItemExtras:detail.sla.atRiskMarkerAt",
                               {
                                 pct: atRiskThresholdPct,
                               },
                             )}
-                            title={t("workItems:detail.sla.atRiskMarkerAt", {
-                              pct: atRiskThresholdPct,
-                            })}
+                            title={t(
+                              "workItemExtras:detail.sla.atRiskMarkerAt",
+                              {
+                                pct: atRiskThresholdPct,
+                              },
+                            )}
                             className="absolute -top-0.5 h-2.5 w-0.5 -translate-x-1/2 rounded-full bg-foreground"
                             style={{
                               left: `${Math.min(100, Math.max(0, atRiskThresholdPct))}%`,
@@ -176,10 +179,10 @@ export default function WorkItemSla({
                         >
                           <CircleAlert className="size-3" aria-hidden="true" />
                           {atRiskThresholdPct !== null
-                            ? t("workItems:detail.sla.atRiskPast", {
+                            ? t("workItemExtras:detail.sla.atRiskPast", {
                                 pct: atRiskThresholdPct,
                               })
-                            : t("workItems:detail.sla.atRiskMark")}
+                            : t("workItemExtras:detail.sla.atRiskMark")}
                         </p>
                       ) : null}
                       {paused ? (
@@ -188,12 +191,12 @@ export default function WorkItemSla({
                           data-testid="work-item-sla-paused"
                         >
                           <Pause className="size-3" aria-hidden="true" />
-                          {t("workItems:detail.sla.pausedSince", {
+                          {t("workItemExtras:detail.sla.pausedSince", {
                             reason: t(
-                              `workItems:detail.sla.pauseReason.${paused.reason}`,
+                              `workItemExtras:detail.sla.pauseReason.${paused.reason}`,
                               {
                                 defaultValue: t(
-                                  "workItems:detail.sla.pauseReason.other",
+                                  "workItemExtras:detail.sla.pauseReason.other",
                                 ),
                               },
                             ),
@@ -204,12 +207,12 @@ export default function WorkItemSla({
                       <p className="text-muted-foreground text-xs">
                         {[
                           metric.remainingMinutes !== null
-                            ? t("workItems:detail.sla.remaining", {
+                            ? t("workItemExtras:detail.sla.remaining", {
                                 time: formatMinutes(metric.remainingMinutes),
                               })
                             : null,
                           metric.dueAt
-                            ? t("workItems:detail.sla.due", {
+                            ? t("workItemExtras:detail.sla.due", {
                                 date: formatSlaInstant(metric.dueAt),
                               })
                             : null,

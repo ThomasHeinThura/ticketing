@@ -5,7 +5,7 @@ import { capturePasswordResetToken } from "../src/lib/password-reset-token";
 import { portalRoutePendingOptions } from "../src/lib/route-pending";
 import { PortalApplicationProviders } from "../src/portal/portal-application-providers";
 import { routeTree } from "../src/routeTree.portal.gen";
-import "@/index.css";
+import "@/portal.css";
 
 capturePasswordResetToken();
 

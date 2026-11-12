@@ -67,13 +67,13 @@ describe("AT-12 per-file progress and failure", () => {
     expect(screen.getAllByRole("progressbar")).toHaveLength(1);
     fireEvent.click(
       screen.getByRole("button", {
-        name: "workItems:detail.attachments.retryUpload:big.zip",
+        name: "workItemExtras:detail.attachments.retryUpload:big.zip",
       }),
     );
     expect(mocks.retry).toHaveBeenCalledWith(7);
     fireEvent.click(
       screen.getByRole("button", {
-        name: "workItems:detail.attachments.dismissUpload:big.zip",
+        name: "workItemExtras:detail.attachments.dismissUpload:big.zip",
       }),
     );
     expect(mocks.dismiss).toHaveBeenCalledWith(7);
@@ -86,7 +86,7 @@ describe("AT-12 per-file progress and failure", () => {
       />,
     );
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "workItems:detail.attachments.uploadFailed",
+      "workItemExtras:detail.attachments.uploadFailed",
     );
   });
 });

@@ -30,7 +30,7 @@ import {
   PORTAL_CASE_STATUSES,
   type PortalCaseFilterSearch,
   type PortalCaseSort,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 /** A change to the URL filters; `undefined` clears a key. */
 export type PortalCaseFilterPatch = {

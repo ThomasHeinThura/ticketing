@@ -89,7 +89,7 @@ export type WorkItemDetailProps = {
 };
 
 /** Original Kaneo task composition with canonical persisted controls and scoped access-loss states. */
-function WorkItemDetail({
+export default function WorkItemDetail({
   item,
   workItemKey,
   activityFilter,
@@ -164,7 +164,7 @@ function WorkItemDetail({
         <EmptyHeader>
           <EmptyTitle>{workItemKey}</EmptyTitle>
           <EmptyDescription>
-            {t("workItems:detail.notFoundDescription")}
+            {t("workItemExtras:detail.notFoundDescription")}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -176,11 +176,11 @@ function WorkItemDetail({
       <div className="bg-background">
         <Alert variant="error" data-testid="work-item-detail-error">
           <TriangleAlert />
-          <AlertTitle>{t("workItems:detail.errorTitle")}</AlertTitle>
+          <AlertTitle>{t("workItemExtras:detail.errorTitle")}</AlertTitle>
           <AlertDescription>
-            <p>{t("workItems:detail.errorDescription")}</p>
+            <p>{t("workItemExtras:detail.errorDescription")}</p>
             <Button variant="outline" size="sm" onClick={onRetry}>
-              {t("workItems:detail.retry")}
+              {t("workItemExtras:detail.retry")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -203,7 +203,7 @@ function WorkItemDetail({
     >
       {project && (
         <>
-          <dt>{t("workItems:detail.projectLabel")}</dt>
+          <dt>{t("workItemExtras:detail.projectLabel")}</dt>
           <dd>
             <Link
               to={routes.workItemList.path}
@@ -215,7 +215,7 @@ function WorkItemDetail({
           </dd>
         </>
       )}
-      <dt>{t("workItems:detail.createdLabel")}</dt>
+      <dt>{t("workItemExtras:detail.createdLabel")}</dt>
       <dd className="text-foreground">
         {item.unavailableFields.includes("createdAt") ? (
           <UnavailableField field="createdAt" />
@@ -223,7 +223,7 @@ function WorkItemDetail({
           formatDateTime(item.createdAt)
         )}
       </dd>
-      <dt>{t("workItems:detail.updatedLabel")}</dt>
+      <dt>{t("workItemExtras:detail.updatedLabel")}</dt>
       <dd className="text-foreground">
         {item.unavailableFields.includes("updatedAt") ? (
           <UnavailableField field="updatedAt" />
@@ -302,7 +302,7 @@ function WorkItemDetail({
       style={{ width: boundedPropertiesWidth }}
     >
       <WorkItemColumnResizeHandle
-        label={t("workItems:detail.resizeProperties")}
+        label={t("workItemExtras:detail.resizeProperties")}
         currentWidth={boundedPropertiesWidth}
         minWidth={MIN_PROPERTIES_WIDTH}
         maxWidth={maxPropertiesWidth}
@@ -336,10 +336,10 @@ function WorkItemDetail({
             >
               <Info />
               <AlertTitle>
-                {t("workItems:detail.partialNoticeTitle")}
+                {t("workItemExtras:detail.partialNoticeTitle")}
               </AlertTitle>
               <AlertDescription>
-                <p>{t("workItems:detail.partialNoticeDescription")}</p>
+                <p>{t("workItemExtras:detail.partialNoticeDescription")}</p>
               </AlertDescription>
             </Alert>
           )}
@@ -368,7 +368,9 @@ function WorkItemDetail({
             />
           )}
           {description.kind === "unsupported" ? (
-            <Badge variant="outline">{t("workItems:detail.unavailable")}</Badge>
+            <Badge variant="outline">
+              {t("workItemExtras:detail.unavailable")}
+            </Badge>
           ) : (
             <WorkItemDescription
               item={item}
@@ -561,7 +563,7 @@ function WorkItemDetailSections({
                 ) : (
                   <ChevronRight className="size-3" />
                 )}
-                {t(`workItems:detail.${section}.heading`)}
+                {t(`workItemExtras:detail.${section}.heading`)}
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="py-2">{children[section]}</div>
@@ -572,5 +574,3 @@ function WorkItemDetailSections({
     </div>
   );
 }
-
-export default WorkItemDetail;

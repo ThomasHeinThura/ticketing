@@ -179,11 +179,11 @@ function activityValueText(
       const key = (value as { key?: unknown } | null)?.key;
       return typeof key === "string" && key
         ? key
-        : t("workItems:detail.unavailable");
+        : t("workItemExtras:detail.unavailable");
     }
     // Parent and template rows carry ids only, never shown as-is (as in the audit history).
     if (field === "parent" || field === "template")
-      return t("workItems:detail.unavailable");
+      return t("workItemExtras:detail.unavailable");
   }
   return jsonText(value);
 }
@@ -223,10 +223,10 @@ export function activityChangeDescription(
   const relationLabel = (value: unknown): string => {
     if (value === null || value === undefined) return "—";
     if (!value || typeof value !== "object" || Array.isArray(value))
-      return t("workItems:detail.unavailable");
+      return t("workItemExtras:detail.unavailable");
     const record = value as Record<string, unknown>;
     if (record.direction !== "outgoing" && record.direction !== "incoming")
-      return t("workItems:detail.unavailable");
+      return t("workItemExtras:detail.unavailable");
     const inverse = {
       relates: "relates",
       blocks: "blocked_by",
@@ -235,7 +235,7 @@ export function activityChangeDescription(
       requires: "required_by",
     } as const;
     if (typeof record.type !== "string" || !Object.hasOwn(inverse, record.type))
-      return t("workItems:detail.unavailable");
+      return t("workItemExtras:detail.unavailable");
     const type = record.type as keyof typeof inverse;
     return t(
       `workItems:relations.types.${record.direction === "incoming" ? inverse[type] : type}`,

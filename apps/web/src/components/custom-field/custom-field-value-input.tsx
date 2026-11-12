@@ -108,7 +108,7 @@ function MultiChoice({
           disabled={disabled}
         >
           <span className="min-w-0 truncate">
-            {summary || t("customFields:value.notSet")}
+            {summary || t("workItems:customFieldValue.notSet")}
           </span>
         </Button>
       </PopoverTrigger>
@@ -138,7 +138,7 @@ function MultiChoice({
           <div className="flex max-h-60 flex-col overflow-y-auto">
             {choices.length === 0 ? (
               <p className="px-2 py-1.5 text-muted-foreground text-xs">
-                {t("customFields:value.noChoices")}
+                {t("workItems:customFieldValue.noChoices")}
               </p>
             ) : (
               choices.map((choice) => (
@@ -182,7 +182,7 @@ export function CustomFieldValueInput({
   const peopleNames = new Map(
     people.map((person) => [person.personId, person.name ?? ""]),
   );
-  const unavailablePersonLabel = t("customFields:value.notOnProject");
+  const unavailablePersonLabel = t("workItems:customFieldValue.notOnProject");
 
   switch (field.format) {
     case "text":
@@ -249,7 +249,7 @@ export function CustomFieldValueInput({
             className="min-w-0 max-w-full basis-20 flex-1"
             type="number"
             step="any"
-            aria-label={t("customFields:value.amount")}
+            aria-label={t("workItems:customFieldValue.amount")}
             value={typeof current.amount === "number" ? current.amount : ""}
             disabled={disabled}
             onChange={(event) =>
@@ -264,7 +264,7 @@ export function CustomFieldValueInput({
             type="text"
             maxLength={3}
             className="w-16 min-w-0 max-w-full"
-            aria-label={t("customFields:value.currencyCode")}
+            aria-label={t("workItems:customFieldValue.currencyCode")}
             placeholder="USD"
             value={current.currency ?? ""}
             disabled={disabled}
@@ -290,7 +290,7 @@ export function CustomFieldValueInput({
               <span className="min-w-0 truncate">
                 {isValueSet(value)
                   ? formatValue({ ...field, format: "date" }, value)
-                  : t("customFields:value.notSet")}
+                  : t("workItems:customFieldValue.notSet")}
               </span>
             </Button>
           </PopoverTrigger>
@@ -320,7 +320,7 @@ export function CustomFieldValueInput({
                   }}
                 >
                   <X className="h-4 w-4" />
-                  {t("customFields:value.clear")}
+                  {t("workItems:customFieldValue.clear")}
                 </Button>
               </div>
             ) : null}
@@ -356,7 +356,7 @@ export function CustomFieldValueInput({
           <PickerPopover
             id={id}
             value={typeof value === "string" ? value : undefined}
-            placeholder={t("customFields:value.notSet")}
+            placeholder={t("workItems:customFieldValue.notSet")}
             disabled={disabled}
             className="w-full min-w-0 max-w-full"
             onChange={(next) => onChange(next)}
@@ -382,7 +382,7 @@ export function CustomFieldValueInput({
             <SelectValue>
               {typeof value === "string"
                 ? formatValue(field, value)
-                : t("customFields:value.notSet")}
+                : t("workItems:customFieldValue.notSet")}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -413,7 +413,7 @@ export function CustomFieldValueInput({
           <PickerPopover
             id={id}
             value={typeof value === "string" ? value : undefined}
-            placeholder={t("customFields:value.notSet")}
+            placeholder={t("workItems:customFieldValue.notSet")}
             disabled={disabled}
             className="w-full min-w-0 max-w-full"
             onChange={(next) => onChange(next)}
@@ -439,7 +439,7 @@ export function CustomFieldValueInput({
             <SelectValue>
               {typeof value === "string"
                 ? peopleNames.get(value) || unavailablePersonLabel
-                : t("customFields:value.notSet")}
+                : t("workItems:customFieldValue.notSet")}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -472,7 +472,7 @@ export function CustomFieldValueInput({
               (personId) => peopleNames.get(personId) || unavailablePersonLabel,
             )
             .join(", ")
-        : t("customFields:value.notSet");
+        : t("workItems:customFieldValue.notSet");
       return (
         <MultiChoice
           id={id}

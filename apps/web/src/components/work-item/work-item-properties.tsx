@@ -239,7 +239,9 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       setNote("");
       setError("");
       announce(
-        t("workItems:journey.transitionDone", { state: input.toStateName }),
+        t("workItems:journey.transitionDone", {
+          state: input.toStateName,
+        }),
       );
       await refresh();
     },
@@ -1059,7 +1061,7 @@ function DateControl({
   const emptyLabel =
     field === "startDate"
       ? t("workItems:properties.noStartDate")
-      : t("workItems:detail.noDueDate");
+      : t("workItemExtras:detail.noDueDate");
   const trigger = (
     <Button
       variant="ghost"

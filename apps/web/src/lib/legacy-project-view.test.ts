@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   isAuthorizedLegacyProject,
   legacyTaskHref,
-  translateLegacyProjectView,
   withLocationSuffix,
 } from "./legacy-project-view";
+import { translateLegacyProjectView } from "./translate-legacy-project-view";
 
 describe("withLocationSuffix", () => {
   it("normalizes searchStr and hash whether or not leading delimiters are present", () => {

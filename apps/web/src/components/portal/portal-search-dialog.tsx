@@ -27,7 +27,7 @@ import { getPortalCatalogue } from "@/fetchers/intake";
 import { getPortalKb } from "@/fetchers/kb/portal";
 import { getPortalCases } from "@/fetchers/portal/cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 const RESULTS_PER_GROUP = 5;
 

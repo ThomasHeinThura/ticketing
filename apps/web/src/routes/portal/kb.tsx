@@ -5,7 +5,7 @@ import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
   parsePortalKbSearch,
   portalProjectSearchMiddlewares,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 /** `docs/screens.md` portal "Knowledge base" (P5, `KB-*`): search and browse by category. */
 export const Route = createFileRoute("/kb")({

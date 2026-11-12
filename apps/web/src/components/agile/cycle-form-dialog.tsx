@@ -115,8 +115,8 @@ export function CycleFormDialog({
               <DateField
                 id="cycle-start"
                 label={t("cycles.form.start")}
-                placeholder={t("customFields:value.notSet")}
-                clearLabel={t("customFields:value.clear")}
+                placeholder={t("workItems:customFieldValue.notSet")}
+                clearLabel={t("workItems:customFieldValue.clear")}
                 value={startDate}
                 onChange={setStartDate}
                 disabled={save.isPending}
@@ -134,8 +134,8 @@ export function CycleFormDialog({
               <DateField
                 id="cycle-end"
                 label={t("cycles.form.end")}
-                placeholder={t("customFields:value.notSet")}
-                clearLabel={t("customFields:value.clear")}
+                placeholder={t("workItems:customFieldValue.notSet")}
+                clearLabel={t("workItems:customFieldValue.clear")}
                 value={endDate}
                 onChange={setEndDate}
                 disabled={save.isPending}

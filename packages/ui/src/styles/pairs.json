@@ -76351,6 +76351,20 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/work-item/work-item-namespace-boundary.tsx:DeferredWorkItemNamespaces",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/work-item/work-item-namespace-boundary.tsx:DeferredWorkItemNamespaces",
+					"jsx:div[0]/Alert[0]/AlertDescription[0]",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/workflow/cab-template-panel.tsx:CabTemplatePanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx:/_layout/_authenticated/dashboard/settings/workspace/workflows",
@@ -81670,6 +81684,20 @@
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-namespace-boundary.tsx:DeferredWorkItemNamespaces",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/work-item/work-item-namespace-boundary.tsx:DeferredWorkItemNamespaces",
+					"jsx:div[0]/Alert[0]/AlertDescription[0]",
+					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",

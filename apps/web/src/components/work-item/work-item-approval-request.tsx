@@ -159,13 +159,13 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
       {context.isError && !contextAccessLost && !requestOpen && (
         <Alert role="alert">
           <AlertDescription>
-            {t("workItems:detail.approvals.request.optionsError")}
+            {t("workItemExtras:detail.approvals.request.optionsError")}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => void context.refetch()}
             >
-              {t("workItems:detail.approvals.retry")}
+              {t("workItemExtras:detail.approvals.retry")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -177,7 +177,7 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
           onClick={open}
           disabled={mutation.isPending}
         >
-          {t("workItems:detail.approvals.request.action")}
+          {t("workItemExtras:detail.approvals.request.action")}
         </Button>
       )}
       <span role="status" className="sr-only">
@@ -195,10 +195,10 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
         >
           <DialogHeader>
             <DialogTitle>
-              {t("workItems:detail.approvals.request.title")}
+              {t("workItemExtras:detail.approvals.request.title")}
             </DialogTitle>
             <DialogDescription>
-              {t("workItems:detail.approvals.request.description")}
+              {t("workItemExtras:detail.approvals.request.description")}
             </DialogDescription>
           </DialogHeader>
           {context.isPending ? (
@@ -206,20 +206,20 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
           ) : context.isError ? (
             <Alert role="alert">
               <AlertDescription>
-                {t("workItems:detail.approvals.request.optionsError")}
+                {t("workItemExtras:detail.approvals.request.optionsError")}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => void context.refetch()}
                 >
-                  {t("workItems:detail.approvals.retry")}
+                  {t("workItemExtras:detail.approvals.retry")}
                 </Button>
               </AlertDescription>
             </Alert>
           ) : !canRequest || !kindAllowed ? (
             <Alert role="alert">
               <AlertDescription>
-                {t("workItems:detail.approvals.request.unavailable")}
+                {t("workItemExtras:detail.approvals.request.unavailable")}
               </AlertDescription>
             </Alert>
           ) : (
@@ -250,7 +250,7 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                     onSuccess: () => {
                       if (mounted.current) {
                         setAnnouncement(
-                          t("workItems:detail.approvals.request.success"),
+                          t("workItemExtras:detail.approvals.request.success"),
                         );
                         update();
                       }
@@ -262,7 +262,7 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
               <DialogPanel className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor={`${ids}-kind`}>
-                    {t("workItems:detail.approvals.request.kind")}
+                    {t("workItemExtras:detail.approvals.request.kind")}
                   </Label>
                   <Select
                     items={[
@@ -271,7 +271,7 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                             {
                               value: "customer",
                               label: t(
-                                "workItems:detail.approvals.kind.customer",
+                                "workItemExtras:detail.approvals.kind.customer",
                               ),
                             },
                           ]
@@ -280,7 +280,9 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                         ? [
                             {
                               value: "cab",
-                              label: t("workItems:detail.approvals.kind.cab"),
+                              label: t(
+                                "workItemExtras:detail.approvals.kind.cab",
+                              ),
                             },
                           ]
                         : []),
@@ -300,12 +302,12 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                     <SelectContent>
                       {options?.canRequestCustomer && (
                         <SelectItem value="customer">
-                          {t("workItems:detail.approvals.kind.customer")}
+                          {t("workItemExtras:detail.approvals.kind.customer")}
                         </SelectItem>
                       )}
                       {options?.canRequestCab && (
                         <SelectItem value="cab">
-                          {t("workItems:detail.approvals.kind.cab")}
+                          {t("workItemExtras:detail.approvals.kind.cab")}
                         </SelectItem>
                       )}
                     </SelectContent>
@@ -314,16 +316,18 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                 <div className="flex flex-col gap-2">
                   {transitions.length === 0 && (
                     <p className="text-sm text-muted-foreground">
-                      {t("workItems:detail.approvals.request.noTransitions")}
+                      {t(
+                        "workItemExtras:detail.approvals.request.noTransitions",
+                      )}
                     </p>
                   )}
                   <Label htmlFor={`${ids}-transition`}>
-                    {t("workItems:detail.approvals.request.transition")}
+                    {t("workItemExtras:detail.approvals.request.transition")}
                   </Label>
                   <Select
                     items={transitions.map((edge) => ({
                       value: edge.id,
-                      label: `${edge.fromStateName ?? t("workItems:detail.approvals.request.anyState")} → ${edge.toStateName}`,
+                      label: `${edge.fromStateName ?? t("workItemExtras:detail.approvals.request.anyState")} → ${edge.toStateName}`,
                     }))}
                     value={transitionId}
                     disabled={mutation.isPending}
@@ -334,7 +338,7 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                     <SelectTrigger id={`${ids}-transition`}>
                       <SelectValue
                         placeholder={t(
-                          "workItems:detail.approvals.request.chooseTransition",
+                          "workItemExtras:detail.approvals.request.chooseTransition",
                         )}
                       />
                     </SelectTrigger>
@@ -343,7 +347,7 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                         <SelectItem key={edge.id} value={edge.id}>
                           {edge.fromStateName ??
                             t(
-                              "workItems:detail.approvals.request.anyState",
+                              "workItemExtras:detail.approvals.request.anyState",
                             )}{" "}
                           → {edge.toStateName}
                         </SelectItem>
@@ -354,15 +358,15 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                 {validTransition && (
                   <div className="flex flex-col gap-2">
                     <Label>
-                      {t("workItems:detail.approvals.request.approver")}
+                      {t("workItemExtras:detail.approvals.request.approver")}
                     </Label>
                     <Command items={people} filter={null}>
                       <CommandInput
                         aria-label={t(
-                          "workItems:detail.approvals.request.search",
+                          "workItemExtras:detail.approvals.request.search",
                         )}
                         placeholder={t(
-                          "workItems:detail.approvals.request.search",
+                          "workItemExtras:detail.approvals.request.search",
                         )}
                         value={state?.query ?? ""}
                         maxLength={200}
@@ -374,7 +378,7 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                       <CommandList
                         className="max-h-48 overflow-y-auto"
                         aria-label={t(
-                          "workItems:detail.approvals.request.chooseApprover",
+                          "workItemExtras:detail.approvals.request.chooseApprover",
                         )}
                       >
                         {(person) => (
@@ -386,7 +390,9 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                             onClick={() => setApproverId(person.id)}
                           >
                             {person.displayName ??
-                              t("workItems:detail.approvals.unknownPerson")}
+                              t(
+                                "workItemExtras:detail.approvals.unknownPerson",
+                              )}
                             {approverId === person.id && (
                               <Check className="size-4" aria-hidden="true" />
                             )}
@@ -395,20 +401,22 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                       </CommandList>
                     </Command>
                     {candidates.isPending && (
-                      <p>{t("workItems:detail.approvals.loading")}</p>
+                      <p>{t("workItemExtras:detail.approvals.loading")}</p>
                     )}
                     {!candidates.isPending &&
                       !candidates.isError &&
                       people.length === 0 && (
                         <p className="text-sm text-muted-foreground">
-                          {t("workItems:detail.approvals.request.noCandidates")}
+                          {t(
+                            "workItemExtras:detail.approvals.request.noCandidates",
+                          )}
                         </p>
                       )}
                     {candidates.isError && (
                       <Alert role="alert">
                         <AlertDescription>
                           {t(
-                            "workItems:detail.approvals.request.candidatesError",
+                            "workItemExtras:detail.approvals.request.candidatesError",
                           )}
                           <Button
                             variant="ghost"
@@ -420,7 +428,7 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                                 : candidates.refetch())
                             }
                           >
-                            {t("workItems:detail.approvals.retry")}
+                            {t("workItemExtras:detail.approvals.retry")}
                           </Button>
                         </AlertDescription>
                       </Alert>
@@ -433,14 +441,14 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                         disabled={candidates.isFetchingNextPage}
                         onClick={() => void candidates.fetchNextPage()}
                       >
-                        {t("workItems:detail.approvals.request.more")}
+                        {t("workItemExtras:detail.approvals.request.more")}
                       </Button>
                     )}
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
                   <Label htmlFor={`${ids}-expiry`}>
-                    {t("workItems:detail.approvals.request.expiryDays")}
+                    {t("workItemExtras:detail.approvals.request.expiryDays")}
                   </Label>
                   <Input
                     id={`${ids}-expiry`}
@@ -458,23 +466,26 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                     id={`${ids}-expiry-hint`}
                     className="text-xs text-muted-foreground"
                   >
-                    {t("workItems:detail.approvals.request.expiryHint", {
+                    {t("workItemExtras:detail.approvals.request.expiryHint", {
                       max: options?.maxExpiryDays ?? 90,
                       days: options?.defaultExpiryDays ?? 7,
                     })}
                   </p>
                   {!validExpiry && (
                     <p role="alert">
-                      {t("workItems:detail.approvals.request.invalidExpiry", {
-                        max: options?.maxExpiryDays ?? 90,
-                      })}
+                      {t(
+                        "workItemExtras:detail.approvals.request.invalidExpiry",
+                        {
+                          max: options?.maxExpiryDays ?? 90,
+                        },
+                      )}
                     </p>
                   )}
                 </div>
                 {mutation.isError && (
                   <Alert role="alert">
                     <AlertDescription>
-                      {t("workItems:detail.approvals.request.error")}
+                      {t("workItemExtras:detail.approvals.request.error")}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -494,8 +505,8 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                 >
                   {t(
                     mutation.isPending
-                      ? "workItems:detail.approvals.request.submitting"
-                      : "workItems:detail.approvals.request.submit",
+                      ? "workItemExtras:detail.approvals.request.submitting"
+                      : "workItemExtras:detail.approvals.request.submit",
                   )}
                 </Button>
               </DialogFooter>

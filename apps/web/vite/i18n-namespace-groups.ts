@@ -158,3 +158,35 @@ export function i18nNamespaceGroups({
     },
   };
 }
+
+/** Include the lazy row controls: rows wait for these before they can paint. */
+export function collectRowPaintAssets(
+  chunks: ReadonlyMap<
+    string,
+    {
+      modules: readonly string[];
+      imports: readonly string[];
+      dynamicImports: readonly string[];
+    }
+  >,
+) {
+  const assets = new Set<string>();
+  const visit = (file: string) => {
+    if (assets.has(file)) return;
+    assets.add(file);
+    for (const dependency of chunks.get(file)?.imports ?? []) visit(dependency);
+  };
+  for (const [file, chunk] of chunks) {
+    if (
+      !chunk.modules.some((id) =>
+        /\/components\/work-item\/work-item-(?:kaneo-list|list)\.tsx$/.test(
+          id.replaceAll("\\", "/"),
+        ),
+      )
+    )
+      continue;
+    visit(file);
+    for (const dependency of chunk.dynamicImports) visit(dependency);
+  }
+  return assets;
+}

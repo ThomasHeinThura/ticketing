@@ -12,6 +12,7 @@ import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import WorkItemActions from "./work-item-actions";
+import WorkItemNamespaceBoundary from "./work-item-namespace-boundary";
 
 const WorkItemDetail = lazy(loadWorkItemDetail);
 
@@ -103,33 +104,35 @@ export default function WorkItemSidePaneBody({
         {!item && !isNotFound && !isError ? (
           <WorkItemDetailLoading />
         ) : (
-          <Suspense fallback={<WorkItemDetailLoading />}>
-            {item ? (
-              <SidePaneDetailWithProject
-                item={item}
-                workItemKey={itemKey}
-                activityFilter={activityFilter}
-                onActivityFilterChange={setActivityFilter}
-                isError={isError}
-                onRetry={refetch}
-                onAccessLost={onAccessLost}
-              />
-            ) : (
-              <WorkItemDetail
-                variant="pane"
-                item={undefined}
-                workItemKey={itemKey}
-                activityFilter={activityFilter}
-                onActivityFilterChange={setActivityFilter}
-                project={undefined}
-                isLoading={isLoading}
-                isNotFound={isNotFound}
-                isError={isError && !isNotFound}
-                onRetry={refetch}
-                onAccessLost={onAccessLost}
-              />
-            )}
-          </Suspense>
+          <WorkItemNamespaceBoundary>
+            <Suspense fallback={<WorkItemDetailLoading />}>
+              {item ? (
+                <SidePaneDetailWithProject
+                  item={item}
+                  workItemKey={itemKey}
+                  activityFilter={activityFilter}
+                  onActivityFilterChange={setActivityFilter}
+                  isError={isError}
+                  onRetry={refetch}
+                  onAccessLost={onAccessLost}
+                />
+              ) : (
+                <WorkItemDetail
+                  variant="pane"
+                  item={undefined}
+                  workItemKey={itemKey}
+                  activityFilter={activityFilter}
+                  onActivityFilterChange={setActivityFilter}
+                  project={undefined}
+                  isLoading={isLoading}
+                  isNotFound={isNotFound}
+                  isError={isError && !isNotFound}
+                  onRetry={refetch}
+                  onAccessLost={onAccessLost}
+                />
+              )}
+            </Suspense>
+          </WorkItemNamespaceBoundary>
         )}
       </div>
     </div>

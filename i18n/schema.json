@@ -14091,52 +14091,7 @@
 						"loading": {
 							"type": "string"
 						},
-						"notFoundDescription": {
-							"type": "string"
-						},
-						"errorTitle": {
-							"type": "string"
-						},
-						"errorDescription": {
-							"type": "string"
-						},
-						"retry": {
-							"type": "string"
-						},
-						"keyLabel": {
-							"type": "string"
-						},
-						"titleLabel": {
-							"type": "string"
-						},
-						"stateLabel": {
-							"type": "string"
-						},
-						"priorityLabel": {
-							"type": "string"
-						},
-						"dueDateLabel": {
-							"type": "string"
-						},
-						"assigneeLabel": {
-							"type": "string"
-						},
-						"descriptionHeading": {
-							"type": "string"
-						},
-						"detailsHeading": {
-							"type": "string"
-						},
-						"projectLabel": {
-							"type": "string"
-						},
-						"startDateLabel": {
-							"type": "string"
-						},
-						"createdLabel": {
-							"type": "string"
-						},
-						"updatedLabel": {
+						"realtimeUnavailable": {
 							"type": "string"
 						},
 						"unassigned": {
@@ -14145,861 +14100,16 @@
 						"inactiveAssignee": {
 							"type": "string"
 						},
-						"noPriority": {
-							"type": "string"
-						},
-						"noDueDate": {
-							"type": "string"
-						},
-						"noStartDate": {
-							"type": "string"
-						},
-						"noDescription": {
-							"type": "string"
-						},
-						"unavailable": {
-							"type": "string"
-						},
-						"unavailableFieldLabel": {
-							"type": "string"
-						},
-						"partialNoticeTitle": {
-							"type": "string"
-						},
-						"partialNoticeDescription": {
-							"type": "string"
-						},
-						"realtimeUnavailable": {
-							"type": "string"
-						},
-						"approvals": {
-							"type": "object",
-							"additionalProperties": false,
-							"properties": {
-								"heading": {
-									"type": "string"
-								},
-								"loading": {
-									"type": "string"
-								},
-								"empty": {
-									"type": "string"
-								},
-								"errorTitle": {
-									"type": "string"
-								},
-								"errorDescription": {
-									"type": "string"
-								},
-								"retry": {
-									"type": "string"
-								},
-								"kind": {
-									"type": "object",
-									"additionalProperties": false,
-									"properties": {
-										"customer": {
-											"type": "string"
-										},
-										"cab": {
-											"type": "string"
-										}
-									},
-									"required": ["customer", "cab"]
-								},
-								"approverLabel": {
-									"type": "string"
-								},
-								"requesterLabel": {
-									"type": "string"
-								},
-								"expiresLabel": {
-									"type": "string"
-								},
-								"decidedLabel": {
-									"type": "string"
-								},
-								"unknownPerson": {
-									"type": "string"
-								},
-								"state": {
-									"type": "object",
-									"additionalProperties": false,
-									"properties": {
-										"pending": {
-											"type": "string"
-										},
-										"approved": {
-											"type": "string"
-										},
-										"rejected": {
-											"type": "string"
-										},
-										"expired": {
-											"type": "string"
-										},
-										"withdrawn": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"pending",
-										"approved",
-										"rejected",
-										"expired",
-										"withdrawn"
-									]
-								},
-								"reachLost": {
-									"type": "string"
-								},
-								"withdraw": {
-									"type": "string"
-								},
-								"withdrawing": {
-									"type": "string"
-								},
-								"withdrawErrorTitle": {
-									"type": "string"
-								},
-								"withdrawConflict": {
-									"type": "string"
-								},
-								"withdrawForbidden": {
-									"type": "string"
-								},
-								"withdrawFailed": {
-									"type": "string"
-								},
-								"withdrawn": {
-									"type": "string"
-								},
-								"withdrawFor": {
-									"type": "string"
-								},
-								"approve": {
-									"type": "string"
-								},
-								"reject": {
-									"type": "string"
-								},
-								"rejectNote": {
-									"type": "string"
-								},
-								"confirmReject": {
-									"type": "string"
-								},
-								"decideErrorTitle": {
-									"type": "string"
-								},
-								"decideFailed": {
-									"type": "string"
-								},
-								"decideConflict": {
-									"type": "string"
-								},
-								"request": {
-									"type": "object",
-									"additionalProperties": false,
-									"properties": {
-										"action": {
-											"type": "string"
-										},
-										"title": {
-											"type": "string"
-										},
-										"description": {
-											"type": "string"
-										},
-										"kind": {
-											"type": "string"
-										},
-										"transition": {
-											"type": "string"
-										},
-										"anyState": {
-											"type": "string"
-										},
-										"chooseTransition": {
-											"type": "string"
-										},
-										"approver": {
-											"type": "string"
-										},
-										"search": {
-											"type": "string"
-										},
-										"chooseApprover": {
-											"type": "string"
-										},
-										"noCandidates": {
-											"type": "string"
-										},
-										"more": {
-											"type": "string"
-										},
-										"expiryDays": {
-											"type": "string"
-										},
-										"expiryHint": {
-											"type": "string"
-										},
-										"submit": {
-											"type": "string"
-										},
-										"submitting": {
-											"type": "string"
-										},
-										"error": {
-											"type": "string"
-										},
-										"optionsError": {
-											"type": "string"
-										},
-										"candidatesError": {
-											"type": "string"
-										},
-										"unavailable": {
-											"type": "string"
-										},
-										"invalidExpiry": {
-											"type": "string"
-										},
-										"success": {
-											"type": "string"
-										},
-										"noTransitions": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"action",
-										"title",
-										"description",
-										"kind",
-										"transition",
-										"anyState",
-										"chooseTransition",
-										"approver",
-										"search",
-										"chooseApprover",
-										"noCandidates",
-										"more",
-										"expiryDays",
-										"expiryHint",
-										"submit",
-										"submitting",
-										"error",
-										"optionsError",
-										"candidatesError",
-										"unavailable",
-										"invalidExpiry",
-										"success",
-										"noTransitions"
-									]
-								}
-							},
-							"required": [
-								"heading",
-								"loading",
-								"empty",
-								"errorTitle",
-								"errorDescription",
-								"retry",
-								"kind",
-								"approverLabel",
-								"requesterLabel",
-								"expiresLabel",
-								"decidedLabel",
-								"unknownPerson",
-								"state",
-								"reachLost",
-								"withdraw",
-								"withdrawing",
-								"withdrawErrorTitle",
-								"withdrawConflict",
-								"withdrawForbidden",
-								"withdrawFailed",
-								"withdrawn",
-								"withdrawFor",
-								"approve",
-								"reject",
-								"rejectNote",
-								"confirmReject",
-								"decideErrorTitle",
-								"decideFailed",
-								"decideConflict",
-								"request"
-							]
-						},
-						"sla": {
-							"type": "object",
-							"additionalProperties": false,
-							"properties": {
-								"heading": {
-									"type": "string"
-								},
-								"unavailable": {
-									"type": "string"
-								},
-								"remaining": {
-									"type": "string"
-								},
-								"due": {
-									"type": "string"
-								},
-								"atRiskMark": {
-									"type": "string"
-								},
-								"atRiskPast": {
-									"type": "string"
-								},
-								"pausedSince": {
-									"type": "string"
-								},
-								"pauseReason": {
-									"type": "object",
-									"additionalProperties": false,
-									"properties": {
-										"waiting_customer": {
-											"type": "string"
-										},
-										"manual": {
-											"type": "string"
-										},
-										"other": {
-											"type": "string"
-										}
-									},
-									"required": ["waiting_customer", "manual", "other"]
-								},
-								"metric": {
-									"type": "object",
-									"additionalProperties": false,
-									"properties": {
-										"first_response": {
-											"type": "string"
-										},
-										"resolution": {
-											"type": "string"
-										}
-									},
-									"required": ["first_response", "resolution"]
-								},
-								"state": {
-									"type": "object",
-									"additionalProperties": false,
-									"properties": {
-										"none": {
-											"type": "string"
-										},
-										"ok": {
-											"type": "string"
-										},
-										"at_risk": {
-											"type": "string"
-										},
-										"breached": {
-											"type": "string"
-										},
-										"met": {
-											"type": "string"
-										},
-										"missed": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"none",
-										"ok",
-										"at_risk",
-										"breached",
-										"met",
-										"missed"
-									]
-								},
-								"calendar": {
-									"type": "string"
-								},
-								"atRiskMarkerAt": {
-									"type": "string"
-								}
-							},
-							"required": [
-								"heading",
-								"unavailable",
-								"remaining",
-								"due",
-								"atRiskMark",
-								"atRiskPast",
-								"pausedSince",
-								"pauseReason",
-								"metric",
-								"state",
-								"calendar",
-								"atRiskMarkerAt"
-							]
-						},
-						"attachments": {
-							"type": "object",
-							"additionalProperties": false,
-							"properties": {
-								"heading": {
-									"type": "string"
-								},
-								"add": {
-									"type": "string"
-								},
-								"uploading": {
-									"type": "string"
-								},
-								"empty": {
-									"type": "string"
-								},
-								"loadFailed": {
-									"type": "string"
-								},
-								"uploadFailed": {
-									"type": "string"
-								},
-								"deleteFailed": {
-									"type": "string"
-								},
-								"delete": {
-									"type": "string"
-								},
-								"retryUpload": {
-									"type": "string"
-								},
-								"dismissUpload": {
-									"type": "string"
-								},
-								"uploadsLabel": {
-									"type": "string"
-								},
-								"preview": {
-									"type": "string"
-								},
-								"previous": {
-									"type": "string"
-								},
-								"next": {
-									"type": "string"
-								},
-								"download": {
-									"type": "string"
-								},
-								"closePreview": {
-									"type": "string"
-								},
-								"uploadedBy": {
-									"type": "string"
-								},
-								"dropToAttach": {
-									"type": "string"
-								},
-								"recoverDeleted": {
-									"type": "string"
-								},
-								"backToFiles": {
-									"type": "string"
-								},
-								"recoverableEmpty": {
-									"type": "string"
-								},
-								"restore": {
-									"type": "string"
-								},
-								"restoreFailed": {
-									"type": "string"
-								},
-								"commentParent": {
-									"type": "string"
-								},
-								"recoverableUntil": {
-									"type": "string"
-								},
-								"pdfPreviewTitle": {
-									"type": "string"
-								},
-								"pdfPreviewLoading": {
-									"type": "string"
-								},
-								"pdfPreviewUnavailable": {
-									"type": "string"
-								},
-								"pdfPreviewTooLarge": {
-									"type": "string"
-								},
-								"pdfPreviewPage": {
-									"type": "string"
-								},
-								"pdfPreviewPage_zero": {
-									"type": "string"
-								},
-								"pdfPreviewPage_one": {
-									"type": "string"
-								},
-								"pdfPreviewPage_two": {
-									"type": "string"
-								},
-								"pdfPreviewPage_few": {
-									"type": "string"
-								},
-								"pdfPreviewPage_many": {
-									"type": "string"
-								},
-								"pdfPreviewPage_other": {
-									"type": "string"
-								},
-								"pdfPreviewPreviousPage": {
-									"type": "string"
-								},
-								"pdfPreviewNextPage": {
-									"type": "string"
-								},
-								"pdfPreviewZoomOut": {
-									"type": "string"
-								},
-								"pdfPreviewZoomIn": {
-									"type": "string"
-								},
-								"pdfPreviewDownload": {
-									"type": "string"
-								},
-								"pdfPreviewOpen": {
-									"type": "string"
-								},
-								"sharedWithCustomer": {
-									"type": "string"
-								}
-							},
-							"required": [
-								"heading",
-								"add",
-								"uploading",
-								"empty",
-								"loadFailed",
-								"uploadFailed",
-								"deleteFailed",
-								"delete",
-								"retryUpload",
-								"dismissUpload",
-								"uploadsLabel",
-								"preview",
-								"previous",
-								"next",
-								"download",
-								"closePreview",
-								"uploadedBy",
-								"dropToAttach",
-								"recoverDeleted",
-								"backToFiles",
-								"recoverableEmpty",
-								"restore",
-								"restoreFailed",
-								"commentParent",
-								"recoverableUntil",
-								"pdfPreviewTitle",
-								"pdfPreviewLoading",
-								"pdfPreviewUnavailable",
-								"pdfPreviewTooLarge",
-								"pdfPreviewPreviousPage",
-								"pdfPreviewNextPage",
-								"pdfPreviewZoomOut",
-								"pdfPreviewZoomIn",
-								"pdfPreviewDownload",
-								"pdfPreviewOpen",
-								"sharedWithCustomer"
-							]
-						},
-						"change": {
-							"type": "object",
-							"additionalProperties": false,
-							"properties": {
-								"heading": {
-									"type": "string"
-								}
-							},
-							"required": ["heading"]
-						},
-						"time": {
-							"type": "object",
-							"additionalProperties": false,
-							"properties": {
-								"heading": {
-									"type": "string"
-								}
-							},
-							"required": ["heading"]
-						},
-						"resizeProperties": {
-							"type": "string"
-						},
 						"editField": {
 							"type": "string"
 						}
 					},
 					"required": [
 						"loading",
-						"notFoundDescription",
-						"errorTitle",
-						"errorDescription",
-						"retry",
-						"keyLabel",
-						"titleLabel",
-						"stateLabel",
-						"priorityLabel",
-						"dueDateLabel",
-						"assigneeLabel",
-						"descriptionHeading",
-						"detailsHeading",
-						"projectLabel",
-						"startDateLabel",
-						"createdLabel",
-						"updatedLabel",
+						"realtimeUnavailable",
 						"unassigned",
 						"inactiveAssignee",
-						"noPriority",
-						"noDueDate",
-						"noStartDate",
-						"noDescription",
-						"unavailable",
-						"unavailableFieldLabel",
-						"partialNoticeTitle",
-						"partialNoticeDescription",
-						"realtimeUnavailable",
-						"approvals",
-						"sla",
-						"attachments",
-						"change",
-						"time",
-						"resizeProperties",
 						"editField"
-					]
-				},
-				"journey": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"editHeading": {
-							"type": "string"
-						},
-						"edit": {
-							"type": "string"
-						},
-						"title": {
-							"type": "string"
-						},
-						"description": {
-							"type": "string"
-						},
-						"startDate": {
-							"type": "string"
-						},
-						"dueDate": {
-							"type": "string"
-						},
-						"save": {
-							"type": "string"
-						},
-						"saving": {
-							"type": "string"
-						},
-						"cancel": {
-							"type": "string"
-						},
-						"saveAttention": {
-							"type": "string"
-						},
-						"editConflict": {
-							"type": "string"
-						},
-						"saveError": {
-							"type": "string"
-						},
-						"reloadLatest": {
-							"type": "string"
-						},
-						"editUnavailable": {
-							"type": "string"
-						},
-						"transitionPlaceholder": {
-							"type": "string"
-						},
-						"transitionBlocked": {
-							"type": "string"
-						},
-						"transitionNoteRequired": {
-							"type": "string"
-						},
-						"transitionNote": {
-							"type": "string"
-						},
-						"transitionsEmpty": {
-							"type": "string"
-						},
-						"loadingTransitions": {
-							"type": "string"
-						},
-						"transitionsError": {
-							"type": "string"
-						},
-						"transitionConflict": {
-							"type": "string"
-						},
-						"transitionUnavailable": {
-							"type": "string"
-						},
-						"assignmentHeading": {
-							"type": "string"
-						},
-						"assignee": {
-							"type": "string"
-						},
-						"assigneePlaceholder": {
-							"type": "string"
-						},
-						"assign": {
-							"type": "string"
-						},
-						"assignToMe": {
-							"type": "string"
-						},
-						"unassign": {
-							"type": "string"
-						},
-						"confirmReassign": {
-							"type": "string"
-						},
-						"confirmReassignDescription": {
-							"type": "string"
-						},
-						"confirmAssignment": {
-							"type": "string"
-						},
-						"assignmentConflict": {
-							"type": "string"
-						},
-						"assignmentError": {
-							"type": "string"
-						},
-						"unassignmentError": {
-							"type": "string"
-						},
-						"loadingPeople": {
-							"type": "string"
-						},
-						"peopleError": {
-							"type": "string"
-						},
-						"noPeople": {
-							"type": "string"
-						},
-						"unnamedPerson": {
-							"type": "string"
-						},
-						"editSaved": {
-							"type": "string"
-						},
-						"transitionSubmit": {
-							"type": "string"
-						},
-						"transitionMoving": {
-							"type": "string"
-						},
-						"transitionDone": {
-							"type": "string"
-						},
-						"assignDone": {
-							"type": "string"
-						},
-						"unassignDone": {
-							"type": "string"
-						},
-						"reasonNoteRequired": {
-							"type": "string"
-						},
-						"reasonAssigneePresent": {
-							"type": "string"
-						},
-						"reasonChildrenClosed": {
-							"type": "string"
-						},
-						"reasonNoOpenBlockers": {
-							"type": "string"
-						},
-						"reasonFieldRequired": {
-							"type": "string"
-						},
-						"reasonChangeRisk": {
-							"type": "string"
-						},
-						"reasonUnknown": {
-							"type": "string"
-						},
-						"reasonApprovalPending": {
-							"type": "string"
-						},
-						"reasonCabPending": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"editHeading",
-						"edit",
-						"title",
-						"description",
-						"startDate",
-						"dueDate",
-						"save",
-						"saving",
-						"cancel",
-						"saveAttention",
-						"editConflict",
-						"saveError",
-						"reloadLatest",
-						"editUnavailable",
-						"transitionPlaceholder",
-						"transitionBlocked",
-						"transitionNoteRequired",
-						"transitionNote",
-						"transitionsEmpty",
-						"loadingTransitions",
-						"transitionsError",
-						"transitionConflict",
-						"transitionUnavailable",
-						"assignmentHeading",
-						"assignee",
-						"assigneePlaceholder",
-						"assign",
-						"assignToMe",
-						"unassign",
-						"confirmReassign",
-						"confirmReassignDescription",
-						"confirmAssignment",
-						"assignmentConflict",
-						"assignmentError",
-						"unassignmentError",
-						"loadingPeople",
-						"peopleError",
-						"noPeople",
-						"unnamedPerson",
-						"editSaved",
-						"transitionSubmit",
-						"transitionMoving",
-						"transitionDone",
-						"assignDone",
-						"unassignDone",
-						"reasonNoteRequired",
-						"reasonAssigneePresent",
-						"reasonChildrenClosed",
-						"reasonNoOpenBlockers",
-						"reasonFieldRequired",
-						"reasonChangeRisk",
-						"reasonUnknown",
-						"reasonApprovalPending",
-						"reasonCabPending"
 					]
 				},
 				"board": {
@@ -16065,11 +15175,55 @@
 					},
 					"required": ["remaining", "title", "metric", "state"]
 				},
-				"move": {
+				"priority": {
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
-						"action": {
+						"urgent": {
+							"type": "string"
+						},
+						"high": {
+							"type": "string"
+						},
+						"medium": {
+							"type": "string"
+						},
+						"low": {
+							"type": "string"
+						},
+						"no-priority": {
+							"type": "string"
+						}
+					},
+					"required": ["urgent", "high", "medium", "low", "no-priority"]
+				},
+				"backlog": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"rankColumn": {
+							"type": "string"
+						}
+					},
+					"required": ["emptyTitle", "emptyDescription", "rankColumn"]
+				},
+				"journey": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"confirmAssignment": {
+							"type": "string"
+						},
+						"editHeading": {
+							"type": "string"
+						},
+						"edit": {
 							"type": "string"
 						},
 						"title": {
@@ -16078,55 +15232,209 @@
 						"description": {
 							"type": "string"
 						},
-						"target": {
+						"startDate": {
 							"type": "string"
 						},
-						"targetPlaceholder": {
+						"dueDate": {
 							"type": "string"
 						},
-						"projectsFailed": {
+						"save": {
 							"type": "string"
 						},
-						"children": {
+						"saving": {
 							"type": "string"
 						},
-						"childrenMoveHelp": {
+						"cancel": {
 							"type": "string"
 						},
-						"childrenDetachHelp": {
+						"saveAttention": {
 							"type": "string"
 						},
-						"consequences": {
+						"editConflict": {
 							"type": "string"
 						},
-						"notFound": {
+						"saveError": {
 							"type": "string"
 						},
-						"failed": {
+						"reloadLatest": {
 							"type": "string"
 						},
-						"confirm": {
+						"editUnavailable": {
 							"type": "string"
 						},
-						"success": {
+						"transitionPlaceholder": {
+							"type": "string"
+						},
+						"transitionBlocked": {
+							"type": "string"
+						},
+						"transitionNoteRequired": {
+							"type": "string"
+						},
+						"transitionNote": {
+							"type": "string"
+						},
+						"transitionsEmpty": {
+							"type": "string"
+						},
+						"loadingTransitions": {
+							"type": "string"
+						},
+						"transitionsError": {
+							"type": "string"
+						},
+						"transitionConflict": {
+							"type": "string"
+						},
+						"transitionUnavailable": {
+							"type": "string"
+						},
+						"assignmentHeading": {
+							"type": "string"
+						},
+						"assignee": {
+							"type": "string"
+						},
+						"assigneePlaceholder": {
+							"type": "string"
+						},
+						"assign": {
+							"type": "string"
+						},
+						"assignToMe": {
+							"type": "string"
+						},
+						"unassign": {
+							"type": "string"
+						},
+						"confirmReassign": {
+							"type": "string"
+						},
+						"confirmReassignDescription": {
+							"type": "string"
+						},
+						"assignmentConflict": {
+							"type": "string"
+						},
+						"assignmentError": {
+							"type": "string"
+						},
+						"unassignmentError": {
+							"type": "string"
+						},
+						"loadingPeople": {
+							"type": "string"
+						},
+						"peopleError": {
+							"type": "string"
+						},
+						"noPeople": {
+							"type": "string"
+						},
+						"unnamedPerson": {
+							"type": "string"
+						},
+						"editSaved": {
+							"type": "string"
+						},
+						"transitionSubmit": {
+							"type": "string"
+						},
+						"transitionMoving": {
+							"type": "string"
+						},
+						"transitionDone": {
+							"type": "string"
+						},
+						"assignDone": {
+							"type": "string"
+						},
+						"unassignDone": {
+							"type": "string"
+						},
+						"reasonNoteRequired": {
+							"type": "string"
+						},
+						"reasonAssigneePresent": {
+							"type": "string"
+						},
+						"reasonChildrenClosed": {
+							"type": "string"
+						},
+						"reasonNoOpenBlockers": {
+							"type": "string"
+						},
+						"reasonFieldRequired": {
+							"type": "string"
+						},
+						"reasonChangeRisk": {
+							"type": "string"
+						},
+						"reasonUnknown": {
+							"type": "string"
+						},
+						"reasonApprovalPending": {
+							"type": "string"
+						},
+						"reasonCabPending": {
 							"type": "string"
 						}
 					},
 					"required": [
-						"action",
+						"confirmAssignment",
+						"editHeading",
+						"edit",
 						"title",
 						"description",
-						"target",
-						"targetPlaceholder",
-						"projectsFailed",
-						"children",
-						"childrenMoveHelp",
-						"childrenDetachHelp",
-						"consequences",
-						"notFound",
-						"failed",
-						"confirm",
-						"success"
+						"startDate",
+						"dueDate",
+						"save",
+						"saving",
+						"cancel",
+						"saveAttention",
+						"editConflict",
+						"saveError",
+						"reloadLatest",
+						"editUnavailable",
+						"transitionPlaceholder",
+						"transitionBlocked",
+						"transitionNoteRequired",
+						"transitionNote",
+						"transitionsEmpty",
+						"loadingTransitions",
+						"transitionsError",
+						"transitionConflict",
+						"transitionUnavailable",
+						"assignmentHeading",
+						"assignee",
+						"assigneePlaceholder",
+						"assign",
+						"assignToMe",
+						"unassign",
+						"confirmReassign",
+						"confirmReassignDescription",
+						"assignmentConflict",
+						"assignmentError",
+						"unassignmentError",
+						"loadingPeople",
+						"peopleError",
+						"noPeople",
+						"unnamedPerson",
+						"editSaved",
+						"transitionSubmit",
+						"transitionMoving",
+						"transitionDone",
+						"assignDone",
+						"unassignDone",
+						"reasonNoteRequired",
+						"reasonAssigneePresent",
+						"reasonChildrenClosed",
+						"reasonNoOpenBlockers",
+						"reasonFieldRequired",
+						"reasonChangeRisk",
+						"reasonUnknown",
+						"reasonApprovalPending",
+						"reasonCabPending"
 					]
 				},
 				"auditHistory": {
@@ -16367,43 +15675,133 @@
 						"unassigned"
 					]
 				},
-				"priority": {
+				"move": {
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
-						"urgent": {
+						"action": {
 							"type": "string"
 						},
-						"high": {
+						"title": {
 							"type": "string"
 						},
-						"medium": {
+						"description": {
 							"type": "string"
 						},
-						"low": {
+						"target": {
 							"type": "string"
 						},
-						"no-priority": {
+						"targetPlaceholder": {
+							"type": "string"
+						},
+						"projectsFailed": {
+							"type": "string"
+						},
+						"children": {
+							"type": "string"
+						},
+						"childrenMoveHelp": {
+							"type": "string"
+						},
+						"childrenDetachHelp": {
+							"type": "string"
+						},
+						"consequences": {
+							"type": "string"
+						},
+						"notFound": {
+							"type": "string"
+						},
+						"failed": {
+							"type": "string"
+						},
+						"confirm": {
+							"type": "string"
+						},
+						"success": {
 							"type": "string"
 						}
 					},
-					"required": ["urgent", "high", "medium", "low", "no-priority"]
+					"required": [
+						"action",
+						"title",
+						"description",
+						"target",
+						"targetPlaceholder",
+						"projectsFailed",
+						"children",
+						"childrenMoveHelp",
+						"childrenDetachHelp",
+						"consequences",
+						"notFound",
+						"failed",
+						"confirm",
+						"success"
+					]
 				},
-				"backlog": {
+				"customFieldValue": {
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
-						"emptyTitle": {
+						"amount": {
 							"type": "string"
 						},
-						"emptyDescription": {
+						"clear": {
 							"type": "string"
 						},
-						"rankColumn": {
+						"currencyCode": {
+							"type": "string"
+						},
+						"no": {
+							"type": "string"
+						},
+						"noChoices": {
+							"type": "string"
+						},
+						"notOnProject": {
+							"type": "string"
+						},
+						"notSet": {
+							"type": "string"
+						},
+						"optional": {
+							"type": "string"
+						},
+						"requiredHint": {
+							"type": "string"
+						},
+						"yes": {
+							"type": "string"
+						},
+						"hour": {
+							"type": "string"
+						},
+						"minute": {
+							"type": "string"
+						},
+						"invalidLocalTime": {
+							"type": "string"
+						},
+						"datetime": {
 							"type": "string"
 						}
 					},
-					"required": ["emptyTitle", "emptyDescription", "rankColumn"]
+					"required": [
+						"amount",
+						"clear",
+						"currencyCode",
+						"no",
+						"noChoices",
+						"notOnProject",
+						"notSet",
+						"optional",
+						"requiredHint",
+						"yes",
+						"hour",
+						"minute",
+						"invalidLocalTime",
+						"datetime"
+					]
 				}
 			},
 			"required": [
@@ -16414,7 +15812,6 @@
 				"list",
 				"create",
 				"detail",
-				"journey",
 				"board",
 				"bulk",
 				"filter",
@@ -16425,10 +15822,12 @@
 				"blocked",
 				"openChildren",
 				"sla",
-				"move",
-				"auditHistory",
 				"priority",
-				"backlog"
+				"backlog",
+				"journey",
+				"auditHistory",
+				"move",
+				"customFieldValue"
 			]
 		},
 		"portal": {
@@ -24970,66 +24369,6 @@
 						"rename",
 						"renameNamed"
 					]
-				},
-				"value": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"amount": {
-							"type": "string"
-						},
-						"clear": {
-							"type": "string"
-						},
-						"currencyCode": {
-							"type": "string"
-						},
-						"no": {
-							"type": "string"
-						},
-						"noChoices": {
-							"type": "string"
-						},
-						"notOnProject": {
-							"type": "string"
-						},
-						"notSet": {
-							"type": "string"
-						},
-						"optional": {
-							"type": "string"
-						},
-						"requiredHint": {
-							"type": "string"
-						},
-						"yes": {
-							"type": "string"
-						},
-						"hour": {
-							"type": "string"
-						},
-						"minute": {
-							"type": "string"
-						},
-						"invalidLocalTime": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"amount",
-						"clear",
-						"currencyCode",
-						"no",
-						"noChoices",
-						"notOnProject",
-						"notSet",
-						"optional",
-						"requiredHint",
-						"yes",
-						"hour",
-						"minute",
-						"invalidLocalTime"
-					]
 				}
 			},
 			"required": [
@@ -25041,8 +24380,7 @@
 				"formats",
 				"list",
 				"operators",
-				"sections",
-				"value"
+				"sections"
 			]
 		},
 		"savedViews": {
@@ -44013,6 +43351,687 @@
 				"wizard",
 				"rejectionCodesColumn"
 			]
+		},
+		"workItemExtras": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"detail": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"notFoundDescription": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"keyLabel": {
+							"type": "string"
+						},
+						"titleLabel": {
+							"type": "string"
+						},
+						"stateLabel": {
+							"type": "string"
+						},
+						"priorityLabel": {
+							"type": "string"
+						},
+						"dueDateLabel": {
+							"type": "string"
+						},
+						"assigneeLabel": {
+							"type": "string"
+						},
+						"descriptionHeading": {
+							"type": "string"
+						},
+						"detailsHeading": {
+							"type": "string"
+						},
+						"projectLabel": {
+							"type": "string"
+						},
+						"startDateLabel": {
+							"type": "string"
+						},
+						"createdLabel": {
+							"type": "string"
+						},
+						"updatedLabel": {
+							"type": "string"
+						},
+						"noPriority": {
+							"type": "string"
+						},
+						"noDueDate": {
+							"type": "string"
+						},
+						"noStartDate": {
+							"type": "string"
+						},
+						"noDescription": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"unavailableFieldLabel": {
+							"type": "string"
+						},
+						"partialNoticeTitle": {
+							"type": "string"
+						},
+						"partialNoticeDescription": {
+							"type": "string"
+						},
+						"approvals": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"loading": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"errorTitle": {
+									"type": "string"
+								},
+								"errorDescription": {
+									"type": "string"
+								},
+								"retry": {
+									"type": "string"
+								},
+								"kind": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"customer": {
+											"type": "string"
+										},
+										"cab": {
+											"type": "string"
+										}
+									},
+									"required": ["customer", "cab"]
+								},
+								"approverLabel": {
+									"type": "string"
+								},
+								"requesterLabel": {
+									"type": "string"
+								},
+								"expiresLabel": {
+									"type": "string"
+								},
+								"decidedLabel": {
+									"type": "string"
+								},
+								"unknownPerson": {
+									"type": "string"
+								},
+								"state": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"pending": {
+											"type": "string"
+										},
+										"approved": {
+											"type": "string"
+										},
+										"rejected": {
+											"type": "string"
+										},
+										"expired": {
+											"type": "string"
+										},
+										"withdrawn": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"pending",
+										"approved",
+										"rejected",
+										"expired",
+										"withdrawn"
+									]
+								},
+								"reachLost": {
+									"type": "string"
+								},
+								"withdraw": {
+									"type": "string"
+								},
+								"withdrawing": {
+									"type": "string"
+								},
+								"withdrawErrorTitle": {
+									"type": "string"
+								},
+								"withdrawConflict": {
+									"type": "string"
+								},
+								"withdrawForbidden": {
+									"type": "string"
+								},
+								"withdrawFailed": {
+									"type": "string"
+								},
+								"withdrawn": {
+									"type": "string"
+								},
+								"withdrawFor": {
+									"type": "string"
+								},
+								"approve": {
+									"type": "string"
+								},
+								"reject": {
+									"type": "string"
+								},
+								"rejectNote": {
+									"type": "string"
+								},
+								"confirmReject": {
+									"type": "string"
+								},
+								"decideErrorTitle": {
+									"type": "string"
+								},
+								"decideFailed": {
+									"type": "string"
+								},
+								"decideConflict": {
+									"type": "string"
+								},
+								"request": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"action": {
+											"type": "string"
+										},
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"kind": {
+											"type": "string"
+										},
+										"transition": {
+											"type": "string"
+										},
+										"anyState": {
+											"type": "string"
+										},
+										"chooseTransition": {
+											"type": "string"
+										},
+										"approver": {
+											"type": "string"
+										},
+										"search": {
+											"type": "string"
+										},
+										"chooseApprover": {
+											"type": "string"
+										},
+										"noCandidates": {
+											"type": "string"
+										},
+										"more": {
+											"type": "string"
+										},
+										"expiryDays": {
+											"type": "string"
+										},
+										"expiryHint": {
+											"type": "string"
+										},
+										"submit": {
+											"type": "string"
+										},
+										"submitting": {
+											"type": "string"
+										},
+										"error": {
+											"type": "string"
+										},
+										"optionsError": {
+											"type": "string"
+										},
+										"candidatesError": {
+											"type": "string"
+										},
+										"unavailable": {
+											"type": "string"
+										},
+										"invalidExpiry": {
+											"type": "string"
+										},
+										"success": {
+											"type": "string"
+										},
+										"noTransitions": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"action",
+										"title",
+										"description",
+										"kind",
+										"transition",
+										"anyState",
+										"chooseTransition",
+										"approver",
+										"search",
+										"chooseApprover",
+										"noCandidates",
+										"more",
+										"expiryDays",
+										"expiryHint",
+										"submit",
+										"submitting",
+										"error",
+										"optionsError",
+										"candidatesError",
+										"unavailable",
+										"invalidExpiry",
+										"success",
+										"noTransitions"
+									]
+								}
+							},
+							"required": [
+								"heading",
+								"loading",
+								"empty",
+								"errorTitle",
+								"errorDescription",
+								"retry",
+								"kind",
+								"approverLabel",
+								"requesterLabel",
+								"expiresLabel",
+								"decidedLabel",
+								"unknownPerson",
+								"state",
+								"reachLost",
+								"withdraw",
+								"withdrawing",
+								"withdrawErrorTitle",
+								"withdrawConflict",
+								"withdrawForbidden",
+								"withdrawFailed",
+								"withdrawn",
+								"withdrawFor",
+								"approve",
+								"reject",
+								"rejectNote",
+								"confirmReject",
+								"decideErrorTitle",
+								"decideFailed",
+								"decideConflict",
+								"request"
+							]
+						},
+						"sla": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"unavailable": {
+									"type": "string"
+								},
+								"remaining": {
+									"type": "string"
+								},
+								"due": {
+									"type": "string"
+								},
+								"atRiskMark": {
+									"type": "string"
+								},
+								"atRiskPast": {
+									"type": "string"
+								},
+								"pausedSince": {
+									"type": "string"
+								},
+								"pauseReason": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"waiting_customer": {
+											"type": "string"
+										},
+										"manual": {
+											"type": "string"
+										},
+										"other": {
+											"type": "string"
+										}
+									},
+									"required": ["waiting_customer", "manual", "other"]
+								},
+								"metric": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"first_response": {
+											"type": "string"
+										},
+										"resolution": {
+											"type": "string"
+										}
+									},
+									"required": ["first_response", "resolution"]
+								},
+								"state": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"none": {
+											"type": "string"
+										},
+										"ok": {
+											"type": "string"
+										},
+										"at_risk": {
+											"type": "string"
+										},
+										"breached": {
+											"type": "string"
+										},
+										"met": {
+											"type": "string"
+										},
+										"missed": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"none",
+										"ok",
+										"at_risk",
+										"breached",
+										"met",
+										"missed"
+									]
+								},
+								"calendar": {
+									"type": "string"
+								},
+								"atRiskMarkerAt": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"heading",
+								"unavailable",
+								"remaining",
+								"due",
+								"atRiskMark",
+								"atRiskPast",
+								"pausedSince",
+								"pauseReason",
+								"metric",
+								"state",
+								"calendar",
+								"atRiskMarkerAt"
+							]
+						},
+						"attachments": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"add": {
+									"type": "string"
+								},
+								"uploading": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"loadFailed": {
+									"type": "string"
+								},
+								"uploadFailed": {
+									"type": "string"
+								},
+								"deleteFailed": {
+									"type": "string"
+								},
+								"delete": {
+									"type": "string"
+								},
+								"retryUpload": {
+									"type": "string"
+								},
+								"dismissUpload": {
+									"type": "string"
+								},
+								"uploadsLabel": {
+									"type": "string"
+								},
+								"preview": {
+									"type": "string"
+								},
+								"previous": {
+									"type": "string"
+								},
+								"next": {
+									"type": "string"
+								},
+								"download": {
+									"type": "string"
+								},
+								"closePreview": {
+									"type": "string"
+								},
+								"uploadedBy": {
+									"type": "string"
+								},
+								"dropToAttach": {
+									"type": "string"
+								},
+								"recoverDeleted": {
+									"type": "string"
+								},
+								"backToFiles": {
+									"type": "string"
+								},
+								"recoverableEmpty": {
+									"type": "string"
+								},
+								"restore": {
+									"type": "string"
+								},
+								"restoreFailed": {
+									"type": "string"
+								},
+								"commentParent": {
+									"type": "string"
+								},
+								"recoverableUntil": {
+									"type": "string"
+								},
+								"pdfPreviewTitle": {
+									"type": "string"
+								},
+								"pdfPreviewLoading": {
+									"type": "string"
+								},
+								"pdfPreviewUnavailable": {
+									"type": "string"
+								},
+								"pdfPreviewTooLarge": {
+									"type": "string"
+								},
+								"pdfPreviewPage": {
+									"type": "string"
+								},
+								"pdfPreviewPage_zero": {
+									"type": "string"
+								},
+								"pdfPreviewPage_one": {
+									"type": "string"
+								},
+								"pdfPreviewPage_two": {
+									"type": "string"
+								},
+								"pdfPreviewPage_few": {
+									"type": "string"
+								},
+								"pdfPreviewPage_many": {
+									"type": "string"
+								},
+								"pdfPreviewPage_other": {
+									"type": "string"
+								},
+								"pdfPreviewPreviousPage": {
+									"type": "string"
+								},
+								"pdfPreviewNextPage": {
+									"type": "string"
+								},
+								"pdfPreviewZoomOut": {
+									"type": "string"
+								},
+								"pdfPreviewZoomIn": {
+									"type": "string"
+								},
+								"pdfPreviewDownload": {
+									"type": "string"
+								},
+								"pdfPreviewOpen": {
+									"type": "string"
+								},
+								"sharedWithCustomer": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"heading",
+								"add",
+								"uploading",
+								"empty",
+								"loadFailed",
+								"uploadFailed",
+								"deleteFailed",
+								"delete",
+								"retryUpload",
+								"dismissUpload",
+								"uploadsLabel",
+								"preview",
+								"previous",
+								"next",
+								"download",
+								"closePreview",
+								"uploadedBy",
+								"dropToAttach",
+								"recoverDeleted",
+								"backToFiles",
+								"recoverableEmpty",
+								"restore",
+								"restoreFailed",
+								"commentParent",
+								"recoverableUntil",
+								"pdfPreviewTitle",
+								"pdfPreviewLoading",
+								"pdfPreviewUnavailable",
+								"pdfPreviewTooLarge",
+								"pdfPreviewPreviousPage",
+								"pdfPreviewNextPage",
+								"pdfPreviewZoomOut",
+								"pdfPreviewZoomIn",
+								"pdfPreviewDownload",
+								"pdfPreviewOpen",
+								"sharedWithCustomer"
+							]
+						},
+						"change": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								}
+							},
+							"required": ["heading"]
+						},
+						"time": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								}
+							},
+							"required": ["heading"]
+						},
+						"resizeProperties": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"notFoundDescription",
+						"errorTitle",
+						"errorDescription",
+						"retry",
+						"keyLabel",
+						"titleLabel",
+						"stateLabel",
+						"priorityLabel",
+						"dueDateLabel",
+						"assigneeLabel",
+						"descriptionHeading",
+						"detailsHeading",
+						"projectLabel",
+						"startDateLabel",
+						"createdLabel",
+						"updatedLabel",
+						"noPriority",
+						"noDueDate",
+						"noStartDate",
+						"noDescription",
+						"unavailable",
+						"unavailableFieldLabel",
+						"partialNoticeTitle",
+						"partialNoticeDescription",
+						"approvals",
+						"sla",
+						"attachments",
+						"change",
+						"time",
+						"resizeProperties"
+					]
+				}
+			},
+			"required": ["detail"]
 		}
 	},
 	"required": [
@@ -44062,6 +44081,7 @@
 		"godModeOrganisations",
 		"term",
 		"godModeWebhooks",
-		"godModeImports"
+		"godModeImports",
+		"workItemExtras"
 	]
 }

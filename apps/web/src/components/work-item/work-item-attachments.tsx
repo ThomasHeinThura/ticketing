@@ -143,7 +143,7 @@ export default function WorkItemAttachments({
         setError(
           cause instanceof HttpError && cause.status < 500 && cause.message
             ? cause.message
-            : t("workItems:detail.attachments.deleteFailed"),
+            : t("workItemExtras:detail.attachments.deleteFailed"),
         );
     } finally {
       removalBusy.current = false;
@@ -163,7 +163,7 @@ export default function WorkItemAttachments({
         setError(
           cause instanceof HttpError && cause.status < 500 && cause.message
             ? cause.message
-            : t("workItems:detail.attachments.restoreFailed"),
+            : t("workItemExtras:detail.attachments.restoreFailed"),
         );
     }
   }
@@ -193,7 +193,7 @@ export default function WorkItemAttachments({
     >
       <div className="flex items-center justify-between gap-2">
         <h2 id="work-item-attachments-heading" className="font-medium text-sm">
-          {t("workItems:detail.attachments.heading")}
+          {t("workItemExtras:detail.attachments.heading")}
         </h2>
         {canAdd ? (
           <>
@@ -204,8 +204,8 @@ export default function WorkItemAttachments({
             >
               <Paperclip className="size-4" />
               {uploads.length > 0
-                ? t("workItems:detail.attachments.uploading")
-                : t("workItems:detail.attachments.add")}
+                ? t("workItemExtras:detail.attachments.uploading")
+                : t("workItemExtras:detail.attachments.add")}
             </Button>
             <Input
               ref={inputRef}
@@ -213,7 +213,7 @@ export default function WorkItemAttachments({
               multiple
               className="sr-only"
               tabIndex={-1}
-              aria-label={t("workItems:detail.attachments.add")}
+              aria-label={t("workItemExtras:detail.attachments.add")}
               onChange={(event) => {
                 addFiles(Array.from(event.target.files ?? []));
                 event.target.value = "";
@@ -233,8 +233,8 @@ export default function WorkItemAttachments({
           >
             {t(
               showRecoverable
-                ? "workItems:detail.attachments.backToFiles"
-                : "workItems:detail.attachments.recoverDeleted",
+                ? "workItemExtras:detail.attachments.backToFiles"
+                : "workItemExtras:detail.attachments.recoverDeleted",
             )}
           </Button>
         ) : null}
@@ -251,12 +251,12 @@ export default function WorkItemAttachments({
         </p>
       ) : list.isError ? (
         <p className="text-muted-foreground text-sm">
-          {t("workItems:detail.attachments.loadFailed")}
+          {t("workItemExtras:detail.attachments.loadFailed")}
         </p>
       ) : showRecoverable ? (
         recoverable.length === 0 ? (
           <p className="text-muted-foreground text-sm" role="status">
-            {t("workItems:detail.attachments.recoverableEmpty")}
+            {t("workItemExtras:detail.attachments.recoverableEmpty")}
           </p>
         ) : (
           <ul className="grid grid-cols-2 gap-2">
@@ -279,7 +279,7 @@ export default function WorkItemAttachments({
         )
       ) : ready.length === 0 && uploads.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          {t("workItems:detail.attachments.empty")}
+          {t("workItemExtras:detail.attachments.empty")}
         </p>
       ) : (
         <ul className="grid grid-cols-2 gap-2">

@@ -1,7 +1,7 @@
 import {
   PORTAL_OUTSTANDING_STATUSES,
   type PortalHomeSearch,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 export function outstandingCasesQuery(
   filters: Pick<PortalHomeSearch, "scope" | "status" | "priority">,
