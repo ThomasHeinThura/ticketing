@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import {
+  fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
   withMfaCsrfApp,
 } from "./helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "./helpers/project-key";
+import { safePortalOperation } from "./helpers/safe-portal-operation";
 
 /**
  * U-12 / A-03, A-07, A-08: the portal request conversation, end to end on the real API,
@@ -299,7 +301,9 @@ async function runJourney(
     const requesterControl = staffPage.getByTestId(
       "work-item-requester-control",
     );
-    await expect(requesterControl).toHaveText("No requester");
+    await expect(requesterControl).toHaveAccessibleName(
+      "Requester: No requester",
+    );
     await requesterControl.click();
     await staffPage
       .getByRole("textbox", { name: "Search customers" })
@@ -315,7 +319,9 @@ async function runJourney(
       })
       .click();
     expect((await requesterSaved).status()).toBe(200);
-    await expect(requesterControl).not.toHaveText("No requester");
+    await expect(requesterControl).not.toHaveAccessibleName(
+      "Requester: No requester",
+    );
     await expect(
       staffPage.getByRole("textbox", { name: "Search customers" }),
     ).toHaveCount(0);
@@ -483,15 +489,69 @@ async function runJourney(
         "Not available to download here yet. Ask the team if you need it.",
       ),
     ).toHaveCount(0);
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      page.getByLabel("Download vpn-guide.pdf", { exact: true }).click(),
-    ]);
+    const [download] = await safePortalOperation(() =>
+      Promise.all([
+        page.waitForEvent("download"),
+        (async () => {
+          await page
+            .getByLabel("Download vpn-guide.pdf", { exact: true })
+            .focus();
+          await page.keyboard.press("Enter");
+        })(),
+      ]),
+    );
     expect(download.suggestedFilename()).toBe("vpn-guide.pdf");
     expect(new URL(download.url()).pathname).toBe(
       "/api/storage/portal-download",
     );
-    expect(readFileSync(await download.path()).equals(PDF_BYTES)).toBe(true);
+    expect(
+      readFileSync(await safePortalOperation(() => download.path())).equals(
+        PDF_BYTES,
+      ),
+    ).toBe(true);
+    const issuedUrl = new URL(download.url());
+    expect(issuedUrl.origin).toBe(new URL(portal).origin);
+    const expiry = Number(issuedUrl.searchParams.get("expires"));
+    expect(expiry).toBeGreaterThan(Math.floor(Date.now() / 1000));
+    expect(expiry).toBeLessThanOrEqual(Math.ceil(Date.now() / 1000) + 300);
+    const head = await safePortalOperation(() =>
+      customerContext.request.head(issuedUrl.toString()),
+    );
+    expect(head.status()).toBe(200);
+    expect(head.headers()["content-length"]).toBe(String(PDF_BYTES.length));
+    expect((await safePortalOperation(() => head.body())).length).toBe(0);
+    const partial = await safePortalOperation(() =>
+      customerContext.request.get(issuedUrl.toString(), {
+        headers: { Range: "bytes=1-4" },
+      }),
+    );
+    expect(partial.status()).toBe(206);
+    expect(partial.headers()["content-range"]).toBe(
+      `bytes 1-4/${PDF_BYTES.length}`,
+    );
+    expect(
+      Buffer.from(await safePortalOperation(() => partial.body())).equals(
+        PDF_BYTES.subarray(1, 5),
+      ),
+    ).toBe(true);
+    const unsatisfiable = await safePortalOperation(() =>
+      customerContext.request.get(issuedUrl.toString(), {
+        headers: { Range: `bytes=${PDF_BYTES.length}-` },
+      }),
+    );
+    expect(unsatisfiable.status()).toBe(416);
+    expect(unsatisfiable.headers()["content-range"]).toBe(
+      `bytes */${PDF_BYTES.length}`,
+    );
+    const wrongHost = new URL(issuedUrl);
+    wrongHost.host = new URL(fixture.origin).host;
+    expect(
+      (
+        await safePortalOperation(() =>
+          customerContext.request.get(wrongHost.toString()),
+        )
+      ).status(),
+    ).toBe(404);
 
     // Tablet and mobile: no horizontal page scroll.
     for (const viewport of [
@@ -499,16 +559,28 @@ async function runJourney(
       { width: 390, height: 844, name: "mobile" },
     ]) {
       await page.setViewportSize(viewport);
-      await expectNoHorizontalScroll(page);
-      await page.screenshot({
-        path: evidencePath(`portal-request-${viewport.name}.png`),
-        fullPage: true,
-      });
+      for (const colorScheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme });
+        await expectNoHorizontalScroll(page);
+        await page.screenshot({
+          path: evidencePath(
+            `portal-request-${viewport.name}-${colorScheme}.png`,
+          ),
+          fullPage: true,
+        });
+      }
     }
 
     // CP-2: another organisation's customer gets "not found".
     const outsiderPage = await outsiderContext.newPage();
     await signInThroughPortal(outsiderPage, portal, tenant.outsider);
+    expect(
+      (
+        await safePortalOperation(() =>
+          outsiderContext.request.get(issuedUrl.toString()),
+        )
+      ).status(),
+    ).toBe(400);
     const foreign = apiResponse(
       outsiderPage,
       "GET",
@@ -527,6 +599,28 @@ async function runJourney(
     await expect(outsiderPage.getByText("Can you test it today?")).toHaveCount(
       0,
     );
+
+    // Removing the requester revokes reach after the link has already been issued.
+    await requesterControl.click();
+    const revoked = apiResponse(
+      staffPage,
+      "PATCH",
+      `/api/work-items/${request.key}`,
+    );
+    await staffPage
+      .getByRole("button", { name: "No requester", exact: true })
+      .click();
+    expect((await revoked).status()).toBe(200);
+    await expect(requesterControl).toHaveAccessibleName(
+      "Requester: No requester",
+    );
+    expect(
+      (
+        await safePortalOperation(() =>
+          customerContext.request.get(issuedUrl.toString()),
+        )
+      ).status(),
+    ).toBe(404);
   } finally {
     await Promise.allSettled([
       staffContext.close(),
@@ -544,6 +638,9 @@ test("staff raise a request for a customer, who opens it, replies with a file an
   await withMfaCsrfApp(
     async (fixture) => runJourney(fixture, (name) => testInfo.outputPath(name)),
     {
+      ...fixtureOwnershipJournal(
+        testInfo.outputPath("fixture-ownership.jsonl"),
+      ),
       beforeStart: async (setup) => {
         await runPrivateCommand(
           setup,

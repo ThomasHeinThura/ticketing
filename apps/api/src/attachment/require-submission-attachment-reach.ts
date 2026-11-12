@@ -31,7 +31,7 @@ type SubmissionAttachmentContext = Context<{
   Variables: SubmissionAttachmentVariables;
 }>;
 
-async function assertIntakeEnabled(workspaceId: string) {
+export async function assertIntakeEnabled(workspaceId: string) {
   const [[instance], [workspace]] = await findIntakeFeatureFlags(
     db,
     workspaceId,

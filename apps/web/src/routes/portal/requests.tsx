@@ -96,8 +96,8 @@ function PortalRequestsPage() {
       replace: true,
     });
   const backlogQuery = useInfiniteQuery({
-    queryKey: ["portal", portalUserId, "backlog"],
-    queryFn: ({ pageParam }) => getPortalBacklog(pageParam),
+    queryKey: ["portal", portalUserId, "backlog", search.project],
+    queryFn: ({ pageParam }) => getPortalBacklog(pageParam, search.project),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.page.nextCursor ?? undefined,
     enabled: backlogMode,

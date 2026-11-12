@@ -398,6 +398,51 @@ describe("portal sign-in", () => {
     },
   );
 
+  it("renders the translated guidance from the real password fetch response", async () => {
+    window.sessionStorage.setItem(
+      "taskdesk:portal-sign-in-email",
+      "staff@example.test",
+    );
+    mocks.search = {
+      stage: "password",
+      factor: "totp",
+      invitationId: undefined,
+    };
+    const { portalAuthClient } = await vi.importActual<
+      typeof import("@/lib/portal-auth-client")
+    >("@/lib/portal-auth-client");
+    mocks.signIn.mockImplementation(portalAuthClient.signIn.email);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: "USE_AGENT_SIGN_IN",
+            message: "server text",
+          }),
+          { status: 403 },
+        ),
+      ),
+    );
+    renderSignIn();
+    fireEvent.change(await screen.findByLabelText("auth:forms.password"), {
+      target: { value: "valid-password" },
+    });
+    fireEvent.submit(
+      screen
+        .getByLabelText("auth:forms.password")
+        .closest("form") as HTMLFormElement,
+    );
+    expect(
+      await screen.findByText("auth:wrongPortal.useAgentSignIn"),
+    ).toBeVisible();
+    expect(screen.queryByText("server text")).toBeNull();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/auth/sign-in/email"),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("explains a refusal after the second factor", async () => {
     window.sessionStorage.setItem(
       "taskdesk:portal-sign-in-email",

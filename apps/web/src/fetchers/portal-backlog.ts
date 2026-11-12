@@ -39,9 +39,14 @@ async function request<T>(
   return response.json() as Promise<T>;
 }
 
-export function getPortalBacklog(cursor?: string) {
-  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-  return request<PortalBacklogPage>(`/portal/requests/backlog${query}`);
+export function getPortalBacklog(cursor?: string, project?: string) {
+  const query = new URLSearchParams();
+  if (cursor) query.set("cursor", cursor);
+  if (project) query.set("project", project);
+  const suffix = query.toString();
+  return request<PortalBacklogPage>(
+    `/portal/requests/backlog${suffix ? `?${suffix}` : ""}`,
+  );
 }
 
 export function rankPortalBacklogItem(input: {

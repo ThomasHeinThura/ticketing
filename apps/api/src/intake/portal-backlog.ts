@@ -59,6 +59,10 @@ export const portalBacklogPageSchema = z.object({
 
 export const portalBacklogQuerySchema = z.object({
   cursor: z.string().max(MAX_CURSOR_LENGTH).optional(),
+  project: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,64}$/)
+    .optional(),
 });
 
 export const rankPortalBacklogBodySchema = z
@@ -108,8 +112,16 @@ type BacklogCursor = {
   id: string;
 };
 
-function cursorScope(viewer: PortalViewer) {
-  return `portal-backlog:${viewer.organisationId}:${viewer.personId}:${PORTAL_BACKLOG_LIMIT}`;
+function cursorScope(viewer: PortalViewer, project?: string) {
+  if (!project)
+    return `portal-backlog:${viewer.organisationId}:${viewer.personId}:${PORTAL_BACKLOG_LIMIT}`;
+  return JSON.stringify([
+    "portal-backlog",
+    viewer.organisationId,
+    viewer.personId,
+    PORTAL_BACKLOG_LIMIT,
+    project,
+  ]);
 }
 
 export function decodePortalBacklogCursor(
@@ -287,15 +299,17 @@ async function requireBacklogWorkspaceEnabled(workspaceId: string) {
 export async function listPortalBacklog(
   personId: string,
   cursor?: string,
+  project?: string,
 ): Promise<PortalBacklogPage> {
   const viewer = await loadPortalViewer(personId);
-  const scope = cursorScope(viewer);
+  const scope = cursorScope(viewer, project);
   const after = decodePortalBacklogCursor(cursor, scope);
   const workspaceIds = await enabledBacklogWorkspaceIds(viewer);
   if (!workspaceIds.length)
     return { items: [], page: { nextCursor: null, hasMore: false } };
   const predicates = [
     portalBacklogReach(viewer),
+    ...(project ? [eq(projectTable.slug, project)] : []),
     inArray(workItemTable.workspaceId, workspaceIds),
     // P4R2-M2: only items whose project has the customer portal on.
     await customerPortalCondition(
