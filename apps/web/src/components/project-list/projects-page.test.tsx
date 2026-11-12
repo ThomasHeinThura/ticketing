@@ -118,6 +118,26 @@ const deletedProject = {
 };
 
 describe("ProjectsPage recovery mode", () => {
+  it("shows the see-all hint only on the matching project", () => {
+    mocks.projects = [
+      {
+        ...deletedProject,
+        id: "unjoined",
+        deletedAt: null,
+        seenOnlyViaWorkspaceRole: true,
+      },
+      {
+        ...deletedProject,
+        id: "joined",
+        deletedAt: null,
+        seenOnlyViaWorkspaceRole: false,
+      },
+    ];
+    render(<ProjectsPage workspaceId="workspace-1" />);
+    expect(
+      screen.getAllByText(translate("workspace:projects.notMember")),
+    ).toHaveLength(1);
+  });
   it("shows a separate visible project-tree progress aggregate when supplied", () => {
     mocks.projects = [
       {

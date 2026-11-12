@@ -3679,3 +3679,7 @@ The inviter chooses the staff role. A `member:invite`-scoped read returns only a
 ### 12 Nov 2026 — Thomas, D-G: signed-in password changes
 
 Agent and customer accounts can change their own local password in account settings. The portal host admits the change-password auth endpoint only for an admitted customer session; the existing current-password verification, rate limit and optional peer-session revocation remain in force. The caller's factor status includes whether a local password exists even when MFA is enabled; no credential material is exposed. This extends the portal host allowlist and introduces no new URL.
+
+## Workspace project visibility — 12 November 2026
+
+Thomas decided on 12 November 2026 (D-E): workspace owners, admins and managers see every project in their workspace. This replaces the earlier rule that required a separate `sees_all` grant for manager visibility. Other staff roles retain project, ancestor and owning-team reach. The separate decision that these three roles may join themselves is pending implementation; no self-join route is introduced by this change.

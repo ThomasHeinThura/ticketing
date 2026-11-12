@@ -3009,6 +3009,7 @@
 	},
 	"workspace": {
 		"projects": {
+			"notMember": "You are not a member of this project",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "Crear {{term_project_one}}",
 			"title": "Título",

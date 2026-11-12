@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPersonalApiKey } from "../../apps/api/src/api-key/service";
 import db, { schema } from "../../apps/api/src/database";
+import { currentProjectReachPredicate } from "../../apps/api/src/database/repositories/identity-scope.repository";
 import {
   automationTable,
   workItemTemplateTable,
@@ -31,6 +32,8 @@ import {
   timeEntryTable,
 } from "../../apps/api/src/database/schema-p5-time";
 import { createApp } from "../../apps/api/src/index";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import { resolveRosterRole } from "../../apps/api/src/project/members/roster.repository";
 import { putAttachmentObject } from "../../apps/api/src/storage";
 import * as viewRepository from "../../apps/api/src/view/repository";
 import { TaskDeskClient } from "../../packages/mcp/src/taskdesk/client";
@@ -75,6 +78,88 @@ describe("B-5: staff project reach", () => {
     if (mixedStorageRoot)
       await rm(mixedStorageRoot, { recursive: true, force: true });
     mixedStorageRoot = undefined;
+  });
+
+  it("cannot resolve owner, admin or manager as project roster roles on a fresh workspace", async () => {
+    const world = await setupWorld();
+    for (const role of ["owner", "admin", "manager"]) {
+      expect(await resolveRosterRole(db, world.workspaceId, role)).toBeNull();
+    }
+  });
+
+  for (const role of [
+    "owner",
+    "admin",
+    "manager",
+    "lead",
+    "member",
+    "viewer",
+  ] as const) {
+    it(`${role}: project list and SQL reach agree without a stored see-all flag`, async () => {
+      const world = await setupWorld();
+      const caller = await addMember(world.workspaceId, role);
+      await db
+        .update(schema.membershipTable)
+        .set({ seesAll: false })
+        .where(
+          and(
+            eq(schema.membershipTable.personId, caller.personId),
+            eq(schema.membershipTable.scope, "workspace"),
+          ),
+        );
+      const identity = await resolveIdentity({
+        userId: caller.user.id,
+        credential: "session",
+      });
+      if (!identity) throw new Error("identity missing");
+      const sqlVisible = await db
+        .select({ id: schema.projectTable.id })
+        .from(schema.projectTable)
+        .where(
+          and(
+            eq(schema.projectTable.id, world.project.id),
+            currentProjectReachPredicate(
+              identity,
+              schema.projectTable.id,
+              schema.projectTable.workspaceId,
+              schema.projectTable.organisationId,
+            ),
+          ),
+        );
+      const { app } = createApp();
+      mockAuthenticatedSession(caller.user);
+      const response = await json(
+        app,
+        "GET",
+        `/api/project?workspaceId=${world.workspaceId}`,
+      );
+      expect(response.status, await response.clone().text()).toBe(200);
+      const projects = (await response.json()) as Array<{
+        id: string;
+        seenOnlyViaWorkspaceRole?: boolean;
+      }>;
+      const project = projects.find((row) => row.id === world.project.id);
+      const expected = ["owner", "admin", "manager"].includes(role);
+      expect(sqlVisible.length > 0).toBe(expected);
+      expect(Boolean(project)).toBe(expected);
+      if (project) expect(project.seenOnlyViaWorkspaceRole).toBe(true);
+    });
+  }
+
+  it("manager reaches projects without project or team membership", async () => {
+    const world = await setupWorld();
+    const caller = await addMember(world.workspaceId, "manager");
+    const { app } = createApp();
+    mockAuthenticatedSession(caller.user);
+    const list = await json(
+      app,
+      "GET",
+      `/api/project?workspaceId=${world.workspaceId}`,
+    );
+    expect(list.status, await list.clone().text()).toBe(200);
+    expect(await list.text()).toContain(world.project.id);
+    const detail = await json(app, "GET", `/api/project/${world.project.id}`);
+    expect(detail.status, await detail.clone().text()).toBe(200);
   });
 
   for (const role of ["member", "lead", "viewer"] as const) {

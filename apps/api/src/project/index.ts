@@ -137,6 +137,7 @@ import {
   updateStakeholderBody,
   workspaceIdQuery,
 } from "./schema";
+import { projectSeenOnlyViaWorkspaceRole } from "./see-all-only";
 
 async function assertProjectCalendar(
   workspaceId: string,
@@ -1109,7 +1110,24 @@ const project = apiRouter<
       includeDeleted === "true",
       readableProjectIds,
     );
-    return c.json(projects, 200);
+    const facts = new Map(
+      (await reach.projectFactsFor([workspaceId])).map((fact) => [
+        fact.id,
+        fact,
+      ]),
+    );
+    return c.json(
+      projects.map((project) => {
+        const fact = facts.get(project.id);
+        return {
+          ...project,
+          seenOnlyViaWorkspaceRole: fact
+            ? projectSeenOnlyViaWorkspaceRole(reach.identity, fact)
+            : false,
+        };
+      }),
+      200,
+    );
   })
   .openapi(createProjectRoute, async (c) => {
     const {

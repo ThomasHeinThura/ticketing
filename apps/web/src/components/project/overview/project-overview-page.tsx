@@ -337,6 +337,7 @@ function ServiceLevelsPanel({ overview }: { overview: ProjectOverview }) {
  */
 export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
   const { t, i18n } = useTranslation("projectOverview");
+  const { t: workspaceT } = useTranslation("workspace");
   const {
     project: listed,
     workspaceId,
@@ -470,6 +471,11 @@ export function ProjectOverviewPage({ projectKey }: { projectKey: string }) {
               <Badge variant="secondary">{t("header.archived")}</Badge>
             ) : null}
           </h1>
+          {listed?.seenOnlyViaWorkspaceRole ? (
+            <span className="text-muted-foreground text-xs">
+              {workspaceT("projects.notMember")}
+            </span>
+          ) : null}
           <div
             className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-muted-foreground text-xs"
             data-testid="project-overview-header-line"

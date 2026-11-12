@@ -793,6 +793,7 @@
 	},
 	"workspace": {
 		"projects": {
+			"notMember": "You are not a member of this project",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "Utwórz {{term_project_one}}",
 			"title": "Tytuł",

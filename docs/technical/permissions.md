@@ -160,7 +160,9 @@ PA-15 operation keys for the elevated actions above that are not pending actions
 
 ## Reach
 
-Reach is evaluated for the loaded resource from current persisted memberships and explicit grants. Project roster/roles and project parent/owner-team fields are reach-affecting changes, distinct from ordinary project edits.
+Reach is evaluated for the loaded resource from current persisted memberships and explicit grants. Workspace owner, admin and manager roles also reach every project in their workspace (Thomas, D-E, 12 November 2026), without changing their capabilities. Lead, member and viewer reach projects through project or ancestor membership, an owning team, or a retained explicit reach grant. Project roster/roles and project parent/owner-team fields are reach-affecting changes, distinct from ordinary project edits.
+
+D-E also calls for owner, admin and manager self-join; that action is not yet implemented. Existing project roster writes continue to refuse self-grants.
 
 ## Safety invariants
 
