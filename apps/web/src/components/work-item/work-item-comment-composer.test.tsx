@@ -1,7 +1,12 @@
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
+import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -89,7 +94,12 @@ vi.mock("@/hooks/use-shiki-highlighter-for-code", () => ({
 }));
 
 import { resetWorkItemUploads } from "@/fetchers/attachment/work-item-upload-queue";
+import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import WorkItemCommentComposer from "./work-item-comment-composer";
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: { user: { id: "user-1" } } }) },
+}));
 
 const SHARE = "activity:timeline.shareFilesWithCustomer";
 
@@ -109,6 +119,7 @@ function renderComposer(defaultVisibility: "public" | "internal" = "public") {
   const composer = screen.getByTestId("work-item-comment-composer");
   return {
     composer,
+    queryClient,
     stage(name: string) {
       const picker =
         view.container.querySelector<HTMLInputElement>('input[type="file"]');
@@ -161,6 +172,63 @@ describe("A-07 share files with the customer", () => {
     cleanup();
     resetWorkItemUploads();
     window.localStorage.clear();
+  });
+
+  it("refreshes activity once after adding a comment and again for another person's comment", async () => {
+    class Socket {
+      static OPEN = 1;
+      static current: Socket;
+      readyState = 1;
+      onopen?: () => void;
+      onmessage?: (event: { data: string }) => void;
+      constructor() {
+        Socket.current = this;
+      }
+      send() {}
+      close() {}
+      frame(frame: unknown) {
+        this.onmessage?.({ data: JSON.stringify(frame) });
+      }
+    }
+    vi.stubGlobal("WebSocket", Socket);
+    try {
+      const ui = renderComposer("internal");
+      const activity = vi.fn(async () => []);
+      function Probe() {
+        useQuery({
+          queryKey: ["work-items", "activity", "OPS-17"],
+          queryFn: activity,
+        });
+        useNativeWorkItemRealtime(["work_item:OPS-17"]);
+        return null;
+      }
+      render(
+        <QueryClientProvider client={ui.queryClient}>
+          <Probe />
+        </QueryClientProvider>,
+      );
+      await waitFor(() => expect(activity).toHaveBeenCalledTimes(1));
+      act(() => {
+        Socket.current.onopen?.();
+        Socket.current.frame({ type: "subscribed", topic: "work_item:OPS-17" });
+      });
+      ui.stage("note.pdf");
+      await ui.send();
+      await waitFor(() => expect(activity).toHaveBeenCalledTimes(2));
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(activity).toHaveBeenCalledTimes(2);
+      act(() =>
+        Socket.current.frame({
+          type: "work_item.commented",
+          topic: "work_item:OPS-17",
+          eventId: "other",
+          payload: { key: "OPS-17" },
+        }),
+      );
+      await waitFor(() => expect(activity).toHaveBeenCalledTimes(3));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("shows the Switch only for a public comment with staged files, off by default, and resets it for Internal", async () => {

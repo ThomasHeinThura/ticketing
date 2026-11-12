@@ -42,6 +42,7 @@ vi.mock("@/fetchers/work-item/update-work-item", () => ({
   default: mocks.updateWorkItem,
 }));
 
+import useWorkItemGroupDrag from "@/components/work-item/use-work-item-group-drag";
 import WorkItemListRealtime from "@/components/work-item/work-item-list-realtime";
 import { useSaveWorkItemFields } from "@/components/work-item/work-item-save";
 import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
@@ -49,7 +50,8 @@ import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
-import type { WorkItemDetailRow } from "@/types/work-item";
+import { buildBoardGroups } from "@/lib/work-item-board-groups";
+import type { WorkItemDetailRow, WorkItemRow } from "@/types/work-item";
 
 class MockWebSocket {
   static OPEN = 1;
@@ -281,6 +283,130 @@ afterEach(() => {
 });
 
 describe("work-item list realtime composition", () => {
+  it("refreshes the original grouped item's detail after the project changes while saving", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const row = {
+      id: "id-1",
+      key: "WI-1",
+      workspaceId: "workspace-1",
+      projectId: "project-1",
+      version: 1,
+      priority: "high",
+      assigneeId: null,
+      unavailableFields: [],
+    } as unknown as WorkItemRow;
+    const groups = buildBoardGroups("priority", [row]);
+    const target = groups.find((group) => group.value === "low");
+    if (!target) throw new Error("missing target");
+    const request = deferred<unknown>();
+    mocks.updateWorkItem.mockReturnValue(request.promise);
+    const detail = vi.fn(async () => ({ key: row.key }));
+    const { result, rerender } = renderHook(
+      ({ projectId }: { projectId: string }) => {
+        useQuery({
+          queryKey: ["work-items", "detail", row.key],
+          queryFn: detail,
+        });
+        return useWorkItemGroupDrag({
+          projectId,
+          field: "priority",
+          workItems: [row],
+          groups,
+          people: [],
+          canAssign: true,
+          canUnassign: () => true,
+          canUpdate: true,
+          canSetPriority: true,
+        });
+      },
+      { initialProps: { projectId: "project-1" }, wrapper: wrapperFor(client) },
+    );
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(1));
+    act(() => result.current.startDrag({ active: { id: row.id } } as never));
+    let pending!: Promise<void>;
+    act(() => {
+      pending = result.current.endDrag({
+        active: { id: row.id },
+        over: { id: target.id },
+      } as never);
+    });
+    await waitFor(() => expect(mocks.updateWorkItem).toHaveBeenCalledOnce());
+    rerender({ projectId: "project-2" });
+    await act(async () => {
+      request.resolve({});
+      await pending;
+    });
+    expect(detail).toHaveBeenCalledTimes(2);
+  });
+  it("refreshes a grouped move once and refreshes again for another user's event", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const row = {
+      id: "id-1",
+      key: "WI-1",
+      workspaceId: "workspace-1",
+      projectId: "project-1",
+      version: 1,
+      priority: "high",
+      assigneeId: null,
+      unavailableFields: [],
+    } as unknown as WorkItemRow;
+    const groups = buildBoardGroups("priority", [row]);
+    const target = groups.find((group) => group.value === "low");
+    if (!target) throw new Error("missing target");
+    const detail = vi.fn(async () => ({ key: row.key, version: 1 }));
+    mocks.updateWorkItem.mockResolvedValue({});
+    const { result } = renderHook(
+      () => {
+        useQuery({
+          queryKey: ["work-items", "detail", row.key],
+          queryFn: detail,
+        });
+        useNativeWorkItemRealtime(["project:project-1"]);
+        return useWorkItemGroupDrag({
+          projectId: "project-1",
+          field: "priority",
+          workItems: [row],
+          groups,
+          people: [],
+          canAssign: true,
+          canUnassign: () => true,
+          canUpdate: true,
+          canSetPriority: true,
+        });
+      },
+      { wrapper: wrapperFor(client) },
+    );
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(1));
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected socket");
+    act(() => {
+      socket.open();
+      socket.frame({ type: "subscribed", topic: "project:project-1" });
+    });
+    act(() => result.current.startDrag({ active: { id: row.id } } as never));
+    await act(async () => {
+      await result.current.endDrag({
+        active: { id: row.id },
+        over: { id: target.id },
+      } as never);
+    });
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(detail).toHaveBeenCalledTimes(2);
+    act(() =>
+      socket.frame({
+        type: "work_item.updated",
+        topic: "project:project-1",
+        eventId: "other-group-change",
+        payload: { key: row.key },
+      }),
+    );
+    await waitFor(() => expect(detail).toHaveBeenCalledTimes(3));
+  });
   it("refreshes once after its save and again for a different person's event", async () => {
     const client = new QueryClient({
       defaultOptions: {

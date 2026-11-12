@@ -18,6 +18,7 @@ import {
   removeConnection,
   shutdownWebSocketAdapter,
 } from "../../../apps/api/src/ws/index";
+import { legacyWindowOrigin } from "../../../apps/api/src/ws/window-id";
 
 function makeFakeWs() {
   return {
@@ -39,6 +40,30 @@ describe("broadcastToProject", () => {
 
   afterEach(async () => {
     await shutdownWebSocketAdapter();
+  });
+
+  it("does not suppress an old socket for an invalid request tab header", async () => {
+    const ws = makeFakeWs();
+    const conn = addConnection(
+      "proj-1",
+      ws,
+      "user-1",
+      "user-1",
+      async () => true,
+    );
+    broadcastToProject(
+      "proj-1",
+      { type: "TASK_UPDATED", projectId: "proj-1", taskId: "t1" },
+      legacyWindowOrigin("user-1", "bad.id"),
+    );
+    await vi.waitFor(
+      () =>
+        expect(
+          (ws as { send: ReturnType<typeof vi.fn> }).send,
+        ).toHaveBeenCalledOnce(),
+      { timeout: 300 },
+    );
+    removeConnection("proj-1", conn);
   });
 
   it("flushes queued keys in their original order after 100 ms", async () => {

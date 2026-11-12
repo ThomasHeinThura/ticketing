@@ -323,6 +323,11 @@ import {
 } from "./ws/legacy-project-reach";
 import { logRealtimeFailure } from "./ws/log-realtime-failure";
 import { checkWebSocketOrigin } from "./ws/origin-policy";
+import {
+  browserWindowOrigin,
+  legacyWindowOrigin,
+  validWindowId,
+} from "./ws/window-id";
 
 type ApiKey = {
   id: string;
@@ -2196,9 +2201,9 @@ export function createApp(
       assertRouteIsClassified(c);
       // GM-9: an impersonation session is refused the restricted classes before any route runs.
       await enforceImpersonationRestrictions(c);
-      const windowId = c.req.header("X-TaskDesk-Window-Id");
+      const windowId = validWindowId(c.req.header("X-TaskDesk-Window-Id"));
       const userId = c.get("userId");
-      const initiatorId = windowId ? `${userId}:${windowId}` : userId;
+      const initiatorId = legacyWindowOrigin(userId, windowId);
       // Issue #8, Slice 2: `runNextWithPolicyShadow` wraps this SAME `next` in place of
       // calling it directly — it evaluates the finished response against the declarative
       // policy registry and logs any disagreement, off by default
@@ -2218,10 +2223,11 @@ export function createApp(
         eventContext.run(
           {
             initiatorId,
-            nativeInitiator:
-              windowId && userId && c.get("session") && !c.get("apiKey")
-                ? { userId, windowId }
-                : undefined,
+            nativeInitiator: browserWindowOrigin(
+              userId,
+              windowId,
+              Boolean(c.get("session") && !c.get("apiKey")),
+            ),
           },
           () =>
             !["GET", "HEAD", "OPTIONS"].includes(c.req.method)
@@ -2591,7 +2597,7 @@ export function createApp(
                 return null;
               }
             },
-            c.req.query("windowId"),
+            validWindowId(c.req.query("windowId")),
           );
         },
         onMessage(event, ws) {
@@ -2726,7 +2732,7 @@ export function createApp(
 
       const userId = c.get("userId");
 
-      const windowId = c.req.query("windowId");
+      const windowId = validWindowId(c.req.query("windowId"));
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;
       let conn: ReturnType<typeof addConnection> | null = null;
 

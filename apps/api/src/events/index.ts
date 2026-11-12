@@ -4,7 +4,7 @@ import { EventEmitter } from "node:events";
 const EVENTS = new EventEmitter();
 EVENTS.setMaxListeners(100);
 export const eventContext = new AsyncLocalStorage<{
-  initiatorId: string;
+  initiatorId?: string;
   nativeInitiator?: { userId: string; windowId: string };
 }>();
 

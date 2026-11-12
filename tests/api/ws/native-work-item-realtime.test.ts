@@ -13,6 +13,7 @@ import {
   reauthorizeNativeConnection,
   removeNativeConnection,
 } from "../../../apps/api/src/ws/native-work-item-realtime";
+import { browserWindowOrigin } from "../../../apps/api/src/ws/window-id";
 
 function mockSocket(send = vi.fn()) {
   const closes: Array<[number | undefined, string | undefined]> = [];
@@ -33,6 +34,61 @@ describe("native realtime session re-authorization", () => {
     for (const connection of connections.splice(0)) {
       removeNativeConnection(connection);
     }
+  });
+
+  it("does not exclude an invalid socket ID or a different authenticated user with the same ID", () => {
+    const first = mockSocket();
+    const second = mockSocket();
+    const invalid = addNativeConnection(
+      first.ws,
+      { userId: "user-1", portal: "agent" },
+      async () => ({ userId: "user-1", portal: "agent" }),
+      "tab\n",
+    );
+    const other = addNativeConnection(
+      second.ws,
+      { userId: "user-2", portal: "agent" },
+      async () => ({ userId: "user-2", portal: "agent" }),
+      "tab",
+    );
+    if (!invalid || !other)
+      throw new Error("connection limit unexpectedly reached");
+    connections.push(invalid, other);
+    for (const connection of [invalid, other])
+      connection.topics.set("project:p", {
+        projectId: "p",
+        workspaceId: "w",
+        customerVisible: true,
+      });
+    const message = {
+      projectId: "p",
+      topics: ["project:p"],
+      eventId: "e",
+      eventType: "work_item.updated",
+      at: "2026-11-12T00:00:00Z",
+      key: "WI-1",
+      customerVisible: true,
+    };
+    deliverNativeBroadcast({
+      ...message,
+      initiator: browserWindowOrigin("user-1", "tab", true),
+    });
+    expect(
+      (first.ws as { send: ReturnType<typeof vi.fn> }).send,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      (second.ws as { send: ReturnType<typeof vi.fn> }).send,
+    ).toHaveBeenCalledTimes(1);
+    deliverNativeBroadcast({
+      ...message,
+      initiator: browserWindowOrigin("user-1", "tab\n", true),
+    });
+    expect(
+      (first.ws as { send: ReturnType<typeof vi.fn> }).send,
+    ).toHaveBeenCalledTimes(2);
+    expect(
+      (second.ws as { send: ReturnType<typeof vi.fn> }).send,
+    ).toHaveBeenCalledTimes(2);
   });
 
   it("excludes only the authenticated initiating window and never exposes its identity", () => {

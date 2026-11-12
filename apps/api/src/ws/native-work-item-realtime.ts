@@ -18,6 +18,7 @@ import {
   resolveSocketIdentity,
 } from "./project-read-authorization";
 import { findLiveWorkItemSocketScope } from "./repository";
+import { validWindowId } from "./window-id";
 
 type NativeCredential = {
   userId: string;
@@ -182,7 +183,7 @@ export function addNativeConnection(
   const connection: NativeConnection = {
     ws,
     credential,
-    windowId,
+    windowId: validWindowId(windowId),
     reauthenticate,
     topics: new Map(),
     frameTimes: [],
