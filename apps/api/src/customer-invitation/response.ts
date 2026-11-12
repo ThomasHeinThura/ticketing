@@ -17,9 +17,14 @@ export const customerInvitationSchema = z
   })
   .openapi("CustomerInvitation");
 
-/** Create and resend also say whether the email was handed to the mailer. */
+/** Customer `delivered` indicates provider configuration, equally for real and inert rows. */
 export const customerInvitationSentSchema = customerInvitationSchema
-  .extend({ delivered: z.boolean() })
+  .extend({
+    delivered: z.boolean().openapi({
+      description:
+        "Whether an email provider is configured, so email is queued for eligible invitations. Identical for real and inert invitations; does not indicate provider handoff or delivery.",
+    }),
+  })
   .openapi("CustomerInvitationSent");
 
 export const customerInvitationListSchema = z

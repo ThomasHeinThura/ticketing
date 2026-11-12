@@ -18,18 +18,6 @@ const manage = {
   sessionOnly: true,
 } as const;
 
-const copyLink = {
-  capability: "member:invite",
-  scope: "workspace",
-  scopeSource: "request",
-  reach: "required",
-  sessionOnly: true,
-  orOwner: {
-    predicate: "row.created_by === identity.personId",
-    capability: "workspace:read",
-  },
-} as const;
-
 export const customerInvitationPolicies = {
   "GET /api/portal/auth-methods": {
     public: true,
@@ -58,7 +46,7 @@ export const customerInvitationPolicies = {
   "POST /api/workspace/{workspaceId}/organisations/{organisationId}/invitations/{id}/resend":
     manage,
   "POST /api/workspace/{workspaceId}/organisations/{organisationId}/invitations/{id}/copy-link":
-    copyLink,
+    manage,
   "POST /api/portal/invitations/{id}/accept": {
     portal: "customer",
     predicate: "own_organisation",

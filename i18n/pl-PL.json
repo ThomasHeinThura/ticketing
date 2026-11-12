@@ -861,7 +861,11 @@
 			"resultEmailSent": "Email sent",
 			"resultEmailNotSent": "Email not sent — copy the link and send it yourself",
 			"validUntil": "Valid until {{date}}",
-			"expiredBadge": "expired"
+			"expiredBadge": "expired",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		},
 		"inviteModal": {
 			"title": "Zaproś członka zespołu",
@@ -903,7 +907,8 @@
 			"cancelInviteError": "Nie udało się anulować zaproszenia",
 			"roleUpdateSuccess": "Rola zaktualizowana",
 			"roleUpdateError": "Nie udało się zaktualizować roli",
-			"joinedOn": "Joined {{date}}"
+			"joinedOn": "Joined {{date}}",
+			"resendInvalidRole": "This invitation has a missing or invalid role and cannot be resent."
 		}
 	},
 	"publicProject": {
@@ -8408,8 +8413,8 @@
 		"resultCard": {
 			"createdTitle": "Invitation ready",
 			"resentTitle": "Invitation resent",
-			"emailSent": "Email sent",
-			"emailNotSent": "Email not sent — copy the link and send it yourself",
+			"emailQueued": "Email queued — you can also copy the link and send it yourself",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
 			"validUntil": "Valid until {{date}}",
 			"shareDescription": "Send this link to {{email}} so they can join on the customer portal.",
 			"done": "Done"
@@ -8443,7 +8448,14 @@
 			"linkCopied": "Invitation link copied",
 			"copyFailed": "Couldn't copy automatically. Select the link and press Ctrl+C.",
 			"resent": "Invitation sent again. The previous link no longer works.",
-			"sent": "Invitation sent"
+			"sent": "Invitation sent",
+			"queued": "Email queued — you can also copy the link and send it yourself",
+			"resentQueued": "Email queued again — the previous link no longer works.",
+			"noEmailProvider": "No email provider is set up — copy the link and send it yourself",
+			"copyErrorForbidden": "You do not have permission to copy this invitation link.",
+			"copyErrorInactive": "This invitation is no longer active.",
+			"copyErrorRateLimited": "Too many copy requests. Try again shortly.",
+			"copyRequestFailed": "Could not retrieve the invitation link. Try again."
 		}
 	},
 	"reports": {

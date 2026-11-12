@@ -14,10 +14,7 @@ import {
   reportPlaceholderClaimAuditWriteFailure,
 } from "../identity/placeholder-claim";
 import { lockOrganisationIdentityDomainBindings } from "../instance/organisation-lifecycle";
-import {
-  assertCallerHasCapability,
-  assertCallerHasCapabilityOrOwner,
-} from "../utils/require-workspace-capability";
+import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import {
   type CustomerInvitationDeliveryKeyring,
   customerInvitationDeliveryKeyring,
@@ -493,12 +490,16 @@ export async function resendCustomerInvitation(
   activateCustomerInvitationDeliveryKey(deliveryKey, keyring);
   destroyCustomerInvitationDeliveryKeys(supersededDeliveries, keyring);
   const delivered = await isEmailProviderConfigured();
-  return { ...toView(result.updated, result.now), delivered };
+  return {
+    ...toView(result.updated, result.now),
+    delivered,
+  };
 }
 
 /**
  * Reconstructs the active accept link for a pending, unexpired customer invitation (owner decision
- * D-N, contract CP-23). Never mutates `expiresAt`, `generation` or `lastSentAt`, and writes an
+ * D-N, contract CP-23). Requires `member:invite` in the workspace and reach to the organisation at
+ * request time; never mutates `expiresAt`, `generation` or `lastSentAt`, and writes an
  * `invitation.link_copied` audit row naming the actor, invitation id and organisation — never the
  * secret or the invitee email address.
  */
@@ -509,6 +510,13 @@ export async function copyCustomerInvitationLink(input: {
   invitationId: string;
 }): Promise<{ link: string; expiresAt: string }> {
   return db.transaction(async (tx) => {
+    await assertCallerHasCapability(
+      input.scope.workspaceId,
+      input.actor.userId,
+      "member:invite",
+      { kind: "session" },
+      tx,
+    );
     const organisation = await findInvitableOrganisation(
       tx,
       input.scope.workspaceId,
@@ -525,25 +533,8 @@ export async function copyCustomerInvitationLink(input: {
       input.invitationId,
     );
     if (!row) {
-      await assertCallerHasCapability(
-        input.scope.workspaceId,
-        input.actor.userId,
-        "member:invite",
-        { kind: "session" },
-        tx,
-      );
       refuse(404, "Invitation not found");
     }
-
-    await assertCallerHasCapabilityOrOwner(
-      input.scope.workspaceId,
-      input.actor.userId,
-      "member:invite",
-      "workspace:read",
-      row.inviterId === input.actor.userId,
-      { kind: "session" },
-      tx,
-    );
 
     const now = new Date();
     if (row.status !== "pending" || row.expiresAt.getTime() <= now.getTime()) {

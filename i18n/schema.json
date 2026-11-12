@@ -12637,6 +12637,18 @@
 						},
 						"expiredBadge": {
 							"type": "string"
+						},
+						"copyErrorForbidden": {
+							"type": "string"
+						},
+						"copyErrorInactive": {
+							"type": "string"
+						},
+						"copyErrorRateLimited": {
+							"type": "string"
+						},
+						"copyRequestFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12652,7 +12664,11 @@
 						"resultEmailSent",
 						"resultEmailNotSent",
 						"validUntil",
-						"expiredBadge"
+						"expiredBadge",
+						"copyErrorForbidden",
+						"copyErrorInactive",
+						"copyErrorRateLimited",
+						"copyRequestFailed"
 					]
 				},
 				"inviteModal": {
@@ -12790,6 +12806,9 @@
 						},
 						"joinedOn": {
 							"type": "string"
+						},
+						"resendInvalidRole": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12816,7 +12835,8 @@
 						"cancelInviteError",
 						"roleUpdateSuccess",
 						"roleUpdateError",
-						"joinedOn"
+						"joinedOn",
+						"resendInvalidRole"
 					]
 				}
 			},
@@ -35431,10 +35451,10 @@
 						"resentTitle": {
 							"type": "string"
 						},
-						"emailSent": {
+						"emailQueued": {
 							"type": "string"
 						},
-						"emailNotSent": {
+						"noEmailProvider": {
 							"type": "string"
 						},
 						"validUntil": {
@@ -35450,8 +35470,8 @@
 					"required": [
 						"createdTitle",
 						"resentTitle",
-						"emailSent",
-						"emailNotSent",
+						"emailQueued",
+						"noEmailProvider",
 						"validUntil",
 						"shareDescription",
 						"done"
@@ -35475,6 +35495,27 @@
 						},
 						"copyFailed": {
 							"type": "string"
+						},
+						"queued": {
+							"type": "string"
+						},
+						"resentQueued": {
+							"type": "string"
+						},
+						"noEmailProvider": {
+							"type": "string"
+						},
+						"copyErrorForbidden": {
+							"type": "string"
+						},
+						"copyErrorInactive": {
+							"type": "string"
+						},
+						"copyErrorRateLimited": {
+							"type": "string"
+						},
+						"copyRequestFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -35482,7 +35523,14 @@
 						"resent",
 						"notDelivered",
 						"linkCopied",
-						"copyFailed"
+						"copyFailed",
+						"queued",
+						"resentQueued",
+						"noEmailProvider",
+						"copyErrorForbidden",
+						"copyErrorInactive",
+						"copyErrorRateLimited",
+						"copyRequestFailed"
 					]
 				},
 				"accept": {

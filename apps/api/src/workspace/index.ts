@@ -651,7 +651,7 @@ const copyWorkspaceInvitationLinkRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Copy the accept link for a pending workspace invitation",
   description:
-    "Agent-host browser session only (never an API key, MCP key or impersonation session). Allowed for the invitation's inviter or a holder of `member:invite` in the workspace. Only pending, unexpired invitations may be copied; copying never extends expiry, sets `Cache-Control: no-store`, is rate-limited per actor and records `invitation.link_copied` in the audit log.",
+    "Agent-host browser session only (never an API key, MCP key or impersonation session). Requires `member:invite` in the workspace at request time. Only pending, unexpired invitations may be copied; copying never extends expiry, sets `Cache-Control: no-store`, is rate-limited per actor and records `invitation.link_copied` in the audit log.",
   middleware: [
     noStoreHeader,
     requireAgentBrowserSession(),

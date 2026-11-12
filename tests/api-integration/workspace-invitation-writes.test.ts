@@ -307,6 +307,55 @@ describe("S6a invite (POST /api/workspace/{id}/invitations)", () => {
     expect(rows).toHaveLength(1);
   });
 
+  it.each(["viewer", "restricted-custom"])(
+    "preserves the %s role through resend and acceptance",
+    async (role) => {
+      const { app } = createApp();
+      const owner = await signUpUser(app);
+      const workspaceId = await createWorkspace(
+        app,
+        owner.cookie,
+        "Resend role",
+      );
+      if (role === "restricted-custom") {
+        const created = await createWorkspaceRoleNative(
+          app,
+          owner.cookie,
+          workspaceId,
+          {
+            role,
+            permission: { work_item: ["read"] },
+          },
+        );
+        expect(created.status).toBe(200);
+      }
+      const email = `${role}@example.com`;
+      const first = await inviteWorkspaceMemberNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        { email, role },
+      );
+      expect(first.status).toBe(200);
+      const invitation = (await first.json()) as { id: string };
+      const resend = await inviteWorkspaceMemberNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        { email, role, resend: true },
+      );
+      expect(resend.status).toBe(200);
+      expect(((await resend.json()) as { id: string }).id).toBe(invitation.id);
+      expect((await invitationRow(invitation.id))?.role).toBe(role);
+      const invitee = await signUpUser(app, { email });
+      expect(
+        (await acceptInvitationNative(app, invitee.cookie, invitation.id))
+          .status,
+      ).toBe(200);
+      expect(await membershipRole(workspaceId, invitee.user.id)).toBe(role);
+    },
+  );
+
   it("a plain member (no invitation:create) is refused with 403", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);

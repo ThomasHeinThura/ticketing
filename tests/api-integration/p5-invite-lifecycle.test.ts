@@ -6,7 +6,8 @@
  */
 import { createHash } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as auditWriter from "../../apps/api/src/audit/audit-writer";
 import { runCustomerInvitationDeliveryJob } from "../../apps/api/src/customer-invitation/delivery/worker";
 import { acceptCustomerInvitation } from "../../apps/api/src/customer-invitation/service";
 import db, { schema } from "../../apps/api/src/database";
@@ -663,6 +664,7 @@ describe("revoke through the existing pending-action route (CP-22)", () => {
       }),
       201,
     );
+
     await runCustomerInvitationDeliveryJob();
     const customer = await admittedCustomer("leadinvite@example.test");
     const request = await w.call(lead.user, `/api/invitation/${created.id}`, {
@@ -1255,7 +1257,7 @@ describe("copy link (CP-23, D-N)", () => {
     );
   });
 
-  it("allows the original inviter even after losing member:invite, and refuses unrelated members, API keys, impersonation, portal sessions, and expired/revoked rows", async () => {
+  it("refuses an inviter who lost member:invite, unrelated members, API keys, impersonation, portal sessions, and expired/revoked rows", async () => {
     const { resetCopyInvitationLinkRateLimitBuckets } = await import(
       "../../apps/api/src/utils/require-copy-link-rate-limit"
     );
@@ -1273,6 +1275,7 @@ describe("copy link (CP-23, D-N)", () => {
     await grantProjectRole(lead.user.id, orgProject?.id as string, [
       "project:read",
     ]);
+    await ensureAgentSession(lead.user.id);
     const created = await w.json<{ id: string }>(
       await w.call(lead.user, w.base(), {
         method: "POST",
@@ -1281,7 +1284,35 @@ describe("copy link (CP-23, D-N)", () => {
       201,
     );
 
-    // Strip member:invite from lead role so lead is ONLY the row's inviter with workspace:read + project reach.
+    const otherInvitation = await w.json<{ id: string }>(
+      await w.call(w.owner.user, w.base(w.otherOrg.id), {
+        method: "POST",
+        body: { email: "unreachable@example.test" },
+      }),
+      201,
+    );
+    const noReach = await w.call(
+      lead.user,
+      `${w.base(w.otherOrg.id)}/${otherInvitation.id}/copy-link`,
+      { method: "POST" },
+    );
+    expect(noReach.status).toBe(404);
+    const staffInvitation = await w.json<{ id: string }>(
+      await w.call(
+        w.owner.user,
+        `/api/workspace/${w.workspaceId}/invitations`,
+        {
+          method: "POST",
+          body: { email: "lead-staff@example.test", role: "viewer" },
+        },
+      ),
+    );
+    await db
+      .update(schema.invitationTable)
+      .set({ inviterId: lead.user.id })
+      .where(eq(schema.invitationTable.id, staffInvitation.id));
+
+    // Keep project reach but remove the capability from the original inviter.
     const [leadRole] = await db
       .select({
         id: schema.roleTable.id,
@@ -1305,13 +1336,36 @@ describe("copy link (CP-23, D-N)", () => {
       })
       .where(eq(schema.roleTable.id, leadRole.id));
 
-    // Original inviter still succeeds!
+    // Ownership of the invitation does not restore a lost capability.
     const inviterCopy = await w.call(
       lead.user,
       `${w.base()}/${created.id}/copy-link`,
       { method: "POST" },
     );
-    expect(inviterCopy.status).toBe(200);
+    expect(inviterCopy.status).toBe(403);
+    expect(
+      (
+        await w.call(
+          lead.user,
+          `/api/workspace/${w.workspaceId}/invitations/${staffInvitation.id}/copy-link`,
+          { method: "POST" },
+        )
+      ).status,
+    ).toBe(403);
+
+    const wrongOrganisation = await w.call(
+      w.owner.user,
+      `${w.base(w.otherOrg.id)}/${created.id}/copy-link`,
+      { method: "POST" },
+    );
+    expect(wrongOrganisation.status).toBe(404);
+
+    const wrongWorkspace = await w.call(
+      w.foreign.user,
+      `${w.base(w.org.id, w.foreign.workspace.id)}/${created.id}/copy-link`,
+      { method: "POST" },
+    );
+    expect(wrongWorkspace.status).toBe(404);
 
     // Unrelated workspace member without member:invite is refused 403.
     const unrelatedCopy = await w.call(
@@ -1380,6 +1434,63 @@ describe("copy link (CP-23, D-N)", () => {
         })
       ).status,
     ).toBe(409);
+  });
+
+  it("fails closed when the copy audit cannot be written", async () => {
+    const sent = await w.invite("copy-audit-failure@example.test");
+    const audit = vi
+      .spyOn(auditWriter, "appendAuditLog")
+      .mockRejectedValueOnce(new Error("audit unavailable"));
+    try {
+      const response = await w.call(
+        w.owner.user,
+        `${w.base()}/${sent.id}/copy-link`,
+        { method: "POST" },
+      );
+      expect(response.status).toBeGreaterThanOrEqual(500);
+      expect(await response.text()).not.toContain(sent.credential);
+    } finally {
+      audit.mockRestore();
+    }
+  });
+
+  it("serializes copy with resend and returns only a complete old or new credential", async () => {
+    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
+      "../../apps/api/src/utils/require-copy-link-rate-limit"
+    );
+    resetCopyInvitationLinkRateLimitBuckets();
+    const sent = await w.invite("copy-race@example.test");
+    await db
+      .update(schema.invitationTable)
+      .set({ lastSentAt: new Date(Date.now() - 5 * 60_000) })
+      .where(eq(schema.invitationTable.id, sent.id));
+    const [copy, resend] = await Promise.all([
+      w.call(w.owner.user, `${w.base()}/${sent.id}/copy-link`, {
+        method: "POST",
+      }),
+      w.call(w.owner.user, `${w.base()}/${sent.id}/resend`, { method: "POST" }),
+    ]);
+    expect(copy.status).toBe(200);
+    expect(resend.status).toBe(200);
+    const raced = (await copy.json()) as { link: string };
+    const current = await w.json<{ link: string }>(
+      await w.call(w.owner.user, `${w.base()}/${sent.id}/copy-link`, {
+        method: "POST",
+      }),
+    );
+    expect([
+      current.link,
+      `${current.link.split("#t=")[0]}#t=${sent.credential}`,
+    ]).toContain(raced.link);
+    expect(current.link).not.toContain(`#t=${sent.credential}`);
+    const customer = await admittedCustomer("copy-race@example.test");
+    expect((await accept(customer.user, sent.id, sent.credential)).status).toBe(
+      404,
+    );
+    expect(
+      (await accept(customer.user, sent.id, current.link.split("#t=")[1] ?? ""))
+        .status,
+    ).toBe(200);
   });
 
   it("reports delivered=false on staff create/resend when email is unconfigured and writes invitation.link_copied on staff copy", async () => {

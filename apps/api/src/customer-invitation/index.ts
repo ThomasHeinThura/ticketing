@@ -132,7 +132,7 @@ const createRouteDef = createRoute({
   tags: ["Customer invitations"],
   summary: "Invite an address into a customer organisation",
   description:
-    "Always the customer role. A body that names any other role, a team or a scope is refused 422. The accept link is emailed when a provider is configured and is never returned in the create response; while pending and unexpired, the inviter or a holder of `member:invite` may copy the same link from `POST .../copy-link`. An address that cannot accept here (a member, staff, another organisation's customer, a deactivated customer) is answered exactly like any other address: a pending row with no credential hash and no email, the reason audited only. `delivered` reports only whether an email provider is configured on the instance, never the outcome of a particular send.",
+    "Always the customer role. A body that names any other role, a team or a scope is refused 422. The accept link is queued for email when a provider is configured and is never returned in the create response; while pending and unexpired, a holder of `member:invite` who reaches the organisation may copy the same link from `POST .../copy-link`. An address that cannot accept here (a member, staff, another organisation's customer, a deactivated customer) is answered exactly like any other address: a pending row with no credential hash and no email, the reason audited only. `delivered` reports only whether an email provider is configured on the instance, never provider handoff or delivery.",
   middleware: [...manage] as const,
   request: {
     params: organisationParam,
@@ -160,7 +160,7 @@ const resendRoute = createRoute({
   tags: ["Customer invitations"],
   summary: "Resend a pending customer invitation",
   description:
-    "Increments generation to issue a fresh accept credential, invalidates the previous link and extends expiry. An inert row is re-evaluated: if its address can now be invited it gets a credential and is sent normally. `delivered` reports only whether an email provider is configured.",
+    "Increments generation to issue a fresh accept credential, invalidates the previous link and extends expiry. An inert row is re-evaluated: if its address can now be invited it gets a credential and is queued normally. `delivered` reports only whether an email provider is configured on the instance, never provider handoff or delivery.",
   middleware: [...manage] as const,
   request: { params: invitationParam },
   responses: {
@@ -179,7 +179,7 @@ const copyLinkRoute = createRoute({
   tags: ["Customer invitations"],
   summary: "Copy the accept link for a pending customer invitation",
   description:
-    "Agent-host browser session only (never an API key, MCP key or impersonation session). Allowed for the invitation's inviter or a holder of `member:invite` who reaches the organisation. Only pending, unexpired invitations may be copied; copying never extends expiry or changes generation, sets `Cache-Control: no-store`, is rate-limited per actor and records `invitation.link_copied` in the audit log.",
+    "Agent-host browser session only (never an API key, MCP key or impersonation session). Requires `member:invite` in the workspace and reach to the organisation at request time. Only pending, unexpired invitations may be copied; copying never extends expiry or changes generation, sets `Cache-Control: no-store`, is rate-limited per actor and records `invitation.link_copied` in the audit log.",
   middleware: [...copyLinkMiddleware] as const,
   request: { params: invitationParam },
   responses: {

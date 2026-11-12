@@ -219,10 +219,30 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   const handleResendInvitation = async (
     invitationToResend: WorkspaceUserInvitation,
   ) => {
+    const resendRole =
+      typeof invitationToResend.role === "string"
+        ? invitationToResend.role.trim()
+        : "";
+    const isBuiltInStaffRole =
+      resendRole === "admin" ||
+      resendRole === "manager" ||
+      resendRole === "lead" ||
+      resendRole === "member" ||
+      resendRole === "viewer";
+    const roleInvalid =
+      !resendRole ||
+      resendRole === "owner" ||
+      resendRole === "customer" ||
+      (!isBuiltInStaffRole &&
+        allWorkspaceRoles.length > 0 &&
+        !allWorkspaceRoles.some((r) => r.role === resendRole));
+    if (roleInvalid) {
+      toast.error(t("team:membersTable.resendInvalidRole"));
+      return;
+    }
+
     setResendingId(invitationToResend.id);
     try {
-      const resendRole =
-        invitationToResend.role === "admin" ? "admin" : "member";
       const resent = await inviteWorkspaceMember({
         workspaceId,
         email: invitationToResend.email,
@@ -253,11 +273,14 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
         });
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("team:membersTable.resendError"),
-      );
+      if (
+        error instanceof Error &&
+        /has no role named|owner role cannot be granted/i.test(error.message)
+      ) {
+        toast.error(t("team:membersTable.resendInvalidRole"));
+      } else {
+        toast.error(t("team:membersTable.resendError"));
+      }
     } finally {
       setResendingId(null);
     }
@@ -528,12 +551,14 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         <EllipsisIcon className="size-4" />
                       </MenuTrigger>
                       <MenuPopup align="end">
-                        <MenuItem
-                          onClick={() => copyInvitationLink(invitation.id)}
-                        >
-                          <CopyIcon className="size-4" />
-                          {t("team:invitations.copyLink")}
-                        </MenuItem>
+                        {!isExpired ? (
+                          <MenuItem
+                            onClick={() => copyInvitationLink(invitation.id)}
+                          >
+                            <CopyIcon className="size-4" />
+                            {t("team:invitations.copyLink")}
+                          </MenuItem>
+                        ) : null}
                         <MenuItem
                           onClick={() =>
                             void handleResendInvitation(invitation)

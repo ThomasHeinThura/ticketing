@@ -23,7 +23,10 @@ export type CustomerInvitation = {
 };
 
 export type SentCustomerInvitation = CustomerInvitation & {
-  /** Whether the email was handed to the mailer; false means no email went out. */
+  /**
+   * Whether an email provider is configured on the instance, so an email was queued for eligible
+   * invitations. Identical for real and inert invitations; never claims provider handoff or delivery.
+   */
   delivered: boolean;
 };
 

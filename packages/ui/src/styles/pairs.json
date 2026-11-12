@@ -1488,21 +1488,6 @@
 				"chain": [
 					"packages/ui/src/components/menu-content.tsx:MenuItem",
 					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/team/members-table.tsx:MembersTable",
-					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[2]",
-					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/menu-content.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/menu-content.tsx:MenuItem",
-					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/work-item/work-item-actions.tsx:WorkItemActions",
 					"jsx:div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
@@ -4333,21 +4318,6 @@
 					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/team/members-table.tsx:MembersTable",
 					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[1]",
-					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/menu-content.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/menu-content.tsx:MenuItem",
-					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/team/members-table.tsx:MembersTable",
-					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[2]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -7736,21 +7706,6 @@
 				"chain": [
 					"packages/ui/src/components/menu-content.tsx:MenuItem",
 					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/team/members-table.tsx:MembersTable",
-					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[2]",
-					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/menu-content.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/menu-content.tsx:MenuItem",
-					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/work-item/work-item-actions.tsx:WorkItemActions",
 					"jsx:div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
@@ -8029,21 +7984,6 @@
 					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/team/members-table.tsx:MembersTable",
 					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[1]",
-					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/menu-content.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"packages/ui/src/components/menu-content.tsx:MenuItem",
-					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
-					"apps/web/src/components/team/members-table.tsx:MembersTable",
-					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[2]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
 					"opaque-backdrop:bg-popover"
 				],

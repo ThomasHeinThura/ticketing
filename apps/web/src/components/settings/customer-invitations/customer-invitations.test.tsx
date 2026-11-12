@@ -180,7 +180,27 @@ describe("customer invitations screen", () => {
     );
   });
 
-  it("resends a pending invitation and shows the result card when email was not delivered", async () => {
+  it("shows a translated error toast and copies nothing when row copy is refused or rate-limited", async () => {
+    mocks.listOrganisations.mockResolvedValue([
+      { id: "o1", key: "acme", name: "Acme" },
+    ]);
+    mocks.listInvitations.mockResolvedValue([invitation("a", "pending")]);
+    mocks.copyLink.mockRejectedValue(
+      Object.assign(new Error("Too many requests"), { status: 429 }),
+    );
+
+    renderScreen();
+    fireEvent.click(
+      await screen.findByText("customerInvitations:actions.copyLink"),
+    );
+
+    await waitFor(() =>
+      expect(mocks.copyLink).toHaveBeenCalledWith("w1", "o1", "a"),
+    );
+    expect(mocks.copyToClipboard).not.toHaveBeenCalled();
+  });
+
+  it("resends a pending invitation and shows the result card when no email provider is set up", async () => {
     mocks.listOrganisations.mockResolvedValue([
       { id: "o1", key: "acme", name: "Acme" },
     ]);
@@ -200,11 +220,11 @@ describe("customer invitations screen", () => {
       await screen.findByText("customerInvitations:resultCard.resentTitle"),
     ).toBeTruthy();
     expect(
-      screen.getByText("customerInvitations:resultCard.emailNotSent"),
+      screen.getByText("customerInvitations:resultCard.noEmailProvider"),
     ).toBeTruthy();
   });
 
-  it("sends an invitation with the address only and presents the result card on success", async () => {
+  it("sends an invitation with the address only and presents the truthful 'Email queued' result card on success", async () => {
     mocks.listOrganisations.mockResolvedValue([
       { id: "o1", key: "acme", name: "Acme" },
     ]);
@@ -228,7 +248,7 @@ describe("customer invitations screen", () => {
       await screen.findByText("customerInvitations:resultCard.createdTitle"),
     ).toBeTruthy();
     expect(
-      screen.getByText("customerInvitations:resultCard.emailSent"),
+      screen.getByText("customerInvitations:resultCard.emailQueued"),
     ).toBeTruthy();
   });
 

@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import InvitationLinkField from "@/components/team/invitation-link-field";
 import { copyCustomerInvitationLink } from "@/fetchers/customer-invitation";
+import { copyInvitationErrorKey } from "@/hooks/use-copy-invitation-link";
 import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { formatDateMedium, formatDateTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -91,11 +92,7 @@ export function InvitationResultCard(props: InvitationResultCardProps) {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), COPIED_RESET_MS);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("customerInvitations:toasts.copyFailed"),
-      );
+      toast.error(t(copyInvitationErrorKey(error, "customerInvitations")));
     } finally {
       setCopying(false);
     }
@@ -107,8 +104,17 @@ export function InvitationResultCard(props: InvitationResultCardProps) {
         ? t("team:invitations.resultEmailSent")
         : t("team:invitations.resultEmailNotSent")
       : props.delivered
-        ? t("customerInvitations:resultCard.emailSent")
-        : t("customerInvitations:resultCard.emailNotSent");
+        ? t("customerInvitations:resultCard.emailQueued")
+        : t("customerInvitations:resultCard.noEmailProvider");
+
+  const alertVariant =
+    props.kind === "staff"
+      ? props.delivered
+        ? "success"
+        : "warning"
+      : props.delivered
+        ? "info"
+        : "warning";
 
   const validUntilText =
     props.kind === "staff"
@@ -126,7 +132,7 @@ export function InvitationResultCard(props: InvitationResultCardProps) {
 
   return (
     <div className="space-y-3">
-      <Alert variant={props.delivered ? "success" : "warning"}>
+      <Alert variant={alertVariant}>
         <AlertTitle>{deliveryTitle}</AlertTitle>
         {formattedExpiry ? (
           <AlertDescription>{validUntilText}</AlertDescription>

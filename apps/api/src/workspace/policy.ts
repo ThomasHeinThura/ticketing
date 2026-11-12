@@ -363,18 +363,13 @@ export const workspacePolicies = {
   },
 
   // C-6 (D-N) — audit and return the staff workspace invitation link on copy. Agent-host browser
-  // session only; allowed for `member:invite` holders or the invitation's own inviter holding
-  // `workspace:read`.
+  // session only; requires `member:invite` in the workspace at request time.
   "POST /api/workspace/{workspaceId}/invitations/{invitationId}/copy-link": {
     capability: "member:invite",
     scope: "workspace",
     scopeSource: "request",
     reach: "required",
     sessionOnly: true,
-    orOwner: {
-      predicate: "row.created_by === identity.personId",
-      capability: "workspace:read",
-    },
   },
 
   // S7 — list a workspace's roles (issue #6, retrofit plan §3, S7 row). Runtime check is

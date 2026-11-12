@@ -8,6 +8,9 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvitationResultCard } from "./invitation-result-card";
 
+const httpError = (message: string, status: number) =>
+  Object.assign(new Error(message), { status });
+
 const mocks = vi.hoisted(() => ({
   copyToClipboard: vi.fn(),
   copyCustomerLink: vi.fn(),
@@ -59,11 +62,13 @@ afterEach(() => {
 });
 
 describe("InvitationResultCard", () => {
-  it("shows 'Email sent', valid-until date, and audits staff link copies", async () => {
+  it("shows 'Email sent' for synchronous staff sends, waits for the copy endpoint before revealing or copying, and audits staff link copies", async () => {
+    const serverLink =
+      "https://agent.example.test/invitation/accept/inv-staff-1";
     mocks.copyToClipboard.mockResolvedValue(true);
     mocks.copyStaffLink.mockResolvedValue({
-      link: `${window.location.origin}/invitation/accept/inv-staff-1`,
-      expiresAt: "2026-11-14T10:00:00.000Z",
+      link: serverLink,
+      expiresAt: "2026-12-14T10:00:00.000Z",
     });
 
     render(
@@ -73,26 +78,28 @@ describe("InvitationResultCard", () => {
         workspaceId="ws-1"
         email="staff@example.test"
         delivered={true}
-        expiresAt="2026-11-14T10:00:00.000Z"
+        expiresAt="2026-12-14T10:00:00.000Z"
       />,
     );
 
     expect(screen.getByText("team:invitations.resultEmailSent")).toBeVisible();
     expect(
       screen.getByText(
-        "team:invitations.validUntil:fmt(2026-11-14T10:00:00.000Z)",
+        "team:invitations.validUntil:fmt(2026-12-14T10:00:00.000Z)",
       ),
     ).toBeVisible();
-    expect(screen.getByRole("textbox")).toHaveValue(
-      `${window.location.origin}/invitation/accept/inv-staff-1`,
-    );
+    // Link is NOT pre-revealed locally before the server approves the copy request.
+    expect(screen.getByRole("textbox")).toHaveValue("");
 
     fireEvent.click(screen.getByRole("button"));
 
-    expect(mocks.copyStaffLink).toHaveBeenCalledWith("ws-1", "inv-staff-1");
-    expect(mocks.copyToClipboard).toHaveBeenCalledWith(
-      `${window.location.origin}/invitation/accept/inv-staff-1`,
+    await waitFor(() =>
+      expect(mocks.copyStaffLink).toHaveBeenCalledWith("ws-1", "inv-staff-1"),
     );
+    await waitFor(() =>
+      expect(mocks.copyToClipboard).toHaveBeenCalledWith(serverLink),
+    );
+    expect(screen.getByRole("textbox")).toHaveValue(serverLink);
     await waitFor(() =>
       expect(screen.getByRole("button")).toHaveTextContent(
         "team:invitations.linkCopied",
@@ -100,10 +107,31 @@ describe("InvitationResultCard", () => {
     );
   });
 
-  it("shows 'Email not sent — copy the link and send it yourself' for customer invitations and fetches/copies on demand", async () => {
+  it("shows truthful 'Email queued' copy for customer invitations when a provider is configured and keeps Copy link available", () => {
+    render(
+      <InvitationResultCard
+        kind="customer"
+        invitationId="inv-cust-queued"
+        workspaceId="ws-1"
+        organisationId="org-1"
+        email="customer@example.test"
+        delivered={true}
+        expiresAt="2026-12-14T10:00:00.000Z"
+      />,
+    );
+
+    expect(
+      screen.getByText("customerInvitations:resultCard.emailQueued"),
+    ).toBeVisible();
+    expect(screen.getByRole("button")).toHaveTextContent(
+      "customerInvitations:actions.copyLink",
+    );
+  });
+
+  it("shows 'No email provider is set up — copy the link and send it yourself' for customer invitations without a provider and fetches/copies on demand", async () => {
     mocks.copyCustomerLink.mockResolvedValue({
       link: "https://portal.example.test/invite/inv-cust-1#t=derived_secret_token",
-      expiresAt: "2026-11-14T10:00:00.000Z",
+      expiresAt: "2026-12-14T10:00:00.000Z",
     });
     mocks.copyToClipboard.mockResolvedValue(true);
 
@@ -115,19 +143,18 @@ describe("InvitationResultCard", () => {
         organisationId="org-1"
         email="customer@example.test"
         delivered={false}
-        expiresAt="2026-11-14T10:00:00.000Z"
+        expiresAt="2026-12-14T10:00:00.000Z"
       />,
     );
 
     expect(
-      screen.getByText("customerInvitations:resultCard.emailNotSent"),
+      screen.getByText("customerInvitations:resultCard.noEmailProvider"),
     ).toBeVisible();
     expect(
       screen.getByText(
-        "customerInvitations:resultCard.validUntil:fmt(2026-11-14T10:00:00.000Z)",
+        "customerInvitations:resultCard.validUntil:fmt(2026-12-14T10:00:00.000Z)",
       ),
     ).toBeVisible();
-    // Customer copy endpoint is NOT called until the inviter presses Copy link.
     expect(mocks.copyCustomerLink).not.toHaveBeenCalled();
 
     const button = screen.getByRole("button");
@@ -160,7 +187,7 @@ describe("InvitationResultCard", () => {
       "https://portal.example.test/invite/inv-cust-2#t=manual_copy_token";
     mocks.copyCustomerLink.mockResolvedValue({
       link,
-      expiresAt: "2026-11-14T10:00:00.000Z",
+      expiresAt: "2026-12-14T10:00:00.000Z",
     });
     mocks.copyToClipboard.mockResolvedValue(false);
 
@@ -172,7 +199,7 @@ describe("InvitationResultCard", () => {
         organisationId="org-1"
         email="customer@example.test"
         delivered={false}
-        expiresAt="2026-11-14T10:00:00.000Z"
+        expiresAt="2026-12-14T10:00:00.000Z"
       />,
     );
 
@@ -188,4 +215,52 @@ describe("InvitationResultCard", () => {
     expect(input.selectionStart).toBe(0);
     expect(input.selectionEnd).toBe(link.length);
   });
+
+  it.each([
+    [
+      "403 forbidden",
+      httpError("Forbidden", 403),
+      "customerInvitations:toasts.copyErrorForbidden",
+    ],
+    [
+      "409 expired",
+      httpError("Expired", 409),
+      "customerInvitations:toasts.copyErrorInactive",
+    ],
+    [
+      "429 rate limited",
+      httpError("Rate limited", 429),
+      "customerInvitations:toasts.copyErrorRateLimited",
+    ],
+    [
+      "500 audit failure",
+      httpError("Audit failed", 500),
+      "customerInvitations:toasts.copyRequestFailed",
+    ],
+  ])(
+    "copies nothing and shows a translated customer error toast on %s",
+    async (_label, err, expectedKey) => {
+      mocks.copyCustomerLink.mockRejectedValue(err);
+
+      render(
+        <InvitationResultCard
+          kind="customer"
+          invitationId="inv-cust-err"
+          workspaceId="ws-1"
+          organisationId="org-1"
+          email="customer@example.test"
+          delivered={true}
+          expiresAt="2026-12-14T10:00:00.000Z"
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button"));
+
+      await waitFor(() =>
+        expect(mocks.toastError).toHaveBeenCalledWith(expectedKey),
+      );
+      expect(mocks.copyToClipboard).not.toHaveBeenCalled();
+      expect(screen.getByRole("textbox")).toHaveValue("");
+    },
+  );
 });

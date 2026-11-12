@@ -48,6 +48,7 @@ import {
   type SentCustomerInvitation,
 } from "@/fetchers/customer-invitation";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { copyInvitationErrorKey } from "@/hooks/use-copy-invitation-link";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { copyToClipboard } from "@/lib/copy-to-clipboard";
@@ -95,8 +96,8 @@ function InviteDialog({
       await queryClient.invalidateQueries({
         queryKey: customerInvitationsKey(workspaceId, organisationId),
       });
-      if (sent.delivered) toast.success(t("customerInvitations:toasts.sent"));
-      else toast.error(t("customerInvitations:toasts.notDelivered"));
+      if (sent.delivered) toast.success(t("customerInvitations:toasts.queued"));
+      else toast.error(t("customerInvitations:toasts.noEmailProvider"));
       setSentInvitation(sent);
     },
   });
@@ -277,7 +278,8 @@ function InvitationRow({
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), COPIED_RESET_MS);
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) =>
+      toast.error(t(copyInvitationErrorKey(error, "customerInvitations"))),
   });
   const resend = useMutation({
     mutationFn: () =>
@@ -286,8 +288,9 @@ function InvitationRow({
       await queryClient.invalidateQueries({
         queryKey: customerInvitationsKey(workspaceId, organisationId),
       });
-      if (sent.delivered) toast.success(t("customerInvitations:toasts.resent"));
-      else toast.error(t("customerInvitations:toasts.notDelivered"));
+      if (sent.delivered)
+        toast.success(t("customerInvitations:toasts.resentQueued"));
+      else toast.error(t("customerInvitations:toasts.noEmailProvider"));
       onResent(sent);
     },
     onError: (error) => toast.error(error.message),
