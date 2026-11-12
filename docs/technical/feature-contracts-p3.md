@@ -993,6 +993,7 @@ hand-written protocol code; only the credential check reuses the platform.
   connection or organisation is refused `409` and logged — it does not adopt the record.
   Its external response has the same status and body as an IP-32 same-connection duplicate;
   no matching resource id or conflict class is exposed to the caller.
+- D-B (Thomas, 12 Nov 2026): with staff self-registration off, a live staff invitation permits the first sign-in, including an Entra provider without `email_verified`. An identity provisioned by the configured connection remains eligible under IP-19; a claimable imported placeholder remains eligible only through IP-30's verified local proof or administrative confirmation.
 - `IP-19` Within one connection, SCIM create followed by first OIDC login links by
   `subject` (Entra `oid`) and `externalId`; the email snapshot is updated, not matched.
   **Link and activate** (owner decision, decision log 2026-10-10): SCIM `POST /Users` leaves a

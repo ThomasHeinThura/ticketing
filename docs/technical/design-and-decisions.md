@@ -3696,6 +3696,14 @@ The inviter chooses the staff role. A `member:invite`-scoped read returns only a
 
 Agent and customer accounts can change their own local password in account settings. The portal host admits the change-password auth endpoint only for an admitted customer session; the existing current-password verification, rate limit and optional peer-session revocation remain in force. The caller's factor status includes whether a local password exists even when MFA is enabled; no credential material is exposed. This extends the portal host allowlist and introduces no new URL.
 
+### 12 Nov 2026 — Thomas, D-B: invitation-only accounts
+
+D-B reverses A-15 (31 Oct 2026) open sign-up. Staff self-registration is disabled by default and may be enabled by an instance administrator with step-up; the customer portal remains invitation-only.
+
+### 12 Nov 2026 — Thomas, D-B: staff registration confirmation and provisioned identities
+
+Changing staff self-registration requires an enrolled second factor and a fresh TOTP or backup-code proof. Other sign-in method changes retain the existing PA-15 rules. With self-registration off, admission includes a live staff invitation, an identity provisioned by an administrator-configured connection under IP-19, or a claimable import placeholder under IP-30. These exemptions do not change IP-19 subject matching or IP-30 verified local proof and administrative confirmation.
+
 ## Customer organisation reach — 12 November 2026, Thomas
 
 The audit finding extends D-A: only a current instance admin can extend a workspace’s customer reach. This reverses the instance-wide project organisation selector and unrestricted first binding described in the 13 October creation-binding decision. A live project or a soft-deleted project still within its recovery window establishes service; after permanent deletion or expiry of that window the link ends unless another qualifying project exists. Restoration within the recovery window therefore does not extend reach. Subsequent project creators may bind to a served customer; unserved IDs give non-admins the same refusal regardless of validity.

@@ -1330,6 +1330,9 @@
 						},
 						"instanceAdminSubtitle": {
 							"type": "string"
+						},
+						"invitationOnly": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -1347,7 +1350,8 @@
 						"toggleLink",
 						"instanceStatusError",
 						"instanceAdminTitle",
-						"instanceAdminSubtitle"
+						"instanceAdminSubtitle",
+						"invitationOnly"
 					]
 				},
 				"verifyOtp": {
@@ -25477,6 +25481,9 @@
 						},
 						"factor_required": {
 							"type": "string"
+						},
+						"enroll_factor": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -25490,7 +25497,8 @@
 						"rate_limited",
 						"unavailable",
 						"unknown",
-						"factor_required"
+						"factor_required",
+						"enroll_factor"
 					]
 				},
 				"editor": {
@@ -26597,6 +26605,24 @@
 						},
 						"failed": {
 							"type": "string"
+						},
+						"staffRegistration": {
+							"type": "string"
+						},
+						"staffRegistrationDescription": {
+							"type": "string"
+						},
+						"customerInvitationOnly": {
+							"type": "string"
+						},
+						"registrationEnvironmentDisabled": {
+							"type": "string"
+						},
+						"registrationOn": {
+							"type": "string"
+						},
+						"registrationOff": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -26631,7 +26657,13 @@
 						"changeOff",
 						"cancel",
 						"confirm",
-						"failed"
+						"failed",
+						"staffRegistration",
+						"staffRegistrationDescription",
+						"customerInvitationOnly",
+						"registrationEnvironmentDisabled",
+						"registrationOn",
+						"registrationOff"
 					]
 				}
 			},

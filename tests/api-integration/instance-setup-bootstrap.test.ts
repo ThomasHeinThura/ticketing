@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { count, eq, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { refreshStaffRegistration } from "../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import {
@@ -208,6 +209,14 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
   it("(a) still refuses a zero-user signup with no token even when registration is otherwise wide open (DISABLE_REGISTRATION=false)", async () => {
     process.env.DISABLE_REGISTRATION = "false";
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await refreshStaffRegistration();
     const { app } = createApp();
 
     const response = await signUp(app);
@@ -370,6 +379,14 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
     // With registration wide open, the pending state still refuses signup.
     process.env.DISABLE_REGISTRATION = "false";
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await refreshStaffRegistration();
     const { app } = createApp();
     const openEmail = `ordinary-${randomUUID()}@example.com`;
     const openResponse = await signUp(app, {
@@ -820,7 +837,15 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
     const adminEmail = `operator-${randomUUID()}@example.com`;
     process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = adminEmail;
-    // Registration is open by default in this suite, so this should behave
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await refreshStaffRegistration();
+    // With staff self-registration enabled, this should behave
     // like an ORDINARY signup -- succeeding, but NOT auto-promoted to admin,
     // and not exempt from DISABLE_REGISTRATION either.
     const response = await signUp(app, { email: adminEmail });
@@ -846,7 +871,15 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const reissued = await ensureSetupToken();
     expect(reissued).toBeNull();
 
-    // Registration is open by default in this suite, so an ordinary signup
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await refreshStaffRegistration();
+    // With staff self-registration enabled, an ordinary signup
     // still succeeds -- but it must land as an ORDINARY user, never
     // silently re-promoted to admin just because the count dropped to zero.
     const openResponse = await signUp(app);
@@ -963,11 +996,19 @@ describe("issue #18: instance_setting table invariants (security review findings
 
     // And the durable-marker guarantee this whole PR is about now actually
     // covers this instance: deleting the user and signing up again must NOT
-    // re-open the bootstrap window. Registration is open by default in this
-    // suite, so the signup still succeeds (matching the "(d)" re-arm test's
+    // re-open the bootstrap window. With staff self-registration enabled,
+    // the signup still succeeds (matching the "(d)" re-arm test's
     // own convention) -- the point is that it must land as an ORDINARY user,
     // never re-promoted to admin just because the count dropped to zero.
     await db.delete(schema.userTable);
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await refreshStaffRegistration();
     const { app } = createApp();
     const response = await signUp(app);
     expect(response.status).toBe(200);

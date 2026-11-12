@@ -20,6 +20,14 @@ describe("identity administration failures", () => {
   it("reads plain-text exception bodies as well as JSON bodies", async () => {
     expect((await text(403, "step_up_unavailable")).kind).toBe("step_up");
     expect((await text(403, "Forbidden")).kind).toBe("denied");
+    expect(
+      (
+        await text(
+          403,
+          "Enroll a second factor before changing staff self-registration.",
+        )
+      ).kind,
+    ).toBe("enroll_factor");
     expect((await text(403, "Session required")).kind).toBe("denied");
     expect((await json(403, { message: "step_up_unavailable" })).kind).toBe(
       "step_up",

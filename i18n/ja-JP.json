@@ -333,7 +333,8 @@
 			"toggleLink": "サインイン",
 			"instanceStatusError": "サーバーに接続できませんでした。しばらくしてから再試行してください。",
 			"instanceAdminTitle": "TaskDesk インスタンスのセットアップ",
-			"instanceAdminSubtitle": "このアカウントはフルアクセス権を持つインスタンス管理者になります。"
+			"instanceAdminSubtitle": "このアカウントはフルアクセス権を持つインスタンス管理者になります。",
+			"invitationOnly": "Accounts are by invitation. Ask your administrator for an invitation."
 		},
 		"verifyOtp": {
 			"pageTitle": "認証コードの確認",
@@ -5588,7 +5589,8 @@
 			"rate_limited": "Too many verification attempts. Wait a few minutes and try again.",
 			"step_up": "Fresh verification was unavailable, did not match, or has expired. Verify again and retry. Nothing was changed.",
 			"unavailable": "The identity service is temporarily unavailable. Nothing was changed; try again.",
-			"unknown": "The request could not be completed. Nothing was changed."
+			"unknown": "The request could not be completed. Nothing was changed.",
+			"enroll_factor": "Enroll a second factor before changing staff self-registration."
 		},
 		"events": {
 			"actors": {
@@ -5833,7 +5835,13 @@
 			"staffPasswordLocked": "Staff password sign-in is always on. It is the recovery sign-in when every other method fails, so it cannot be turned off.",
 			"switchLabel": "{{method}} for {{audience}}",
 			"title": "Sign-in methods",
-			"unavailable": "Sign-in methods unavailable"
+			"unavailable": "Sign-in methods unavailable",
+			"staffRegistration": "Allow staff self-registration",
+			"staffRegistrationDescription": "Allow people to create staff accounts without an invitation.",
+			"customerInvitationOnly": "Customer portal: invitation only",
+			"registrationEnvironmentDisabled": "The environment disables staff self-registration.",
+			"registrationOn": "Allow staff self-registration",
+			"registrationOff": "Require invitations for staff registration"
 		}
 	},
 	"notificationProvider": {

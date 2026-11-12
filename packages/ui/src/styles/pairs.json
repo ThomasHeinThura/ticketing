@@ -33961,7 +33961,6 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
@@ -34026,6 +34025,7 @@
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::FactsPanel::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectInheritanceSettings::div[0]/Select[0]/SelectTrigger[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -36562,20 +36562,6 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
@@ -37713,6 +37699,20 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
 			},
@@ -46017,7 +46017,6 @@
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
@@ -46082,6 +46081,7 @@
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::FactsPanel::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/overview/team-page.tsx::TeamPage::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectInheritanceSettings::div[0]/Select[0]/SelectTrigger[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-timeline.tsx::ProjectTimeline::div[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -48619,20 +48619,6 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/p[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/agent/inbox.tsx:/_layout/_authenticated/agent/inbox",
-					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
-					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
-					"apps/web/src/routes/agent/_layout.tsx:/_layout",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
 				"id": "apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/ul[0]/li[0]/ActionTooltip[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/notification/notification-inbox.tsx"
@@ -49770,6 +49756,20 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/project/overview/project-overview-page.tsx::ProjectOverviewPage::div[0]/header[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/overview/project-overview-page.tsx"
 			},
@@ -74938,6 +74938,19 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
@@ -79995,6 +80008,19 @@
 					"apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx:ImportRunCreateDialog",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/god-mode/imports/import-run-create-dialog.tsx:ImportRunCreateDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/god-mode/local-sign-in-methods-card.tsx:SaveDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -85724,6 +85750,7 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
@@ -85742,6 +85769,18 @@
 					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
 				],
 				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project-list/projects-page.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:ProjectsPage",
+					"jsx:WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]",
+					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
+				],
+				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project-list/projects-page.tsx"
 			},
@@ -86640,6 +86679,7 @@
 		"surfaceContext": "imported-opaque-wrapper",
 		"occurrenceIds": [
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[1]/div[0]/div[0]/span[0]::text-muted-foreground#1",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[2]/span[0]::text-muted-foreground#0",
@@ -86658,6 +86698,18 @@
 					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
 				],
 				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
+				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project-list/projects-page.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project-list/projects-page.tsx:ProjectsPage",
+					"jsx:WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]",
+					"SortableProjectRow->apps/web/src/components/project-list/projects-page.tsx:SortableProjectRow>bg-muted"
+				],
+				"id": "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableBody[0]/SortableContext[0]/SortableProjectRow[0]/TableCell[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project-list/projects-page.tsx"
 			},

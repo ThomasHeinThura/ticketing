@@ -29,6 +29,41 @@ beforeEach(async () => {
   await resetTestDatabase();
 });
 
+describe("D-B boot backfill", () => {
+  it("does not promote person-less users while off, and backfills when enabled", async () => {
+    const [user] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "boot-personless",
+        name: "Prior user",
+        email: "boot-personless@example.test",
+      })
+      .returning();
+    if (!user) throw new Error("user fixture");
+    await seedInternalOrganisationAndStaffPersons();
+    expect(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, user.id)),
+    ).toHaveLength(0);
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await seedInternalOrganisationAndStaffPersons();
+    expect(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, user.id)),
+    ).toHaveLength(1);
+  });
+});
+
 describe("#1 -- migration 0052 applies cleanly and produces the schema data-model.md §2 specifies", () => {
   it("creates all five tables with their primary keys", async () => {
     const result = await db.execute<{ table_name: string }>(sql`
@@ -226,6 +261,15 @@ describe("#1 -- migration 0052 applies cleanly and produces the schema data-mode
 });
 
 describe("#2/#3 -- the boot-time seed creates one internal organisation and backfills one staff person per user, idempotently", () => {
+  beforeEach(async () => {
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+  });
   it("creates the staff person before a post-startup signup completes", async () => {
     const { app } = createApp();
     await seedInternalOrganisationAndStaffPersons();

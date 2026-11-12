@@ -333,7 +333,8 @@
 			"toggleLink": "Sign in",
 			"instanceStatusError": "Couldn't reach the server. Please retry in a moment.",
 			"instanceAdminTitle": "Set up your TaskDesk instance",
-			"instanceAdminSubtitle": "This account becomes the instance administrator with full access."
+			"instanceAdminSubtitle": "This account becomes the instance administrator with full access.",
+			"invitationOnly": "Accounts are by invitation. Ask your administrator for an invitation."
 		},
 		"verifyOtp": {
 			"pageTitle": "Verify Code",
@@ -6155,7 +6156,8 @@
 			"rate_limited": "Too many verification attempts. Wait a few minutes and try again.",
 			"unavailable": "The identity service is temporarily unavailable. Nothing was changed; try again.",
 			"unknown": "The request could not be completed. Nothing was changed.",
-			"factor_required": "Enter the selected verification factor to confirm this change."
+			"factor_required": "Enter the selected verification factor to confirm this change.",
+			"enroll_factor": "Enroll a second factor before changing staff self-registration."
 		},
 		"editor": {
 			"addTitle": "Add Entra connection",
@@ -6442,7 +6444,13 @@
 			"changeOff": "{{method}} for {{audience}}: off",
 			"cancel": "Cancel",
 			"confirm": "Save changes",
-			"failed": "Sign-in methods were not saved"
+			"failed": "Sign-in methods were not saved",
+			"staffRegistration": "Allow staff self-registration",
+			"staffRegistrationDescription": "Allow people to create staff accounts without an invitation.",
+			"customerInvitationOnly": "Customer portal: invitation only",
+			"registrationEnvironmentDisabled": "The environment disables staff self-registration.",
+			"registrationOn": "Allow staff self-registration",
+			"registrationOff": "Require invitations for staff registration"
 		}
 	},
 	"notificationProvider": {

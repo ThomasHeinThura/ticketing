@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { refreshStaffRegistration } from "../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../apps/api/src/database";
 import { checkRegistrationAllowed } from "../../apps/api/src/utils/check-registration-allowed";
 import { resetTestDatabase } from "./helpers/database";
@@ -117,6 +118,14 @@ describe("API integration: invite-only registration", () => {
 
   it("allows any signup once registration is open again", async () => {
     process.env.DISABLE_REGISTRATION = "false";
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { staffSelfRegistrationEnabled: true },
+      });
+    await refreshStaffRegistration();
 
     const result = await checkRegistrationAllowed(
       `anyone-${randomUUID()}@example.com`,
