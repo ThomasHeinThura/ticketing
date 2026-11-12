@@ -87,11 +87,17 @@ const EMPTY_CAPABILITIES = {
 export function useWorkspacePermission(
   targetWorkspaceId?: string,
   targetProjectId?: string,
-  options?: { refreshOnMount?: boolean },
+  /**
+   * `refreshOnMount` trusts the capabilities only after a fresh read since the screen mounted.
+   * `enabled: false` asks the server nothing and grants nothing (every `can*` is false and
+   * `isCheckingPermissions` is false), for a caller that only sometimes has something to check.
+   */
+  options?: { refreshOnMount?: boolean; enabled?: boolean },
 ) {
+  const enabled = options?.enabled ?? true;
   const { data: activeWorkspace } = useActiveWorkspace();
   const { data: activeMember, isLoading: isActiveMemberLoading } =
-    useGetActiveWorkspaceUser();
+    useGetActiveWorkspaceUser({ enabled });
   const isTargetScoped = targetWorkspaceId !== undefined;
   const workspaceId = targetWorkspaceId ?? activeWorkspace?.id;
   const activeRole = activeMember?.role as string | undefined;
@@ -139,9 +145,9 @@ export function useWorkspacePermission(
     isFetchedAfterMount,
   } = useQuery({
     queryKey,
-    enabled: Boolean(
-      workspaceId && (isTargetScoped ? !awaitsActiveRead : role),
-    ),
+    enabled:
+      enabled &&
+      Boolean(workspaceId && (isTargetScoped ? !awaitsActiveRead : role)),
     staleTime: options?.refreshOnMount ? 0 : 5 * 60 * 1000,
     ...(options?.refreshOnMount ? { refetchOnMount: "always" as const } : {}),
     queryFn: async (): Promise<CapabilityMap> => {
@@ -236,6 +242,7 @@ export function useWorkspacePermission(
     // action UI during the initial render instead of flashing it on then
     // off when the server check resolves.
     isCheckingPermissions:
+      enabled &&
       Boolean(workspaceId && (isTargetScoped || role)) &&
       (awaitsActiveRead || isLoading || !capabilities),
     isRefetchingPermissions: isFetching,

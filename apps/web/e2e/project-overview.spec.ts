@@ -152,7 +152,9 @@ test.describe("Project Overview (S3)", () => {
     });
   });
 
-  test("New item opens the create modal for this project", async ({ page }) => {
+  test("New item opens the shared work item dialog for this project", async ({
+    page,
+  }) => {
     await capabilities(page, true);
     await installProjectOverviewFixture(page, PROJECT_ID, { project });
     await page.goto("/agent/projects/WLP");
@@ -160,7 +162,8 @@ test.describe("Project Overview (S3)", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(project.slug);
-    await expect(dialog).toContainText("To Do");
+    // The Overview opens the same work-item dialog as the work page, not the old Kaneo form.
+    await expect(page.getByTestId("create-work-item-dialog")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
   });

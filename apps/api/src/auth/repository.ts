@@ -3,7 +3,6 @@ import type { JsonValue } from "@taskdesk/domain";
 import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 import type { Executor } from "../database/executor";
-import { SETUP_TOKEN_SINGLETON_ID } from "../instance/setup-token";
 import { dbClockUtc } from "../utils/db-time";
 
 export type StepUpExecutor = Parameters<
@@ -51,7 +50,37 @@ export async function getSetupCompletionMarker(
   return await executor
     .select({ setupCompletedAt: schema.instanceSettingTable.setupCompletedAt })
     .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
     .limit(1);
+}
+
+export async function isPendingFirstAdministrator(
+  userId: string,
+  executor: typeof db | StepUpExecutor = db,
+): Promise<boolean> {
+  const [setting] = await getSetupCompletionMarker(executor);
+  if (setting?.setupCompletedAt) return false;
+  const [user] = await executor
+    .select({ role: schema.userTable.role })
+    .from(schema.userTable)
+    .where(eq(schema.userTable.id, userId))
+    .limit(1);
+  return user?.role === "admin";
+}
+
+/** Any agent session remains restricted while first-user setup is incomplete. */
+export async function isIncompleteBootstrapSession(
+  userId: string,
+  executor: typeof db | StepUpExecutor = db,
+): Promise<boolean> {
+  const [setting] = await getSetupCompletionMarker(executor);
+  if (setting?.setupCompletedAt) return false;
+  const [user] = await executor
+    .select({ id: schema.userTable.id })
+    .from(schema.userTable)
+    .where(eq(schema.userTable.id, userId))
+    .limit(1);
+  return Boolean(user);
 }
 
 export async function lockFirstUserPromotion(
@@ -76,7 +105,7 @@ export async function completeFirstUserSetup(
   await executor
     .insert(schema.instanceSettingTable)
     .values({
-      id: SETUP_TOKEN_SINGLETON_ID,
+      id: "singleton",
       setupCompletedAt: new Date(),
       setupTokenHash: null,
       setupTokenExpiresAt: null,
@@ -89,7 +118,59 @@ export async function completeFirstUserSetup(
         setupTokenExpiresAt: null,
         updatedAt: new Date(),
       },
+      where: isNull(schema.instanceSettingTable.setupCompletedAt),
     });
+}
+
+/** Complete only the admitted first administrator after a verified local TOTP. */
+export async function finalizeVerifiedFirstUserSetup(
+  executor: StepUpExecutor,
+  userId: string,
+): Promise<void> {
+  await lockFirstUserPromotion(executor);
+  const [setting] = await getSetupCompletionMarker(executor);
+  if (setting?.setupCompletedAt) return;
+
+  const users = await executor
+    .select({
+      id: schema.userTable.id,
+      role: schema.userTable.role,
+      enabled: schema.userTable.twoFactorEnabled,
+    })
+    .from(schema.userTable);
+  if (users.length !== 1 || users[0]?.role !== "admin") {
+    throw new Error("Pending first administrator is not the sole user");
+  }
+  if (users[0].id !== userId || users[0].enabled !== true) {
+    throw new Error("Pending administrator is not the verified user");
+  }
+  const [person] = await executor
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(
+      and(
+        eq(schema.personTable.userId, userId),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .limit(1);
+  const [factor] = await executor
+    .select({ id: schema.twoFactorTable.id })
+    .from(schema.twoFactorTable)
+    .where(
+      and(
+        eq(schema.twoFactorTable.userId, userId),
+        eq(schema.twoFactorTable.verified, true),
+      ),
+    )
+    .limit(1);
+  if (!person || !factor) {
+    throw new Error(
+      "First administrator has no active staff identity or verified TOTP",
+    );
+  }
+  await completeFirstUserSetup(executor);
 }
 
 export async function getFirstUserWorkspaceMembership(userId: string) {
@@ -220,7 +301,10 @@ export async function getLocalFactorPolicySetting(
   executor: typeof db | StepUpExecutor = db,
 ) {
   return await executor
-    .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+    .select({
+      policy: schema.instanceSettingTable.localFactorPolicy,
+      setupCompletedAt: schema.instanceSettingTable.setupCompletedAt,
+    })
     .from(schema.instanceSettingTable)
     .where(eq(schema.instanceSettingTable.id, "singleton"))
     .limit(1);

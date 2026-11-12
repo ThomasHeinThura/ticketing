@@ -88,7 +88,9 @@ const post = (
 describe("API integration: step-up global attempt budgets (PA-15)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
-    await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", setupCompletedAt: new Date() });
   });
 
   it("a cancel and re-request loop on fresh pending actions is throttled per session", async () => {

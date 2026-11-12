@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { and, eq, isNull } from "drizzle-orm";
 import db, { schema } from "../../../apps/api/src/database";
 import {
   createProjectFixture,
@@ -259,20 +260,35 @@ export async function addApprovalE2ECustomer(workspaceId: string) {
     .set({ organisationId })
     .where(eq(schema.workspaceTable.id, workspaceId));
 
-  const customerRole = requireRow(
-    await db
-      .insert(schema.roleTable)
-      .values({
-        scope: "organisation",
-        workspaceId: null,
-        key: "customer",
-        name: "Customer",
-        rank: 0,
-        capabilities: ["approval:decide", "work_item:read"],
-      })
-      .returning(),
-    "approvals E2E customer role",
-  );
+  const [existingCustomerRole] = await db
+    .select()
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.scope, BUILT_IN_ROLES.customer.scope),
+        eq(schema.roleTable.key, BUILT_IN_ROLES.customer.key),
+        isNull(schema.roleTable.workspaceId),
+      ),
+    )
+    .limit(1);
+  const customerRole =
+    existingCustomerRole ??
+    requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: BUILT_IN_ROLES.customer.scope,
+          workspaceId: null,
+          key: BUILT_IN_ROLES.customer.key,
+          name: "Customer",
+          rank: BUILT_IN_ROLES.customer.rank,
+          capabilities: [...BUILT_IN_ROLES.customer.capabilities],
+          isSystem: true,
+          isEditable: false,
+        })
+        .returning(),
+      "approvals E2E customer role",
+    );
   const customerId = `approval-e2e-customer-${randomUUID()}`;
   const user = requireRow(
     await db

@@ -36,7 +36,9 @@ function nextPolicyAdmissionSignInIp() {
 
 beforeEach(async () => {
   await resetTestDatabase();
-  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", setupCompletedAt: new Date() });
 });
 
 type PolicyAdmissionAdmin = {

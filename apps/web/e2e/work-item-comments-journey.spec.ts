@@ -9,8 +9,12 @@ import {
   type Request,
   test,
 } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  totpForUri,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
+import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -100,11 +104,15 @@ async function createAdminWorkspace(
       "Setup diagnostic completed: sign-up response status assertion",
     );
   });
-  await test.step("Setup diagnostic: onboarding navigation assertion", async () => {
-    console.info("Setup diagnostic begin: onboarding navigation assertion");
-    await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
-    console.info("Setup diagnostic completed: onboarding navigation assertion");
-  });
+  const { provisioningUri } =
+    await test.step("Setup diagnostic: onboarding navigation assertion", async () => {
+      console.info("Setup diagnostic begin: onboarding navigation assertion");
+      const factor = await enrollFirstAdmin(page, origin, password);
+      console.info(
+        "Setup diagnostic completed: onboarding navigation assertion",
+      );
+      return factor;
+    });
   await test.step("Setup diagnostic: workspace-name field entry", async () => {
     console.info("Setup diagnostic begin: workspace-name field entry");
     await page
@@ -126,6 +134,7 @@ async function createAdminWorkspace(
       "Setup diagnostic completed: workspace-dashboard navigation assertion",
     );
   });
+  return provisioningUri;
 }
 
 async function signInThroughUi(
@@ -133,6 +142,7 @@ async function signInThroughUi(
   origin: string,
   email: string,
   password: string,
+  provisioningUri: string,
 ) {
   await test.step("Setup diagnostic: blank-page navigation", async () => {
     console.info("Setup diagnostic begin: blank-page navigation");
@@ -176,6 +186,11 @@ async function signInThroughUi(
     await page.getByRole("button", { name: "Sign in" }).click();
     console.info("Setup diagnostic completed: sign-in button click");
   });
+  await test.step("Setup diagnostic: complete authenticator challenge", async () => {
+    await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
+    await page.locator("#factor-code").fill(totpForUri(provisioningUri));
+    await page.getByRole("button", { name: "Verify and sign in" }).click();
+  });
   await test.step("Setup diagnostic: dashboard navigation assertion", async () => {
     console.info("Setup diagnostic begin: dashboard navigation assertion");
     await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
@@ -202,6 +217,9 @@ async function setupWorkItem(
   page: Page,
   origin: string,
 ): Promise<WorkItemSetup> {
+  // Stop dashboard requests before obtaining a token in the shared cookie jar.
+  // A concurrent issuer response can otherwise replace the matching CSRF cookie.
+  await page.goto("about:blank");
   const headers = await csrfHeaders(page, origin);
   const workspacesResponse = await page.request.get(
     new URL("/api/workspace", origin).toString(),
@@ -376,8 +394,13 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
 
   await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
     await test.step("register and sign in through the actual UI", async () => {
-      await createAdminWorkspace(page, origin, email, password);
-      await signInThroughUi(page, origin, email, password);
+      const provisioningUri = await createAdminWorkspace(
+        page,
+        origin,
+        email,
+        password,
+      );
+      await signInThroughUi(page, origin, email, password, provisioningUri);
     });
 
     const item = await test.step("prepare a reachable work item", () =>
@@ -1029,8 +1052,13 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
   await withMfaCsrfApp(async ({ origin, email, password, fixtureDir }) => {
     await test.step("CA19 phase: workspace setup and sign-in", async () => {
       console.info("CA19 phase begin: workspace setup and sign-in");
-      await createAdminWorkspace(page, origin, email, password);
-      await signInThroughUi(page, origin, email, password);
+      const provisioningUri = await createAdminWorkspace(
+        page,
+        origin,
+        email,
+        password,
+      );
+      await signInThroughUi(page, origin, email, password, provisioningUri);
       console.info("CA19 phase completed: workspace setup and sign-in");
     });
     const item = await test.step("CA19 phase: work-item setup", async () => {

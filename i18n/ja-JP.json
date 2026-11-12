@@ -243,6 +243,10 @@
 		"retry": "Retry",
 		"navigation": {
 			"auditLog": "Audit log"
+		},
+		"boolean": {
+			"false": "False",
+			"true": "True"
 		}
 	},
 	"auth": {
@@ -3964,6 +3968,7 @@
 			"description": "ページを読み込めませんでした。もう一度お試しください。"
 		},
 		"intake": {
+			"invalidNumber": "Enter a valid number.",
 			"answers": "Your answers",
 			"attachments": "Attachments",
 			"backToCatalogue": "Back to catalogue",
@@ -5007,7 +5012,16 @@
 		"moveGroupDown": "Move {{group}} down",
 		"moveGroupUp": "Move {{group}} up",
 		"saveGroupOrder": "Save group order",
-		"savingGroupOrder": "Saving group order…"
+		"savingGroupOrder": "Saving group order…",
+		"choosePriority": "Choose priority",
+		"priorityValueMapping": "Priority value mapping",
+		"removeField": "Remove {{name}}",
+		"defaultGroup": "General",
+		"defaultSummary": "Summary",
+		"newQuestion": "New question",
+		"priorityMappingInvalid": "Every priority option must map to low, medium, high, or urgent before publishing.",
+		"requiredFileInvalid": "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish.",
+		"requiredFileUnavailable": "Required is unavailable for file uploads until the submission file contract is defined."
 	},
 	"slaPolicies": {
 		"editor": {

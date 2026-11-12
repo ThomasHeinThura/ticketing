@@ -1,6 +1,10 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"boolean": {
+			"false": "False",
+			"true": "True"
+		},
 		"actions": {
 			"cancel": "Hủy",
 			"close": "Đóng",
@@ -3964,6 +3968,7 @@
 			"description": "Không thể tải trang. Hãy thử lại."
 		},
 		"intake": {
+			"invalidNumber": "Enter a valid number.",
 			"answers": "Your answers",
 			"attachments": "Attachments",
 			"backToCatalogue": "Back to catalogue",
@@ -4943,6 +4948,7 @@
 		"autoAccept": "Auto accept",
 		"checkbox": "Checkbox",
 		"choose": "Choose…",
+		"choosePriority": "Choose priority",
 		"chooseType": "Choose a type",
 		"create": "Create {{term_request_one}} type",
 		"description": "Author published customer forms. Each publish creates an immutable version.",
@@ -4975,11 +4981,13 @@
 		"preview": "Customer preview",
 		"previewDescription": "{{term_request_one}} form description",
 		"priorityMapping": "{{term_work_item_one}} priority",
+		"priorityValueMapping": "Priority value mapping",
 		"projectId": "Default {{term_project_one}} ID",
 		"publish": "Publish version",
 		"published": "Published",
 		"publishNew": "Publish new version",
 		"remove": "Remove",
+		"removeField": "Remove {{name}}",
 		"required": "Required",
 		"save": "Save draft",
 		"select": "Select",
@@ -5007,7 +5015,13 @@
 		"moveGroupDown": "Move {{group}} down",
 		"moveGroupUp": "Move {{group}} up",
 		"saveGroupOrder": "Save group order",
-		"savingGroupOrder": "Saving group order…"
+		"savingGroupOrder": "Saving group order…",
+		"defaultGroup": "General",
+		"defaultSummary": "Summary",
+		"newQuestion": "New question",
+		"priorityMappingInvalid": "Every priority option must map to low, medium, high, or urgent before publishing.",
+		"requiredFileInvalid": "Required file uploads are not publishable until the submission file contract is defined; clear Required to publish.",
+		"requiredFileUnavailable": "Required is unavailable for file uploads until the submission file contract is defined."
 	},
 	"slaPolicies": {
 		"editor": {

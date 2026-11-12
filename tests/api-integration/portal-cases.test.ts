@@ -1007,6 +1007,162 @@ describe("portal cases (S4b)", () => {
     expect(detail.customerStatus).toBe(page.cases[0]?.customerStatus);
   });
 
+  it("shows a mapped title and priority only while their form fields are visible (RT-5), in the list and the CSV", async () => {
+    const tenant = await buildTenant("cases-hidden-mapped");
+    const alice = await addCustomer(tenant);
+    await setFlag(tenant.workspaceId, "feature.intake", true);
+    // `headline` and `impact` map to the title and priority but show only when `gate` is ticked.
+    const formSchema = {
+      fields: [
+        { key: "gate", type: "checkbox", label: "Hardware involved?" },
+        {
+          key: "headline",
+          type: "text",
+          label: "Headline",
+          mapsTo: { field: "title" },
+          showIf: { field_key: "gate", op: "eq", value: true },
+        },
+        {
+          key: "impact",
+          type: "select",
+          label: "Impact",
+          options: ["low", "medium", "high", "urgent"],
+          mapsTo: { field: "priority" },
+          showIf: { field_key: "gate", op: "eq", value: true },
+        },
+      ],
+    };
+    const requestType = requireRow(
+      await db
+        .insert(schema.requestTypeTable)
+        .values({
+          workspaceId: tenant.workspaceId,
+          key: `case-${randomUUID()}`,
+          name: "Hardware",
+          group: "General",
+          workItemTypeId: tenant.type.id,
+          formSchema,
+          published: true,
+          customerVisible: true,
+        })
+        .returning(),
+      "request type",
+    );
+    const version = requireRow(
+      await db
+        .insert(schema.requestTypeVersionTable)
+        .values({
+          workspaceId: tenant.workspaceId,
+          requestTypeId: requestType.id,
+          number: 1,
+          formSchema,
+          workItemTypeId: tenant.type.id,
+        })
+        .returning(),
+      "request type version",
+    );
+    const submit = async (formData: Record<string, unknown>) =>
+      requireRow(
+        await db
+          .insert(schema.submissionTable)
+          .values({
+            organisationId: alice.orgId,
+            requesterId: alice.person.id,
+            requestTypeId: requestType.id,
+            requestTypeVersionId: version.id,
+            formData,
+            submittedAt: new Date(),
+          })
+          .returning(),
+        "submission",
+      );
+    // An older submission: the form hides both fields, but the stored answers kept them.
+    const stale = await submit({
+      gate: false,
+      headline: "Stale hidden headline",
+      impact: "urgent",
+    });
+    const shown = await submit({
+      gate: true,
+      headline: "Visible headline",
+      impact: "high",
+    });
+    const rowOf = (page: CasePage, ref: string) =>
+      page.cases.find((row) => row.ref === ref);
+
+    const page = await list(tenant, alice);
+    expect(rowOf(page, `SUB-${stale.number}`)).toMatchObject({
+      title: "",
+      priority: null,
+    });
+    expect(rowOf(page, `SUB-${shown.number}`)).toMatchObject({
+      title: "Visible headline",
+      priority: "high",
+    });
+    expect(JSON.stringify(page)).not.toContain("Stale hidden headline");
+
+    const csv = await (
+      await portalRequest(
+        tenant,
+        alice,
+        "/api/portal/requests/export.csv?scope=mine",
+      )
+    ).text();
+    expect(csv).not.toContain("Stale hidden headline");
+    expect(csv).toContain("Visible headline");
+    const staleLine = csv
+      .split("\r\n")
+      .find((line) => line.startsWith(`SUB-${stale.number},`));
+    // Reference, blank title, request type, blank priority.
+    expect(staleLine?.startsWith(`SUB-${stale.number},,Hardware,,`)).toBe(true);
+
+    // The hidden stored answers are no search or filter oracle either: matching them finds
+    // nothing, and the totals and the CSV agree with the rows.
+    const stalePage = await list(tenant, alice, "q=Stale");
+    expect(stalePage.cases).toEqual([]);
+    expect(stalePage.meta.total).toBe(0);
+    const urgentPage = await list(tenant, alice, "priority=urgent");
+    expect(urgentPage.cases).toEqual([]);
+    expect(urgentPage.meta.total).toBe(0);
+    const visibleSearch = await list(tenant, alice, "q=Visible");
+    expect(refs(visibleSearch)).toEqual([`SUB-${shown.number}`]);
+    expect(visibleSearch.meta.total).toBe(1);
+    const highPage = await list(tenant, alice, "priority=high");
+    expect(refs(highPage)).toEqual([`SUB-${shown.number}`]);
+    expect(highPage.meta.total).toBe(1);
+    for (const query of ["q=Stale", "priority=urgent"]) {
+      const filtered = await portalRequest(
+        tenant,
+        alice,
+        `/api/portal/requests/export.csv?scope=mine&${query}`,
+      );
+      expect(filtered.headers.get("x-export-total"), query).toBe("0");
+      expect((await filtered.text()).trimEnd().split("\r\n")).toHaveLength(1);
+    }
+
+    // Ticking the box (the stored answers now show both fields) shows them again.
+    await db
+      .update(schema.submissionTable)
+      .set({
+        formData: {
+          gate: true,
+          headline: "Stale hidden headline",
+          impact: "urgent",
+        },
+      })
+      .where(eq(schema.submissionTable.id, stale.id));
+    expect(
+      rowOf(await list(tenant, alice), `SUB-${stale.number}`),
+    ).toMatchObject({ title: "Stale hidden headline", priority: "urgent" });
+    // Visible again: the same search and filter now find it, and the total follows.
+    expect(refs(await list(tenant, alice, "q=Stale"))).toEqual([
+      `SUB-${stale.number}`,
+    ]);
+    const urgentAgain = await list(tenant, alice, "priority=urgent");
+    expect(refs(urgentAgain)).toEqual([`SUB-${stale.number}`]);
+    expect(urgentAgain.meta.total).toBe(1);
+  });
+
   it("keeps a staff-raised case when a colleague's private duplicate is merged into it", async () => {
     const s = await seed();
     const homeBefore = await getJson<Record<string, unknown>>(

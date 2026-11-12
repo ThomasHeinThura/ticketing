@@ -193,6 +193,30 @@ describe("UAT seed is strictly additive on top of the SIT seed", () => {
     expect(secondRun).toEqual(firstRun);
   }, 240_000);
 
+  it("marks first-run setup complete when the marker is unset, and never rewrites it once set", async () => {
+    // Seeded accounts never go through first sign-up. On a database seeded by the UAT seed alone
+    // an unset marker would answer 403 mfa_enrollment_required to every staff session.
+    const marker = async () =>
+      (
+        await db
+          .select({ at: schema.instanceSettingTable.setupCompletedAt })
+          .from(schema.instanceSettingTable)
+          .where(eq(schema.instanceSettingTable.id, "singleton"))
+      )[0]?.at;
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ setupCompletedAt: null })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(await marker()).toBeNull();
+
+    await run("seed-uat.mjs", ["--uat", "--credentials-file", uatCredentials]);
+    const written = await marker();
+    expect(written).toBeInstanceOf(Date);
+
+    await run("seed-uat.mjs", ["--uat", "--credentials-file", uatCredentials]);
+    expect((await marker())?.getTime()).toBe(written?.getTime());
+  }, 240_000);
+
   it("refuses a conflicting uat- row without writing anything", async () => {
     await db
       .update(schema.projectTable)
