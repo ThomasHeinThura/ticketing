@@ -44,8 +44,16 @@ const { mocks, translate } = vi.hoisted(() => ({
         "activity:timeline.save": "Save changes",
         "activity:timeline.cancel": "Cancel",
         "activity:timeline.send": "Send comment",
+        "activity:timeline.sendToCustomer": "Send to customer",
+        "activity:timeline.addInternalNote": "Add internal note",
         "activity:timeline.sending": "Sending",
         "activity:timeline.visibilityLabel": "Comment visibility",
+        "activity:timeline.replyToCustomer": "Reply to customer",
+        "activity:timeline.internalNote": "Internal note",
+        "activity:timeline.onlyTeamSeesThis": "Only your team sees this",
+        "activity:timeline.visibleToCustomer": "Visible to the customer",
+        "activity:timeline.customerVisibilityLostFallback":
+          "This item is no longer visible to a customer — switched to an internal note.",
         "activity:timeline.cannedResponses": "Canned response",
         "activity:timeline.heading": "Activity & comments",
         "activity:comment.leavePlaceholder": "Leave a comment",
@@ -339,7 +347,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       ),
     ).toBe(true);
     expect(
-      within(composer).getByRole("button", { name: "Send comment" }),
+      within(composer).getByRole("button", { name: "Add internal note" }),
     ).toBeDisabled();
     view.unmount();
     mocks.activityState.isLoading = true;
@@ -374,27 +382,32 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     };
     renderActivity();
     const composer = screen.getByTestId("work-item-comment-composer");
-    expect(within(composer).getByText("Public")).toBeInTheDocument();
-    expect(
-      within(composer).queryByRole("button", { name: "Internal" }),
-    ).toBeNull();
+    expect(within(composer).getByText("Reply to customer")).toBeInTheDocument();
+    expect(within(composer).queryByRole("tablist")).toBeNull();
+    expect(within(composer).queryByText("Internal note")).toBeNull();
     expect(composer.querySelector("[data-visibility]")).toHaveAttribute(
       "data-visibility",
       "public",
     );
+    expect(
+      within(composer).getByRole("button", { name: "Send to customer" }),
+    ).toBeInTheDocument();
   });
 
   it.each([
-    ["internal", "Internal"],
-    ["public", "Public"],
+    ["internal", "Internal note", "Add internal note"],
+    ["public", "Reply to customer", "Send to customer"],
   ] as const)(
     "starts the composer on the project's %s default comment visibility (CA-2)",
-    (defaultVisibility, label) => {
+    (defaultVisibility, tabLabel, sendLabel) => {
       renderActivity("workspace-1", defaultVisibility);
       const composer = screen.getByTestId("work-item-comment-composer");
 
       expect(
-        within(composer).getByRole("button", { name: label, pressed: true }),
+        within(composer).getByRole("tab", { name: tabLabel, selected: true }),
+      ).toBeInTheDocument();
+      expect(
+        within(composer).getByRole("button", { name: sendLabel }),
       ).toBeInTheDocument();
     },
   );
@@ -415,20 +428,100 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     );
   });
 
-  it("CA-1/CA-5: the audience toggle always shows the current choice in a neutral composer, never a warning surface", () => {
+  it("CA-1/CA-5/F-11: tints internal mode in the composer, pairs each mode with its audience line, and updates submit text", () => {
     renderActivity("workspace-1", "internal");
     const composer = screen.getByTestId("work-item-comment-composer");
+    const card = composer.querySelector("[data-visibility]");
     const notice = within(composer).getByTestId("comment-audience-notice");
-    expect(notice).toHaveTextContent("activity:timeline.internalNotice");
 
-    fireEvent.click(within(composer).getByRole("button", { name: "Public" }));
+    expect(card).toHaveClass("border-warning/32", "bg-warning/4");
+    expect(notice).toHaveTextContent("Only your team sees this");
+    expect(
+      within(composer).getByRole("button", { name: "Add internal note" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(composer).getByRole("tab", { name: "Reply to customer" }),
+    );
 
     expect(
-      within(composer).getByRole("button", { name: "Public", pressed: true }),
+      within(composer).getByRole("tab", {
+        name: "Reply to customer",
+        selected: true,
+      }),
     ).toBeInTheDocument();
-    expect(notice).toHaveTextContent("activity:timeline.publicNotice");
-    // No Alert (warning/error surface) is rendered for either audience.
-    expect(composer.querySelector('[data-slot="alert"]')).toBeNull();
+    expect(card).toHaveClass("border-border/80", "bg-card/70");
+    expect(card).not.toHaveClass("bg-warning/4");
+    expect(notice).toHaveTextContent("Visible to the customer");
+    expect(
+      within(composer).getByRole("button", { name: "Send to customer" }),
+    ).toBeInTheDocument();
+  });
+
+  it("F-11: tints internal notes in the conversation with a screen-reader-readable Internal note label and labels public replies Reply to customer", () => {
+    mocks.rows = [
+      {
+        id: "internal-1",
+        workItemId: "work-item-1",
+        actorId: "user-1",
+        actorType: "person",
+        verb: "commented",
+        field: null,
+        oldValue: null,
+        newValue: null,
+        payload: null,
+        visibility: "internal",
+        workflowVersionId: null,
+        createdAt: "2026-10-08T10:02:00.000Z",
+        kind: "comment",
+        body: "Team-only investigation note",
+        activityId: "activity-internal-1",
+        editedAt: null,
+        deletedAt: null,
+        deletedBy: null,
+      },
+      {
+        id: "public-1",
+        workItemId: "work-item-1",
+        actorId: "user-1",
+        actorType: "person",
+        verb: "commented",
+        field: null,
+        oldValue: null,
+        newValue: null,
+        payload: null,
+        visibility: "public",
+        workflowVersionId: null,
+        createdAt: "2026-10-08T10:00:00.000Z",
+        kind: "comment",
+        body: "Hello customer, we deployed the fix.",
+        activityId: "activity-public-1",
+        editedAt: null,
+        deletedAt: null,
+        deletedBy: null,
+      },
+    ];
+    renderActivity("workspace-1", "internal");
+
+    const internalCard = document.getElementById(
+      "comment-internal-1",
+    ) as HTMLElement;
+    const publicCard = document.getElementById(
+      "comment-public-1",
+    ) as HTMLElement;
+
+    expect(internalCard).toHaveAttribute("data-visibility", "internal");
+    expect(internalCard).toHaveClass("border-warning/32", "bg-warning/4");
+    const internalBadge = within(internalCard).getByText("Internal note");
+    expect(internalBadge).toBeVisible();
+    expect(internalBadge.closest("[aria-hidden='true']")).toBeNull();
+
+    expect(publicCard).toHaveAttribute("data-visibility", "public");
+    expect(publicCard).toHaveClass("border-border/80", "bg-card/60");
+    expect(publicCard).not.toHaveClass("bg-warning/4");
+    const publicBadge = within(publicCard).getByText("Reply to customer");
+    expect(publicBadge).toBeVisible();
+    expect(publicBadge.closest("[aria-hidden='true']")).toBeNull();
   });
 
   it("AT-1/CA-15: files chosen or pasted into the composer are staged, then attached to the comment once it exists", async () => {
@@ -447,7 +540,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
 
     // A file alone is sendable (the screenshot-only comment).
     const send = within(view.container).getByRole("button", {
-      name: "Send comment",
+      name: "Add internal note",
     });
     await waitFor(() => expect(send).toBeEnabled());
     fireEvent.click(send);
@@ -566,7 +659,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     const restored = renderActivity();
     await waitFor(() => expect(editable(restored.container)).not.toBeNull());
     const send = within(restored.container).getByRole("button", {
-      name: "Send comment",
+      name: "Add internal note",
     });
     expect(send).toBeEnabled();
     fireEvent.click(send);
@@ -762,7 +855,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       name: "Canned response",
     });
     const send = within(view.container).getByRole("button", {
-      name: "Send comment",
+      name: "Add internal note",
     });
     await pickCanned(select);
     await waitFor(() => expect(select).toBeDisabled());
@@ -822,7 +915,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     );
     const view = renderActivity();
     const send = within(view.container).getByRole("button", {
-      name: "Send comment",
+      name: "Add internal note",
     });
     const editor = await waitFor(() => {
       const node = editable(view.container);
@@ -1250,7 +1343,13 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       comment: "comment-deep",
     });
     const comment = document.getElementById("comment-comment-deep");
-    expect(comment).toHaveClass("rounded-xl", "bg-card/60");
+    expect(comment).toHaveClass(
+      "rounded-xl",
+      "border-warning/32",
+      "bg-warning/4",
+      "ring-2",
+      "ring-ring",
+    );
     expect(comment?.closest('[data-slot="timeline-item"]')).toHaveAttribute(
       "role",
       "listitem",

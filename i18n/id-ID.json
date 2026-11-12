@@ -2496,7 +2496,14 @@
 			},
 			"imported": "Imported",
 			"importedTitle": "Imported from {{system}} on {{date}}. The time shown is the original time.",
-			"shareFilesWithCustomer": "Share these files with the customer"
+			"shareFilesWithCustomer": "Share these files with the customer",
+			"replyToCustomer": "Reply to customer",
+			"internalNote": "Internal note",
+			"sendToCustomer": "Send to customer",
+			"addInternalNote": "Add internal note",
+			"onlyTeamSeesThis": "Only your team sees this",
+			"visibleToCustomer": "Visible to the customer",
+			"customerVisibilityLostFallback": "No longer visible to a customer — switched to an internal note."
 		}
 	},
 	"tasks": {

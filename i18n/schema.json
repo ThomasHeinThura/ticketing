@@ -10136,6 +10136,27 @@
 						},
 						"shareFilesWithCustomer": {
 							"type": "string"
+						},
+						"replyToCustomer": {
+							"type": "string"
+						},
+						"internalNote": {
+							"type": "string"
+						},
+						"sendToCustomer": {
+							"type": "string"
+						},
+						"addInternalNote": {
+							"type": "string"
+						},
+						"onlyTeamSeesThis": {
+							"type": "string"
+						},
+						"visibleToCustomer": {
+							"type": "string"
+						},
+						"customerVisibilityLostFallback": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10182,7 +10203,14 @@
 						"actors",
 						"reopenRequested",
 						"verbs",
-						"shareFilesWithCustomer"
+						"shareFilesWithCustomer",
+						"replyToCustomer",
+						"internalNote",
+						"sendToCustomer",
+						"addInternalNote",
+						"onlyTeamSeesThis",
+						"visibleToCustomer",
+						"customerVisibilityLostFallback"
 					]
 				}
 			},

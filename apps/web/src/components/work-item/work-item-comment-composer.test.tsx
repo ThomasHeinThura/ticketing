@@ -19,6 +19,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createComment: vi.fn(),
   presign: vi.fn(),
+  permissionCalls: [] as Array<[string | undefined, string | undefined]>,
+  permissions: {
+    public: true,
+    internal: true,
+    attach: true,
+    checking: false,
+  },
   // Stable identities, as the real hooks give: a fresh object per render re-runs effects.
   translation: { t: (key: string) => key },
   auth: { user: { id: "user-1" } },
@@ -54,12 +61,15 @@ vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   useAuth: () => mocks.auth,
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
-  useWorkspacePermission: () => ({
-    canCreatePublicComments: () => true,
-    canCreateInternalComments: () => true,
-    canCreateAttachments: () => true,
-    isCheckingPermissions: false,
-  }),
+  useWorkspacePermission: (workspaceId?: string, projectId?: string) => {
+    mocks.permissionCalls.push([workspaceId, projectId]);
+    return {
+      canCreatePublicComments: () => mocks.permissions.public,
+      canCreateInternalComments: () => mocks.permissions.internal,
+      canCreateAttachments: () => mocks.permissions.attach,
+      isCheckingPermissions: mocks.permissions.checking,
+    };
+  },
 }));
 vi.mock("@/hooks/mutations/work-item/use-create-work-item-comment", () => ({
   default: () => ({
@@ -92,23 +102,75 @@ import { resetWorkItemUploads } from "@/fetchers/attachment/work-item-upload-que
 import WorkItemCommentComposer from "./work-item-comment-composer";
 
 const SHARE = "activity:timeline.shareFilesWithCustomer";
+const TAB_NAME = {
+  public: "activity:timeline.replyToCustomer",
+  internal: "activity:timeline.internalNote",
+} as const;
+const SEND_BUTTON_PATTERN =
+  /^activity:timeline\.(sendToCustomer|addInternalNote)$/;
 
-function renderComposer(defaultVisibility: "public" | "internal" = "public") {
+function renderComposer(
+  defaultVisibility: "public" | "internal" = "public",
+  options: {
+    projectId?: string;
+    isCustomerVisible?: boolean;
+    isCustomerVisibilityPending?: boolean;
+  } = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  const view = render(
+  const buildTree = (
+    nextDefault: "public" | "internal",
+    nextOptions: typeof options,
+  ) => (
     <QueryClientProvider client={queryClient}>
       <WorkItemCommentComposer
         workItemKey="OPS-17"
         workspaceId="workspace-1"
-        defaultVisibility={defaultVisibility}
+        projectId={nextOptions.projectId}
+        defaultVisibility={nextDefault}
+        isCustomerVisible={nextOptions.isCustomerVisible}
+        isCustomerVisibilityPending={nextOptions.isCustomerVisibilityPending}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  const view = render(buildTree(defaultVisibility, options));
   const composer = screen.getByTestId("work-item-comment-composer");
   return {
     composer,
+    container: view.container,
+    rerender(
+      nextDefault: "public" | "internal" = defaultVisibility,
+      nextOptions: typeof options = options,
+    ) {
+      view.rerender(buildTree(nextDefault, nextOptions));
+    },
+    async editor() {
+      return waitFor(() => {
+        const node = view.container.querySelector<HTMLElement>(
+          '.ProseMirror[contenteditable="true"]',
+        );
+        expect(node).not.toBeNull();
+        return node as HTMLElement;
+      });
+    },
+    async type(text: string) {
+      const node = await this.editor();
+      const paragraph = node.querySelector("p");
+      if (paragraph) {
+        paragraph.textContent = text;
+      } else {
+        node.textContent = text;
+      }
+      fireEvent.input(node, { inputType: "insertText", data: text });
+      await waitFor(() =>
+        expect(
+          within(composer).getByRole("button", { name: SEND_BUTTON_PATTERN }),
+        ).toBeEnabled(),
+      );
+      return node;
+    },
     stage(name: string) {
       const picker =
         view.container.querySelector<HTMLInputElement>('input[type="file"]');
@@ -121,14 +183,14 @@ function renderComposer(defaultVisibility: "public" | "internal" = "public") {
     },
     choose(visibility: "public" | "internal") {
       fireEvent.click(
-        within(composer).getByRole("button", {
-          name: `activity:timeline.${visibility}`,
+        within(composer).getByRole("tab", {
+          name: TAB_NAME[visibility],
         }),
       );
     },
     async send() {
       const send = within(composer).getByRole("button", {
-        name: "activity:timeline.send",
+        name: SEND_BUTTON_PATTERN,
       });
       await waitFor(() => expect(send).toBeEnabled());
       fireEvent.click(send);
@@ -143,10 +205,21 @@ function presignBodies() {
   );
 }
 
+function resetPermissionState() {
+  mocks.permissionCalls = [];
+  mocks.permissions = {
+    public: true,
+    internal: true,
+    attach: true,
+    checking: false,
+  };
+}
+
 describe("A-07 share files with the customer", () => {
   beforeEach(() => {
     window.localStorage.clear();
     resetWorkItemUploads();
+    resetPermissionState();
     mocks.createComment
       .mockReset()
       .mockResolvedValueOnce({ id: "comment-1" })
@@ -248,6 +321,7 @@ describe("CA-2 default visibility versus CA-16 drafts", () => {
   beforeEach(() => {
     window.localStorage.clear();
     resetWorkItemUploads();
+    resetPermissionState();
     mocks.createComment.mockReset().mockResolvedValue({ id: "comment-1" });
     mocks.presign
       .mockReset()
@@ -307,5 +381,251 @@ describe("CA-2 default visibility versus CA-16 drafts", () => {
       ),
     );
     await waitFor(() => expect(shownVisibility(ui.composer)).toBe("internal"));
+  });
+});
+
+describe("F-11 unmistakable customer reply vs internal note composer", () => {
+  const shownCard = (composer: HTMLElement) =>
+    composer.querySelector<HTMLElement>("[data-visibility]");
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    resetWorkItemUploads();
+    resetPermissionState();
+    mocks.createComment.mockReset().mockResolvedValue({ id: "comment-1" });
+    mocks.presign
+      .mockReset()
+      .mockResolvedValue(new Response("refused", { status: 500 }));
+  });
+
+  afterEach(() => {
+    cleanup();
+    resetWorkItemUploads();
+    window.localStorage.clear();
+  });
+
+  it("shows segmented Reply to customer / Internal note tabs, mode-specific submit text, audience copy, and warning surface tint in internal mode", () => {
+    const ui = renderComposer("internal", { projectId: "project-9" });
+    expect(mocks.permissionCalls).toContainEqual(["workspace-1", "project-9"]);
+
+    const tablist = within(ui.composer).getByRole("tablist", {
+      name: "activity:timeline.visibilityLabel",
+    });
+    const publicTab = within(tablist).getByRole("tab", {
+      name: "activity:timeline.replyToCustomer",
+    });
+    const internalTab = within(tablist).getByRole("tab", {
+      name: "activity:timeline.internalNote",
+    });
+    expect(internalTab).toHaveAttribute("aria-selected", "true");
+    expect(publicTab).toHaveAttribute("aria-selected", "false");
+
+    const card = shownCard(ui.composer);
+    expect(card).toHaveAttribute("data-visibility", "internal");
+    expect(card).toHaveClass("border-warning/32", "bg-warning/4");
+    expect(
+      within(ui.composer).getByTestId("comment-audience-notice"),
+    ).toHaveTextContent("activity:timeline.onlyTeamSeesThis");
+    expect(
+      within(ui.composer).getByRole("button", {
+        name: "activity:timeline.addInternalNote",
+      }),
+    ).toBeInTheDocument();
+
+    ui.choose("public");
+    expect(publicTab).toHaveAttribute("aria-selected", "true");
+    expect(internalTab).toHaveAttribute("aria-selected", "false");
+    expect(card).toHaveAttribute("data-visibility", "public");
+    expect(card).toHaveClass("border-border/80", "bg-card/70");
+    expect(card).not.toHaveClass("bg-warning/4");
+    expect(
+      within(ui.composer).getByTestId("comment-audience-notice"),
+    ).toHaveTextContent("activity:timeline.visibleToCustomer");
+    expect(
+      within(ui.composer).getByRole("button", {
+        name: "activity:timeline.sendToCustomer",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows only the single allowed mode when capabilities are limited, and hides when neither mode is allowed", () => {
+    mocks.permissions.internal = false;
+    mocks.permissions.public = true;
+    const publicOnly = renderComposer("internal");
+    expect(within(publicOnly.composer).queryByRole("tablist")).toBeNull();
+    expect(
+      within(publicOnly.composer).getByText(
+        "activity:timeline.replyToCustomer",
+      ),
+    ).toBeVisible();
+    expect(
+      within(publicOnly.composer).queryByText("activity:timeline.internalNote"),
+    ).toBeNull();
+    expect(
+      within(publicOnly.composer).getByRole("button", {
+        name: "activity:timeline.sendToCustomer",
+      }),
+    ).toBeInTheDocument();
+    cleanup();
+
+    mocks.permissions.internal = true;
+    mocks.permissions.public = false;
+    const internalOnly = renderComposer("public");
+    expect(within(internalOnly.composer).queryByRole("tablist")).toBeNull();
+    expect(
+      within(internalOnly.composer).getByText("activity:timeline.internalNote"),
+    ).toBeVisible();
+    expect(
+      within(internalOnly.composer).queryByText(
+        "activity:timeline.replyToCustomer",
+      ),
+    ).toBeNull();
+    expect(shownCard(internalOnly.composer)).toHaveClass(
+      "border-warning/32",
+      "bg-warning/4",
+    );
+    expect(
+      within(internalOnly.composer).getByRole("button", {
+        name: "activity:timeline.addInternalNote",
+      }),
+    ).toBeInTheDocument();
+    cleanup();
+
+    mocks.permissions.internal = false;
+    mocks.permissions.public = false;
+    const none = renderComposer("internal");
+    expect(none.composer).toHaveAttribute("hidden");
+  });
+
+  it("offers no public mode at all on items that are not customer-visible", () => {
+    const ui = renderComposer("public", { isCustomerVisible: false });
+    expect(within(ui.composer).queryByRole("tablist")).toBeNull();
+    expect(
+      within(ui.composer).queryByText("activity:timeline.replyToCustomer"),
+    ).toBeNull();
+    expect(
+      within(ui.composer).getByText("activity:timeline.internalNote"),
+    ).toBeVisible();
+    expect(shownCard(ui.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+    expect(shownCard(ui.composer)).toHaveClass(
+      "border-warning/32",
+      "bg-warning/4",
+    );
+    expect(
+      within(ui.composer).getByRole("button", {
+        name: "activity:timeline.addInternalNote",
+      }),
+    ).toBeInTheDocument();
+    cleanup();
+
+    // A public-only caller has no permitted mode on a non-customer-visible item.
+    mocks.permissions.public = true;
+    mocks.permissions.internal = false;
+    const publicOnlyOnInternalItem = renderComposer("public", {
+      isCustomerVisible: false,
+    });
+    expect(publicOnlyOnInternalItem.composer).toHaveAttribute("hidden");
+  });
+
+  it("never submits when switching mode, keeps draft text, and submits in the current visible mode on Ctrl+Enter and Cmd+Enter", async () => {
+    mocks.createComment
+      .mockReset()
+      .mockResolvedValueOnce({ id: "comment-internal" })
+      .mockResolvedValueOnce({ id: "comment-public" });
+    const ui = renderComposer("internal");
+    const editorNode = await ui.type("Investigating root cause");
+
+    ui.choose("public");
+    expect(mocks.createComment).not.toHaveBeenCalled();
+    expect(editorNode.textContent).toContain("Investigating root cause");
+
+    ui.choose("internal");
+    expect(mocks.createComment).not.toHaveBeenCalled();
+    expect(editorNode.textContent).toContain("Investigating root cause");
+
+    fireEvent.keyDown(editorNode, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ visibility: "internal" }),
+    );
+
+    const nextEditor = await ui.type("Fix deployed, please retry");
+    ui.choose("public");
+    expect(mocks.createComment).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(nextEditor, { key: "Enter", metaKey: true });
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(2));
+    expect(mocks.createComment).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ visibility: "public" }),
+    );
+  });
+
+  it("never silently changes mode when project defaultVisibility changes during a refetch while typing", async () => {
+    const ui = renderComposer("internal");
+    await ui.type("Internal triage notes");
+    expect(shownCard(ui.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+
+    // Simulate a background refetch where the project's default visibility changed to public.
+    ui.rerender("public");
+    expect(shownCard(ui.composer)).toHaveAttribute(
+      "data-visibility",
+      "internal",
+    );
+
+    await ui.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ visibility: "internal" }),
+    );
+  });
+
+  it("falls back to Internal note, resets file sharing, and announces the fallback if the item stops being customer-visible while typing", async () => {
+    const ui = renderComposer("public", { isCustomerVisible: true });
+    const editorNode = await ui.type("Drafting customer answer");
+    ui.stage("diagnostic.pdf");
+    const share = await within(ui.composer).findByRole("switch", {
+      name: SHARE,
+    });
+    fireEvent.click(share);
+    expect(share).toBeChecked();
+    expect(shownCard(ui.composer)).toHaveAttribute("data-visibility", "public");
+
+    // Item loses customer visibility mid-composition (e.g. requester cleared or moved to internal project).
+    ui.rerender("public", { isCustomerVisible: false });
+
+    await waitFor(() =>
+      expect(shownCard(ui.composer)).toHaveAttribute(
+        "data-visibility",
+        "internal",
+      ),
+    );
+    const notice = within(ui.composer).getByTestId(
+      "comment-visibility-fallback-notice",
+    );
+    expect(notice).toHaveAttribute("role", "status");
+    expect(notice).toHaveTextContent(
+      "activity:timeline.customerVisibilityLostFallback",
+    );
+    expect(within(ui.composer).queryByRole("tablist")).toBeNull();
+    expect(within(ui.composer).queryByRole("switch", { name: SHARE })).toBe(
+      null,
+    );
+    expect(editorNode.textContent).toContain("Drafting customer answer");
+
+    await ui.send();
+    await waitFor(() => expect(mocks.createComment).toHaveBeenCalledTimes(1));
+    expect(mocks.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ visibility: "internal" }),
+    );
+    await waitFor(() => expect(mocks.presign).toHaveBeenCalledTimes(1));
+    expect(presignBodies()[0]).not.toHaveProperty("customerVisible");
   });
 });

@@ -289,6 +289,7 @@ async function seedReachableMentionRecipient(
   databaseUrl: string,
   workspaceId: string,
   projectId: string,
+  workItemId: string,
   authorEmail: string,
 ) {
   // This raw SQL bypasses Drizzle's JavaScript-only `$defaultFn` values. Supply
@@ -302,6 +303,8 @@ async function seedReachableMentionRecipient(
   const recipientMembershipId = `comments-recipient-membership-${randomUUID()}`;
   const authorRoleId = `comments-author-role-${randomUUID()}`;
   const authorMembershipId = `comments-author-membership-${randomUUID()}`;
+  const customerOrgId = `comments-cust-org-${randomUUID()}`;
+  const customerOrgKey = `cust-${randomUUID().slice(0, 8)}`;
   const recipientName = "Comments Mention Recipient";
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
@@ -316,6 +319,19 @@ async function seedReachableMentionRecipient(
     expect(organisation.rowCount).toBe(1);
     const organisationId = organisation.rows[0]?.organisation_id;
     expect(organisationId).toBeTruthy();
+    // F-11: public customer replies are offered only on customer-visible items.
+    await client.query(
+      "INSERT INTO organisation (id, key, name, is_internal) VALUES ($1, $2, $3, false)",
+      [customerOrgId, customerOrgKey, "Comments Customer Org"],
+    );
+    await client.query(
+      "UPDATE project SET organisation_id = $1 WHERE id = $2",
+      [customerOrgId, projectId],
+    );
+    await client.query(
+      "UPDATE work_item SET customer_visibility = 'organisation' WHERE id = $1",
+      [workItemId],
+    );
     const author = await client.query<{ user_id: string; person_id: string }>(
       `SELECT u.id AS user_id, p.id AS person_id
          FROM "user" AS u
@@ -684,6 +700,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       databaseUrl,
       item.workspaceId,
       item.projectId,
+      item.id,
       email,
     );
     await page.reload();
@@ -705,13 +722,13 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
 
     const activity = page.getByTestId("work-item-activity");
     await expect(activity).toBeVisible();
-    // Comment visibility is a Kaneo toggle group; the pressed button is the current choice.
-    const visibility = page.getByRole("group", {
+    // F-11: comment visibility is a segmented Tabs control on customer-visible items.
+    const visibility = page.getByRole("tablist", {
       name: "Who can see this comment?",
     });
     await expect(
-      visibility.getByRole("button", { name: "Internal", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
+      visibility.getByRole("tab", { name: "Internal note", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
     const composer = commentEditor(activity);
     await expect(composer).toBeVisible();
 
@@ -726,9 +743,9 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         await expect(recoveredEditor).toHaveText("Recovered internal draft");
         await expect(
           recoveryPage
-            .getByRole("group", { name: "Who can see this comment?" })
-            .getByRole("button", { name: "Internal", exact: true }),
-        ).toHaveAttribute("aria-pressed", "true");
+            .getByRole("tablist", { name: "Who can see this comment?" })
+            .getByRole("tab", { name: "Internal note", exact: true }),
+        ).toHaveAttribute("aria-selected", "true");
         await recoveryPage.screenshot({
           path: testInfo.outputPath("comments-draft-recovery.png"),
           fullPage: true,
@@ -744,7 +761,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
           `/api/work-items/${item.key}/comments` &&
         response.request().method() === "POST",
     );
-    await activity.getByRole("button", { name: "Send comment" }).click();
+    await activity.getByRole("button", { name: "Add internal note" }).click();
     const internalResponse = await internalSubmit;
     expect(internalResponse.status()).toBe(200);
     expect(internalResponse.request().headers()["content-type"]).toMatch(
@@ -793,11 +810,11 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     });
 
     await visibility
-      .getByRole("button", { name: "Public", exact: true })
+      .getByRole("tab", { name: "Reply to customer", exact: true })
       .click();
     await expect(
-      visibility.getByRole("button", { name: "Public", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
+      visibility.getByRole("tab", { name: "Reply to customer", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
     const mentionCandidatesResponse = await page.request.get(
       new URL(
         `/api/work-items/${encodeURIComponent(item.key)}/comments/mention-candidates?visibility=public`,
@@ -842,7 +859,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
           `/api/work-items/${item.key}/comments` &&
         response.request().method() === "POST",
     );
-    await activity.getByRole("button", { name: "Send comment" }).click();
+    await activity.getByRole("button", { name: "Send to customer" }).click();
     const publicResponse = await publicSubmit;
     expect(publicResponse.status()).toBe(200);
     expect(publicResponse.request().headers()["content-type"]).toMatch(
@@ -1220,10 +1237,10 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
           .click();
         await expect(composer).toContainText(originalText);
         await expect(
-          page
-            .getByRole("group", { name: "Who can see this comment?" })
-            .getByRole("button", { name: "Internal", exact: true }),
-        ).toHaveAttribute("aria-pressed", "true");
+          activity
+            .getByTestId("work-item-comment-composer")
+            .locator('[data-visibility="internal"]'),
+        ).toContainText("Internal note");
 
         await composer.fill(editedText);
         await expect(composer).toContainText(editedText);
@@ -1265,7 +1282,9 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
             new URL(response.url()).pathname === commentPath &&
             response.request().method() === "POST",
         );
-        await activity.getByRole("button", { name: "Send comment" }).click();
+        await activity
+          .getByRole("button", { name: "Add internal note" })
+          .click();
         const commentResponse = await postedResponse;
         expect(commentResponse.status()).toBe(200);
         const postedComment = (await commentResponse.json()) as {

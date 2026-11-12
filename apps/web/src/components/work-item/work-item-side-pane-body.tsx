@@ -153,7 +153,9 @@ function SidePaneDetailWithProject({
   onRetry: () => void;
   onAccessLost: () => void;
 }) {
-  const { data: projects } = useGetProjects({ workspaceId: item.workspaceId });
+  const { data: projects, isLoading: isProjectLoading } = useGetProjects({
+    workspaceId: item.workspaceId,
+  });
   const project = projects?.find(
     (candidate) => candidate.id === item.projectId,
   );
@@ -165,7 +167,16 @@ function SidePaneDetailWithProject({
       workItemKey={workItemKey}
       activityFilter={activityFilter}
       onActivityFilterChange={onActivityFilterChange}
-      project={project ? { name: project.name, slug: project.slug } : undefined}
+      project={
+        project
+          ? {
+              name: project.name,
+              slug: project.slug,
+              organisationId: project.organisationId,
+            }
+          : undefined
+      }
+      isProjectLoading={isProjectLoading}
       isLoading={false}
       isNotFound={false}
       isError={isError}

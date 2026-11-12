@@ -136,10 +136,25 @@ vi.mock("@/components/service-management/change-section", () => ({
 }));
 vi.mock("./work-item-audit-history", () => ({ default: () => null }));
 vi.mock("./work-item-activity", () => ({
-  default: ({ readOnly }: { readOnly?: boolean }) => (
+  default: ({
+    readOnly,
+    projectId,
+    isCustomerVisible,
+    isCustomerVisibilityPending,
+  }: {
+    readOnly?: boolean;
+    projectId?: string;
+    isCustomerVisible?: boolean;
+    isCustomerVisibilityPending?: boolean;
+  }) => (
     <div
       data-testid="work-item-activity"
       data-read-only={String(Boolean(readOnly))}
+      data-project-id={projectId ?? ""}
+      data-customer-visible={String(Boolean(isCustomerVisible))}
+      data-customer-visibility-pending={String(
+        Boolean(isCustomerVisibilityPending),
+      )}
     />
   ),
 }));
@@ -488,5 +503,84 @@ describe("WorkItemDetail", () => {
     expect(
       screen.getByText("workItems:detail.unavailable"),
     ).toBeInTheDocument();
+  });
+
+  it("derives customer visibility for F-11 from project organisation, requester, and customerVisibility", () => {
+    const view = render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          projectId: "proj_internal",
+          requesterId: null,
+          customerVisibility: "organisation",
+        })}
+        project={{ name: "Internal Ops", slug: "OPS", organisationId: null }}
+      />,
+    );
+    const activity = screen.getByTestId("work-item-activity");
+    expect(activity).toHaveAttribute("data-project-id", "proj_internal");
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Customer project with a private staff-only item and no customer requester -> not customer-visible.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({ requesterId: null, customerVisibility: "private" })}
+        project={{ name: "Contoso", slug: "CON", organisationId: "org_1" }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+
+    // Customer project with customer requester -> customer-visible.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          customerVisibility: "private",
+        })}
+        project={{ name: "Contoso", slug: "CON", organisationId: "org_1" }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "true");
+
+    // Customer project with organisation-wide visibility -> customer-visible, pending while project loads.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: null,
+          customerVisibility: "organisation",
+        })}
+        project={undefined}
+        isProjectLoading={true}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "true",
+    );
+
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: null,
+          customerVisibility: "organisation",
+        })}
+        project={{ name: "Contoso", slug: "CON", organisationId: "org_1" }}
+        isProjectLoading={false}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "true");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
   });
 });
