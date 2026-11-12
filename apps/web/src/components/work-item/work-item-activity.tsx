@@ -20,7 +20,9 @@ import {
   Calendar,
   ChevronDown,
   CircleAlert,
+  Globe,
   History,
+  Lock,
   Pencil,
   TriangleAlert,
   UserRound,
@@ -47,6 +49,7 @@ import useGetWorkItemActivity from "@/hooks/queries/work-item/use-get-work-item-
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { auditFieldLabel, recordedDateLabel } from "@/lib/audit-history-format";
+import { cn } from "@/lib/cn";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
 import {
   useWorkItemFileIntake,
@@ -280,7 +283,10 @@ function isTiptapDocument(value: unknown): value is Record<string, unknown> {
 function WorkItemActivity({
   workItemKey,
   workspaceId,
+  projectId,
   defaultVisibility,
+  isCustomerVisible = false,
+  isCustomerVisibilityPending = false,
   filter,
   focusedComment,
   onFilterChange,
@@ -288,14 +294,17 @@ function WorkItemActivity({
 }: {
   workItemKey: string;
   workspaceId: string;
+  projectId?: string;
   defaultVisibility: "public" | "internal";
+  isCustomerVisible?: boolean;
+  isCustomerVisibilityPending?: boolean;
   filter: ActivityFilter;
   focusedComment?: string;
   onFilterChange: (filter: ActivityFilter) => void;
   readOnly?: boolean;
 }) {
   const { t } = useTranslation();
-  const permissions = useWorkspacePermission(workspaceId);
+  const permissions = useWorkspacePermission(workspaceId, projectId);
   const {
     canCreatePublicComments,
     canCreateInternalComments,
@@ -515,7 +524,10 @@ function WorkItemActivity({
         <WorkItemCommentComposer
           workItemKey={workItemKey}
           workspaceId={workspaceId}
+          projectId={projectId}
           defaultVisibility={defaultVisibility}
+          isCustomerVisible={isCustomerVisible}
+          isCustomerVisibilityPending={isCustomerVisibilityPending}
         />
       ) : null}
       {!panelMounted ? <WorkItemUploadList uploads={itemUploads} /> : null}
@@ -593,6 +605,8 @@ function WorkItemActivity({
             const isDeleted = Boolean(row.deletedAt);
             const body = row.body;
             const isEditing = !readOnly && editing === row.id;
+            const commentVisibility = effectiveVisibility(row);
+            const isInternalComment = commentVisibility === "internal";
             return (
               <TimelineItem
                 key={row.id}
@@ -610,19 +624,26 @@ function WorkItemActivity({
                     data-focused-comment={
                       row.id === focusedComment ? "true" : undefined
                     }
+                    tinted={isInternalComment}
                     className={
                       row.id === focusedComment ? "ring-2 ring-ring" : undefined
                     }
-                    data-visibility={effectiveVisibility(row)}
+                    data-visibility={commentVisibility}
                     header={
                       <>
                         <ActivityActorPresentation {...profile} />
                         {timestamp}
-                        <span className="text-xs text-muted-foreground">
-                          {effectiveVisibility(row) === "public"
-                            ? t("activity:timeline.public")
-                            : t("activity:timeline.internal")}
-                        </span>
+                        {isInternalComment ? (
+                          <Badge variant="warning" size="sm">
+                            <Lock className="size-3" aria-hidden="true" />
+                            {t("activity:timeline.internalNote")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" size="sm">
+                            <Globe className="size-3" aria-hidden="true" />
+                            {t("activity:timeline.replyToCustomer")}
+                          </Badge>
+                        )}
                         {row.origin === "imported" ? (
                           <ImportedMarker importedAt={row.importedAt} />
                         ) : null}
@@ -684,7 +705,14 @@ function WorkItemActivity({
                     }
                     footer={
                       !isDeleted && isEditing ? (
-                        <div className="flex items-center justify-end gap-2 border-border/70 border-t bg-card/60 px-3 py-2">
+                        <div
+                          className={cn(
+                            "flex items-center justify-end gap-2 border-t px-3 py-2",
+                            isInternalComment
+                              ? "border-warning/24"
+                              : "border-border/70 bg-card/60",
+                          )}
+                        >
                           <Button
                             variant="secondary"
                             size="sm"

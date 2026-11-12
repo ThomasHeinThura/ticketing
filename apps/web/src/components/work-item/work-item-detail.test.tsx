@@ -136,10 +136,25 @@ vi.mock("@/components/service-management/change-section", () => ({
 }));
 vi.mock("./work-item-audit-history", () => ({ default: () => null }));
 vi.mock("./work-item-activity", () => ({
-  default: ({ readOnly }: { readOnly?: boolean }) => (
+  default: ({
+    readOnly,
+    projectId,
+    isCustomerVisible,
+    isCustomerVisibilityPending,
+  }: {
+    readOnly?: boolean;
+    projectId?: string;
+    isCustomerVisible?: boolean;
+    isCustomerVisibilityPending?: boolean;
+  }) => (
     <div
       data-testid="work-item-activity"
       data-read-only={String(Boolean(readOnly))}
+      data-project-id={projectId ?? ""}
+      data-customer-visible={String(Boolean(isCustomerVisible))}
+      data-customer-visibility-pending={String(
+        Boolean(isCustomerVisibilityPending),
+      )}
     />
   ),
 }));
@@ -488,5 +503,150 @@ describe("WorkItemDetail", () => {
     expect(
       screen.getByText("workItems:detail.unavailable"),
     ).toBeInTheDocument();
+  });
+
+  it("derives customer visibility for F-11 from actual portal reach facts and fails closed while loading", () => {
+    const view = render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          projectId: "proj_internal",
+          requesterId: "cust_1",
+          customerVisibility: "organisation",
+        })}
+        project={{ name: "Internal Ops", slug: "OPS", organisationId: null }}
+      />,
+    );
+    const activity = screen.getByTestId("work-item-activity");
+    expect(activity).toHaveAttribute("data-project-id", "proj_internal");
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Customer project with no customer requester -> not customer-visible even when customerVisibility="organisation".
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({ requesterId: null, customerVisibility: "private" })}
+        project={{ name: "Contoso", slug: "CON", organisationId: "org_1" }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: null,
+          customerVisibility: "organisation",
+        })}
+        project={{ name: "Contoso", slug: "CON", organisationId: "org_1" }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Non-null requester fails closed (pending) while the project record is still loading.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          customerVisibility: "private",
+        })}
+        project={undefined}
+        isProjectLoading={true}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "true",
+    );
+
+    // Fails closed if the project query settles without a project record.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          customerVisibility: "private",
+        })}
+        project={undefined}
+        isProjectLoading={false}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Live customer project + customer requester -> customer-visible.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          customerVisibility: "private",
+        })}
+        project={{
+          name: "Contoso",
+          slug: "CON",
+          organisationId: "org_1",
+          archivedAt: null,
+          deletedAt: null,
+        }}
+        isProjectLoading={false}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "true");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Archived item or archived project is never portal-reachable.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          archivedAt: "2026-11-12T00:00:00.000Z",
+        })}
+        project={{
+          name: "Contoso",
+          slug: "CON",
+          organisationId: "org_1",
+          archivedAt: null,
+          deletedAt: null,
+        }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({ requesterId: "cust_1" })}
+        project={{
+          name: "Contoso",
+          slug: "CON",
+          organisationId: "org_1",
+          archivedAt: "2026-11-12T00:00:00.000Z",
+          deletedAt: null,
+        }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
   });
 });

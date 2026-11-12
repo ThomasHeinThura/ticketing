@@ -3665,6 +3665,15 @@ A team that owns a project grants its members project reach, without adding capa
 
 For staff project reach, an explicit report or time-summary target outside reach answers 404. This reverses RP-17's prior silent exclusion for a Tier 3 filter naming a project after reach is lost; `report:read_all` retains its workspace-wide report scope.
 
+## Customer reply vs internal note distinction — 12 November 2026 (Thomas)
+
+Thomas decided on 12 November 2026 (`F-11` in the UAT completion plan): replying to a customer versus writing an internal note on a work item must be unmistakable, internal notes are tinted in both the composer and the conversation, and a public reply must never be sent by accident. **This reverses the 22 October 2026 `CA-5` / UI-04 neutral-composer decision** ("The work-item composer is neutral (no warning-tinted card); Internal/Public is a toggle plus an explanatory sentence").
+
+- **Composer modes and copy.** When both modes are available on a customer-visible work item, the composer header renders a two-option segmented `Tabs` control ("Reply to customer" and "Internal note"), paired with an audience line ("Visible to the customer" or "Only your team sees this") and a mode-specific submit button ("Send to customer" or "Add internal note"). Internal mode tints the composer card with the shared warning token surface (`border-warning/32 bg-warning/4`).
+- **Defaults, capabilities and customer visibility.** An empty composer opens on the project's `defaultCommentVisibility` (`CA-2`). When the caller holds only one of `comment:create` or `comment:create_internal`, or when the work item is not visible to any customer (requiring both a live customer-serving project and a customer requester on the item, failing closed until project facts settle), only the allowed mode is shown as a static badge and no public option is offered.
+- **No accidental public send.** Switching mode never submits and preserves the draft. `Ctrl/Cmd+Enter` submits only in the currently visible mode, captured at press time and re-verified after any asynchronous preflight before posting. Background refetches or changes to `defaultCommentVisibility` never overwrite an open composer's mode; if a draft's chosen audience loses capability, submission is blocked with a polite status notice until an explicit choice is made. If an item stops being customer-visible while the composer is open, the composer falls back to "Internal note", resets file-sharing, and announces the change (`role="status"`).
+- **Conversation and portal.** In the work-item conversation, internal notes carry the same warning surface tint and an "Internal note" badge readable by screen readers; public comments carry a "Reply to customer" badge. Portal routes continue to filter `visibility = 'public'` server-side (`CA-3`).
+
 ## Amazon SES setup and a real email test — 12 November 2026
 
 Thomas decided on 12 November 2026 (D-M) that God Mode sets up Amazon SES and that its Test button sends a real email. SES is used through its SMTP interface, so there is no new dependency.

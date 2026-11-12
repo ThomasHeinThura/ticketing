@@ -10257,6 +10257,51 @@
 						},
 						"shareFilesWithCustomer": {
 							"type": "string"
+						},
+						"replyToCustomer": {
+							"type": "string"
+						},
+						"internalNote": {
+							"type": "string"
+						},
+						"sendToCustomer": {
+							"type": "string"
+						},
+						"addInternalNote": {
+							"type": "string"
+						},
+						"onlyTeamSeesThis": {
+							"type": "string"
+						},
+						"visibleToCustomer": {
+							"type": "string"
+						},
+						"customerVisibilityLostFallback": {
+							"type": "string"
+						},
+						"internalVisibilityUnavailableCanReply": {
+							"type": "string"
+						},
+						"publicVisibilityUnavailableCanNote": {
+							"type": "string"
+						},
+						"commentVisibilityUnavailableNone": {
+							"type": "string"
+						},
+						"switchToReplyToCustomer": {
+							"type": "string"
+						},
+						"keepAsInternalNote": {
+							"type": "string"
+						},
+						"draftKeptAsInternalNote": {
+							"type": "string"
+						},
+						"cannedResponseSwitchedToInternal": {
+							"type": "string"
+						},
+						"cannedResponsePublicChoiceNotice": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10303,7 +10348,22 @@
 						"actors",
 						"reopenRequested",
 						"verbs",
-						"shareFilesWithCustomer"
+						"shareFilesWithCustomer",
+						"replyToCustomer",
+						"internalNote",
+						"sendToCustomer",
+						"addInternalNote",
+						"onlyTeamSeesThis",
+						"visibleToCustomer",
+						"customerVisibilityLostFallback",
+						"internalVisibilityUnavailableCanReply",
+						"publicVisibilityUnavailableCanNote",
+						"commentVisibilityUnavailableNone",
+						"switchToReplyToCustomer",
+						"keepAsInternalNote",
+						"draftKeptAsInternalNote",
+						"cannedResponseSwitchedToInternal",
+						"cannedResponsePublicChoiceNotice"
 					]
 				}
 			},

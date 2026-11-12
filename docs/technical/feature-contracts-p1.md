@@ -1225,10 +1225,14 @@ security-sensitive field in the product.
   client, never by a CSS class, never by a conditional render.
 - `CA-4` Visibility cannot be changed after posting. A comment sent to a customer has been
   sent. Delete and repost, which leaves a visible tombstone.
-- `CA-5` The composer is neutral in both modes: it keeps Kaneo's original composer look
-  with no distinct background. Internal mode is shown by the Internal/Public toggle and the
-  explanatory sentence beside it. Owner decision, 22 Oct 2026 (warning-tinted composer
-  rejected; see `audit.md`, "neutral composer", and roadmap UI-04).
+- `CA-5` On customer-visible work items, the composer presents a two-option control
+  ("Reply to customer" and "Internal note"), mode-specific submit text ("Send to customer" /
+  "Add internal note"), and an audience line ("Visible to the customer" / "Only your team sees
+  this"); when only one mode is allowed or the item is not customer-visible, only that allowed
+  mode is shown (no public mode on non-customer-visible items). Internal mode tints both the
+  composer surface and posted internal comment cards with the shared warning token surface,
+  while posted comments carry "Internal note" / "Reply to customer" badges. Owner decision,
+  12 Nov 2026 (`F-11`, reversing the 22 Oct 2026 neutral-composer decision).
 
 <a id="comments-and-activity-activity"></a>
 ### Activity

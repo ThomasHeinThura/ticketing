@@ -65,7 +65,16 @@ export type WorkItemDetailProps = {
   /** Best-effort: resolved client-side from the workspace's project list. Absent until
    * that list loads; the details section simply omits the row rather than showing a raw
    * project id. */
-  project: { name: string; slug: string } | undefined;
+  project:
+    | {
+        name: string;
+        slug: string;
+        organisationId?: string | null;
+        archivedAt?: string | null;
+        deletedAt?: string | null;
+      }
+    | undefined;
+  isProjectLoading?: boolean;
   isLoading: boolean;
   isNotFound: boolean;
   isError: boolean;
@@ -87,6 +96,7 @@ function WorkItemDetail({
   focusedComment,
   onActivityFilterChange,
   project,
+  isProjectLoading = false,
   isLoading,
   isNotFound,
   isError,
@@ -395,7 +405,24 @@ function WorkItemDetail({
           <WorkItemActivity
             workItemKey={workItemKey}
             workspaceId={item.workspaceId}
+            projectId={item.projectId}
             defaultVisibility={item.defaultCommentVisibility}
+            isCustomerVisible={
+              Boolean(item.requesterId) &&
+              !item.archivedAt &&
+              !item.deletedAt &&
+              project !== undefined &&
+              Boolean(project.organisationId) &&
+              !project.archivedAt &&
+              !project.deletedAt
+            }
+            isCustomerVisibilityPending={
+              Boolean(item.requesterId) &&
+              !item.archivedAt &&
+              !item.deletedAt &&
+              project === undefined &&
+              isProjectLoading
+            }
             focusedComment={focusedComment}
             filter={activityFilter}
             onFilterChange={onActivityFilterChange}
