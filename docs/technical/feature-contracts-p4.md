@@ -850,9 +850,13 @@ attachment limits.
 Channels available on this instance: SMTP and the generic webhook (core). Further
 `notify.*` channels — Teams → Slack → Telegram → Viber, then others — appear here as they
 are built ([notifications.md](feature-contracts-p4.md#notifications); future scope, decided 2026-09-05). Each is
-a `notify.*` plugin with settings and a test send through
-the generic `POST /api/instance/plugins/{id}/test` route — there is no channel-specific
-test route. Plus the default notification preferences new users inherit.
+a `notify.*` plugin with settings and a test send. The core email provider uses
+`POST /api/instance/notification-providers/email/test`; other supported plugins use the
+generic test route. Plus the default notification preferences new users inherit.
+
+| Email Test result | Contract |
+| --- | --- |
+| Failed send | Show the SMTP reply code and a translated cause. Authenticated attempts omit free-form provider text; unauthenticated replies may include sanitised text. |
 
 <a id="god-mode-deliveries"></a>
 #### Deliveries

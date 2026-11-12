@@ -3599,6 +3599,19 @@ Thomas approved both changes on 5 November 2026:
 Neither approval constitutes a merge or deployment approval. Existing tenant,
 session, audit, encryption and secret-redaction boundaries remain required.
 
+## Amazon SES setup and a real email test — 12 November 2026
+
+Thomas decided on 12 November 2026 (D-M) that God Mode sets up Amazon SES and that its Test button sends a real email. SES is used through its SMTP interface, so there is no new dependency.
+
+- **Provider choice.** The email screen offers Custom SMTP or Amazon SES (the local Mailpit capture stays as it was). SES fixes the connection: the region decides the host `email-smtp.<region>.amazonaws.com`, the port is 587 and STARTTLS is required. The server derives and validates these from the region; the editor only shows them read-only. The credentials are the SES SMTP user name and password, not an AWS access key. Provider and region are stored in the provider's `config`.
+- **Test.** Test sends one fixed message to an address the administrator types (the signed-in administrator's by default) through the same transport and egress checks as every delivery, using the unsaved form values. It stays unelevated (it does not change settings and may record a test status), rate limited to 5 per administrator per minute and audited with the recipient's domain only. A delivery failure is an answer: a bounded category, the SMTP reply code, and the provider's text with e-mail addresses, host names, IP addresses, key identifiers and long tokens removed when no SMTP authentication is configured. For authenticated attempts the free-form reply is omitted because it may echo arbitrary credential fragments; the code and bounded category remain available. A saved password is used for Test only when the provider, region, host, port, TLS settings and username match the saved configuration; otherwise the administrator must supply a new password; to test a destination without credentials, save the cleared credentials first.
+- **Status.** The last result (verified or failed, when, and the code) is stored in the provider row's `config` as server-written `lastTest`, and shown under the title. It is recorded only when the test ran against the saved settings; saving changed settings or a new password resets it to "Not tested since change". Recording a result neither bumps the version nor writes a row.
+
+On 12 November 2026 the coordinator accepted omitting free-form text from authenticated SMTP test failures for PR #1126; Thomas's acceptance of this exception remains pending.
+- **Saving needs the second factor again.** Mail carries password-reset and invitation links, so saving the provider is an elevated action: PA-15 operation `notification_provider_save`, bound to the whole write including the password's keep, clear or keyed-digest-of-replacement intent (migration 0219 adds it to the operation CHECK).
+
+This reverses two earlier rules: (1) "`notify.email` is a non-auth provider and saving it is not elevated" (the policy exemption on `PATCH /api/instance/notification-providers/email`), and (2) "an SMTP test shows only the bounded safe outcome, never raw provider replies, and sends no mail" (operations runbook, `executeSmtp` comment): the reply now leaves the server in the sanitised form above, and only when the caller asks for it. Delivery paths still never carry provider text. This is not a merge or deployment approval.
+
 ## Inactive historical references
 
 Only obsolete workflow/delegation provenance may remain here; product clauses must live in maintained sections above or the linked runtime/operations/feature references. These original path strings are not active instructions or archive dependencies.
@@ -3609,3 +3622,7 @@ Only obsolete workflow/delegation provenance may remain here; product clauses mu
 | 23 Oct | P5: rename old time table to `task_time_entry`; inline-SVG charts + Table equivalents; dnd-kit dashboard grid; indented-list service impact; estimates under project settings; CAB workflow opt-in for existing workspaces; NOT VALID FKs with scratch DB first; staff-only project Pages; customer-scoped invitations refusing staff roles | `TC-*`, `RP-*`, `ES-*`, `SVC-*`, `CH-*`, `CP-11` | Thomas (recommended options) |
 | 23 Oct | Customer invitations use a new hashed single-use credential and a scope discriminator on `invitation`; Pages reuse `project:read`/`project:update`; typed-domain route claims non-enumeration for accounts only (ADR 0014); invitation lifetime and rate limits are instance configuration | `CP-20`..`CP-29`, `PG-1`..`PG-8` | standing |
 | 27 Oct 2026 | The local-factor policy applies to staff only: customers are exempt in every mode (including `required_everyone`) and customer SSO sign-in never reaches the agent-only `/auth/two-factor` (a factor a customer enrolled voluntarily is still honoured on local sign-in); the God Mode label reads "Everyone (staff)" | `CP-19`, `P3-R1-04` | recommended option, Thomas standing rule |
+
+### 12 Nov 2026 — Thomas: staff invitation roles (D-C)
+
+The inviter chooses the staff role. A `member:invite`-scoped read returns only assignable role keys, labels and ranks, without widening the roles administration read. Resend keeps the stored role when omitted, or replaces it when supplied, and rechecks the resender’s current authority; a new invitation requires a role.
