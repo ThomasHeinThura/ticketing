@@ -173,7 +173,7 @@ const reportRoute = createRoute({
   tags: ["Reports"],
   summary: "Run a tier 1 report",
   description:
-    "Filtered to the caller's reach (report:read) or the whole workspace (report:read_all). States scope, window and as-of time. Insufficient data is null with its sample, never 0% or 100%. Rate and cost fields are absent without time_entry:manage_rates.",
+    "Filtered to the caller's project reach. States scope, window and as-of time. Insufficient data is null with its sample, never 0% or 100%. Rate and cost fields are absent without time_entry:manage_rates.",
   middleware: [
     staffOnly,
     workspaceAccess.fromQuery(),
@@ -656,11 +656,7 @@ async function visibleWidgets<
   const reach = await callerReach(c, c.get("userId") as string);
   const projects = await reach.projectFactsFor([workspaceId]);
   const allowed = new Set(await reach.reachableProjectIds([workspaceId]));
-  const readAll = await holds(c, "report:read_all");
-  if (readAll) {
-    for (const project of projects)
-      if (!project.deleted) allowed.add(project.id);
-  }
+
   const hidden = new Set(
     projects
       .filter((project) => !allowed.has(project.id))
@@ -687,9 +683,7 @@ async function visibleWidgets<
     for (const id of cycleIds) if (!permitted.has(id)) hidden.add(id);
   }
   const result: T[] = [];
-  const visibleViewQuery = readAll
-    ? () => true
-    : await savedViewQueryFilter(reach, workspaceId);
+  const visibleViewQuery = await savedViewQueryFilter(reach, workspaceId);
   for (const widget of widgets) {
     const projectId = widget.filters?.projectId;
     if (typeof projectId === "string" && !allowed.has(projectId)) continue;
@@ -706,15 +700,14 @@ async function visibleWidgets<
           personId,
           c.get("userId") as string,
         );
-        const currentReach = readAll
-          ? null
-          : await callerReach(c, c.get("userId") as string);
-        const currentIds = currentReach
-          ? new Set(await currentReach.reachableProjectIds([workspaceId]))
-          : allowed;
-        const currentQueryVisible = currentReach
-          ? await savedViewQueryFilter(currentReach, workspaceId)
-          : visibleViewQuery;
+        const currentReach = await callerReach(c, c.get("userId") as string);
+        const currentIds = new Set(
+          await currentReach.reachableProjectIds([workspaceId]),
+        );
+        const currentQueryVisible = await savedViewQueryFilter(
+          currentReach,
+          workspaceId,
+        );
         if (
           view.workspaceId !== workspaceId ||
           (view.scope === "project" && !currentIds.has(view.scopeId)) ||
@@ -834,12 +827,6 @@ async function exportVisible(
   const stored = row.caps as { readAll?: boolean };
   if (stored.readAll === true && !(await holds(c, "report:read_all")))
     return false;
-  if (
-    stored.readAll !== true &&
-    !("projectIds" in row.caps) &&
-    (await holds(c, "report:read_all"))
-  )
-    return true;
   return !(await exportReachLost(row, identity));
 }
 
@@ -981,8 +968,7 @@ async function widgetSpec(
     personId,
     c.get("userId") as string,
   );
-  if (!(await holds(c, "report:read_all")))
-    await assertSavedViewQueryReach(c, view);
+  await assertSavedViewQueryReach(c, view);
   const parsed = customQuerySchema.safeParse(view.query);
   if (!parsed.success || validateCustomQuery(parsed.data))
     throw new HTTPException(422, { message: "saved_view_not_runnable" });
@@ -1491,8 +1477,7 @@ router
       identity.personId,
       c.get("userId") as string,
     );
-    if (!(await holds(c, "report:read_all")))
-      await assertSavedViewQueryReach(c, view);
+    await assertSavedViewQueryReach(c, view);
     const parsed = customQuerySchema.safeParse(view.query);
     if (!parsed.success || validateCustomQuery(parsed.data))
       throw new HTTPException(422, { message: "saved_view_not_runnable" });

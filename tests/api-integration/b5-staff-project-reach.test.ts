@@ -1722,7 +1722,7 @@ describe("B-5: staff project reach", () => {
         rows: unknown[];
         metrics: Array<{ key: string; value: number | null }>;
       };
-      expect(reportAll.scope).toEqual({ kind: "all", projectCount: 2 });
+      expect(reportAll.scope).toEqual({ kind: "reach", projectCount: 1 });
       expect(reportAll.rows.length).toBeGreaterThan(0);
       expect(
         reportAll.metrics.find((metric) => metric.key === "created")?.value,
@@ -1737,7 +1737,7 @@ describe("B-5: staff project reach", () => {
         scope: { kind: string };
         metrics: Array<{ key: string; value: number | null }>;
       };
-      expect(fullProjectBody.scope.kind).toBe("all");
+      expect(fullProjectBody.scope.kind).toBe("reach");
       expect(
         fullProjectBody.metrics.find((metric) => metric.key === "created")
           ?.value,

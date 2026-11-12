@@ -117264,7 +117264,7 @@
           "Reports"
         ],
         "summary": "Run a tier 1 report",
-        "description": "Filtered to the caller's reach (report:read) or the whole workspace (report:read_all). States scope, window and as-of time. Insufficient data is null with its sample, never 0% or 100%. Rate and cost fields are absent without time_entry:manage_rates.",
+        "description": "Filtered to the caller's project reach. States scope, window and as-of time. Insufficient data is null with its sample, never 0% or 100%. Rate and cost fields are absent without time_entry:manage_rates.",
         "parameters": [
           {
             "schema": {
@@ -117957,7 +117957,7 @@
                           "name"
                         ]
                       },
-                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's project reach. Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [
@@ -120101,7 +120101,7 @@
                           "name"
                         ]
                       },
-                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's project reach. Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [
@@ -121888,7 +121888,7 @@
                           "name"
                         ]
                       },
-                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's report reach (the whole workspace with report:read_all). Never the internal organisation, never another workspace's."
+                      "description": "RP-7 organisation filter choices, on `GET /reports/{key}` only: the customer organisations of the projects in the caller's project reach. Never the internal organisation, never another workspace's."
                     }
                   },
                   "required": [

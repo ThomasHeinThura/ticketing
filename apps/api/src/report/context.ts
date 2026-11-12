@@ -43,15 +43,13 @@ export function num(value: unknown): number {
 }
 
 /**
- * RP-17: the caller's reach as a predicate over alias `p` (project). `report:read_all` widens it
- * to the whole workspace, never beyond it: the workspace is a separate predicate on every query.
+ * RP-17: the caller's current project reach over alias `p`; report capabilities never widen reach.
  */
 export function reachPredicate(
   identity: ResolvedIdentity,
-  readAll: boolean,
+  _readAll: boolean,
   executor: Executor = currentReportExecutor() ?? db,
 ): SQL {
-  if (readAll) return sql`true`;
   return (
     currentProjectReachPredicate(
       identity,

@@ -3679,3 +3679,7 @@ The inviter chooses the staff role. A `member:invite`-scoped read returns only a
 ### 12 Nov 2026 — Thomas, D-G: signed-in password changes
 
 Agent and customer accounts can change their own local password in account settings. The portal host admits the change-password auth endpoint only for an admitted customer session; the existing current-password verification, rate limit and optional peer-session revocation remain in force. The caller's factor status includes whether a local password exists even when MFA is enabled; no credential material is exposed. This extends the portal host allowlist and introduces no new URL.
+
+### 12 Nov 2026 — Thomas: report project reach (D-E)
+
+Reports, dashboards and exports use the reader’s project reach, including when they hold `report:read_all`. Owner, admin and manager reach all workspace projects under D-E; other roles reach only their projects. This reverses the workspace-wide `report:read_all` scope recorded in the earlier staff project reach decision.

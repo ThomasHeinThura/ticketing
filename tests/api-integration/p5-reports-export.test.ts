@@ -444,7 +444,7 @@ describe("synchronous and queued exports (RP-10)", () => {
         reportKey: "throughput",
         title: "Throughput",
         spec: {},
-        caps: {},
+        caps: { readAll: false, projectIds: [w.projectA.id] },
         status: "queued",
       })
       .returning();

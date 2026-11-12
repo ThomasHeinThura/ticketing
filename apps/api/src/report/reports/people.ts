@@ -195,13 +195,12 @@ function hoursOf(minutes: number): number {
 }
 
 /**
- * R6-06: the teams a caller may see, as a predicate over alias `t` (team). `report:read_all` sees
- * every team of the workspace; everyone else sees the teams they belong to and the teams that own
+ * R6-06: the teams a caller may see, as a predicate over alias `t` (team). Callers see
+ * the teams they belong to and the teams that own
  * a project in their reach (owner-team reach, TM-4). A team outside both is not listed, and its
  * members do not appear in a capacity or utilisation row only because capacity is set.
  */
 function reachableTeam(ctx: ReportContext) {
-  if (ctx.readAll) return sql`true`;
   return sql`(
     EXISTS (SELECT 1 FROM team_member mine WHERE mine.team_id = t.id AND mine.user_id = ${ctx.identity.userId})
     OR EXISTS (SELECT 1 FROM project p WHERE p.owner_team_id = t.id AND p.workspace_id = ${ctx.workspaceId}
@@ -285,9 +284,7 @@ const utilisation: ReportDefinition = {
         // Keep this as an expression when nobody logged time in the selected period.
         sql`0::numeric`;
     const capacityVisible = ctx.readAnyTime
-      ? ctx.readAll && !ctx.filters.teamId
-        ? sql`true`
-        : sql`(pe.id = ${ctx.identity.personId} OR pe.id IN (SELECT person_id FROM listed))`
+      ? sql`(pe.id = ${ctx.identity.personId} OR pe.id IN (SELECT person_id FROM listed))`
       : sql`pe.id = ${ctx.identity.personId}`;
     // Listed: people with logged time in reach, plus people with capacity (an `available_hours`
     // row or team capacity) who are the caller, or members of a team the caller may see (R6-06).

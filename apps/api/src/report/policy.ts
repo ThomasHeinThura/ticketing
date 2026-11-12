@@ -7,8 +7,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * customer session is refused with 403 on every one of them (RP-18). Project reach is applied by
  * every query (RP-17), so the policy scope stays `workspace`, like the other P5 modules.
  *
- * - `report:read` is the floor; `report:read_all` widens the numbers to every project of the
- *   workspace, checked in the handler because it changes the data, not the access.
+ * - `report:read` is the floor; `report:read_all` does not widen project reach.
  * - The dashboard routes declare `report:read`: a personal dashboard is the caller's own, and a
  *   workspace dashboard additionally needs `workspace:manage_settings` to change (RP-14), which
  *   the handler enforces because the policy vocabulary has no scope-dependent capability.
