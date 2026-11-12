@@ -122,3 +122,15 @@ export async function getReparentPreview({
   }
   return response.json();
 }
+
+export async function joinProject(projectId: string) {
+  const response = await client.projects[":projectId"].join.$post({
+    param: { projectId },
+  });
+  if (!response.ok)
+    throw new HttpError(
+      response.status,
+      await readErrorDetail(response, "Failed to join project"),
+    );
+  return response.json();
+}

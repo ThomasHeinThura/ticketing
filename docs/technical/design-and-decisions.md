@@ -3725,3 +3725,7 @@ Thomas decided on 12 November 2026 (D-E): workspace owners, admins and managers 
 ### 12 Nov 2026 — Thomas: report project reach (D-E)
 
 Reports, dashboards and exports use the reader’s project reach, including when they hold `report:read_all`. Owner, admin and manager reach all workspace projects under D-E; other roles reach only their projects. This reverses the workspace-wide `report:read_all` scope recorded in the earlier staff project reach decision.
+
+### 12 Nov 2026 — Thomas: workspace rights survive project roles
+
+Owner, admin and manager always keep their workspace rights on every project; a project role only adds. This reverses the project-scope override rule for these three validated system roles only: joining as project-member or assigning project-viewer must never silently remove manager or administrator rights (archive/settings). Other roles retain project overrides, tier clamping and key scopes remain unchanged. D-E self-join uses the default project-member role and never permits team self-enrolment.

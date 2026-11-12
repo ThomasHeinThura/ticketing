@@ -1,4 +1,5 @@
 import type { ProjectReachFacts } from "@taskdesk/permissions";
+import { workspaceRoleSeesAllProjects } from "@taskdesk/permissions";
 import { and, eq, exists, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
@@ -1144,6 +1145,11 @@ const project = apiRouter<
         const fact = facts.get(project.id);
         return {
           ...project,
+          canJoin:
+            reach.identity?.credential === "session" &&
+            Boolean(
+              fact && projectSeenOnlyViaWorkspaceRole(reach.identity, fact),
+            ),
           seenOnlyViaWorkspaceRole: fact
             ? projectSeenOnlyViaWorkspaceRole(reach.identity, fact)
             : false,
@@ -1737,6 +1743,53 @@ const listProjectMemberCandidatesRoute = createRoute({
   },
 });
 
+const joinProjectRoute = createRoute({
+  method: "post",
+  operationId: "joinProject",
+  path: "/{projectId}/join",
+  tags: ["Projects"],
+  summary: "Join a project as the current workspace owner, admin or manager",
+  description:
+    "Session only. Adds the default project-member direct grant without changing workspace authority. Idempotent; audited as membership.changed only on insertion.",
+  middleware: [
+    requireSessionOnly(),
+    async (c, next) => {
+      if (c.req.param("projectId")?.includes("\u0000"))
+        throw new HTTPException(400, { message: "Invalid project ID" });
+      const [project] = await db
+        .select({ workspaceId: projectTable.workspaceId })
+        .from(projectTable)
+        .where(eq(projectTable.id, c.req.param("projectId") ?? ""))
+        .limit(1);
+      const identity = await resolveCallerIdentity(c, c.get("userId"));
+      if (
+        !project ||
+        identity?.credential !== "session" ||
+        identity.side !== "staff" ||
+        !identity.authority.some(
+          (grant) =>
+            grant.scope === "workspace" &&
+            grant.scopeId === project.workspaceId &&
+            workspaceRoleSeesAllProjects(grant.roleKey),
+        )
+      )
+        throw new HTTPException(403, { message: "Forbidden" });
+      await next();
+    },
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse("The updated roster", z.array(projectMemberSchema)),
+    400: errorResponse("Malformed project ID"),
+    403: errorResponse(
+      "Only workspace owner, admin or manager sessions may join",
+    ),
+    404: errorResponse("Project not found or out of reach"),
+    422: errorResponse("Person or default role not eligible"),
+  },
+});
+
 const addProjectMemberRoute = createRoute({
   method: "post",
   operationId: "addProjectMember",
@@ -1899,6 +1952,33 @@ export const projectStates = apiRouter<
         projectId,
         workspaceId: c.get("workspaceId"),
       }),
+      200,
+    );
+  })
+  .openapi(joinProjectRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const scope = { projectId, workspaceId: c.get("workspaceId") };
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (
+      identity?.credential !== "session" ||
+      identity.side !== "staff" ||
+      !identity.authority.some(
+        (grant) =>
+          grant.scope === "workspace" &&
+          grant.scopeId === scope.workspaceId &&
+          workspaceRoleSeesAllProjects(grant.roleKey),
+      )
+    ) {
+      throw new HTTPException(403, { message: "Forbidden" });
+    }
+    const actor = await resolveRosterActor(c, scope);
+    return c.json(
+      await addProjectMember(
+        scope,
+        { personId: identity.personId, roleKey: "project-member" },
+        actor,
+        { selfJoin: true },
+      ),
       200,
     );
   })

@@ -78,6 +78,13 @@ export const projectPolicies = {
   // project:manage_members (an authority-granting capability, but permissions.md's elevated
   // table has no row for roster writes, so each is declared `elevated: false` with that
   // reason, like the ownership route). Writes are bounded in the handler by the caller's own role rank.
+  "POST /api/projects/{projectId}/join": {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
   "GET /api/projects/{projectId}/members": {
     capability: "project:read",
     scope: "project",

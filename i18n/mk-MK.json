@@ -3023,6 +3023,9 @@
 	"workspace": {
 		"projects": {
 			"notMember": "You are not a member of this project",
+			"join": "Join project",
+			"joining": "Joining…",
+			"joinFailed": "Could not join project. Try again.",
 			"pageTitle": "{{term_project_other}}",
 			"createProject": "Креирај {{term_project_one}}",
 			"title": "Наслов",

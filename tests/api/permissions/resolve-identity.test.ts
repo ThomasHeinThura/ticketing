@@ -1103,3 +1103,32 @@ describe("resolveIdentityFromFacts — canonical workspace role rows (owner deci
     expect(identity?.authority).toEqual([]);
   });
 });
+
+it("D-E rejects non-system generic workspace grants bearing owner/admin/manager keys", () => {
+  for (const roleKey of ["owner", "admin", "manager"]) {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [],
+        scopedRoleMemberships: [
+          {
+            scope: "workspace",
+            scopeId: "ws-1",
+            seesAll: false,
+            inheritedFrom: null,
+            roleId: "custom-role",
+            roleKey,
+            roleScope: "workspace",
+            roleWorkspaceId: "ws-1",
+            roleIsSystem: false,
+            scopeWorkspaceId: null,
+            scopeExists: true,
+            rank: 70,
+            capabilities: ["project:archive"],
+          },
+        ],
+      }),
+    );
+    expect(identity?.authority).toEqual([]);
+    expect(identity?.memberships).toEqual([]);
+  }
+});

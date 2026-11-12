@@ -12470,6 +12470,15 @@
 						"notMember": {
 							"type": "string"
 						},
+						"join": {
+							"type": "string"
+						},
+						"joining": {
+							"type": "string"
+						},
+						"joinFailed": {
+							"type": "string"
+						},
 						"pageTitle": {
 							"type": "string"
 						},
@@ -12594,6 +12603,9 @@
 					},
 					"required": [
 						"notMember",
+						"join",
+						"joining",
+						"joinFailed",
 						"pageTitle",
 						"createProject",
 						"title",
