@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import type { FormSchema } from "@taskdesk/domain";
+import {
+  type FormSchema,
+  getConditionDrivingKeys,
+  parseNumberAnswer,
+} from "@taskdesk/domain/intake";
 import {
   Alert,
   AlertDescription,
@@ -133,6 +137,18 @@ function PortalCatalogueContent() {
   const [storedAnswers, setAnswers] = useState<Record<string, unknown>>({});
   const [answersKey, setAnswersKey] = useState<string | null>(null);
   const answers = answersKey === storageKey ? storedAnswers : {};
+  const updateAnswer = (fieldKey: string, value: unknown) => {
+    setAnswers((old) => {
+      const next = { ...old };
+      Object.defineProperty(next, fieldKey, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+      return next;
+    });
+  };
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<{
     key: string;
@@ -175,9 +191,62 @@ function PortalCatalogueContent() {
   } | null>(null);
   const submit = useMutation({
     mutationFn: async () => {
+      const visibleFieldList = (selected?.formSchema.fields ?? []).filter(
+        visible,
+      );
+      const drivingKeys = selected
+        ? getConditionDrivingKeys(selected.formSchema)
+        : new Set<string>();
+      const visibleFormData: Record<string, unknown> = {};
+      for (const field of visibleFieldList) {
+        if (field.type === "file") continue;
+        const hasAns = Object.hasOwn(answers, field.key);
+        const val = hasAns ? answers[field.key] : undefined;
+        const isBlank =
+          val === undefined ||
+          val === null ||
+          (typeof val === "string" && val.trim() === "");
+
+        if (isBlank) {
+          if (
+            drivingKeys.has(field.key) &&
+            (field.type === "text" ||
+              field.type === "textarea" ||
+              field.options?.includes(""))
+          ) {
+            Object.defineProperty(visibleFormData, field.key, {
+              value: "",
+              writable: true,
+              enumerable: true,
+              configurable: true,
+            });
+          }
+          continue;
+        }
+
+        if (field.type === "number") {
+          // The same reading the server and the visibility rules use (RT-5).
+          const num = parseNumberAnswer(val);
+          if (num !== null) {
+            Object.defineProperty(visibleFormData, field.key, {
+              value: num,
+              writable: true,
+              enumerable: true,
+              configurable: true,
+            });
+          }
+        } else {
+          Object.defineProperty(visibleFormData, field.key, {
+            value: val,
+            writable: true,
+            enumerable: true,
+            configurable: true,
+          });
+        }
+      }
       const created = await submitPortalRequest({
         key: selected?.key ?? "",
-        formData: answers,
+        formData: visibleFormData,
         customerVisibility: selected?.forcePrivate
           ? "private"
           : effectiveVisibility,
@@ -187,7 +256,7 @@ function PortalCatalogueContent() {
       const open = created.state === "new" || created.state === "clarifying";
       const failed: string[] = [];
       for (const field of (selected?.formSchema.fields ?? []).filter(
-        (candidate) => candidate.type === "file",
+        (candidate) => candidate.type === "file" && visible(candidate),
       ))
         for (const file of stagedFor(field.key)) {
           try {
@@ -240,7 +309,10 @@ function PortalCatalogueContent() {
     }
     try {
       const saved = localStorage.getItem(storageKey);
-      setAnswers(saved ? (JSON.parse(saved) as Record<string, unknown>) : {});
+      const parsed = saved
+        ? (JSON.parse(saved) as Record<string, unknown>)
+        : {};
+      setAnswers(parsed);
     } catch {
       setAnswers({});
     }
@@ -399,8 +471,18 @@ function PortalCatalogueContent() {
                   answers,
                   (key) => stagedFor(key).length > 0,
                 );
-                if (missingRequired.length > 0) {
-                  const nextErrors = Object.fromEntries(
+                const invalidNumbers = fields.filter((field) => {
+                  if (field.type !== "number" || !visible(field)) return false;
+                  const value = answers[field.key];
+                  return (
+                    value !== undefined &&
+                    value !== null &&
+                    String(value).trim() !== "" &&
+                    parseNumberAnswer(value) === null
+                  );
+                });
+                if (missingRequired.length > 0 || invalidNumbers.length > 0) {
+                  const nextErrors: Record<string, string> = Object.fromEntries(
                     missingRequired.map((key) => [
                       key,
                       t("portal:intake.fieldRequired", {
@@ -408,9 +490,17 @@ function PortalCatalogueContent() {
                       }),
                     ]),
                   );
+                  for (const field of invalidNumbers) {
+                    Object.defineProperty(nextErrors, field.key, {
+                      value: t("portal:intake.invalidNumber"),
+                      enumerable: true,
+                      configurable: true,
+                      writable: true,
+                    });
+                  }
                   setFieldErrors(nextErrors);
                   // A file field's own input is hidden; its visible Attach button takes focus.
-                  const first = missingRequired[0];
+                  const first = missingRequired[0] ?? invalidNumbers[0]?.key;
                   const firstIsFile = selected.formSchema.fields.some(
                     (candidate) =>
                       candidate.key === first && candidate.type === "file",
@@ -428,225 +518,210 @@ function PortalCatalogueContent() {
                 submit.mutate();
               }}
             >
-              {fields.filter(visible).map((field) => (
-                <div className="flex flex-col gap-1" key={field.key}>
-                  <span>
-                    {field.label}
-                    {field.required ? " *" : ""}
-                  </span>
-                  {field.help && (
-                    <span className="text-muted-foreground text-sm">
-                      {field.help}
+              {fields.filter(visible).map((field) => {
+                const error = Object.hasOwn(fieldErrors, field.key)
+                  ? fieldErrors[field.key]
+                  : undefined;
+                return (
+                  <div className="flex flex-col gap-1" key={field.key}>
+                    <span>
+                      {field.label}
+                      {field.required ? " *" : ""}
                     </span>
-                  )}
-                  {field.type === "file" ? (
-                    <CatalogueFileField
-                      fieldKey={field.key}
-                      label={field.label}
-                      multiple={Boolean(field.multiple)}
-                      files={stagedFor(field.key)}
-                      disabled={submit.isPending}
-                      errorId={
-                        fieldErrors[field.key]
-                          ? `request-field-error-${field.key}`
-                          : undefined
-                      }
-                      onChange={(files) => {
-                        setStagedFor(field.key, files);
-                        if (files.length > 0)
+                    {field.help && (
+                      <span className="text-muted-foreground text-sm">
+                        {field.help}
+                      </span>
+                    )}
+                    {field.type === "file" ? (
+                      <CatalogueFileField
+                        fieldKey={field.key}
+                        label={field.label}
+                        multiple={Boolean(field.multiple)}
+                        files={stagedFor(field.key)}
+                        disabled={submit.isPending}
+                        errorId={
+                          error ? `request-field-error-${field.key}` : undefined
+                        }
+                        onChange={(files) => {
+                          setStagedFor(field.key, files);
+                          if (files.length > 0)
+                            setFieldErrors((old) => {
+                              const next = { ...old };
+                              delete next[field.key];
+                              return next;
+                            });
+                        }}
+                      />
+                    ) : field.type === "textarea" ? (
+                      <Textarea
+                        id={`request-field-${field.key}`}
+                        aria-label={field.label}
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={
+                          error ? `request-field-error-${field.key}` : undefined
+                        }
+                        required={field.required}
+                        value={String(answers[field.key] ?? "")}
+                        onChange={(event) => {
+                          updateAnswer(field.key, event.target.value);
                           setFieldErrors((old) => {
                             const next = { ...old };
                             delete next[field.key];
                             return next;
                           });
-                      }}
-                    />
-                  ) : field.type === "textarea" ? (
-                    <Textarea
-                      id={`request-field-${field.key}`}
-                      aria-label={field.label}
-                      aria-invalid={Boolean(fieldErrors[field.key])}
-                      aria-describedby={
-                        fieldErrors[field.key]
-                          ? `request-field-error-${field.key}`
-                          : undefined
-                      }
-                      required={field.required}
-                      value={String(answers[field.key] ?? "")}
-                      onChange={(event) => {
-                        setAnswers((old) => ({
-                          ...old,
-                          [field.key]: event.target.value,
-                        }));
-                        setFieldErrors((old) => {
-                          const next = { ...old };
-                          delete next[field.key];
-                          return next;
-                        });
-                      }}
-                    />
-                  ) : field.type === "select" || field.type === "combobox" ? (
-                    <Select
-                      value={String(answers[field.key] ?? "") || null}
-                      onValueChange={(value) => {
-                        setAnswers((old) => ({
-                          ...old,
-                          [field.key]: value ?? "",
-                        }));
-                        setFieldErrors((old) => {
-                          const next = { ...old };
-                          delete next[field.key];
-                          return next;
-                        });
-                      }}
-                    >
-                      <SelectTrigger
-                        id={`request-field-${field.key}`}
-                        aria-label={field.label}
-                        aria-required={field.required}
-                        aria-invalid={Boolean(fieldErrors[field.key])}
-                        aria-describedby={
-                          fieldErrors[field.key]
-                            ? `request-field-error-${field.key}`
-                            : undefined
-                        }
-                        onBlur={() => {
-                          if (field.required && !answers[field.key]) {
-                            setFieldErrors((old) => ({
-                              ...old,
-                              [field.key]: t("portal:intake.fieldRequired", {
-                                defaultValue: "This field is required.",
-                              }),
-                            }));
-                          }
+                        }}
+                      />
+                    ) : field.type === "select" || field.type === "combobox" ? (
+                      <Select
+                        value={String(answers[field.key] ?? "") || null}
+                        onValueChange={(value) => {
+                          updateAnswer(field.key, value ?? "");
+                          setFieldErrors((old) => {
+                            const next = { ...old };
+                            delete next[field.key];
+                            return next;
+                          });
                         }}
                       >
-                        <SelectValue
-                          placeholder={t("common:empty.select", {
-                            defaultValue: "Choose an option",
-                          })}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(field.options ?? []).map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : field.type === "checkbox" ? (
-                    <Checkbox
-                      id={`request-field-${field.key}`}
-                      aria-label={field.label}
-                      aria-invalid={Boolean(fieldErrors[field.key])}
-                      aria-describedby={
-                        fieldErrors[field.key]
-                          ? `request-field-error-${field.key}`
-                          : undefined
-                      }
-                      checked={Boolean(answers[field.key])}
-                      onCheckedChange={(checked) => {
-                        setAnswers((old) => ({
-                          ...old,
-                          [field.key]: checked,
-                        }));
-                        setFieldErrors((old) => {
-                          const next = { ...old };
-                          delete next[field.key];
-                          return next;
-                        });
-                      }}
-                    />
-                  ) : field.type === "date" ? (
-                    <DateField
-                      id={`request-field-${field.key}`}
-                      label={`${field.label}${field.required ? " *" : ""}`}
-                      aria-invalid={Boolean(fieldErrors[field.key])}
-                      aria-describedby={
-                        fieldErrors[field.key]
-                          ? `request-field-error-${field.key}`
-                          : field.required
-                            ? `request-field-required-${field.key}`
-                            : undefined
-                      }
-                      placeholder={t("common:empty.select")}
-                      clearLabel={t("common:clearDate")}
-                      value={String(answers[field.key] ?? "")}
-                      dateEntry={{
-                        label: t("common:dateEntry", {
-                          label: field.label,
-                          defaultValue: "{{label}} (YYYY-MM-DD)",
-                        }),
-                        invalidLabel: t("common:invalidDate"),
-                        saveLabel: t("common:actions.save"),
-                      }}
-                      onChange={(value) => {
-                        setAnswers((old) => ({
-                          ...old,
-                          [field.key]: value,
-                        }));
-                        setFieldErrors((old) => {
-                          const next = { ...old };
-                          delete next[field.key];
-                          return next;
-                        });
-                      }}
-                    />
-                  ) : (
-                    <Input
-                      id={`request-field-${field.key}`}
-                      aria-label={field.label}
-                      aria-invalid={Boolean(fieldErrors[field.key])}
-                      aria-describedby={
-                        fieldErrors[field.key]
-                          ? `request-field-error-${field.key}`
-                          : undefined
-                      }
-                      type={field.type === "number" ? "number" : "text"}
-                      required={field.required}
-                      value={String(answers[field.key] ?? "")}
-                      onChange={(event) => {
-                        setAnswers((old) => ({
-                          ...old,
-                          [field.key]: event.target.value,
-                        }));
-                        setFieldErrors((old) => {
-                          const next = { ...old };
-                          delete next[field.key];
-                          return next;
-                        });
-                      }}
-                    />
-                  )}
-                  {field.type === "date" && field.required ? (
-                    <span
-                      className="sr-only"
-                      id={`request-field-required-${field.key}`}
-                    >
-                      {t("portal:intake.fieldRequired", {
-                        defaultValue: "This field is required.",
-                      })}
-                    </span>
-                  ) : null}
-                  {fieldErrors[field.key] && (
-                    <p
-                      className="text-destructive text-sm"
-                      id={`request-field-error-${field.key}`}
-                      role="alert"
-                    >
-                      {fieldErrors[field.key]}
-                    </p>
-                  )}
-                  {field.mapsTo?.field === "title" ? (
-                    <PortalKbSuggestions
-                      query={String(answers[field.key] ?? "")}
-                      scope={portalUserId}
-                      onOpen={kbDeflection.recordOpened}
-                    />
-                  ) : null}
-                </div>
-              ))}
+                        <SelectTrigger
+                          id={`request-field-${field.key}`}
+                          aria-label={field.label}
+                          aria-required={field.required}
+                          aria-invalid={Boolean(error)}
+                          aria-describedby={
+                            error
+                              ? `request-field-error-${field.key}`
+                              : undefined
+                          }
+                          onBlur={() => {
+                            if (field.required && !answers[field.key]) {
+                              setFieldErrors((old) => ({
+                                ...old,
+                                [field.key]: t("portal:intake.fieldRequired", {
+                                  defaultValue: "This field is required.",
+                                }),
+                              }));
+                            }
+                          }}
+                        >
+                          <SelectValue
+                            placeholder={t("common:empty.select", {
+                              defaultValue: "Choose an option",
+                            })}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(field.options ?? []).map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : field.type === "checkbox" ? (
+                      <Checkbox
+                        id={`request-field-${field.key}`}
+                        aria-label={field.label}
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={
+                          error ? `request-field-error-${field.key}` : undefined
+                        }
+                        checked={Boolean(answers[field.key])}
+                        onCheckedChange={(checked) => {
+                          updateAnswer(field.key, checked);
+                          setFieldErrors((old) => {
+                            const next = { ...old };
+                            delete next[field.key];
+                            return next;
+                          });
+                        }}
+                      />
+                    ) : field.type === "date" ? (
+                      <DateField
+                        id={`request-field-${field.key}`}
+                        label={`${field.label}${field.required ? " *" : ""}`}
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={
+                          error
+                            ? `request-field-error-${field.key}`
+                            : field.required
+                              ? `request-field-required-${field.key}`
+                              : undefined
+                        }
+                        placeholder={t("common:empty.select")}
+                        clearLabel={t("common:clearDate")}
+                        value={String(answers[field.key] ?? "")}
+                        dateEntry={{
+                          label: t("common:dateEntry", {
+                            label: field.label,
+                            defaultValue: "{{label}} (YYYY-MM-DD)",
+                          }),
+                          invalidLabel: t("common:invalidDate"),
+                          saveLabel: t("common:actions.save"),
+                        }}
+                        onChange={(value) => {
+                          updateAnswer(field.key, value);
+                          setFieldErrors((old) => {
+                            const next = { ...old };
+                            delete next[field.key];
+                            return next;
+                          });
+                        }}
+                      />
+                    ) : (
+                      <Input
+                        id={`request-field-${field.key}`}
+                        aria-label={field.label}
+                        aria-invalid={Boolean(error)}
+                        aria-describedby={
+                          error ? `request-field-error-${field.key}` : undefined
+                        }
+                        type="text"
+                        inputMode={
+                          field.type === "number" ? "decimal" : undefined
+                        }
+                        required={field.required}
+                        value={String(answers[field.key] ?? "")}
+                        onChange={(event) => {
+                          updateAnswer(field.key, event.target.value);
+                          setFieldErrors((old) => {
+                            const next = { ...old };
+                            delete next[field.key];
+                            return next;
+                          });
+                        }}
+                      />
+                    )}
+                    {field.type === "date" && field.required ? (
+                      <span
+                        className="sr-only"
+                        id={`request-field-required-${field.key}`}
+                      >
+                        {t("portal:intake.fieldRequired", {
+                          defaultValue: "This field is required.",
+                        })}
+                      </span>
+                    ) : null}
+                    {error && (
+                      <p
+                        className="text-destructive text-sm"
+                        id={`request-field-error-${field.key}`}
+                        role="alert"
+                      >
+                        {error}
+                      </p>
+                    )}
+                    {field.mapsTo?.field === "title" ? (
+                      <PortalKbSuggestions
+                        query={String(answers[field.key] ?? "")}
+                        scope={portalUserId}
+                        onOpen={kbDeflection.recordOpened}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
               {!selected.forcePrivate && (
                 <label
                   className="flex flex-col gap-1"

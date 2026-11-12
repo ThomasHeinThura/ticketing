@@ -1,4 +1,8 @@
-import type { JsonValue } from "@taskdesk/domain";
+import {
+  type FormSchema,
+  type JsonValue,
+  visibleSubmissionView,
+} from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import {
   and,
@@ -257,6 +261,60 @@ export async function findSubmissionAttachmentParent(
   return rows;
 }
 
+/**
+ * The keys of the form's file fields that are visible for the submission's stored answers on its
+ * pinned version (RT-5). A file a customer attached to a field outside this set (a field the form
+ * hides for these answers, or no longer declares) is not theirs to read, list or download, even
+ * before acceptance: the acceptance step later suppresses the same files (IQ-9). An unreadable or
+ * missing version shows none.
+ */
+async function visibleSubmissionFileKeys(
+  executor: Executor,
+  submissionId: string,
+): Promise<{ keys: string[]; data: unknown; schema: unknown } | null> {
+  const [row] = await executor
+    .select({
+      formData: submissionTable.formData,
+      formSchema: requestTypeVersionTable.formSchema,
+    })
+    .from(submissionTable)
+    .innerJoin(
+      requestTypeVersionTable,
+      eq(requestTypeVersionTable.id, submissionTable.requestTypeVersionId),
+    )
+    .where(eq(submissionTable.id, submissionId))
+    .limit(1);
+  const fields = (row?.formSchema as { fields?: unknown } | null)?.fields;
+  if (!row || !Array.isArray(fields)) return null;
+  return {
+    keys: visibleSubmissionView({ fields } as FormSchema, row.formData)
+      .fields.filter((field) => field.type === "file")
+      .map((field) => field.key),
+    data: row.formData,
+    schema: row.formSchema,
+  };
+}
+
+/**
+ * A customer reaches a file on the submission itself only when it is not tied to a form field
+ * (thread files), or its field is visible. Files already moved to the work item
+ * (`submission_id` null) were checked on acceptance.
+ */
+function customerSubmissionFileFilter(
+  snapshot: { keys: string[]; data: unknown; schema: unknown } | null,
+): SQL {
+  return sql`(${attachmentTable.submissionFieldKey} IS NULL OR ${attachmentTable.submissionId} IS NULL OR ${
+    snapshot?.keys.length
+      ? sql`(${inArray(attachmentTable.submissionFieldKey, snapshot.keys)} AND EXISTS (
+        SELECT 1 FROM submission vis_s JOIN request_type_version vis_v ON vis_v.id = vis_s.request_type_version_id
+        WHERE vis_s.id = ${attachmentTable.submissionId}
+          AND vis_s.form_data = ${JSON.stringify(snapshot.data)}::jsonb
+          AND vis_v.form_schema = ${JSON.stringify(snapshot.schema)}::jsonb
+      ))`
+      : sql`false`
+  })`;
+}
+
 export async function findReachableSubmissionAttachment(
   executor: Executor,
   input: {
@@ -272,6 +330,12 @@ export async function findReachableSubmissionAttachment(
   },
 ) {
   if (!input.identity) return [];
+  const customerFileFilter =
+    input.identity.side === "customer"
+      ? customerSubmissionFileFilter(
+          await visibleSubmissionFileKeys(executor, input.submissionId),
+        )
+      : undefined;
   // A customer's own file on a live public comment of the converted item: a staff file shared
   // with them (download), or their reply's file (completion; uploader and state are checked
   // by the caller).
@@ -385,6 +449,7 @@ export async function findReachableSubmissionAttachment(
         input.portalDownload
           ? eq(attachmentTable.customerVisible, true)
           : undefined,
+        customerFileFilter,
       ),
     )
     .limit(1);
@@ -407,6 +472,12 @@ export async function findSubmissionAttachmentContent(
     (input.portal ? identity.side !== "customer" : identity.side !== "staff")
   )
     return [];
+  const customerFileFilter =
+    identity.side === "customer"
+      ? customerSubmissionFileFilter(
+          await visibleSubmissionFileKeys(executor, input.submissionId),
+        )
+      : undefined;
   const submissionArm = and(
     eq(attachmentTable.submissionId, input.submissionId),
     identity.side === "customer"
@@ -483,6 +554,7 @@ export async function findSubmissionAttachmentContent(
         eq(attachmentTable.state, "ready"),
         isNull(attachmentTable.deletedAt),
         input.portal ? eq(attachmentTable.customerVisible, true) : undefined,
+        customerFileFilter,
         or(
           and(
             eq(attachmentTable.submissionId, input.submissionId),
@@ -532,6 +604,7 @@ export async function lockSubmissionForPresign(
       requesterId: submissionTable.requesterId,
       state: submissionTable.state,
       requestTypeVersionId: submissionTable.requestTypeVersionId,
+      formData: submissionTable.formData,
     })
     .from(submissionTable)
     .where(
@@ -914,6 +987,9 @@ export async function listPortalSubmissionAttachments(
   },
 ) {
   if (!identity || identity.side !== "customer") return [];
+  const fileFilter = customerSubmissionFileFilter(
+    await visibleSubmissionFileKeys(executor, input.submissionId),
+  );
   const parents = [
     eq(attachmentTable.submissionId, input.submissionId),
     ...(input.workItemId
@@ -939,6 +1015,7 @@ export async function listPortalSubmissionAttachments(
     .where(
       and(
         or(...parents),
+        fileFilter,
         exists(
           executor
             .select({ one: sql`1` })

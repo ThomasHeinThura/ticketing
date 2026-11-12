@@ -1055,7 +1055,18 @@ as the form itself.
 - `RT-4` `mapsTo` may translate values, as in the impact-to-priority example. This is how
   you avoid asking customers to choose a priority, which they always get wrong.
 - `RT-5` Fields support conditional visibility: show this field only when that field has
-  this value. See the `showIf` example in Data above.
+  this value. See the `showIf` example in Data above. A hidden field's answer is never
+  stored, and no response returns the answer of a hidden field or of a key the form version
+  does not declare, including for older submissions (the stored answers are not rewritten;
+  the portal detail and the triage detail return the visible answers only, and the portal
+  case list and its CSV take a case's title and priority from a mapped field only while that
+  field is visible). A stored key the version does not declare never decides whether a field
+  is visible, even when a condition names it. On a checkbox
+  controller the condition value `""` or `"false"` means unchecked and `"true"` means
+  checked. A number answer given as text must be plain decimal digits (`-12`, `0.5`); other
+  text, and any integer beyond `Number.MAX_SAFE_INTEGER`, is refused with `422`; the portal
+  form flags it before sending. A number condition written as text matches under the same
+  rule, with surrounding spaces in the stored condition ignored (the answer is never trimmed).
 - `RT-6` Publishing creates an immutable snapshot of the form schema, mapped work-item
   type, request-type SLA override and default assignee. Submissions record which version
   they used, so edits to the live request type cannot silently remap a queued submission.
@@ -1331,9 +1342,11 @@ and `work_item_id` (set on acceptance) — [data-model.md](data-model.md).
 - `IQ-8` On acceptance, form data is mapped onto native and custom fields per the request
   type's `mapsTo` rules, and anything unmapped is rendered into the description under a
   clear heading.
-- `IQ-9` Attachments transfer to the work item, preserving customer visibility
-  (`attachment.submission_id` before acceptance, `attachment.work_item_id` after —
-  [data-model.md](data-model.md)).
+- `IQ-9` Attachments for visible fields and thread attachments transfer to the work item,
+  preserving customer visibility. Completed uploads for hidden fields remain ready on the
+  submission as staff-only history; pending hidden uploads are cancelled for existing cleanup.
+  The acceptance audit records suppressed attachment IDs and count. Hidden uploads are never
+  transferred to the work item or exposed through customer routes.
 - `IQ-10` The submission thread transfers to the work item as public comments, **preserving
   each message's original `created_at`** (not the moment of transfer), so the conversation
   is not lost and so `SLA-7`'s `first_response_at` — set from the earliest public staff

@@ -2,13 +2,17 @@ import { createId } from "@paralleldrive/cuid2";
 import type { FormSchema, FormValue, JsonValue } from "@taskdesk/domain";
 import {
   formatSubmissionReference,
+  normalizeFormSchema,
   parseSubmissionReference,
   renderUnmappedIntoDescription,
+  sanitizeSubmissionData,
   transitionSubmission,
   translateMapsTo,
   validateFormSchema,
   validateSubmissionData,
   visibleFields,
+  visibleSubmissionAnswers,
+  visibleSubmissionView,
 } from "@taskdesk/domain";
 import {
   type ResolvedIdentity,
@@ -134,19 +138,39 @@ type MaterializedWorkItemDescription<T extends { description: unknown }> = Omit<
 function materializeRequestType<T extends { formSchema: unknown }>(
   row: T,
 ): MaterializedRequestType<T> {
-  return { ...row, formSchema: row.formSchema as JsonValue };
+  return {
+    ...row,
+    formSchema: normalizeFormSchema(
+      row.formSchema as FormSchema,
+    ) as unknown as JsonValue,
+  };
 }
 
 function materializeRequestTypeVersion<T extends { formSchema: unknown }>(
   row: T,
 ): MaterializedRequestTypeVersion<T> {
-  return { ...row, formSchema: row.formSchema as JsonValue };
+  return {
+    ...row,
+    formSchema: normalizeFormSchema(
+      row.formSchema as FormSchema,
+    ) as unknown as JsonValue,
+  };
 }
 
+/**
+ * With `form`, `formData` is the read-time projection of the stored answers: only the answers
+ * of fields that version declares and shows (the stored row is never rewritten).
+ */
 function materializeSubmission<T extends { formData: unknown }>(
   row: T,
+  form?: FormSchema,
 ): MaterializedSubmission<T> {
-  return { ...row, formData: row.formData as JsonValue };
+  return {
+    ...row,
+    formData: (form
+      ? visibleSubmissionAnswers(form, row.formData)
+      : row.formData) as JsonValue,
+  };
 }
 
 function materializeWorkItemDescription<T extends { description: unknown }>(
@@ -168,11 +192,17 @@ function materializeSubmissionBundle<
   requestType: MaterializedRequestType<T["requestType"]>;
   version: MaterializedRequestTypeVersion<T["version"]>;
 } {
+  const version = materializeRequestTypeVersion(row.version);
   return {
     ...row,
-    submission: materializeSubmission(row.submission),
+    // A hidden-field answer, or a key this version never declared (old rows kept whatever was
+    // submitted), is not returned.
+    submission: materializeSubmission(
+      row.submission,
+      version.formSchema as unknown as FormSchema,
+    ),
     requestType: materializeRequestType(row.requestType),
-    version: materializeRequestTypeVersion(row.version),
+    version,
   };
 }
 
@@ -529,7 +559,7 @@ export async function publishRequestType(id: string, actorId: string) {
         workspaceId: type.workspaceId,
         requestTypeId: id,
         number: (latest?.number ?? 0) + 1,
-        formSchema,
+        formSchema: normalizeFormSchema(formSchema),
         workItemTypeId: type.workItemTypeId,
         defaultProjectId: type.defaultProjectId,
         slaPolicyId: type.slaPolicyId,
@@ -904,14 +934,19 @@ export async function createSubmission(input: {
       }).enabled
     )
       throw new HTTPException(404, { message: "Request type not found" });
+    const formSchema = normalizeFormSchema(version.formSchema as FormSchema);
     const errors = validateSubmissionData(
-      version.formSchema as FormSchema,
+      formSchema,
       input.formData as Record<string, FormValue>,
     );
     if (errors.length)
       throw new HTTPException(422, {
         message: "Form answers do not match this request type",
       });
+    const sanitizedFormData = sanitizeSubmissionData(
+      formSchema,
+      input.formData as Record<string, FormValue>,
+    );
     const [organisation] = await tx
       .select({
         defaultCustomerVisibility:
@@ -935,7 +970,7 @@ export async function createSubmission(input: {
         requesterId: identity.personId,
         requestTypeId: currentType.type.id,
         requestTypeVersionId: version.id,
-        formData: input.formData,
+        formData: sanitizedFormData,
         customerVisibility: visibility,
         submittedAt: new Date(),
         state: "new",
@@ -1136,7 +1171,7 @@ async function convertSubmissionInTransaction(
     throw new HTTPException(422, {
       message: "Destination project has no default state",
     });
-  const form = version.formSchema as FormSchema;
+  const form = normalizeFormSchema(version.formSchema as FormSchema);
   const data = submission.formData as Record<string, unknown>;
   const mappedFields = translateMapsTo(form, data as Record<string, FormValue>);
   const title =
@@ -1330,10 +1365,40 @@ async function convertSubmissionInTransaction(
       createdAt: message.createdAt,
       updatedAt: message.createdAt,
     });
-  await tx
-    .update(schema.attachmentTable)
-    .set({ submissionId: null, workItemId: item.id })
+  const visible = visibleFields(form, data as Record<string, FormValue>);
+  const visibleFileFieldKeys = new Set(
+    visible.filter((f) => f.type === "file").map((f) => f.key),
+  );
+  const attachments = await tx
+    .select({
+      id: schema.attachmentTable.id,
+      submissionFieldKey: schema.attachmentTable.submissionFieldKey,
+      state: schema.attachmentTable.state,
+    })
+    .from(schema.attachmentTable)
     .where(eq(schema.attachmentTable.submissionId, submission.id));
+  const suppressedAttachmentIds: string[] = [];
+  for (const att of attachments) {
+    if (
+      att.submissionFieldKey === null ||
+      visibleFileFieldKeys.has(att.submissionFieldKey)
+    ) {
+      await tx
+        .update(schema.attachmentTable)
+        .set({ submissionId: null, workItemId: item.id })
+        .where(eq(schema.attachmentTable.id, att.id));
+    } else {
+      suppressedAttachmentIds.push(att.id);
+      await tx
+        .update(schema.attachmentTable)
+        .set(
+          att.state === "pending"
+            ? { state: "deleted", deletedAt: now, customerVisible: false }
+            : { customerVisible: false },
+        )
+        .where(eq(schema.attachmentTable.id, att.id));
+    }
+  }
   await tx
     .update(schema.requestParticipantTable)
     .set({ submissionId: null, workItemId: item.id })
@@ -1382,6 +1447,12 @@ async function convertSubmissionInTransaction(
     after: {
       ref: formatSubmissionReference(submission.number),
       workItemKey: item.key,
+      ...(suppressedAttachmentIds.length > 0
+        ? {
+            suppressedAttachmentIds,
+            suppressedAttachmentCount: suppressedAttachmentIds.length,
+          }
+        : {}),
       ...(customFields.skipped.length > 0
         ? { customFieldsSkipped: customFields.skipped }
         : {}),
@@ -1659,7 +1730,12 @@ export function portalReadablePredicate(viewer: PortalViewer) {
   );
 }
 
-export async function findSubmission(
+/**
+ * The submission, its request type, pinned version and thread exactly as stored. The stored
+ * answers are NOT projected here: callers that return a submission to a person go through
+ * {@link findSubmission} or project them themselves ({@link findPortalSubmission}).
+ */
+async function loadSubmission(
   ref: string,
   workspaceId?: string,
   requesterId?: string,
@@ -1863,16 +1939,16 @@ export async function findSubmission(
       left.createdAt.localeCompare(right.createdAt),
     );
   }
-  return { ...materializeSubmissionBundle(row), ref, messages };
+  return { row, ref, messages };
 }
 
-type PortalSubmissionSource = Omit<
-  Awaited<ReturnType<typeof findSubmission>>,
-  "submission" | "version"
-> & {
-  submission: typeof schema.submissionTable.$inferSelect;
-  version: typeof schema.requestTypeVersionTable.$inferSelect;
-};
+/** The submission bundle for a reader: the stored answers are projected to the visible ones. */
+export async function findSubmission(
+  ...args: Parameters<typeof loadSubmission>
+) {
+  const { row, ref, messages } = await loadSubmission(...args);
+  return { ...materializeSubmissionBundle(row), ref, messages };
+}
 
 /**
  * `CP-4`: how a message author appears to a customer. Staff who act publicly are named (the
@@ -1938,20 +2014,26 @@ export async function findPortalSubmission(
   viewerPersonId: string,
 ) {
   const viewer = await loadPortalViewer(viewerPersonId);
-  const row = await findSubmission(
+  const loaded = await loadSubmission(
     ref,
     undefined,
     undefined,
     undefined,
     viewer,
   );
-  const portalRow: PortalSubmissionSource = row;
+  const portalRow = {
+    ...loaded.row,
+    ref: loaded.ref,
+    messages: loaded.messages,
+  };
   const isRequester = portalRow.submission.requesterId === viewer.personId;
   const formSchema = portalRow.version.formSchema as FormSchema;
-  const fields = visibleFields(
-    formSchema,
-    portalRow.submission.formData as Record<string, FormValue>,
-  ).map((field) => ({
+  // One visibility result for the stored answers, as stored: the `fields` list and the
+  // `formData` below both come from it, so they cannot disagree, and a stored key the form never
+  // declared neither reaches the customer nor decides what the form shows.
+  const view = visibleSubmissionView(formSchema, portalRow.submission.formData);
+  const answers = view.answers;
+  const fields = view.fields.map((field) => ({
     key: field.key,
     type: field.type,
     label: field.label,
@@ -2063,7 +2145,7 @@ export async function findPortalSubmission(
     ref: portalRow.ref,
     submission: {
       state: portalRow.submission.state,
-      formData: row.submission.formData,
+      formData: answers,
       customerVisibility: portalRow.submission.customerVisibility,
       createdAt: portalRow.submission.createdAt.toISOString(),
     },
@@ -2291,19 +2373,21 @@ export async function listSubmissions(
     .where(and(...filterConditions));
   return {
     submissions: pageRows.map((row) => {
-      const form = row.version.formSchema as FormSchema;
+      // The summary reads the same visible answers the row returns.
+      const bundle = materializeSubmissionBundle(row);
+      const form = bundle.version.formSchema as unknown as FormSchema;
       const titleField = form.fields.find(
         (field) => field.mapsTo?.field === "title",
       );
       const summary = titleField
         ? String(
-            (row.submission.formData as Record<string, unknown>)[
+            (bundle.submission.formData as Record<string, unknown>)[
               titleField.key
             ] ?? "",
           )
         : "";
       return {
-        ...materializeSubmissionBundle(row),
+        ...bundle,
         summary,
         ref: formatSubmissionReference(row.submission.number),
       };

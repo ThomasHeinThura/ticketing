@@ -3515,6 +3515,36 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
+					"jsx:div[0]/div[0]/section[0]/article[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
+					"jsx:div[0]/div[0]/section[0]/article[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -3621,6 +3651,21 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[2]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
+					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[3]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -6358,6 +6403,36 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
+					"jsx:div[0]/div[0]/section[0]/article[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
+					"jsx:div[0]/div[0]/section[0]/article[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[2]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -6464,6 +6539,21 @@
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
 					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[2]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx:RequestTypesEditor",
+					"jsx:div[0]/div[0]/section[0]/article[0]/label[6]/Select[0]/SelectContent[0]/SelectItem[3]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
