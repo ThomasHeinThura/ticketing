@@ -199,26 +199,90 @@ function useGetWorkItems({
         .getQueryCache()
         .find({ queryKey: input.activeKey, exact: true });
       if (query?.state.fetchStatus !== "idle") return;
+      // A terminal access refusal stays visible until a normal manual refresh or navigation.
+      if (
+        query.state.error instanceof HttpError &&
+        [401, 403, 404].includes(query.state.error.status)
+      )
+        return;
       const before = query.state;
+      const oldData = before.data as
+        | InfiniteData<WorkItemsResult, string | undefined>
+        | undefined;
       inFlight = true;
       try {
-        const first = input.useSearch
-          ? await (await loadSearchWorkItems())({
-              workspaceId: input.workspaceId as string,
-              projectSlug: input.projectSlug as string,
-              filter: input.structuredFilter ?? "",
-              sort: input.sort,
-              dir: input.dir,
-              sorts: input.effectiveSorts,
-              columns: input.columns,
-              cursor: undefined,
-            })
-          : await fetchWorkItemsListPage(
-              input.projectId as string,
-              input.sort,
-              input.dir,
-              undefined,
-            );
+        // A separate, short-lived query uses the same QueryCache error handling and retry
+        // policy as a normal read, without putting partial pages into the list cache.
+        const refreshed = await queryClient.fetchQuery({
+          queryKey: ["work-list-outage-poll", ...input.activeKey],
+          gcTime: 0,
+          queryFn: async (): Promise<
+            InfiniteData<WorkItemsResult, string | undefined>
+          > => {
+            const readPage = async (cursor?: string) =>
+              input.useSearch
+                ? (await loadSearchWorkItems())({
+                    workspaceId: input.workspaceId as string,
+                    projectSlug: input.projectSlug as string,
+                    filter: input.structuredFilter ?? "",
+                    sort: input.sort,
+                    dir: input.dir,
+                    sorts: input.effectiveSorts,
+                    columns: input.columns,
+                    cursor,
+                  })
+                : fetchWorkItemsListPage(
+                    input.projectId as string,
+                    input.sort,
+                    input.dir,
+                    cursor,
+                  );
+            const first = await readPage();
+            const oldFirst = oldData?.pages[0];
+            const sameBoundary =
+              oldFirst &&
+              oldFirst.nextCursor === first.nextCursor &&
+              oldFirst.hasMore === first.hasMore &&
+              oldFirst.items.length === first.items.length &&
+              oldFirst.items.every(
+                (item, index) => item.id === first.items[index]?.id,
+              );
+            if (sameBoundary && oldData)
+              return { ...oldData, pages: [first, ...oldData.pages.slice(1)] };
+
+            // The cursor is live, so membership changes may push or pull rows across
+            // boundaries. Re-read the loaded range before publishing anything.
+            const pages = [first];
+            const pageParams: (string | undefined)[] = [undefined];
+            const loadedCount = oldData?.pages.length ?? 1;
+            while (pages.length < loadedCount) {
+              const previous = pages[pages.length - 1];
+              const cursor = previous?.hasMore
+                ? previous.nextCursor
+                : undefined;
+              if (!cursor || pageParams.includes(cursor)) break;
+              pageParams.push(cursor);
+              pages.push(await readPage(cursor));
+            }
+            // An insertion can push the last loaded row onto the next page. Include
+            // that page when the previous range's last row disappeared past its edge.
+            const oldLast = oldData?.pages.at(-1)?.items.at(-1)?.id;
+            const last = pages.at(-1);
+            const next = last?.hasMore ? last.nextCursor : undefined;
+            if (
+              oldLast &&
+              !pages.some((page) =>
+                page.items.some((item) => item.id === oldLast),
+              ) &&
+              next &&
+              !pageParams.includes(next)
+            ) {
+              pageParams.push(next);
+              pages.push(await readPage(next));
+            }
+            return { pages, pageParams };
+          },
+        });
         // A manual refresh, pagination, realtime update, or mutation wins over this read.
         if (
           disposed ||
@@ -228,16 +292,9 @@ function useGetWorkItems({
             .find({ queryKey: input.activeKey, exact: true }) !== query
         )
           return;
-        queryClient.setQueryData<
-          InfiniteData<WorkItemsResult, string | undefined>
-        >(input.activeKey, (current) => {
-          if (!current?.pages.length)
-            return { pages: [first], pageParams: [undefined] };
-          // Keep the original later pages: an overlapping item can leave page one on a
-          // later poll. The selected view deduplicates without discarding that cached row.
-          return { ...current, pages: [first, ...current.pages.slice(1)] };
-        });
+        queryClient.setQueryData(input.activeKey, refreshed);
       } catch (error) {
+        // fetchQuery has already invoked the cache's normal error callback.
         if (
           disposed ||
           query.state !== before ||
@@ -246,7 +303,6 @@ function useGetWorkItems({
             .find({ queryKey: input.activeKey, exact: true }) !== query
         )
           return;
-        // Preserve the existing rule that a fresh authorization denial hides cached rows.
         if (
           error instanceof HttpError &&
           [401, 403, 404].includes(error.status)

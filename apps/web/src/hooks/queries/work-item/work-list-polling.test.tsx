@@ -1,17 +1,29 @@
 import {
   focusManager,
+  QueryCache,
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
 import { act, cleanup, renderHook } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { HttpError } from "@/lib/http-error";
 import useGetWorkItems from "./use-get-work-items";
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), search: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  list: vi.fn(),
+  search: vi.fn(),
+  unauthorized: vi.fn(),
+}));
+vi.mock("@/lib/http-error", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/http-error")>()),
+  handleUnauthorized: mocks.unauthorized,
+}));
+
+import productionClient, { portalSessionQueryKey } from "@/query-client";
+
 vi.mock("@/fetchers/work-item/get-work-items", () => ({ default: mocks.list }));
 vi.mock("@/fetchers/work-item/search-work-items", () => ({
   default: mocks.search,
@@ -32,16 +44,29 @@ const initial = () => ({
   ],
   pageParams: [undefined, "c1", "c2"],
 });
-function setup(status: WorkItemRealtimeStatus = "unavailable", search = false) {
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        staleTime: Number.POSITIVE_INFINITY,
-        gcTime: Number.POSITIVE_INFINITY,
+function setup(
+  status: WorkItemRealtimeStatus = "unavailable",
+  search = false,
+  options: {
+    cached?: ReturnType<typeof initial>;
+    cache?: QueryCache;
+    client?: QueryClient;
+    selected?: string[];
+    sort?: "key" | "title";
+  } = {},
+) {
+  const client =
+    options.client ??
+    new QueryClient({
+      queryCache: options.cache,
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Number.POSITIVE_INFINITY,
+          gcTime: Number.POSITIVE_INFINITY,
+        },
       },
-    },
-  });
+    });
   const searchKey = [
     "work-items",
     "p",
@@ -54,26 +79,38 @@ function setup(status: WorkItemRealtimeStatus = "unavailable", search = false) {
     null,
   ];
   const activeKey = search ? searchKey : key;
-  client.setQueryData(activeKey, initial());
+  const sort = options.sort ?? "key";
+  const selectedKey =
+    sort === "key" ? activeKey : ["work-items", "p", "list", sort, "asc"];
+  client.setQueryData(selectedKey, options.cached ?? initial());
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
   }
   const view = renderHook(
-    ({ realtimeStatus }) =>
-      useGetWorkItems({
+    ({ realtimeStatus }) => {
+      const [selected, setSelected] = useState(options.selected ?? []);
+      const query = useGetWorkItems({
         projectId: "p",
         projectSlug: "P",
         workspaceId: "ws",
-        sort: "key",
+        sort,
         dir: "asc",
         ...(search ? { filter: "priority:high" } : {}),
         realtimeStatus,
-      }),
+      });
+      useEffect(() => {
+        if (query.data) {
+          const present = new Set(query.data.items.map((item) => item.id));
+          setSelected((current) => current.filter((id) => present.has(id)));
+        }
+      }, [query.data]);
+      return { ...query, selected };
+    },
     { wrapper: Wrapper, initialProps: { realtimeStatus: status } },
   );
-  return { client, activeKey, ...view };
+  return { client, activeKey: selectedKey, ...view };
 }
 async function advance(ms = 30_000) {
   await act(async () => {
@@ -106,11 +143,11 @@ describe("work list fallback polling", () => {
   });
 
   it.each([false, true])(
-    "reads only page one and merges changes without disturbing later rows (search: %s)",
+    "reads one page when membership and cursor are unchanged (search: %s)",
     async (search) => {
       const view = setup("connecting", search);
       const fetcher = search ? mocks.search : mocks.list;
-      fetcher.mockResolvedValueOnce(page(["new", "c"], "new-cursor"));
+      fetcher.mockResolvedValue(page(["a", "b"], "c1"));
       await advance();
       expect(fetcher).toHaveBeenCalledTimes(1);
       if (search)
@@ -121,46 +158,135 @@ describe("work list fallback polling", () => {
         expect(fetcher).toHaveBeenCalledWith("p", "key", "asc", {
           cursor: undefined,
         });
+      expect(view.client.getQueryData(view.activeKey)).toEqual(initial());
+    },
+  );
+
+  it.each([
+    {
+      name: "insert at top",
+      ordered: ["new", "a", "b", "c", "d", "e", "f", "g", "h"],
+      selected: ["b", "f"],
+      expected: [
+        ["new", "a"],
+        ["b", "c"],
+        ["d", "e"],
+        ["f", "g"],
+      ],
+    },
+    {
+      name: "delete on page one",
+      ordered: ["b", "c", "d", "e", "f", "g", "h"],
+      selected: ["a", "b"],
+      expected: [
+        ["b", "c"],
+        ["d", "e"],
+        ["f", "g"],
+      ],
+    },
+    {
+      name: "move page one to page two",
+      ordered: ["b", "c", "a", "d", "e", "f", "g", "h"],
+      selected: ["a", "c"],
+      expected: [
+        ["b", "c"],
+        ["a", "d"],
+        ["e", "f"],
+      ],
+    },
+    {
+      name: "move page two to page one",
+      ordered: ["c", "a", "b", "d", "e", "f", "g", "h"],
+      selected: ["b", "c"],
+      expected: [
+        ["c", "a"],
+        ["b", "d"],
+        ["e", "f"],
+      ],
+    },
+  ])(
+    "reconciles $name without transiently pruning retained selection",
+    async ({ ordered, selected, expected, name }) => {
+      const cached = {
+        pages: [
+          page(["a", "b"], "after:b"),
+          page(["c", "d"], "after:d"),
+          page(["e", "f"], "after:f"),
+        ],
+        pageParams: [undefined, "after:b", "after:d"],
+      };
+      const view = setup("unavailable", false, {
+        cached,
+        selected,
+        sort: "title",
+      });
+      mocks.list.mockImplementation(
+        async (
+          _p: string,
+          _s: string,
+          _d: string,
+          { cursor }: { cursor?: string },
+        ) => {
+          const start = cursor ? ordered.indexOf(cursor.slice(6)) + 1 : 0;
+          if (cursor && start === 0) throw new Error("invalid cursor");
+          const items = ordered.slice(start, start + 2);
+          return page(
+            items,
+            start + 2 < ordered.length ? `after:${items.at(-1)}` : null,
+          );
+        },
+      );
+      await advance();
+      await advance(10);
       const data = view.client.getQueryData<ReturnType<typeof initial>>(
         view.activeKey,
       );
-      expect(data?.pages.map((p) => p.items.map((item) => item.id))).toEqual([
-        ["new", "c"],
-        ["c", "d"],
-        ["e", "f"],
-      ]);
-      expect(data?.pageParams).toEqual([undefined, "c1", "c2"]);
-      await advance(10);
-      expect(view.result.current.data?.items.map((item) => item.id)).toEqual([
-        "new",
-        "c",
-        "d",
-        "e",
-        "f",
-      ]);
-      fetcher.mockResolvedValueOnce(page(["new", "b"], "newer"));
-      await advance();
-      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(data?.pages.map((p) => p.items.map((item) => item.id))).toEqual(
+        expected,
+      );
       expect(
-        view.client
-          .getQueryData<ReturnType<typeof initial>>(view.activeKey)
-          ?.pages.map((p) => p.items.map((i) => i.id)),
-      ).toEqual([
-        ["new", "b"],
-        ["c", "d"],
-        ["e", "f"],
-      ]);
-      await advance(10);
-      expect(view.result.current.data?.items.map((item) => item.id)).toEqual([
-        "new",
-        "b",
-        "c",
-        "d",
-        "e",
-        "f",
-      ]);
+        new Set(data?.pages.flatMap((p) => p.items.map((i) => i.id))).size,
+      ).toBe(data?.pages.flatMap((p) => p.items).length);
+      expect(view.result.current.selected).toEqual(
+        name === "delete on page one" ? ["b"] : selected,
+      );
+      expect(mocks.list.mock.calls.map((call) => call[3].cursor)).toEqual(
+        data?.pageParams,
+      );
+      if (name === "insert at top") {
+        await act(async () => {
+          await view.result.current.fetchNextPage();
+        });
+        expect(mocks.list.mock.calls.at(-1)?.[3].cursor).toBe("after:g");
+      }
     },
   );
+
+  it("keeps the old rows and selection visible until boundary reconciliation completes", async () => {
+    let resolve!: (value: WorkItemsResult) => void;
+    const pending = new Promise<WorkItemsResult>((r) => {
+      resolve = r;
+    });
+    const view = setup("unavailable", false, { selected: ["b"] });
+    mocks.list
+      .mockResolvedValueOnce(page(["new", "a"], "after:a"))
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(page(["d", "e"], "after:e"))
+      .mockResolvedValueOnce(page(["f"], null));
+    await advance();
+    expect(view.client.getQueryData(key)).toEqual(initial());
+    expect(view.result.current.selected).toEqual(["b"]);
+    await act(async () => {
+      resolve(page(["b", "c"], "after:c"));
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(
+      view.client
+        .getQueryData<ReturnType<typeof initial>>(key)
+        ?.pages.map((p) => p.items.map((item) => item.id)),
+    ).toEqual([["new", "a"], ["b", "c"], ["d", "e"], ["f"]]);
+    expect(view.result.current.selected).toEqual(["b"]);
+  });
 
   it("keeps polling foreground only and discards responses after unmount", async () => {
     let resolve!: (value: WorkItemsResult) => void;
@@ -230,17 +356,55 @@ describe("work list fallback polling", () => {
     expect(view.client.getQueryData(key)).toEqual(updated);
   });
 
-  it("hides cached data after an authorization denial and recovers on a later poll", async () => {
-    const view = setup();
-    mocks.list
-      .mockRejectedValueOnce(new HttpError(403, "denied"))
-      .mockResolvedValueOnce(page(["allowed"], "c1"));
+  it("uses the production cache's session removal and unauthorized redirect on a polling 401", async () => {
+    productionClient.clear();
+    mocks.unauthorized.mockClear();
+    productionClient.setQueryData(portalSessionQueryKey, { person: "cached" });
+    mocks.list.mockRejectedValue(new HttpError(401, "signed out"));
+    const view = setup("unavailable", false, { client: productionClient });
     await advance();
     await advance(10);
+    expect(
+      productionClient.getQueryData(portalSessionQueryKey),
+    ).toBeUndefined();
+    expect(mocks.unauthorized).toHaveBeenCalledTimes(1);
     expect(view.result.current.data).toBeUndefined();
-    expect(view.result.current.isError).toBe(true);
-    await advance(29_990);
-    await advance(10);
-    expect(view.result.current.data?.items[0]?.id).toBe("allowed");
+    await advance(90_000);
+    expect(mocks.list).toHaveBeenCalledTimes(1);
+    view.unmount();
+    productionClient.clear();
   });
+
+  it.each([401, 403])(
+    "routes %s polling failures through the same cache callback as normal fetches",
+    async (status) => {
+      const onError = vi.fn();
+      const cache = new QueryCache({ onError });
+      const view = setup("unavailable", false, { cache });
+      const error = new HttpError(status, "denied");
+      mocks.list.mockRejectedValue(error);
+      await advance();
+      await advance(10);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0]?.[0]).toBe(error);
+      expect(view.result.current.data).toBeUndefined();
+      expect(view.result.current.error).toBe(error);
+      await advance(90_000);
+      expect(mocks.list).toHaveBeenCalledTimes(1);
+      view.unmount();
+
+      const normalError = vi.fn();
+      const normal = setup("available", false, {
+        cache: new QueryCache({ onError: normalError }),
+      });
+      await act(async () => {
+        await normal.result.current.refetch();
+      });
+      await advance(10);
+      expect(normalError).toHaveBeenCalledTimes(1);
+      expect(normalError.mock.calls[0]?.[0]).toBe(error);
+      expect(normal.result.current.data).toBeUndefined();
+      expect(normal.result.current.error).toBe(error);
+    },
+  );
 });
