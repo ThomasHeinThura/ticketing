@@ -47,7 +47,11 @@ export function PagesFeatureGate({
   if (!enabled)
     return (
       <div className="mx-auto max-w-4xl p-4">
-        <ProjectFeatureOff feature="pages" projectKey={projectKey} />
+        <ProjectFeatureOff
+          feature="pages"
+          headingLevel={1}
+          projectKey={projectKey}
+        />
       </div>
     );
   return <>{children}</>;

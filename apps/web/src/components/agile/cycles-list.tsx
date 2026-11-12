@@ -71,7 +71,13 @@ export function CyclesList({ projectKey }: { projectKey: string }) {
   });
 
   if (query.error instanceof FeatureDisabledError)
-    return <ProjectFeatureOff feature="cycles" projectKey={projectKey} />;
+    return (
+      <ProjectFeatureOff
+        feature="cycles"
+        headingLevel={1}
+        projectKey={projectKey}
+      />
+    );
   if (query.isLoading)
     return (
       <div

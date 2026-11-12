@@ -1,5 +1,6 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { headingLevels } from "@/test/headings";
 
 const state = vi.hoisted(() => ({
   workspace: { id: "w1" } as { id: string } | undefined,
@@ -105,6 +106,17 @@ describe("WorkspaceFeatureGate (P4R2-M1)", () => {
       screen.getByRole("heading", { level: 1, name: "SLA policies" }),
     ).toBeTruthy();
     expect(screen.getByText("Response and resolution targets.")).toBeTruthy();
+  });
+
+  it("has one h1, the page title, with the off state's title under it as h2", () => {
+    renderGate();
+    expect(headingLevels()).toEqual([1, 2]);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      within(screen.getByTestId("feature-off-sla")).getByRole("heading", {
+        level: 2,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("asks a non-manager to contact an admin and offers no link", () => {

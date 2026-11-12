@@ -10,6 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Announcement } from "@/fetchers/announcements";
 import { translate } from "@/test/en-translation";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -359,6 +360,8 @@ describe("announcements with the catalogue off (UAT re-audit)", () => {
       </QueryClientProvider>,
     );
     expect(screen.getAllByTestId("service-catalogue-off")).toHaveLength(1);
+    // One h1, the page title; the off state's title sits under it as h2.
+    expect(headingLevels()).toEqual([1, 2]);
     expect(
       screen.queryByRole("button", {
         name: translate("serviceManagement:announcements.list.new"),

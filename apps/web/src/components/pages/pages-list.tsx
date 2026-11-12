@@ -208,7 +208,13 @@ export function PagesList({ projectKey }: { projectKey: string }) {
       </div>
     );
   if (query.error instanceof PagesDisabledError)
-    return <ProjectFeatureOff feature="pages" projectKey={projectKey} />;
+    return (
+      <ProjectFeatureOff
+        feature="pages"
+        headingLevel={1}
+        projectKey={projectKey}
+      />
+    );
   if (query.isError || !query.data)
     return (
       <div className="mx-auto max-w-4xl p-4">

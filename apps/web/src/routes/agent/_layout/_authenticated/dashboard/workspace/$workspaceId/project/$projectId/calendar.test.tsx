@@ -2,6 +2,7 @@ import enUS from "@i18n/en-US.json";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { headingLevels } from "@/test/headings";
 import { Route } from "./calendar";
 
 type SearchRecord = Record<string, unknown>;
@@ -82,12 +83,9 @@ vi.mock("@/hooks/use-keyboard-shortcuts", async (importOriginal) => ({
 const viewFeature = vi.hoisted(() => ({
   enabled: true as boolean | undefined,
 }));
-// Locale files are regenerated from i18n/en-US.json by the coordinator; the state itself is
-// covered by FeatureOff's own keys.
-vi.mock("@/components/agile/feature-off", () => ({
-  ProjectIdFeatureOff: ({ feature }: { feature: string }) => (
-    <div data-testid={`feature-off-${feature}`} />
-  ),
+// The real off state renders; only its permission read is stubbed (feature-off.test.tsx covers it).
+vi.mock("@/components/agile/use-can-manage-project-features", () => ({
+  useCanManageProjectFeaturesById: () => false,
 }));
 vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
   useProjectFeatureState: () => viewFeature.enabled,
@@ -149,8 +147,13 @@ vi.mock("@/components/work-item/work-item-side-pane", () => ({
 }));
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => {
+  // `useTranslation("agile")` keys (the off state's) resolve in their own namespace.
+  useTranslation: (defaultNamespace?: string) => ({
+    t: (rawKey: string, options?: Record<string, unknown>) => {
+      const key =
+        defaultNamespace && !rawKey.includes(":")
+          ? `${defaultNamespace}:${rawKey}`
+          : rawKey;
       const [namespace, path] = key.split(":");
       const source = path
         .split(".")
@@ -211,6 +214,8 @@ describe("calendar feature flag (P4R1-M2)", () => {
     try {
       render(<CalendarRoute />);
       expect(screen.getByTestId("feature-off-calendar")).toBeInTheDocument();
+      // The project shell has no h1, so the off state is the page's one h1.
+      expect(headingLevels()).toEqual([1]);
     } finally {
       viewFeature.enabled = true;
     }

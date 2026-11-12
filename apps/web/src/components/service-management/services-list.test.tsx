@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   services: {
@@ -249,6 +250,8 @@ describe("ServicesList with the catalogue off (UAT re-audit)", () => {
     mocks.servicesWorkspace.mockClear();
     setup({}, { enabled: false });
     expect(screen.getAllByTestId("service-catalogue-off")).toHaveLength(1);
+    // One h1, the page title; the off state's title sits under it as h2.
+    expect(headingLevels()).toEqual([1, 2]);
     expect(screen.getAllByText("disabled.description")).toHaveLength(1);
     expect(
       screen.queryByRole("button", { name: /services.list.new/u }),

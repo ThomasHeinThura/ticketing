@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import {
   type EmptyStateAction,
+  type EmptyStateProps,
   FeatureOff as SharedFeatureOff,
 } from "@taskdesk/ui";
 import type { ReactElement } from "react";
@@ -24,6 +25,13 @@ type OffFeature =
 type ProjectOffFeature = Exclude<OffFeature, "sla">;
 
 /**
+ * Level of the off state's title. Default 2: the off state sits under the page's own `h1`. Pass 1
+ * when the off state *is* the page (the project shell has no `h1` of its own), so every page keeps
+ * exactly one.
+ */
+type HeadingLevelProp = { headingLevel?: EmptyStateProps["headingLevel"] };
+
+/**
  * The standard empty state when a feature is switched off (404 from the API): the agile project
  * features, the Kaneo Calendar/Gantt views, project Pages, and the workspace SLA settings (`sla`).
  * Built on the shared `FeatureOff` (UX-1a); `manage` adds the settings link and its wording, and
@@ -32,7 +40,8 @@ type ProjectOffFeature = Exclude<OffFeature, "sla">;
 export function FeatureOff({
   feature,
   manage,
-}: {
+  headingLevel,
+}: HeadingLevelProp & {
   feature: OffFeature;
   manage?: { label: string; render: ReactElement };
 }) {
@@ -48,6 +57,7 @@ export function FeatureOff({
           : t(`featureOff.${feature}.description`)
       }
       action={action}
+      headingLevel={headingLevel}
     />
   );
 }
@@ -56,7 +66,8 @@ export function FeatureOff({
 export function ProjectFeatureOff({
   feature,
   projectKey,
-}: {
+  headingLevel,
+}: HeadingLevelProp & {
   feature: ProjectOffFeature;
   projectKey: string;
 }) {
@@ -65,6 +76,7 @@ export function ProjectFeatureOff({
   return (
     <FeatureOff
       feature={feature}
+      headingLevel={headingLevel}
       manage={
         canManage
           ? {
@@ -90,7 +102,8 @@ export function ProjectIdFeatureOff({
   feature,
   projectId,
   workspaceId,
-}: {
+  headingLevel,
+}: HeadingLevelProp & {
   feature: ProjectOffFeature;
   projectId: string;
   workspaceId: string;
@@ -100,6 +113,7 @@ export function ProjectIdFeatureOff({
   return (
     <FeatureOff
       feature={feature}
+      headingLevel={headingLevel}
       manage={
         canManage
           ? {

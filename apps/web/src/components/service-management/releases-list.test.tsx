@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -140,6 +141,8 @@ describe("releases with the catalogue off", () => {
     mocks.enabled = false;
     setup();
     expect(screen.getAllByTestId("service-catalogue-off")).toHaveLength(1);
+    // One h1, the page title; the off state's title sits under it as h2.
+    expect(headingLevels()).toEqual([1, 2]);
     expect(
       screen.getByRole("navigation", {
         name: translate("serviceManagement:nav.title"),

@@ -39,7 +39,11 @@ function RouteComponent() {
   if (!timelineOn)
     return (
       <div className="flex flex-1 items-center justify-center p-6">
-        <ProjectFeatureOff feature="timeline" projectKey={projectKey} />
+        <ProjectFeatureOff
+          feature="timeline"
+          headingLevel={1}
+          projectKey={projectKey}
+        />
       </div>
     );
   return (

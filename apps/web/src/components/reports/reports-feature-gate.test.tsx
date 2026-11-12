@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { headingLevels } from "@/test/headings";
 
 const state = vi.hoisted(() => ({
   reportsOn: false,
@@ -82,6 +83,8 @@ describe("ReportsFeatureGate (UX-1a, SR-02)", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByText("Report content")).toBeNull();
+    // One h1, the page title; the off state's title sits under it.
+    expect(headingLevels()).toEqual([1, 2]);
   });
 
   it("offers Turn on in Features only to a workspace settings manager", async () => {

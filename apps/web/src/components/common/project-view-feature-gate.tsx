@@ -33,6 +33,7 @@ export default function ProjectViewFeatureGate({
         <div className="flex flex-1 items-center justify-center p-6">
           <ProjectIdFeatureOff
             feature={view === "calendar" ? "calendar" : "timeline"}
+            headingLevel={1}
             projectId={projectId}
             workspaceId={workspaceId}
           />

@@ -264,7 +264,13 @@ export function CycleDetailScreen({
   });
 
   if (cycleQuery.error instanceof FeatureDisabledError)
-    return <ProjectFeatureOff feature="cycles" projectKey={projectKey} />;
+    return (
+      <ProjectFeatureOff
+        feature="cycles"
+        headingLevel={1}
+        projectKey={projectKey}
+      />
+    );
   if (cycleQuery.isLoading)
     return (
       <div

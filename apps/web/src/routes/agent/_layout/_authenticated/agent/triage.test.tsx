@@ -12,6 +12,7 @@ import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IntakeQueueSearch } from "@/lib/routes";
 import { translate } from "@/test/en-translation";
+import { headingLevels } from "@/test/headings";
 import { Route } from "./triage";
 
 const mocks = vi.hoisted(() => ({
@@ -236,29 +237,32 @@ describe("intake triage route", () => {
   // large title in the content), and the shared feature-off state offers the Features link
   // only to someone who can switch Intake on.
   it.each([
-    ["the queue", () => undefined],
+    ["the queue", () => undefined, [1]],
     [
       "Intake off",
       () => {
         mocks.intakeOn = false;
       },
+      // The header-bar title, then the off state's title under it.
+      [1, 2],
     ],
     [
       "no access",
       () => {
         mocks.canTriage = false;
       },
+      [1],
     ],
   ])(
     "keeps the page title as the one h1 in the header bar on %s",
-    async (_label, arrange) => {
+    async (_label, arrange, outline) => {
       arrange();
       const { container } = renderTriage();
-      const headings = screen.getAllByRole("heading", { level: 1 });
-      expect(headings).toHaveLength(1);
-      expect(headings[0]).toHaveTextContent("title");
-      expect(headings[0]).toHaveClass("px-2", "font-medium", "text-sm");
-      expect(headings[0].closest("header")).not.toBeNull();
+      expect(headingLevels()).toEqual(outline);
+      const [title] = screen.getAllByRole("heading", { level: 1 });
+      expect(title).toHaveTextContent("title");
+      expect(title).toHaveClass("px-2", "font-medium", "text-sm");
+      expect(title.closest("header")).not.toBeNull();
       expect(container.querySelector("[data-slot=page-header]")).toBeNull();
       await act(async () => {});
     },

@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   enabled: false as boolean | undefined,
@@ -86,6 +87,8 @@ describe("ChangeCalendarView with the catalogue off", () => {
   it("shows the off state before any calendar chrome and asks for no calendar", () => {
     render(<ChangeCalendarView search={{}} />);
     expect(screen.getAllByTestId("service-catalogue-off")).toHaveLength(1);
+    // One h1, the page title; the off state's title sits under it as h2.
+    expect(headingLevels()).toEqual([1, 2]);
     expect(
       screen.getByRole("navigation", { name: "nav.title" }),
     ).toBeInTheDocument();

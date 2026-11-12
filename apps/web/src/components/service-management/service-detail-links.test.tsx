@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ServiceDetail } from "@/fetchers/service-management";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   projects: [] as Array<{ id: string; slug: string; name: string }>,
@@ -49,6 +50,11 @@ vi.mock("@/hooks/queries/service-management", () => ({
   useService: vi.fn(),
   useServiceImpact: vi.fn(),
   useServices: vi.fn(),
+  isFeatureDisabled: (error: unknown) =>
+    (error as { status?: number } | null)?.status === 409,
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({ canManageWorkspaceSettings: () => false }),
 }));
 
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
@@ -136,5 +142,27 @@ describe("Service detail unknown service", () => {
     expect(
       screen.queryByRole("button", { name: /common.retry/ }),
     ).not.toBeInTheDocument();
+  });
+
+  // UX-1a: with the catalogue off the page keeps its title as the one h1 and the off state sits
+  // under it as h2.
+  it("keeps one h1 with the catalogue-off state under it when the catalogue is off (409)", () => {
+    vi.mocked(serviceQueries.useCatalogueStatus).mockReturnValue({
+      data: { canManageServices: false },
+    } as never);
+    vi.mocked(serviceQueries.useService).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new HttpError(409, "feature_disabled"),
+      refetch: vi.fn(),
+    } as never);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ServiceDetailView serviceId="s1" />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("service-catalogue-off")).toBeInTheDocument();
+    expect(headingLevels()).toEqual([1, 2]);
   });
 });

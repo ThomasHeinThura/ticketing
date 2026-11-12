@@ -124,7 +124,13 @@ export function ModuleDetailScreen({
   });
 
   if (query.error instanceof FeatureDisabledError)
-    return <ProjectFeatureOff feature="modules" projectKey={projectKey} />;
+    return (
+      <ProjectFeatureOff
+        feature="modules"
+        headingLevel={1}
+        projectKey={projectKey}
+      />
+    );
   if (query.isLoading)
     return (
       <div

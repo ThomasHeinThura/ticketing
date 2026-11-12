@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PageList } from "@/fetchers/pages";
+import { headingLevels } from "@/test/headings";
 
 const mocks = vi.hoisted(() => ({
   canManageFeatures: false,
@@ -124,6 +125,8 @@ describe("PagesList", () => {
     expect(await screen.findByTestId("feature-off-pages")).toBeTruthy();
     expect(screen.queryByText("list.notFound")).toBeNull();
     expect(mocks.getPages).toHaveBeenCalledTimes(1);
+    // The off state is the whole page, so its title is the page's one h1.
+    expect(headingLevels()).toEqual([1]);
   });
 
   it("offers Open feature settings with Pages off only to someone who can manage the project", async () => {

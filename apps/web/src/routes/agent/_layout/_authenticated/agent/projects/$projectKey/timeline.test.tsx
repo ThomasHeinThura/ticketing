@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProjectTimelineSearch } from "@/components/project/project-timeline";
+import { headingLevels } from "@/test/headings";
 import { Route } from "./timeline";
 
 const state = vi.hoisted(() => ({
@@ -43,10 +44,9 @@ vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
     return feature === "feature.timeline" ? state.timelineOn : false;
   },
 }));
-vi.mock("@/components/agile/feature-off", () => ({
-  ProjectFeatureOff: ({ feature }: { feature: string }) => (
-    <div data-testid={`feature-off-${feature}`} />
-  ),
+// The real off state renders; only its permission read is stubbed (feature-off.test.tsx covers it).
+vi.mock("@/components/agile/use-can-manage-project-features", () => ({
+  useCanManageProjectFeatures: () => false,
 }));
 vi.mock("@/components/project/project-not-found", () => ({
   default: () => <div data-testid="project-not-found" />,
@@ -122,6 +122,8 @@ describe("/agent/projects/{key}/timeline", () => {
     render(<TimelineRoute />);
     expect(screen.getByTestId("feature-off-timeline")).toBeInTheDocument();
     expect(screen.queryByTestId("project-timeline")).not.toBeInTheDocument();
+    // The project shell has no h1, so the off state is the page's one h1.
+    expect(headingLevels()).toEqual([1]);
   });
 
   it("waits for the feature flag before rendering the Timeline", () => {

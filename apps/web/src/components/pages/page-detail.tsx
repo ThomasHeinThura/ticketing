@@ -720,7 +720,13 @@ export function PageDetail({
       </div>
     );
   if (query.error instanceof PagesDisabledError)
-    return <ProjectFeatureOff feature="pages" projectKey={projectKey} />;
+    return (
+      <ProjectFeatureOff
+        feature="pages"
+        headingLevel={1}
+        projectKey={projectKey}
+      />
+    );
   if (query.isError || !query.data) {
     const missing =
       query.error instanceof HttpError && query.error.status === 404;

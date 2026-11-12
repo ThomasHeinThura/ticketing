@@ -11,6 +11,7 @@ import { useSyncExternalStore } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import { translate } from "@/test/en-translation";
+import { headingLevels } from "@/test/headings";
 import type Task from "@/types/task";
 import { Route } from "./gantt";
 
@@ -138,12 +139,9 @@ vi.mock("@/store/user-preferences", () => ({
 const viewFeature = vi.hoisted(() => ({
   enabled: true as boolean | undefined,
 }));
-// Locale files are regenerated from i18n/en-US.json by the coordinator; the state itself is
-// covered by FeatureOff's own keys.
-vi.mock("@/components/agile/feature-off", () => ({
-  ProjectIdFeatureOff: ({ feature }: { feature: string }) => (
-    <div data-testid={`feature-off-${feature}`} />
-  ),
+// The real off state renders; only its permission read is stubbed (feature-off.test.tsx covers it).
+vi.mock("@/components/agile/use-can-manage-project-features", () => ({
+  useCanManageProjectFeaturesById: () => false,
 }));
 vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
   useProjectFeatureState: () => viewFeature.enabled,
@@ -177,9 +175,15 @@ vi.mock("@/components/gantt/canonical-gantt-task-bar", () => ({
 // component actually requests.
 vi.mock("react-i18next", async () => ({
   ...(await vi.importActual<typeof import("react-i18next")>("react-i18next")),
-  useTranslation: () => ({
+  // `useTranslation("agile")` keys (the off state's) resolve in their own namespace.
+  useTranslation: (defaultNamespace?: string) => ({
     t: (key: string, options?: Record<string, unknown>) => {
-      return translate(key, options);
+      return translate(
+        defaultNamespace && !key.includes(":")
+          ? `${defaultNamespace}:${key}`
+          : key,
+        options,
+      );
     },
   }),
 }));
@@ -274,6 +278,8 @@ describe("timeline feature flag (P4R1-M2)", () => {
     try {
       render(<GanttRoute />);
       expect(screen.getByTestId("feature-off-timeline")).toBeInTheDocument();
+      // The project shell has no h1, so the off state is the page's one h1.
+      expect(headingLevels()).toEqual([1]);
     } finally {
       viewFeature.enabled = true;
     }
