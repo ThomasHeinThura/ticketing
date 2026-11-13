@@ -110,9 +110,9 @@ export function settleWorkItemMutation(
   });
 }
 
-// The highest version a write response has reported, per client and item. A refetch that
-// was already in flight when a save landed can briefly put the older version back in the
-// cache; the next save must still assert the newer one, or it 409s against itself.
+// The highest version a write response or authoritative read reported, per client and item.
+// A refetch already in flight when a save landed can briefly put an older version back in
+// the cache; the next save must still assert the newer one, or it 409s against itself.
 const versionFloors = new WeakMap<QueryClient, Map<string, number>>();
 
 function versionFloor(queryClient: QueryClient, key: string) {
@@ -236,8 +236,8 @@ function mergeDetailFields(
 }
 
 /**
- * Preserves any row in an incoming list page that either has an optimistic mutation in
- * flight or already holds a newer version in the cached list than an out-of-order read.
+ * Merges incoming list fields beneath pending optimistic fields and ignores reads older
+ * than the cached row.
  */
 export function mergeWorkItemListPage(
   queryClient: QueryClient,
@@ -257,20 +257,20 @@ export function mergeWorkItemListPage(
     items: page.items.map((row) => {
       const prev = prevByKey.get(row.key);
       if (!prev) return row;
-      if (isWorkItemMutating(queryClient, row.key)) {
-        rememberWorkItemRead(queryClient, row.key, row);
-        const version = Math.max(
-          typeof prev.version === "number" ? prev.version : 0,
-          row.version,
-        );
-        return { ...prev, version } as unknown as typeof row;
-      }
       if (
         typeof prev.version === "number" &&
         typeof row.version === "number" &&
         prev.version > row.version
       ) {
         return prev as unknown as typeof row;
+      }
+      if (isWorkItemMutating(queryClient, row.key)) {
+        const fields = mergeAuthoritativeWorkItemRead(
+          queryClient,
+          row.key,
+          row,
+        );
+        return { ...prev, ...fields } as unknown as typeof row;
       }
       return row;
     }),
@@ -422,14 +422,14 @@ function isOptimisticSnapshot(
   );
 }
 
-/** Keep the newest received server values behind the pending optimistic fields. */
-export function rememberWorkItemRead(
+/** Merge unowned server fields now; retain owned fields as rollback baselines. */
+export function mergeAuthoritativeWorkItemRead(
   queryClient: QueryClient,
   key: string,
   incoming: object,
-) {
+): CachedRow {
   const row = incoming as CachedRow;
-  if (typeof row.version !== "number") return;
+  if (typeof row.version !== "number") return {};
   const version = row.version;
   const cached = queryClient.getQueryData<WorkItemDetailRow>(
     workItemDetailKey(key),
@@ -438,40 +438,35 @@ export function rememberWorkItemRead(
     version <
     Math.max(cached?.version ?? 0, versionFloor(queryClient, key) ?? 0)
   )
-    return;
-  const seen = new Set<string>();
+    return {};
   const snapshots = queryClient
     .getMutationCache()
     .findAll({ mutationKey: workItemMutationKey(key), status: "pending" })
     .map((mutation) => mutation.state.context)
     .filter(isOptimisticSnapshot);
-  for (const snapshot of snapshots) {
-    for (const field of Object.keys(snapshot.optimistic)) {
-      if (seen.has(field)) continue;
-      seen.add(field);
-      if (!(field in row) || version <= (snapshot.readVersions?.[field] ?? -1))
-        continue;
-      (snapshot.previous as CachedRow)[field] = row[field];
-      snapshot.readVersions ??= {};
-      snapshot.readVersions[field] = version;
+  const fields: CachedRow = {};
+  for (const [field, value] of Object.entries(row)) {
+    const owner = snapshots.find((snapshot) => field in snapshot.optimistic);
+    if (!owner) {
+      fields[field] = value;
+    } else if (version > (owner.readVersions?.[field] ?? -1)) {
+      (owner.previous as CachedRow)[field] = value;
+      owner.readVersions ??= {};
+      owner.readVersions[field] = version;
     }
   }
+  raiseVersionFloor(queryClient, key, version);
   queryClient.setQueryData<WorkItemDetailRow>(workItemDetailKey(key), (old) =>
-    old ? { ...old, version: Math.max(old.version, version) } : old,
+    old ? mergeDetailFields(old, fields as Partial<WorkItemDetail>) : old,
   );
   for (const { queryKey } of editableListQueriesWithKey(queryClient, key)) {
     queryClient.setQueryData(queryKey, (data: unknown) =>
       isListData(data)
-        ? mapItemRows(data, key, (old) => ({
-            ...old,
-            version: Math.max(
-              typeof old.version === "number" ? old.version : 0,
-              version,
-            ),
-          }))
+        ? mapItemRows(data, key, (old) => ({ ...old, ...fields }))
         : data,
     );
   }
+  return fields;
 }
 
 /**

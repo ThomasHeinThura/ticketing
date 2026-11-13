@@ -8,7 +8,7 @@ import {
 import { useEffect } from "react";
 import {
   isWorkItemMutating,
-  rememberWorkItemRead,
+  mergeAuthoritativeWorkItemRead,
   workItemMutationKey,
 } from "@/components/work-item/work-item-save";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
@@ -29,8 +29,8 @@ export const workItemDetailQueryKey = (key: string | undefined) =>
   ["work-items", "detail", key] as const;
 
 /**
- * Keeps the cached detail row when a read completes while an optimistic write for this item
- * is in flight, or when an out-of-order response carries an older version than the cache.
+ * Merges a read beneath pending optimistic fields, keeping those fields visible.
+ * An out-of-order response older than the cache is ignored.
  */
 async function readWorkItemDetail(queryClient: QueryClient, key: string) {
   const incoming = await getWorkItem(key);
@@ -39,7 +39,7 @@ async function readWorkItemDetail(queryClient: QueryClient, key: string) {
   );
   if (cached) {
     if (isWorkItemMutating(queryClient, key)) {
-      if (incoming) rememberWorkItemRead(queryClient, key, incoming);
+      if (incoming) mergeAuthoritativeWorkItemRead(queryClient, key, incoming);
       return (
         queryClient.getQueryData<WorkItemDetailRow>(
           workItemDetailQueryKey(key),
