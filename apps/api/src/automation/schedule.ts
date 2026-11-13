@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { Cron } from "croner";
 import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import db from "../database";
 import {
@@ -14,41 +13,13 @@ import { withJobLease } from "../scheduler/leader-lock";
 import { type AutomationCondition, evaluateConditions } from "./conditions";
 import { loadWorkItemsByKey, resolvedEntrySql } from "./facts";
 import { automationsEnabled } from "./feature";
+import { scheduleOccurrence } from "./schedule-occurrence";
+
+export { scheduleOccurrence } from "./schedule-occurrence";
 
 export const AUTOMATION_SCHEDULE_JOB = "automation-schedule";
 export const SCHEDULE_BATCH = 50;
 
-/** One catch-up occurrence, never a replay of every missed window. */
-export function scheduleOccurrence(pattern: string, now: Date): Date | null {
-  let cron: Cron | undefined;
-  try {
-    cron = new Cron(pattern, { paused: true, timezone: "UTC" });
-    return (
-      cron.previousRuns(
-        1,
-        new Date(Math.floor(now.getTime() / 60_000) * 60_000 + 1000),
-      )[0] ?? null
-    );
-  } catch {
-    // Croner's backwards walker fails for leap-day schedules. Walk forwards
-    // across the five-year validation horizon, with a hard occurrence cap.
-    try {
-      const start = new Date(now);
-      start.setUTCFullYear(start.getUTCFullYear() - 5);
-      let at = cron?.nextRun(start) ?? null;
-      let latest: Date | null = null;
-      for (let i = 0; at && at <= now && i < 10; i++) {
-        latest = at;
-        at = cron?.nextRun(at) ?? null;
-      }
-      return at && at <= now ? null : latest;
-    } catch {
-      return null;
-    }
-  } finally {
-    cron?.stop();
-  }
-}
 export function scheduleDue(pattern: string, now: Date, last?: Date): boolean {
   const occurrence = scheduleOccurrence(pattern, now);
   return occurrence !== null && (!last || occurrence > last);
@@ -300,12 +271,14 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
             and(
               ...predicates,
               // Existing automation_run_automation_triggered_idx indexes the rule history;
-              // this anti-join needs no per-item sweep metadata or collation assumptions.
+              // reuse the resolved-age entry instant for every outcome in the current stay.
               sql`NOT EXISTS (SELECT 1 FROM automation_run prior
                 WHERE prior.automation_id = ${rule.id}
                   AND prior.workspace_id = ${rule.workspaceId}
                   AND prior.work_item_id = ${workItemTable.id}
                   AND prior.origin = 'schedule'
+                  AND (${stateTemplateTable.group} IS DISTINCT FROM 'completed'
+                    OR prior.triggered_at >= (${resolvedEntrySql} AT TIME ZONE 'UTC'))
                   AND starts_with(prior.event_id, ${`schedule:${rule.id}:${rule.version}:`})
                   AND (prior.state IN ('pending', 'running', 'done')
                     OR prior.triggered_at > ${new Date(now.getTime() - SCHEDULE_RETRY_MS).toISOString()}::timestamptz))`,

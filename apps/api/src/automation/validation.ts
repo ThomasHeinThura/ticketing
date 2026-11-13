@@ -20,6 +20,7 @@ import {
   AUTOMATION_SCHEDULE_TRIGGER,
   isAutomationEventTrigger,
 } from "./constants";
+import { scheduleOccurrence } from "./schedule-occurrence";
 
 /**
  * Save-time validation of a rule definition. Every problem names its path, and a recognised but
@@ -84,7 +85,10 @@ export function validateRuleDefinition(
           horizon.setUTCFullYear(horizon.getUTCFullYear() + 5);
           const next = parsed.nextRun(start);
           parsed.stop();
-          valid = next !== null && next <= horizon;
+          valid =
+            next !== null &&
+            next <= horizon &&
+            scheduleOccurrence(cron, start) !== null;
           // At most 1,440 simple array checks; no enumeration of thousands of runs.
           const fields = new CronPattern(cron, "UTC");
           if (

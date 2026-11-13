@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type ConditionFacts,
   evaluateCondition,
@@ -173,3 +173,34 @@ it("finds the last leap-day occurrence with a bounded forward fallback", () => {
     )?.toISOString(),
   ).toBe("2028-02-29T00:00:00.000Z");
 });
+
+it.each(["0 * 29 2 *", "0 0 31 */2 *"])(
+  "refuses a cron unavailable within the shared occurrence search bound: %s",
+  (scheduleCron) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2030-01-01T00:00:00Z"));
+      expect(scheduleOccurrence(scheduleCron, new Date())).toBeNull();
+      expect(scheduleDue(scheduleCron, new Date())).toBe(false);
+      const result = validateRuleDefinition(
+        {
+          trigger: "schedule",
+          scheduleCron,
+          conditions: [],
+          actions: [{ type: "transition", toStateTemplateId: "closed" }],
+        },
+        { scheduleAvailable: true },
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok)
+        expect(result.problems).toContainEqual({
+          code: "invalid",
+          path: "scheduleCron",
+          message:
+            "a valid five-field cron expression is required for the schedule trigger",
+        });
+    } finally {
+      vi.useRealTimers();
+    }
+  },
+);

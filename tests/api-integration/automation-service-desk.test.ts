@@ -801,6 +801,247 @@ describe("G-1 service desk automations", () => {
       expect(JSON.stringify(progress.results)).not.toContain("evaluated");
     },
   );
+  it.each(["customer", "manual", "no_change_needed"])(
+    "re-arms completed stays after %s reopen",
+    async (mode) => {
+      const w = await serviceWorld();
+      await w.resolve(4);
+      const rule = await w.closeRule();
+      const runs = () =>
+        db
+          .select()
+          .from(automationRunTable)
+          .where(
+            and(
+              eq(automationRunTable.automationId, rule.id),
+              eq(automationRunTable.workItemId, w.item.id),
+            ),
+          );
+      // A workflow version has exactly one reopen edge; point it at Closed for this journey.
+      await db
+        .update(schema.workflowTransitionTable)
+        .set({ fromStateTemplateId: w.closed.id })
+        .where(
+          and(
+            eq(
+              schema.workflowTransitionTable.fromStateTemplateId,
+              w.resolved.stateTemplateId,
+            ),
+            eq(schema.workflowTransitionTable.isReopen, true),
+          ),
+        );
+      await runAutomationSchedule();
+      if (mode === "no_change_needed")
+        await transitionWorkItem(
+          w.item.id,
+          null,
+          w.person.id,
+          w.user.id,
+          "person",
+          { toStateTemplateId: w.closed.id },
+        );
+      await processNextAutomationEvent();
+      expect(await w.currentState()).toBe(w.closedState.id);
+      expect((await runs())[0]?.state).toBe("done");
+      if (mode === "no_change_needed")
+        expect(JSON.stringify((await runs())[0]?.results)).toContain(
+          "no_change_needed",
+        );
+      // Move within completed to a non-target state: the SQL run suppression, rather
+      // than target exclusion, must preserve this stay's successful/no-change run.
+      const closeEdge = requireRow(
+        await db
+          .select()
+          .from(schema.workflowTransitionTable)
+          .where(
+            and(
+              eq(
+                schema.workflowTransitionTable.fromStateTemplateId,
+                w.resolved.stateTemplateId,
+              ),
+              eq(schema.workflowTransitionTable.toStateTemplateId, w.closed.id),
+            ),
+          ),
+        "close edge",
+      );
+      await db.insert(schema.workflowTransitionTable).values({
+        versionId: closeEdge.versionId,
+        fromStateTemplateId: w.closed.id,
+        toStateTemplateId: w.resolved.stateTemplateId,
+      });
+      await transitionWorkItem(
+        w.item.id,
+        null,
+        w.person.id,
+        w.user.id,
+        "person",
+        { toStateTemplateId: w.resolved.stateTemplateId },
+      );
+      await runAutomationSchedule(new Date(Date.now() + 86400000));
+      expect(await runs()).toHaveLength(1);
+      expect(await w.currentState()).toBe(w.resolved.id);
+      await transitionWorkItem(
+        w.item.id,
+        null,
+        w.person.id,
+        w.user.id,
+        "person",
+        { toStateTemplateId: w.closed.id },
+      );
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(Date.now() + 2 * 86400000);
+        if (mode === "customer") {
+          const customer = requireRow(
+            await db
+              .insert(schema.personTable)
+              .values({
+                organisationId: w.person.organisationId,
+                side: "customer",
+              })
+              .returning(),
+            "customer",
+          );
+          const comment = requireRow(
+            await db
+              .insert(schema.commentTable)
+              .values({
+                workspaceId: w.workspace.id,
+                workItemId: w.item.id,
+                authorId: customer.id,
+                actorType: "person",
+                visibility: "public",
+                body: {},
+              })
+              .returning(),
+            "comment",
+          );
+          await w.rule({
+            name: "Reopen on customer reply",
+            trigger: "work_item.commented",
+            conditions: [
+              { field: "actor_role", op: "eq", value: "customer" },
+              { field: "state.group", op: "eq", value: "completed" },
+            ],
+            actions: [
+              { type: "transition", toStateTemplateId: w.rows.template.id },
+            ],
+          });
+          const envelope = await w.emit("work_item.commented");
+          envelope.payload.commentId = comment.id;
+          await db
+            .update(schema.outboxTable)
+            .set({ payload: envelope })
+            .where(eq(schema.outboxTable.eventId, envelope.id));
+          await w.runOnce(envelope);
+        } else {
+          await transitionWorkItem(
+            w.item.id,
+            null,
+            w.person.id,
+            w.user.id,
+            "person",
+            { toStateTemplateId: w.rows.template.id },
+          );
+        }
+        expect(await w.currentState()).toBe(w.rows.state.id);
+        // Persist a new completed entry at the controlled clock, as in the existing age fixtures.
+        await w.resolve(0);
+        const entered = Date.now();
+        vi.setSystemTime(entered + 2 * 86400000);
+        await runAutomationSchedule();
+        await processNextAutomationEvent();
+        expect(await w.currentState()).toBe(w.resolved.id);
+        expect(await runs()).toHaveLength(1);
+        vi.setSystemTime(entered + 3 * 86400000);
+        await runAutomationSchedule();
+        await processNextAutomationEvent();
+        expect(await w.currentState()).toBe(w.closedState.id);
+        expect(await runs()).toHaveLength(2);
+        expect((await runs()).every((r) => r.state === "done")).toBe(true);
+        vi.setSystemTime(entered + 4 * 86400000);
+        await runAutomationSchedule();
+        expect(await runs()).toHaveLength(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+  it.each(["failed", "skipped", "abandoned", "pending", "running"])(
+    "scopes %s suppression and backoff to the current completed stay",
+    async (state) => {
+      const w = await serviceWorld();
+      await w.resolve(4);
+      const rule = await w.rule({
+        name: "Close after five minutes",
+        trigger: "schedule",
+        scheduleCron: "*/5 * * * *",
+        conditions: [
+          { field: "state.group", op: "eq", value: "completed" },
+          { field: "age", op: "gte", basis: "resolved_at", value: 5 },
+        ],
+        actions: [{ type: "transition", toStateTemplateId: w.closed.id }],
+      });
+      const runs = () =>
+        db
+          .select()
+          .from(automationRunTable)
+          .where(
+            and(
+              eq(automationRunTable.automationId, rule.id),
+              eq(automationRunTable.workItemId, w.item.id),
+            ),
+          );
+      // Begin with a real refused attempt, then cover every other retained outcome.
+      await db
+        .update(schema.roleTable)
+        .set({ capabilities: ["work_item:read"] })
+        .where(eq(schema.roleTable.id, w.role.id));
+      await runAutomationSchedule();
+      await processNextAutomationEvent();
+      const prior = requireRow(await runs(), "failed run");
+      expect(prior.state).toBe("failed");
+      await db
+        .update(automationRunTable)
+        .set({
+          state,
+          leaseExpiresAt:
+            state === "running" ? new Date(Date.now() + 86400000) : null,
+        })
+        .where(eq(automationRunTable.id, prior.id));
+      await db
+        .update(schema.roleTable)
+        .set({ capabilities: ["work_item:read", "work_item:transition"] })
+        .where(eq(schema.roleTable.id, w.role.id));
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        // Even repaired failures and nonterminal runs suppress within this stay.
+        vi.setSystemTime(Date.now() + 5 * 60000);
+        await runAutomationSchedule();
+        expect(await runs()).toHaveLength(1);
+        await transitionWorkItem(
+          w.item.id,
+          null,
+          w.person.id,
+          w.user.id,
+          "person",
+          { toStateTemplateId: w.rows.template.id },
+        );
+        await w.resolve(0);
+        vi.setSystemTime(Date.now() + 5 * 60000);
+        await runAutomationSchedule();
+        // Less than 24h after the old attempt, the new stay gets exactly one attempt.
+        expect(await runs()).toHaveLength(2);
+        // Leave prior pending/running rows intact; candidate suppression is tested in SQL.
+        if (state !== "pending" && state !== "running") {
+          await processNextAutomationEvent();
+          expect(await w.currentState()).toBe(w.closedState.id);
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
   it("an unchanged day-two candidate closes on day three", async () => {
     const w = await serviceWorld();
     await w.resolve(2);
