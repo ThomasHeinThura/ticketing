@@ -13,6 +13,8 @@ import { HttpError } from "@/lib/http-error";
 const noticeState = vi.hoisted(() => ({
   hasSmtp: true as boolean | undefined,
   loading: false,
+  fetching: false,
+  error: false,
   admin: false,
 }));
 vi.mock("@/hooks/queries/config/use-get-config", () => ({
@@ -22,6 +24,8 @@ vi.mock("@/hooks/queries/config/use-get-config", () => ({
         ? undefined
         : { hasSmtp: noticeState.hasSmtp },
     isLoading: noticeState.loading,
+    isFetching: noticeState.fetching,
+    isError: noticeState.error,
   }),
 }));
 vi.mock("@/hooks/use-instance-admin-signal", () => ({
@@ -354,14 +358,19 @@ describe("customer invitations screen", () => {
 
 describe("no email notice on customer invitations", () => {
   it.each([
-    [false, false, true],
-    [true, false, false],
-    [undefined, true, false],
+    [false, false, false, false, true],
+    [true, false, false, false, false],
+    [false, true, false, false, false],
+    [false, false, true, false, false],
+    [false, false, false, true, false],
+    [undefined, false, false, true, false],
   ])(
-    "handles provider %s and loading %s",
-    async (hasSmtp, loading, visible) => {
+    "handles provider %s, loading %s, fetching %s, error %s",
+    async (hasSmtp, loading, fetching, error, visible) => {
       noticeState.hasSmtp = hasSmtp;
       noticeState.loading = loading;
+      noticeState.fetching = fetching;
+      noticeState.error = error;
       noticeState.admin = false;
       mocks.listOrganisations.mockResolvedValue([{ id: "o1", name: "Acme" }]);
       mocks.listInvitations.mockResolvedValue([invitation("a", "pending")]);
@@ -376,6 +385,8 @@ describe("no email notice on customer invitations", () => {
   it("offers the email settings link only to instance admins", async () => {
     noticeState.hasSmtp = false;
     noticeState.loading = false;
+    noticeState.fetching = false;
+    noticeState.error = false;
     noticeState.admin = true;
     mocks.listOrganisations.mockResolvedValue([{ id: "o1", name: "Acme" }]);
     mocks.listInvitations.mockResolvedValue([]);

@@ -11,6 +11,8 @@ import InviteTeamMemberModal from "./invite-team-member-modal";
 const noticeState = vi.hoisted(() => ({
   hasSmtp: true as boolean | undefined,
   loading: false,
+  fetching: false,
+  error: false,
   admin: false,
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -25,6 +27,8 @@ vi.mock("@/hooks/queries/config/use-get-config", () => ({
         ? undefined
         : { hasSmtp: noticeState.hasSmtp },
     isLoading: noticeState.loading,
+    isFetching: noticeState.fetching,
+    isError: noticeState.error,
   }),
 }));
 vi.mock("@/hooks/use-instance-admin-signal", () => ({
@@ -154,24 +158,34 @@ describe("staff invitation role", () => {
 
 describe("no email notice in staff invite", () => {
   it.each([
-    [false, false, true],
-    [true, false, false],
-    [undefined, true, false],
-  ])("handles provider %s and loading %s", (hasSmtp, loading, visible) => {
-    noticeState.hasSmtp = hasSmtp;
-    noticeState.loading = loading;
-    noticeState.admin = false;
-    render(<InviteTeamMemberModal open onClose={vi.fn()} />);
-    expect(Boolean(screen.queryByText("team:invitations.noEmailNotice"))).toBe(
-      visible,
-    );
-    expect(screen.queryByText("team:invitations.configureEmail")).toBeNull();
-  });
+    [false, false, false, false, true],
+    [true, false, false, false, false],
+    [false, true, false, false, false],
+    [false, false, true, false, false],
+    [false, false, false, true, false],
+    [undefined, false, false, true, false],
+  ])(
+    "handles provider %s, loading %s, fetching %s, error %s",
+    (hasSmtp, loading, fetching, error, visible) => {
+      noticeState.hasSmtp = hasSmtp;
+      noticeState.loading = loading;
+      noticeState.fetching = fetching;
+      noticeState.error = error;
+      noticeState.admin = false;
+      render(<InviteTeamMemberModal open onClose={vi.fn()} />);
+      expect(
+        Boolean(screen.queryByText("team:invitations.noEmailNotice")),
+      ).toBe(visible);
+      expect(screen.queryByText("team:invitations.configureEmail")).toBeNull();
+    },
+  );
 });
 
 it("offers email settings to an instance admin when email is missing", () => {
   noticeState.hasSmtp = false;
   noticeState.loading = false;
+  noticeState.fetching = false;
+  noticeState.error = false;
   noticeState.admin = true;
   render(<InviteTeamMemberModal open onClose={vi.fn()} />);
   expect(

@@ -6,11 +6,17 @@ import { useInstanceAdminSignal } from "@/hooks/use-instance-admin-signal";
 import { routes } from "@/lib/routes";
 
 export function NoEmailNotice() {
-  const { data: config, isLoading, isFetching } = useGetConfig("always");
+  const {
+    data: config,
+    isLoading,
+    isFetching,
+    isError,
+  } = useGetConfig("always");
   const isAdmin = useInstanceAdminSignal();
   const { t } = useTranslation();
 
-  if (isLoading || isFetching || config?.hasSmtp !== false) return null;
+  if (isLoading || isFetching || isError || config?.hasSmtp !== false)
+    return null;
 
   return (
     <Alert role="status">
