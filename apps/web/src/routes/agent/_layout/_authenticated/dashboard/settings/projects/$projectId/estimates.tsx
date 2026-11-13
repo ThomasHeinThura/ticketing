@@ -5,7 +5,11 @@ import { useTranslation } from "react-i18next";
 import { EstimateSettings } from "@/components/agile/estimate-settings";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
-import { isForbiddenError } from "@/components/settings/settings-access";
+import {
+  isForbiddenError,
+  useCapabilityCheckFailed,
+} from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { getEstimates } from "@/fetchers/agile";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -37,7 +41,18 @@ function RouteComponent() {
     enabled: Boolean(project && !isCheckingPermissions),
     retry: false,
   });
-  if (!workspace || isCheckingPermissions || isLoading)
+  const checkFailed = useCapabilityCheckFailed(
+    isCheckingPermissions ? workspace?.id : undefined,
+    projectId,
+  );
+  if (isCheckingPermissions)
+    return (
+      <SettingsAccessPage
+        access={checkFailed ? "error" : "checking"}
+        titleKey="agile:estimates.pageTitle"
+      />
+    );
+  if (!workspace || isLoading)
     return (
       <div
         className="max-w-4xl mx-auto"

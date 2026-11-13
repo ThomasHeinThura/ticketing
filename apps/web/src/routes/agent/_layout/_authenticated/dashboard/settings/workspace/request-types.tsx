@@ -26,9 +26,9 @@ import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   getRequestType,
   getRequestTypes,
@@ -136,7 +136,13 @@ function RequestTypesPage() {
     { refreshOnMount: true },
   );
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="requestTypes:title"
+        descriptionKey="requestTypes:description"
+      />
+    );
   return <RequestTypesEditor />;
 }
 

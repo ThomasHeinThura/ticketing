@@ -175,8 +175,22 @@ function IntakeRoute() {
     (error) => error instanceof HttpError && error.status === 403,
   );
   const canManageFeatures = permissions.canManageWorkspaceSettings();
-  if (access === "checking") return <SettingsAccessChecking />;
-  if (access === "error") return <SettingsAccessError />;
+  if (access === "checking" || access === "error")
+    return (
+      <div className="flex h-full w-full min-w-0 flex-col">
+        <PageTitle title={t("title")} />
+        <Layout.Header className="items-center justify-between">
+          <h1 className="px-2 font-medium text-sm">{t("title")}</h1>
+        </Layout.Header>
+        <Layout.Content>
+          {access === "error" ? (
+            <SettingsAccessError />
+          ) : (
+            <SettingsAccessChecking />
+          )}
+        </Layout.Content>
+      </div>
+    );
   if (
     access === "denied" ||
     deniedByServer ||

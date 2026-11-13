@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  SettingsAccessGate,
-  useSettingsAccess,
-} from "@/components/settings/settings-access";
+import { useSettingsAccess } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { SlaPolicyEditor } from "@/components/sla-policy/sla-policy-editor";
 
 export const Route = createFileRoute(
@@ -21,6 +19,11 @@ function NewSlaPolicy() {
     permission.canManageServiceCalendars(),
   );
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="slaPolicies:editor.newTitle"
+      />
+    );
   return <SlaPolicyEditor id="new" />;
 }

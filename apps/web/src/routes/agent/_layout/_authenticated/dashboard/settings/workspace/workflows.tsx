@@ -37,10 +37,9 @@ import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessChecking,
-  SettingsAccessError,
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { CabTemplatePanel } from "@/components/workflow/cab-template-panel";
 import {
   type NamedOption,
@@ -93,14 +92,20 @@ function WorkflowSettingsRoute() {
   const navigate = useNavigate({ from: Route.fullPath });
   const { workflowId } = Route.useSearch();
   const { data: workspace } = useActiveWorkspace();
-  const projects = useGetProjects({ workspaceId: workspace?.id ?? "" });
-  // State templates are workspace-wide; any project can list them for their names.
-  const templates = useGetProjectStateTemplates(projects.data?.[0]?.id);
-  const roles = useWorkspaceRoles(workspace?.id);
   const { canManageWorkflows, isCheckingPermissions } =
     useWorkspacePermission();
   const capabilityCheckFailed = useCapabilityCheckFailed(
     isCheckingPermissions ? workspace?.id : undefined,
+  );
+  const projects = useGetProjects({
+    workspaceId: !isCheckingPermissions ? (workspace?.id ?? "") : "",
+  });
+  // State templates are workspace-wide; any project can list them for their names.
+  const templates = useGetProjectStateTemplates(
+    !isCheckingPermissions ? projects.data?.[0]?.id : undefined,
+  );
+  const roles = useWorkspaceRoles(
+    !isCheckingPermissions ? workspace?.id : undefined,
   );
   const canManage = canManageWorkflows() && !isCheckingPermissions;
   const states: NamedOption[] = (templates.data ?? []).map((template) => ({
@@ -115,10 +120,12 @@ function WorkflowSettingsRoute() {
     name: role.role,
   }));
   if (isCheckingPermissions)
-    return capabilityCheckFailed ? (
-      <SettingsAccessError />
-    ) : (
-      <SettingsAccessChecking />
+    return (
+      <SettingsAccessPage
+        access={capabilityCheckFailed ? "error" : "checking"}
+        titleKey="settings:workflows.title"
+        descriptionKey="settings:workflows.description"
+      />
     );
   return (
     <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">

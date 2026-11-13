@@ -541,8 +541,7 @@ export function WorkspaceStateTemplatesPage() {
     queryFn: () => getWorkspaceStateTemplates(workspace?.id ?? ""),
     enabled: access === "allowed" && Boolean(workspace?.id),
   });
-  if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+  if (access === "denied") return <NoAccessPage />;
   if (isForbiddenError(templates.error)) return <NoAccessPage />;
   return (
     <>
@@ -559,12 +558,14 @@ export function WorkspaceStateTemplatesPage() {
             {t("settings:workspaceStateTemplates.description")}
           </p>
         </div>
-        {workspace?.id ? (
-          <WorkspaceStateTemplatesPanel
-            workspaceId={workspace.id}
-            showHeading={false}
-          />
-        ) : null}
+        <SettingsAccessGate access={access}>
+          {workspace?.id ? (
+            <WorkspaceStateTemplatesPanel
+              workspaceId={workspace.id}
+              showHeading={false}
+            />
+          ) : null}
+        </SettingsAccessGate>
       </div>
     </>
   );

@@ -611,7 +611,29 @@ export function AnnouncementsList() {
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const announcements = useAnnouncements(workspaceId, canManage);
   const [editing, setEditing] = useState<Announcement | "new" | null>(null);
-  if (!workspace || status.isLoading) return <SettingsAccessChecking />;
+  if (
+    !workspace ||
+    status.isLoading ||
+    (!status.data && status.isError && !isForbiddenError(status.error))
+  )
+    return (
+      <>
+        <PageTitle title={t("announcements.list.title")} />
+        <PageFrame
+          title={t("announcements.list.title")}
+          description={t("announcements.list.description")}
+        >
+          {status.isError ? (
+            <QueryFailure
+              error={status.error}
+              onRetry={() => void status.refetch()}
+            />
+          ) : (
+            <SettingsAccessChecking />
+          )}
+        </PageFrame>
+      </>
+    );
   if ([status.error, announcements.error].some(isForbiddenError))
     return <NoAccessPage />;
   if (status.data && !catalogueOff && !canManage) return <NoAccessPage />;

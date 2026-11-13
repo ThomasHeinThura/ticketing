@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
+  navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
@@ -17,9 +18,9 @@ async function createAdminWorkspace(
   origin: string,
   email: string,
   password: string,
+  setupUrl: string,
 ) {
-  const signUp = new URL("/auth/sign-up", origin).toString();
-  await page.goto(signUp);
+  await navigateToSetup(page, setupUrl);
   await page.getByLabel("Full name").fill("Disposable MFA Admin");
   await page.getByLabel("Email").fill(email);
   await page.locator('input[autocomplete="new-password"]').fill(password);
@@ -72,10 +73,10 @@ test.describe("P0 MFA and CSRF browser journey", () => {
         59_000,
       ),
     ).toBe("287082");
-    await withMfaCsrfApp(async ({ origin, email, password }) => {
+    await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
       const { provisioningUri, backupCodes } =
         await test.step("MFA: enroll and create disposable admin workspace", () =>
-          createAdminWorkspace(page, origin, email, password));
+          createAdminWorkspace(page, origin, email, password, setupUrl));
       const backupCode = backupCodes[0] ?? "";
       const factorStatusResponse = await page.request.get(
         new URL("/api/me/security/factors", origin).toString(),
@@ -219,9 +220,9 @@ test.describe("P0 MFA and CSRF browser journey", () => {
 
   test("changes and restores observability settings", async ({ page }) => {
     test.setTimeout(240_000);
-    await withMfaCsrfApp(async ({ origin, email, password }) => {
+    await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
       await test.step("observability: create disposable admin workspace", () =>
-        createAdminWorkspace(page, origin, email, password));
+        createAdminWorkspace(page, origin, email, password, setupUrl));
       type LogLevel = "error" | "warn" | "info" | "debug";
       type ObservabilitySnapshot = {
         logLevels: {

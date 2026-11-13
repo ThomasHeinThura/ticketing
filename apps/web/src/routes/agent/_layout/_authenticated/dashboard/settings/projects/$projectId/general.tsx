@@ -41,8 +41,9 @@ import ProjectPlanningSettings from "@/components/project/project-planning-setti
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
 import {
   isForbiddenError,
-  SettingsAccessChecking,
+  useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
@@ -177,6 +178,9 @@ function RouteComponent() {
     canExportTasks,
     isCheckingPermissions,
   } = useWorkspacePermission();
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    isCheckingPermissions ? workspace?.id : undefined,
+  );
   const canEdit = Boolean(project) && canUpdateProjects();
   const canDelete = Boolean(project) && canDeleteProjects();
   const canExport = Boolean(project) && canExportTasks();
@@ -499,7 +503,12 @@ function RouteComponent() {
 
   if (isProjectError && isForbiddenError(projectError)) {
     return isCheckingPermissions ? (
-      <SettingsAccessChecking />
+      <SettingsAccessPage
+        access={capabilityCheckFailed ? "error" : "checking"}
+        titleKey="settings:projectGeneral.title"
+        pageTitleKey="settings:projectGeneral.pageTitle"
+        descriptionKey="settings:projectGeneral.subtitle"
+      />
     ) : (
       <NoAccessPage />
     );

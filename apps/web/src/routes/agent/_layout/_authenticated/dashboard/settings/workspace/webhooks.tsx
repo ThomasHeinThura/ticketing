@@ -1,8 +1,6 @@
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
-import {
-  SettingsAccessGate,
-  useSettingsAccess,
-} from "@/components/settings/settings-access";
+import { useSettingsAccess } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { WebhookList } from "@/components/webhook/webhook-list";
 import { routes } from "@/lib/routes";
 
@@ -18,7 +16,13 @@ function WebhooksRoute() {
     permission.canManageWebhooks(),
   );
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="webhooks:list.title"
+        descriptionKey="webhooks:list.description"
+      />
+    );
   if (location.pathname.startsWith(`${routes.webhooks.path}/`))
     return <Outlet />;
   return <WebhookList />;

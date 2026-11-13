@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ServiceCalendarEditorView } from "@/components/service-calendar/service-calendar-editor-view";
-import {
-  SettingsAccessGate,
-  useSettingsAccess,
-} from "@/components/settings/settings-access";
+import { useSettingsAccess } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { useServiceCalendarEditor } from "@/hooks/use-service-calendar-editor";
 import { routes } from "@/lib/routes";
 import { useServerToday } from "@/lib/server-clock";
@@ -30,7 +28,12 @@ function NewServiceCalendar() {
     permission.canManageServiceCalendars(),
   );
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="serviceCalendars:editor.newTitle"
+      />
+    );
   return <ServiceCalendarEditorContent calendarId="new" />;
 }
 

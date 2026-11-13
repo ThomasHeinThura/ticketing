@@ -41,9 +41,9 @@ import { InvitationResultCard } from "@/components/invitation/invitation-result-
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   type CustomerInvitation,
   type CustomerInvitationStatus,
@@ -432,7 +432,13 @@ export function CustomerInvitations({
 }) {
   const access = useSettingsAccess((permission) => permission.canInviteUsers());
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="customerInvitations:title"
+        descriptionKey="customerInvitations:description"
+      />
+    );
   return <CustomerInvitationsContent organisationId={organisationId} />;
 }
 

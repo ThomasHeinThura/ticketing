@@ -192,8 +192,21 @@ function SavedViewsIndexRoute() {
       : undefined;
 
   if (views.error instanceof HttpError && views.error.status === 403) {
-    if (capabilityCheckFailed) return <SettingsAccessError />;
-    if (permissions.isCheckingPermissions) return <SettingsAccessChecking />;
+    if (capabilityCheckFailed || permissions.isCheckingPermissions)
+      return (
+        <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
+          <PageTitle title={t("title")} />
+          <header className="space-y-1">
+            <h1 className="font-semibold text-2xl">{t("title")}</h1>
+            <p className="text-muted-foreground text-sm">{t("description")}</p>
+          </header>
+          {capabilityCheckFailed ? (
+            <SettingsAccessError />
+          ) : (
+            <SettingsAccessChecking />
+          )}
+        </div>
+      );
     return <NoAccessPage />;
   }
 

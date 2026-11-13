@@ -45,9 +45,9 @@ import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   archiveChecklistTemplate,
   archiveWorkItemTemplate,
@@ -447,7 +447,13 @@ function WorkItemTemplatesPage() {
     permission.canManageWorkspaceSettings(),
   );
   if (access !== "allowed")
-    return <SettingsAccessGate access={access}>{null}</SettingsAccessGate>;
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="settings:workItemTemplates.title"
+        descriptionKey="settings:workItemTemplates.description"
+      />
+    );
   return <WorkItemTemplatesPageContent />;
 }
 

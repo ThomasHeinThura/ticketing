@@ -407,7 +407,7 @@ describe("reports index entry points", () => {
     render(withClient(<ReportsIndex search={{}} onSearchChange={vi.fn()} />));
     expect(
       await screen.findByRole("status", {
-        name: "settings:accessDenied.checking",
+        name: "common:pageLoading",
       }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("settings-access-denied")).toBeNull();

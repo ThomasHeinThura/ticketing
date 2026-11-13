@@ -816,6 +816,14 @@ test("calendar creation supports keyboard input and read-only access", async ({
   await expect(keyboardStartTime).toHaveText("10:00");
   await expect(keyboardStartTime).toBeFocused();
 
+  const readOnlyWrites: string[] = [];
+  page.on("request", (request) => {
+    if (
+      ["POST", "PUT", "PATCH", "DELETE"].includes(request.method()) &&
+      new URL(request.url()).pathname.includes("/service-calendars")
+    )
+      readOnlyWrites.push(request.method());
+  });
   fixture.canManageServiceCalendars = false;
   await page.goto("/dashboard/settings/workspace/calendars");
   await expect(page.getByText("Read-only access")).toBeVisible();
@@ -823,9 +831,9 @@ test("calendar creation supports keyboard input and read-only access", async ({
     0,
   );
   await page.getByRole("link", { name: "New regional cover" }).click();
-  await expect(
-    page.getByRole("button", { name: "Save changes" }),
-  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
+    0,
+  );
   await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Monday window 1 start", exact: true }),
@@ -835,8 +843,11 @@ test("calendar creation supports keyboard input and read-only access", async ({
   ).toBeDisabled();
   await page.goto("/dashboard/settings/workspace/calendars/new");
   await expect(
-    page.getByRole("button", { name: "Create calendar" }),
-  ).toBeDisabled();
+    page
+      .getByTestId("settings-access-denied")
+      .getByRole("heading", { level: 1 }),
+  ).toBeVisible();
+  expect(readOnlyWrites).toEqual([]);
 });
 
 test("calendar list and editor expose loading states and meet the G13 shift budget", async ({

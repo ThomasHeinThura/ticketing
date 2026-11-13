@@ -31,10 +31,9 @@ import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessChecking,
-  SettingsAccessError,
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import type {
   SlaPolicy,
   SlaPolicyGoal,
@@ -282,8 +281,14 @@ export function SlaPolicyEditor({ id }: { id: string }) {
   }
 
   if (isForbiddenError(error)) {
-    if (capabilityCheckFailed) return <SettingsAccessError />;
-    if (isCheckingPermissions) return <SettingsAccessChecking />;
+    if (capabilityCheckFailed || isCheckingPermissions)
+      return (
+        <SettingsAccessPage
+          access={capabilityCheckFailed ? "error" : "checking"}
+          titleKey="slaPolicies:editor.title"
+          title={isNew ? t("editor.newTitle") : policy?.name}
+        />
+      );
     return <NoAccessPage />;
   }
   if (loading) {

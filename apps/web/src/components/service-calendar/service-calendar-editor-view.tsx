@@ -27,11 +27,8 @@ import {
 import { CoveragePreviewCard } from "@/components/service-calendar/coverage-preview-card";
 import { HolidayListCard } from "@/components/service-calendar/holiday-list-card";
 import { WeeklyCoverCard } from "@/components/service-calendar/weekly-cover-card";
-import {
-  isForbiddenError,
-  SettingsAccessChecking,
-  SettingsAccessError,
-} from "@/components/settings/settings-access";
+import { isForbiddenError } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import type { ServiceCalendar } from "@/fetchers/service-calendar";
 import type {
   CalendarMetadata,
@@ -58,8 +55,14 @@ export function ServiceCalendarEditorView({
   const { calendar, loading, isCalendarError, refetchCalendar, saving } = state;
 
   if (isForbiddenError(state.calendarError)) {
-    if (state.capabilityCheckFailed) return <SettingsAccessError />;
-    if (state.isCheckingPermissions) return <SettingsAccessChecking />;
+    if (state.capabilityCheckFailed || state.isCheckingPermissions)
+      return (
+        <SettingsAccessPage
+          access={state.capabilityCheckFailed ? "error" : "checking"}
+          titleKey="serviceCalendars:editor.pageTitle"
+          title={isNew ? t("editor.newTitle") : calendar?.name}
+        />
+      );
     return <NoAccessPage />;
   }
 

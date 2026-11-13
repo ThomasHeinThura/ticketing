@@ -23,6 +23,7 @@ type Project = {
 const mocks = vi.hoisted(() => ({
   canUpdate: true,
   checking: false,
+  capabilityFailed: false,
   back: vi.fn(),
   project: undefined as Project | undefined,
   projectLoading: false,
@@ -149,6 +150,7 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  mocks.capabilityFailed = false;
   mocks.canUpdate = true;
   mocks.checking = false;
   mocks.project = {
@@ -267,6 +269,20 @@ describe("project General settings load the project itself", () => {
     expect(
       screen.queryByTestId("settings-access-denied"),
     ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "settings:projectGeneral.title",
+    );
+    mocks.capabilityFailed = true;
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <GeneralSettings />
+      </QueryClientProvider>,
+    );
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "common:actions.retry" }),
+    ).toBeEnabled();
     mocks.checking = false;
     rerender(
       <QueryClientProvider client={new QueryClient()}>
@@ -324,3 +340,8 @@ describe("project General settings load the project itself", () => {
     });
   });
 });
+
+vi.mock("@/components/settings/settings-access", async (original) => ({
+  ...(await original<typeof import("@/components/settings/settings-access")>()),
+  useCapabilityCheckFailed: () => mocks.capabilityFailed,
+}));
