@@ -8,6 +8,29 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import InviteTeamMemberModal from "./invite-team-member-modal";
 
+const noticeState = vi.hoisted(() => ({
+  hasSmtp: true as boolean | undefined,
+  loading: false,
+  admin: false,
+}));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
+vi.mock("@/hooks/queries/config/use-get-config", () => ({
+  default: () => ({
+    data:
+      noticeState.hasSmtp === undefined
+        ? undefined
+        : { hasSmtp: noticeState.hasSmtp },
+    isLoading: noticeState.loading,
+  }),
+}));
+vi.mock("@/hooks/use-instance-admin-signal", () => ({
+  useInstanceAdminSignal: () => noticeState.admin,
+}));
+
 const { invite, toastSuccess, toastError } = vi.hoisted(() => ({
   invite: vi.fn().mockResolvedValue({}),
   toastSuccess: vi.fn(),
@@ -100,6 +123,8 @@ describe("staff invitation role", () => {
   ] as const)(
     "renders the invitation result card after inviting with a selected role (delivered=%s)",
     async (delivered, expectedBannerKey) => {
+      noticeState.hasSmtp = delivered;
+      noticeState.loading = false;
       invite.mockResolvedValueOnce({
         id: "inv-lead-1",
         email: "lead@example.com",
@@ -125,4 +150,31 @@ describe("staff invitation role", () => {
       }
     },
   );
+});
+
+describe("no email notice in staff invite", () => {
+  it.each([
+    [false, false, true],
+    [true, false, false],
+    [undefined, true, false],
+  ])("handles provider %s and loading %s", (hasSmtp, loading, visible) => {
+    noticeState.hasSmtp = hasSmtp;
+    noticeState.loading = loading;
+    noticeState.admin = false;
+    render(<InviteTeamMemberModal open onClose={vi.fn()} />);
+    expect(Boolean(screen.queryByText("team:invitations.noEmailNotice"))).toBe(
+      visible,
+    );
+    expect(screen.queryByText("team:invitations.configureEmail")).toBeNull();
+  });
+});
+
+it("offers email settings to an instance admin when email is missing", () => {
+  noticeState.hasSmtp = false;
+  noticeState.loading = false;
+  noticeState.admin = true;
+  render(<InviteTeamMemberModal open onClose={vi.fn()} />);
+  expect(
+    screen.getByRole("link", { name: "team:invitations.configureEmail" }),
+  ).toHaveAttribute("href", "/god-mode/notifications");
 });

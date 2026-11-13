@@ -38,6 +38,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
+import { NoEmailNotice } from "@/components/invitation/no-email-notice";
 import inviteWorkspaceMember from "@/fetchers/workspace/invite-workspace-member";
 import useCancelInvitation from "@/hooks/mutations/workspace-user/use-cancel-invitation";
 import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-workspace-user";
@@ -346,6 +347,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
 
   return (
     <>
+      {canInvite && pendingInvitations.length > 0 ? <NoEmailNotice /> : null}
       <Table>
         <TableHeader>
           <TableRow>

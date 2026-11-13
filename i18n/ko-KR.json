@@ -3138,6 +3138,8 @@
 			"you": "나"
 		},
 		"invitations": {
+			"noEmailNotice": "Email is not set up, so invitations will not be emailed. Copy the invitation link and send it yourself.",
+			"configureEmail": "Set up email in God Mode",
 			"linkLabel": "초대 링크",
 			"copyLink": "링크 복사",
 			"copyingLink": "Copying…",

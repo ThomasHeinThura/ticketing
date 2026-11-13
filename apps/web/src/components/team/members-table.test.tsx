@@ -13,6 +13,29 @@ import type {
 } from "@/types/workspace-user";
 import MembersTable from "./members-table";
 
+const noticeState = vi.hoisted(() => ({
+  hasSmtp: true as boolean | undefined,
+  loading: false,
+  admin: false,
+}));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
+vi.mock("@/hooks/queries/config/use-get-config", () => ({
+  default: () => ({
+    data:
+      noticeState.hasSmtp === undefined
+        ? undefined
+        : { hasSmtp: noticeState.hasSmtp },
+    isLoading: noticeState.loading,
+  }),
+}));
+vi.mock("@/hooks/use-instance-admin-signal", () => ({
+  useInstanceAdminSignal: () => noticeState.admin,
+}));
+
 const copyToClipboard = vi.fn();
 const success = vi.fn();
 const error = vi.fn();
@@ -631,4 +654,43 @@ describe("MembersTable narrow widths (finding #4)", () => {
     remove.focus();
     expect(remove).toHaveFocus();
   });
+});
+
+describe("no email notice above staff resends", () => {
+  it.each([
+    [false, false, true],
+    [true, false, false],
+    [undefined, true, false],
+  ])("handles provider %s and loading %s", (hasSmtp, loading, visible) => {
+    noticeState.hasSmtp = hasSmtp;
+    noticeState.loading = loading;
+    noticeState.admin = false;
+    render(
+      <MembersTable
+        workspaceId="workspace-1"
+        invitations={[pendingInvitation]}
+        users={[]}
+      />,
+    );
+    expect(Boolean(screen.queryByText("team:invitations.noEmailNotice"))).toBe(
+      visible,
+    );
+    expect(screen.queryByText("team:invitations.configureEmail")).toBeNull();
+  });
+});
+
+it("offers email settings to an instance admin when email is missing", () => {
+  noticeState.hasSmtp = false;
+  noticeState.loading = false;
+  noticeState.admin = true;
+  render(
+    <MembersTable
+      workspaceId="workspace-1"
+      invitations={[pendingInvitation]}
+      users={[]}
+    />,
+  );
+  expect(
+    screen.getByRole("link", { name: "team:invitations.configureEmail" }),
+  ).toHaveAttribute("href", "/god-mode/notifications");
 });
