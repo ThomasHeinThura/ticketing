@@ -247,6 +247,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       },
     );
     if (started) {
+      announce(t("workItems:journey.saving"));
       setOpen(false);
       setNoteFor(null);
       setNote("");
@@ -315,7 +316,8 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       variant="ghost"
       size="sm"
       {...propertyTriggerProps(canTransitionTasks(), compact)}
-      disabled={!canMove || pending}
+      disabled={!canMove}
+      aria-disabled={pending || undefined}
       aria-busy={pending || undefined}
       data-testid="work-item-state-control"
     >
@@ -585,7 +587,8 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       variant="ghost"
       size="sm"
       {...propertyTriggerProps(canEdit, compact)}
-      disabled={!canEdit || pending}
+      disabled={!canEdit}
+      aria-disabled={pending || undefined}
       aria-busy={pending || undefined}
       data-testid="work-item-assignee-control"
     >
@@ -651,6 +654,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       },
     );
     if (started) {
+      announce(t("workItems:journey.saving"));
       setOpen(false);
       setConfirmFor(null);
       setError("");

@@ -1,5 +1,6 @@
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { workItemsListQueryKey } from "@/hooks/queries/work-item/work-items-list-query";
 import { HttpError } from "@/lib/http-error";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import {
@@ -7,6 +8,7 @@ import {
   startDetailAssigneeChange,
   startDetailStateChange,
 } from "./detail-instant-change";
+import { currentWorkItemVersion } from "./work-item-save";
 
 const api = vi.hoisted(() => ({
   state: vi.fn(),
@@ -35,6 +37,12 @@ function deferred<T = unknown>() {
 const row = (fields = {}) =>
   ({
     key: "HELP-7",
+    number: 7,
+    priority: null,
+    startDate: null,
+    dueDate: null,
+    createdAt: "2026-11-01T00:00:00.000Z",
+    updatedAt: "2026-11-01T00:00:00.000Z",
     projectId: "p1",
     workspaceId: "w1",
     stateId: "todo",
@@ -50,7 +58,7 @@ const row = (fields = {}) =>
     ...fields,
   }) as unknown as WorkItemDetailRow;
 const detailKey = ["work-items", "detail", "HELP-7"];
-const listKey = ["work-items", "p1", "key", "asc"];
+const listKey = workItemsListQueryKey("p1", "key", "asc");
 const choice = {
   stateId: "done",
   toStateTemplateId: "tpl-done",
@@ -105,6 +113,129 @@ beforeEach(() => {
 });
 
 describe("detail single-write production helper", () => {
+  it("touches only exact list/search shapes, tolerates malformed pages and leaves schedule and boards byte-identical", async () => {
+    const s = setup();
+    const searchKey = [
+      "work-items",
+      "p1",
+      "key",
+      "asc",
+      [{ field: "key", order: "asc" }],
+      "search",
+      "priority:high",
+      "w1",
+      null,
+    ];
+    s.client.setQueryData(searchKey, {
+      pages: [null, { items: null }, { items: [row()] }],
+      pageParams: [0, 1, 2],
+    });
+    const excluded = [
+      {
+        key: ["work-items", "p1", "schedule", "w1", ""],
+        data: {
+          name: "Project",
+          slug: "HELP",
+          columns: [{ tasks: [row()] }],
+          plannedTasks: [],
+        },
+      },
+      {
+        key: [
+          "work-items",
+          "p1",
+          "combined",
+          "descendants",
+          null,
+          null,
+          "w1",
+          "position",
+          "asc",
+        ],
+        data: { pages: [{ items: [row()] }], pageParams: [null] },
+      },
+      {
+        key: ["work-items", "p1", "board", "position", "asc"],
+        data: { items: [row()] },
+      },
+      { key: ["work-items", "p1", "future"], data: { items: [row()] } },
+      {
+        key: ["work-items", "p1", "list", "key", "asc", "future"],
+        data: { items: [row()] },
+      },
+    ];
+    for (const entry of excluded) s.client.setQueryData(entry.key, entry.data);
+    const originals = excluded.map(({ key }) => ({
+      data: s.client.getQueryData(key),
+      bytes: JSON.stringify(s.client.getQueryData(key)),
+    }));
+    const held = deferred();
+    api.state.mockReturnValue(held.promise);
+    const pending = startDetailStateChange(
+      s.client,
+      s.detail(),
+      choice,
+      s.feedback,
+    );
+    await tick();
+    expect(api.state).toHaveBeenCalledOnce();
+    expect(s.list().stateId).toBe("done");
+    expect(
+      s.client.getQueryData<{
+        pages: (null | { items: WorkItemDetailRow[] })[];
+      }>(searchKey)?.pages[2]?.items[0].stateId,
+    ).toBe("done");
+    const assertExcluded = () =>
+      excluded.forEach(({ key }, index) => {
+        expect(s.client.getQueryData(key)).toBe(originals[index].data);
+        expect(JSON.stringify(s.client.getQueryData(key))).toBe(
+          originals[index].bytes,
+        );
+      });
+    assertExcluded();
+    held.reject(new HttpError(409, "refused"));
+    await pending;
+    assertExcluded();
+    expect(s.list().stateId).toBe("review");
+    expect(
+      s.client.getQueryData<{
+        pages: (null | { items: WorkItemDetailRow[] })[];
+      }>(searchKey)?.pages[2]?.items[0].stateId,
+    ).toBe("todo");
+    s.client.clear();
+  });
+
+  it("success restores the chosen holder's id and display fields after an old read, and advances the existing version floor", async () => {
+    const s = setup();
+    const held = deferred();
+    api.assign.mockReturnValue(held.promise);
+    const original = s.detail();
+    const pending = startDetailAssigneeChange(
+      s.client,
+      original,
+      person,
+      "riley",
+      s.feedback,
+    );
+    await tick();
+    s.client.setQueryData(
+      detailKey,
+      row({ assigneeId: "riley", assigneeName: "Riley" }),
+    );
+    held.resolve({ assigneeId: "casey", version: 5 });
+    await pending;
+    expect(s.detail()).toMatchObject({
+      assigneeId: "casey",
+      assigneeName: "Casey",
+      assigneeActive: true,
+      assigneeOnProject: true,
+      version: 5,
+    });
+    s.client.setQueryData(detailKey, original);
+    expect(currentWorkItemVersion(s.client, original)).toBe(5);
+    s.client.clear();
+  });
+
   it("shows state and category in detail and loaded list rows, without changing version or projections; applies every response field", async () => {
     const s = setup();
     const held = deferred();

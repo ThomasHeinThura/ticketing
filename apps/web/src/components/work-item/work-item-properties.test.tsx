@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
+import { startDetailAssigneeChange } from "./detail-instant-change";
 import WorkItemProperties from "./work-item-properties";
 
 const mocks = vi.hoisted(() => ({
@@ -782,9 +783,15 @@ describe("WorkItemProperties", () => {
     });
     const pending = blocker.execute(undefined);
     await waitFor(() =>
-      expect(screen.getByTestId("work-item-assignee-control")).toBeDisabled(),
+      expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      ),
     );
-    expect(screen.getByTestId("work-item-state-control")).toBeDisabled();
+    expect(screen.getByTestId("work-item-state-control")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     fireEvent.click(screen.getByTestId("work-item-assignee-control"));
     expect(screen.queryByRole("button", { name: /Casey Ray/ })).toBeNull();
     expect(mocks.assign).not.toHaveBeenCalled();
@@ -792,9 +799,13 @@ describe("WorkItemProperties", () => {
     release();
     await pending;
     await waitFor(() =>
-      expect(screen.getByTestId("work-item-assignee-control")).toBeEnabled(),
+      expect(
+        screen.getByTestId("work-item-assignee-control"),
+      ).not.toHaveAttribute("aria-disabled"),
     );
-    expect(screen.getByTestId("work-item-state-control")).toBeEnabled();
+    expect(screen.getByTestId("work-item-state-control")).not.toHaveAttribute(
+      "aria-disabled",
+    );
   });
 
   it.each([true, false])(
@@ -1345,8 +1356,14 @@ it.each(["success", "refusal"] as const)(
         "In progress",
       ),
     );
-    expect(screen.getByTestId("work-item-state-control")).toBeDisabled();
-    expect(screen.getByTestId("work-item-assignee-control")).toBeDisabled();
+    expect(screen.getByTestId("work-item-state-control")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(screen.getByTestId("work-item-state-control")).toHaveAttribute(
       "aria-busy",
       "true",
@@ -1354,9 +1371,13 @@ it.each(["success", "refusal"] as const)(
     if (outcome === "success") resolve({ version: 5 });
     else reject(new HttpError(403, "forbidden"));
     await waitFor(() =>
-      expect(screen.getByTestId("work-item-state-control")).toBeEnabled(),
+      expect(screen.getByTestId("work-item-state-control")).not.toHaveAttribute(
+        "aria-disabled",
+      ),
     );
-    expect(screen.getByTestId("work-item-assignee-control")).toBeEnabled();
+    expect(
+      screen.getByTestId("work-item-assignee-control"),
+    ).not.toHaveAttribute("aria-disabled");
     // This harness's actual settle GET returns the original server row.
     await waitFor(() =>
       expect(
@@ -1462,8 +1483,14 @@ it("requires reassignment confirmation, closes its real popover at dispatch, and
       "Casey Ray",
     ),
   );
-  expect(screen.getByTestId("work-item-state-control")).toBeDisabled();
-  expect(screen.getByTestId("work-item-assignee-control")).toBeDisabled();
+  expect(screen.getByTestId("work-item-state-control")).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
   expect(mocks.assign).toHaveBeenCalledExactlyOnceWith({
     key: "HELP-7",
     assigneeId: "person-2",
@@ -1476,9 +1503,13 @@ it("requires reassignment confirmation, closes its real popover at dispatch, and
     ),
   );
   await waitFor(() =>
-    expect(screen.getByTestId("work-item-state-control")).toBeEnabled(),
+    expect(screen.getByTestId("work-item-state-control")).not.toHaveAttribute(
+      "aria-disabled",
+    ),
   );
-  expect(screen.getByTestId("work-item-assignee-control")).toBeEnabled();
+  expect(screen.getByTestId("work-item-assignee-control")).not.toHaveAttribute(
+    "aria-disabled",
+  );
   expect(mocks.toastError).toHaveBeenCalledWith(
     "workItems:journey.assignmentConflict",
   );
@@ -1493,4 +1524,47 @@ it("never offers Unassign or sends its request for an unassigned item", async ()
   ).not.toContain("workItems:detail.unassigned");
   fireEvent.keyDown(document, { key: "1" });
   expect(mocks.unassign).not.toHaveBeenCalled();
+});
+
+it("a detail priority save waits for pending assignment and sends the new version while a second detail choice is refused", async () => {
+  let resolve = (_value: unknown) => {};
+  mocks.assign.mockReturnValue(
+    new Promise((yes) => {
+      resolve = yes;
+    }),
+  );
+  mocks.update.mockResolvedValue({
+    key: "HELP-7",
+    version: 6,
+    priority: "urgent",
+  });
+  const original = item();
+  const { client } = renderProps(
+    <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
+    original,
+  );
+  const pending = startDetailAssigneeChange(
+    client,
+    original,
+    { personId: "casey", name: "Casey" },
+    null,
+    { onSuccess: vi.fn(), onError: vi.fn() },
+  );
+  await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByTestId("work-item-state-control"));
+  expect(screen.queryByRole("menu")).toBeNull();
+  fireEvent.click(screen.getByTestId("work-item-priority-control"));
+  fireEvent.click(await screen.findByRole("menuitemradio", { name: /Urgent/ }));
+  await waitFor(() => expect(client.isMutating()).toBe(2));
+  expect(mocks.update).not.toHaveBeenCalled();
+  resolve({ assigneeId: "casey", version: 5 });
+  await pending;
+  await waitFor(() =>
+    expect(mocks.update).toHaveBeenCalledExactlyOnceWith({
+      key: "HELP-7",
+      version: 5,
+      priority: "urgent",
+    }),
+  );
+  client.clear();
 });

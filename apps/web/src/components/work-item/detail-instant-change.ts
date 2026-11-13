@@ -9,7 +9,11 @@ import transitionWorkItem from "@/fetchers/work-item/transition-work-item";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import { HttpError } from "@/lib/http-error";
 import type { WorkItemDetailRow } from "@/types/work-item";
-import { workItemDetailKey } from "./work-item-save";
+import {
+  workItemDetailKey,
+  workItemMutationScope,
+  writeWorkItemResponse,
+} from "./work-item-save";
 
 // Detail chunk only. No reads, realtime handlers or board code depend on this module.
 const mutationKey = (key: string) => ["detail-instant-change", key];
@@ -39,9 +43,31 @@ type Page = { items: Row[] };
 type List = Page | { pages: Page[] };
 type Snapshot = { queryKey: QueryKey; page?: number; fields: Fields };
 
-function pages(data: List | undefined): Page[] {
-  if (!data) return [];
-  return "pages" in data ? data.pages : [data];
+// Only the project list factory and useGetWorkItems' project search key are owned.
+// Schedule, either board shape and future reads under the prefix are never snapshots.
+function isListRead(key: QueryKey) {
+  return (
+    (key.length === 5 &&
+      key[2] === "list" &&
+      typeof key[3] === "string" &&
+      typeof key[4] === "string") ||
+    (key.length === 9 &&
+      typeof key[2] === "string" &&
+      typeof key[3] === "string" &&
+      Array.isArray(key[4]) &&
+      key[5] === "search" &&
+      typeof key[6] === "string" &&
+      typeof key[7] === "string" &&
+      (key[8] === null || Array.isArray(key[8])))
+  );
+}
+
+function pages(data: unknown): (Page | undefined)[] {
+  if (!data || typeof data !== "object") return [];
+  const entries = "pages" in data ? data.pages : [data];
+  if (!Array.isArray(entries)) return [];
+  // Keep page indices intact even if one page has an unexpected shape.
+  return entries.map((page) => (Array.isArray(page?.items) ? page : undefined));
 }
 
 function pick(row: Row, fields: Fields): Fields {
@@ -60,7 +86,12 @@ function changeList(
 ) {
   if (!data) return data;
   const page = pages(data)[pageIndex];
-  if (!page?.items.some((row) => row.key === key)) return data;
+  if (
+    !page ||
+    !Array.isArray(page.items) ||
+    !page.items.some((row) => row.key === key)
+  )
+    return data;
   const updated = {
     ...page,
     items: page.items.map((row) => (row.key === key ? change(row) : row)),
@@ -110,15 +141,16 @@ function startChange(
   if (client.isMutating({ predicate: ownsWrite(item.key) })) return undefined;
   const mutation = client.getMutationCache().build(client, {
     mutationKey: mutationKey(item.key),
+    scope: workItemMutationScope(item.key),
     retry: false,
     onMutate: async () => {
       const lists = client
         .getQueriesData<List>({ queryKey: ["work-items", item.projectId] })
         .filter(
           ([queryKey, data]) =>
-            queryKey[2] !== "board" &&
+            isListRead(queryKey) &&
             pages(data).some((page) =>
-              page.items.some((row) => row.key === item.key),
+              page?.items.some((row) => row.key === item.key),
             ),
         );
       await Promise.all([
@@ -140,7 +172,7 @@ function startChange(
       for (const [queryKey] of lists) {
         const loaded = client.getQueryData<List>(queryKey);
         pages(loaded).forEach((page, pageIndex) => {
-          const row = page.items.find((row) => row.key === item.key);
+          const row = page?.items.find((row) => row.key === item.key);
           if (!row) return;
           snapshots.push({
             queryKey,
@@ -159,13 +191,14 @@ function startChange(
     },
     mutationFn: request,
     onSuccess: (response) => {
-      // These endpoints return a partial wire row. Apply ALL returned fields, including
-      // transition side effects; the authoritative detail GET resolves display fields.
+      // Reapply owned display fields after any mid-write read, then let every wire
+      // field win. The train's writer also advances the version floor before scoped
+      // PATCH saves are released.
       if (response && typeof response === "object") {
-        client.setQueryData<WorkItemDetailRow>(
-          workItemDetailKey(item.key),
-          (old) => (old ? { ...old, ...response } : old),
-        );
+        writeWorkItemResponse(client, item.key, response, {
+          ...fields,
+          ...response,
+        });
       }
       feedback.onSuccess();
     },
