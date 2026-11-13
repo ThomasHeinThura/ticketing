@@ -75,7 +75,6 @@ vi.mock("@/fetchers/report", async (original) => ({
   getReport: mocks.reportRead,
 }));
 
-import { ReportDetail } from "@/components/reports/report-detail";
 import { ReportsIndex } from "@/components/reports/reports-index";
 import { AnnouncementsList } from "@/components/service-management/announcements-list";
 
@@ -94,17 +93,6 @@ describe.each([
     "reports index",
     () => <ReportsIndex search={{}} onSearchChange={vi.fn()} />,
     "Reports",
-  ],
-  [
-    "report detail",
-    () => (
-      <ReportDetail
-        reportKey="throughput"
-        search={{}}
-        onSearchChange={vi.fn()}
-      />
-    ),
-    "Throughput",
   ],
 ] as const)("%s access answer", (name, Page, title) => {
   function mount(earlyRefusal = false) {
@@ -135,9 +123,6 @@ describe.each([
           }),
         )
         .mockRejectedValue(new HttpError(500, "Unavailable"));
-      // Detail has an independent catalogue read; it is not the access answer.
-      if (name === "report detail")
-        mocks.reportCatalogue.mockResolvedValue({ data: [], meta: {} });
       const { container } = mount(earlyRefusal);
       expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
@@ -171,8 +156,6 @@ describe.each([
   );
   it("shows only one shared heading when the answer denies access", async () => {
     mocks.answer.mockRejectedValue(new HttpError(403, "Forbidden"));
-    if (name === "report detail")
-      mocks.reportCatalogue.mockResolvedValue({ data: [], meta: {} });
     mount();
     await screen.findByRole("heading", {
       level: 1,

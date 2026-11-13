@@ -4,8 +4,6 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  PageContainer,
-  PageHeader,
   Skeleton,
 } from "@taskdesk/ui";
 import { ChevronLeft, Download, RefreshCw } from "lucide-react";
@@ -14,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import { ErrorReference } from "@/components/errors/error-reference";
 import PageTitle from "@/components/page-title";
+import { SettingsAccessChecking } from "@/components/settings/settings-access";
 import { exportReport, ReportsDisabledError } from "@/fetchers/report";
 import { useReport, useReportCatalogue } from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -95,37 +94,12 @@ function ReportDetailScreen({
   const exporting = useExportAction(() =>
     exportReport(workspaceId, reportKey, search),
   );
+  if (!workspace || report.isLoading) return <SettingsAccessChecking />;
   if (report.error instanceof HttpError && report.error.status === 403)
     return <NoAccessPage />;
   const title = t(`reports:catalogue.${reportKey}.title`, {
     defaultValue: entry?.title ?? report.data?.title ?? reportKey,
   });
-  if (!workspace || report.isLoading || report.isError)
-    return (
-      <>
-        <PageTitle title={title} />
-        <PageContainer>
-          <PageHeader
-            title={title}
-            description={t(`reports:catalogue.${reportKey}.description`, {
-              defaultValue: "",
-            })}
-          />
-          {report.isError ? (
-            <>
-              <ReportError error={report.error} />
-              <Button className="w-fit" onClick={() => void report.refetch()}>
-                {t("common:actions.retry")}
-              </Button>
-            </>
-          ) : (
-            <div role="status" aria-label={t("common:pageLoading")}>
-              <Skeleton className="h-48 w-full" />
-            </div>
-          )}
-        </PageContainer>
-      </>
-    );
   return (
     <>
       <PageTitle title={title} />

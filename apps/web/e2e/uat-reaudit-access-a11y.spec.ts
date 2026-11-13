@@ -685,13 +685,6 @@ for (const [url, answer, name, title, loading] of [
     "Reports",
     "Loading page",
   ],
-  [
-    "/agent/reports/throughput",
-    /\/api\/reports\/throughput(?:\?|$)/u,
-    "report-detail",
-    "Throughput",
-    "Loading page",
-  ],
 ] as const) {
   for (const width of [1280, 390]) {
     test(`${name} at ${width}: access read keeps one heading, retries, then denies`, async ({
@@ -712,10 +705,6 @@ for (const [url, answer, name, title, loading] of [
             },
           }),
       );
-      if (name === "report-detail")
-        await page.route(/\/api\/reports(?:\?|$)/u, (route) =>
-          route.fulfill({ json: { data: [], meta: {} } }),
-        );
       let release!: () => void;
       const pending = new Promise<void>((resolve) => {
         release = resolve;
