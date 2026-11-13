@@ -271,17 +271,19 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
             and(
               ...predicates,
               // Existing automation_run_automation_triggered_idx indexes the rule history;
-              // reuse the resolved-age entry instant for every outcome in the current stay.
+              // Unfinished runs block across stays. Finished runs reuse the resolved-age
+              // entry instant; missing history means no stay boundary, not no suppression.
               sql`NOT EXISTS (SELECT 1 FROM automation_run prior
                 WHERE prior.automation_id = ${rule.id}
                   AND prior.workspace_id = ${rule.workspaceId}
                   AND prior.work_item_id = ${workItemTable.id}
                   AND prior.origin = 'schedule'
-                  AND (${stateTemplateTable.group} IS DISTINCT FROM 'completed'
-                    OR prior.triggered_at >= (${resolvedEntrySql} AT TIME ZONE 'UTC'))
                   AND starts_with(prior.event_id, ${`schedule:${rule.id}:${rule.version}:`})
-                  AND (prior.state IN ('pending', 'running', 'done')
-                    OR prior.triggered_at > ${new Date(now.getTime() - SCHEDULE_RETRY_MS).toISOString()}::timestamptz))`,
+                  AND (prior.state IN ('pending', 'running')
+                    OR ((${stateTemplateTable.group} IS DISTINCT FROM 'completed'
+                      OR prior.triggered_at >= COALESCE((${resolvedEntrySql} AT TIME ZONE 'UTC'), '-infinity'::timestamptz))
+                      AND (prior.state = 'done'
+                        OR prior.triggered_at > ${new Date(now.getTime() - SCHEDULE_RETRY_MS).toISOString()}::timestamptz))))`,
               targets.length
                 ? sql`${stateTable.stateTemplateId} NOT IN (${sql.join(
                     targets.map((t) => sql`${t}`),

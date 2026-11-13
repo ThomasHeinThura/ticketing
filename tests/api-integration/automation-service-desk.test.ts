@@ -967,8 +967,128 @@ describe("G-1 service desk automations", () => {
       }
     },
   );
+  it("posts only one comment over five sweeps without recorded completed entry", async () => {
+    const w = await serviceWorld();
+    // Imports can set the completed state directly, without transitioned activity.
+    await db
+      .update(schema.workItemTable)
+      .set({ stateId: w.resolved.id })
+      .where(eq(schema.workItemTable.id, w.item.id));
+    expect(
+      (await loadWorkItemsByKey(w.workspace.id, [w.item.key])).get(w.item.key)
+        ?.facts.resolvedAt,
+    ).toBeNull();
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: ["work_item:read", "comment:create_internal"] })
+      .where(eq(schema.roleTable.id, w.role.id));
+    const rule = await w.rule({
+      name: "Comment on completed items",
+      trigger: "schedule",
+      scheduleCron: "*/5 * * * *",
+      conditions: [{ field: "state.group", op: "eq", value: "completed" }],
+      actions: [
+        {
+          type: "post_comment",
+          visibility: "internal",
+          body: "Completed item",
+        },
+      ],
+    });
+    const now = Date.now();
+    for (let sweep = 0; sweep < 5; sweep++) {
+      await runAutomationSchedule(new Date(now + sweep * 5 * 60000));
+      await processNextAutomationEvent();
+    }
+    const runs = await db
+      .select()
+      .from(automationRunTable)
+      .where(
+        and(
+          eq(automationRunTable.automationId, rule.id),
+          eq(automationRunTable.workItemId, w.item.id),
+        ),
+      );
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.state).toBe("done");
+    const comments = await db
+      .select()
+      .from(schema.commentTable)
+      .where(
+        and(
+          eq(schema.commentTable.workspaceId, w.workspace.id),
+          eq(schema.commentTable.workItemId, w.item.id),
+        ),
+      );
+    expect(comments).toHaveLength(1);
+    expect(comments[0]?.actorType).toBe("automation");
+    expect(await w.currentState()).toBe(w.resolved.id);
+  });
+  it("backs off a refused transition for 24 hours without recorded completed entry", async () => {
+    const w = await serviceWorld();
+    await db
+      .update(schema.workItemTable)
+      .set({ stateId: w.resolved.id })
+      .where(eq(schema.workItemTable.id, w.item.id));
+    expect(
+      (await loadWorkItemsByKey(w.workspace.id, [w.item.key])).get(w.item.key)
+        ?.facts.resolvedAt,
+    ).toBeNull();
+    await db
+      .delete(schema.workflowTransitionTable)
+      .where(
+        and(
+          eq(
+            schema.workflowTransitionTable.fromStateTemplateId,
+            w.resolved.stateTemplateId,
+          ),
+          eq(schema.workflowTransitionTable.toStateTemplateId, w.closed.id),
+        ),
+      );
+    const rule = await w.rule({
+      name: "Refused close on completed items",
+      trigger: "schedule",
+      scheduleCron: "*/5 * * * *",
+      conditions: [{ field: "state.group", op: "eq", value: "completed" }],
+      actions: [{ type: "transition", toStateTemplateId: w.closed.id }],
+    });
+    const runs = () =>
+      db
+        .select()
+        .from(automationRunTable)
+        .where(
+          and(
+            eq(automationRunTable.automationId, rule.id),
+            eq(automationRunTable.workItemId, w.item.id),
+          ),
+        );
+    const now = Date.now();
+    await runAutomationSchedule(new Date(now));
+    await processNextAutomationEvent();
+    const first = requireRow(await runs(), "refused run");
+    expect(first.state).toBe("failed");
+    expect(JSON.stringify(first.results)).toContain("no_matching_transition");
+    const events = await db.select().from(schema.outboxTable);
+    for (const minutes of [5, 10, 15, 20, 1435]) {
+      await runAutomationSchedule(new Date(now + minutes * 60000));
+      await processNextAutomationEvent();
+      expect(await runs()).toHaveLength(1);
+    }
+    expect(await db.select().from(schema.outboxTable)).toHaveLength(
+      events.length,
+    );
+    await runAutomationSchedule(new Date(now + 24 * 3600000));
+    await processNextAutomationEvent();
+    const retried = await runs();
+    expect(retried).toHaveLength(2);
+    expect(retried.every((r) => r.state === "failed")).toBe(true);
+    expect(new Set(retried.map((r) => r.eventId)).size).toBe(2);
+    await runAutomationSchedule(new Date(now + 24 * 3600000 + 5 * 60000));
+    expect(await runs()).toHaveLength(2);
+    expect(await w.currentState()).toBe(w.resolved.id);
+  });
   it.each(["failed", "skipped", "abandoned", "pending", "running"])(
-    "scopes %s suppression and backoff to the current completed stay",
+    "handles %s run suppression across completed stays",
     async (state) => {
       const w = await serviceWorld();
       await w.resolve(4);
@@ -1030,10 +1150,14 @@ describe("G-1 service desk automations", () => {
         await w.resolve(0);
         vi.setSystemTime(Date.now() + 5 * 60000);
         await runAutomationSchedule();
-        // Less than 24h after the old attempt, the new stay gets exactly one attempt.
-        expect(await runs()).toHaveLength(2);
-        // Leave prior pending/running rows intact; candidate suppression is tested in SQL.
-        if (state !== "pending" && state !== "running") {
+        if (state === "pending" || state === "running") {
+          // An unfinished run blocks across stays, preventing duplicate side effects.
+          expect(await runs()).toHaveLength(1);
+          expect((await runs())[0]?.state).toBe(state);
+          expect(await w.currentState()).toBe(w.resolved.id);
+        } else {
+          // Finished failures from an earlier stay do not delay the new stay.
+          expect(await runs()).toHaveLength(2);
           await processNextAutomationEvent();
           expect(await w.currentState()).toBe(w.closedState.id);
         }
