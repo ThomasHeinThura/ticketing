@@ -3721,6 +3721,8 @@
 			"transitionsEmpty": "No state changes are available right now.",
 			"loadingTransitions": "Loading state changes…",
 			"transitionsError": "Couldn't load the available state changes.",
+			"transitionForbidden": "You don't have permission to change the state of this {{term_work_item_one}}.",
+			"assignmentForbidden": "You don't have permission to change the assignee of this {{term_work_item_one}}.",
 			"transitionConflict": "This {{term_work_item_one}} changed state in the meantime. The available state changes were refreshed.",
 			"transitionUnavailable": "That state change isn't available right now. The available state changes were refreshed.",
 			"assignmentHeading": "Assignment",
