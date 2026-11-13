@@ -576,7 +576,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
   });
 
   it("requires canonical project reach and selected role capability for native topics", async () => {
-    const owner = await createWorkspaceMember({ role: "admin" });
+    const owner = await createWorkspaceMember({ role: "member" });
     const project = await createProjectFixture({
       workspaceId: owner.workspace.id,
     });
@@ -623,20 +623,21 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       actorType: "person",
     });
 
+    // D-E (12 Nov): use members; admins retain workspace capabilities on every project.
     async function actorWithProjectRole(capabilities: string[] | null) {
-      const actor = await createWorkspaceMember({ role: "admin" });
+      const actor = await createWorkspaceMember({ role: "member" });
       await db.insert(schema.workspaceUserTable).values({
         workspaceId: owner.workspace.id,
         userId: actor.user.id,
-        role: "admin",
+        role: "member",
         joinedAt: new Date(),
       });
       await db
         .insert(schema.workspaceRoleTable)
         .values({
           workspaceId: owner.workspace.id,
-          role: "admin",
-          permission: JSON.stringify(defaultRolePayloads.admin),
+          role: "member",
+          permission: JSON.stringify(defaultRolePayloads.member),
           isSystem: true,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -682,11 +683,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       "project:read",
       "work_item:read",
     ]);
-    const ordinary = await createWorkspaceMember({ role: "admin" });
+    const ordinary = await createWorkspaceMember({ role: "member" });
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: owner.workspace.id,
       userId: ordinary.user.id,
-      role: "admin",
+      role: "member",
       joinedAt: new Date(),
     });
     const limited = await actorWithProjectRole(["project:read"]);

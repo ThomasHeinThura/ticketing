@@ -102,7 +102,7 @@ test("workspace settings creates, edits and deletes reusable replies with URL-ad
   ).toBeVisible();
   await page.getByRole("button", { name: "New response" }).click();
   await expect(page).toHaveURL(/id=new/);
-  const dialog = page.getByRole("dialog");
+  const dialog = page.locator('[data-slot="dialog-popup"]');
   await expect(dialog).toContainText("{{requester.name}}");
   await expect(dialog).toContainText("{{work_item.key}}");
   await expect(dialog).toContainText("{{work_item.due_date}}");
@@ -196,10 +196,7 @@ test("a non-manager direct visit never fetches the management library", async ({
   });
   await page.goto(`${PATH}?id=new`);
   await expect(
-    page.getByText(
-      "You need workspace settings permission to manage canned responses.",
-      { exact: true },
-    ),
+    page.getByRole("heading", { name: "You don't have access", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await expect(
@@ -297,9 +294,9 @@ test("insertion resolves current context and preserves drafts on failure", async
   await expect(editor).toContainText("Due 2026-10-25");
   await expect(
     page
-      .getByRole("group", { name: "Who can see this comment?" })
-      .getByRole("button", { name: "Internal", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+      .getByTestId("work-item-comment-composer")
+      .locator('[data-visibility="internal"]'),
+  ).toContainText("Internal note");
   await editor.fill("Keep my edited draft");
   fail = true;
   await select.click();

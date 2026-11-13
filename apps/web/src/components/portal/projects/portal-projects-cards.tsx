@@ -15,7 +15,8 @@ import {
 import type { PortalProjectOption } from "@/fetchers/portal/projects";
 import { portalProjectsOptions } from "@/hooks/queries/portal/portal-projects-options";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+
 import {
   PortalProjectHealthBadge,
   PortalProjectStatusBadge,

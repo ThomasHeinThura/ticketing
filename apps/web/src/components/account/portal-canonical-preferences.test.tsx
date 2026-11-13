@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ invalidate: vi.fn(), save: vi.fn() }));
@@ -60,12 +60,24 @@ vi.mock("@tanstack/react-query", () => ({
     mutationFn,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
-  }) => ({
-    isPending: false,
-    isError: false,
-    mutate: (value: unknown, callbacks: { onSuccess: () => void }) =>
-      void mutationFn(value).then(callbacks.onSuccess),
-  }),
+  }) => {
+    const [isSuccess, setSuccess] = useState(false);
+    return {
+      isPending: false,
+      isError: false,
+      isSuccess,
+      mutate: (
+        value: unknown,
+        callbacks: { onSuccess: () => Promise<void> },
+      ) => {
+        setSuccess(false);
+        void mutationFn(value).then(async () => {
+          await callbacks.onSuccess();
+          setSuccess(true);
+        });
+      },
+    };
+  },
 }));
 vi.mock(
   "@/fetchers/notification-preferences/portal-canonical-preference",
@@ -106,6 +118,31 @@ describe("portal notification preferences", () => {
     ).toHaveAttribute("href", "/requests");
   });
 
+  it("announces one success when the portal preference is saved", async () => {
+    render(<PortalCanonicalPreferencesPage portalUserId="customer-1" />);
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "portal:account.notifications.comment.enabled",
+      }),
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: "portal:account.notifications.save",
+      })[1],
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "common:actions.saved" }),
+      ).toBeVisible(),
+    );
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent(
+      "portal:account.notifications.saved",
+    );
+  });
   it("requires an explicit save and permits a digest only for comments", async () => {
     render(<PortalCanonicalPreferencesPage portalUserId="customer-1" />);
     fireEvent.click(

@@ -1727,6 +1727,8 @@ function createAuth(
       }),
     },
     advanced: {
+      // Product configuration enforces this in every environment, independent of NODE_ENV.
+      disableOriginCheck: false,
       ipAddress: {
         // ONLY the internal header, which utils/auth-request.ts strips from every
         // inbound request and then sets from utils/resolve-client-ip.ts.

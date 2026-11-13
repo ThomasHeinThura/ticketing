@@ -21,7 +21,8 @@ import {
   type PortalAnnouncement,
 } from "@/fetchers/portal/announcements";
 import { formatDateTime } from "@/lib/format";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+
 import { PortalAnnouncementsTabs } from "./portal-announcements-tabs";
 
 /** "From … until …" or "Since …" for an announcement's window. */

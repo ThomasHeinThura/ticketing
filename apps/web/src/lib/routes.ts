@@ -1,5 +1,50 @@
-import type { SearchMiddleware } from "@tanstack/react-router";
 import { godModeRedirectPath } from "./god-mode-paths";
+import { portalRouteBuilders } from "./portal-route-builders";
+import { kbQuery, kbText } from "./portal-route-search";
+
+export {
+  canonicalList,
+  isoDay,
+  isRelativePortalPath,
+  kbQuery,
+  kbText,
+  PORTAL_CASE_PRIORITIES,
+  PORTAL_CASE_SORTS,
+  PORTAL_CASE_STATUSES,
+  PORTAL_OUTSTANDING_STATUSES,
+  PORTAL_REDIRECT_BASE,
+  PORTAL_REDIRECT_MAX_LENGTH,
+  type PortalCaseFilterSearch,
+  type PortalCasePriority,
+  type PortalCaseSort,
+  type PortalCaseStatus,
+  type PortalCatalogueSearch,
+  type PortalHomeSearch,
+  type PortalInboxSearch,
+  type PortalKbSearch,
+  type PortalProjectSearch,
+  type PortalProjectsSearch,
+  type PortalRequestsSearch,
+  type PortalSignInSearch,
+  type PortalSignInStage,
+  parsePortalAnnouncementsSearch,
+  parsePortalApprovalsSearch,
+  parsePortalCaseFilterSearch,
+  parsePortalCatalogueSearch,
+  parsePortalHomeSearch,
+  parsePortalInboxSearch,
+  parsePortalKbSearch,
+  parsePortalProjectSearch,
+  parsePortalProjectsSearch,
+  parsePortalReleasesSearch,
+  parsePortalRequestsSearch,
+  parsePortalSignInSearch,
+  portalCaseFilterQuery,
+  portalProjectQuery,
+  portalProjectSearchMiddlewares,
+  safePortalRedirect,
+} from "./portal-route-search";
+
 import {
   type DashboardSearch,
   parseDashboardSearch,
@@ -827,10 +872,7 @@ export const INTAKE_AGE_FILTERS = ["1d", "3d", "7d", "30d"] as const;
 export type IntakeAgeFilter = (typeof INTAKE_AGE_FILTERS)[number];
 export type RequestTypeEditorSearch = { requestTypeId?: string };
 export type WorkflowSettingsSearch = { workflowId?: string };
-export type PortalCatalogueSearch = PortalProjectSearch & {
-  q?: string;
-  key?: string;
-};
+
 /**
  * Timesheet (`TC-*`): the week is a Monday (`YYYY-MM-DD`); the current week is never written.
  * `scope=everyone` is the read-only people-by-day view for `time_entry:read_any` holders.
@@ -866,19 +908,7 @@ export type KbArticleSearch = {
   version?: number;
 };
 export type KbEditorSearch = { preview?: boolean };
-export type PortalKbSearch = PortalProjectSearch & {
-  q?: string;
-  category?: string;
-};
 
-function kbText(value: unknown, max = 200) {
-  return typeof value === "string" &&
-    value.length > 0 &&
-    value.length <= max &&
-    !value.includes("\u0000")
-    ? value
-    : undefined;
-}
 export function parseKbListSearch(raw: unknown): KbListSearch {
   const value = (raw ?? {}) as Record<string, unknown>;
   const view = KB_LIST_VIEWS.find((candidate) => candidate === value.view);
@@ -911,23 +941,6 @@ export function parseKbEditorSearch(raw: unknown): KbEditorSearch {
   return value.preview === true || value.preview === "1"
     ? { preview: true }
     : {};
-}
-export function parsePortalKbSearch(raw: unknown): PortalKbSearch {
-  const value = (raw ?? {}) as Record<string, unknown>;
-  const q = kbText(value.q);
-  const category = kbText(value.category);
-  return {
-    ...(q ? { q } : {}),
-    ...(category ? { category } : {}),
-    ...parsePortalProjectSearch(raw),
-  };
-}
-function kbQuery(entries: Record<string, string | undefined>) {
-  const query = new URLSearchParams();
-  for (const [key, entry] of Object.entries(entries))
-    if (entry) query.set(key, entry);
-  const suffix = query.toString();
-  return suffix ? `?${suffix}` : "";
 }
 
 /** Service management (P5 `SVC-*`, `CH-*`, `REL-*`): every filter lives in the URL. */
@@ -984,86 +997,12 @@ function serviceManagementQuery(entries: Record<string, string | undefined>) {
   return suffix ? `?${suffix}` : "";
 }
 
-export type PortalInboxSearch = PortalProjectSearch & {
-  filter?: "all" | "unread" | "mentions";
-};
-
-export function parsePortalInboxSearch(raw: unknown): PortalInboxSearch {
-  const filter = (raw as { filter?: unknown } | null)?.filter;
-  return {
-    ...(filter === "unread" || filter === "mentions" ? { filter } : {}),
-    ...parsePortalProjectSearch(raw),
-  };
-}
-
-export type PortalSignInStage = "email" | "password" | "factor" | "otp";
-export type PortalSignInSearch = {
-  stage: PortalSignInStage;
-  factor: "totp" | "backup";
-  invitationId?: string;
-  /** The portal page to open after sign-in: a same-origin path and query only. */
-  redirect?: string;
-};
-
-const PORTAL_REDIRECT_BASE = "https://portal.invalid";
-const PORTAL_REDIRECT_MAX_LENGTH = 2048;
-
 /**
  * The portal page a sign-in returns to, or `undefined`. Only a same-origin relative path is kept
  * (it starts with one `/`, has no protocol, host, backslash or control character), the hash is
  * dropped (a signed preference token travels there and must never reach a sign-in URL), and a
  * sign-in page is never a target.
  */
-function isRelativePortalPath(value: string): boolean {
-  return (
-    value.length <= PORTAL_REDIRECT_MAX_LENGTH &&
-    value.startsWith("/") &&
-    !value.startsWith("//") &&
-    !value.includes("\\") &&
-    ![...value].some((character) => {
-      const code = character.charCodeAt(0);
-      return code < 32 || code === 127;
-    })
-  );
-}
-
-export function safePortalRedirect(value: unknown): string | undefined {
-  if (typeof value !== "string" || !isRelativePortalPath(value))
-    return undefined;
-  let url: URL;
-  try {
-    url = new URL(value, PORTAL_REDIRECT_BASE);
-  } catch {
-    return undefined;
-  }
-  if (url.origin !== PORTAL_REDIRECT_BASE) return undefined;
-  const { pathname } = url;
-  // Sign-in itself and the agent app's paths are never a portal destination. The router decodes
-  // the path and matches case-insensitively when it navigates, so compare the decoded, lower-case
-  // path with repeated and trailing slashes collapsed (`/%61gent/x`, `/SIGN-IN`, `/auth` and
-  // `/portal//sign-in` are all blocked).
-  let comparable: string;
-  try {
-    comparable = decodeURIComponent(pathname)
-      .toLowerCase()
-      .replace(/\/{2,}/gu, "/")
-      .replace(/\/+$/u, "");
-  } catch {
-    return undefined;
-  }
-  if (
-    comparable === "/sign-in" ||
-    comparable === "/portal/sign-in" ||
-    comparable === "/agent" ||
-    comparable.startsWith("/agent/") ||
-    comparable === "/auth" ||
-    comparable.startsWith("/auth/")
-  )
-    return undefined;
-  const result = `${pathname}${url.search}`;
-  // Dot segments can normalise into `//host`: check the value that is actually returned.
-  return isRelativePortalPath(result) ? result : undefined;
-}
 
 export function parseWorkflowSettingsSearch(
   raw: unknown,
@@ -1151,44 +1090,6 @@ export function parseIntakeSearch(raw: unknown): IntakeQueueSearch {
     ...(requestType ? { requestType } : {}),
     ...(assignee ? { assignee } : {}),
     ...(age ? { age } : {}),
-  };
-}
-
-export function parsePortalCatalogueSearch(
-  raw: unknown,
-): PortalCatalogueSearch {
-  const value = (raw ?? {}) as Record<string, unknown>;
-  const q = typeof value.q === "string" ? value.q.slice(0, 200) : "";
-  const key =
-    typeof value.key === "string" && value.key.length <= 200
-      ? value.key
-      : undefined;
-  return {
-    ...(q ? { q } : {}),
-    ...(key ? { key } : {}),
-    ...parsePortalProjectSearch(raw),
-  };
-}
-
-export function parsePortalSignInSearch(raw: unknown): PortalSignInSearch {
-  const value = (raw ?? {}) as Record<string, unknown>;
-  const redirect = safePortalRedirect(value.redirect);
-  const stage = ["email", "password", "factor", "otp"].find(
-    (candidate) => candidate === value.stage,
-  ) as PortalSignInStage | undefined;
-  // `invitationId` and `redirect` are always present, as `undefined` when rejected. TanStack
-  // Router merges a child's validated search over its parent's, and the portal root keeps the raw
-  // query: leaving a rejected key out would let the raw value (for example an external
-  // `redirect`) reach `Route.useSearch()` unvalidated.
-  return {
-    stage: stage ?? "email",
-    factor: value.factor === "backup" ? "backup" : "totp",
-    invitationId:
-      typeof value.invitationId === "string" &&
-      /^[A-Za-z0-9_-]{1,128}$/.test(value.invitationId)
-        ? value.invitationId
-        : undefined,
-    redirect,
   };
 }
 
@@ -1452,152 +1353,8 @@ export const routes = {
     path: "/agent/service-management/announcements" as const,
     build: () => "/agent/service-management/announcements",
   },
-  /** Customer portal home, rooted on its separate origin. */
-  portalHome: {
-    path: "/" as const,
-    build: (search: PortalHomeSearch = {}) =>
-      `/${portalProjectQuery(portalCaseFilterQuery(parsePortalHomeSearch(search)), search)}`,
-    parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
-  },
-  portalSignIn: {
-    path: "/sign-in" as const,
-    build: (search: Partial<PortalSignInSearch> = {}) => {
-      const resolved = parsePortalSignInSearch(search);
-      const query = new URLSearchParams({ stage: resolved.stage });
-      if (resolved.invitationId)
-        query.set("invitationId", resolved.invitationId);
-      if (resolved.stage === "factor" && resolved.factor === "backup")
-        query.set("factor", "backup");
-      if (resolved.redirect) query.set("redirect", resolved.redirect);
-      return `/sign-in?${query.toString()}`;
-    },
-  },
-  /** Portal knowledge base, host-root like every portal route. */
-  portalKb: {
-    path: "/kb" as const,
-    build: (search: PortalKbSearch = {}) => {
-      const resolved = parsePortalKbSearch(search);
-      return `/kb${kbQuery({ q: resolved.q, category: resolved.category, project: resolved.project })}`;
-    },
-  },
-  portalKbArticle: {
-    path: "/kb/$id" as const,
-    build: (params: { id: string }) => `/kb/${encodeURIComponent(params.id)}`,
-  },
-  portalReleases: {
-    path: "/releases" as const,
-    build: (search: PortalProjectSearch & { cursor?: string } = {}) => {
-      const { cursor } = parsePortalReleasesSearch(search);
-      const query = new URLSearchParams(cursor ? { cursor } : {});
-      return `/releases${portalProjectQuery(query, search)}`;
-    },
-  },
-  portalRelease: {
-    path: "/releases/$id" as const,
-    build: (params: { id: string }) =>
-      `/releases/${encodeURIComponent(params.id)}`,
-  },
-  /** D7: announcements addressed to the customer's organisation. */
-  portalAnnouncements: {
-    path: "/announcements" as const,
-    build: (search: PortalProjectSearch & { cursor?: string } = {}) => {
-      const { cursor } = parsePortalAnnouncementsSearch(search);
-      const query = new URLSearchParams(cursor ? { cursor } : {});
-      return `/announcements${portalProjectQuery(query, search)}`;
-    },
-  },
-  portalAnnouncement: {
-    path: "/announcements/$id" as const,
-    build: (params: { id: string }) =>
-      `/announcements/${encodeURIComponent(params.id)}`,
-  },
-  portalCatalogue: {
-    path: "/catalogue" as const,
-    build: (search: PortalCatalogueSearch = {}) => {
-      const resolved = parsePortalCatalogueSearch(search);
-      const query = new URLSearchParams();
-      if (resolved.q) query.set("q", resolved.q);
-      if (resolved.key) query.set("key", resolved.key);
-      return `/catalogue${portalProjectQuery(query, resolved)}`;
-    },
-  },
-  portalInbox: {
-    path: "/notifications" as const,
-    build: (search: PortalInboxSearch = {}) => {
-      const { filter } = parsePortalInboxSearch(search);
-      const query = new URLSearchParams(filter ? { filter } : {});
-      return `/notifications${portalProjectQuery(query, search)}`;
-    },
-  },
-  portalRequests: {
-    path: "/requests" as const,
-    build: (search: PortalRequestsSearch = {}) => {
-      const resolved = parsePortalRequestsSearch(search);
-      const params = new URLSearchParams();
-      if (resolved.view) params.set("view", resolved.view);
-      for (const [key, value] of portalCaseFilterQuery(resolved))
-        params.set(key, value);
-      if (resolved.cursor) params.set("cursor", resolved.cursor);
-      return `/requests${portalProjectQuery(params, search)}`;
-    },
-  },
-  portalAccount: {
-    path: "/account" as const,
-    build: (search: PortalProjectSearch = {}) =>
-      `/account${portalProjectQuery(new URLSearchParams(), search)}`,
-  },
-  /** UX-8 (CP-12): `/settings`, the sidebar's name for the account page, redirects to `/account`. */
-  portalLegacySettings: { path: "/settings" as const },
-  /** UX-8 (CP-12): `/knowledge-base` redirects to `/kb`. */
-  portalLegacyKnowledgeBase: { path: "/knowledge-base" as const },
-  portalApprovals: {
-    path: "/approvals" as const,
-    build: (search: PortalProjectSearch & { approval?: string } = {}) => {
-      const { approval } = parsePortalApprovalsSearch(search);
-      const query = new URLSearchParams(approval ? { approval } : {});
-      return `/approvals${portalProjectQuery(query, search)}`;
-    },
-  },
-  /**
-   * `docs/screens.md` "Accept invitation" (CP-24). Host root on the portal origin. The accept
-   * credential travels in the URL fragment (`#t=`), never in the path or query string.
-   */
-  portalInvite: {
-    path: "/invite/$id" as const,
-    build: (params: { id: string }) =>
-      `/invite/${encodeURIComponent(params.id)}`,
-  },
-  portalSubmission: {
-    path: "/submissions/$ref" as const,
-    build: (params: { ref: string }) =>
-      `/submissions/${encodeURIComponent(params.ref)}`,
-  },
-  /** U-12 (D6): a request the team raised for the customer, opened by its key. */
-  portalRequest: {
-    path: "/requests/$ref" as const,
-    build: (params: { ref: string }) =>
-      `/requests/${encodeURIComponent(params.ref)}`,
-  },
-  /** S4c: the organisation's projects (`docs/screens.md` "Projects list"). */
-  portalProjects: {
-    path: "/projects" as const,
-    build: (search: PortalProjectsSearch = {}) => {
-      const { tab, q } = parsePortalProjectsSearch(search);
-      const query = new URLSearchParams();
-      if (tab) query.set("tab", tab);
-      if (q) query.set("q", q);
-      return `/projects${portalProjectQuery(query, search)}`;
-    },
-  },
-  /**
-   * S4c: one project's details (`docs/screens.md` "Project detail"). U-11: its cases table keeps
-   * the dashboard's `scope`, `status` and `priority` filters in the URL.
-   */
-  portalProject: {
-    path: "/projects/$projectKey" as const,
-    build: (params: { projectKey: string }, search: PortalHomeSearch = {}) =>
-      `/projects/${encodeURIComponent(params.projectKey)}${portalProjectQuery(portalCaseFilterQuery(parsePortalHomeSearch(search)), search)}`,
-  },
+  ...portalRouteBuilders,
+
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,
@@ -2322,54 +2079,8 @@ export function parseWorkItemListSearchFromQueryString(
 }
 
 /** Opaque portal request cursors remain URL state; malformed values are discarded. */
-export function parsePortalRequestsSearch(raw: unknown): PortalRequestsSearch {
-  if (!raw || typeof raw !== "object") return {};
-  const candidate = raw as Record<string, unknown>;
-  const cursor = candidate.cursor;
-  return {
-    ...parsePortalProjectSearch(raw),
-    ...(candidate.view === "backlog" ? { view: "backlog" as const } : {}),
-    ...parsePortalCaseFilterSearch(raw),
-    ...(typeof cursor === "string" &&
-    cursor.length > 0 &&
-    cursor.length <= 2048 &&
-    /^[A-Za-z0-9_-]+$/u.test(cursor)
-      ? { cursor }
-      : {}),
-  };
-}
-
-export function parsePortalReleasesSearch(
-  raw: unknown,
-): PortalProjectSearch & { cursor?: string } {
-  const { cursor, project } = parsePortalRequestsSearch(raw);
-  return { ...(cursor ? { cursor } : {}), ...(project ? { project } : {}) };
-}
 
 /** D7 announcements list: the same cursor and project scope as release notes. */
-export function parsePortalAnnouncementsSearch(
-  raw: unknown,
-): PortalProjectSearch & { cursor?: string } {
-  return parsePortalReleasesSearch(raw);
-}
-
-export function parsePortalApprovalsSearch(
-  raw: unknown,
-): PortalProjectSearch & {
-  approval?: string;
-} {
-  if (!raw || typeof raw !== "object") return {};
-  const approval = (raw as Record<string, unknown>).approval;
-  return {
-    ...(typeof approval === "string" &&
-    approval.length > 0 &&
-    approval.length <= 256 &&
-    /^[A-Za-z0-9_-]+$/u.test(approval)
-      ? { approval }
-      : {}),
-    ...parsePortalProjectSearch(raw),
-  };
-}
 
 export function parseInstanceAuditSearch(raw: unknown): {
   action: string;
@@ -2389,180 +2100,24 @@ export function parseInstanceAuditSearch(raw: unknown): {
  * signed-in portal route validates it and keeps it across navigation through
  * `portalProjectSearchMiddlewares`, so the dashboard and request list can filter by it.
  */
-export type PortalProjectSearch = { project?: string };
-
-export function parsePortalProjectSearch(raw: unknown): PortalProjectSearch {
-  if (!raw || typeof raw !== "object") return {};
-  const project = (raw as Record<string, unknown>).project;
-  return typeof project === "string" && /^[A-Za-z0-9_-]{1,64}$/u.test(project)
-    ? { project }
-    : {};
-}
 
 /**
  * Route `search.middlewares` for every signed-in portal route: a navigation that does not name
  * `project` keeps the current one, and `project: undefined` clears it ("All projects"). Sign-in
  * and invitation routes leave it out, so signing out drops the scope.
  */
-export const portalProjectSearchMiddlewares: SearchMiddleware<PortalProjectSearch>[] =
-  [
-    ({ search, next }) => {
-      const result = next(search);
-      const { project } = parsePortalProjectSearch(search);
-      return project && !Object.hasOwn(result, "project")
-        ? { ...result, project }
-        : result;
-    },
-  ];
 
 /** S4c projects list: `tab` narrows by kind (absent = all), `q` searches key and name. */
-export type PortalProjectsSearch = PortalProjectSearch & {
-  tab?: "projects" | "services";
-  q?: string;
-};
-
-export function parsePortalProjectsSearch(raw: unknown): PortalProjectsSearch {
-  if (!raw || typeof raw !== "object") return {};
-  const candidate = raw as Record<string, unknown>;
-  const tab = candidate.tab;
-  const q = typeof candidate.q === "string" ? candidate.q.trim() : "";
-  return {
-    ...(tab === "projects" || tab === "services" ? { tab } : {}),
-    ...(q && q.length <= 200 ? { q } : {}),
-    ...parsePortalProjectSearch(raw),
-  };
-}
-
-function portalProjectQuery(query: URLSearchParams, search: unknown) {
-  const { project } = parsePortalProjectSearch(search);
-  if (project) query.set("project", project);
-  const suffix = query.toString();
-  return suffix ? `?${suffix}` : "";
-}
 
 // --- S4b: portal cases (dashboard and request list filters) -------------------------------------
 
 /** Customer statuses a case filter accepts, in display order (`CP-5`). */
-export const PORTAL_CASE_STATUSES = [
-  "received",
-  "need_more_info",
-  "in_progress",
-  "resolved",
-  "closed",
-  "declined",
-  "withdrawn",
-] as const;
-export type PortalCaseStatus = (typeof PORTAL_CASE_STATUSES)[number];
+
 /** The statuses the dashboard counts as outstanding. */
-export const PORTAL_OUTSTANDING_STATUSES = [
-  "received",
-  "need_more_info",
-  "in_progress",
-] as const satisfies readonly PortalCaseStatus[];
+
 /** Request priority, labelled "Severity" in the portal. */
-export const PORTAL_CASE_PRIORITIES = [
-  "low",
-  "medium",
-  "high",
-  "urgent",
-] as const;
-export type PortalCasePriority = (typeof PORTAL_CASE_PRIORITIES)[number];
-export const PORTAL_CASE_SORTS = [
-  "updated_desc",
-  "updated_asc",
-  "created_desc",
-  "created_asc",
-] as const;
-export type PortalCaseSort = (typeof PORTAL_CASE_SORTS)[number];
 
 /**
  * Case filters in the URL. `scope` defaults to `mine` and is written only as `all`; `status`
  * and `priority` are comma lists in a fixed order; dates are `YYYY-MM-DD`.
  */
-export type PortalCaseFilterSearch = {
-  scope?: "all";
-  status?: string;
-  priority?: string;
-  q?: string;
-  from?: string;
-  to?: string;
-  sort?: Exclude<PortalCaseSort, "updated_desc">;
-};
-
-export type PortalHomeSearch = PortalProjectSearch &
-  Pick<PortalCaseFilterSearch, "scope" | "status" | "priority">;
-
-export type PortalRequestsSearch = PortalProjectSearch &
-  PortalCaseFilterSearch & {
-    cursor?: string;
-    view?: "backlog";
-  };
-
-function canonicalList(value: unknown, allowed: readonly string[]) {
-  if (typeof value !== "string" || value.length > 200) return undefined;
-  const parts = new Set(value.split(","));
-  const kept = allowed.filter((item) => parts.has(item));
-  return kept.length ? kept.join(",") : undefined;
-}
-
-function isoDay(value: unknown) {
-  return typeof value === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/u.test(value) &&
-    !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
-    ? value
-    : undefined;
-}
-
-export function parsePortalCaseFilterSearch(
-  raw: unknown,
-): PortalCaseFilterSearch {
-  if (!raw || typeof raw !== "object") return {};
-  const candidate = raw as Record<string, unknown>;
-  const status = canonicalList(candidate.status, PORTAL_CASE_STATUSES);
-  const priority = canonicalList(candidate.priority, PORTAL_CASE_PRIORITIES);
-  const q =
-    typeof candidate.q === "string" ? candidate.q.trim().slice(0, 200) : "";
-  const from = isoDay(candidate.from);
-  const to = isoDay(candidate.to);
-  const sort = (PORTAL_CASE_SORTS as readonly unknown[]).includes(
-    candidate.sort,
-  )
-    ? (candidate.sort as PortalCaseSort)
-    : undefined;
-  return {
-    ...(candidate.scope === "all" ? { scope: "all" as const } : {}),
-    ...(status ? { status } : {}),
-    ...(priority ? { priority } : {}),
-    ...(q ? { q } : {}),
-    ...(from ? { from } : {}),
-    ...(to ? { to } : {}),
-    ...(sort && sort !== "updated_desc" ? { sort } : {}),
-  };
-}
-
-export function parsePortalHomeSearch(raw: unknown): PortalHomeSearch {
-  const { scope, status, priority } = parsePortalCaseFilterSearch(raw);
-  return {
-    ...parsePortalProjectSearch(raw),
-    ...(scope ? { scope } : {}),
-    ...(status ? { status } : {}),
-    ...(priority ? { priority } : {}),
-  };
-}
-
-function portalCaseFilterQuery(search: PortalCaseFilterSearch) {
-  const query = new URLSearchParams();
-  for (const key of [
-    "scope",
-    "status",
-    "priority",
-    "q",
-    "from",
-    "to",
-    "sort",
-  ] as const) {
-    const value = search[key];
-    if (value) query.set(key, value);
-  }
-  return query;
-}

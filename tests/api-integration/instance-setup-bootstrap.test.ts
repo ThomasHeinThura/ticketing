@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { count, eq, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { getConfiguredAgentOrigin } from "../../apps/api/src/auth";
 import { refreshStaffRegistration } from "../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -92,6 +93,7 @@ async function verifyFirstAdminTotp(
   const enabled = await app.request("/api/auth/two-factor/enable", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       cookie,
       "content-type": "application/json",
       "x-forwarded-for": clientIp,
@@ -111,6 +113,7 @@ async function verifyFirstAdminTotp(
   const verified = await app.request("/api/auth/two-factor/verify-totp", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       cookie,
       "content-type": "application/json",
       "x-forwarded-for": clientIp,
@@ -554,6 +557,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const enable = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
@@ -572,6 +576,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const invalid = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
@@ -585,6 +590,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const verified = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
@@ -660,6 +666,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const enabled = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
@@ -672,6 +679,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const invalid = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
@@ -701,6 +709,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const enable = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie,
         "content-type": "application/json",
         "x-forwarded-for": nextClientIp(),
@@ -746,6 +755,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const enable = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
@@ -767,6 +777,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const verification = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,

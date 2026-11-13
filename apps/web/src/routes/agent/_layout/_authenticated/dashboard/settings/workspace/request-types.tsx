@@ -11,6 +11,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Input,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -21,11 +22,13 @@ import {
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
-  SettingsAccessGate,
+  isForbiddenError,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   getRequestType,
   getRequestTypes,
@@ -127,20 +130,20 @@ const blank = (
 });
 
 function RequestTypesPage() {
-  const { t } = useTranslation("requestTypes");
   const access = useSettingsAccess(
     (permission) => permission.canManageRequestTypes(),
     undefined,
     { refreshOnMount: true },
   );
-  return (
-    <>
-      <PageTitle title={t("title")} />
-      <SettingsAccessGate access={access}>
-        <RequestTypesEditor />
-      </SettingsAccessGate>
-    </>
-  );
+  if (access !== "allowed")
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="requestTypes:title"
+        descriptionKey="requestTypes:description"
+      />
+    );
+  return <RequestTypesEditor />;
 }
 
 function RequestTypesEditor() {
@@ -358,8 +361,10 @@ function RequestTypesEditor() {
   const requiredFileValid = fields.every(
     (field) => field.type !== "file" || field.required !== true,
   );
+  if (isForbiddenError(types.error)) return <NoAccessPage />;
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+      <PageTitle title={t("title")} />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -488,27 +493,26 @@ function RequestTypesEditor() {
                     </Button>
                   </Alert>
                 ) : null}
-                {saveGroupOrder.isSuccess ? (
-                  <p role="status" className="text-sm text-muted-foreground">
-                    {t("groupOrderSaved", {
-                      defaultValue: "Group order saved.",
-                    })}
-                  </p>
-                ) : null}
+                <p role="status" className="text-sm text-muted-foreground">
+                  {saveGroupOrder.isSuccess
+                    ? t("groupOrderSaved", {
+                        defaultValue: "Group order saved.",
+                      })
+                    : null}
+                </p>
                 {groupOrderDraft.length > 1 ? (
-                  <Button
-                    disabled={!groupOrderChanged || saveGroupOrder.isPending}
+                  <SaveButton
+                    disabled={!groupOrderChanged && !saveGroupOrder.isPending}
+                    pending={saveGroupOrder.isPending}
+                    success={saveGroupOrder.isSuccess}
+                    announceSuccess={false}
+                    savedLabel={t("common:actions.saved")}
+                    workingLabel={t("common:actions.saving")}
                     onClick={() => void saveGroupOrder.mutate()}
                     type="button"
                   >
-                    {saveGroupOrder.isPending
-                      ? t("savingGroupOrder", {
-                          defaultValue: "Saving group order…",
-                        })
-                      : t("saveGroupOrder", {
-                          defaultValue: "Save group order",
-                        })}
-                  </Button>
+                    {t("saveGroupOrder", { defaultValue: "Save group order" })}
+                  </SaveButton>
                 ) : null}
               </section>
             ) : null}
@@ -1272,17 +1276,20 @@ function RequestTypesEditor() {
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              <Button
+              <SaveButton
                 onClick={() => save.mutate()}
+                pending={save.isPending}
+                success={save.isSuccess}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
                 disabled={
                   !draft.name.trim() ||
                   !draft.group.trim() ||
-                  !draft.workItemTypeId ||
-                  save.isPending
+                  !draft.workItemTypeId
                 }
               >
                 {t("save")}
-              </Button>
+              </SaveButton>
               {selected && (
                 <Button
                   onClick={() => action.mutate("publish")}

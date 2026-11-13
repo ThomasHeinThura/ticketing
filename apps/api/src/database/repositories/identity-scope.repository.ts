@@ -4,6 +4,7 @@ import {
   eq,
   exists,
   inArray,
+  isNull,
   ne,
   not,
   or,
@@ -16,6 +17,7 @@ import { WORKSPACE_PROJECT_SEE_ALL_ROLES } from "../../permissions/workspace-pro
 import db from "..";
 import type { Executor } from "../executor";
 import {
+  customerProjectAccessTable,
   membershipTable,
   personTable,
   projectTable,
@@ -24,6 +26,37 @@ import {
   workspaceRoleTable,
   workspaceUserTable,
 } from "../schema";
+
+/**
+ * D-D (Thomas, 12 Nov 2026): SQL predicate asserting `personId` currently holds explicit
+ * `customer_project_access` to `projectId` AND `project` is live (`deleted_at IS NULL`) and
+ * belongs to `organisationId`.
+ */
+export function customerProjectAccessExists(
+  personId: string | SQLWrapper,
+  organisationId: string | SQLWrapper,
+  projectId: string | SQLWrapper,
+  executor: Executor = db,
+) {
+  const accessProject = alias(projectTable, "customer_access_project");
+  return exists(
+    executor
+      .select({ one: sql`1` })
+      .from(customerProjectAccessTable)
+      .innerJoin(
+        accessProject,
+        eq(accessProject.id, customerProjectAccessTable.projectId),
+      )
+      .where(
+        and(
+          eq(customerProjectAccessTable.personId, personId),
+          eq(customerProjectAccessTable.projectId, projectId),
+          eq(accessProject.organisationId, organisationId),
+          isNull(accessProject.deletedAt),
+        ),
+      ),
+  );
+}
 
 /** Role facts admitted by resolveIdentity's scoped-role membership loader. */
 export function canonicalScopedRoleMembership(
@@ -34,6 +67,7 @@ export function canonicalScopedRoleMembership(
   roleKey: SQLWrapper,
   roleRank: SQLWrapper,
   capabilities: SQLWrapper,
+  roleIsSystem: SQLWrapper,
   scopeWorkspaceId: SQLWrapper,
 ) {
   return and(
@@ -43,6 +77,12 @@ export function canonicalScopedRoleMembership(
     eq(roleWorkspaceId, scopeWorkspaceId),
     sql`length(${roleKey}) > 0`,
     wellFormedRoleRow(roleRank, capabilities),
+    // Match resolveIdentity: reserved workspace role keys require a genuine system row.
+    or(
+      ne(scope, "workspace"),
+      not(inArray(roleKey, [...WORKSPACE_PROJECT_SEE_ALL_ROLES])),
+      eq(roleIsSystem, true),
+    ),
   );
 }
 
@@ -147,9 +187,16 @@ export function currentProjectReachPredicate(
   executor: Executor = db,
 ) {
   if (identity.side === "customer") {
-    return identity.reach.kind === "organisation"
-      ? eq(projectOrganisationId, identity.organisationId)
-      : sql`false`;
+    if (identity.reach.kind !== "organisation") return sql`false`;
+    return and(
+      eq(projectOrganisationId, identity.organisationId),
+      customerProjectAccessExists(
+        identity.personId,
+        identity.organisationId,
+        projectId,
+        executor,
+      ),
+    );
   }
 
   const directProjectMembership = exists(
@@ -170,6 +217,7 @@ export function currentProjectReachPredicate(
             roleTable.key,
             roleTable.rank,
             roleTable.capabilities,
+            roleTable.isSystem,
             projectWorkspaceId,
           ),
         ),
@@ -213,6 +261,7 @@ export function currentProjectReachPredicate(
             roleTable.key,
             roleTable.rank,
             roleTable.capabilities,
+            roleTable.isSystem,
             projectWorkspaceId,
           ),
         ),
@@ -237,6 +286,7 @@ export function currentProjectReachPredicate(
             roleTable.key,
             roleTable.rank,
             roleTable.capabilities,
+            roleTable.isSystem,
             projectWorkspaceId,
           ),
         ),
@@ -348,6 +398,7 @@ export function currentWorkspaceReachPredicate(
             roleTable.key,
             roleTable.rank,
             roleTable.capabilities,
+            roleTable.isSystem,
             workspaceId,
           ),
         ),

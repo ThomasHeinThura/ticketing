@@ -56,8 +56,8 @@ vi.mock("@/fetchers/work-item/assign-work-item", () => ({
 vi.mock("@/fetchers/work-item/unassign-work-item", () => ({
   default: (...args: unknown[]) => unassignWorkItem(...args),
 }));
-vi.mock("react-i18next", () => ({
-  initReactI18next: { type: "3rdParty", init: () => {} },
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
       translate(key, options),

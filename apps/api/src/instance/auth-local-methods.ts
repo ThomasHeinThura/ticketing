@@ -20,6 +20,7 @@ import { getEmailProvider } from "../notification-provider/service";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
+import { staffRegistrationDisabledByEnvironment } from "../utils/check-registration-allowed";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
   LOCAL_AUTH_METHOD_PLUGINS,
@@ -182,7 +183,7 @@ async function methodsResponse(rows: readonly StoredRow[]) {
     emailOtpDisabledByEnvironment: isEmailOtpSignInDisabledByEnvironment(),
     staffSelfRegistrationEnabled,
     staffRegistrationDisabledByEnvironment:
-      process.env.DISABLE_REGISTRATION === "true",
+      staffRegistrationDisabledByEnvironment(),
     revision: revisionOf(rows, staffSelfRegistrationEnabled),
   };
 }

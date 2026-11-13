@@ -108,6 +108,12 @@ describe("quiet hours preference", () => {
     expect(mocks.save).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    await screen.findByRole("button", { name: "Saved" });
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("Saved");
     const saved = mocks.save.mock.calls[0]?.[0] as {
       start: string;
       end: string;
@@ -116,6 +122,25 @@ describe("quiet hours preference", () => {
     expect(saved.start).toBe("21:30");
     expect(saved.end).toBe("07:00");
     expect(saved.timezone.length).toBeGreaterThan(0);
+  });
+
+  it("announces one save after refreshed quiet hours remount the form", async () => {
+    mocks.invalidate.mockImplementation(async () => {
+      mocks.quietHours = {
+        start: "21:30",
+        end: "07:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+      };
+    });
+    render(<QuietHoursPreference />);
+    await chooseTime("From", "21:30");
+    fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
+    await screen.findByRole("button", { name: "Saved" });
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("Saved");
   });
 
   it("refuses identical start and end times without calling the server", async () => {
@@ -183,22 +208,20 @@ describe("quiet hours preference", () => {
     );
   });
 
-  it("disables every portaled control and rejects submit while saving", () => {
+  it("keeps the save focused, blocks activation and disables other controls while saving", () => {
     mocks.quietHours = { start: "22:00", end: "07:00", timezone: "UTC" };
     mocks.pending = true;
     render(<QuietHoursPreference />);
-    for (const label of [
-      "From",
-      "Until",
-      "Save quiet hours",
-      "Turn off quiet hours",
-    ]) {
+    for (const label of ["From", "Until", "Turn off quiet hours"]) {
       expect(screen.getByRole("button", { name: label })).toBeDisabled();
     }
     expect(screen.getByRole("combobox", { name: "Time zone" })).toBeDisabled();
-    const form = screen
-      .getByRole("button", { name: "Save quiet hours" })
-      .closest("form");
+    const save = screen.getByRole("button", { name: "Save quiet hours" });
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    save.focus();
+    fireEvent.click(save);
+    expect(save).toHaveFocus();
+    const form = save.closest("form");
     if (!form) throw new Error("Quiet hours form missing");
     fireEvent.submit(form);
     expect(mocks.save).not.toHaveBeenCalled();

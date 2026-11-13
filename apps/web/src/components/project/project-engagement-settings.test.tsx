@@ -342,6 +342,19 @@ describe("ProjectEngagementSettings", () => {
         serviceCalendar: { mode: "override", id: "cal-1" },
       }),
     );
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.trim()),
+      ).toHaveLength(1),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.trim())[0],
+    ).toHaveTextContent("common:actions.saved");
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
   it("clears the support level with an explicit null", async () => {

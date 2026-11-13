@@ -1,4 +1,4 @@
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 /** A portal navigation entry: its link target and the path prefixes that mark it active. */
 export type PortalNavigationMatch = {

@@ -72,11 +72,11 @@ import {
   PortalActionError,
   readPortalSla,
 } from "@/lib/portal-request";
+import { routes } from "@/lib/portal-route-builders";
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
-  routes,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 /** The priorities the case list shows as a severity; anything else reads "Not set". */
 const PORTAL_SEVERITIES: readonly string[] = [
@@ -658,11 +658,11 @@ function PortalSubmissionContent() {
                       </dt>
                       <dd className="break-words text-sm">
                         {field.value === true
-                          ? t("customFields:value.yes", {
+                          ? t("workItems:customFieldValue.yes", {
                               defaultValue: "Yes",
                             })
                           : field.value === false
-                            ? t("customFields:value.no", {
+                            ? t("workItems:customFieldValue.no", {
                                 defaultValue: "No",
                               })
                             : Array.isArray(field.value)
@@ -902,7 +902,7 @@ function PortalSubmissionContent() {
                               variant="outline"
                               size="sm"
                               aria-label={t(
-                                "workItems:detail.attachments.pdfPreviewOpen",
+                                "workItemExtras:detail.attachments.pdfPreviewOpen",
                                 { name: file.filename },
                               )}
                               onClick={() =>
@@ -927,7 +927,7 @@ function PortalSubmissionContent() {
                               }
                             >
                               {t(
-                                "workItems:detail.attachments.pdfPreviewOpen",
+                                "workItemExtras:detail.attachments.pdfPreviewOpen",
                                 {
                                   name: file.filename,
                                 },
@@ -1047,8 +1047,8 @@ function SubmissionFileField({
       >
         <Paperclip className="size-4" aria-hidden="true" />
         {uploading
-          ? t("workItems:detail.attachments.uploading")
-          : t("workItems:detail.attachments.add")}
+          ? t("workItemExtras:detail.attachments.uploading")
+          : t("workItemExtras:detail.attachments.add")}
       </Button>
       <Input
         ref={inputRef}

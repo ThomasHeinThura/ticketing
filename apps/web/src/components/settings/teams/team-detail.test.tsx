@@ -47,6 +47,38 @@ const team = {
 afterEach(cleanup);
 
 describe("TeamSettingsCard", () => {
+  it("reports a successful save after refreshing team data", async () => {
+    mocks.updateTeam.mockReset().mockResolvedValue({});
+    const onSaved = vi.fn();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TeamSettingsCard team={team} onSaved={onSaved} />
+      </QueryClientProvider>,
+    );
+    fireEvent.change(screen.getByLabelText("teams:fields.name"), {
+      target: { value: "Help desk" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "teams:detail.save" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+    expect(mocks.updateTeam).toHaveBeenCalledOnce();
+  });
+  it.each(["viewer", "member", "lead"])(
+    "shows values without edit controls to a %s without team management",
+    () => {
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <TeamSettingsCard team={{ ...team, canManageTeam: false }} />
+        </QueryClientProvider>,
+      );
+      expect(screen.getByText("Support")).toBeInTheDocument();
+      expect(screen.queryByRole("textbox")).toBeNull();
+      expect(screen.queryByRole("spinbutton")).toBeNull();
+      expect(screen.queryByRole("switch")).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "teams:detail.save" }),
+      ).toBeNull();
+    },
+  );
   it("clears a CAB refusal when the CAB switch is toggled again", async () => {
     mocks.updateTeam.mockRejectedValue(new Error("A CAB needs a member"));
     render(

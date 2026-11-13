@@ -12,6 +12,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectManageAccess,
 } from "./helpers/fixtures";
@@ -256,7 +257,7 @@ describe("API integration: global search scope and ranking", () => {
   });
 
   it("rechecks persisted project reach in the actual search statement after a prior positive result", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
+    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });

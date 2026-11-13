@@ -1108,7 +1108,7 @@ worse than not showing them.
 `AS-3` is worded for a member, but the detail page asks for the confirmation on **every**
 reassignment of an item that already has a holder, whatever the actor's capability: a
 second explicit click, which is dropped if the holder changes in the meantime. Taking work
-from someone is the same act for a lead as for a member, and the cost is one click.
+from someone is the same act for a lead as for a member, and the cost is one click. A queued assignment retains the holder the person saw as its request precondition; incoming reads may advance its rollback baseline but never that precondition. Only this item's earlier write outcomes may rebase a queued precondition. A conflict restores the newest received server holder, even if the settlement read fails.
 
 <a id="assignment-api"></a>
 ### API
@@ -1228,10 +1228,14 @@ security-sensitive field in the product.
   client, never by a CSS class, never by a conditional render.
 - `CA-4` Visibility cannot be changed after posting. A comment sent to a customer has been
   sent. Delete and repost, which leaves a visible tombstone.
-- `CA-5` The composer is neutral in both modes: it keeps Kaneo's original composer look
-  with no distinct background. Internal mode is shown by the Internal/Public toggle and the
-  explanatory sentence beside it. Owner decision, 22 Oct 2026 (warning-tinted composer
-  rejected; see `audit.md`, "neutral composer", and roadmap UI-04).
+- `CA-5` On customer-visible work items, the composer presents a two-option control
+  ("Reply to customer" and "Internal note"), mode-specific submit text ("Send to customer" /
+  "Add internal note"), and an audience line ("Visible to the customer" / "Only your team sees
+  this"); when only one mode is allowed or the item is not customer-visible, only that allowed
+  mode is shown (no public mode on non-customer-visible items). Internal mode tints both the
+  composer surface and posted internal comment cards with the shared warning token surface,
+  while posted comments carry "Internal note" / "Reply to customer" badges. Owner decision,
+  12 Nov 2026 (`F-11`, reversing the 22 Oct 2026 neutral-composer decision).
 
 <a id="comments-and-activity-activity"></a>
 ### Activity

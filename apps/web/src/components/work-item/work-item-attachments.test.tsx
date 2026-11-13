@@ -201,7 +201,7 @@ describe("canonical attachment delete affordance", () => {
       await screen.findByRole("button", { name: /attachments.delete/ }),
     );
     expect(
-      await screen.findByText("workItems:detail.attachments.deleteFailed"),
+      await screen.findByText("workItemExtras:detail.attachments.deleteFailed"),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Proof.pdf" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /attachments.delete/ }));
@@ -226,19 +226,19 @@ describe("AT-8..AT-12 attachment panel", () => {
       expect(link.textContent).toContain("attachments.uploadedBy:Alice"),
     );
     const pdfPreview = screen.getByRole("button", {
-      name: "workItems:detail.attachments.pdfPreviewOpen:Proof.pdf",
+      name: "workItemExtras:detail.attachments.pdfPreviewOpen:Proof.pdf",
     });
     fireEvent.click(pdfPreview);
     const pdfDialog = await screen.findByRole("dialog");
     const frame = within(pdfDialog).getByTitle(
-      "workItems:detail.attachments.pdfPreviewTitle",
+      "workItemExtras:detail.attachments.pdfPreviewTitle",
     );
     expect(frame).toHaveAttribute("sandbox", "allow-scripts");
     expect(frame).toHaveAttribute("src", "/pdf-preview.html");
     expect(frame).toHaveAttribute("referrerpolicy", "origin");
     fireEvent.click(
       within(pdfDialog).getByRole("button", {
-        name: "workItems:detail.attachments.closePreview",
+        name: "workItemExtras:detail.attachments.closePreview",
       }),
     );
     fireEvent.click(thumbnail);
@@ -269,7 +269,7 @@ describe("AT-8..AT-12 attachment panel", () => {
       new File(["b"], "b.pdf", { type: "application/pdf" }),
     ];
     fireEvent.change(
-      await screen.findByLabelText("workItems:detail.attachments.add"),
+      await screen.findByLabelText("workItemExtras:detail.attachments.add"),
       { target: { files } },
     );
     expect(mocks.enqueue).toHaveBeenCalledTimes(1);
@@ -283,9 +283,9 @@ describe("AT-8..AT-12 attachment panel", () => {
     mocks.canAttach.value = false;
     mocks.list.mockResolvedValue([]);
     mount("workspace-1");
-    await screen.findByText("workItems:detail.attachments.empty");
+    await screen.findByText("workItemExtras:detail.attachments.empty");
     expect(
-      screen.queryByLabelText("workItems:detail.attachments.add"),
+      screen.queryByLabelText("workItemExtras:detail.attachments.add"),
     ).toBeNull();
   });
 });
@@ -298,11 +298,11 @@ describe("AT-7 attachment recovery", () => {
     mount();
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "workItems:detail.attachments.recoverDeleted",
+        name: "workItemExtras:detail.attachments.recoverDeleted",
       }),
     );
     const restore = await screen.findByRole("button", {
-      name: "workItems:detail.attachments.restore:Proof.pdf",
+      name: "workItemExtras:detail.attachments.restore:Proof.pdf",
     });
     expect(
       screen.queryByRole("link", { name: "Proof.pdf" }),
@@ -323,7 +323,7 @@ describe("AT-7 attachment recovery", () => {
     expect(await screen.findByText("Proof.pdf")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "workItems:detail.attachments.recoverDeleted",
+        name: "workItemExtras:detail.attachments.recoverDeleted",
       }),
     ).toBeNull();
     expect(mocks.list).not.toHaveBeenCalledWith("HELP-4", "recoverable");
@@ -337,7 +337,7 @@ describe("AT-7 attachment recovery", () => {
     mount();
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "workItems:detail.attachments.recoverDeleted",
+        name: "workItemExtras:detail.attachments.recoverDeleted",
       }),
     );
     expect(await screen.findByText("Proof.pdf")).toBeInTheDocument();

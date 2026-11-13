@@ -117,7 +117,7 @@ function WorkItemIssueLinkView(props: NodeViewProps) {
         // Missing or out of the viewer's reach: indistinguishable on purpose, and not a link.
         <span
           className="taskdesk-issue-link-chip"
-          title={t("workItems:detail.unavailable")}
+          title={t("workItemExtras:detail.unavailable")}
         >
           <span className="taskdesk-issue-link-key">{issueKey}</span>
         </span>

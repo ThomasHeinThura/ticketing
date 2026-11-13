@@ -39,7 +39,7 @@ describe("weekly calendar window", () => {
     ).toHaveAttribute("aria-roledescription", "draggable");
   });
 
-  it("disables both time popovers, the boundary toggle and drag handle for read-only windows", () => {
+  it("shows times without editing controls for read-only windows", () => {
     render(
       <WindowFields
         id="window-one"
@@ -51,18 +51,9 @@ describe("weekly calendar window", () => {
         disabled
       />,
     );
-    expect(
-      screen.getByRole("button", { name: "Monday window 1 start" }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Monday window 1 end" }),
-    ).toBeDisabled();
-    expect(screen.getByRole("checkbox")).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
-    expect(
-      screen.getByRole("button", { name: /Move Monday window 1/ }),
-    ).toBeDisabled();
+    expect(screen.getByText(/00:00/)).toBeInTheDocument();
+    expect(screen.getByText(/23:59/)).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 });

@@ -33,11 +33,11 @@ import {
 import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cases";
 import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { routes } from "@/lib/portal-route-builders";
 import {
   parsePortalApprovalsSearch,
   portalProjectSearchMiddlewares,
-  routes,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 export const Route = createFileRoute("/approvals")({
   validateSearch: parsePortalApprovalsSearch,

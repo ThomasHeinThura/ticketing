@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  navigateToSetup,
   totpForUri,
   withExclusiveMetricsListener,
 } from "../e2e/helpers/mfa-csrf-app-fixture";
@@ -830,4 +831,16 @@ describe("isolated MFA app fixture helpers", () => {
       "legacy-without-child-list",
     );
   });
+});
+
+it("redacts setup URLs from navigation failures", async () => {
+  const url = "http://127.0.0.1/auth/sign-up?setupToken=private-test-token";
+  const page = {
+    goto: async () => {
+      throw new Error(`navigating to ${url}`);
+    },
+  };
+  await expect(navigateToSetup(page, url)).rejects.toThrow(
+    "First-run setup navigation failed (setup token redacted)",
+  );
 });

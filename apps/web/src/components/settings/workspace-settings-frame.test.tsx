@@ -12,8 +12,21 @@ const permissions = vi.hoisted(() => ({
   invite: false,
   rates: false,
   workflows: false,
+  logTime: true,
 }));
 
+const reads = vi.hoisted(() => ({
+  workspace: { isSuccess: true, isError: false, error: null as unknown },
+  workflow: { isSuccess: true, isError: false, error: null as unknown },
+  calendar: { isSuccess: true, isError: false, error: null as unknown },
+}));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => reads.workflow }));
+vi.mock("@/hooks/queries/workspace/use-workspace-roles", () => ({
+  default: () => reads.workspace,
+}));
+vi.mock("@/hooks/queries/service-calendar/use-service-calendars", () => ({
+  useServiceCalendars: () => reads.calendar,
+}));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children }: { to: string; children?: React.ReactNode }) => (
     <a href={to}>{children}</a>
@@ -52,6 +65,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     canInviteUsers: () => permissions.invite,
     canManageRates: () => permissions.rates,
     canManageWorkflows: () => permissions.workflows,
+    canLogTime: () => permissions.logTime,
   }),
 }));
 
@@ -69,7 +83,10 @@ afterEach(() => {
     invite: false,
     rates: false,
     workflows: false,
+    logTime: true,
   });
+  for (const read of Object.values(reads))
+    Object.assign(read, { isSuccess: true, isError: false, error: null });
 });
 
 describe("WorkspaceSettingsFrame", () => {
@@ -80,11 +97,17 @@ describe("WorkspaceSettingsFrame", () => {
     const hrefs = screen
       .getAllByRole("link")
       .map((a) => a.getAttribute("href"));
-    // Every member can open the members list; role changes and removal are gated inside it.
     expect(hrefs).toEqual([
       "/dashboard/settings/workspace/general",
+      "/dashboard/settings/workspace/roles",
       "/dashboard/settings/workspace/labels",
+      "/dashboard/settings/workspace/calendars",
+      "/dashboard/settings/workspace/sla-policies",
+      "/dashboard/settings/workspace/workflows",
       "/dashboard/settings/workspace/members",
+      "/dashboard/settings/workspace/teams",
+      "/dashboard/settings/workspace/time-activities",
+      "/dashboard/settings/workspace/custom-fields",
     ]);
   });
 
@@ -126,9 +149,9 @@ describe("WorkspaceSettingsFrame", () => {
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     let hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(hrefs).not.toContain("/dashboard/settings/workspace/request-types");
-    expect(hrefs).not.toContain("/dashboard/settings/workspace/roles");
+    expect(hrefs).toContain("/dashboard/settings/workspace/roles");
     expect(hrefs).not.toContain("/dashboard/settings/workspace/webhooks");
-    expect(hrefs).not.toContain("/dashboard/settings/workspace/custom-fields");
+    expect(hrefs).toContain("/dashboard/settings/workspace/custom-fields");
     // Customer invitations follow member:invite, not workspace settings.
     expect(hrefs).not.toContain(
       "/dashboard/settings/workspace/customer-invitations",
@@ -141,7 +164,7 @@ describe("WorkspaceSettingsFrame", () => {
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("/dashboard/settings/workspace/webhooks");
-    expect(hrefs).not.toContain("/dashboard/settings/workspace/custom-fields");
+    expect(hrefs).toContain("/dashboard/settings/workspace/custom-fields");
     cleanup();
 
     // A member:invite holder without workspace settings gets only the invitations entry.
@@ -153,6 +176,25 @@ describe("WorkspaceSettingsFrame", () => {
       "/dashboard/settings/workspace/customer-invitations",
     );
     expect(hrefs).not.toContain("/dashboard/settings/workspace/webhooks");
+  });
+
+  it("hides read surfaces while access is pending or forbidden", () => {
+    reads.workspace.isSuccess = false;
+    reads.workflow.isSuccess = false;
+    reads.calendar.isSuccess = false;
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    expect(screen.queryByRole("link", { name: "Roles" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "settings:workflows.title" }),
+    ).toBeNull();
+    cleanup();
+    for (const read of Object.values(reads))
+      Object.assign(read, { isError: true, error: { status: 403 } });
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    expect(screen.queryByRole("link", { name: "Roles" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "settings:workflows.title" }),
+    ).toBeNull();
   });
 
   it("shows Request Types based on its own manage capability", () => {
@@ -175,18 +217,19 @@ describe("WorkspaceSettingsFrame", () => {
       "/dashboard/settings/workspace/time-activities",
     );
     expect(hrefsFor()).not.toContain("/dashboard/settings/workspace/rates");
-    expect(hrefsFor()).not.toContain("/dashboard/settings/workspace/workflows");
+    expect(hrefsFor()).toContain("/dashboard/settings/workspace/workflows");
     cleanup();
 
     // A finance role with manage_rates but no settings rights reaches Rates only.
     permissions.settings = false;
+    permissions.logTime = false;
     permissions.rates = true;
     render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
     expect(hrefsFor()).toContain("/dashboard/settings/workspace/rates");
     expect(hrefsFor()).not.toContain(
       "/dashboard/settings/workspace/time-activities",
     );
-    expect(hrefsFor()).not.toContain("/dashboard/settings/workspace/workflows");
+    expect(hrefsFor()).toContain("/dashboard/settings/workspace/workflows");
     cleanup();
 
     // workflow:manage alone opens Workflows (and the CAB template on it) only.

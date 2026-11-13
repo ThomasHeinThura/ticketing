@@ -9,7 +9,12 @@ import {
   grantProjectRole,
   requireRow,
 } from "./fixtures";
-import { type App, addMember, json, setupWorld } from "./reach-world";
+import {
+  type App,
+  addProjectLimitedMember,
+  json,
+  setupWorld,
+} from "./reach-world";
 
 /**
  * Project-level authority for a caller who must pass project reach AND the registered
@@ -64,13 +69,13 @@ export const READ_ONLY_KEY_SCOPE = {
 
 export async function setupProjectWorld() {
   const world = await setupWorld();
-  const projectAdmin = await addMember(world.workspaceId, "admin");
+  const projectAdmin = await addProjectLimitedMember(world.workspaceId);
   await grantProjectRole(projectAdmin.user.id, world.project.id, [
     ...PROJECT_ADMIN_CAPABILITIES,
   ]);
   // A workspace admin whose PROJECT role is read-only: it passes the legacy workspace gates
   // and project reach, and is refused only by the project-level capability decision.
-  const readerAdmin = await addMember(world.workspaceId, "admin");
+  const readerAdmin = await addProjectLimitedMember(world.workspaceId);
   await grantProjectRole(readerAdmin.user.id, world.project.id, [
     "project:read",
     "work_item:read",
@@ -82,7 +87,7 @@ export async function setupProjectWorld() {
     workspaceId: world.workspaceId,
     name: "Other project",
   });
-  const otherProjectAdmin = await addMember(world.workspaceId, "admin");
+  const otherProjectAdmin = await addProjectLimitedMember(world.workspaceId);
   await grantProjectRole(otherProjectAdmin.user.id, otherProject.id, [
     ...PROJECT_ADMIN_CAPABILITIES,
   ]);

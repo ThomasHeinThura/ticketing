@@ -18,6 +18,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  SaveButton,
   Textarea,
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
@@ -75,12 +76,18 @@ export function RoleCapabilitiesPanel({
   authority,
   state,
   onReload,
+  saved = false,
+  onSaveStart,
+  onSaveSuccess,
 }: {
   workspaceId: string;
   role: WorkspaceRoleDetail;
   authority: RoleEditAuthority;
   state: RoleDraftState;
   onReload: () => void;
+  saved?: boolean;
+  onSaveStart?: () => void;
+  onSaveSuccess?: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -199,6 +206,7 @@ export function RoleCapabilitiesPanel({
           queryKey: ["workspace-role-history", workspaceId, role.id],
         }),
       ]);
+      onSaveSuccess?.();
       toast.success(t("roles:save.saved"));
     },
   });
@@ -369,16 +377,23 @@ export function RoleCapabilitiesPanel({
           >
             {t("common:actions.cancel")}
           </Button>
-          <Button
+          <SaveButton
             disabled={!dirty || !rankValid || !nameValid || save.isPending}
+            pending={false}
+            success={saved}
+            retainedSuccess
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => {
+              onSaveStart?.();
               setConfirming(true);
               impactPreview.reset();
               impactPreview.mutate();
             }}
           >
             {t("roles:save.action")}
-          </Button>
+          </SaveButton>
         </div>
       ) : null}
 
@@ -492,18 +507,23 @@ export function RoleCapabilitiesPanel({
               >
                 {t("common:actions.cancel")}
               </Button>
-              <Button
+              <SaveButton
                 disabled={
-                  save.isPending ||
-                  !impactPreview.data ||
-                  impactPreview.isPending ||
-                  !stepUp.canRun ||
-                  (removesOwn && typedName.trim() !== role.name)
+                  !save.isPending &&
+                  (!impactPreview.data ||
+                    impactPreview.isPending ||
+                    !stepUp.canRun ||
+                    (removesOwn && typedName.trim() !== role.name))
                 }
+                pending={save.isPending}
+                success={save.isSuccess}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+                announceSuccess={false}
                 onClick={() => save.mutate()}
               >
                 {t("roles:save.confirm")}
-              </Button>
+              </SaveButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>

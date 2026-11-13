@@ -12,7 +12,11 @@ import {
   costTypeTable,
 } from "../../apps/api/src/database/schema-p5-time";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, grantProjectRole } from "./helpers/fixtures";
+import {
+  assignProjectLimitedRole,
+  createWorkspaceMember,
+  grantProjectRole,
+} from "./helpers/fixtures";
 import {
   isoDaysAgo,
   setProjectTimeFlag,
@@ -200,7 +204,9 @@ describe("cost types (TC-12)", () => {
 
   it("never lets another workspace see or edit a type", async () => {
     const type = await makeType();
-    const stranger = await createWorkspaceMember({ role: "owner" });
+    const stranger = await createWorkspaceMember({
+      role: "owner",
+    });
     await setTimeFlags(stranger.workspace.id);
     const other = await w.agent(
       stranger.user,
@@ -438,6 +444,8 @@ describe("permissions and amount stripping (TC-11)", () => {
 
 describe("a project role override applies to every cost write alike", () => {
   it("refuses create, edit and delete, and withholds the quick-add, when the project role drops time_entry:manage_rates", async () => {
+    // D-E: custom operators retain project-role override coverage.
+    await assignProjectLimitedRole(w.owner.user.id, w.workspaceId, "owner");
     const type = await makeType();
     const entry = await logCost(type.id);
     // timeWorld gives the owner a budget-only project role: drop the extra capability again.
@@ -481,6 +489,8 @@ describe("a project role override applies to every cost write alike", () => {
 
 describe("rate visibility is resolved at the project (P5-R1-06)", () => {
   it("shows no amount in a project whose role drops time_entry:manage_rates, while another project still shows it", async () => {
+    // D-E: custom operators retain project-role override coverage.
+    await assignProjectLimitedRole(w.owner.user.id, w.workspaceId, "owner");
     const type = await makeType();
     await logCost(type.id);
     await logCost(type.id, {}, w.projectB.id);
@@ -530,7 +540,9 @@ describe("reach and tenant isolation", () => {
         })
       ).status,
     ).toBe(404);
-    const stranger = await createWorkspaceMember({ role: "owner" });
+    const stranger = await createWorkspaceMember({
+      role: "owner",
+    });
     await setTimeFlags(stranger.workspace.id);
     expect(
       (
@@ -554,7 +566,9 @@ describe("reach and tenant isolation", () => {
   });
 
   it("refuses a cost type of another workspace", async () => {
-    const stranger = await createWorkspaceMember({ role: "owner" });
+    const stranger = await createWorkspaceMember({
+      role: "owner",
+    });
     await setTimeFlags(stranger.workspace.id);
     const foreign = (await (
       await w.agent(stranger.user, "/api/cost-types", {
@@ -579,7 +593,9 @@ describe("reach and tenant isolation", () => {
       personId: w.member.personId,
     });
     expect(forOther.status).toBe(201);
-    const stranger = await createWorkspaceMember({ role: "owner" });
+    const stranger = await createWorkspaceMember({
+      role: "owner",
+    });
     const foreignPerson = (
       await db
         .select({ id: schema.personTable.id })

@@ -6,7 +6,7 @@ import {
 import { dayOf, itemFrom, num, OPEN, selectRows, tsn } from "../context";
 import { countValue, DAY_MS, minutesToHours, ratePercent, utc } from "../logic";
 import { loadFactRows } from "../snapshot.repository";
-import { reachableTeam } from "../team-reach";
+import { canReadAllTeams, reachableTeam } from "../team-reach";
 import type { ReportContext, ReportDefinition, Row } from "../types";
 import {
   cell,
@@ -271,7 +271,9 @@ const utilisation: ReportDefinition = {
         // Keep this as an expression when nobody logged time in the selected period.
         sql`0::numeric`;
     const capacityVisible = ctx.readAnyTime
-      ? sql`(pe.id = ${ctx.identity.personId} OR pe.id IN (SELECT person_id FROM listed))`
+      ? canReadAllTeams(ctx) && !ctx.filters.teamId
+        ? sql`true`
+        : sql`(pe.id = ${ctx.identity.personId} OR pe.id IN (SELECT person_id FROM listed))`
       : sql`pe.id = ${ctx.identity.personId}`;
     // Listed: people with logged time in reach, plus people with capacity (an `available_hours`
     // row or team capacity) who are the caller, or members of a team the caller may see (R6-06).

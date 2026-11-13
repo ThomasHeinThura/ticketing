@@ -1,11 +1,16 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
+  isForbiddenError,
   SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { TerminologyEditor } from "@/components/settings/terminology-editor";
+import { getTerminology } from "@/fetchers/terminology";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
 export const Route = createFileRoute(
@@ -20,6 +25,21 @@ function WorkspaceTerminology() {
     undefined,
     { refreshOnMount: true },
   );
+  const terminology = useQuery({
+    queryKey: ["terminology", "workspace", workspace?.id ?? ""],
+    queryFn: () =>
+      getTerminology({ scope: "workspace", workspaceId: workspace?.id ?? "" }),
+    enabled: access === "allowed" && Boolean(workspace?.id),
+  });
+  if (access !== "allowed")
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="settings:terminology.title"
+        descriptionKey="settings:terminology.description"
+      />
+    );
+  if (isForbiddenError(terminology.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle

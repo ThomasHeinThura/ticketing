@@ -1,3 +1,4 @@
+// D-E (12 Nov): project-limited denial actors use custom roles.
 /**
  * P1-1 / PR-2 / PR-3: what a PARENT-only project member may DO inside a child project
  * (WRITTEN, NOT RUN by its author -- the coordinator runs DB integration tests).
@@ -20,7 +21,12 @@ import {
   WORK_ITEM_PROJECT_CAPABILITIES,
 } from "./helpers/fixtures";
 import { projectKey } from "./helpers/project-key";
-import { addMember, json, setupWorld } from "./helpers/reach-world";
+import {
+  addMember,
+  addProjectLimitedMember,
+  json,
+  setupWorld,
+} from "./helpers/reach-world";
 
 async function arrange() {
   const world = await setupWorld();
@@ -102,7 +108,7 @@ describe("API integration: inherited project authority (P1-1)", () => {
 
   it("a parent-only VIEWER with a strong workspace role reads the child but cannot create, update or transition there", async () => {
     const { world, app, child, item } = await arrange();
-    const viewer = await addMember(world.workspaceId, "admin");
+    const viewer = await addProjectLimitedMember(world.workspaceId);
     await grantProjectRole(viewer.user.id, world.project.id, [
       "project:read",
       "work_item:read",
@@ -148,7 +154,7 @@ describe("API integration: inherited project authority (P1-1)", () => {
 
   it("an explicit narrower child grant overrides a wider parent grant (PR-3)", async () => {
     const { world, app, child, item } = await arrange();
-    const person = await addMember(world.workspaceId, "admin");
+    const person = await addProjectLimitedMember(world.workspaceId);
     await grantProjectRole(person.user.id, world.project.id, [
       ...WORK_ITEM_PROJECT_CAPABILITIES,
     ]);
@@ -169,7 +175,7 @@ describe("API integration: inherited project authority (P1-1)", () => {
 
   it("a workspace member with no project grant on the parent or the child is still refused as before (404)", async () => {
     const { world, app, item } = await arrange();
-    const outsider = await addMember(world.workspaceId, "admin");
+    const outsider = await addProjectLimitedMember(world.workspaceId);
     mockAuthenticatedSession(outsider.user);
     const read = await json(app, "GET", `/api/work-items/${item.key}`);
     expect(read.status).toBe(404);

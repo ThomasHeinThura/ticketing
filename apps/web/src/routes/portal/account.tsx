@@ -12,7 +12,7 @@ import { portalAuthClient } from "@/lib/portal-auth-client";
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 export const Route = createFileRoute("/account")({
   validateSearch: parsePortalProjectSearch,

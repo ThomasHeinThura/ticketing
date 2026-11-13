@@ -12,6 +12,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   caps: {} as Record<string, boolean>,
   checking: false,
+  reportForbidden: false,
+  catalogueForbidden: false,
+  catalogueLoading: false,
   permissionsFetching: false,
   permissionsError: false,
   permissionsFetchStatus: "idle" as "idle" | "fetching" | "paused",
@@ -47,6 +50,10 @@ vi.mock("react-i18next", () => ({
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <a href="/">{children}</a>,
   useNavigate: () => vi.fn(),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
@@ -93,11 +100,27 @@ vi.mock("@/hooks/queries/report", () => ({
   reportKeys: { all: (id: string) => ["reports", id] },
   useReportCatalogue: (...args: unknown[]) => {
     calls.catalogue(...args);
-    return idle;
+    return state.catalogueForbidden
+      ? {
+          ...idle,
+          isLoading: false,
+          isError: true,
+          error: new HttpError(403, "Forbidden"),
+        }
+      : state.catalogueLoading
+        ? idle
+        : { ...idle, isLoading: false, data: { data: [], meta: {} } };
   },
   useReport: (...args: unknown[]) => {
     calls.report(...args);
-    return idle;
+    return state.reportForbidden
+      ? {
+          ...idle,
+          isLoading: false,
+          isError: true,
+          error: new HttpError(403, "Forbidden"),
+        }
+      : idle;
   },
   useCustomPreview: (...args: unknown[]) => {
     calls.preview(...args);
@@ -113,8 +136,10 @@ vi.mock("@/hooks/queries/report", () => ({
   },
 }));
 
+import { HttpError } from "@/lib/http-error";
 import { DashboardView } from "./dashboard-view";
 import { ReportBuilder } from "./report-builder";
+import { ReportDetail } from "./report-detail";
 import { ReportsIndex } from "./reports-index";
 
 function withClient(children: ReactNode) {
@@ -131,6 +156,9 @@ const LEAD = { createSavedViews: true, shareSavedViews: true };
 beforeEach(() => {
   state.caps = {};
   state.checking = false;
+  state.reportForbidden = false;
+  state.catalogueForbidden = false;
+  state.catalogueLoading = false;
   state.permissionsFetching = false;
   state.permissionsError = false;
   state.permissionsFetchStatus = "idle";
@@ -374,6 +402,45 @@ describe("report builder audiences (saved_view:share)", () => {
 });
 
 describe("reports index entry points", () => {
+  it("waits for the main permission-bearing read without showing no access", async () => {
+    state.catalogueLoading = true;
+    render(withClient(<ReportsIndex search={{}} onSearchChange={vi.fn()} />));
+    expect(
+      await screen.findByRole("status", {
+        name: "common:pageLoading",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+  });
+  it("shows the no-access page on a forbidden catalogue read", async () => {
+    state.catalogueForbidden = true;
+    render(withClient(<ReportsIndex search={{}} onSearchChange={vi.fn()} />));
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
+    ).toHaveFocus();
+  });
+
+  it("shows the no-access page on a forbidden report read", async () => {
+    state.reportForbidden = true;
+    render(
+      withClient(
+        <ReportDetail
+          reportKey="throughput"
+          search={{}}
+          onSearchChange={vi.fn()}
+        />,
+      ),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
+    ).toHaveFocus();
+  });
   it("hides 'New custom report' from a role that cannot save one", async () => {
     state.caps = VIEWER;
     render(withClient(<ReportsIndex search={{}} onSearchChange={vi.fn()} />));

@@ -14,7 +14,6 @@ import {
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
-import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
 import { nextClientIp } from "./helpers/organization-http";
@@ -406,6 +405,10 @@ describe("password recovery portal and credential boundaries", () => {
     expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
   });
   it("invalidates recovery links when the password changes", async () => {
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ setupCompletedAt: new Date() })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
     const staff = await staffUser();
     const login = await passwordSignIn(
       "agent",
@@ -422,18 +425,20 @@ describe("password recovery portal and credential boundaries", () => {
     const token = linkToken(
       new URL(sentPasswordResetEmails[0]?.resetLink ?? ""),
     );
-    const change = await csrfRequest(
-      sharedApp(),
-      "/api/auth/change-password",
+    const change = await sharedApp().request(
+      `${getConfiguredAgentOrigin()}/api/auth/change-password`,
       {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          origin: getConfiguredAgentOrigin(),
+          cookie,
+          "content-type": "application/json",
+        },
         body: JSON.stringify({
           currentPassword: staff.password,
           newPassword: "new-valid-password-42",
         }),
       },
-      cookie,
     );
     expect(change.status).toBe(200);
     expect((await complete("agent", token)).status).toBe(400);
@@ -599,6 +604,7 @@ describe("password recovery portal and credential boundaries", () => {
               ![
                 "date",
                 "x-request-id",
+                "x-taskdesk-request-id",
                 "traceparent",
                 "server-timing",
               ].includes(name),

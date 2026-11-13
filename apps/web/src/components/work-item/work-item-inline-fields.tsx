@@ -694,15 +694,16 @@ export default function WorkItemInlineFields({
         .map((person) => [person.personId, person.name as string]),
     );
     const displayValue = !isValueSet(value)
-      ? t("customFields:value.notSet")
+      ? t("workItems:customFieldValue.notSet")
       : field.format === "user"
-        ? (names.get(String(value)) ?? t("customFields:value.notOnProject"))
+        ? (names.get(String(value)) ??
+          t("workItems:customFieldValue.notOnProject"))
         : field.format === "multi_user" && Array.isArray(value)
           ? value
               .map(
                 (personId) =>
                   names.get(String(personId)) ??
-                  t("customFields:value.notOnProject"),
+                  t("workItems:customFieldValue.notOnProject"),
               )
               .join(", ")
           : formatValue(field, value);

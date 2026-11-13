@@ -1,3 +1,4 @@
+// D-E (12 Nov): custom operators preserve project reach and override denial coverage.
 /**
  * P1-1 follow-up (WRITTEN, NOT RUN by its author -- the coordinator runs DB integration
  * tests): every authority path other than the main route chain must follow the ancestor
@@ -28,7 +29,7 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 import { projectKey } from "./helpers/project-key";
-import { addMember } from "./helpers/reach-world";
+import { addProjectLimitedMember } from "./helpers/reach-world";
 
 async function world() {
   const owner = await createWorkspaceMember({ role: "admin" });
@@ -98,7 +99,7 @@ async function parentOnly(
   w: Awaited<ReturnType<typeof world>>,
   capabilities: string[],
 ) {
-  const member = await addMember(w.workspaceId, "admin");
+  const member = await addProjectLimitedMember(w.workspaceId);
   await grantProjectRole(member.user.id, w.parent.id, capabilities);
   const identity = await resolveIdentity({
     userId: member.user.id,

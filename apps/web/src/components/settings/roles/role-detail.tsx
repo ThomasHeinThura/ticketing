@@ -10,6 +10,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  SAVE_FEEDBACK_HOLD_MS,
   Skeleton,
   Tabs,
   TabsList,
@@ -17,8 +18,11 @@ import {
   TabsTab,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import type { WorkspaceRoleDetail } from "@/fetchers/workspace-roles";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
@@ -49,12 +53,18 @@ function RoleWorkspace({
   search,
   onSearchChange,
   onReload,
+  saved,
+  onSaveStart,
+  onSaveSuccess,
 }: {
   workspaceId: string;
   role: WorkspaceRoleDetail;
   search: RoleDetailSearch;
   onSearchChange: (next: RoleDetailSearch) => void;
   onReload: () => void;
+  saved: boolean;
+  onSaveStart: () => void;
+  onSaveSuccess: () => void;
 }) {
   const { t } = useTranslation();
   const roles = useWorkspaceRoles(workspaceId);
@@ -86,6 +96,9 @@ function RoleWorkspace({
           authority={authority}
           state={state}
           onReload={onReload}
+          saved={saved}
+          onSaveStart={onSaveStart}
+          onSaveSuccess={onSaveSuccess}
         />
       </TabsPanel>
       <TabsPanel className="pt-4" value="summary">
@@ -141,9 +154,16 @@ export function RoleDetailView({
   onSearchChange: (next: RoleDetailSearch) => void;
 }) {
   const { t } = useTranslation();
+  const [savedRoleId, setSavedRoleId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!savedRoleId) return;
+    const timer = setTimeout(() => setSavedRoleId(null), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [savedRoleId]);
   const queryClient = useQueryClient();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const role = useRole(workspace?.id ?? "", roleId);
+  if (isForbiddenError(role.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={role.data?.name ?? t("roles:detail.pageTitle")} />
@@ -207,6 +227,9 @@ export function RoleDetailView({
             role={role.data}
             search={search}
             onSearchChange={onSearchChange}
+            saved={savedRoleId === roleId}
+            onSaveStart={() => setSavedRoleId(null)}
+            onSaveSuccess={() => setSavedRoleId(roleId)}
             onReload={() =>
               void queryClient.invalidateQueries({
                 queryKey: roleDetailKey(workspace.id, role.data.id),

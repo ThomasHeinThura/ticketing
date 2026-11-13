@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+
 import {
   isPortalNavigationActive,
   portalAriaCurrent,

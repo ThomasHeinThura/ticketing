@@ -22,7 +22,9 @@ import {
 } from "@taskdesk/ui";
 import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import { WorkspaceFeatureGate } from "@/components/settings/workspace-feature-gate";
 import { SlaPolicySummaryCard } from "@/components/sla-policy/sla-policy-summary-card";
 import { useSlaPolicies } from "@/hooks/queries/sla-policy/use-sla-policies";
@@ -63,6 +65,7 @@ function SlaPoliciesRouteContent() {
     data: policies,
     isLoading,
     isError,
+    error,
     refetch,
   } = useSlaPolicies(workspace?.id ?? "", cursor);
   const { canManageServiceCalendars, isCheckingPermissions } =
@@ -73,6 +76,7 @@ function SlaPoliciesRouteContent() {
     return <Outlet />;
   }
 
+  if (isForbiddenError(error)) return <NoAccessPage />;
   const loading = isWorkspaceLoading || isLoading;
   const resetToFirstPage = () =>
     void navigate({

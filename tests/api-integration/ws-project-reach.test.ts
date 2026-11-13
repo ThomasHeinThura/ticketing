@@ -764,11 +764,18 @@ describe("project socket reach (#745)", () => {
       .limit(1);
     expect(workspaceMembership?.userId).toBe(user.id);
 
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: customerPerson.id, projectId: own.id });
+    // D-D / CP-1: reload after explicitly inviting the customer.
+    const invitedIdentity = await resolveSocketIdentity(credential);
+    if (!invitedIdentity)
+      throw new Error("customer identity missing after grant");
     // Reach (rbac.md step 6) follows that organisation...
     const identity = await resolveSocketIdentity(credential);
     if (!identity) throw new Error("customer identity not resolved");
     expect(
-      reaches(identity, {
+      reaches(invitedIdentity, {
         projectId: own.id,
         workspaceId: workspace.id,
         organisationId: org.id,
@@ -777,7 +784,7 @@ describe("project socket reach (#745)", () => {
       }),
     ).toBe(true);
     expect(
-      reaches(identity, {
+      reaches(invitedIdentity, {
         projectId: other.id,
         workspaceId: workspace.id,
         organisationId: ws?.organisationId ?? null,

@@ -11,6 +11,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -36,6 +37,7 @@ import {
   isValidExternalGroupId,
   type MappingDraft,
 } from "@/lib/identity-connection-form";
+import { toast } from "@/lib/toast";
 
 type Props = {
   connectionId: string;
@@ -197,6 +199,7 @@ function MappingForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (step.busy) return;
     if (!existing && !isValidExternalGroupId(draft.externalGroupId.trim())) {
       setInvalid("externalId");
       return;
@@ -229,7 +232,10 @@ function MappingForm({
       request,
       existing ? "mappingUpdated" : "mappingCreated",
     );
-    if (ok) onOpenMapping(undefined);
+    if (ok) {
+      toast.success(t("common:actions.saved"));
+      onOpenMapping(undefined);
+    }
   }
 
   const loadingOptions = targets.isPending;
@@ -409,16 +415,17 @@ function MappingForm({
         {t("scim.groups.evidenceNote")}
       </p>
       <div className="flex gap-2">
-        <Button
-          disabled={step.busy || loadingOptions || targets.isError}
+        <SaveButton
+          disabled={!step.busy && (loadingOptions || targets.isError)}
+          pending={step.busy}
+          success={false}
+          savedLabel={t("common:actions.saved")}
+          workingLabel={t("common:actions.saving")}
+          announceSuccess={false}
           type="submit"
         >
-          {step.busy
-            ? t("common.saving")
-            : existing
-              ? t("scim.groups.save")
-              : t("scim.groups.create")}
-        </Button>
+          {existing ? t("scim.groups.save") : t("scim.groups.create")}
+        </SaveButton>
         <Button
           disabled={step.busy}
           onClick={() => onOpenMapping(undefined)}

@@ -8,8 +8,13 @@ const mocks = vi.hoisted(() => ({
   role: "viewer" as string,
   checking: false,
   editor: vi.fn(),
+  getTerminology: vi.fn(async () => ({})),
 }));
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
   createFileRoute: () => (options: Record<string, unknown>) => options,
 }));
 vi.mock("react-i18next", () => ({
@@ -30,6 +35,9 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     isCheckingPermissions: mocks.checking,
   }),
 }));
+vi.mock("@/fetchers/terminology", () => ({
+  getTerminology: mocks.getTerminology,
+}));
 vi.mock("@/components/settings/terminology-editor", () => ({
   TerminologyEditor: (props: unknown) => {
     mocks.editor(props);
@@ -42,7 +50,9 @@ import { Route } from "./terminology";
 
 const Page = (Route as unknown as { component: ComponentType }).component;
 function renderPage(failed = false) {
-  const client = new QueryClient();
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   if (failed) {
     const query = client.getQueryCache().build(client, {
       queryKey: ["workspace-capabilities", "ws-1", "member"],
@@ -64,8 +74,23 @@ afterEach(() => {
   mocks.role = "viewer";
   mocks.checking = false;
   mocks.editor.mockReset();
+  mocks.getTerminology.mockReset().mockResolvedValue({});
 });
 describe("workspace terminology access", () => {
+  it("shows no access for a forbidden terminology read", async () => {
+    mocks.role = "admin";
+    mocks.getTerminology.mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { status: 403 }),
+    );
+    renderPage();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "states.noAccess.title",
+      }),
+    ).toHaveFocus();
+  });
+
   it("denies without mounting the fetching editor", () => {
     renderPage();
     expect(screen.getByTestId("settings-access-denied")).toBeTruthy();

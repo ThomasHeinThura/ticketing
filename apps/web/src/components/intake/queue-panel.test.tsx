@@ -154,7 +154,7 @@ function runResult(input?: {
   };
 }
 
-function renderPanel() {
+function renderPanel(onAccessDenied?: (queueId: string) => void) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, retryDelay: 0 } },
   });
@@ -168,6 +168,7 @@ function renderPanel() {
     <IntakeQueuePanel
       workspaceId="workspace-1"
       queueId="pair-1"
+      onAccessDenied={onAccessDenied}
       state="new"
       selectedRef="SUB-21"
       onOpenSubmission={onOpenSubmission}
@@ -194,6 +195,15 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 describe("IntakeQueuePanel", () => {
+  it("notifies the route when the queue read is forbidden", async () => {
+    mocks.getQueue.mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { status: 403 }),
+    );
+    const onAccessDenied = vi.fn();
+    renderPanel(onAccessDenied);
+    await waitFor(() => expect(onAccessDenied).toHaveBeenCalledWith("pair-1"));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
   it("renders both persisted entity sections and opens a submission", async () => {
     const { onOpenSubmission } = renderPanel();
     expect(await screen.findByText("SUB-21")).toBeInTheDocument();

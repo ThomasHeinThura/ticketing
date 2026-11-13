@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
+import { customerProjectAccessExists } from "../database/repositories/identity-scope.repository";
 import {
   instanceFeatureFlagTable,
   organisationRequestTypeTable,
@@ -108,6 +109,11 @@ export async function portalKbScope(userId: string) {
           eq(projectTable.organisationId, person.organisationId),
           isNull(projectTable.deletedAt),
           isNull(projectTable.archivedAt),
+          customerProjectAccessExists(
+            person.personId,
+            person.organisationId,
+            projectTable.id,
+          ),
         ),
       ),
     db
@@ -125,6 +131,14 @@ export async function portalKbScope(userId: string) {
           ),
           eq(requestTypeTable.published, true),
           eq(requestTypeTable.customerVisible, true),
+          or(
+            isNull(requestTypeTable.defaultProjectId),
+            customerProjectAccessExists(
+              person.personId,
+              person.organisationId,
+              requestTypeTable.defaultProjectId,
+            ),
+          ),
         ),
       ),
   ]);
@@ -144,9 +158,9 @@ export async function portalKbScope(userId: string) {
     organisationId: person.organisationId,
     workspaceIds,
     /**
-     * KB-2: the one condition every portal read uses. Published AND customer visible, in a
-     * workspace the organisation reaches with the feature on, and a project-scoped article only
-     * when the organisation is bound to that live project.
+     * KB-2 / D-D: Published AND customer visible, in a workspace the customer reaches with the
+     * feature on, and a project-scoped article only when the customer holds access to that live
+     * project of their organisation.
      */
     visible: and(
       eq(kbArticleTable.state, "published"),
@@ -169,6 +183,11 @@ export async function portalKbScope(userId: string) {
                 eq(projectTable.organisationId, person.organisationId),
                 isNull(projectTable.deletedAt),
                 isNull(projectTable.archivedAt),
+                customerProjectAccessExists(
+                  person.personId,
+                  person.organisationId,
+                  projectTable.id,
+                ),
               ),
             ),
         ),

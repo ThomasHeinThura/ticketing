@@ -236,6 +236,9 @@ describe("U-11 Project Details figures and cases", () => {
       .update(schema.projectTable)
       .set({ organisationId: fabrikam.orgId })
       .where(eq(schema.projectTable.id, fabrikamProject.id));
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: fabrikam.person.id, projectId: fabrikamProject.id });
     const fabrikamState = requireRow(
       await db
         .insert(schema.stateTable)

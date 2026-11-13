@@ -31,6 +31,8 @@ const normalise = (key: string) =>
 /** `METHOD path` -> reason it is not a deletion needing approval. */
 const ALLOWED_IMMEDIATE: Record<string, string> = {
   // Unlinks: remove a relationship, never the linked records or their history.
+  "DELETE /api/projects/{projectId}/customers/{personId}":
+    "unlink: revokes a person's explicit project access immediately; person, project, requests and their history survive (D-D / CP-1)",
   "DELETE /api/label/{id}/task":
     "unlink: drops the per-task link row of a label (a catalogue label is refused with 400 and never deleted); label deletion is DELETE /api/label/{id} (202)",
   "DELETE /api/work-items/{key}/assign":

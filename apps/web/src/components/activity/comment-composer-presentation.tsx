@@ -7,35 +7,55 @@ import { cn } from "@/lib/cn";
  * composer render through it, so the two can never drift apart visually.
  */
 export function CommentComposerPresentation({
+  header,
   editor,
   attachments,
   footerStart,
   footerEnd,
+  tinted = false,
   className,
   ...props
 }: {
+  /** Optional header strip above the editor (e.g. reply vs internal note mode bar). */
+  header?: ReactNode;
   editor: ReactNode;
   /** Staged files, between the editor and the footer. */
   attachments?: ReactNode;
-  /** Left of the footer: pickers such as the audience toggle. */
+  /** Left of the footer: pickers such as canned responses. */
   footerStart?: ReactNode;
   /** Right of the footer: attach and send. */
   footerEnd: ReactNode;
+  /** Tints the composer surface for staff-only internal notes (F-11). */
+  tinted?: boolean;
   className?: string;
 } & Omit<React.ComponentProps<"div">, "children" | "className">) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/80 bg-card/70 transition-colors focus-within:border-ring/60 focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--ring)_20%,transparent)]",
+        "rounded-xl border transition-colors focus-within:border-ring/60 focus-within:shadow-[0_0_0_2px_color-mix(in_srgb,var(--ring)_20%,transparent)]",
+        tinted
+          ? "border-warning/32 bg-warning/4"
+          : "border-border/80 bg-card/70",
         className,
       )}
       {...props}
     >
+      {header ? (
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2",
+            tinted ? "border-warning/24" : "border-border/70",
+          )}
+        >
+          {header}
+        </div>
+      ) : null}
       {editor}
       {attachments}
       <div
         className={cn(
-          "flex items-center gap-2 border-border/70 border-t px-2 py-2",
+          "flex items-center gap-2 border-t px-2 py-2",
+          tinted ? "border-warning/24" : "border-border/70",
           footerStart ? "justify-between" : "justify-end",
         )}
       >

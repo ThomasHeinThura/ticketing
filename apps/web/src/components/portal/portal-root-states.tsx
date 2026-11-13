@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { ErrorReference } from "@/components/errors/error-reference";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 
-/** The portal root's error frame, loaded on demand by `routes/portal/__root.tsx`. */
+/** The portal root's error frame, eagerly imported by `routes/portal/__root.tsx`. */
 function PortalFrame({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-svh items-center justify-center bg-background p-6">

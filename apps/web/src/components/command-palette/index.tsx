@@ -133,6 +133,11 @@ export function CommandPalette({
   const activeWorkspaceId = getActiveOrganizationId(session);
   // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
   const canCreateWorkspace = useCanCreateWorkspace();
+  const projectCreationPermission = useWorkspacePermission(workspace?.id);
+  const isCheckingProjectCreation =
+    !workspace?.id || projectCreationPermission.isCheckingPermissions;
+  const canCreateProject =
+    !isCheckingProjectCreation && projectCreationPermission.canCreateProjects();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
@@ -175,6 +180,8 @@ export function CommandPalette({
     if (!request || handledRequest.current === request.id) return;
     // Wait for the signed-in role before deciding, so the request is not dropped while it loads.
     if (request.intent === "create-workspace" && sessionPending) return;
+    if (request.intent === "create-project" && isCheckingProjectCreation)
+      return;
     // A cold load of a project URL (or the shortcut pressed before the project and its
     // permissions have loaded) waits for them instead of dropping the request.
     if (
@@ -192,7 +199,7 @@ export function CommandPalette({
         navigate({ to: routes.agentHome.path });
         break;
       case "create-project":
-        setIsCreateProjectOpen(true);
+        if (canCreateProject) setIsCreateProjectOpen(true);
         break;
       case "create-task":
         if (canCreateWorkItem) openCreateWorkItem();
@@ -205,6 +212,8 @@ export function CommandPalette({
   }, [
     request,
     canCreateWorkspace,
+    canCreateProject,
+    isCheckingProjectCreation,
     sessionPending,
     navigate,
     onRequestHandled,
@@ -361,12 +370,16 @@ export function CommandPalette({
                 },
               ]
             : []),
-          {
-            value: "create-project",
-            label: t("navigation:commandPalette.createProject"),
-            shortcut: `${shortcuts.project.prefix} ${shortcuts.project.create}`,
-            onRun: () => setIsCreateProjectOpen(true),
-          },
+          ...(canCreateProject
+            ? [
+                {
+                  value: "create-project",
+                  label: t("navigation:commandPalette.createProject"),
+                  shortcut: `${shortcuts.project.prefix} ${shortcuts.project.create}`,
+                  onRun: () => setIsCreateProjectOpen(true),
+                },
+              ]
+            : []),
         ],
       },
       {
@@ -418,6 +431,7 @@ export function CommandPalette({
       setTheme,
       t,
       canCreateWorkspace,
+      canCreateProject,
       canCreateWorkItem,
       openCreateWorkItem,
     ],

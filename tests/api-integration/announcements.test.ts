@@ -1,3 +1,4 @@
+// D-E (12 Nov): project-limited denial actors use custom roles.
 /**
  * D7 customer announcements (feature-contracts-p5.md "Announcements"): staff management under
  * `service:manage`, audience isolation between customer organisations, drafts and the time
@@ -26,7 +27,7 @@ import {
   ensureAgentSession,
 } from "./helpers/pending-deletion";
 import { grantSeesAll } from "./helpers/project-reach-world";
-import { addMember } from "./helpers/reach-world";
+import { addMember, addProjectLimitedMember } from "./helpers/reach-world";
 
 type Announcement = {
   id: string;
@@ -48,6 +49,9 @@ beforeEach(async () => {
     .update(schema.projectTable)
     .set({ organisationId: w.customerB.orgId })
     .where(eq(schema.projectTable.id, w.projectB.id));
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: w.customerB.person.id, projectId: w.projectB.id });
   // The owner reaches every project of the workspace, as owners do after the sees-all migration.
   const [owner] = await db
     .select({ id: schema.personTable.id })
@@ -139,8 +143,8 @@ async function portalDetailStatus(customer: KbWorld["customerA"], id: string) {
 
 describe("staff permissions", () => {
   it("lets owner, admin and manager manage announcements and refuses lead, member and viewer", async () => {
-    const admin = await addMember(w.workspaceId, "admin");
-    const manager = await addMember(w.workspaceId, "manager");
+    const admin = await addProjectLimitedMember(w.workspaceId);
+    const manager = await addProjectLimitedMember(w.workspaceId);
     const lead = await addMember(w.workspaceId, "lead");
     // A workspace-wide notice addresses every customer, so it needs reach to every project.
     await grantSeesAll(w.workspaceId, admin.personId);
@@ -315,7 +319,7 @@ describe("audience isolation", () => {
 
 describe("project reach", () => {
   it("hides targeted projects outside a manager's reach and refuses adding them", async () => {
-    const manager = await addMember(w.workspaceId, "manager");
+    const manager = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(manager.user.id, w.projectA.id, ["project:read"]);
     const announcement = await createPublished({
       audience: "projects",
@@ -410,7 +414,7 @@ describe("project reach", () => {
   });
 
   it("refuses changing a published workspace-wide notice past a manager's reach", async () => {
-    const manager = await addMember(w.workspaceId, "manager");
+    const manager = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(manager.user.id, w.projectA.id, ["project:read"]);
     await ensureAgentSession(manager.user.id);
     const live = await createPublished({ audience: "workspace" });
@@ -499,7 +503,7 @@ describe("project reach", () => {
   });
 
   it("refuses changing a published notice to organisations past a manager's reach", async () => {
-    const manager = await addMember(w.workspaceId, "manager");
+    const manager = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(manager.user.id, w.projectA.id, ["project:read"]);
     await ensureAgentSession(manager.user.id);
     const mixed = await createPublished({
@@ -540,7 +544,7 @@ describe("project reach", () => {
   });
 
   it("refuses approving a published notice's deletion once the requester lost reach", async () => {
-    const manager = await addMember(w.workspaceId, "manager");
+    const manager = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(manager.user.id, w.projectA.id, ["project:read"]);
     await grantProjectRole(manager.user.id, w.projectB.id, ["project:read"]);
     await ensureAgentSession(manager.user.id);
@@ -584,7 +588,7 @@ describe("project reach", () => {
   });
 
   it("answers a notice with no target in a manager's reach as missing", async () => {
-    const manager = await addMember(w.workspaceId, "manager");
+    const manager = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(manager.user.id, w.projectA.id, ["project:read"]);
     await ensureAgentSession(manager.user.id);
     const byProject = await createPublished({
@@ -664,7 +668,7 @@ describe("project reach", () => {
   });
 
   it("lets a manager delete a notice with a target in reach", async () => {
-    const manager = await addMember(w.workspaceId, "manager");
+    const manager = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(manager.user.id, w.projectA.id, ["project:read"]);
     await ensureAgentSession(manager.user.id);
     // Positive controls for both branches of the deletion reach hook (request and execution).
@@ -695,7 +699,7 @@ describe("project reach", () => {
   });
 
   it("refuses widening an audience past a manager's reach", async () => {
-    const manager = await addMember(w.workspaceId, "manager");
+    const manager = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(manager.user.id, w.projectA.id, ["project:read"]);
     expect((await create({ audience: "workspace" }, manager.user)).status).toBe(
       422,
@@ -740,7 +744,7 @@ describe("project reach", () => {
   });
 
   it("refuses publishing a draft with targets past a manager's reach", async () => {
-    const manager = await addMember(w.workspaceId, "manager");
+    const manager = await addProjectLimitedMember(w.workspaceId);
     await grantProjectRole(manager.user.id, w.projectA.id, ["project:read"]);
     // A notice wholly inside the manager's reach stays theirs to publish and change.
     const own = (await (
@@ -814,6 +818,23 @@ describe("project reach", () => {
 });
 
 describe("drafts and the time window", () => {
+  it("hides a project-targeted announcement immediately when its project access is revoked", async () => {
+    const published = await createPublished({
+      audience: "projects",
+      projectIds: [w.projectA.id],
+    });
+    expect(await portalIds(w.customerA)).toContain(published.id);
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, w.customerA.person.id),
+          eq(schema.customerProjectAccessTable.projectId, w.projectA.id),
+        ),
+      );
+    expect(await portalIds(w.customerA)).not.toContain(published.id);
+    expect(await portalDetailStatus(w.customerA, published.id)).toBe(404);
+  });
   it("hides drafts, future and expired announcements and filters by severity", async () => {
     const draft = (await (await create({})).json()) as Announcement;
     const future = await createPublished({

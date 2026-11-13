@@ -98,12 +98,49 @@ describe("P5 data does not block deletes (P5-R1-06)", () => {
     for (const table of TABLES) expect(after[table], table).toBe(0);
   });
 
+  it.each(["time_activity", "service"])(
+    "still rejects deleting a referenced %s at commit",
+    async (table) => {
+      const w = await staffWorld();
+      await populateP5(w.workspace.id, w.person.id);
+      let reachedCommit = false;
+      let failure: unknown;
+      try {
+        await db.transaction(async (tx) => {
+          await tx.execute(
+            sql`DELETE FROM ${sql.identifier(table)} WHERE workspace_id = ${w.workspace.id}`,
+          );
+          reachedCommit = true;
+        });
+      } catch (error) {
+        failure = error;
+      }
+      expect(reachedCommit).toBe(true);
+      const error = failure as
+        | { code?: string; cause?: { code?: string } }
+        | undefined;
+      expect(error?.code ?? error?.cause?.code).toBe("23503");
+      const after = await counts(w.workspace.id);
+      expect(after[table as "time_activity" | "service"]).toBeGreaterThan(0);
+      expect(after.time_entry).toBeGreaterThan(0);
+    },
+  );
+
   it("cascades a bare workspace row delete through RESTRICT service links (no trigger-order dependence)", async () => {
     const w = await staffWorld();
     await populateP5(w.workspace.id, w.person.id);
     await db
       .delete(schema.workspaceTable)
-      .where(eq(schema.workspaceTable.id, w.workspace.id));
+      .where(eq(schema.workspaceTable.id, w.workspace.id))
+      .catch((error) => {
+        const cause = error.cause as
+          | { constraint?: string; code?: string }
+          | undefined;
+        throw new Error(
+          `workspace cascade failed: ${cause?.constraint} (${cause?.code})`,
+          { cause: error },
+        );
+      });
     const after = await counts(w.workspace.id);
     for (const table of TABLES) expect(after[table], table).toBe(0);
   });

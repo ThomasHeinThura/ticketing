@@ -317,7 +317,7 @@ async function failExport(id: string, code: string): Promise<void> {
  * as the request (`callerCaps`, P5-R2-03): at the report's project filter when it has one, and
  * otherwise only while no project role override in the workspace removes them.
  */
-async function currentCaps(
+export async function currentCaps(
   workspaceId: string,
   userId: string,
   identity: ResolvedIdentity,

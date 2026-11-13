@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import db, { schema } from "../database";
+import { staffRegistrationDisabledByEnvironment } from "../utils/check-registration-allowed";
 
 // Defaults closed until the initial configuration load has succeeded.
 let storedStaffSelfRegistration = false;
@@ -22,6 +23,6 @@ export async function refreshStaffRegistration(): Promise<void> {
 
 export function staffSelfRegistrationEnabled(): boolean {
   return (
-    process.env.DISABLE_REGISTRATION !== "true" && storedStaffSelfRegistration
+    !staffRegistrationDisabledByEnvironment() && storedStaffSelfRegistration
   );
 }

@@ -34,7 +34,7 @@ import {
 } from "@/fetchers/portal-notifications";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalNotificationQueryKey } from "@/lib/portal-notification-query-keys";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 const eventTranslation: Record<PortalNotificationKind, string> = {
   "work_item.commented": "notifications.events.comment",

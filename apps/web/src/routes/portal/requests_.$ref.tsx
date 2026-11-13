@@ -3,7 +3,7 @@ import { PortalRequestDetails } from "@/components/portal/requests/portal-reques
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 /** U-12 (D6): a request the team raised for the customer, opened from the case list. */
 export const Route = createFileRoute("/requests_/$ref")({

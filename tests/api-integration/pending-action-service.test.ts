@@ -15,7 +15,11 @@ import {
   decideOwnPendingAction,
 } from "../../apps/api/src/pending-action/service";
 import { resetTestDatabase } from "./helpers/database";
-import { createProjectFixture, requireRow } from "./helpers/fixtures";
+import {
+  assignProjectLimitedRole,
+  createProjectFixture,
+  requireRow,
+} from "./helpers/fixtures";
 
 async function waitForLifecycleLockCount(
   client: Client,
@@ -141,6 +145,7 @@ describe("pending-action service persistence", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    await assignProjectLimitedRole("user-pending-action-test", workspaceId);
     const project = await createProjectFixture({
       workspaceId,
       slug: "pending-action-test-project",

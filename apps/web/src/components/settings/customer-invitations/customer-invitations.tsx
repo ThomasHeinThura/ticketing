@@ -6,6 +6,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,6 +19,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -34,13 +36,20 @@ import {
 import { Plus, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   type CustomerInvitation,
   type CustomerInvitationStatus,
   copyCustomerInvitationLink,
   createCustomerInvitation,
+  listCustomerInvitationProjects,
   listCustomerInvitations,
   listInvitableOrganisations,
   requestCustomerInvitationRevoke,
@@ -87,11 +96,16 @@ function InviteDialog({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
+  const [projectIds, setProjectIds] = useState<string[]>([]);
+  const projects = useQuery({
+    queryKey: ["customer-invitation-projects", workspaceId, organisationId],
+    queryFn: () => listCustomerInvitationProjects(workspaceId, organisationId),
+  });
   const [sentInvitation, setSentInvitation] =
     useState<SentCustomerInvitation | null>(null);
   const mutation = useMutation({
     mutationFn: () =>
-      createCustomerInvitation(workspaceId, organisationId, email),
+      createCustomerInvitation(workspaceId, organisationId, email, projectIds),
     onSuccess: async (sent) => {
       await queryClient.invalidateQueries({
         queryKey: customerInvitationsKey(workspaceId, organisationId),
@@ -146,7 +160,13 @@ function InviteDialog({
             className="space-y-4"
             onSubmit={(event) => {
               event.preventDefault();
-              if (valid && !mutation.isPending) mutation.mutate();
+              if (
+                valid &&
+                !mutation.isPending &&
+                !projects.isLoading &&
+                !projects.isError
+              )
+                mutation.mutate();
             }}
           >
             <div className="space-y-4 px-6">
@@ -168,6 +188,37 @@ function InviteDialog({
                   {t("customerInvitations:create.roleNote")}
                 </p>
               </div>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">
+                  {t("customerInvitations:create.projectsTitle")}
+                </legend>
+                {projects.isError ? (
+                  <Alert variant="error">
+                    <AlertDescription>
+                      {t("customerInvitations:create.projectsLoadError")}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                {projects.data?.map((project) => (
+                  <div key={project.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`invite-project-${project.id}`}
+                      checked={projectIds.includes(project.id)}
+                      disabled={mutation.isPending}
+                      onCheckedChange={(checked) =>
+                        setProjectIds((current) =>
+                          checked === true
+                            ? [...current, project.id]
+                            : current.filter((id) => id !== project.id),
+                        )
+                      }
+                    />
+                    <Label htmlFor={`invite-project-${project.id}`}>
+                      {project.name}
+                    </Label>
+                  </div>
+                ))}
+              </fieldset>
               {mutation.error ? (
                 <Alert variant="error">
                   <AlertDescription>{mutation.error.message}</AlertDescription>
@@ -183,9 +234,21 @@ function InviteDialog({
               >
                 {t("common:actions.cancel")}
               </Button>
-              <Button type="submit" disabled={mutation.isPending || !valid}>
+              <SaveButton
+                type="submit"
+                pending={mutation.isPending}
+                success={false}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+                announceSuccess={false}
+                disabled={
+                  (!valid && !mutation.isPending) ||
+                  projects.isLoading ||
+                  projects.isError
+                }
+              >
                 {t("customerInvitations:create.submit")}
-              </Button>
+              </SaveButton>
             </DialogFooter>
           </form>
         )}
@@ -367,6 +430,23 @@ export function CustomerInvitations({
 }: {
   organisationId: string | undefined;
 }) {
+  const access = useSettingsAccess((permission) => permission.canInviteUsers());
+  if (access !== "allowed")
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="customerInvitations:title"
+        descriptionKey="customerInvitations:description"
+      />
+    );
+  return <CustomerInvitationsContent organisationId={organisationId} />;
+}
+
+function CustomerInvitationsContent({
+  organisationId,
+}: {
+  organisationId: string | undefined;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
@@ -382,7 +462,7 @@ export function CustomerInvitations({
   const invitations = useQuery({
     queryKey: customerInvitationsKey(workspaceId, selected?.id ?? ""),
     queryFn: () => listCustomerInvitations(workspaceId, selected?.id ?? ""),
-    enabled: Boolean(workspaceId) && Boolean(selected),
+    enabled: Boolean(workspaceId) && Boolean(selected) && canInvite,
   });
   const [inviting, setInviting] = useState(false);
   const [resentInvitation, setResentInvitation] =
@@ -390,6 +470,8 @@ export function CustomerInvitations({
   const loading =
     workspaceLoading || isCheckingPermissions || organisations.isLoading;
 
+  if ([organisations.error, invitations.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("customerInvitations:title")} />

@@ -23,14 +23,17 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
   requireRow,
 } from "./helpers/fixtures";
 import { setTimeFlags } from "./helpers/p5-time";
 
-async function world() {
-  const member = await createWorkspaceMember({ role: "owner" });
+async function world(projectLimited = false) {
+  const member = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role: "owner" });
   const { project, columns } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });
@@ -317,7 +320,7 @@ describe("API integration: task relations through the repository", () => {
   });
 
   it("repository reads and deletes require current reach to both relation endpoints", async () => {
-    const { member, project, seed } = await world();
+    const { member, project, seed } = await world(true);
     const ownSource = await seed(1, "Own source");
     const ownTarget = await seed(2, "Own target");
     const foreignProject = await createProjectFixture({

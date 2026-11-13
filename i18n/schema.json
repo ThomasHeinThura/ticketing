@@ -180,6 +180,12 @@
 						},
 						"refresh": {
 							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -200,7 +206,9 @@
 						"save",
 						"previous",
 						"next",
-						"refresh"
+						"refresh",
+						"saved",
+						"saving"
 					]
 				},
 				"a11y": {
@@ -4852,6 +4860,21 @@
 						},
 						"statesDescription": {
 							"type": "string"
+						},
+						"columnsTitle": {
+							"type": "string"
+						},
+						"columnsDescription": {
+							"type": "string"
+						},
+						"automationTitle": {
+							"type": "string"
+						},
+						"automationDescription": {
+							"type": "string"
+						},
+						"columnsNote": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -4859,7 +4882,12 @@
 						"title",
 						"subtitle",
 						"statesTitle",
-						"statesDescription"
+						"statesDescription",
+						"columnsTitle",
+						"columnsDescription",
+						"automationTitle",
+						"automationDescription",
+						"columnsNote"
 					]
 				},
 				"projectMembers": {
@@ -10229,6 +10257,51 @@
 						},
 						"shareFilesWithCustomer": {
 							"type": "string"
+						},
+						"replyToCustomer": {
+							"type": "string"
+						},
+						"internalNote": {
+							"type": "string"
+						},
+						"sendToCustomer": {
+							"type": "string"
+						},
+						"addInternalNote": {
+							"type": "string"
+						},
+						"onlyTeamSeesThis": {
+							"type": "string"
+						},
+						"visibleToCustomer": {
+							"type": "string"
+						},
+						"customerVisibilityLostFallback": {
+							"type": "string"
+						},
+						"internalVisibilityUnavailableCanReply": {
+							"type": "string"
+						},
+						"publicVisibilityUnavailableCanNote": {
+							"type": "string"
+						},
+						"commentVisibilityUnavailableNone": {
+							"type": "string"
+						},
+						"switchToReplyToCustomer": {
+							"type": "string"
+						},
+						"keepAsInternalNote": {
+							"type": "string"
+						},
+						"draftKeptAsInternalNote": {
+							"type": "string"
+						},
+						"cannedResponseSwitchedToInternal": {
+							"type": "string"
+						},
+						"cannedResponsePublicChoiceNotice": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10275,7 +10348,22 @@
 						"actors",
 						"reopenRequested",
 						"verbs",
-						"shareFilesWithCustomer"
+						"shareFilesWithCustomer",
+						"replyToCustomer",
+						"internalNote",
+						"sendToCustomer",
+						"addInternalNote",
+						"onlyTeamSeesThis",
+						"visibleToCustomer",
+						"customerVisibilityLostFallback",
+						"internalVisibilityUnavailableCanReply",
+						"publicVisibilityUnavailableCanNote",
+						"commentVisibilityUnavailableNone",
+						"switchToReplyToCustomer",
+						"keepAsInternalNote",
+						"draftKeptAsInternalNote",
+						"cannedResponseSwitchedToInternal",
+						"cannedResponsePublicChoiceNotice"
 					]
 				}
 			},
@@ -12590,6 +12678,15 @@
 						},
 						"completion": {
 							"type": "string"
+						},
+						"join": {
+							"type": "string"
+						},
+						"joining": {
+							"type": "string"
+						},
+						"joinFailed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12629,7 +12726,10 @@
 						"showAllKinds",
 						"actions",
 						"archived",
-						"completion"
+						"completion",
+						"join",
+						"joining",
+						"joinFailed"
 					]
 				},
 				"search": {
@@ -12713,6 +12813,9 @@
 						},
 						"unavailableDescription": {
 							"type": "string"
+						},
+						"backToDashboard": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12735,7 +12838,8 @@
 						"scopeWorkItems",
 						"scopeProjects",
 						"unavailableTitle",
-						"unavailableDescription"
+						"unavailableDescription",
+						"backToDashboard"
 					]
 				},
 				"create": {
@@ -16308,6 +16412,70 @@
 						}
 					},
 					"required": ["emptyTitle", "emptyDescription", "rankColumn"]
+				},
+				"customFieldValue": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"amount": {
+							"type": "string"
+						},
+						"clear": {
+							"type": "string"
+						},
+						"currencyCode": {
+							"type": "string"
+						},
+						"no": {
+							"type": "string"
+						},
+						"noChoices": {
+							"type": "string"
+						},
+						"notOnProject": {
+							"type": "string"
+						},
+						"notSet": {
+							"type": "string"
+						},
+						"optional": {
+							"type": "string"
+						},
+						"requiredHint": {
+							"type": "string"
+						},
+						"yes": {
+							"type": "string"
+						},
+						"hour": {
+							"type": "string"
+						},
+						"minute": {
+							"type": "string"
+						},
+						"invalidLocalTime": {
+							"type": "string"
+						},
+						"datetime": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"amount",
+						"clear",
+						"currencyCode",
+						"no",
+						"noChoices",
+						"notOnProject",
+						"notSet",
+						"optional",
+						"requiredHint",
+						"yes",
+						"hour",
+						"minute",
+						"invalidLocalTime",
+						"datetime"
+					]
 				}
 			},
 			"required": [
@@ -16332,7 +16500,8 @@
 				"move",
 				"auditHistory",
 				"priority",
-				"backlog"
+				"backlog",
+				"customFieldValue"
 			]
 		},
 		"portal": {
@@ -27478,6 +27647,39 @@
 				},
 				"testDestinationPasswordRequired": {
 					"type": "string"
+				},
+				"test": {
+					"type": "string"
+				},
+				"testHelp": {
+					"type": "string"
+				},
+				"verified": {
+					"type": "string"
+				},
+				"diagnostics": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"smtp_authentication_failed": {
+							"type": "string"
+						},
+						"smtp_connection_failed": {
+							"type": "string"
+						},
+						"smtp_tls_failed": {
+							"type": "string"
+						},
+						"smtp_timeout": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"smtp_authentication_failed",
+						"smtp_connection_failed",
+						"smtp_tls_failed",
+						"smtp_timeout"
+					]
 				}
 			},
 			"required": [
@@ -27521,7 +27723,11 @@
 				"failure",
 				"failureSes",
 				"credentialsRequired",
-				"testDestinationPasswordRequired"
+				"testDestinationPasswordRequired",
+				"test",
+				"testHelp",
+				"verified",
+				"diagnostics"
 			]
 		},
 		"featureFlags": {
@@ -37112,9 +37318,39 @@
 						},
 						"submit": {
 							"type": "string"
+						},
+						"projectsTitle": {
+							"type": "string"
+						},
+						"projectsLoadError": {
+							"type": "string"
+						},
+						"accessTitle": {
+							"type": "string"
+						},
+						"accessError": {
+							"type": "string"
+						},
+						"grantAccess": {
+							"type": "string"
+						},
+						"revokeAccess": {
+							"type": "string"
 						}
 					},
-					"required": ["title", "description", "email", "roleNote", "submit"]
+					"required": [
+						"title",
+						"description",
+						"email",
+						"roleNote",
+						"submit",
+						"projectsTitle",
+						"projectsLoadError",
+						"accessTitle",
+						"accessError",
+						"grantAccess",
+						"revokeAccess"
+					]
 				},
 				"resultCard": {
 					"type": "object",
@@ -43850,6 +44086,687 @@
 				"wizard",
 				"rejectionCodesColumn"
 			]
+		},
+		"workItemExtras": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"detail": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"notFoundDescription": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"keyLabel": {
+							"type": "string"
+						},
+						"titleLabel": {
+							"type": "string"
+						},
+						"stateLabel": {
+							"type": "string"
+						},
+						"priorityLabel": {
+							"type": "string"
+						},
+						"dueDateLabel": {
+							"type": "string"
+						},
+						"assigneeLabel": {
+							"type": "string"
+						},
+						"descriptionHeading": {
+							"type": "string"
+						},
+						"detailsHeading": {
+							"type": "string"
+						},
+						"projectLabel": {
+							"type": "string"
+						},
+						"startDateLabel": {
+							"type": "string"
+						},
+						"createdLabel": {
+							"type": "string"
+						},
+						"updatedLabel": {
+							"type": "string"
+						},
+						"noPriority": {
+							"type": "string"
+						},
+						"noDueDate": {
+							"type": "string"
+						},
+						"noStartDate": {
+							"type": "string"
+						},
+						"noDescription": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"unavailableFieldLabel": {
+							"type": "string"
+						},
+						"partialNoticeTitle": {
+							"type": "string"
+						},
+						"partialNoticeDescription": {
+							"type": "string"
+						},
+						"approvals": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"loading": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"errorTitle": {
+									"type": "string"
+								},
+								"errorDescription": {
+									"type": "string"
+								},
+								"retry": {
+									"type": "string"
+								},
+								"kind": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"customer": {
+											"type": "string"
+										},
+										"cab": {
+											"type": "string"
+										}
+									},
+									"required": ["customer", "cab"]
+								},
+								"approverLabel": {
+									"type": "string"
+								},
+								"requesterLabel": {
+									"type": "string"
+								},
+								"expiresLabel": {
+									"type": "string"
+								},
+								"decidedLabel": {
+									"type": "string"
+								},
+								"unknownPerson": {
+									"type": "string"
+								},
+								"state": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"pending": {
+											"type": "string"
+										},
+										"approved": {
+											"type": "string"
+										},
+										"rejected": {
+											"type": "string"
+										},
+										"expired": {
+											"type": "string"
+										},
+										"withdrawn": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"pending",
+										"approved",
+										"rejected",
+										"expired",
+										"withdrawn"
+									]
+								},
+								"reachLost": {
+									"type": "string"
+								},
+								"withdraw": {
+									"type": "string"
+								},
+								"withdrawing": {
+									"type": "string"
+								},
+								"withdrawErrorTitle": {
+									"type": "string"
+								},
+								"withdrawConflict": {
+									"type": "string"
+								},
+								"withdrawForbidden": {
+									"type": "string"
+								},
+								"withdrawFailed": {
+									"type": "string"
+								},
+								"withdrawn": {
+									"type": "string"
+								},
+								"withdrawFor": {
+									"type": "string"
+								},
+								"approve": {
+									"type": "string"
+								},
+								"reject": {
+									"type": "string"
+								},
+								"rejectNote": {
+									"type": "string"
+								},
+								"confirmReject": {
+									"type": "string"
+								},
+								"decideErrorTitle": {
+									"type": "string"
+								},
+								"decideFailed": {
+									"type": "string"
+								},
+								"decideConflict": {
+									"type": "string"
+								},
+								"request": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"action": {
+											"type": "string"
+										},
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"kind": {
+											"type": "string"
+										},
+										"transition": {
+											"type": "string"
+										},
+										"anyState": {
+											"type": "string"
+										},
+										"chooseTransition": {
+											"type": "string"
+										},
+										"approver": {
+											"type": "string"
+										},
+										"search": {
+											"type": "string"
+										},
+										"chooseApprover": {
+											"type": "string"
+										},
+										"noCandidates": {
+											"type": "string"
+										},
+										"more": {
+											"type": "string"
+										},
+										"expiryDays": {
+											"type": "string"
+										},
+										"expiryHint": {
+											"type": "string"
+										},
+										"submit": {
+											"type": "string"
+										},
+										"submitting": {
+											"type": "string"
+										},
+										"error": {
+											"type": "string"
+										},
+										"optionsError": {
+											"type": "string"
+										},
+										"candidatesError": {
+											"type": "string"
+										},
+										"unavailable": {
+											"type": "string"
+										},
+										"invalidExpiry": {
+											"type": "string"
+										},
+										"success": {
+											"type": "string"
+										},
+										"noTransitions": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"action",
+										"title",
+										"description",
+										"kind",
+										"transition",
+										"anyState",
+										"chooseTransition",
+										"approver",
+										"search",
+										"chooseApprover",
+										"noCandidates",
+										"more",
+										"expiryDays",
+										"expiryHint",
+										"submit",
+										"submitting",
+										"error",
+										"optionsError",
+										"candidatesError",
+										"unavailable",
+										"invalidExpiry",
+										"success",
+										"noTransitions"
+									]
+								}
+							},
+							"required": [
+								"heading",
+								"loading",
+								"empty",
+								"errorTitle",
+								"errorDescription",
+								"retry",
+								"kind",
+								"approverLabel",
+								"requesterLabel",
+								"expiresLabel",
+								"decidedLabel",
+								"unknownPerson",
+								"state",
+								"reachLost",
+								"withdraw",
+								"withdrawing",
+								"withdrawErrorTitle",
+								"withdrawConflict",
+								"withdrawForbidden",
+								"withdrawFailed",
+								"withdrawn",
+								"withdrawFor",
+								"approve",
+								"reject",
+								"rejectNote",
+								"confirmReject",
+								"decideErrorTitle",
+								"decideFailed",
+								"decideConflict",
+								"request"
+							]
+						},
+						"sla": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"unavailable": {
+									"type": "string"
+								},
+								"remaining": {
+									"type": "string"
+								},
+								"due": {
+									"type": "string"
+								},
+								"atRiskMark": {
+									"type": "string"
+								},
+								"atRiskPast": {
+									"type": "string"
+								},
+								"pausedSince": {
+									"type": "string"
+								},
+								"pauseReason": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"waiting_customer": {
+											"type": "string"
+										},
+										"manual": {
+											"type": "string"
+										},
+										"other": {
+											"type": "string"
+										}
+									},
+									"required": ["waiting_customer", "manual", "other"]
+								},
+								"metric": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"first_response": {
+											"type": "string"
+										},
+										"resolution": {
+											"type": "string"
+										}
+									},
+									"required": ["first_response", "resolution"]
+								},
+								"state": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"none": {
+											"type": "string"
+										},
+										"ok": {
+											"type": "string"
+										},
+										"at_risk": {
+											"type": "string"
+										},
+										"breached": {
+											"type": "string"
+										},
+										"met": {
+											"type": "string"
+										},
+										"missed": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"none",
+										"ok",
+										"at_risk",
+										"breached",
+										"met",
+										"missed"
+									]
+								},
+								"calendar": {
+									"type": "string"
+								},
+								"atRiskMarkerAt": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"heading",
+								"unavailable",
+								"remaining",
+								"due",
+								"atRiskMark",
+								"atRiskPast",
+								"pausedSince",
+								"pauseReason",
+								"metric",
+								"state",
+								"calendar",
+								"atRiskMarkerAt"
+							]
+						},
+						"attachments": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								},
+								"add": {
+									"type": "string"
+								},
+								"uploading": {
+									"type": "string"
+								},
+								"empty": {
+									"type": "string"
+								},
+								"loadFailed": {
+									"type": "string"
+								},
+								"uploadFailed": {
+									"type": "string"
+								},
+								"deleteFailed": {
+									"type": "string"
+								},
+								"delete": {
+									"type": "string"
+								},
+								"retryUpload": {
+									"type": "string"
+								},
+								"dismissUpload": {
+									"type": "string"
+								},
+								"uploadsLabel": {
+									"type": "string"
+								},
+								"preview": {
+									"type": "string"
+								},
+								"previous": {
+									"type": "string"
+								},
+								"next": {
+									"type": "string"
+								},
+								"download": {
+									"type": "string"
+								},
+								"closePreview": {
+									"type": "string"
+								},
+								"uploadedBy": {
+									"type": "string"
+								},
+								"dropToAttach": {
+									"type": "string"
+								},
+								"recoverDeleted": {
+									"type": "string"
+								},
+								"backToFiles": {
+									"type": "string"
+								},
+								"recoverableEmpty": {
+									"type": "string"
+								},
+								"restore": {
+									"type": "string"
+								},
+								"restoreFailed": {
+									"type": "string"
+								},
+								"commentParent": {
+									"type": "string"
+								},
+								"recoverableUntil": {
+									"type": "string"
+								},
+								"pdfPreviewTitle": {
+									"type": "string"
+								},
+								"pdfPreviewLoading": {
+									"type": "string"
+								},
+								"pdfPreviewUnavailable": {
+									"type": "string"
+								},
+								"pdfPreviewTooLarge": {
+									"type": "string"
+								},
+								"pdfPreviewPage": {
+									"type": "string"
+								},
+								"pdfPreviewPage_zero": {
+									"type": "string"
+								},
+								"pdfPreviewPage_one": {
+									"type": "string"
+								},
+								"pdfPreviewPage_two": {
+									"type": "string"
+								},
+								"pdfPreviewPage_few": {
+									"type": "string"
+								},
+								"pdfPreviewPage_many": {
+									"type": "string"
+								},
+								"pdfPreviewPage_other": {
+									"type": "string"
+								},
+								"pdfPreviewPreviousPage": {
+									"type": "string"
+								},
+								"pdfPreviewNextPage": {
+									"type": "string"
+								},
+								"pdfPreviewZoomOut": {
+									"type": "string"
+								},
+								"pdfPreviewZoomIn": {
+									"type": "string"
+								},
+								"pdfPreviewDownload": {
+									"type": "string"
+								},
+								"pdfPreviewOpen": {
+									"type": "string"
+								},
+								"sharedWithCustomer": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"heading",
+								"add",
+								"uploading",
+								"empty",
+								"loadFailed",
+								"uploadFailed",
+								"deleteFailed",
+								"delete",
+								"retryUpload",
+								"dismissUpload",
+								"uploadsLabel",
+								"preview",
+								"previous",
+								"next",
+								"download",
+								"closePreview",
+								"uploadedBy",
+								"dropToAttach",
+								"recoverDeleted",
+								"backToFiles",
+								"recoverableEmpty",
+								"restore",
+								"restoreFailed",
+								"commentParent",
+								"recoverableUntil",
+								"pdfPreviewTitle",
+								"pdfPreviewLoading",
+								"pdfPreviewUnavailable",
+								"pdfPreviewTooLarge",
+								"pdfPreviewPreviousPage",
+								"pdfPreviewNextPage",
+								"pdfPreviewZoomOut",
+								"pdfPreviewZoomIn",
+								"pdfPreviewDownload",
+								"pdfPreviewOpen",
+								"sharedWithCustomer"
+							]
+						},
+						"change": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								}
+							},
+							"required": ["heading"]
+						},
+						"time": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"heading": {
+									"type": "string"
+								}
+							},
+							"required": ["heading"]
+						},
+						"resizeProperties": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"notFoundDescription",
+						"errorTitle",
+						"errorDescription",
+						"retry",
+						"keyLabel",
+						"titleLabel",
+						"stateLabel",
+						"priorityLabel",
+						"dueDateLabel",
+						"assigneeLabel",
+						"descriptionHeading",
+						"detailsHeading",
+						"projectLabel",
+						"startDateLabel",
+						"createdLabel",
+						"updatedLabel",
+						"noPriority",
+						"noDueDate",
+						"noStartDate",
+						"noDescription",
+						"unavailable",
+						"unavailableFieldLabel",
+						"partialNoticeTitle",
+						"partialNoticeDescription",
+						"approvals",
+						"sla",
+						"attachments",
+						"change",
+						"time",
+						"resizeProperties"
+					]
+				}
+			},
+			"required": ["detail"]
 		}
 	},
 	"required": [
@@ -43899,6 +44816,7 @@
 		"godModeOrganisations",
 		"term",
 		"godModeWebhooks",
-		"godModeImports"
+		"godModeImports",
+		"workItemExtras"
 	]
 }

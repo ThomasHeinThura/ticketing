@@ -15,6 +15,9 @@ import { translate } from "@/test/en-translation";
 import SavedViewDetail from "./saved-view-detail";
 
 const mocks = vi.hoisted(() => ({
+  capabilityFailed: false,
+  checking: false,
+  checkScope: vi.fn(),
   getSavedView: vi.fn(),
   getSavedViews: vi.fn(),
   getShareableViewTeams: vi.fn(),
@@ -26,34 +29,50 @@ const mocks = vi.hoisted(() => ({
   toggleSavedViewPin: vi.fn(),
   getProjects: vi.fn(),
   canShare: false,
+  canCreate: true,
+  personId: "person-1",
   canManage: false,
   editorProps: undefined as Record<string, unknown> | undefined,
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
+  useTranslation: (namespace?: string) => ({
     t: (key: string, options?: Record<string, unknown>) =>
-      translate(
-        `savedViews:${
-          typeof options?.count === "number"
-            ? `${key}_${options.count === 1 ? "one" : "other"}`
-            : key
-        }`,
-        options,
-      ),
+      key.includes(":")
+        ? translate(key, options)
+        : namespace === "common"
+          ? translate(`common:${key}`, options)
+          : translate(
+              `savedViews:${
+                typeof options?.count === "number"
+                  ? `${key}_${options.count === 1 ? "one" : "other"}`
+                  : key
+              }`,
+              options,
+            ),
   }),
 }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <>{children}</>,
   useNavigate: () => vi.fn(),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   default: () => ({ user: { id: "viewer-1" } }),
 }));
+vi.mock("@/hooks/use-own-person-id", () => ({
+  useOwnPersonId: () => ({ data: mocks.personId }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canShareSavedViews: () => mocks.canShare,
+    canCreateSavedViews: () => mocks.canCreate,
+    isCheckingPermissions: mocks.checking,
+    workspace: { id: "active-workspace" },
     canManageWorkspaceSettings: () => mocks.canManage,
   }),
 }));
@@ -220,7 +239,11 @@ const unreadable = (status: number) =>
   mocks.getSavedView.mockRejectedValue(new HttpError(status, "Unable"));
 
 beforeEach(() => {
+  mocks.checking = false;
+  mocks.capabilityFailed = false;
   mocks.canShare = false;
+  mocks.canCreate = true;
+  mocks.personId = "person-1";
   mocks.canManage = false;
   mocks.editorProps = undefined;
   mocks.getSavedView.mockResolvedValue(baseView);
@@ -242,6 +265,41 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+describe("saved view action permissions", () => {
+  it("hides clone and edit from a viewer", async () => {
+    mocks.canCreate = false;
+    renderDetail(storedSearch);
+    await screen.findByText("Stored result");
+    expect(
+      screen.queryByRole("button", { name: translate("savedViews:clone") }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: translate("savedViews:edit") }),
+    ).toBeNull();
+  });
+  it("keeps clone but hides edit for another person's view", async () => {
+    mocks.personId = "person-other";
+    renderDetail(storedSearch);
+    await screen.findByText("Stored result");
+    expect(
+      screen.getByRole("button", { name: translate("savedViews:clone") }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: translate("savedViews:edit") }),
+    ).toBeNull();
+  });
+  it("shows no access for a forbidden view without a complete shared URL", async () => {
+    unreadable(403);
+    renderDetail({});
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "You don't have access",
+      }),
+    ).toHaveFocus();
+  });
 });
 
 describe("SV-19 saved view the viewer cannot read, complete URL snapshot", () => {
@@ -646,3 +704,31 @@ describe("a refused run is explained in translated words", () => {
     },
   );
 });
+
+vi.mock("@/components/settings/settings-access", async (original) => ({
+  ...(await original<typeof import("@/components/settings/settings-access")>()),
+  useCapabilityCheckFailed: (workspaceId: string | undefined) => {
+    mocks.checkScope(workspaceId);
+    return mocks.capabilityFailed;
+  },
+}));
+it.each([false, true])(
+  "403 before capabilities keeps one heading (failed=%s)",
+  async (failed) => {
+    mocks.checking = true;
+    mocks.capabilityFailed = failed;
+    mocks.getSavedView.mockRejectedValue(new HttpError(403, "Forbidden"));
+    renderDetail({});
+    if (failed)
+      expect(
+        await screen.findByTestId("settings-access-error"),
+      ).toBeInTheDocument();
+    else
+      expect(
+        await screen.findByRole("status", { name: "Checking your access" }),
+      ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.queryByTestId("settings-access-denied")).toBeNull();
+    expect(mocks.checkScope).toHaveBeenCalledWith("active-workspace");
+  },
+);

@@ -204,6 +204,18 @@ describe("portal notification websocket boundary", () => {
     broadcastToUser(seed.customer.user.id, { type: "NOTIFICATION_CREATED" });
     await expect(safeNotice).resolves.toEqual({ type: "NOTIFICATION_CREATED" });
 
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        eq(schema.customerProjectAccessTable.personId, seed.customer.person.id),
+      );
+    broadcastToUser(seed.customer.user.id, { type: "NOTIFICATION_CREATED" });
+    await expectNoMessage(socket);
+    await db.insert(schema.customerProjectAccessTable).values({
+      personId: seed.customer.person.id,
+      projectId: seed.t.project.id,
+    });
+
     socket.send(
       JSON.stringify({ type: "subscribe", topic: "project:private" }),
     );

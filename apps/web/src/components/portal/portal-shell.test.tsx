@@ -1,3 +1,4 @@
+import en from "@i18n/en-US.json";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { expectNoA11yViolations } from "@taskdesk/ui/test/a11y";
 import {
@@ -7,10 +8,16 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { createInstance } from "i18next";
 import type { ReactNode } from "react";
+import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PortalLayout from "./portal-layout";
+import { portalLazyContent } from "./portal-lazy-content";
 
+const human = vi.hoisted(() => ({
+  translate: undefined as undefined | ((key: string) => string),
+}));
 const location = vi.hoisted(() => ({ pathname: "/", search: {} }));
 const navigate = vi.hoisted(() => vi.fn());
 const signOut = vi.hoisted(() => vi.fn());
@@ -45,7 +52,8 @@ vi.mock("@tanstack/react-router", async () => {
 vi.mock("@/lib/i18n/portal-translation", () => ({
   usePortalTranslation: () => ({
     t: (key: string, options?: { name?: string }) =>
-      options?.name ? `${key} ${options.name}` : key,
+      human.translate?.(key) ??
+      (options?.name ? `${key} ${options.name}` : key),
     i18n: {},
   }),
   getDefaultPortalTerm: () => "Requests",
@@ -381,3 +389,134 @@ describe("portal shell", () => {
     probe.remove();
   });
 });
+
+it("loads the deferred portal layout and renders translated navigation", async () => {
+  const instance = createInstance();
+  await instance.init({
+    lng: "en-US",
+    resources: { "en-US": en },
+    defaultNS: "portal",
+  });
+  human.translate = (key) => instance.t(key);
+  try {
+    const module = await import("./portal-layout");
+    expect(module.default).toBe(PortalLayout);
+    renderShell();
+    expect(await screen.findByText("Projects")).toBeVisible();
+    expect(document.body.textContent).not.toMatch(/portal:[\w.]+/);
+  } finally {
+    human.translate = undefined;
+  }
+});
+
+it.each([
+  "sidebar",
+  "topbar",
+  "announcements",
+  "feature-off",
+  "project-selector",
+  "search-dialog",
+] as const)(
+  "recovers the real %s content locally after its network load fails",
+  async (piece) => {
+    const instance = createInstance();
+    await instance.init({
+      lng: "en-US",
+      resources: { "en-US": en },
+      defaultNS: "common",
+    });
+    let offline = true;
+    let reject!: (error: Error) => void;
+    const actual = async () => {
+      if (piece === "project-selector") {
+        const { default: Child } = await import("./portal-project-selector");
+        return {
+          default: () => (
+            <div data-testid="recovered-content">
+              <Child />
+            </div>
+          ),
+        };
+      }
+      if (piece === "search-dialog") {
+        const { default: Child } = await import("./portal-search-dialog");
+        return {
+          default: () => (
+            <div data-testid="recovered-content">
+              <Child open={false} initialQuery="" onOpenChange={() => {}} />
+            </div>
+          ),
+        };
+      }
+      const user = { name: "Ada", email: "ada@example.test", image: null };
+      if (piece === "sidebar") {
+        const { default: Child } = await import("./portal-sidebar");
+        return {
+          default: () => (
+            <div data-testid="recovered-content">
+              <Child />
+            </div>
+          ),
+        };
+      }
+      if (piece === "topbar") {
+        const { default: Child } = await import("./portal-topbar");
+        return {
+          default: () => (
+            <div data-testid="recovered-content">
+              <Child user={user} />
+            </div>
+          ),
+        };
+      }
+      if (piece === "announcements") {
+        const { default: Child } = await import(
+          "./announcements/portal-announcement-banner"
+        );
+        return {
+          default: () => (
+            <div data-testid="recovered-content">
+              <Child />
+            </div>
+          ),
+        };
+      }
+      const { PortalFeatureOff: Child } = await import("./portal-feature-off");
+      return {
+        default: () => (
+          <div data-testid="recovered-content">
+            <Child state="disabled" />
+          </div>
+        ),
+      };
+    };
+    const load = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((_yes, no) => {
+            reject = no;
+          }),
+      )
+      .mockImplementation(() =>
+        offline ? Promise.reject(new Error("offline")) : actual(),
+      );
+    const Content = portalLazyContent(load, <p>Loading content</p>);
+    renderShell(
+      <I18nextProvider i18n={instance}>
+        <Content />
+      </I18nextProvider>,
+    );
+    expect(screen.getByText("Loading content")).toBeVisible();
+    reject(new Error("offline"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      en.common.error.messages.unknown,
+    );
+    expect(screen.getByRole("main")).toBeVisible();
+    offline = false;
+    fireEvent.click(
+      screen.getByRole("button", { name: en.common.actions.retry }),
+    );
+    expect(await screen.findByTestId("recovered-content")).toBeVisible();
+  },
+);

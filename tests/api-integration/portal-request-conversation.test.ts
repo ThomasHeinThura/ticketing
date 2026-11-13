@@ -1052,6 +1052,20 @@ describe("portal request conversation (U-12, A-03, A-07, A-08)", () => {
     expect(await downloadAudits(guide)).toEqual([
       { actorId: s.alice.person.id },
     ]);
+    // A previously minted URL must stop serving bytes immediately on project revocation.
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, s.alice.person.id),
+          eq(schema.customerProjectAccessTable.projectId, s.contoso.project.id),
+        ),
+      );
+    expect((await fetchBytes("GET", "bytes=2-")).status).toBe(404);
+    expect((await fetchBytes("HEAD")).status).toBe(404);
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: s.alice.person.id, projectId: s.contoso.project.id });
     // Deleting the public comment withdraws its file from the portal.
     await db
       .update(schema.commentTable)

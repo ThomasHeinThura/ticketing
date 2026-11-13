@@ -1,3 +1,4 @@
+// D-E (12 Nov): real owner actors by default; restricted reach is an explicit test option.
 import { randomUUID } from "node:crypto";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, isNull } from "drizzle-orm";
@@ -6,7 +7,9 @@ import db, { schema } from "../../../apps/api/src/database";
 import { createApp } from "../../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./auth";
 import {
+  assignProjectLimitedRole,
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
   requireRow,
@@ -31,9 +34,17 @@ export async function personOf(userId: string) {
 /** One self-contained tenant: workspace, gated workflow, change-type work item, CAB approver. */
 export async function buildTenant(
   label: string,
-  options: { executable?: boolean } = {},
+  options: {
+    executable?: boolean;
+    projectLimitedApprover?: boolean;
+    projectLimitedRequester?: boolean;
+  } = {},
 ) {
-  const requester = await createWorkspaceMember({ role: "owner" });
+  const requester = await (options.projectLimitedRequester
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({
+    role: "owner",
+  });
   const requesterPerson = await personOf(requester.user.id);
   const { project } = await createProjectFixture({
     workspaceId: requester.workspace.id,
@@ -239,6 +250,8 @@ export async function buildTenant(
     role: "owner",
     joinedAt: now,
   });
+  if (options.projectLimitedApprover)
+    await assignProjectLimitedRole(approver.user.id, wsId, "owner");
   await grantProjectRole(approver.user.id, project.id, [
     "project:read",
     "work_item:read",
@@ -516,6 +529,12 @@ export async function addCustomer(t: Tenant) {
     .returning();
   if (!user || !person) throw new Error("customer fixture missing");
   await grantCustomerOrganisationMembership(orgId, person.id);
+  // Most existing tenant fixtures exercise the tenant project. Reach remains ineffective
+  // until that project is bound to this person's organisation.
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: person.id, projectId: t.project.id })
+    .onConflictDoNothing();
   return { user, person, orgId };
 }
 

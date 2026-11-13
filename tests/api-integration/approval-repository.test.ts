@@ -206,7 +206,9 @@ describe("approval repository current request scope", () => {
   });
 
   it("keeps only the caller's own approval metadata after reach loss and refuses generic target access", async () => {
-    const tenant = await buildTenant("repo-lost-reach");
+    const tenant = await buildTenant("repo-lost-reach", {
+      projectLimitedApprover: true,
+    });
     const approval = await createApproval(tenant);
 
     await db
@@ -236,7 +238,9 @@ describe("approval repository current request scope", () => {
   });
 
   it("keeps staff approval metadata after project-reach loss and customer private items closed without a requester", async () => {
-    const tenant = await buildTenant("repo-private-null-requester");
+    const tenant = await buildTenant("repo-private-null-requester", {
+      projectLimitedApprover: true,
+    });
     const approval = await createApproval(tenant);
     await db
       .update(schema.workItemTable)

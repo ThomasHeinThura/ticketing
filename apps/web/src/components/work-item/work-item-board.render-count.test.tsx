@@ -62,12 +62,12 @@ vi.mock("@/fetchers/work-item/transition-work-item", () => ({
 vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
   default: vi.fn().mockResolvedValue([]),
 }));
-vi.mock("react-i18next", () => {
+vi.mock("react-i18next", async (importOriginal) => {
   probe.t = (key: string, options?: object) =>
     translate(key, options as Record<string, unknown>);
   return {
+    ...(await importOriginal<typeof import("react-i18next")>()),
     useTranslation: () => ({ t: probe.t }),
-    initReactI18next: { type: "3rdParty", init: () => {} },
   };
 });
 

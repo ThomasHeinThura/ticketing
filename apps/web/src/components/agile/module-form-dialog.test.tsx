@@ -121,7 +121,7 @@ describe("ModuleFormDialog dates", () => {
     fireEvent.click(
       within(
         screen.getByRole("dialog", { name: "modules.form.target" }),
-      ).getByRole("button", { name: "customFields:value.clear" }),
+      ).getByRole("button", { name: "workItems:customFieldValue.clear" }),
     );
     await waitFor(() =>
       expect(

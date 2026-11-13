@@ -5,7 +5,7 @@ import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import {
   parsePortalReleasesSearch,
   portalProjectSearchMiddlewares,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 export const Route = createFileRoute("/releases")({
   validateSearch: parsePortalReleasesSearch,

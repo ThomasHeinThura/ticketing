@@ -8,7 +8,7 @@ import {
 } from "@taskdesk/ui";
 import { usePortalOrientation } from "@/hooks/use-portal-orientation";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 /** CP-14: a brief, dismissible first-visit note (where to raise a request, where to see status); never a modal. */
 export function PortalOrientation({ portalUserId }: { portalUserId: string }) {

@@ -11,6 +11,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { getConfiguredAgentOrigin } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { csrfRequest } from "./helpers/csrf";
@@ -228,7 +229,11 @@ describe("S8a native set-active route", () => {
     // workspace-membership check, must refuse the same field.
     const attack = await app.request("/api/auth/update-session", {
       method: "POST",
-      headers: { "content-type": "application/json", cookie: outsider.cookie },
+      headers: {
+        origin: getConfiguredAgentOrigin(),
+        "content-type": "application/json",
+        cookie: outsider.cookie,
+      },
       body: JSON.stringify({ activeOrganizationId: workspaceId }),
     });
     expect(attack.status).toBe(400);

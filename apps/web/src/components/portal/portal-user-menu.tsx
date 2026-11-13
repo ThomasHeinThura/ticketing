@@ -17,7 +17,7 @@ import { useState } from "react";
 import { getInitials } from "@/lib/get-initials";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 /** The signed-in customer, read from the session the portal root already loaded. */
 export type PortalShellUser = {

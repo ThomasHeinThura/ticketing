@@ -3,7 +3,10 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
 import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
@@ -144,8 +147,9 @@ test("Overview writes persist: milestone, prerequisite, stakeholder stand-down",
 }) => {
   test.setTimeout(180_000);
   page.setDefaultTimeout(10_000);
-  await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, databaseUrl, setupUrl } = fixture;
+    await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill(OWNER);
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);

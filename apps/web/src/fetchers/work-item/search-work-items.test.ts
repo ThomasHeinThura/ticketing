@@ -17,6 +17,22 @@ const emptyPage = {
 };
 
 describe("structured work-item search fetcher", () => {
+  it("forwards an abort signal to the search transport", async () => {
+    const controller = new AbortController();
+    mocks.post.mockResolvedValue(emptyPage);
+    await searchWorkItems({
+      workspaceId: "ws_1",
+      projectSlug: "OPS",
+      filter: "",
+      sort: "key",
+      dir: "asc",
+      signal: controller.signal,
+    });
+    expect(mocks.post).toHaveBeenCalledWith(expect.anything(), {
+      init: { signal: controller.signal },
+    });
+  });
+
   it("scopes the filter to the project and sends the list's sort and chosen columns", async () => {
     mocks.post.mockResolvedValue(emptyPage);
 

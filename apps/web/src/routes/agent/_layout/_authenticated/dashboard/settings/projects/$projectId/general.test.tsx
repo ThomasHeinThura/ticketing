@@ -21,6 +21,10 @@ type Project = {
 };
 
 const mocks = vi.hoisted(() => ({
+  canUpdate: true,
+  checking: false,
+  capabilityFailed: false,
+  back: vi.fn(),
   project: undefined as Project | undefined,
   projectLoading: false,
   projectError: null as unknown,
@@ -39,6 +43,10 @@ vi.mock("@tanstack/react-router", () => ({
     ...(options as Record<string, unknown>),
   }),
   useParams: () => ({ projectId: "p-1" }),
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: mocks.back },
+    navigate: vi.fn(),
+  }),
   Link: ({ children, to }: { children?: ReactNode; to?: string }) => (
     <a href={to}>{children}</a>
   ),
@@ -89,7 +97,8 @@ vi.mock("@/hooks/use-open-pending-action", () => ({
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
-    canManageProjects: () => true,
+    canUpdateProjects: () => mocks.canUpdate,
+    isCheckingPermissions: mocks.checking,
     canDeleteProjects: () => false,
     canExportTasks: () => true,
   }),
@@ -141,6 +150,9 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  mocks.capabilityFailed = false;
+  mocks.canUpdate = true;
+  mocks.checking = false;
   mocks.project = {
     id: "p-1",
     workspaceId: "ws-1",
@@ -163,6 +175,14 @@ afterEach(() => {
 });
 
 describe("project General settings load the project itself", () => {
+  it("hides editing when project update is not permitted", () => {
+    mocks.canUpdate = false;
+    renderPage();
+    expect(
+      screen.queryByPlaceholderText(NAME_PLACEHOLDER),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Help desk")).toBeInTheDocument();
+  });
   it("reads the project by id and active workspace, never the legacy board payload", () => {
     renderPage();
     expect(mocks.getProject).toHaveBeenCalledWith({
@@ -222,16 +242,56 @@ describe("project General settings load the project itself", () => {
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
-  it("renders SettingsAccessDenied instead of an editable empty form on 403, without saving on unmount", () => {
+  it("shows the shared no-access heading and Back action on 403, without saving on unmount", () => {
     mocks.project = undefined;
     mocks.projectError = new HttpError(403, "Forbidden");
     const { unmount } = renderPage();
-    expect(screen.getByTestId("settings-access-denied")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "states.noAccess.title" }),
+    ).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "states.back" }));
+    expect(mocks.back).toHaveBeenCalledOnce();
     expect(
       screen.queryByPlaceholderText(NAME_PLACEHOLDER),
     ).not.toBeInTheDocument();
     unmount();
     expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("waits for a pending capability check before showing a 403 denial", () => {
+    mocks.project = undefined;
+    mocks.projectError = new HttpError(403, "Forbidden");
+    mocks.checking = true;
+    const { rerender } = renderPage();
+    expect(
+      screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("settings-access-denied"),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "settings:projectGeneral.title",
+    );
+    mocks.capabilityFailed = true;
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <GeneralSettings />
+      </QueryClientProvider>,
+    );
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "common:actions.retry" }),
+    ).toBeEnabled();
+    mocks.checking = false;
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <GeneralSettings />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "states.noAccess.title" }),
+    ).toHaveFocus();
   });
 
   it("renders ErrorDisplay with retry on transient server failure instead of an empty form", () => {
@@ -280,3 +340,8 @@ describe("project General settings load the project itself", () => {
     });
   });
 });
+
+vi.mock("@/components/settings/settings-access", async (original) => ({
+  ...(await original<typeof import("@/components/settings/settings-access")>()),
+  useCapabilityCheckFailed: () => mocks.capabilityFailed,
+}));

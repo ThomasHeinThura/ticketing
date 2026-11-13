@@ -12,6 +12,7 @@ import {
   CardTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -379,18 +380,20 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
           </CardContent>
         </Card>
         <div className="flex flex-wrap gap-2">
-          <Button
+          <SaveButton
             disabled={
-              !formsDirty ||
-              save.isPending ||
+              (!formsDirty && !save.isPending) ||
+              (save.isPending && save.variables === null) ||
               categories.some((category) => !draft[category]?.trim())
             }
+            pending={save.isPending && save.variables !== null}
+            success={save.isSuccess && save.variables !== null}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
             onClick={() => save.mutate(draft)}
           >
-            {save.isPending
-              ? t("common:empty.loading", { defaultValue: "Saving…" })
-              : t("common:actions.save", { defaultValue: "Save" })}
-          </Button>
+            {t("common:actions.save", { defaultValue: "Save" })}
+          </SaveButton>
           <Button
             variant="outline"
             disabled={save.isPending || !current}

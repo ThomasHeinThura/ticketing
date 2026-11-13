@@ -14,6 +14,7 @@ import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectAccessForWorkspaceRole,
   grantWorkItemProjectAccess,
@@ -107,8 +108,11 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
 
 async function setupProjectWithDefaultState(
   role: "member" | "admin" | "viewer" = "admin",
+  projectLimited = false,
 ) {
-  const creator = await createWorkspaceMember({ role });
+  const creator = await (projectLimited
+    ? createProjectLimitedWorkspaceMember
+    : createWorkspaceMember)({ role });
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
@@ -169,8 +173,8 @@ async function approveDeletion(
   expect(await approved.json()).toMatchObject({ state: "executed" });
 }
 
-async function pendingFixture() {
-  const f = await setupProjectWithDefaultState();
+async function pendingFixture(projectLimited = false) {
+  const f = await setupProjectWithDefaultState("admin", projectLimited);
   mockAuthenticatedSession(f.creator.user);
   const { app } = createApp();
   const item = (await (
@@ -335,7 +339,9 @@ describe("API integration: work item delete (#23 fourth slice)", () => {
     });
     const { key } = (await created.json()) as { key: string };
 
-    const stranger = await createWorkspaceMember({ role: "admin" });
+    const stranger = await createWorkspaceMember({
+      role: "admin",
+    });
     mockAuthenticatedSession(stranger.user);
 
     const response = await deleteWorkItemRequest(app, key);
@@ -476,7 +482,7 @@ describe("API integration: work item delete (#23 fourth slice)", () => {
     },
   );
   it("redacts title and permanent keys after project read permission is lost", async () => {
-    const f = await pendingFixture();
+    const f = await pendingFixture(true);
     const [membership] = await db
       .select()
       .from(schema.membershipTable)

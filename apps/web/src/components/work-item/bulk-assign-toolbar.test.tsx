@@ -108,9 +108,9 @@ vi.mock("@/fetchers/label/project-labels", () => ({
 vi.mock("@/lib/i18n/domain", () => ({
   getPriorityLabel: (value: string) => value,
 }));
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: translate }),
-  initReactI18next: { type: "3rdParty", init: () => {} },
 }));
 
 afterEach(cleanup);

@@ -283,6 +283,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.clearAllMocks();
@@ -462,6 +463,75 @@ describe("work-item list realtime composition", () => {
     );
     await waitFor(() => expect(detail).toHaveBeenCalledTimes(3));
   });
+
+  it("refreshes every loaded page once on reconnect and stops fallback polling", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Number.POSITIVE_INFINITY,
+          gcTime: Number.POSITIVE_INFINITY,
+        },
+      },
+    });
+    const key = ["work-items", "project-1", "list", "key", "desc"];
+    const page = (id: string, nextCursor: string | null) => ({
+      ...makeResult(id),
+      hasMore: Boolean(nextCursor),
+      nextCursor,
+    });
+    client.setQueryData(key, {
+      pages: [page("a", "c1"), page("b", "c2"), page("c", null)],
+      pageParams: [undefined, "c1", "c2"],
+    });
+    mocks.getWorkItems.mockImplementation(
+      async (
+        _project: string,
+        _sort: string,
+        _dir: string,
+        options: { cursor?: string },
+      ) =>
+        options.cursor === "c1"
+          ? page("b-new", "c2")
+          : options.cursor === "c2"
+            ? page("c-new", null)
+            : page("a-new", "c1"),
+    );
+    const view = render(
+      <ComposedWorkItemList projectId="project-1" realtimeMounted />,
+      { wrapper: wrapperFor(client) },
+    );
+    const first = MockWebSocket.instances[0];
+    if (!first) throw new Error("Expected initial socket");
+    await act(async () => {
+      first.open();
+      first.frame({ type: "subscribed", topic: "project:project-1" });
+    });
+    mocks.getWorkItems.mockClear();
+    act(() => first.close());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    const second = MockWebSocket.instances[1];
+    if (!second) throw new Error("Expected reconnect socket");
+    await act(async () => {
+      second.open();
+      second.frame({ type: "subscribed", topic: "project:project-1" });
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(mocks.getWorkItems.mock.calls.map((call) => call[3].cursor)).toEqual(
+      [undefined, "c1", "c2"],
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(mocks.getWorkItems).toHaveBeenCalledTimes(3);
+    view.unmount();
+    vi.useRealTimers();
+  });
+
   it.each(["project-first", "item-first"] as const)(
     "invalidates all affected query keys for a duplicate event in %s topic order",
     async (topicOrder) => {
@@ -1632,4 +1702,104 @@ describe("work-item list realtime composition", () => {
     );
     expect(mocks.getWorkItem).toHaveBeenCalledTimes(1);
   });
+
+  it.each(["first-connect", "reconnect"] as const)(
+    "loads the list with one successful request when %s becomes available during an in-flight cold recovery",
+    async (mode) => {
+      vi.useFakeTimers();
+      vi.spyOn(Math, "random").mockReturnValue(0);
+      const recovery = deferred<WorkItemsResult>();
+      mocks.getWorkItems
+        .mockReset()
+        .mockRejectedValueOnce(new HttpError(500, "unavailable"))
+        .mockReturnValueOnce(recovery.promise);
+
+      const client = new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, refetchOnWindowFocus: false },
+        },
+      });
+      render(
+        <ComposedWorkItemList projectId="project-cold" realtimeMounted />,
+        {
+          wrapper: wrapperFor(client),
+        },
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(mocks.getWorkItems).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId("query-state")).toHaveTextContent("empty");
+      expect(MockWebSocket.instances).toHaveLength(1);
+      const firstSocket = MockWebSocket.instances[0];
+      if (!firstSocket) throw new Error("Expected initial socket");
+
+      if (mode === "reconnect") {
+        act(() => firstSocket.close());
+        expect(screen.getByTestId("realtime-state")).toBeInTheDocument();
+        expect(screen.getByTestId("realtime-state")).toHaveTextContent(
+          "unavailable",
+        );
+        // Advance past reconnect backoff (500ms) so the replacement socket is created,
+        // then advance to the 30s outage tick before the replacement socket opens.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30_000);
+        });
+        expect(mocks.getWorkItems).toHaveBeenCalledTimes(2);
+        const signal: AbortSignal =
+          mocks.getWorkItems.mock.calls[1]?.[3].signal;
+        expect(signal.aborted).toBe(false);
+
+        const replacement = MockWebSocket.instances[1];
+        if (!replacement) throw new Error("Expected replacement socket");
+        act(() => {
+          replacement.open();
+          replacement.frame({
+            type: "subscribed",
+            topic: "project:project-cold",
+          });
+        });
+        expect(screen.getByTestId("realtime-state")).toHaveTextContent(
+          "available",
+        );
+        expect(signal.aborted).toBe(false);
+        expect(mocks.getWorkItems).toHaveBeenCalledTimes(2);
+      } else {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30_000);
+        });
+        expect(mocks.getWorkItems).toHaveBeenCalledTimes(2);
+        const signal: AbortSignal =
+          mocks.getWorkItems.mock.calls[1]?.[3].signal;
+        expect(signal.aborted).toBe(false);
+
+        act(() => {
+          firstSocket.open();
+          firstSocket.frame({
+            type: "subscribed",
+            topic: "project:project-cold",
+          });
+        });
+        expect(screen.getByTestId("realtime-state")).toHaveTextContent(
+          "available",
+        );
+        expect(signal.aborted).toBe(false);
+        expect(mocks.getWorkItems).toHaveBeenCalledTimes(2);
+      }
+
+      await act(async () => {
+        recovery.resolve(makeResult("recovered-cold-item"));
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId("query-state")).toHaveTextContent(
+        "recovered-cold-item",
+      );
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(90_000);
+      });
+      expect(mocks.getWorkItems).toHaveBeenCalledTimes(2);
+    },
+  );
 });

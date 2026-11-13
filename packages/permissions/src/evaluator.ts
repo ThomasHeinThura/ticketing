@@ -39,6 +39,7 @@ import {
   type ScopeSource,
 } from "./policy.js";
 import { type RoleScope, roleScopeTier } from "./roles.js";
+import { workspaceRoleSeesAllProjects } from "./workspace-project-rights.js";
 
 /* ------------------------------------------------------------------ *
  * Capability expansion
@@ -202,10 +203,9 @@ function grantAppliesTo(
  * The capabilities this identity holds against `target` for a policy declaring `scope`,
  * implications expanded and clamped to each grant's own tier.
  *
- * **Scopes narrow.** A project-scope role attached to the target project *overrides* the
- * workspace roles for that project — it is a per-project override on the project Members
- * screen, not an addition — so a role that removes a capability actually removes it. Instance
- * roles always apply.
+ * **Scopes narrow**, except for validated workspace owner/admin/manager grants in the
+ * target workspace: their project grants add to workspace authority (Thomas, 12 Nov 2026).
+ * Other roles retain project override semantics. Instance roles always apply.
  *
  * **Tiers clamp.** Each grant's capabilities are expanded through `expandCapabilities` with
  * `tier: roleScopeTier(grant.scope)` — a workspace-, project- or organisation-scope grant
@@ -241,7 +241,7 @@ function inheritedProjectGrants(
 
 /**
  * The grants that actually stand for `scope` against `target`: a direct project-scope grant
- * replaces workspace grants, else the nearest ancestor project's grants stand in, else every
+ * replaces workspace grants except for owner/admin/manager (union), else the nearest ancestor project's grants stand in, else every
  * applicable grant. Exported so a save-time ceiling (automation author vs effective role) ranks
  * and expands the very same selection the evaluator does, never a second copy of it.
  */
@@ -259,17 +259,33 @@ export function selectedGrantsFor(
   const projectOverrides = applicable.filter(
     (grant) => grant.scope === "project",
   );
+  // Authority contains only grants validated by the identity resolver, including its
+  // system-role check. Never infer this from rank, capabilities, or another workspace.
+  const additive =
+    identity.side !== "customer" &&
+    applicable.some(
+      (grant) =>
+        grant.scope === "workspace" &&
+        workspaceRoleSeesAllProjects(grant.roleKey),
+    );
   let selected: readonly RoleGrant[];
-  if (projectOverrides.length > 0) {
+  if (projectOverrides.length > 0 && !additive) {
     selected = applicable.filter(
       (grant) => grant.scope === "instance" || grant.scope === "project",
     );
   } else {
-    const inherited = inheritedProjectGrants(identity, scope, target);
+    const inherited =
+      projectOverrides.length > 0
+        ? []
+        : inheritedProjectGrants(identity, scope, target);
     selected =
       inherited.length > 0
         ? [
-            ...applicable.filter((grant) => grant.scope === "instance"),
+            ...applicable.filter(
+              (grant) =>
+                grant.scope === "instance" ||
+                (additive && grant.scope === "workspace"),
+            ),
             ...inherited,
           ]
         : applicable;
@@ -425,11 +441,13 @@ export function reaches(
     case "all":
       return true;
 
-    // 6. A customer whose organisation is the project's customer. And never anything else.
+    // 6. A customer whose organisation is the project's customer AND who holds explicit project
+    //    access to it (owner decision D-D, CP-1). Never anything else.
     case "organisation":
       return (
         project.organisationId !== null &&
-        identity.reach.ids.includes(project.organisationId)
+        identity.reach.ids.includes(project.organisationId) &&
+        identity.reach.projectIds.includes(project.projectId)
       );
 
     case "membership":

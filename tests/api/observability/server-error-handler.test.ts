@@ -113,3 +113,20 @@ it("keeps an allowlisted import reason next to the reference", async () => {
   });
   expect(body.requestId).toMatch(/^[0-9a-f]{32}$/);
 });
+
+it("preserves the fixed pending-action failure code while redacting its cause", async () => {
+  const app = new Hono();
+  app.get("/pending", () => {
+    throw new HTTPException(500, {
+      message: "pending_action_failed",
+      cause: new Error("private failure detail"),
+    });
+  });
+  app.onError((error, context) => handleServerError(error, context, vi.fn()));
+  const response = await app.request("/pending");
+  expect(response.status).toBe(500);
+  const body = await response.json();
+  expect(body.message).toBe("pending_action_failed");
+  expect(body.requestId).toBe(response.headers.get("x-taskdesk-request-id"));
+  expect(JSON.stringify(body)).not.toContain("private failure detail");
+});

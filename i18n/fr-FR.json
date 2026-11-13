@@ -20,7 +20,9 @@
 			"save": "Save",
 			"previous": "Previous",
 			"next": "Next",
-			"refresh": "Refresh"
+			"refresh": "Refresh",
+			"saved": "Saved",
+			"saving": "Saving…"
 		},
 		"a11y": {
 			"toggleSidebar": "Basculer la barre latérale",
@@ -1061,7 +1063,12 @@
 			"title": "Flux de travail",
 			"subtitle": "Choose the states {{term_work_item_other}} move through in this {{term_project_one}}.",
 			"statesDescription": "The states {{term_work_item_other}} move through in this {{term_project_one}}. Drag to reorder, choose the default for new {{term_work_item_other}}, or add one from a workspace template.",
-			"statesTitle": "States"
+			"statesTitle": "States",
+			"columnsTitle": "Columns",
+			"columnsDescription": "Manage the columns that appear on your board. Drag to reorder. Turn on \"Done column\" for stages that represent completed work.",
+			"automationTitle": "Automation Rules",
+			"automationDescription": "Map integration events to columns. When an event occurs, the linked {{term_work_item_one}} moves to the specified column.",
+			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectSwitcher": {
 			"selectProject": "Sélectionner un {{term_project_one}}",
@@ -2537,7 +2544,22 @@
 			},
 			"imported": "Imported",
 			"importedTitle": "Imported from {{system}} on {{date}}. The time shown is the original time.",
-			"shareFilesWithCustomer": "Share these files with the customer"
+			"shareFilesWithCustomer": "Share these files with the customer",
+			"replyToCustomer": "Reply to customer",
+			"internalNote": "Internal note",
+			"sendToCustomer": "Send to customer",
+			"addInternalNote": "Add internal note",
+			"onlyTeamSeesThis": "Only your team sees this",
+			"visibleToCustomer": "Visible to the customer",
+			"customerVisibilityLostFallback": "No longer visible to a customer — switched to an internal note.",
+			"internalVisibilityUnavailableCanReply": "Internal notes are unavailable for your permissions. This draft will not be sent unless you switch to Reply to customer.",
+			"publicVisibilityUnavailableCanNote": "This draft was written as a reply to the customer, which you cannot send. It will not be sent unless you keep it as an internal note.",
+			"commentVisibilityUnavailableNone": "You can no longer post comments on this item. Your draft has been kept.",
+			"switchToReplyToCustomer": "Switch to Reply to customer",
+			"keepAsInternalNote": "Keep as internal note",
+			"draftKeptAsInternalNote": "Draft kept as an internal note.",
+			"cannedResponseSwitchedToInternal": "Switched to an internal note for this canned response.",
+			"cannedResponsePublicChoiceNotice": "This canned response defaults to a customer reply. Kept as an internal note until you choose Reply to customer."
 		}
 	},
 	"tasks": {
@@ -3072,7 +3094,10 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"join": "Join project",
+			"joining": "Joining…",
+			"joinFailed": "Could not join project. Try again."
 		},
 		"search": {
 			"pageTitle": "Rechercher",
@@ -3097,7 +3122,8 @@
 			"scopeProjects": "{{term_project_other}}",
 			"scopeWorkItems": "{{term_work_item_other}}",
 			"unavailableDescription": "This workspace does not exist or your account does not have access to it.",
-			"unavailableTitle": "Workspace unavailable"
+			"unavailableTitle": "Workspace unavailable",
+			"backToDashboard": "Back to Dashboard"
 		},
 		"create": {
 			"pageTitle": "Créer un workspace",
@@ -3995,6 +4021,22 @@
 			"emptyTitle": "No backlog items",
 			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
 			"rankColumn": "Order"
+		},
+		"customFieldValue": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes",
+			"hour": "Heure",
+			"minute": "Minute",
+			"invalidLocalTime": "Cette heure n'existe pas lors du changement d'heure. Choisissez une autre heure.",
+			"datetime": "Date and time"
 		}
 	},
 	"portal": {
@@ -6074,6 +6116,15 @@
 			"replyWithCode": "Server reply {{code}}: {{text}}",
 			"sending": "Sending…",
 			"sent": "Test email accepted by the mail server. Check the inbox of the address above."
+		},
+		"test": "Test connection",
+		"testHelp": "Checks connection and authentication without sending an email.",
+		"verified": "Connection verified. No email was sent.",
+		"diagnostics": {
+			"smtp_authentication_failed": "SMTP authentication was rejected. Check the username and password.",
+			"smtp_connection_failed": "Cannot reach the SMTP server. Check its address, port and network access.",
+			"smtp_tls_failed": "The SMTP TLS connection could not be verified. Check the certificate and TLS settings.",
+			"smtp_timeout": "The SMTP server did not respond before the connection deadline."
 		}
 	},
 	"featureFlags": {
@@ -8772,7 +8823,13 @@
 			"email": "Email address",
 			"roleNote": "They join as a customer of this organisation. This cannot be changed here.",
 			"submit": "Send invitation",
-			"title": "Invite to this organisation"
+			"title": "Invite to this organisation",
+			"projectsTitle": "Projects (optional)",
+			"projectsLoadError": "Could not load projects. Try again.",
+			"accessTitle": "Customer access",
+			"accessError": "Could not load or update customer access.",
+			"grantAccess": "Grant access",
+			"revokeAccess": "Remove access"
 		},
 		"resultCard": {
 			"createdTitle": "Invitation ready",
@@ -10704,6 +10761,173 @@
 			"waitMinutes_many": "escalate after {{count}} minutes",
 			"waitMinutes_one": "escalate after {{count}} minute",
 			"waitMinutes_other": "escalate after {{count}} minutes"
+		}
+	},
+	"workItemExtras": {
+		"detail": {
+			"notFoundDescription": "This {{term_work_item_one}} doesn't exist, or you don't have access to it.",
+			"errorTitle": "Couldn't load this {{term_work_item_one}}",
+			"errorDescription": "Something went wrong while loading this {{term_work_item_one}}.",
+			"retry": "Retry",
+			"keyLabel": "Key",
+			"titleLabel": "Title",
+			"stateLabel": "State",
+			"priorityLabel": "Priority",
+			"dueDateLabel": "Due date",
+			"assigneeLabel": "Assignee",
+			"descriptionHeading": "Description",
+			"detailsHeading": "Details",
+			"projectLabel": "{{term_project_one}}",
+			"startDateLabel": "Start date",
+			"createdLabel": "Created",
+			"updatedLabel": "Updated",
+			"noPriority": "No priority",
+			"noDueDate": "No due date",
+			"noStartDate": "No start date",
+			"noDescription": "No description",
+			"unavailable": "Unavailable",
+			"unavailableFieldLabel": "{{field}} unavailable",
+			"partialNoticeTitle": "Some details are missing",
+			"partialNoticeDescription": "Some fields on this {{term_work_item_one}} couldn't be fully loaded. They're marked below.",
+			"approvals": {
+				"heading": "Approvals",
+				"loading": "Loading approvals…",
+				"empty": "No approvals on this {{term_work_item_one}}.",
+				"errorTitle": "Couldn't load approvals",
+				"errorDescription": "Something went wrong while loading approvals for this {{term_work_item_one}}.",
+				"retry": "Retry",
+				"kind": {
+					"customer": "Customer approval",
+					"cab": "Change advisory board approval"
+				},
+				"approverLabel": "Approver",
+				"requesterLabel": "Requested by",
+				"expiresLabel": "Expires",
+				"decidedLabel": "Decided",
+				"unknownPerson": "Unknown",
+				"state": {
+					"pending": "Pending",
+					"approved": "Approved",
+					"rejected": "Rejected",
+					"expired": "Expired",
+					"withdrawn": "Withdrawn"
+				},
+				"reachLost": "The approver no longer has access to this {{term_work_item_one}}. Withdraw the request and ask again.",
+				"withdraw": "Withdraw request",
+				"withdrawing": "Withdrawing…",
+				"withdrawErrorTitle": "Couldn't withdraw the approval",
+				"withdrawConflict": "This approval is no longer pending. The list has been refreshed.",
+				"withdrawForbidden": "You can no longer withdraw this approval. The list has been refreshed.",
+				"withdrawFailed": "Something went wrong while withdrawing the approval. Try again.",
+				"withdrawn": "Approval request withdrawn.",
+				"withdrawFor": "Withdraw request — {{label}}",
+				"approve": "Approve",
+				"confirmReject": "Reject with note",
+				"decideErrorTitle": "The decision was not recorded",
+				"decideFailed": "The decision could not be recorded.",
+				"reject": "Reject",
+				"rejectNote": "Why are you rejecting this?",
+				"decideConflict": "This approval was already decided, withdrawn or expired. The list now shows its current state.",
+				"request": {
+					"action": "Request approval",
+					"anyState": "Any state",
+					"approver": "Approver",
+					"candidatesError": "Eligible approvers could not be loaded.",
+					"chooseApprover": "Choose an approver",
+					"chooseTransition": "Choose a transition",
+					"description": "Choose a workflow gate and a person who can approve this {{term_work_item_one}}.",
+					"error": "The approval could not be requested. Refresh the options and try again.",
+					"expiryDays": "Expires in (days)",
+					"expiryHint": "Choose between 1 and {{max}} days. Instance default: {{days}} days.",
+					"invalidExpiry": "Expiry must be a whole number from 1 to {{max}} days.",
+					"kind": "Approval kind",
+					"more": "Load more approvers",
+					"noCandidates": "No eligible approvers found.",
+					"optionsError": "Approval request options could not be loaded.",
+					"search": "Search eligible approvers",
+					"submit": "Request approval",
+					"submitting": "Requesting…",
+					"success": "Approval requested.",
+					"title": "Request approval",
+					"transition": "Workflow transition",
+					"unavailable": "Approval requests are no longer available for this {{term_work_item_one}}.",
+					"noTransitions": "This {{term_work_item_one}}’s workflow has no approval gates."
+				}
+			},
+			"attachments": {
+				"add": "Add file",
+				"delete": "Delete {{name}}",
+				"deleteFailed": "The file could not be deleted.",
+				"empty": "No files attached.",
+				"heading": "Attachments",
+				"loadFailed": "Attachments could not be loaded.",
+				"uploadFailed": "The file could not be uploaded.",
+				"uploading": "Uploading…",
+				"closePreview": "Close preview",
+				"dismissUpload": "Dismiss {{name}}",
+				"download": "Download {{name}}",
+				"dropToAttach": "Drop files to attach them to this {{term_work_item_one}}",
+				"next": "Next image",
+				"preview": "Preview {{name}}",
+				"previous": "Previous image",
+				"retryUpload": "Retry {{name}}",
+				"uploadedBy": "by {{name}}",
+				"uploadsLabel": "Uploads in progress",
+				"backToFiles": "Back to files",
+				"commentParent": "Comment attachment",
+				"recoverableEmpty": "No attachments can be restored.",
+				"recoverableUntil": "Recoverable until {{date}}",
+				"recoverDeleted": "Recently deleted",
+				"restore": "Restore {{name}}",
+				"restoreFailed": "Unable to restore the attachment. Try again.",
+				"pdfPreviewDownload": "Download {{name}}",
+				"pdfPreviewLoading": "Loading PDF preview…",
+				"pdfPreviewNextPage": "Next page",
+				"pdfPreviewOpen": "Preview {{name}}",
+				"pdfPreviewPage": "Page {{page}} of {{count}}",
+				"pdfPreviewPreviousPage": "Previous page",
+				"pdfPreviewTitle": "PDF preview",
+				"pdfPreviewTooLarge": "This PDF is too large to preview. Download the file to view it.",
+				"pdfPreviewUnavailable": "PDF preview is unavailable. Download the file to view it.",
+				"pdfPreviewZoomIn": "Zoom in",
+				"pdfPreviewZoomOut": "Zoom out",
+				"sharedWithCustomer": "Visible to customer"
+			},
+			"sla": {
+				"due": "due {{date}}",
+				"heading": "SLA",
+				"metric": {
+					"first_response": "First response",
+					"resolution": "Resolution"
+				},
+				"remaining": "{{time}} left",
+				"state": {
+					"at_risk": "At risk",
+					"breached": "Breached",
+					"met": "Met",
+					"missed": "Missed",
+					"none": "No SLA",
+					"ok": "On track"
+				},
+				"unavailable": "SLA targets are not available for this item.",
+				"atRiskMark": "Close to its limit",
+				"atRiskPast": "Past the {{pct}}% at-risk mark",
+				"pausedSince": "Paused – {{reason}} since {{since}}",
+				"pauseReason": {
+					"manual": "paused by an agent",
+					"other": "on hold",
+					"waiting_customer": "waiting on customer"
+				},
+				"atRiskMarkerAt": "At-risk mark at {{pct}}% of the target",
+				"calendar": "Working calendar: {{name}}"
+			},
+			"change": {
+				"heading": "{{term_service_one}} and {{term_change_one}}"
+			},
+			"time": {
+				"heading": "Time"
+			},
+			"resizeProperties": "Resize properties panel"
 		}
 	}
 }

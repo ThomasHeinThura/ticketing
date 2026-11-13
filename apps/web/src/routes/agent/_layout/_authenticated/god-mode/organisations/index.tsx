@@ -12,10 +12,12 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Separator,
   Skeleton,
 } from "@taskdesk/ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
 import { OrganisationProfileEditor } from "@/components/god-mode/organisation-profile-editor";
@@ -53,6 +55,15 @@ function GodModeOrganisationsRoute() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const [creating, setCreating] = useState(false);
+  const [completedKey, setCompletedKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (!completedKey) return;
+    const timer = setTimeout(
+      () => setCompletedKey(null),
+      SAVE_FEEDBACK_HOLD_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [completedKey]);
   const query = useQuery({
     queryKey,
     queryFn: getOrganisations,
@@ -216,6 +227,11 @@ function GodModeOrganisationsRoute() {
                     <OrganisationProfileEditor
                       key={`${selected.id}:${selected.profileEtag}`}
                       organisation={selected}
+                      completed={completedKey === `profile:${selected.id}`}
+                      onSaveStart={() => setCompletedKey(null)}
+                      onSaveComplete={() =>
+                        setCompletedKey(`profile:${selected.id}`)
+                      }
                       projectDefaultOptions={
                         query.data?.projectDefaultOptions ?? []
                       }
@@ -232,6 +248,11 @@ function GodModeOrganisationsRoute() {
                       organisation={selected}
                       options={query.data?.options ?? []}
                       readOnly={!selected.active}
+                      completed={completedKey === `catalogue:${selected.id}`}
+                      onSaveStart={() => setCompletedKey(null)}
+                      onSaveComplete={() =>
+                        setCompletedKey(`catalogue:${selected.id}`)
+                      }
                       onSaved={async () => {
                         await query.refetch();
                       }}
@@ -462,11 +483,17 @@ function CatalogueEditor({
   options,
   readOnly,
   onSaved,
+  completed,
+  onSaveStart,
+  onSaveComplete,
 }: {
   organisation: CustomerOrganisation;
   options: OrganisationCatalogueItem[];
   readOnly: boolean;
   onSaved: () => Promise<void>;
+  completed: boolean;
+  onSaveStart: () => void;
+  onSaveComplete: () => void;
 }) {
   const { t } = useTranslation("godModeOrganisations");
   const queryClient = useQueryClient();
@@ -506,6 +533,8 @@ function CatalogueEditor({
   }
 
   async function submit() {
+    if (save.isPending || !changed || readOnly) return;
+    onSaveStart();
     const result = await save.mutateAsync({
       organisationId: organisation.id,
       requestTypeIds: [...requestTypeIds].sort(),
@@ -530,6 +559,7 @@ function CatalogueEditor({
           : current,
     );
     await onSaved();
+    onSaveComplete();
   }
 
   return (
@@ -665,13 +695,18 @@ function CatalogueEditor({
           <p className="text-sm text-muted-foreground">
             {t("selectedCount", { count: requestTypeIds.size })}
           </p>
-          <Button
-            disabled={readOnly || !changed || save.isPending}
+          <SaveButton
+            disabled={readOnly || (!changed && !save.isPending)}
+            pending={save.isPending}
+            success={completed}
+            retainedSuccess
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
             onClick={() => void submit().catch(() => undefined)}
             type="button"
           >
-            {save.isPending ? t("saving") : t("save")}
-          </Button>
+            {t("save")}
+          </SaveButton>
         </div>
       </CardContent>
     </Card>

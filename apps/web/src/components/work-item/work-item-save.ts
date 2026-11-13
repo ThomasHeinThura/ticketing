@@ -245,9 +245,8 @@ export function mergeWorkItemListPage(
   page: WorkItemsResult,
 ): WorkItemsResult {
   const existing = queryClient.getQueryData(queryKey);
-  if (!isListData(existing)) return page;
   const prevByKey = new Map<string, CachedRow>();
-  for (const prevPage of existing.pages) {
+  for (const prevPage of isListData(existing) ? existing.pages : []) {
     for (const row of prevPage.items) {
       if (typeof row.key === "string") prevByKey.set(row.key, row);
     }
@@ -256,21 +255,32 @@ export function mergeWorkItemListPage(
     ...page,
     items: page.items.map((row) => {
       const prev = prevByKey.get(row.key);
-      if (!prev) return row;
+
       if (
-        typeof prev.version === "number" &&
+        typeof prev?.version === "number" &&
         typeof row.version === "number" &&
         prev.version > row.version
       ) {
         return prev as unknown as typeof row;
       }
       if (isWorkItemMutating(queryClient, row.key)) {
-        const fields = mergeAuthoritativeWorkItemRead(
-          queryClient,
-          row.key,
-          row,
+        mergeAuthoritativeWorkItemRead(queryClient, row.key, row, "list");
+        // This query owns its projection. Only intrinsic fields may come from other caches.
+        const merged = queryClient.getQueryData<ListData>(queryKey);
+        const current = merged?.pages
+          .flatMap((p) => p.items)
+          .find((r) => r.key === row.key);
+        const detail = queryClient.getQueryData<WorkItemDetailRow>(
+          workItemDetailKey(row.key),
         );
-        return { ...prev, ...fields } as unknown as typeof row;
+        const newest =
+          detail && detail.version > row.version
+            ? (detail as unknown as CachedRow)
+            : (row as unknown as CachedRow);
+        return {
+          ...row,
+          ...intrinsicFields(current ?? newest),
+        } as unknown as typeof row;
       }
       return row;
     }),
@@ -292,14 +302,40 @@ export function writeWorkItemResponse(
   snapshot?: OptimisticWorkItemSnapshot,
 ) {
   if (!response || typeof response !== "object") return;
+  if ("key" in response && response.key !== key) return;
   const version = (response as { version?: unknown }).version;
   if (typeof version !== "number") return;
   const cached = queryClient.getQueryData<WorkItemDetailRow>(
     workItemDetailKey(key),
   );
+  // Queued PATCHes retain the version seen when chosen. Only our own successful
+  // responses can advance that precondition; received reads never touch it.
+  for (const mutation of queryClient.getMutationCache().findAll({
+    mutationKey: workItemMutationKey(key),
+    status: "pending",
+  })) {
+    const context =
+      mutation.state.context ??
+      (mutation.state.variables as FieldSaveInput | undefined)?.precondition;
+    if (mutation.state.isPaused && isVersionPrecondition(context)) {
+      context.expectedVersion = Math.max(context.expectedVersion, version);
+    }
+  }
+  if (snapshot) {
+    const next = laterOptimisticWrites(queryClient, key, snapshot)[0];
+    if (
+      next &&
+      matchesOptimistic(next.expected as CachedRow, snapshot.optimistic)
+    ) {
+      for (const field of Object.keys(snapshot.optimistic)) {
+        if (field in fields)
+          (next.expected as CachedRow)[field] = (fields as CachedRow)[field];
+      }
+    }
+  }
   if (cached && version < cached.version) {
     if (snapshot)
-      rollbackOptimisticWorkItemFields(queryClient, cached, snapshot);
+      rollbackOptimisticWorkItemFields(queryClient, cached, snapshot, false);
     return;
   }
   raiseVersionFloor(queryClient, key, version);
@@ -318,6 +354,7 @@ export function writeWorkItemResponse(
       const next = queued.find((entry) => field in entry.optimistic);
       if (!next) continue;
       (next.previous as CachedRow)[field] = applicable[field];
+      (next.expected as CachedRow)[field] = applicable[field];
       delete applicable[field];
     }
     applicableFields = applicable as Partial<WorkItemDetail>;
@@ -335,8 +372,12 @@ export function writeWorkItemResponse(
     }
   }
   const canApply = (row: CachedRow) =>
-    (!snapshot || !hasLaterOptimisticWrite(queryClient, key, snapshot)) &&
-    (!expectedOptimistic ||
+    (!snapshot ||
+      !laterOptimisticWrites(queryClient, key, snapshot).some((later) =>
+        matchesOptimistic(row, later.optimistic),
+      )) &&
+    (Boolean(snapshot) ||
+      !expectedOptimistic ||
       Object.entries(expectedOptimistic).every(([field, written]) =>
         isSameJson(row[field], written),
       ));
@@ -408,6 +449,8 @@ export function useRefreshWorkItem(
 export type OptimisticWorkItemSnapshot = {
   optimistic: Partial<WorkItemDetail>;
   previous: Partial<WorkItemDetail>;
+  /** What the person saw; reads update previous, never this write precondition. */
+  expected: Partial<WorkItemDetail>;
   readVersions?: Record<string, number>;
 };
 
@@ -422,14 +465,37 @@ function isOptimisticSnapshot(
   );
 }
 
-/** Merge unowned server fields now; retain owned fields as rollback baselines. */
+// Only D-1's intrinsic fields cross query boundaries. Search projections stay local.
+const INTRINSIC_FIELDS = [
+  "stateId",
+  "stateName",
+  "stateCategory",
+  "assigneeId",
+  "assigneeName",
+  "assigneeActive",
+  "assigneeOnProject",
+  "version",
+  "updatedAt",
+] as const;
+
+function intrinsicFields(row: CachedRow): CachedRow {
+  return Object.fromEntries(
+    INTRINSIC_FIELDS.filter((field) => field in row).map((field) => [
+      field,
+      row[field],
+    ]),
+  );
+}
+
+/** Reads advance rollback baselines, never the preconditions the person agreed to. */
 export function mergeAuthoritativeWorkItemRead(
   queryClient: QueryClient,
   key: string,
   incoming: object,
+  source: "detail" | "list" = "detail",
 ): CachedRow {
   const row = incoming as CachedRow;
-  if (typeof row.version !== "number") return {};
+  if (row.key !== key || typeof row.version !== "number") return {};
   const version = row.version;
   const cached = queryClient.getQueryData<WorkItemDetailRow>(
     workItemDetailKey(key),
@@ -444,29 +510,50 @@ export function mergeAuthoritativeWorkItemRead(
     .findAll({ mutationKey: workItemMutationKey(key), status: "pending" })
     .map((mutation) => mutation.state.context)
     .filter(isOptimisticSnapshot);
-  const fields: CachedRow = {};
-  for (const [field, value] of Object.entries(row)) {
+  const fields = intrinsicFields(row);
+  for (const [field, value] of Object.entries(fields)) {
     const owner = snapshots.find((snapshot) => field in snapshot.optimistic);
-    if (!owner) {
-      fields[field] = value;
-    } else if (version > (owner.readVersions?.[field] ?? -1)) {
+    if (owner && version > (owner.readVersions?.[field] ?? -1)) {
       (owner.previous as CachedRow)[field] = value;
       owner.readVersions ??= {};
       owner.readVersions[field] = version;
     }
   }
+  const merge = (old: CachedRow, supplied: CachedRow = fields) => {
+    const patch = { ...supplied };
+    for (const field of Object.keys(patch)) {
+      const owner = [...snapshots]
+        .reverse()
+        .find((snapshot) => field in snapshot.optimistic);
+      // A list can gain the row mid-write without ever receiving the optimistic value.
+      if (
+        owner &&
+        isSameJson(old[field], (owner.optimistic as CachedRow)[field])
+      )
+        delete patch[field];
+    }
+    return patch;
+  };
   raiseVersionFloor(queryClient, key, version);
   queryClient.setQueryData<WorkItemDetailRow>(workItemDetailKey(key), (old) =>
-    old ? mergeDetailFields(old, fields as Partial<WorkItemDetail>) : old,
+    old
+      ? mergeDetailFields(
+          old,
+          merge(
+            old as unknown as CachedRow,
+            source === "detail" ? row : fields,
+          ) as Partial<WorkItemDetail>,
+        )
+      : old,
   );
   for (const { queryKey } of editableListQueriesWithKey(queryClient, key)) {
     queryClient.setQueryData(queryKey, (data: unknown) =>
       isListData(data)
-        ? mapItemRows(data, key, (old) => ({ ...old, ...fields }))
+        ? mapItemRows(data, key, (old) => ({ ...old, ...merge(old) }))
         : data,
     );
   }
-  return fields;
+  return cached ? merge(cached as unknown as CachedRow) : fields;
 }
 
 /**
@@ -501,7 +588,7 @@ export function applyOptimisticWorkItemFields(
         : data,
     );
   }
-  return { optimistic, previous };
+  return { optimistic, previous, expected: { ...previous } };
 }
 
 function laterOptimisticWrites(
@@ -525,14 +612,6 @@ function laterOptimisticWrites(
     .filter((later) => fields.some((field) => field in later.optimistic));
 }
 
-function hasLaterOptimisticWrite(
-  queryClient: QueryClient,
-  key: string,
-  snapshot: OptimisticWorkItemSnapshot,
-) {
-  return laterOptimisticWrites(queryClient, key, snapshot).length > 0;
-}
-
 function matchesOptimistic(
   row: CachedRow,
   optimistic: Partial<WorkItemDetail>,
@@ -546,10 +625,10 @@ function restoreSnapshotFields<T extends CachedRow>(
   row: T,
   snapshot: OptimisticWorkItemSnapshot,
 ): T {
-  if (!matchesOptimistic(row, snapshot.optimistic)) return row;
   const next: CachedRow = { ...row };
-  for (const field of Object.keys(snapshot.optimistic)) {
-    next[field] = (snapshot.previous as CachedRow)[field];
+  for (const [field, value] of Object.entries(snapshot.optimistic)) {
+    if (isSameJson(row[field], value))
+      next[field] = (snapshot.previous as CachedRow)[field];
   }
   return next as T;
 }
@@ -564,8 +643,10 @@ export function rollbackOptimisticWorkItemFields(
   queryClient: QueryClient,
   item: Pick<WorkItemDetailRow, "key" | "projectId">,
   snapshot: OptimisticWorkItemSnapshot,
+  rebasePrecondition = true,
 ) {
-  if (rebaseLaterSnapshot(queryClient, item.key, snapshot)) return;
+  if (rebaseLaterSnapshot(queryClient, item.key, snapshot, rebasePrecondition))
+    return;
   queryClient.setQueryData<WorkItemDetailRow>(
     workItemDetailKey(item.key),
     (old) => {
@@ -592,9 +673,16 @@ function rebaseLaterSnapshot(
   queryClient: QueryClient,
   key: string,
   snapshot: OptimisticWorkItemSnapshot,
+  rebasePrecondition: boolean,
 ) {
   const queued = laterOptimisticWrites(queryClient, key, snapshot)[0];
   if (queued) {
+    if (
+      rebasePrecondition &&
+      matchesOptimistic(queued.expected as CachedRow, snapshot.optimistic)
+    ) {
+      Object.assign(queued.expected, snapshot.expected);
+    }
     const queuedPrev = queued.previous as CachedRow;
     if (matchesOptimistic(queuedPrev, snapshot.optimistic)) {
       for (const field of Object.keys(snapshot.optimistic)) {
@@ -610,6 +698,20 @@ function rebaseLaterSnapshot(
   return false;
 }
 
+type VersionPrecondition = { expectedVersion: number };
+type FieldSaveInput = WorkItemFieldChange & {
+  precondition?: VersionPrecondition;
+};
+
+function isVersionPrecondition(value: unknown): value is VersionPrecondition {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "expectedVersion" in value &&
+    typeof value.expectedVersion === "number"
+  );
+}
+
 const PATCH_FIELDS = [
   "title",
   "description",
@@ -621,7 +723,8 @@ const PATCH_FIELDS = [
 ] as const;
 
 /**
- * Saves a partial change with the item's current version (`If-Match`). Failures are left
+ * Captures the chosen edit's `If-Match` version before it queues. Earlier local successes
+ * may advance it; authoritative reads cannot. Failures are left
  * to the caller (`onError`), because the title, the description and the property rows
  * each show them differently.
  */
@@ -644,10 +747,19 @@ export function useSaveWorkItemFields(
     mutationKey: workItemMutationKey(item.key),
     meta: { workItemProjectId: item.projectId },
     scope: workItemMutationScope(item.key),
-    mutationFn: async (fields: WorkItemFieldChange) => {
+    onMutate: (fields: FieldSaveInput) => {
+      const precondition = {
+        expectedVersion: currentWorkItemVersion(queryClient, item),
+      };
+      fields.precondition = precondition;
+      return precondition;
+    },
+    mutationFn: async ({ precondition, ...fields }: FieldSaveInput) => {
       const updated = await updateWorkItem({
         key: item.key,
-        version: currentWorkItemVersion(queryClient, item),
+        version:
+          precondition?.expectedVersion ??
+          currentWorkItemVersion(queryClient, item),
         ...fields,
       });
       const merged: Record<string, unknown> = {};
@@ -665,7 +777,7 @@ export function useSaveWorkItemFields(
     },
     onSuccess: () => onSuccess?.(),
     onError,
-    onSettled: (_data, _error, fields) => {
+    onSettled: (_data, _error, { precondition: _precondition, ...fields }) => {
       onSettled?.(fields);
       settleWorkItemMutation(queryClient, item.key, refresh, { broad: true });
     },

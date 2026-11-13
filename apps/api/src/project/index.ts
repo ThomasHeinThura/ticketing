@@ -1,4 +1,5 @@
 import type { ProjectReachFacts } from "@taskdesk/permissions";
+import { workspaceRoleSeesAllProjects } from "@taskdesk/permissions";
 import { and, eq, exists, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
@@ -77,6 +78,10 @@ import {
   assertCanManageProspectiveParent,
   resolveRosterActor,
 } from "./members/actor";
+import {
+  changeProjectCustomerAccess,
+  listProjectCustomers,
+} from "./members/customer-access";
 import {
   addProjectMemberBody,
   projectMemberCandidateSchema,
@@ -1144,6 +1149,11 @@ const project = apiRouter<
         const fact = facts.get(project.id);
         return {
           ...project,
+          canJoin:
+            reach.identity?.credential === "session" &&
+            Boolean(
+              fact && projectSeenOnlyViaWorkspaceRole(reach.identity, fact),
+            ),
           seenOnlyViaWorkspaceRole: fact
             ? projectSeenOnlyViaWorkspaceRole(reach.identity, fact)
             : false,
@@ -1695,6 +1705,58 @@ const updateProjectOwnershipRoute = createRoute({
   },
 });
 
+const listProjectCustomersRoute = createRoute({
+  method: "get",
+  operationId: "listProjectCustomers",
+  path: "/{projectId}/customers",
+  tags: ["Projects"],
+  summary: "List customer project access",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse(
+      "Customers",
+      z.array(
+        z.object({
+          personId: z.string(),
+          name: z.string().nullable(),
+          hasAccess: z.boolean(),
+        }),
+      ),
+    ),
+    403: errorResponse("Forbidden"),
+    404: errorResponse("Project not found"),
+  },
+});
+
+const grantProjectCustomerRoute = createRoute({
+  method: "put",
+  operationId: "grantProjectCustomerAccess",
+  path: "/{projectId}/customers/{personId}",
+  tags: ["Projects"],
+  summary: "Grant customer project access",
+  middleware: [
+    requireSessionOnly(),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: projectMemberParam },
+  responses: {
+    200: jsonResponse("Access", z.object({ granted: z.boolean() })),
+    403: errorResponse("Forbidden"),
+    404: errorResponse("Project or customer not found"),
+  },
+});
+
+const revokeProjectCustomerRoute = createRoute({
+  ...grantProjectCustomerRoute,
+  method: "delete",
+  operationId: "revokeProjectCustomerAccess",
+  summary: "Revoke customer project access",
+});
+
 const listProjectMembersRoute = createRoute({
   method: "get",
   operationId: "listProjectMembers",
@@ -1734,6 +1796,53 @@ const listProjectMemberCandidatesRoute = createRoute({
     200: jsonResponse("Candidates", z.array(projectMemberCandidateSchema)),
     403: errorResponse("Missing project:manage_members capability"),
     404: errorResponse("Project not found or out of reach"),
+  },
+});
+
+const joinProjectRoute = createRoute({
+  method: "post",
+  operationId: "joinProject",
+  path: "/{projectId}/join",
+  tags: ["Projects"],
+  summary: "Join a project as the current workspace owner, admin or manager",
+  description:
+    "Session only. Adds the default project-member direct grant without changing workspace authority. Idempotent; audited as membership.changed only on insertion.",
+  middleware: [
+    requireSessionOnly(),
+    async (c, next) => {
+      if (c.req.param("projectId")?.includes("\u0000"))
+        throw new HTTPException(400, { message: "Invalid project ID" });
+      const [project] = await db
+        .select({ workspaceId: projectTable.workspaceId })
+        .from(projectTable)
+        .where(eq(projectTable.id, c.req.param("projectId") ?? ""))
+        .limit(1);
+      const identity = await resolveCallerIdentity(c, c.get("userId"));
+      if (
+        !project ||
+        identity?.credential !== "session" ||
+        identity.side !== "staff" ||
+        !identity.authority.some(
+          (grant) =>
+            grant.scope === "workspace" &&
+            grant.scopeId === project.workspaceId &&
+            workspaceRoleSeesAllProjects(grant.roleKey),
+        )
+      )
+        throw new HTTPException(403, { message: "Forbidden" });
+      await next();
+    },
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse("The updated roster", z.array(projectMemberSchema)),
+    400: errorResponse("Malformed project ID"),
+    403: errorResponse(
+      "Only workspace owner, admin or manager sessions may join",
+    ),
+    404: errorResponse("Project not found or out of reach"),
+    422: errorResponse("Person or default role not eligible"),
   },
 });
 
@@ -1902,12 +2011,74 @@ export const projectStates = apiRouter<
       200,
     );
   })
+  .openapi(joinProjectRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    const scope = { projectId, workspaceId: c.get("workspaceId") };
+    const identity = await resolveCallerIdentity(c, c.get("userId"));
+    if (
+      identity?.credential !== "session" ||
+      identity.side !== "staff" ||
+      !identity.authority.some(
+        (grant) =>
+          grant.scope === "workspace" &&
+          grant.scopeId === scope.workspaceId &&
+          workspaceRoleSeesAllProjects(grant.roleKey),
+      )
+    ) {
+      throw new HTTPException(403, { message: "Forbidden" });
+    }
+    const actor = await resolveRosterActor(c, scope);
+    return c.json(
+      await addProjectMember(
+        scope,
+        { personId: identity.personId, roleKey: "project-member" },
+        actor,
+        { selfJoin: true },
+      ),
+      200,
+    );
+  })
   .openapi(addProjectMemberRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const body = c.req.valid("json");
     const scope = { projectId, workspaceId: c.get("workspaceId") };
     const actor = await resolveRosterActor(c, scope);
     return c.json(await addProjectMember(scope, body, actor), 200);
+  })
+  .openapi(listProjectCustomersRoute, async (c) =>
+    c.json(await listProjectCustomers(c.req.valid("param").projectId), 200),
+  )
+  .openapi(grantProjectCustomerRoute, async (c) => {
+    const { projectId, personId } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const actor = await resolveRosterActor(c, { projectId, workspaceId });
+    return c.json(
+      await changeProjectCustomerAccess({
+        projectId,
+        personId,
+        workspaceId,
+        actorId: actor.actorId,
+        actorPersonId: actor.personId,
+        granted: true,
+      }),
+      200,
+    );
+  })
+  .openapi(revokeProjectCustomerRoute, async (c) => {
+    const { projectId, personId } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const actor = await resolveRosterActor(c, { projectId, workspaceId });
+    return c.json(
+      await changeProjectCustomerAccess({
+        projectId,
+        personId,
+        workspaceId,
+        actorId: actor.actorId,
+        actorPersonId: actor.personId,
+        granted: false,
+      }),
+      200,
+    );
   })
   .openapi(updateProjectMemberRoute, async (c) => {
     const { projectId, personId } = c.req.valid("param");

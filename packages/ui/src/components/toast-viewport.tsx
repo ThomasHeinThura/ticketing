@@ -8,7 +8,7 @@ import {
   LoaderCircleIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 import { buttonVariants } from "./button";
 
@@ -22,6 +22,72 @@ const TOAST_ICONS = {
   warning: TriangleAlertIcon,
 } as const;
 
+function ToastProgress({ timeout }: { timeout: number }) {
+  const [windowFocused, setWindowFocused] = useState(() => document.hasFocus());
+  useEffect(() => {
+    const focus = () => setWindowFocused(true);
+    const blur = () => setWindowFocused(false);
+    window.addEventListener("focus", focus);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("focus", focus);
+      window.removeEventListener("blur", blur);
+    };
+  }, []);
+  if (timeout <= 0) return null;
+  return (
+    <span
+      aria-hidden="true"
+      className="toast-progress-track"
+      data-slot="toast-progress"
+    >
+      <style>{`
+        @keyframes taskdesk-toast-progress { to { transform: scaleX(0); } }
+        .toast-progress-track { position: absolute; inset: auto 0 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
+        .toast-progress-line { display: block; height: var(--spacing); background: currentColor; opacity: .45; transform-origin: left; animation-name: taskdesk-toast-progress; animation-timing-function: var(--ease-progress); animation-fill-mode: forwards; }
+        [data-slot^="toast-viewport"][data-expanded] .toast-progress-line, .toast-progress-line[data-paused] { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) { .toast-progress-track { display: none; } }
+      `}</style>
+      <span
+        className="toast-progress-line"
+        data-paused={!windowFocused ? "" : undefined}
+        style={{ animationDuration: `${timeout}ms` }}
+      />
+    </span>
+  );
+}
+
+// Base UI exposes an update counter but not whether an update restarted its timer.
+// A changed timeout or transition out of loading does restart it; otherwise hide the
+// line rather than showing a fresh lifetime against an already-running timer.
+function useSynchronizedProgress(
+  toast: ReturnType<typeof Toast.useToastManager>["toasts"][number],
+) {
+  const previous = useRef({
+    key: toast.updateKey,
+    timeout: toast.timeout,
+    type: toast.type,
+  });
+  // A newly observed toast may already have spent time on its timer before React
+  // rendered it. Wait for an observable timer reset before drawing a countdown.
+  const [synchronized, setSynchronized] = useState(false);
+  useLayoutEffect(() => {
+    const prior = previous.current;
+    if (prior.key !== toast.updateKey) {
+      setSynchronized(
+        prior.timeout !== toast.timeout ||
+          (prior.type === "loading" && toast.type === "success"),
+      );
+    }
+    previous.current = {
+      key: toast.updateKey,
+      timeout: toast.timeout,
+      type: toast.type,
+    };
+  }, [toast.updateKey, toast.timeout, toast.type]);
+  return synchronized;
+}
+
 function useInitiallyClosed(
   toast: ReturnType<typeof Toast.useToastManager>["toasts"][number],
 ) {
@@ -32,12 +98,23 @@ function useInitiallyClosed(
   return closed;
 }
 
-function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
+function Toasts({
+  position = "bottom-right",
+  timeout,
+}: {
+  position: ToastPosition;
+  timeout: number;
+}) {
   const { toasts } = Toast.useToastManager();
   return (
     <>
       {toasts.map((toast) => (
-        <ToastItem key={toast.id} toast={toast} position={position} />
+        <ToastItem
+          key={toast.id}
+          toast={toast}
+          position={position}
+          timeout={timeout}
+        />
       ))}
     </>
   );
@@ -45,11 +122,14 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
 function ToastItem({
   toast,
   position,
+  timeout,
 }: {
   toast: ReturnType<typeof Toast.useToastManager>["toasts"][number];
   position: ToastPosition;
+  timeout: number;
 }) {
   const closed = useInitiallyClosed(toast);
+  const synchronized = useSynchronizedProgress(toast);
   const isTop = position.startsWith("top");
   // Let Base UI complete removal/onRemove without ever flashing a cancelled notification.
   if (closed)
@@ -143,26 +223,35 @@ function ToastItem({
           </Toast.Action>
         )}
       </Toast.Content>
+      {toast.type === "success" && synchronized && (
+        <ToastProgress
+          key={toast.updateKey}
+          timeout={toast.timeout ?? timeout}
+        />
+      )}
     </Toast.Root>
   );
 }
 
-function AnchoredToasts() {
+function AnchoredToasts({ timeout }: { timeout: number }) {
   const { toasts } = Toast.useToastManager();
   return (
     <>
       {toasts.map((toast) => (
-        <AnchoredToastItem key={toast.id} toast={toast} />
+        <AnchoredToastItem key={toast.id} toast={toast} timeout={timeout} />
       ))}
     </>
   );
 }
 function AnchoredToastItem({
   toast,
+  timeout,
 }: {
   toast: ReturnType<typeof Toast.useToastManager>["toasts"][number];
+  timeout: number;
 }) {
   const closed = useInitiallyClosed(toast);
+  const synchronized = useSynchronizedProgress(toast);
   // Let Base UI complete removal/onRemove without ever flashing a cancelled notification.
   if (closed)
     return <Toast.Root className="hidden" key={toast.id} toast={toast} />;
@@ -235,6 +324,12 @@ function AnchoredToastItem({
             )}
           </Toast.Content>
         )}
+        {!tooltipStyle && toast.type === "success" && synchronized && (
+          <ToastProgress
+            key={toast.updateKey}
+            timeout={toast.timeout ?? timeout}
+          />
+        )}
       </Toast.Root>
     </Toast.Positioner>
   );
@@ -244,11 +339,17 @@ export default function ToastContents({
   position,
   anchored,
   onReady,
+  timeout,
 }: {
   position: ToastPosition;
   anchored: boolean;
   onReady: () => void;
+  timeout: number;
 }) {
   useLayoutEffect(onReady, [onReady]);
-  return anchored ? <AnchoredToasts /> : <Toasts position={position} />;
+  return anchored ? (
+    <AnchoredToasts timeout={timeout} />
+  ) : (
+    <Toasts position={position} timeout={timeout} />
+  );
 }

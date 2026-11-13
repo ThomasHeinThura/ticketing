@@ -31,7 +31,9 @@ import {
 import { Plus } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   createService,
   SUPPORT_LEVELS,
@@ -299,6 +301,8 @@ export function ServicesList({ q }: { q?: string }) {
   }, [catalogueOn]);
   const [draft, setDraft] = useState(q ?? "");
   const loading = workspaceLoading || status.isLoading || services.isLoading;
+  if ([status.error, services.error].some(isForbiddenError))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("services.list.title")} />
@@ -333,7 +337,10 @@ export function ServicesList({ q }: { q?: string }) {
           ) : null
         }
       >
-        <SectionNav active="services" />
+        <SectionNav
+          active="services"
+          canManageServices={status.data?.canManageServices === true}
+        />
         {catalogueOff ? (
           <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : (

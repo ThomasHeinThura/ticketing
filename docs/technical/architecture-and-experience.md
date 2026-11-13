@@ -255,9 +255,10 @@ screen) still loads the full locale before it renders.
 | Part | Where | Rule |
 | --- | --- | --- |
 | Groups | `apps/web/vite/i18n-namespace-groups.ts` | A Vite plugin serves each `i18n/<locale>.json` as two virtual modules, `slim-<locale>` and `rest-<locale>`, plus a loader table per group. The catalog files stay the single source: `check:i18n` and the translation workflow are unchanged. The portal build gets empty loader tables (no group chunks). |
-| First-paint list | `apps/web/src/lib/i18n/work-route-namespaces.ts` (`WORK_ROUTE_I18N_NAMESPACES`) | Currently `common`, `navigation`, `workItems`. |
+| First-paint list | `apps/web/src/lib/i18n/work-route-namespaces.ts` (`WORK_ROUTE_I18N_NAMESPACES`) | Currently `common`, `navigation`, `workItems`, `tasks`, `term`. List and shared inline-editor value labels live in `workItems.customFieldValue`; the remaining `customFields` namespace is deferred. |
 | Runtime | `apps/web/src/lib/i18n/index.ts` | Group mode is chosen once at load from the URL. Init loads the first-paint group; `preloadNamespaces` loads the deferred group after first contentful paint and an idle moment (`after-first-paint.ts`). `bindI18nStore: "added"` re-renders components when a namespace lands. |
 | Root-route wait | `apps/web/src/routes/agent/__root.tsx` | `beforeLoad` awaits `whenAllNamespacesLoaded()` for every path except the work list, so no other screen can render before the full catalog is there. Components reference namespaces other than `common` through `t("ns:key")` and i18next does not load those on demand, so this wait is what prevents raw keys. |
+| Detail opened from the list | `WorkItemNamespaceBoundary` | Wait before mounting detail, including direct `?item=` links; show the eager translated skeleton or an in-place translated error with Retry. Already-loaded locales render synchronously. Language changes hide the existing detail with React Activity until loading completes, preserving drafts and edits. |
 | Failure | `ensureAllNamespaces` | Deferred group, one retry, then the full locale chunk (a different file). If all three fail the root error screen shows; a screen never renders raw keys because a fetch failed. |
 | Guard | `vite.config.ts`, `findDeferredNamespaceUsers` | The build fails if any source module in the work route's first-paint chunks (entry, shell routes, the route, its panel and their on-demand chunks) refers to a namespace outside the first-paint group (`"ns:key"` strings, `useTranslation("ns")` / `[...]`, `{ ns }` options), unless it is on `DEFERRED_NAMESPACE_ALLOWLIST` with a reason. |
 
@@ -1679,7 +1680,7 @@ is itself keyboard-navigable.
 - Focus is never trapped outside a modal context.
 - Opening a dialog moves focus into it; closing returns focus to the trigger.
 - A destructive dialog focuses the *cancel* action, not the destructive one.
-- Route changes move focus to the page heading and announce it.
+- Route changes move focus to the page heading and announce it. Workspace and project settings and Triage retain their translated page heading while permission checks load or fail; Triage keeps its Layout.Header heading. Announcements retains its page title and description while catalogue status checks access, including a protected-read 403 before that answer; a failed status read offers Retry without reading announcements. Reports index keeps its translated page heading with a loading status while its access-bearing read loads, or an error with Retry when it fails. An access-bearing 403 shows only the shared no-access page. Report detail heading and error handling is a follow-up. Viewer-readable detail screens retain their heading when a server 403 precedes the capability answer; a failed check shows Retry and makes no protected data read. A denied capability replaces the settings heading with the shared no-access page and its single heading.
 
 **Board drag and drop must have a keyboard path.** dnd-kit provides one: focus a card,
 `Space` to lift, arrows to move, `Space` to drop, `Escape` to cancel — with live-region

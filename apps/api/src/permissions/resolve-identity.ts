@@ -237,6 +237,13 @@ export type ScopedRoleMembershipFact = {
   readonly capabilities: unknown;
 };
 
+/** One `customer_project_access` row joined to its target `project` (owner decision D-D). */
+export type CustomerProjectAccessFact = {
+  readonly projectId: string;
+  readonly projectOrganisationId: string | null;
+  readonly projectDeleted: boolean;
+};
+
 /** Every fact `resolveIdentityFromFacts` needs, already loaded — no I/O inside the mapper. */
 export type IdentityFacts = {
   readonly userId: string;
@@ -249,6 +256,8 @@ export type IdentityFacts = {
   readonly workspaceMemberships: readonly WorkspaceMembershipFact[];
   /** Generic persisted role memberships (project/organisation and current P1 memberships). */
   readonly scopedRoleMemberships?: readonly ScopedRoleMembershipFact[];
+  /** Explicit per-person customer project reach rows (`customer_project_access`, D-D). */
+  readonly customerProjectAccess?: readonly CustomerProjectAccessFact[];
   /**
    * Every `team_member` row for this user, with each team's `workspace_id`. Filtered down
    * to `teamIds` in the mapper, keeping only teams whose workspace the person currently has
@@ -436,6 +445,19 @@ export function resolveIdentityFromFacts(
       capabilities: BUILT_IN_ROLES.customer.capabilities,
     };
 
+    const projectIds = [
+      ...new Set(
+        (facts.customerProjectAccess ?? [])
+          .filter(
+            (access) =>
+              access.projectId.length > 0 &&
+              !access.projectDeleted &&
+              access.projectOrganisationId === person.organisationId,
+          )
+          .map((access) => access.projectId),
+      ),
+    ];
+
     return {
       userId: facts.userId,
       personId: person.personId,
@@ -445,7 +467,11 @@ export function resolveIdentityFromFacts(
       credential: facts.credential,
       memberships: [],
       teamIds: [],
-      reach: { kind: "organisation", ids: [person.organisationId] },
+      reach: {
+        kind: "organisation",
+        ids: [person.organisationId],
+        projectIds,
+      },
       authority: [customerGrant],
       keyCapabilities,
     };
@@ -546,6 +572,14 @@ export function resolveIdentityFromFacts(
   // organisation grants, and also carry current workspace `sees_all` facts. Never translate
   // a role name from `workspace_member`; accept only a joined, scope-consistent role row.
   for (const row of facts.scopedRoleMemberships ?? []) {
+    // D-E uses validated system workspace roles, including generic persisted grants.
+    // A custom row bearing a reserved role key must not acquire see-all or additive rights.
+    if (
+      row.scope === "workspace" &&
+      workspaceRoleSeesAllProjects(row.roleKey) &&
+      !row.roleIsSystem
+    )
+      continue;
     if (
       !ROLE_SCOPES.includes(row.scope as (typeof ROLE_SCOPES)[number]) ||
       row.scope !== row.roleScope ||
@@ -884,6 +918,28 @@ export async function resolveIdentity(
     )
     .where(eq(schema.teamMemberTable.userId, input.userId));
 
+  const customerProjectAccessRows =
+    person.side === "customer"
+      ? await executor
+          .select({
+            projectId: schema.customerProjectAccessTable.projectId,
+            projectOrganisationId: schema.projectTable.organisationId,
+            projectDeletedAt: schema.projectTable.deletedAt,
+            joinedProjectId: schema.projectTable.id,
+          })
+          .from(schema.customerProjectAccessTable)
+          .leftJoin(
+            schema.projectTable,
+            eq(
+              schema.projectTable.id,
+              schema.customerProjectAccessTable.projectId,
+            ),
+          )
+          .where(
+            eq(schema.customerProjectAccessTable.personId, person.personId),
+          )
+      : [];
+
   return resolveIdentityFromFacts({
     userId: input.userId,
     person,
@@ -920,6 +976,12 @@ export async function resolveIdentity(
           membership.organisationId !== null),
       rank: membership.rank,
       capabilities: membership.capabilities,
+    })),
+    customerProjectAccess: customerProjectAccessRows.map((access) => ({
+      projectId: access.projectId,
+      projectOrganisationId: access.projectOrganisationId,
+      projectDeleted:
+        access.joinedProjectId === null || access.projectDeletedAt !== null,
     })),
     teamMemberships: teamRows.map((team) => ({
       teamId: team.teamId,

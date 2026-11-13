@@ -7,8 +7,8 @@ import useGetTask from "@/hooks/queries/task/use-get-task";
 import {
   isAuthorizedLegacyProject,
   legacyTaskHref,
-  translateLegacyProjectView,
 } from "@/lib/legacy-project-view";
+import { translateLegacyProjectView } from "@/lib/translate-legacy-project-view";
 import Layout from "./layout";
 
 export default function LegacyProjectView({
