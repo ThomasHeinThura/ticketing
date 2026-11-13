@@ -735,6 +735,10 @@ describe.each([
       screen.getByRole("button", { name: "common:actions.retry" }),
     ).toBeEnabled();
     expect(mocks.protectedReads).not.toHaveBeenCalled();
+    if (_name === "workflows")
+      expect(
+        screen.getByText("settings:workflows.description"),
+      ).toBeInTheDocument();
   });
 });
 

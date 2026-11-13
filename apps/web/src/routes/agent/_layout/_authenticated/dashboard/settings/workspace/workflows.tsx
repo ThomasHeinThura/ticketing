@@ -124,6 +124,7 @@ function WorkflowSettingsRoute() {
       <SettingsAccessPage
         access={capabilityCheckFailed ? "error" : "checking"}
         titleKey="settings:workflows.title"
+        descriptionKey="settings:workflows.description"
       />
     );
   return (

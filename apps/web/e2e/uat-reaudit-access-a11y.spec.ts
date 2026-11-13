@@ -668,3 +668,113 @@ for (const [url, refused, name] of [
     });
   }
 }
+
+// These screens use the catalogue/report response itself as the access answer.
+for (const [url, answer, name, title, loading] of [
+  [
+    "/agent/service-management/announcements",
+    /\/api\/service-catalogue\/status(?:\?|$)/u,
+    "announcements",
+    "Announcements",
+    "Checking your access",
+  ],
+  [
+    "/agent/reports",
+    /\/api\/reports(?:\?|$)/u,
+    "reports-index",
+    "Reports",
+    "Loading page",
+  ],
+  [
+    "/agent/reports/throughput",
+    /\/api\/reports\/throughput(?:\?|$)/u,
+    "report-detail",
+    "Throughput",
+    "Loading page",
+  ],
+] as const) {
+  for (const width of [1280, 390]) {
+    test(`${name} at ${width}: access read keeps one heading, retries, then denies`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 844 });
+      await installPerformanceApiFixture(page);
+      await page.route(
+        /\/api\/(?:workspaces\/[^/]+\/)?features\/resolved/u,
+        (route) =>
+          route.fulfill({
+            json: {
+              features: DEFAULT_RESOLVED_FEATURES.map((feature) =>
+                feature.key === "feature.reports"
+                  ? { ...feature, enabled: true }
+                  : feature,
+              ),
+            },
+          }),
+      );
+      if (name === "report-detail")
+        await page.route(/\/api\/reports(?:\?|$)/u, (route) =>
+          route.fulfill({ json: { data: [], meta: {} } }),
+        );
+      let release!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let forbidden = false;
+      let reads = 0;
+      await page.route(answer, async (route) => {
+        reads += 1;
+        await pending;
+        await route.fulfill({
+          status: forbidden ? 403 : 500,
+          json: { message: forbidden ? "Forbidden" : "Unavailable" },
+        });
+      });
+      // /views is shared with the shell navigation; the component matrix separately
+      // proves that the Reports page does not start its saved-view read before access.
+      const paths = recordApiPaths(page);
+      await page.goto(url);
+      try {
+        await expect(page.getByRole("status", { name: loading })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+        await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
+      } finally {
+        release();
+      }
+      const retry = page.getByRole("button", { name: "Retry", exact: true });
+      await expect(retry).toBeEnabled({ timeout: 15_000 });
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
+      await expect(page.locator("form")).toHaveCount(0);
+      expect(
+        paths.filter(
+          (path) =>
+            /\/api\/(?:announcements(?:\/|$)|reports\/)/u.test(path) &&
+            !answer.test(path),
+        ),
+      ).toEqual([]);
+      await shot(page, `read-access-error-${name}-${width}`);
+      forbidden = true;
+      const beforeRetry = reads;
+      await retry.click();
+      await expect(
+        page.getByRole("heading", {
+          level: 1,
+          name: "You don't have access",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      await expect(retry).toHaveCount(0);
+      expect(reads).toBeGreaterThan(beforeRetry);
+      expect(
+        paths.filter(
+          (path) =>
+            /\/api\/(?:announcements(?:\/|$)|reports\/)/u.test(path) &&
+            !answer.test(path),
+        ),
+      ).toEqual([]);
+      await shot(page, `read-access-denied-${name}-${width}`);
+    });
+  }
+}
