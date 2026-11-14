@@ -3749,3 +3749,20 @@ Owner, admin and manager always keep their workspace rights on every project; a 
 **12 Nov 2026, Thomas — local SIT clean installation.** The approved local SIT wipe after a verified backup reverses the earlier preserve-only rule for that disposable environment. The protected native PostgreSQL on port 62870 remains outside the wipe, and fresh SIT seeding is limited to the newly created database.
 
 Owner, admin and manager always keep their workspace rights on every project; a project role only adds. This reverses the project-scope override rule for these three validated system roles only: joining as project-member or assigning project-viewer must never silently remove manager or administrator rights (archive/settings). Other roles retain project overrides, tier clamping and key scopes remain unchanged. D-E self-join uses the default project-member role and never permits team self-enrolment. D-E also reverses WH-14’s earlier project-limited manager example: these system roles now receive every workspace project. WH-15 still requires instance admin for a full-reach webhook; ownership and second-factor rules are unchanged.
+
+
+## 12 November 2026 — Detail state and assignee: one detail change at a time (Thomas)
+
+D-1 replaces the queued optimistic designs proposed in PR #1121 and #1160. A state or
+assignee choice closes the menu and updates only its owned fields in detail and already
+loaded project list and search rows. The detail's two controls admit one change at a
+time; both stay focusable, refuse changes and announce Saving with the library pending
+indicator until settlement. Other writes to the item are serialised behind it by the
+existing per-item mutation scope. Success uses the existing response writer and its
+version floor. No new queue, precondition rebasing or read merging is added. Assignment
+keeps the holder the person saw, including reassignment confirmation; Unassign always
+requires a non-null expected holder. Each cache row keeps its own rollback snapshot.
+Restore only while that place still shows the optimistic field group, then refresh
+detail and the whole project list prefix on either outcome. Incoming reads and realtime
+are unchanged. This supersedes the earlier D-1 queue/merge proposals; the API,
+capability gates and board behavior stay as recorded.

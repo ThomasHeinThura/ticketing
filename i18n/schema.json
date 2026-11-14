@@ -15283,6 +15283,12 @@
 						"transitionsError": {
 							"type": "string"
 						},
+						"transitionForbidden": {
+							"type": "string"
+						},
+						"assignmentForbidden": {
+							"type": "string"
+						},
 						"transitionConflict": {
 							"type": "string"
 						},
@@ -15403,6 +15409,8 @@
 						"transitionsEmpty",
 						"loadingTransitions",
 						"transitionsError",
+						"transitionForbidden",
+						"assignmentForbidden",
 						"transitionConflict",
 						"transitionUnavailable",
 						"assignmentHeading",

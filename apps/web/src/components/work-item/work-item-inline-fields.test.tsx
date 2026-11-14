@@ -4,9 +4,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createInstance } from "i18next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
-import type { WorkItemCustomFieldColumn, WorkItemRow } from "@/types/work-item";
+import type {
+  WorkItemCustomFieldColumn,
+  WorkItemDetailRow,
+  WorkItemRow,
+} from "@/types/work-item";
 import { splitI18nNamespaces } from "../../../vite/i18n-namespace-groups";
 import TaskRow from "../list-view/task-row";
+import { startDetailAssigneeChange } from "./detail-instant-change";
 import WorkItemInlineFields from "./work-item-inline-fields";
 
 const mocks = vi.hoisted(() => ({
@@ -630,6 +635,42 @@ describe("WorkItemInlineFields", () => {
         toStateTemplateId: "state-done",
       }),
     );
+  });
+
+  it("a list inline priority write waits for the detail assignment and sends its new version", async () => {
+    let resolve = (_value: unknown) => {};
+    mocks.assign.mockReturnValue(
+      new Promise((yes) => {
+        resolve = yes;
+      }),
+    );
+    mocks.update.mockResolvedValue({ version: 6, priority: "urgent" });
+    const row = item({ version: 4 });
+    const { client } = renderInline(row);
+    const pending = startDetailAssigneeChange(
+      client,
+      row as WorkItemDetailRow,
+      { personId: "casey", name: "Casey" },
+      null,
+      { onSuccess: vi.fn(), onError: vi.fn() },
+    );
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByTestId("work-item-inline-priority"));
+    fireEvent.click(
+      await screen.findByTestId("work-item-inline-priority-option-urgent"),
+    );
+    await waitFor(() => expect(client.isMutating()).toBe(2));
+    expect(mocks.update).not.toHaveBeenCalled();
+    resolve({ assigneeId: "casey", version: 5 });
+    await pending;
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledExactlyOnceWith({
+        key: "HELP-7",
+        version: 5,
+        priority: "urgent",
+      }),
+    );
+    client.clear();
   });
 
   it("uses the current cached version for a priority change", async () => {

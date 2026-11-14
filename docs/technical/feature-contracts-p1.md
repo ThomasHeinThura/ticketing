@@ -220,6 +220,22 @@ sections. v1's twenty-plus-field header is the specific mistake being avoided.
 
 Editing on the detail page (UI decisions the rules above do not fix; none conflicts with them):
 
+- State and assignee choices in the full detail and side pane close their menu
+  immediately and show the chosen value in detail and loaded project list and search
+  rows. The detail's two controls admit one change at a time; both remain focusable but
+  refuse changes, show a quiet pending indicator and announce Saving until it settles.
+  Other writes to the item are serialised behind it by the existing per-item mutation
+  scope. No new queue or read merging is added. Snapshot only the owned state or
+  assignee fields separately in each cache row, without changing versions. A refusal
+  restores a snapshot only while that row still shows the optimistic field group,
+  reports the translated refusal and refreshes the detail and the entire project list
+  prefix. Success reapplies the owned display fields and every response field through
+  the existing response writer, advancing its version floor, and performs the same
+  refresh. Incoming reads and realtime retain their normal behavior. Assignment requests
+  retain the exact holder shown at choice/confirmation; Unassign is absent for an
+  unassigned item and can never send a null expected holder. Settlement uses the
+  captured item/project after navigation or unmount. Failed reads retain the existing
+  error/Retry behavior.
 - The edit form sends only the fields the user changed (`WI-8` is a partial `PATCH`), and
   Save is disabled while nothing differs from the values the form was opened with, so an
   empty `PATCH` is never attempted. Reverting a field to its original value is not a change.
