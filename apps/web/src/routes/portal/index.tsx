@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Button, useDelayedPending } from "@taskdesk/ui";
+import { Button, PageContainer, useDelayedPending } from "@taskdesk/ui";
 import { PageLoading } from "@/components/page-loading";
 import type { PortalCaseFilterPatch } from "@/components/portal/cases/portal-case-filters";
 import { PortalOutstandingCases } from "@/components/portal/cases/portal-outstanding-cases";
@@ -95,7 +95,7 @@ function PortalHome() {
     );
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="6xl">
       <PortalPageTitle title={t("home.dashboardTitle")} />
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -123,6 +123,6 @@ function PortalHome() {
         project={project}
         onChange={update}
       />
-    </div>
+    </PageContainer>
   );
 }

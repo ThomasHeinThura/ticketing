@@ -7,11 +7,11 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import type { Project } from "@/types/project";
 
 const mocks = vi.hoisted(() => ({
-  exportWorkItems: vi.fn(),
-  saveAs: vi.fn(),
+  downloadWorkItemsCsv: vi.fn(),
   canExport: true,
   toast: {
     loading: vi.fn(),
@@ -24,10 +24,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("file-saver", () => ({ saveAs: mocks.saveAs }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast }));
 vi.mock("@/fetchers/work-item/export-work-items", () => ({
-  exportWorkItems: (...args: unknown[]) => mocks.exportWorkItems(...args),
+  downloadWorkItemsCsv: (...args: unknown[]) =>
+    mocks.downloadWorkItemsCsv(...args),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canExportTasks: () => mocks.canExport }),
@@ -51,7 +51,7 @@ function renderPanel() {
 
 beforeEach(() => {
   mocks.canExport = true;
-  mocks.exportWorkItems.mockResolvedValue("key,title\r\nHELP-1,First\r\n");
+  mocks.downloadWorkItemsCsv.mockResolvedValue(undefined);
 });
 afterEach(() => {
   cleanup();
@@ -66,16 +66,15 @@ describe("project settings export (A-16)", () => {
         name: "settings:tasksImportExport.exportTasks",
       }),
     );
-    await waitFor(() => expect(mocks.saveAs).toHaveBeenCalledOnce());
-    expect(mocks.exportWorkItems).toHaveBeenCalledWith({
+    await waitFor(() =>
+      expect(mocks.downloadWorkItemsCsv).toHaveBeenCalledOnce(),
+    );
+    expect(mocks.downloadWorkItemsCsv).toHaveBeenCalledWith({
       workspaceId: "ws-1",
       projectSlug: "HELP",
       sort: "key",
       dir: "asc",
     });
-    const [blob, name] = mocks.saveAs.mock.calls[0] as [Blob, string];
-    expect(name).toBe("help-work-items.csv");
-    expect(await blob.text()).toContain("HELP-1");
     expect(mocks.toast.success).toHaveBeenCalled();
   });
 
@@ -104,7 +103,7 @@ describe("project settings export (A-16)", () => {
   });
 
   it("reports a failed export", async () => {
-    mocks.exportWorkItems.mockRejectedValue(new Error("boom"));
+    mocks.downloadWorkItemsCsv.mockRejectedValue(new Error("boom"));
     renderPanel();
     fireEvent.click(
       screen.getByRole("button", {
@@ -116,6 +115,23 @@ describe("project settings export (A-16)", () => {
         "settings:tasksImportExport.exportError",
       ),
     );
-    expect(mocks.saveAs).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [422, "workItems:list.exportLimitExceeded"],
+    [429, "workItems:list.exportRateLimited"],
+  ])("shows the translated error for status %i", async (status, message) => {
+    mocks.downloadWorkItemsCsv.mockRejectedValue(
+      new HttpError(status, "error"),
+    );
+    renderPanel();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings:tasksImportExport.exportTasks",
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.toast.error).toHaveBeenCalledWith(message),
+    );
   });
 });

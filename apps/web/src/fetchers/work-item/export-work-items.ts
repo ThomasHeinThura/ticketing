@@ -64,3 +64,26 @@ export async function exportWorkItems(input: {
   }
   return response.text();
 }
+
+export function downloadCsvBlob(csv: string, filename: string): void {
+  const url = URL.createObjectURL(
+    new Blob([csv], { type: "text/csv;charset=utf-8" }),
+  );
+  const link = document.createElement("a");
+  try {
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+  } finally {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+}
+
+export async function downloadWorkItemsCsv(
+  input: Parameters<typeof exportWorkItems>[0],
+): Promise<void> {
+  const csv = await exportWorkItems(input);
+  downloadCsvBlob(csv, `${input.projectSlug.toLowerCase()}-work-items.csv`);
+}

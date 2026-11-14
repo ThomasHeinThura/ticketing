@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   cn,
+  PageContainer,
   Progress,
   ProgressIndicator,
   ProgressTrack,
@@ -546,7 +547,7 @@ export function PortalProjectDetails({
     query.error instanceof HttpError && query.error.status === 404;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="6xl">
       <PortalPageTitle
         title={
           notFound
@@ -639,6 +640,6 @@ export function PortalProjectDetails({
           </div>
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

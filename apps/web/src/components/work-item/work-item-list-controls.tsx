@@ -1,9 +1,8 @@
 import { Button } from "@taskdesk/ui";
-import { saveAs } from "file-saver";
 import { ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { exportWorkItems } from "@/fetchers/work-item/export-work-items";
+import { downloadWorkItemsCsv } from "@/fetchers/work-item/export-work-items";
 import { useCustomFields } from "@/hooks/queries/custom-field/use-custom-fields";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
@@ -124,7 +123,7 @@ export default function WorkItemListControls({
     setExportPending(true);
     setExportError(undefined);
     try {
-      const csv = await exportWorkItems({
+      await downloadWorkItemsCsv({
         workspaceId,
         projectSlug,
         filter: filter.trim() || undefined,
@@ -132,8 +131,6 @@ export default function WorkItemListControls({
         dir,
         columns,
       });
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      saveAs(blob, `${projectSlug.toLowerCase()}-work-items.csv`);
     } catch (error) {
       if (error instanceof HttpError && error.status === 422) {
         setExportError(t("workItems:list.exportLimitExceeded"));

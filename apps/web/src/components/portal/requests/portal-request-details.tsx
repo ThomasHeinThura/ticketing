@@ -13,6 +13,7 @@ import {
   Empty,
   EmptyDescription,
   EmptyHeader,
+  PageContainer,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -121,7 +122,7 @@ export function PortalRequestDetails({
     ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="4xl">
       <PortalPageTitle
         title={
           notFound
@@ -215,7 +216,7 @@ export function PortalRequestDetails({
           ) : null}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

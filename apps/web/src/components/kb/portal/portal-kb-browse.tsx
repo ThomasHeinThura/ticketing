@@ -15,6 +15,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  PageContainer,
   Skeleton,
   Tabs,
   TabsList,
@@ -103,7 +104,12 @@ export function PortalKbBrowse({
   });
   const tree = flatten(categories.data?.categories ?? []);
   return (
-    <div className="@container mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+    <PageContainer
+      className="@container"
+      scroll={false}
+      gutter="default"
+      width="5xl"
+    >
       <header className="space-y-1">
         <h1 className="font-semibold text-2xl">{t("kb:portal.title")}</h1>
         <p className="text-muted-foreground">{t("kb:portal.description")}</p>
@@ -223,6 +229,6 @@ export function PortalKbBrowse({
           )}
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
