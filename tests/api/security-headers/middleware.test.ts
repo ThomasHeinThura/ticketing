@@ -44,6 +44,22 @@ function testApp(readCspMode: () => Promise<string>) {
 }
 
 describe("security headers middleware", () => {
+  it("emits enforced CSP when explicitly configured on both surfaces", async () => {
+    for (const host of ["agent.example.test", "portal.example.test"]) {
+      const response = await testApp(async () => "enforce").request(
+        `https://${host}/`,
+      );
+      const policy = response.headers.get("content-security-policy");
+      const nonce = policy?.match(/'nonce-([^']+)'/)?.[1];
+      expect(policy).toContain("default-src 'none'");
+      expect(nonce).toBeTruthy();
+      expect(await response.text()).toContain(`nonce="${nonce}"`);
+      expect(response.headers.has("content-security-policy-report-only")).toBe(
+        false,
+      );
+    }
+  });
+
   it("prevents reset links leaking as referrers on both hosts", async () => {
     const app = testApp(async () => "enforce");
     for (const url of [

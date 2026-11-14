@@ -2,7 +2,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ suggestions: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  suggestions: vi.fn(),
+  knowledgeBaseOn: true,
+  isOn: vi.fn<(key: string) => boolean>(),
+}));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: React.ReactNode }) => (
     <a href="/">{children}</a>
@@ -15,6 +19,10 @@ vi.mock("@/fetchers/kb", () => ({
   getKbSuggestions: (...args: unknown[]) => mocks.suggestions(...args),
 }));
 
+vi.mock("@/hooks/queries/feature-flag/use-workspace-features", () => ({
+  default: () => ({ isOn: mocks.isOn }),
+}));
+
 import { KbTriageSuggestions } from "./kb-triage-suggestions";
 
 const summary = (id: string, title: string, customerVisible: boolean) => ({
@@ -24,19 +32,27 @@ const summary = (id: string, title: string, customerVisible: boolean) => ({
 });
 
 function renderPanel(onInsert = vi.fn()) {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <KbTriageSuggestions
-        workspaceId="w1"
-        text="reset my vpn"
-        onInsert={onInsert}
-      />
-    </QueryClientProvider>,
+  const client = new QueryClient();
+  const view = render(
+    <KbTriageSuggestions
+      workspaceId="w1"
+      text="reset my vpn"
+      onInsert={onInsert}
+    />,
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    },
   );
-  return onInsert;
+  return { ...view, onInsert };
 }
 
 beforeEach(() => {
+  mocks.knowledgeBaseOn = true;
+  mocks.isOn.mockImplementation(
+    (key) => key === "feature.knowledge_base" && mocks.knowledgeBaseOn,
+  );
   mocks.suggestions.mockResolvedValue({
     articles: [
       summary("a1", "Reset your VPN password", true),
@@ -51,8 +67,32 @@ afterEach(() => {
 });
 
 describe("KbTriageSuggestions (KB-12)", () => {
+  it("does not fetch or render suggestions while knowledge base is off", async () => {
+    mocks.knowledgeBaseOn = false;
+    renderPanel();
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(mocks.suggestions).not.toHaveBeenCalled();
+    expect(mocks.isOn).toHaveBeenCalledWith("feature.knowledge_base");
+    expect(screen.queryByText("kb:triage.title")).toBeNull();
+  });
+  it("immediately hides cached articles when knowledge base is switched off", async () => {
+    const { rerender } = renderPanel();
+    await screen.findByText("Reset your VPN password");
+    mocks.knowledgeBaseOn = false;
+    rerender(
+      <KbTriageSuggestions
+        workspaceId="w1"
+        text="reset my vpn"
+        onInsert={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("Reset your VPN password")).toBeNull();
+    expect(mocks.isOn).toHaveBeenCalledWith("feature.knowledge_base");
+    expect(mocks.suggestions).toHaveBeenCalledTimes(1);
+  });
+
   it("offers a link only for an article the customer can read", async () => {
-    const onInsert = renderPanel();
+    const { onInsert } = renderPanel();
     expect(await screen.findByText("Reset your VPN password")).toBeTruthy();
     const buttons = screen.getAllByRole("button", { name: "kb:triage.insert" });
     expect(buttons).toHaveLength(1);
