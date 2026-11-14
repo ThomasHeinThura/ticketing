@@ -110,8 +110,8 @@ licence risk that has to be removed rather than documented.
 | --- | --- | --- | --- |
 | `ws` | 8.22.0 | MIT | WebSocket server owned directly by `apps/api` |
 | `@types/ws` | 8.18.2 | MIT | Development-only TypeScript declarations for `ws` |
-| `@hono/node-server` | 2.1.3 | MIT | Existing runtime dependency upgraded for the built-in upgrade helper |
-| `hono` | 4.13.12 | MIT | Existing runtime dependency upgraded to the patched path handling floor |
+| `@hono/node-server` | 2.1.6 | MIT | Existing runtime dependency; 13 Nov security patches for request paths and WebSocket upgrades |
+| `hono` | 4.13.16 | MIT | Existing runtime dependency; 13 Nov security patches for routing, form validation, CSRF and CSS |
 
 The incompatible `@hono/node-ws` package is removed. Existing transitive `ip-address` and
 `fast-uri` floors are also raised for production advisory fixes; their verified licenses

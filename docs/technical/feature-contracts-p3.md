@@ -298,6 +298,10 @@ misconfigured away through the role editor.
   normalized using the configured public scheme and its default port. DNS names are
   case- and IDNA-normalized; malformed authorities and unknown hosts are rejected.
   Forwarded headers and the backend transport scheme do not select the application.
+  At the Node HTTP boundary, a raw backslash in the request path is rejected with
+  400 before application routing, including absolute-form targets and websocket upgrades;
+  it is never normalized into a slash to reach another route. Percent-encoded backslashes
+  and backslashes in the query remain subject to the existing host and route checks.
   Host selection and portal-path denial run before CORS, compression, auth, API, static,
   SPA or websocket handling. The agent origin keeps its existing URLs and behavior.
   P3 may replace the disabled outcome only after the independently reviewed per-host
