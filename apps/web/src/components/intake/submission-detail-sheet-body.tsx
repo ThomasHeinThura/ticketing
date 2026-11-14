@@ -524,6 +524,7 @@ export default function SubmissionDetailSheetBody({
                   {/* KB-12: the same article suggestions the customer was offered. */}
                   {workspaceId ? (
                     <KbTriageSuggestions
+                      key={ref}
                       workspaceId={workspaceId}
                       text={summary}
                       onInsert={(line) =>

@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getKbSuggestions } from "@/fetchers/kb";
+import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { routes } from "@/lib/routes";
 import { KbVisibilityBadge } from "../kb-badges";
 
@@ -31,6 +32,8 @@ export function KbTriageSuggestions({
   onInsert: (line: string) => void;
 }) {
   const { t } = useTranslation();
+  const features = useWorkspaceFeatures(workspaceId);
+  const knowledgeBaseOn = features.isOn("feature.knowledge_base");
   const [settled, setSettled] = useState(text.trim());
   useEffect(() => {
     const timer = setTimeout(() => setSettled(text.trim()), 300);
@@ -39,12 +42,12 @@ export function KbTriageSuggestions({
   const suggestions = useQuery({
     queryKey: ["kb", workspaceId, "triage-suggestions", settled],
     queryFn: () => getKbSuggestions(workspaceId, settled),
-    enabled: Boolean(workspaceId) && settled.length >= 3,
+    enabled: knowledgeBaseOn && Boolean(workspaceId) && settled.length >= 3,
     retry: false,
     staleTime: 30_000,
   });
   const articles = suggestions.data?.articles ?? [];
-  if (articles.length === 0) return null;
+  if (!knowledgeBaseOn || articles.length === 0) return null;
   const base = suggestions.data?.portalBaseUrl ?? null;
   return (
     <Card aria-label={t("kb:triage.title")}>

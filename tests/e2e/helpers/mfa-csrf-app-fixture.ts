@@ -594,6 +594,7 @@ export async function withMfaCsrfApp<T>(
   options: {
     beforeStart?: (fixture: MfaCsrfAppFixtureSetup) => Promise<void>;
     discardChildOutput?: boolean;
+    enableEmailCodeSignIn?: boolean;
     onContainerIntent?: (label: string) => void | Promise<void>;
     onContainerCreated?: (id: string) => void | Promise<void>;
   } = {},
@@ -660,6 +661,7 @@ async function runMfaCsrfApp<T>(
   options: {
     beforeStart?: (fixture: MfaCsrfAppFixtureSetup) => Promise<void>;
     discardChildOutput?: boolean;
+    enableEmailCodeSignIn?: boolean;
     onContainerIntent?: (label: string) => void | Promise<void>;
     onContainerCreated?: (id: string) => void | Promise<void>;
   },
@@ -725,7 +727,9 @@ async function runMfaCsrfApp<T>(
         TASKDESK_STORAGE_FILESYSTEM_ROOT: storageRoot,
         DISABLE_REGISTRATION: "false",
         DISABLE_PASSWORD_REGISTRATION: "false",
-        DISABLE_EMAIL_OTP_SIGN_IN: "true",
+        DISABLE_EMAIL_OTP_SIGN_IN: options.enableEmailCodeSignIn
+          ? "false"
+          : "true",
         DISABLE_LOGIN_FORM: "false",
         DEMO_MODE: "false",
         SMTP_HOST: "",
