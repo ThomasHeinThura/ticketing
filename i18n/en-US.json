@@ -5334,7 +5334,8 @@
 			},
 			"submission": {
 				"received": "a {{term_request_one}} is received"
-			}
+			},
+			"schedule": "On a schedule"
 		},
 		"priorities": {
 			"low": "Low",
@@ -5377,8 +5378,14 @@
 				"roleRequired": "Choose the role this rule runs as.",
 				"actionsRequired": "Add at least one action.",
 				"actionValueRequired": "Choose a value for every action.",
+				"actorRoleTriggerRequired": "Customer author conditions require the comment trigger.",
+				"scheduleMinimumInterval": "Schedules must be at least five minutes apart.",
 				"conditionValueRequired": "Choose a value for every condition."
-			}
+			},
+			"schedule": "Schedule (UTC)",
+			"everyFiveMinutes": "Every 5 minutes",
+			"hourly": "Every hour",
+			"daily": "Daily at midnight UTC"
 		},
 		"conditions": {
 			"field": "Field",
@@ -5406,7 +5413,8 @@
 				"age": "Age",
 				"comment_visibility": "Comment visibility",
 				"field_changed": "Field changed",
-				"assignee": "Assignee"
+				"assignee": "Assignee",
+				"actor_role": "Comment author"
 			},
 			"ops": {
 				"eq": "is",
@@ -5429,7 +5437,9 @@
 				"dueDate": "Due date",
 				"assignee": "Assignee",
 				"labels": "Labels"
-			}
+			},
+			"customer": "Customer",
+			"basisResolved": "Last entered a resolved state"
 		},
 		"actions": {
 			"type": "Action",

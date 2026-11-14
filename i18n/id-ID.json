@@ -6517,7 +6517,8 @@
 				"state": {
 					"group": "State group"
 				},
-				"type": "Type"
+				"type": "Type",
+				"actor_role": "Comment author"
 			},
 			"keptAsStored": "Kept as stored",
 			"minutes": "Minutes",
@@ -6542,7 +6543,9 @@
 			"visibility": {
 				"internal": "Internal",
 				"public": "Public"
-			}
+			},
+			"customer": "Customer",
+			"basisResolved": "Last entered a resolved state"
 		},
 		"dryRun": {
 			"allowed": "Allowed",
@@ -6584,6 +6587,8 @@
 			"problems": {
 				"actionsRequired": "Add at least one action.",
 				"actionValueRequired": "Choose a value for every action.",
+				"actorRoleTriggerRequired": "Customer author conditions require the comment trigger.",
+				"scheduleMinimumInterval": "Schedules must be at least five minutes apart.",
 				"conditionValueRequired": "Choose a value for every condition.",
 				"nameRequired": "Enter a name.",
 				"roleRequired": "Choose the role this rule runs as."
@@ -6596,7 +6601,11 @@
 			"saveFailed": "The rule could not be saved",
 			"stopProcessing": "Stop processing further rules after this one runs",
 			"then": "Then",
-			"when": "When"
+			"when": "When",
+			"schedule": "Schedule (UTC)",
+			"everyFiveMinutes": "Every 5 minutes",
+			"hourly": "Every hour",
+			"daily": "Daily at midnight UTC"
 		},
 		"flags": {
 			"effective_role_lost_capability": "Role lost a permission",
@@ -6699,7 +6708,8 @@
 				"escalated": "a priority is escalated",
 				"transitioned": "a {{term_work_item_one}} changes state",
 				"updated": "a field of a {{term_work_item_one}} changes"
-			}
+			},
+			"schedule": "On a schedule"
 		},
 		"workspace": {
 			"description": "Rules that run when something happens in any {{term_project_one}} of this workspace. Each rule runs as a role and cannot do more than that role.",

@@ -6,7 +6,7 @@ import { PRIORITY_ORDER, STATE_GROUPS } from "./constants";
  * The grammar is the structured search filter's `{ field, op, value }` leaf
  * (`safety-and-runtime.md`, work-item search v1), narrowed to flat conjunction and extended by
  * the contract's automation-only keys. A field is only accepted when its fact has an
- * authoritative loader; the contract's remaining keys (`cf.<key>`, `actor_role`)
+ * authoritative loader; the contract's remaining custom-field keys (`cf.<key>`)
  * are recognised and refused with the field named, the same `422` rule the search grammar uses,
  * never evaluated as a false predicate.
  */
@@ -42,6 +42,7 @@ export const CONDITION_FIELDS = [
   "sla_state",
   "comment_visibility",
   "field_changed",
+  "actor_role",
 ] as const;
 export const SLA_STATE_VALUES = [
   "ok",
@@ -53,7 +54,7 @@ export const SLA_STATE_VALUES = [
 export type ConditionField = (typeof CONDITION_FIELDS)[number];
 
 /** Recognised by the contract, but without storage or a loader here; refused with `422`. */
-export const UNAVAILABLE_CONDITION_FIELDS = ["actor_role"] as const;
+export const UNAVAILABLE_CONDITION_FIELDS = [] as const;
 
 export function isCustomFieldCondition(field: string): boolean {
   return /^cf\.[A-Za-z0-9_-]{1,64}$/.test(field);
@@ -89,6 +90,7 @@ export const FIELD_OPS: Record<ConditionField, readonly ConditionOp[]> = {
   sla_state: [...SCALAR_OPS, "is_empty", "is_not_empty"],
   comment_visibility: ["eq", "ne"],
   field_changed: ["contains", "in"],
+  actor_role: ["eq"],
 };
 
 export type AutomationCondition = {
@@ -96,7 +98,7 @@ export type AutomationCondition = {
   op: ConditionOp;
   value?: unknown;
   /** `age` only: which timestamp the minutes are counted from. */
-  basis?: "created_at" | "updated_at";
+  basis?: "created_at" | "updated_at" | "resolved_at";
 };
 
 /** The persisted facts a condition is decided from. `undefined` means "not loaded". */
@@ -115,6 +117,7 @@ export type ConditionFacts = {
     projectKey: string | null;
     createdAt: Date;
     updatedAt: Date;
+    resolvedAt?: Date | null;
     /**
      * The work item's SLA badge state (`ok|at_risk|breached|met|missed`), computed on read with
      * the same `computeSlaState` the list uses; `null` when no policy applies. `undefined` means
@@ -125,6 +128,7 @@ export type ConditionFacts = {
   /** From the event payload. */
   commentVisibility?: "public" | "internal" | null;
   changedFields?: readonly string[];
+  customerAuthoredComment?: boolean;
 };
 
 function asArray(value: unknown): unknown[] {
@@ -213,10 +217,17 @@ export function evaluateCondition(
       const has = typeof value === "string" && item.labels.includes(value);
       return op === "contains" ? has : !has;
     }
+    case "actor_role":
+      return value === "customer" && facts.customerAuthoredComment === true;
     case "age": {
       if (!item || typeof value !== "number") return false;
       const from =
-        condition.basis === "updated_at" ? item.updatedAt : item.createdAt;
+        condition.basis === "resolved_at"
+          ? item.resolvedAt
+          : condition.basis === "updated_at"
+            ? item.updatedAt
+            : item.createdAt;
+      if (!from) return false;
       const minutes = Math.floor(
         (facts.now.getTime() - from.getTime()) / 60_000,
       );
@@ -276,6 +287,8 @@ export function conditionValueProblem(
   if (!FIELD_OPS[field].includes(op))
     return `${field} does not support the ${op} operator`;
   if (op === "is_empty" || op === "is_not_empty") return null;
+  if (field === "actor_role" && value !== "customer")
+    return "actor_role supports only customer";
   if (field === "age") {
     return typeof value === "number" && Number.isInteger(value) && value >= 0
       ? null

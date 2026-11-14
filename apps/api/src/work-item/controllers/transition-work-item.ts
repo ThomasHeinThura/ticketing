@@ -428,7 +428,11 @@ export async function transitionWorkItem(
    * required custom fields, assignee eligibility and concurrency checks apply, and an edge that
    * needs an approval or CAB gate is refused (an automation cannot decide one).
    */
-  automationActor?: { roleId: string },
+  automationActor?: {
+    roleId: string;
+    expectedStateId?: string;
+    expectedResolvedAt?: Date | null;
+  },
 ): Promise<TransitionedWorkItem> {
   const ctx = await loadWorkflowTransitionContext(workItemId);
   if (!ctx) {
@@ -677,6 +681,33 @@ export async function transitionWorkItem(
         throw new TransitionConflictError(locked?.stateId ?? fromStateId);
       }
 
+      if (
+        automationActor?.expectedStateId &&
+        locked.stateId !== automationActor.expectedStateId
+      )
+        throw new TransitionConflictError(locked.stateId);
+      if (automationActor?.expectedResolvedAt) {
+        const [entry] = await tx
+          .execute<{ at: string | null }>(sql`SELECT (
+          SELECT a.created_at FROM activity a
+          JOIN state s ON s.id = a.new_value #>> '{}'
+          JOIN state_template st ON st.id = s.state_template_id
+          LEFT JOIN state old_s ON old_s.id = a.old_value #>> '{}'
+          LEFT JOIN state_template old_st ON old_st.id = old_s.state_template_id
+          WHERE a.workspace_id = ${ctx.workItem.workspaceId} AND a.work_item_id = ${workItemId}
+            AND a.verb = 'transitioned' AND st."group" = 'completed'
+            AND EXISTS (SELECT 1 FROM state current_s JOIN state_template current_st ON current_st.id = current_s.state_template_id WHERE current_s.id = ${locked.stateId} AND current_st."group" = 'completed')
+            AND old_st."group" IS DISTINCT FROM 'completed'
+          ORDER BY a.created_at DESC, a.seq DESC LIMIT 1
+        ) AS at`)
+          .then((r) => r.rows);
+        if (
+          !entry?.at ||
+          new Date(`${entry.at.replace(" ", "T")}Z`).getTime() !==
+            automationActor.expectedResolvedAt.getTime()
+        )
+          throw new TransitionConflictError(locked.stateId);
+      }
       await assertProjectStillLive(tx, locked.projectId);
 
       // WF-19: fire the scheduled row exactly once, under the item lock and after the

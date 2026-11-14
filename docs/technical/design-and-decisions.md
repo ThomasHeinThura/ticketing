@@ -3770,3 +3770,14 @@ Restore only while that place still shows the optimistic field group, then refre
 detail and the whole project list prefix on either outcome. Incoming reads and realtime
 are unchanged. This supersedes the earlier D-1 queue/merge proposals; the API,
 capability gates and board behavior stay as recorded.
+
+### 12 Nov 2026 — Thomas: plan G-1 service-desk automation support
+
+G-1 authorizes customer replies reopening resolved items and hourly closing after three days
+resolved. Make schedule rules executable, add `actor_role eq customer` for persisted public
+customer-person comments, and add `age.basis = resolved_at`. This supersedes the implementation's
+unavailable schedule/customer-role validation; it does not expand effective roles or transition
+authority. Resolved age comes from transition activity entering the completed category because
+the existing resolved timestamp belongs to SLA effects. No migration or dependency is needed.
+Scheduled candidates share the existing executor and fail-closed permission/loop checks; sweeps
+use durable cursors and skip missed cron windows. Browser and deployed acceptance remain gates.

@@ -1,8 +1,10 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import db from "../database";
 import type { Executor } from "../database/executor";
 import {
+  commentTable,
   labelTable,
+  personTable,
   projectTable,
   stateTable,
   stateTemplateTable,
@@ -19,10 +21,24 @@ import type { ConditionFacts } from "./conditions";
  * item as it is when the rule runs (the contract's "run after the change is committed").
  */
 
+export const resolvedEntrySql = sql<string | null>`(
+        SELECT a.created_at FROM activity a
+        JOIN state s ON s.id = a.new_value #>> '{}'
+        JOIN state_template st ON st.id = s.state_template_id
+        LEFT JOIN state old_s ON old_s.id = a.old_value #>> '{}'
+        LEFT JOIN state_template old_st ON old_st.id = old_s.state_template_id
+        WHERE a.workspace_id = ${workItemTable.workspaceId}
+          AND a.work_item_id = ${workItemTable.id} AND a.verb = 'transitioned'
+          AND st."group" = 'completed' AND old_st."group" IS DISTINCT FROM 'completed'
+        ORDER BY a.created_at DESC, a.seq DESC LIMIT 1
+      )`;
+
 export type LoadedWorkItem = {
   id: string;
   key: string;
   title: string;
+  stateId?: string;
+  stateTemplateId?: string;
   workspaceId: string;
   projectId: string;
   organisationId: string | null;
@@ -33,6 +49,7 @@ export async function loadWorkItemsByKey(
   workspaceId: string,
   keys: readonly string[],
   executor: Executor = db,
+  liveProjectOnly = false,
 ): Promise<Map<string, LoadedWorkItem>> {
   const result = new Map<string, LoadedWorkItem>();
   const unique = [...new Set(keys)];
@@ -42,6 +59,8 @@ export async function loadWorkItemsByKey(
       id: workItemTable.id,
       key: workItemTable.key,
       title: workItemTable.title,
+      stateId: workItemTable.stateId,
+      stateTemplateId: stateTable.stateTemplateId,
       workspaceId: workItemTable.workspaceId,
       projectId: workItemTable.projectId,
       priority: workItemTable.priority,
@@ -54,6 +73,7 @@ export async function loadWorkItemsByKey(
       slaStartedAt: workItemTable.slaStartedAt,
       firstResponseAt: workItemTable.firstResponseAt,
       resolvedAt: workItemTable.resolvedAt,
+      resolvedEntryAt: resolvedEntrySql,
       typeKey: workItemTypeTable.key,
       stateKey: stateTemplateTable.key,
       stateGroup: stateTemplateTable.group,
@@ -77,6 +97,9 @@ export async function loadWorkItemsByKey(
         inArray(workItemTable.key, unique),
         isNull(workItemTable.deletedAt),
         isNull(workItemTable.archivedAt),
+        eq(projectTable.workspaceId, workspaceId),
+        liveProjectOnly ? isNull(projectTable.deletedAt) : undefined,
+        liveProjectOnly ? isNull(projectTable.archivedAt) : undefined,
       ),
     );
   if (rows.length === 0) return result;
@@ -120,6 +143,8 @@ export async function loadWorkItemsByKey(
       id: row.id,
       key: row.key,
       title: row.title,
+      stateId: row.stateId,
+      stateTemplateId: row.stateTemplateId,
       workspaceId: row.workspaceId,
       projectId: row.projectId,
       organisationId: row.organisationId,
@@ -135,6 +160,10 @@ export async function loadWorkItemsByKey(
         projectKey: row.projectKey,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
+        resolvedAt:
+          row.stateGroup === "completed" && row.resolvedEntryAt
+            ? new Date(`${row.resolvedEntryAt.replace(" ", "T")}Z`)
+            : null,
         slaState: sla.get(row.id)?.state ?? null,
       },
     });
@@ -164,4 +193,35 @@ export function eventFacts(
     );
   }
   return out;
+}
+
+/** Only the stored public comment by a customer person qualifies, never a supplied role. */
+export async function customerCommentFact(
+  workspaceId: string,
+  workItemId: string | undefined,
+  kind: string,
+  payload: Record<string, unknown>,
+): Promise<boolean> {
+  if (
+    kind !== "work_item.commented" ||
+    !workItemId ||
+    typeof payload.commentId !== "string"
+  )
+    return false;
+  const [row] = await db
+    .select({ side: personTable.side })
+    .from(commentTable)
+    .innerJoin(personTable, eq(personTable.id, commentTable.authorId))
+    .where(
+      and(
+        eq(commentTable.id, payload.commentId),
+        eq(commentTable.workspaceId, workspaceId),
+        eq(commentTable.workItemId, workItemId),
+        eq(commentTable.actorType, "person"),
+        eq(commentTable.visibility, "public"),
+        isNull(commentTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row?.side === "customer";
 }
