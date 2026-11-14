@@ -1,5 +1,5 @@
 import type Redis from "ioredis";
-import * as v from "valibot";
+import { z } from "zod";
 import {
   closeRedis,
   forceCloseRedis,
@@ -25,42 +25,42 @@ const USER_CHANNEL_PATTERN = `${USER_CHANNEL_PREFIX}*${CHANNEL_SUFFIX}`;
 const NATIVE_CHANNEL = "taskdesk:ws-native:broadcast";
 const CONTROL_CHANNEL = "taskdesk:control";
 
-const broadcastMessageSchema = v.object({
-  projectId: v.string(),
-  message: v.object({
-    type: v.string(),
-    projectId: v.string(),
-    taskId: v.optional(v.string()),
-    sourceTaskId: v.optional(v.string()),
-    targetTaskId: v.optional(v.string()),
+const broadcastMessageSchema = z.object({
+  projectId: z.string(),
+  message: z.object({
+    type: z.string(),
+    projectId: z.string(),
+    taskId: z.string().optional(),
+    sourceTaskId: z.string().optional(),
+    targetTaskId: z.string().optional(),
   }),
-  excludeInitiatorId: v.optional(v.string()),
+  excludeInitiatorId: z.string().optional(),
 });
 
-const userBroadcastSchema = v.object({
-  userId: v.string(),
-  message: v.looseObject({ type: v.string() }),
-  origin: v.optional(v.string()),
+const userBroadcastSchema = z.object({
+  userId: z.string(),
+  message: z.looseObject({ type: z.string() }),
+  origin: z.string().optional(),
 });
-const nativeBroadcastSchema = v.object({
-  projectId: v.string(),
-  topics: v.array(v.string()),
-  eventId: v.string(),
-  eventType: v.string(),
-  at: v.string(),
-  key: v.string(),
-  customerVisible: v.boolean(),
-  initiator: v.optional(v.object({ userId: v.string(), windowId: v.string() })),
+const nativeBroadcastSchema = z.object({
+  projectId: z.string(),
+  topics: z.array(z.string()),
+  eventId: z.string(),
+  eventType: z.string(),
+  at: z.string(),
+  key: z.string(),
+  customerVisible: z.boolean(),
+  initiator: z.object({ userId: z.string(), windowId: z.string() }).optional(),
 });
-const nativeAuthorizationInvalidationSchema = v.strictObject({
-  type: v.literal("identity.invalidate"),
-  userId: v.optional(v.pipe(v.string(), v.minLength(1))),
-  workspaceId: v.optional(v.pipe(v.string(), v.minLength(1))),
-  projectId: v.optional(v.pipe(v.string(), v.minLength(1))),
+const nativeAuthorizationInvalidationSchema = z.strictObject({
+  type: z.literal("identity.invalidate"),
+  userId: z.string().min(1).optional(),
+  workspaceId: z.string().min(1).optional(),
+  projectId: z.string().min(1).optional(),
 });
-const controlMessageSchema = v.union([
+const controlMessageSchema = z.union([
   nativeAuthorizationInvalidationSchema,
-  v.strictObject({ type: v.literal("auth.reload") }),
+  z.strictObject({ type: z.literal("auth.reload") }),
 ]);
 
 export class RedisBroadcastAdapter implements BroadcastAdapter {
@@ -128,18 +128,18 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     this._controlMessageHandler = (channel, data) => {
       if (this.closing || channel !== CONTROL_CHANNEL) return;
       try {
-        const parsed = v.safeParse(controlMessageSchema, JSON.parse(data));
+        const parsed = controlMessageSchema.safeParse(JSON.parse(data));
         if (
           !parsed.success ||
-          (parsed.output.type === "identity.invalidate" &&
-            !parsed.output.userId &&
-            !parsed.output.workspaceId &&
-            !parsed.output.projectId)
+          (parsed.data.type === "identity.invalidate" &&
+            !parsed.data.userId &&
+            !parsed.data.workspaceId &&
+            !parsed.data.projectId)
         ) {
           logRealtimeFailure();
           return;
         }
-        handler(parsed.output);
+        handler(parsed.data);
       } catch {
         logRealtimeFailure();
       }
@@ -158,12 +158,12 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     this._nativeMessageHandler = (channel, data) => {
       if (this.closing || channel !== NATIVE_CHANNEL) return;
       try {
-        const parsed = v.safeParse(nativeBroadcastSchema, JSON.parse(data));
+        const parsed = nativeBroadcastSchema.safeParse(JSON.parse(data));
         if (!parsed.success) {
           logRealtimeFailure();
           return;
         }
-        handler(parsed.output);
+        handler(parsed.data);
       } catch {
         logRealtimeFailure();
       }
@@ -187,12 +187,12 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     ) => {
       if (this.closing || pattern !== CHANNEL_PATTERN) return;
       try {
-        const parsed = v.safeParse(broadcastMessageSchema, JSON.parse(data));
+        const parsed = broadcastMessageSchema.safeParse(JSON.parse(data));
         if (!parsed.success) {
           logRealtimeFailure();
           return;
         }
-        handler(parsed.output);
+        handler(parsed.data);
       } catch {
         logRealtimeFailure();
       }
@@ -214,16 +214,16 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     ) => {
       if (this.closing || pattern !== USER_CHANNEL_PATTERN) return;
       try {
-        const parsed = v.safeParse(userBroadcastSchema, JSON.parse(data));
+        const parsed = userBroadcastSchema.safeParse(JSON.parse(data));
         if (!parsed.success) {
           logRealtimeFailure();
           return;
         }
-        if (channel !== this.channelForUser(parsed.output.userId)) {
+        if (channel !== this.channelForUser(parsed.data.userId)) {
           logRealtimeFailure();
           return;
         }
-        handler(parsed.output as UserBroadcast);
+        handler(parsed.data as UserBroadcast);
       } catch {
         logRealtimeFailure();
       }
