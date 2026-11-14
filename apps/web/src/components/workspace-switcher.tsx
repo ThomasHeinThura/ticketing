@@ -29,6 +29,7 @@ import {
 import { useUserWebSocket } from "@/hooks/use-user-websocket";
 import { authClient } from "@/lib/auth-client";
 import { routes } from "@/lib/routes";
+import { toast } from "@/lib/toast";
 import type { Workspace } from "@/types/workspace";
 
 // Workspace creation is an explicit action; its form and mutation hooks need not load
@@ -68,11 +69,12 @@ export function WorkspaceSwitcher() {
         }, 50);
       } catch (error) {
         console.error("Failed to switch workspace:", error);
+        toast.error(t("navigation:workspaceSwitcher.switchFailed"));
       } finally {
         setTimeout(() => setIsSwitching(false), 100);
       }
     },
-    [navigate, isSwitching],
+    [navigate, isSwitching, t],
   );
 
   React.useEffect(() => {

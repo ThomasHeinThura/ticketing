@@ -31,6 +31,7 @@ import { validateRuleDefinition } from "../../apps/api/src/automation/validation
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { automationTable } from "../../apps/api/src/database/schema";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import { registeredJobCatalog } from "../../apps/api/src/scheduler";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
 
@@ -282,27 +283,21 @@ describe("clean-install seed on a disposable migrated database", () => {
         ),
       );
     expect(approvals).toHaveLength(1);
+    const scheduleAvailable = registeredJobCatalog().some(
+      (job) => job.name === "automation-schedule" && job.enabled,
+    );
+    expect(scheduleAvailable).toBe(true);
     for (const target of G1_AUTOMATIONS) {
-      const validated = validateRuleDefinition(target.definition);
+      const validated = validateRuleDefinition(target.definition, {
+        scheduleAvailable,
+      });
+      expect(validated.ok).toBe(true);
       const rows = await db
         .select()
         .from(automationTable)
         .where(eq(automationTable.name, target.name));
-      if (validated.ok) expect(rows[0]?.enabled).toBe(true);
-      else {
-        expect(
-          validated.problems.every(
-            (p) =>
-              p.code === "unavailable" ||
-              (p.path === "conditions[1].basis" &&
-                "scheduleCron" in target.definition),
-          ),
-        ).toBe(true);
-        expect(rows).toEqual([]);
-        expect(first.stdout).toContain(
-          `Skipped automation "${target.name}": missing ${target.requires}.`,
-        );
-      }
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.enabled).toBe(true);
     }
     for (const [table, id] of Object.entries({
       cycle: "uat-cycle",

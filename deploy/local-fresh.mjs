@@ -710,8 +710,8 @@ export function executeFresh({
         "exec",
         ids[0],
         "node",
-        "apps/api/dist/seed-sit-users.js",
-        "--sit",
+        "apps/api/dist/seed-uat.js",
+        "--uat",
         "--credentials-file",
         "/tmp/sit-credentials.json",
       ]);

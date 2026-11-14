@@ -1279,7 +1279,8 @@ function createRealChainWorld(t) {
           stdout: manifestFromFileMap(attVol?.files || new Map()),
         };
       }
-      if (sub.includes("apps/api/dist/seed-sit-users.js")) {
+      if (sub.includes("apps/api/dist/seed-uat.js")) {
+        if (!sub.includes("--uat")) return { status: 1, stdout: "" };
         const credDest = sub[sub.indexOf("--credentials-file") + 1];
         c.tmpFiles.set(
           credDest,
@@ -1614,6 +1615,22 @@ test("real chain: completes full fresh install through real preflight, restore p
   ]) {
     assert.ok(existsSync(join(backupDir, artifact)), `Missing ${artifact}`);
   }
+  assert.ok(existsSync(join(backupDir, "sit-credentials.json")));
+  assert.ok(
+    w.sitDaemon.calls.some(
+      (argv) =>
+        argv[0] === "exec" &&
+        argv.includes("apps/api/dist/seed-uat.js") &&
+        argv.includes("--uat"),
+    ),
+    "Expected fresh install to invoke apps/api/dist/seed-uat.js --uat",
+  );
+  assert.ok(
+    !w.sitDaemon.calls.some((argv) =>
+      argv.some((arg) => String(arg).includes("seed-sit-users.js")),
+    ),
+    "Fresh install must never invoke seed-sit-users.js",
+  );
   const countsContent = readFileSync(join(backupDir, "counts.txt"), "utf8");
   const sumsContent = readFileSync(join(backupDir, "SHA256SUMS"), "utf8");
   w.assertNoSecretsLogged([countsContent]);

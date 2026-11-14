@@ -1,5 +1,11 @@
 import { SidebarProvider } from "@taskdesk/ui";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { routes } from "@/lib/routes";
 import { translate } from "@/test/en-translation";
@@ -7,7 +13,10 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  activateWorkspace: vi.fn(),
+  toastError: vi.fn(),
   role: "user" as string,
+  workspaces: [{ id: "ws-1", name: "Support" }],
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -15,6 +24,11 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: translate }),
+}));
+vi.mock("@/lib/toast", () => ({
+  toast: {
+    error: (message: string) => mocks.toastError(message),
+  },
 }));
 vi.mock("@/components/notification/notification-dropdown", () => ({
   default: () => null,
@@ -26,13 +40,13 @@ vi.mock("@/hooks/use-keyboard-shortcuts", () => ({
   useRegisterShortcuts: () => {},
 }));
 vi.mock("@/fetchers/workspace/activate-workspace", () => ({
-  default: vi.fn(),
+  default: (workspaceId: string) => mocks.activateWorkspace(workspaceId),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1", name: "Support" } }),
 }));
 vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
-  default: () => ({ data: [{ id: "ws-1", name: "Support" }] }),
+  default: () => ({ data: mocks.workspaces }),
 }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -65,12 +79,15 @@ beforeEach(() => {
       }) as MediaQueryList,
   );
   mocks.role = "user";
+  mocks.workspaces = [{ id: "ws-1", name: "Support" }];
 });
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   mocks.navigate.mockReset();
+  mocks.activateWorkspace.mockReset();
+  mocks.toastError.mockReset();
 });
 
 describe("WorkspaceSwitcher settings entries (L-03)", () => {
@@ -128,5 +145,27 @@ describe("WorkspaceSwitcher create-workspace entry (D-A, 12 Nov 2026)", () => {
     expect(
       await screen.findByRole("menuitem", { name: "Add workspace" }),
     ).toBeVisible();
+  });
+});
+
+describe("WorkspaceSwitcher switch failure feedback (P-13)", () => {
+  it("shows a translated failure toast when activateWorkspace rejects", async () => {
+    mocks.workspaces = [
+      { id: "ws-1", name: "Support" },
+      { id: "ws-2", name: "Secondary Workspace" },
+    ];
+    mocks.activateWorkspace.mockRejectedValueOnce(new Error("403 Forbidden"));
+
+    renderSwitcher();
+
+    fireEvent.click(await screen.findByText("Secondary Workspace"));
+
+    await waitFor(() => {
+      expect(mocks.activateWorkspace).toHaveBeenCalledWith("ws-2");
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        translate("navigation:workspaceSwitcher.switchFailed"),
+      );
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

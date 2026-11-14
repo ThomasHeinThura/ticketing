@@ -28,6 +28,7 @@ import {
 import { encryptSecret } from "../src/notification-preferences/secrets";
 import { resolveIdentity } from "../src/permissions/resolve-identity";
 import { currentCaps, renderExport } from "../src/report/export.service";
+import { registeredJobCatalog } from "../src/scheduler";
 import { buildAttachmentStorageKey, putAttachmentObject } from "../src/storage";
 import type { Tx } from "./seed-sit-users";
 import { G1_AUTOMATIONS, G1_PENDING_CUSTOMER } from "./uat-seed-plan";
@@ -423,28 +424,17 @@ export async function seedG1Automations() {
     actorType: "person" as const,
     apiKeyId: null,
   };
+  const scheduleAvailable = registeredJobCatalog().some(
+    (job) => job.name === "automation-schedule" && job.enabled,
+  );
   for (const target of G1_AUTOMATIONS) {
-    const validated = validateRuleDefinition(target.definition);
+    const validated = validateRuleDefinition(target.definition, {
+      scheduleAvailable,
+    });
     if (!validated.ok) {
-      // The existing validator labels the unsupported resolved_at basis "invalid".
-      // Preserve that exact target and skip this known product gap; never fall back
-      // to updated_at (an internal note would then move the close deadline).
-
-      if (
-        validated.problems.some(
-          (p) =>
-            p.code !== "unavailable" &&
-            !(
-              p.path === "conditions[1].basis" &&
-              "scheduleCron" in target.definition
-            ),
-        )
-      )
-        throw new Error(`Invalid seed automation: ${target.name}`);
-      console.log(
-        `Skipped automation "${target.name}": missing ${target.requires}.`,
+      throw new Error(
+        `Invalid seed automation: ${target.name}: ${validated.problems.map((p) => `${p.path}: ${p.message}`).join(", ")}`,
       );
-      continue;
     }
     const [existing] = await db
       .select()
