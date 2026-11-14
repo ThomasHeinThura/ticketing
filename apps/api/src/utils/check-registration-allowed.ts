@@ -1,3 +1,4 @@
+import { staffSelfRegistrationEnabled } from "../auth/staff-registration";
 import {
   findInvitationWithNames,
   findPendingInvitation,
@@ -18,14 +19,20 @@ type RegistrationCheckResult = {
   };
 };
 
+/**
+ * `DISABLE_REGISTRATION=true` forces staff self-registration off whatever the stored setting.
+ * This is the one place that reads the switch; every other module asks here.
+ */
+export function staffRegistrationDisabledByEnvironment(): boolean {
+  return process.env.DISABLE_REGISTRATION === "true";
+}
+
 export async function checkRegistrationAllowed(
   email?: string,
   invitationId?: string,
   options?: { allowInvitationByEmail?: boolean },
 ): Promise<RegistrationCheckResult> {
-  const isRegistrationDisabled = process.env.DISABLE_REGISTRATION === "true";
-
-  if (!isRegistrationDisabled) {
+  if (staffSelfRegistrationEnabled()) {
     return {
       allowed: true,
       reason: "Registration is enabled",
@@ -34,7 +41,7 @@ export async function checkRegistrationAllowed(
 
   const canMatchByEmail = Boolean(options?.allowInvitationByEmail && email);
 
-  if (!invitationId && !canMatchByEmail) {
+  if (!email || (!invitationId && !canMatchByEmail)) {
     return {
       allowed: false,
       reason:

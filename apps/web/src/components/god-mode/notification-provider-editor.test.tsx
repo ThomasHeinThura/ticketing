@@ -299,11 +299,59 @@ describe("runtime email configuration", () => {
     expect(screen.getByLabelText("password")).toHaveValue("");
     fireEvent.click(screen.getByRole("button", { name: "save" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.trim()),
+      ).toHaveLength(1),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.trim())[0],
+    ).toHaveTextContent("saved");
     expect(mocks.save.mock.calls[0][0]).toMatchObject({
       version: 3,
       enabled: true,
     });
     expect(mocks.save.mock.calls[0][0]).not.toHaveProperty("password");
+  });
+  it("announces the saved provider once across a version refresh", async () => {
+    const view = render(<NotificationProviderEditor />);
+    mocks.invalidate.mockImplementation(async () => {
+      mocks.version = 4;
+      view.rerender(<NotificationProviderEditor />);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.trim()),
+      ).toHaveLength(1),
+    );
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.trim())[0],
+    ).toHaveTextContent("saved");
+  });
+  it("withdraws the saved announcement when sending a test", async () => {
+    render(<NotificationProviderEditor />);
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() =>
+      expect(
+        screen.getByText("saved", { selector: '[role="status"]' }),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByText("saved", { selector: '[role="status"]' }),
+      ).toBeNull(),
+    );
   });
   it("saves only through a step-up proof bound to exactly the request it sends", async () => {
     render(<NotificationProviderEditor />);
@@ -367,7 +415,10 @@ describe("runtime email configuration", () => {
     expect(mocks.verify.mock.calls[0][0]).not.toHaveProperty("enabled");
     expect(mocks.save).not.toHaveBeenCalled();
     expect(mocks.stepBinding).not.toHaveBeenCalled();
-    const status = await screen.findByRole("status");
+    const status = (await screen.findByText("testSend.sent")).closest(
+      '[role="status"]',
+    );
+    expect(status).not.toBeNull();
     expect(status).toHaveTextContent("status.verified");
     expect(status).toHaveTextContent("testSend.sent");
     // The values were not the saved ones, so the result is shown but not recorded.
@@ -619,9 +670,9 @@ describe("sending a test email", () => {
     render(<NotificationProviderEditor />);
     fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
     await waitFor(() => expect(mocks.invalidate).toHaveBeenCalled());
-    expect(screen.getByRole("status")).not.toHaveTextContent(
-      "testSend.notSaved",
-    );
+    expect(
+      screen.getByText("testSend.sent").closest('[role="status"]'),
+    ).not.toHaveTextContent("testSend.notSaved");
   });
 
   it("defaults the recipient to the signed-in administrator and lets them type another", async () => {

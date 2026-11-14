@@ -653,6 +653,7 @@ function binding(input: ExtInput): {
               magicLink: input.customer.magicLink,
               emailOtp: input.customer.emailOtp,
             },
+            staffSelfRegistrationEnabled: input.staffSelfRegistrationEnabled,
             expectedRevision: input.expectedRevision,
           },
         ),

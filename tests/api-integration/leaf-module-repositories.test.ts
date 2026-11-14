@@ -31,6 +31,7 @@ import { addCustomer, buildTenant } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectManageAccess,
   requireRow,
@@ -61,7 +62,7 @@ async function seedTask(projectId: string, columnId: string, number = 1) {
 
 describe("current leaf repository reach", () => {
   it("requires resolved identity and current SQL reach for linked-work-item facts", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
+    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
@@ -180,7 +181,9 @@ describe("current leaf repository reach", () => {
   });
 
   it("reads only the authenticated user's custom-provider id token", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createWorkspaceMember({
+      role: "member",
+    });
     const other = await createWorkspaceMember({ role: "member" });
     await db.insert(schema.accountTable).values([
       {
@@ -219,6 +222,15 @@ describe("current leaf repository reach", () => {
     );
     const requester = await addCustomer(requesterTenant);
     expect(requester.orgId).not.toBe(seeded.customer.orgId);
+    // D-D / CP-1: this requester is explicitly invited to the serving project.
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: requester.orgId })
+      .where(eq(schema.projectTable.id, seeded.t.project.id));
+    await db.insert(schema.customerProjectAccessTable).values({
+      personId: requester.person.id,
+      projectId: seeded.t.project.id,
+    });
     // Opposite defaults distinguish requester identity from the project organization.
     await db.insert(schema.organisationRequestTypeTable).values({
       organisationId: requester.orgId,
@@ -250,7 +262,9 @@ describe("current leaf repository reach", () => {
   });
 
   it("returns websocket scope only for live work items in currently reached projects", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createWorkspaceMember({
+      role: "member",
+    });
     const live = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
@@ -379,7 +393,7 @@ describe("current leaf repository reach", () => {
   });
 
   it("keeps positive comment/link reads and blocks content and DML after persisted reach revocation", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
+    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
@@ -564,7 +578,7 @@ describe("current leaf repository reach", () => {
   });
 
   it("uses the returned current-reach result for workflow-rule writes", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
+    const member = await createProjectLimitedWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });

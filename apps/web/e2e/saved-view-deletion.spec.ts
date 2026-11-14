@@ -80,6 +80,15 @@ async function mockViewsApi(
       contentType: "application/json",
       body: JSON.stringify(body),
     });
+  await page.route("**/api/me/identity", (route) =>
+    route.fulfill({
+      json: {
+        personId: "person-e2e",
+        user: { id: "user-g11" },
+        credentialType: "session",
+      },
+    }),
+  );
   await page.route("**/api/capabilities**", (route) =>
     json(route, {
       manageProjects: false,
@@ -99,6 +108,7 @@ async function mockViewsApi(
       manageTeam: false,
       removeMembers: false,
       manageServiceCalendars: false,
+      createSavedViews: true,
       shareSavedViews: false,
       manageWorkspaceSettings: false,
       ...capabilities,

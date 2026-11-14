@@ -53,6 +53,7 @@ import {
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
 import PageTitle from "@/components/page-title";
+import { JoinProject } from "@/components/project/join-project";
 import CreateProjectModal from "@/components/shared/modals/create-project-modal";
 import icons from "@/constants/project-icons";
 import { shortcuts } from "@/constants/shortcuts";
@@ -687,6 +688,12 @@ export default function ProjectsPage({
                             >
                               {project.name}
                             </Link>
+                            {project.seenOnlyViaWorkspaceRole ? (
+                              <JoinProject
+                                projectId={project.id}
+                                canJoin={project?.canJoin === true}
+                              />
+                            ) : null}
                             {project.kind === "managed_service" ? (
                               <Badge
                                 variant="secondary"

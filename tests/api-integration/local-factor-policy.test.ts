@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { auth } from "../../apps/api/src/auth";
+import { auth, getConfiguredAgentOrigin } from "../../apps/api/src/auth";
 import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
@@ -132,6 +132,7 @@ async function prepareTotpEnrollmentFailureFixture(id: string) {
   const signIn = await app.request("/api/auth/sign-in/email", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       "content-type": "application/json",
       "x-forwarded-for": nextTotpTestIp(),
     },
@@ -146,6 +147,7 @@ async function prepareTotpEnrollmentFailureFixture(id: string) {
   const enabled = await app.request("/api/auth/two-factor/enable", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       cookie,
       "content-type": "application/json",
       "x-forwarded-for": nextTotpTestIp(),
@@ -285,6 +287,7 @@ async function prepareTotpLifecycleRaceFixture(id: string) {
   const signIn = await app.request("/api/auth/sign-in/email", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       "content-type": "application/json",
       "x-forwarded-for": nextTotpTestIp(),
     },
@@ -299,6 +302,7 @@ async function prepareTotpLifecycleRaceFixture(id: string) {
   const enabled = await app.request("/api/auth/two-factor/enable", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       cookie,
       "content-type": "application/json",
       "x-forwarded-for": nextTotpTestIp(),
@@ -770,6 +774,7 @@ describe("instance local-factor policy API", () => {
       app.request("/api/auth/sign-in/email", {
         method: "POST",
         headers: {
+          origin: getConfiguredAgentOrigin(),
           "content-type": "application/json",
           "x-forwarded-for": clientIp,
         },
@@ -859,6 +864,7 @@ describe("instance local-factor policy API", () => {
     const enabled = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie: initialCookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
@@ -879,6 +885,7 @@ describe("instance local-factor policy API", () => {
     const enrolled = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie: initialCookie,
         "content-type": "application/json",
         "x-forwarded-for": clientIp,
@@ -936,6 +943,7 @@ describe("instance local-factor policy API", () => {
       {
         method: "POST",
         headers: {
+          origin: getConfiguredAgentOrigin(),
           cookie: challengeCookie,
           "content-type": "application/json",
         },
@@ -951,6 +959,7 @@ describe("instance local-factor policy API", () => {
       {
         method: "POST",
         headers: {
+          origin: getConfiguredAgentOrigin(),
           cookie: challengeCookie,
           "content-type": "application/json",
         },
@@ -992,6 +1001,7 @@ describe("instance local-factor policy API", () => {
     const signIn = await app.request("/api/auth/sign-in/email", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         "content-type": "application/json",
         "x-forwarded-for": nextTotpTestIp(),
       },
@@ -1005,7 +1015,11 @@ describe("instance local-factor policy API", () => {
     if (!initialCookie) throw new Error("step-up TOTP login cookie is missing");
     const enabled = await app.request("/api/auth/two-factor/enable", {
       method: "POST",
-      headers: { cookie: initialCookie, "content-type": "application/json" },
+      headers: {
+        origin: getConfiguredAgentOrigin(),
+        cookie: initialCookie,
+        "content-type": "application/json",
+      },
       body: JSON.stringify({ password, issuer: "TaskDesk" }),
     });
     expect(enabled.status).toBe(200);
@@ -1019,6 +1033,7 @@ describe("instance local-factor policy API", () => {
     const enrolled = await app.request("/api/auth/two-factor/verify-totp", {
       method: "POST",
       headers: {
+        origin: getConfiguredAgentOrigin(),
         cookie: initialCookie,
         "content-type": "application/json",
         "x-forwarded-for": nextTotpTestIp(),
@@ -1362,6 +1377,7 @@ describe("instance local-factor policy API", () => {
       {
         method: "POST",
         headers: {
+          origin: getConfiguredAgentOrigin(),
           cookie: fixture.cookie,
           "content-type": "application/json",
           "x-forwarded-for": nextTotpTestIp(),
@@ -1557,6 +1573,7 @@ describe("instance local-factor policy API", () => {
       {
         method: "POST",
         headers: {
+          origin: getConfiguredAgentOrigin(),
           cookie: fixture.cookie,
           "content-type": "application/json",
           "x-forwarded-for": nextTotpTestIp(),
@@ -1727,6 +1744,7 @@ describe("instance local-factor policy API", () => {
         {
           method: "POST",
           headers: {
+            origin: getConfiguredAgentOrigin(),
             cookie: fixture.cookie,
             "content-type": "application/json",
             "x-forwarded-for": fixture.verifyIp,
@@ -1803,6 +1821,7 @@ describe("instance local-factor policy API", () => {
       {
         method: "POST",
         headers: {
+          origin: getConfiguredAgentOrigin(),
           cookie: fixture.cookie,
           "content-type": "application/json",
           "x-forwarded-for": nextTotpTestIp(),
@@ -2072,6 +2091,7 @@ describe("instance local-factor policy API", () => {
         fixture.app.request("/api/auth/two-factor/verify-totp", {
           method: "POST",
           headers: {
+            origin: getConfiguredAgentOrigin(),
             cookie: fixture.cookie,
             "content-type": "application/json",
             "x-forwarded-for": fixture.verifyIp,
@@ -2150,6 +2170,7 @@ describe("instance local-factor policy API", () => {
         {
           method: "POST",
           headers: {
+            origin: getConfiguredAgentOrigin(),
             cookie: fixture.cookie,
             "content-type": "application/json",
             "x-forwarded-for": fixture.verifyIp,

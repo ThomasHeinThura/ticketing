@@ -4,10 +4,14 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import {
+  navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -42,8 +46,9 @@ async function createAdminWorkspace(
   origin: string,
   email: string,
   password: string,
+  setupUrl: string,
 ) {
-  await page.goto(new URL("/auth/sign-up", origin).toString());
+  await navigateToSetup(page, setupUrl);
   await page.getByLabel("Full name").fill("Disposable Users Administrator");
   await page.getByLabel("Email").fill(email);
   await page.locator('input[autocomplete="new-password"]').fill(password);
@@ -55,9 +60,7 @@ async function createAdminWorkspace(
   await page.getByRole("button", { name: "Create account" }).click();
   expect((await signUpPromise).status()).toBe(200);
   const factor = await enrollFirstAdmin(page, origin, password);
-  await page.getByLabel("Workspace name").fill("Disposable Users Workspace");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/workspace\//u);
+  await createFirstWorkspace(page, "Disposable Users Workspace");
   return factor;
 }
 
@@ -345,10 +348,11 @@ test("real Users UI binds delayed proof and approval to its current route intent
 }, testInfo) => {
   test.setTimeout(240_000);
 
-  await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, databaseUrl, setupUrl } = fixture;
     const { provisioningUri, backupCodes } =
       await test.step("sign up, enroll MFA, and create the workspace through the UI", () =>
-        createAdminWorkspace(page, origin, email, password));
+        createAdminWorkspace(page, origin, email, password, setupUrl));
     await signInWithTotp(page, origin, email, password, provisioningUri);
     const users = await seedTargets(databaseUrl, email);
     const client = new Client({ connectionString: databaseUrl });

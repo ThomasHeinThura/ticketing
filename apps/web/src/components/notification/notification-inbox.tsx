@@ -6,8 +6,10 @@ import { ActionTooltip } from "@/components/common/action-tooltip";
 import {
   getNotificationContent,
   getNotificationTitle,
+  isLegacyTaskNotification,
   useNotificationClick,
 } from "@/components/notification/notification-dropdown";
+import { PageLoading } from "@/components/page-loading";
 import PageTitle from "@/components/page-title";
 import useMarkAllNotificationsAsRead from "@/hooks/mutations/notification/use-mark-all-notifications-as-read";
 import useMarkNotificationAsRead from "@/hooks/mutations/notification/use-mark-notification-as-read";
@@ -62,6 +64,14 @@ export default function NotificationInbox({
       ?.querySelector<HTMLElement>(`[data-filter="${filter}"]`)
       ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [filter]);
+
+  if (isLoading)
+    return (
+      <>
+        <PageTitle title={t("navigation:sidebar.inbox")} />
+        <PageLoading frame="inbox" />
+      </>
+    );
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -120,11 +130,7 @@ export default function NotificationInbox({
         ) : null}
       </div>
 
-      {isLoading ? (
-        <p className="text-muted-foreground text-sm" role="status">
-          {t("common:empty.loading")}
-        </p>
-      ) : isError ? (
+      {isError ? (
         <div className="flex items-center gap-3 text-sm" role="alert">
           <span>{t("navigation:inbox.loadError")}</span>
           <Button variant="outline" size="sm" onClick={() => void refetch()}>
@@ -175,6 +181,11 @@ export default function NotificationInbox({
                     {content ? (
                       <p className="mt-0.5 line-clamp-2 text-muted-foreground text-xs">
                         {content}
+                      </p>
+                    ) : null}
+                    {isLegacyTaskNotification(notification) ? (
+                      <p className="mt-0.5 text-muted-foreground text-xs italic">
+                        {t("notifications:unavailable")}
                       </p>
                     ) : null}
                   </div>

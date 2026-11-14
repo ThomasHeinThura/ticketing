@@ -3,14 +3,14 @@ import { useTranslation } from "react-i18next";
 import type { WorkItemDetailField } from "@/types/work-item";
 
 const FIELD_LABEL_KEYS: Record<WorkItemDetailField, string> = {
-  key: "workItems:detail.keyLabel",
-  title: "workItems:detail.titleLabel",
-  priority: "workItems:detail.priorityLabel",
-  dueDate: "workItems:detail.dueDateLabel",
-  startDate: "workItems:detail.startDateLabel",
-  stateName: "workItems:detail.stateLabel",
-  createdAt: "workItems:detail.createdLabel",
-  updatedAt: "workItems:detail.updatedLabel",
+  key: "workItemExtras:detail.keyLabel",
+  title: "workItemExtras:detail.titleLabel",
+  priority: "workItemExtras:detail.priorityLabel",
+  dueDate: "workItemExtras:detail.dueDateLabel",
+  startDate: "workItemExtras:detail.startDateLabel",
+  stateName: "workItemExtras:detail.stateLabel",
+  createdAt: "workItemExtras:detail.createdLabel",
+  updatedAt: "workItemExtras:detail.updatedLabel",
 };
 
 /** Renders a field marked unavailable by `parseWorkItemDetailRow` -- a visible
@@ -24,11 +24,11 @@ export default function UnavailableField({
   return (
     <Badge
       variant="outline"
-      aria-label={t("workItems:detail.unavailableFieldLabel", {
+      aria-label={t("workItemExtras:detail.unavailableFieldLabel", {
         field: t(FIELD_LABEL_KEYS[field]),
       })}
     >
-      {t("workItems:detail.unavailable")}
+      {t("workItemExtras:detail.unavailable")}
     </Badge>
   );
 }

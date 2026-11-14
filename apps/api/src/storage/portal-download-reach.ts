@@ -9,6 +9,7 @@ import { assertIntakeEnabled } from "../attachment/require-submission-attachment
 import db from "../database";
 import { customerPortalStateForSubmission } from "../feature-flag/enforce";
 import { resolvePortalRequestDownload } from "../intake/portal-requests";
+import { hasPortalSubmissionProjectAccess } from "../intake/repository";
 import { resolveIdentity } from "../permissions/resolve-identity";
 
 export type PortalDownloadScope = "request" | "submission";
@@ -36,6 +37,17 @@ export async function resolvePortalDownload(input: {
     requesterId: input.personId,
   });
   if (!parent) return null;
+  if (
+    !(await hasPortalSubmissionProjectAccess(
+      parent.id,
+      {
+        personId: identity.personId,
+        organisationId: identity.organisationId,
+      },
+      db,
+    ))
+  )
+    return null;
   if ((await customerPortalStateForSubmission(number)) !== "on") return null;
   await assertIntakeEnabled(parent.workspaceId);
   const linked =

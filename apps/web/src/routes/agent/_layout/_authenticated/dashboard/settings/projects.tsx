@@ -38,8 +38,13 @@ function RouteComponent() {
   const { t } = useTranslation();
   const projectLabelId = useId();
   const projectValueId = useId();
-  const { workspace, role, canManageProjectSettings, canReadBudgets } =
-    useWorkspacePermission();
+  const {
+    workspace,
+    role,
+    canManageProjectSettings,
+    canReadBudgets,
+    canLogTime,
+  } = useWorkspacePermission();
   const location = useLocation();
   const navigate = useNavigate();
   const selectedProjectMatch = location.pathname.match(
@@ -77,9 +82,14 @@ function RouteComponent() {
   );
   const menuItems = getProjectSettingsMenuItems(t, {
     canManageProjectSettings: canManageProjectSettings(),
+    canManageFeatures: knownProjectId
+      ? projectAccess.canManageProjectSettings()
+      : canManageProjectSettings(),
     canReadBudgets: knownProjectId
       ? projectAccess.canReadBudgets()
       : canReadBudgets(),
+    canLogTime: canLogTime(),
+    canReadEstimates: Boolean(knownProjectId),
   });
 
   const workspaceInitials = getInitials(workspace?.name, "WS");

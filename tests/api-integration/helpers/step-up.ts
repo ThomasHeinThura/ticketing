@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { sql } from "drizzle-orm";
+import { getConfiguredAgentOrigin } from "../../../apps/api/src/auth";
 import db, { schema } from "../../../apps/api/src/database";
 import { csrfRequest } from "./csrf";
 import {
@@ -145,6 +146,7 @@ export async function signInAgain(
   const response = await app.request("/api/auth/sign-in/email", {
     method: "POST",
     headers: {
+      origin: getConfiguredAgentOrigin(),
       "content-type": "application/json",
       "x-forwarded-for": nextClientIp(),
     },

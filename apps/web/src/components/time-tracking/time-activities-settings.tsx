@@ -4,9 +4,10 @@ import {
   AlertDescription,
   AlertTitle,
   Badge,
-  Button,
   Input,
   Label,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Skeleton,
   Switch,
   Table,
@@ -17,15 +18,15 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
-  SettingsAccessDenied,
-  SettingsAccessGate,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   createTimeActivity,
   type TimeActivity,
@@ -52,10 +53,27 @@ function ActivityRow({
   const invalidate = useInvalidateTime();
   const message = useTimeErrorMessage();
   const [name, setName] = useState(activity.name);
+  const [nameSaved, setNameSaved] = useState(false);
+  const previousName = useRef(activity.name);
+  useEffect(() => {
+    if (previousName.current !== activity.name) {
+      previousName.current = activity.name;
+      setName(activity.name);
+    }
+  }, [activity.name]);
+  useEffect(() => {
+    if (!nameSaved) return;
+    const timer = setTimeout(() => setNameSaved(false), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [nameSaved]);
   const save = useMutation({
     mutationFn: (changes: { name?: string; archived?: boolean }) =>
       updateTimeActivity(activity.id, workspaceId, changes),
-    onSuccess: invalidate,
+    onMutate: () => setNameSaved(false),
+    onSuccess: async (_result, changes) => {
+      await invalidate();
+      if (changes.name !== undefined) setNameSaved(true);
+    },
     onError: (error) => {
       setName(activity.name);
       toast.error(message(error));
@@ -66,27 +84,52 @@ function ActivityRow({
     <TableRow data-testid="time-activity-row">
       <TableCell>
         <div className="flex items-center gap-2">
-          <Input
-            aria-label={t("timeTracking:activities.nameLabel", {
-              name: activity.name,
-            })}
-            maxLength={80}
-            value={name}
-            disabled={!canManage || save.isPending}
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && dirty)
-                save.mutate({ name: name.trim() });
-            }}
-          />
-          {dirty ? (
-            <Button
-              size="sm"
+          {canManage ? (
+            <Input
+              aria-label={t("timeTracking:activities.nameLabel", {
+                name: activity.name,
+              })}
+              maxLength={80}
+              value={name}
               disabled={save.isPending}
-              onClick={() => save.mutate({ name: name.trim() })}
+              onChange={(event) => {
+                setNameSaved(false);
+                setName(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  dirty &&
+                  !save.isPending &&
+                  canManage
+                )
+                  save.mutate({ name: name.trim() });
+              }}
+            />
+          ) : (
+            <span>{activity.name}</span>
+          )}
+          {canManage &&
+          (dirty ||
+            nameSaved ||
+            (save.isPending && save.variables?.name !== undefined)) ? (
+            <SaveButton
+              size="sm"
+              pending={save.isPending && save.variables?.name !== undefined}
+              success={nameSaved}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              disabled={
+                !canManage ||
+                (save.isPending && save.variables?.name === undefined)
+              }
+              onClick={() => {
+                if (!save.isPending && dirty)
+                  save.mutate({ name: name.trim() });
+              }}
             >
               {t("timeTracking:actions.save")}
-            </Button>
+            </SaveButton>
           ) : null}
           {activity.archived ? (
             <Badge variant="outline">
@@ -97,15 +140,30 @@ function ActivityRow({
       </TableCell>
       <TableCell className="w-40">
         <div className="flex items-center gap-2">
-          <Switch
-            id={`activity-active-${activity.id}`}
-            checked={!activity.archived}
-            disabled={!canManage || save.isPending}
-            onCheckedChange={(active) => save.mutate({ archived: !active })}
-          />
-          <Label htmlFor={`activity-active-${activity.id}`} className="text-xs">
-            {t("timeTracking:activities.active")}
-          </Label>
+          {canManage ? (
+            <>
+              <Switch
+                id={`activity-active-${activity.id}`}
+                checked={!activity.archived}
+                disabled={save.isPending}
+                onCheckedChange={(active) => save.mutate({ archived: !active })}
+              />
+              <Label
+                htmlFor={`activity-active-${activity.id}`}
+                className="text-xs"
+              >
+                {t("timeTracking:activities.active")}
+              </Label>
+            </>
+          ) : (
+            <span>
+              {t(
+                activity.archived
+                  ? "timeTracking:activities.archived"
+                  : "timeTracking:activities.active",
+              )}
+            </span>
+          )}
         </div>
       </TableCell>
     </TableRow>
@@ -137,6 +195,7 @@ function TimeActivitiesSettingsContent() {
   });
   const loading = workspaceLoading || activities.isLoading;
   const disabled = activities.error instanceof TimeTrackingDisabledError;
+  if (isForbiddenError(activities.error)) return <NoAccessPage />;
   return (
     <TimeActivitiesSettingsFrame>
       {loading ? (
@@ -148,8 +207,6 @@ function TimeActivitiesSettingsContent() {
             {t("timeTracking:timesheet.disabledDescription")}
           </AlertDescription>
         </Alert>
-      ) : isForbiddenError(activities.error) ? (
-        <SettingsAccessDenied />
       ) : activities.isError || !activities.data ? (
         <Alert variant="error">
           <AlertTitle>{t("timeTracking:activities.loadError")}</AlertTitle>
@@ -178,10 +235,17 @@ function TimeActivitiesSettingsContent() {
                   onChange={(event) => setName(event.target.value)}
                 />
               </div>
-              <Button type="submit" disabled={!name.trim() || add.isPending}>
+              <SaveButton
+                type="submit"
+                disabled={!name.trim() && !add.isPending && !add.isSuccess}
+                pending={add.isPending}
+                success={add.isSuccess}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+              >
                 <Plus aria-hidden="true" />
                 {t("timeTracking:activities.add")}
-              </Button>
+              </SaveButton>
             </form>
           ) : null}
           <Table>
@@ -196,7 +260,7 @@ function TimeActivitiesSettingsContent() {
             <TableBody>
               {activities.data.map((activity) => (
                 <ActivityRow
-                  key={`${activity.id}:${activity.name}:${activity.archived}`}
+                  key={activity.id}
                   activity={activity}
                   workspaceId={workspace?.id ?? ""}
                   canManage={canManage}
@@ -218,9 +282,11 @@ export function TimeActivitiesSettings() {
   const access = useSettingsAccess((permission) => permission.canLogTime());
   if (access === "allowed") return <TimeActivitiesSettingsContent />;
   return (
-    <TimeActivitiesSettingsFrame>
-      <SettingsAccessGate access={access}>{null}</SettingsAccessGate>
-    </TimeActivitiesSettingsFrame>
+    <SettingsAccessPage
+      access={access}
+      titleKey="timeTracking:activities.title"
+      descriptionKey="timeTracking:activities.description"
+    />
   );
 }
 

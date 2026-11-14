@@ -33,6 +33,7 @@ import { cn } from "@/lib/cn";
 import { formatRelativeTime } from "@/lib/format";
 import { getStatusLabel } from "@/lib/i18n/domain";
 import { routes } from "@/lib/routes";
+import { toast } from "@/lib/toast";
 import type { Notification } from "@/types/notification";
 
 export type NotificationDropdownRef = {
@@ -256,10 +257,23 @@ export function getWorkItemNotificationHref(
 }
 
 /**
+ * A notification about a row of the retired Kaneo task table has no work item to open: it is
+ * shown as unavailable and never links to an old task URL.
+ */
+export function isLegacyTaskNotification(
+  notification: Pick<Notification, "resourceType"> & {
+    workItemKey?: string | null;
+  },
+): boolean {
+  return notification.resourceType === "task" && !notification.workItemKey;
+}
+
+/**
  * Marks a notification read and opens what it is about. Shared by the dropdown and the
  * full-page inbox (`/agent/inbox`).
  */
 export function useNotificationClick() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { mutate: markAsRead } = useMarkNotificationAsRead();
   return useCallback(
@@ -298,25 +312,11 @@ export function useNotificationClick() {
         return;
       }
 
-      const ed = getEventDataRecord(notification.eventData);
-      const workspaceId =
-        typeof ed?.workspaceId === "string" ? ed.workspaceId : null;
-      const projectId = typeof ed?.projectId === "string" ? ed.projectId : null;
-      const taskId = notification.resourceId ?? null;
-
-      if (
-        notification.resourceType === "task" &&
-        workspaceId &&
-        projectId &&
-        taskId
-      ) {
-        navigate({
-          to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
-          params: { workspaceId, projectId, taskId },
-        });
+      if (isLegacyTaskNotification(notification)) {
+        toast.info(t("notifications:unavailableMessage"));
       }
     },
-    [markAsRead, navigate],
+    [markAsRead, navigate, t],
   );
 }
 
@@ -462,6 +462,11 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                               )}
                             >
                               {content}
+                            </p>
+                          )}
+                          {isLegacyTaskNotification(notification) && (
+                            <p className="mt-0.5 text-muted-foreground text-xs italic">
+                              {t("notifications:unavailable")}
                             </p>
                           )}
                         </div>

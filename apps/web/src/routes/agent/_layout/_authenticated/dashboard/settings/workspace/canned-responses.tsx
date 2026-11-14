@@ -28,6 +28,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -41,7 +42,13 @@ import { useTranslation } from "react-i18next";
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   type CannedResponseInput,
   getCannedResponseLibrary,
@@ -201,9 +208,17 @@ function CannedResponseEditor({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={pending || !name.trim()}>
+            <SaveButton
+              type="submit"
+              disabled={!name.trim() && !pending}
+              pending={pending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:cannedResponses.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -212,6 +227,21 @@ function CannedResponseEditor({
 }
 
 function CannedResponsesPage() {
+  const access = useSettingsAccess((permission) =>
+    permission.canManageWorkspaceSettings(),
+  );
+  if (access !== "allowed")
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="settings:cannedResponses.title"
+        descriptionKey="settings:cannedResponses.description"
+      />
+    );
+  return <CannedResponsesPageContent />;
+}
+
+function CannedResponsesPageContent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -260,6 +290,7 @@ function CannedResponsesPage() {
         return;
       }
       await cache.invalidateQueries({ queryKey: ["canned-responses"] });
+      toast.success(t("common:actions.saved"));
       close();
     },
   });
@@ -269,6 +300,7 @@ function CannedResponsesPage() {
   );
   const busy =
     !workspace || isCheckingPermissions || (canManage && library.isLoading);
+  if (isForbiddenError(library.error)) return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("settings:cannedResponses.title")} />

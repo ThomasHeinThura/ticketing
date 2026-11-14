@@ -1,9 +1,13 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
+  navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -17,9 +21,9 @@ async function createAdminWorkspace(
   origin: string,
   email: string,
   password: string,
+  setupUrl: string,
 ) {
-  const signUp = new URL("/auth/sign-up", origin).toString();
-  await page.goto(signUp);
+  await navigateToSetup(page, setupUrl);
   await page.getByLabel("Full name").fill("Disposable MFA Admin");
   await page.getByLabel("Email").fill(email);
   await page.locator('input[autocomplete="new-password"]').fill(password);
@@ -32,9 +36,7 @@ async function createAdminWorkspace(
   const signUpResponse = await signUpResponsePromise;
   expect(signUpResponse.status()).toBe(200);
   const factor = await enrollFirstAdmin(page, origin, password);
-  await page.getByLabel("Workspace name").fill("Disposable MFA Workspace");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+  await createFirstWorkspace(page, "Disposable MFA Workspace");
   return factor;
 }
 
@@ -72,10 +74,10 @@ test.describe("P0 MFA and CSRF browser journey", () => {
         59_000,
       ),
     ).toBe("287082");
-    await withMfaCsrfApp(async ({ origin, email, password }) => {
+    await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
       const { provisioningUri, backupCodes } =
         await test.step("MFA: enroll and create disposable admin workspace", () =>
-          createAdminWorkspace(page, origin, email, password));
+          createAdminWorkspace(page, origin, email, password, setupUrl));
       const backupCode = backupCodes[0] ?? "";
       const factorStatusResponse = await page.request.get(
         new URL("/api/me/security/factors", origin).toString(),
@@ -219,9 +221,9 @@ test.describe("P0 MFA and CSRF browser journey", () => {
 
   test("changes and restores observability settings", async ({ page }) => {
     test.setTimeout(240_000);
-    await withMfaCsrfApp(async ({ origin, email, password }) => {
+    await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
       await test.step("observability: create disposable admin workspace", () =>
-        createAdminWorkspace(page, origin, email, password));
+        createAdminWorkspace(page, origin, email, password, setupUrl));
       type LogLevel = "error" | "warn" | "info" | "debug";
       type ObservabilitySnapshot = {
         logLevels: {

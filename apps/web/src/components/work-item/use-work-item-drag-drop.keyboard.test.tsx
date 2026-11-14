@@ -40,7 +40,8 @@ const mocks = vi.hoisted(() => ({
   transition: vi.fn(),
   children: vi.fn(),
 }));
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/fetchers/work-item/rank-work-item", () => ({

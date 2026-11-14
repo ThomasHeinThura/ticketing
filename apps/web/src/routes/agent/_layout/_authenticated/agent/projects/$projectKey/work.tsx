@@ -33,6 +33,7 @@ import {
   WorkItemCreateTriggerPlaceholder,
   WorkItemSelectionTogglePlaceholder,
 } from "@/components/work-item/work-item-toolbar-placeholders";
+import WorkListChangedNotice from "@/components/work-item/work-list-changed-notice";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
@@ -46,7 +47,7 @@ import {
 } from "@/hooks/use-project-view-preference";
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
-import { normalizeCanonicalWorkItemSelection } from "@/lib/project-layout-navigation";
+import { normalizeCanonicalWorkItemSelection } from "@/lib/normalize-canonical-work-item-selection";
 import { waitForWorkListFirstPaint } from "@/lib/work-list-first-paint";
 import { prefetchWorkListData } from "@/lib/work-list-prefetch";
 
@@ -549,6 +550,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     restartFromFirstPage,
     isPlaceholderData,
     fetchNextPage: fetchMoreWorkItems,
+    hasNewerChanges,
+    refreshChangedList,
   } = useGetWorkItems({
     projectId: project?.id,
     projectSlug: project?.slug,
@@ -1157,6 +1160,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               {t("workItems:board.combinedStateGroupingRequired")}
             </AlertDescription>
           </Alert>
+        ) : null}
+        {isTabularLayout && hasNewerChanges ? (
+          <WorkListChangedNotice onRefresh={() => void refreshChangedList()} />
         ) : null}
         {isTabularLayout ? (
           <Suspense fallback={<WorkItemListLoading />}>

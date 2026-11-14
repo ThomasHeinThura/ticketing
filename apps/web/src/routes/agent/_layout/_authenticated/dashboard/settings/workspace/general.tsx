@@ -28,12 +28,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { NoAccessPage } from "@/components/common/page-states";
 import {
   FailureAlert,
   StepUpFields,
 } from "@/components/god-mode/step-up-fields";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import {
+  isForbiddenError,
+  useCapabilityCheckFailed,
+} from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { WorkspaceProjectDefaultsPanel } from "@/components/settings/workspace-project-defaults-panel";
 import useDeleteWorkspace from "@/hooks/mutations/workspace/use-delete-workspace";
 import useTransferWorkspaceOwnership from "@/hooks/mutations/workspace/use-transfer-workspace-ownership";
@@ -104,7 +110,7 @@ function RouteComponent() {
 
   const { user: currentUser } = useAuth();
   const { data: workspace } = useActiveWorkspace();
-  const { data: fullWorkspace } = useGetFullWorkspace({
+  const { data: fullWorkspace, error: workspaceError } = useGetFullWorkspace({
     workspaceId: workspace?.id,
   });
   const { mutateAsync: updateWorkspace } = useUpdateWorkspace();
@@ -117,8 +123,15 @@ function RouteComponent() {
   // Ownership transfer is elevated: it spends a fresh, single-use verification bound to this
   // workspace and this new owner.
   const transferStepUp = useStepUpAction();
-  const { canManageWorkspace, canDeleteWorkspace, isOwner } =
-    useWorkspacePermission();
+  const {
+    canManageWorkspace,
+    canDeleteWorkspace,
+    isOwner,
+    isCheckingPermissions,
+  } = useWorkspacePermission();
+  const checkFailed = useCapabilityCheckFailed(
+    isCheckingPermissions ? workspace?.id : undefined,
+  );
   const canEdit = canManageWorkspace();
   const canDelete = canDeleteWorkspace();
   const workspaceDescription = getWorkspaceDescription(workspace);
@@ -344,6 +357,18 @@ function RouteComponent() {
     };
   }, []);
 
+  if (isForbiddenError(workspaceError)) {
+    if (checkFailed || isCheckingPermissions)
+      return (
+        <SettingsAccessPage
+          access={checkFailed ? "error" : "checking"}
+          titleKey="settings:workspaceGeneral.title"
+          descriptionKey="settings:workspaceGeneral.subtitle"
+          pageTitleKey="settings:workspaceGeneral.pageTitle"
+        />
+      );
+    return <NoAccessPage />;
+  }
   return (
     <>
       <PageTitle title={t("settings:workspaceGeneral.pageTitle")} />
@@ -377,23 +402,32 @@ function RouteComponent() {
                     <FormItem>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium">
-                            {t("settings:workspaceGeneral.nameLabel")}
-                          </FormLabel>
+                          {canEdit ? (
+                            <FormLabel className="text-sm font-medium">
+                              {t("settings:workspaceGeneral.nameLabel")}
+                            </FormLabel>
+                          ) : (
+                            <p className="text-sm font-medium">
+                              {t("settings:workspaceGeneral.nameLabel")}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {t("settings:workspaceGeneral.nameHint")}
                           </p>
                         </div>
-                        <FormControl>
-                          <Input
-                            className="w-full sm:w-64"
-                            placeholder={t(
-                              "settings:workspaceGeneral.namePlaceholder",
-                            )}
-                            disabled={!canEdit}
-                            {...field}
-                          />
-                        </FormControl>
+                        {canEdit ? (
+                          <FormControl>
+                            <Input
+                              className="w-full sm:w-64"
+                              placeholder={t(
+                                "settings:workspaceGeneral.namePlaceholder",
+                              )}
+                              {...field}
+                            />
+                          </FormControl>
+                        ) : (
+                          <p>{field.value}</p>
+                        )}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -409,23 +443,32 @@ function RouteComponent() {
                     <FormItem>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium">
-                            {t("settings:workspaceGeneral.descriptionLabel")}
-                          </FormLabel>
+                          {canEdit ? (
+                            <FormLabel className="text-sm font-medium">
+                              {t("settings:workspaceGeneral.descriptionLabel")}
+                            </FormLabel>
+                          ) : (
+                            <p className="text-sm font-medium">
+                              {t("settings:workspaceGeneral.descriptionLabel")}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {t("settings:workspaceGeneral.descriptionHint")}
                           </p>
                         </div>
-                        <FormControl>
-                          <Input
-                            className="w-full sm:w-64"
-                            placeholder={t(
-                              "settings:workspaceGeneral.descriptionPlaceholder",
-                            )}
-                            disabled={!canEdit}
-                            {...field}
-                          />
-                        </FormControl>
+                        {canEdit ? (
+                          <FormControl>
+                            <Input
+                              className="w-full sm:w-64"
+                              placeholder={t(
+                                "settings:workspaceGeneral.descriptionPlaceholder",
+                              )}
+                              {...field}
+                            />
+                          </FormControl>
+                        ) : (
+                          <p>{field.value}</p>
+                        )}
                       </div>
                       <FormMessage />
                     </FormItem>

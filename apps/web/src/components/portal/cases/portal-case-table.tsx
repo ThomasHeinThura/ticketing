@@ -13,7 +13,7 @@ import {
 import { PortalSlaStatus } from "@/components/portal/portal-sla-status";
 import type { PortalCase } from "@/fetchers/portal/cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 const STATUS_TONE = {
   received: "info",

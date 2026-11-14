@@ -12,6 +12,7 @@ import {
   Checkbox,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -128,12 +129,18 @@ export function OrganisationProfileEditor({
   requestTypeOptions,
   onSaved,
   onReload,
+  completed = false,
+  onSaveStart,
+  onSaveComplete,
 }: {
   organisation: OrganisationProfile | null;
   projectDefaultOptions: OrganisationProjectDefaultOptions[];
   requestTypeOptions: OrganisationCatalogueItem[];
   onSaved: (profile: OrganisationProfile) => Promise<void>;
   onReload: () => Promise<void>;
+  completed?: boolean;
+  onSaveStart?: () => void;
+  onSaveComplete?: () => void;
 }) {
   const { t } = useTranslation("godModeOrganisations");
   const [base, setBase] = useState(() => initialDraft(organisation));
@@ -143,6 +150,7 @@ export function OrganisationProfileEditor({
   );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeIsSave, setNoticeIsSave] = useState(false);
   const [confirmingStatus, setConfirmingStatus] = useState(false);
   const save = useMutation({
     mutationFn: async (values: Draft) => {
@@ -272,6 +280,7 @@ export function OrganisationProfileEditor({
 
   async function submit() {
     if (busy || !changed) return;
+    onSaveStart?.();
     setError(null);
     setNotice(null);
     if (
@@ -310,14 +319,17 @@ export function OrganisationProfileEditor({
       setBase(savedDraft);
       setDraft(savedDraft);
       setDomainsText(saved.emailDomains.join(", "));
+      setNoticeIsSave(true);
       const initialInvitation =
         "profile" in result ? result.initialInvitation : null;
       if (!organisation && initialInvitation) {
         toast.success(t("initialInvitationQueued"));
       } else {
         setNotice(t(organisation ? "profileSaved" : "organisationCreated"));
+        if (!organisation) toast.success(t("common:actions.saved"));
       }
       await onSaved(saved);
+      if (organisation) onSaveComplete?.();
     } catch (cause) {
       setError(
         t(
@@ -333,6 +345,7 @@ export function OrganisationProfileEditor({
 
   async function changeStatus() {
     if (!organisation || busy) return;
+    setNoticeIsSave(false);
     setError(null);
     setNotice(null);
     try {
@@ -398,7 +411,10 @@ export function OrganisationProfileEditor({
             </Alert>
           ) : null}
           {notice ? (
-            <p aria-live="polite" className="text-sm text-muted-foreground">
+            <p
+              aria-live={noticeIsSave ? "off" : "polite"}
+              className="text-sm text-muted-foreground"
+            >
               {notice}
             </p>
           ) : null}
@@ -760,17 +776,22 @@ export function OrganisationProfileEditor({
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              disabled={busy || (organisation !== null && !changed)}
+            <SaveButton
+              disabled={
+                !save.isPending &&
+                (status.isPending || (organisation !== null && !changed))
+              }
+              pending={save.isPending}
+              success={completed}
+              retainedSuccess
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={organisation !== null}
               onClick={() => void submit()}
               type="button"
             >
-              {busy
-                ? t("profileSaving")
-                : organisation
-                  ? t("profileSave")
-                  : t("createOrganisation")}
-            </Button>
+              {organisation ? t("profileSave") : t("createOrganisation")}
+            </SaveButton>
             {organisation ? (
               <Button
                 disabled={busy}

@@ -121,3 +121,19 @@ describe("i18n group mode on the work list", () => {
     expect(i18n.hasLoadedNamespace("settings")).toBe(true);
   });
 });
+
+it("loads the full catalog on the portal even at an unknown agent-shaped URL", async () => {
+  vi.stubEnv("MODE", "portal");
+  try {
+    const { i18n, preloadNamespaces } = await importInGroupMode();
+    await preloadNamespaces("en-US");
+    expect(rest.requests).toBe(0);
+    expect(i18n.t("portal:navigation.title")).not.toBe(
+      "portal:navigation.title",
+    );
+    expect(i18n.hasLoadedNamespace("workItemExtras")).toBe(true);
+  } finally {
+    vi.unstubAllEnvs();
+    window.history.replaceState({}, "", "/");
+  }
+});

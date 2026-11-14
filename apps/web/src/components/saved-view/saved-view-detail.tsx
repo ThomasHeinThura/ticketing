@@ -16,10 +16,16 @@ import {
 } from "@taskdesk/ui";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import { SubmissionQueueTable } from "@/components/intake/submission-queue-table";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { SavedViewEditor } from "@/components/saved-view/saved-view-editor";
+import {
+  SettingsAccessChecking,
+  SettingsAccessError,
+  useCapabilityCheckFailed,
+} from "@/components/settings/settings-access";
 import WorkItemList from "@/components/work-item/work-item-list";
 
 const WorkItemSidePane = lazy(
@@ -39,6 +45,7 @@ import {
   updateSavedView,
 } from "@/fetchers/saved-views";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
+import { useOwnPersonId } from "@/hooks/use-own-person-id";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import type {
@@ -122,9 +129,30 @@ export default function SavedViewDetail({
 
   const workspaceId = view?.workspaceId ?? search.workspaceId;
   const permissions = useWorkspacePermission(workspaceId);
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    permissions.isCheckingPermissions
+      ? (workspaceId ?? permissions.workspace?.id)
+      : undefined,
+  );
   const canShare = Boolean(workspaceId) && permissions.canShareSavedViews();
   const canManageSettings =
     Boolean(workspaceId) && permissions.canManageWorkspaceSettings();
+  const canCreate =
+    !permissions.isCheckingPermissions && permissions.canCreateSavedViews();
+  const identity = useOwnPersonId(
+    Boolean(view && canCreate && !canManageSettings),
+  );
+  const personId = identity.data;
+  const canEditView =
+    !permissions.isCheckingPermissions &&
+    Boolean(view) &&
+    (canManageSettings ||
+      (canCreate &&
+        !identity.isFetching &&
+        !identity.isError &&
+        personId !== null &&
+        personId !== undefined &&
+        personId === view?.createdBy));
 
   const workspaceViews = useQuery({
     queryKey: savedViewKeys.list(workspaceId, user?.id),
@@ -430,6 +458,29 @@ export default function SavedViewDetail({
     Boolean(view) && !definitionMatches && !unsupported && snapshotComplete;
   const queryEditable = !unsupported && !isSubmissionView && !isPairedQueueView;
 
+  // SV-19 keeps a complete shared URL usable when the stored view itself is unreadable.
+  if (
+    viewQuery.error instanceof HttpError &&
+    viewQuery.error.status === 403 &&
+    !isFallback
+  ) {
+    if (capabilityCheckFailed || permissions.isCheckingPermissions)
+      return (
+        <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
+          <PageTitle title={title} />
+          <header className="space-y-1">
+            <h1 className="font-semibold text-2xl">{title}</h1>
+          </header>
+          {capabilityCheckFailed ? (
+            <SettingsAccessError />
+          ) : (
+            <SettingsAccessChecking />
+          )}
+        </div>
+      );
+    return <NoAccessPage />;
+  }
+
   return (
     <div className="flex min-h-full w-full flex-col gap-5 p-5 lg:p-8">
       <PageTitle title={title} />
@@ -455,14 +506,16 @@ export default function SavedViewDetail({
               {isPinned ? t("unpin") : t("pin")}
             </Button>
           ) : null}
-          <Button
-            variant="outline"
-            disabled={cloneBlocked}
-            onClick={() => clone.mutate()}
-          >
-            {t("clone")}
-          </Button>
-          {view && !isSubmissionView && !isPairedQueueView ? (
+          {canCreate ? (
+            <Button
+              variant="outline"
+              disabled={cloneBlocked}
+              onClick={() => clone.mutate()}
+            >
+              {t("clone")}
+            </Button>
+          ) : null}
+          {canEditView && view && !isSubmissionView && !isPairedQueueView ? (
             <Button
               variant="outline"
               aria-pressed={isEditing}

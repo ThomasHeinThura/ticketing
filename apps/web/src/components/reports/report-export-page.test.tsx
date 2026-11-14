@@ -17,6 +17,10 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  useRouter: () => ({
+    history: { canGoBack: () => true, back: vi.fn() },
+    navigate: vi.fn(),
+  }),
 }));
 // The feature gate has its own suite (`report-permissions.test.tsx`); here Reports are on.
 vi.mock("./reports-feature-gate", () => ({
@@ -140,7 +144,9 @@ describe("ReportExportPage (P5-R3-01)", () => {
     expect(pageState()).toBe("notFound");
     cleanup();
     show({ isError: true, error: new HttpError(403, "Forbidden") });
-    expect(pageState()).toBe("forbidden");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "states.noAccess.title" }),
+    ).toHaveFocus();
     cleanup();
     show({ isError: true, error: new HttpError(409, "feature_disabled") });
     // A plain 409 from the status read is not the feature switch: it is an unavailable state.

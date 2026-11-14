@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  navigateToSetup,
   totpForUri,
   withExclusiveMetricsListener,
 } from "../e2e/helpers/mfa-csrf-app-fixture";
@@ -665,8 +666,8 @@ describe("isolated MFA app fixture helpers", () => {
       `const signalPath = ${JSON.stringify(signalPath)};`,
       `const childReadyPath = ${JSON.stringify(childReadyPath)};`,
       "await withExclusiveMetricsListener(async (supervisor) => {",
-      `  const childCode = ${JSON.stringify(`import { writeFileSync } from "node:fs"; process.on("SIGTERM", () => { writeFileSync(${JSON.stringify(signalPath)}, "received"); setTimeout(() => process.exit(0), 500); }); writeFileSync(${JSON.stringify(childReadyPath)}, "ready"); setInterval(() => {}, 1000);`)};`,
-      '  const child = await supervisor.spawn(process.execPath, ["-e", childCode], process.env, "owned-child", evidenceDir);',
+      `  const childCode = 'import { writeFileSync } from "node:fs"; const [signalFile, readyFile] = process.argv.slice(1); process.on("SIGTERM", () => { writeFileSync(signalFile, "received"); setTimeout(() => process.exit(0), 500); }); writeFileSync(readyFile, "ready"); setInterval(() => {}, 1000);';`,
+      '  const child = await supervisor.spawn(process.execPath, ["-e", childCode, signalPath, childReadyPath], process.env, "owned-child", evidenceDir);',
       '  process.stdout.write("OWNED_CHILD_READY " + child.pid + "\\n");',
       "  await new Promise(() => {});",
       "}, { lockPath, waitMs: 2_000, pollMs: 2 });",
@@ -830,4 +831,16 @@ describe("isolated MFA app fixture helpers", () => {
       "legacy-without-child-list",
     );
   });
+});
+
+it("redacts setup URLs from navigation failures", async () => {
+  const url = "http://127.0.0.1/auth/sign-up?setupToken=private-test-token";
+  const page = {
+    goto: async () => {
+      throw new Error(`navigating to ${url}`);
+    },
+  };
+  await expect(navigateToSetup(page, url)).rejects.toThrow(
+    "First-run setup navigation failed (setup token redacted)",
+  );
 });

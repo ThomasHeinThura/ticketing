@@ -136,224 +136,7 @@ async function createWorkspace(input: CreateWorkspaceInput) {
 
     try {
       const created = await db.transaction(async (tx) => {
-        const now = new Date();
-
-        // #192: `workspace.organisation_id` is NOT NULL (decision log 2026-09-22 "#192's
-        // tenant-attribution decision: Option A+D"). Every workspace this route creates is
-        // internal -- there is no route yet that creates one for a customer organisation --
-        // so this is the same internal organisation `seedInternalOrganisationAndStaffPersons`
-        // (`../../utils/seed-internal-organisation.ts`) guarantees exists before the app
-        // ever starts serving requests. Called WITH `tx`, inside this same transaction --
-        // not before it -- because this whole create is specified to commit or roll back
-        // as one unit (this function's own doc comment, and
-        // `workspace-write-create-atomicity.test.ts`'s A2-P6/A2-P7): on a database that has
-        // never had an internal organisation seeded yet, calling this on the plain `db`
-        // connection before the transaction would insert a real, permanent `organisation`
-        // row that a later failure in THIS create (e.g. the default-role seed) could never
-        // roll back, silently breaking that atomicity guarantee. Idempotent get-or-create
-        // either way, so this is just as safe to call again here as at boot.
-        const internalOrganisation = await ensureInternalOrganisation(tx);
-
-        // The named owner must be an existing, active, unsuspended STAFF user, read inside this
-        // transaction so a user deactivated or suspended a moment ago is refused rather than
-        // handed a workspace. Customer-side people and users with no staff identity never qualify.
-        const [ownerCandidate] = await tx
-          .select({
-            banned: schema.userTable.banned,
-          })
-          .from(schema.userTable)
-          .innerJoin(
-            schema.personTable,
-            and(
-              eq(schema.personTable.userId, schema.userTable.id),
-              eq(schema.personTable.side, "staff"),
-              eq(schema.personTable.active, true),
-            ),
-          )
-          .where(eq(schema.userTable.id, input.ownerId))
-          .limit(1);
-        if (!ownerCandidate || ownerCandidate.banned === true) {
-          throw new WorkspaceOwnerNotEligibleError();
-        }
-
-        // (1) the workspace row
-        const [workspace] = await tx
-          .insert(schema.workspaceTable)
-          .values({
-            name: input.name,
-            slug,
-            logo: input.logo ?? null,
-            description: input.description ?? null,
-            organisationId: internalOrganisation.id,
-            createdAt: now,
-          })
-          .returning();
-        if (!workspace) {
-          throw new Error("workspace insert returned no row");
-        }
-
-        // (2) the named owner's membership (the creating instance administrator gets none)
-        await tx.insert(schema.workspaceUserTable).values({
-          workspaceId: workspace.id,
-          userId: input.ownerId,
-          role: "owner",
-          joinedAt: now,
-        });
-
-        // (2b) the owner's explicit workspace `sees_all` grant (decision log 2026-10-14;
-        // rbac.md Reach step 2). Written in the same transaction as the owner row: without
-        // it a fresh owner has no project reach at all. An `owner` grant never reads
-        // `workspace_role`, so it can follow the owner row directly.
-        await seedWorkspaceBuiltInRoles(tx, workspace.id);
-        await syncWorkspaceAdminReach(tx, workspace.id, input.ownerId);
-
-        // (3) the default role rows. `owner` is deliberately NOT among them
-        // (retrofit plan R5): owner authority stays in the compiled-in
-        // static role, and seeding an editable `owner` row would let an
-        // admin edit the workspace creator's authority away.
-        const seeded = await tx
-          .insert(schema.workspaceRoleTable)
-          .values(
-            DEFAULT_ROLE_NAMES.map((role) => ({
-              workspaceId: workspace.id,
-              role,
-              permission: JSON.stringify(defaultRolePayloads[role]),
-              // Issue #318 (security): a genuine built-in seed, not a custom row -- see
-              // `workspace_role.is_system`'s column comment in `schema.ts`.
-              isSystem: true,
-              createdAt: now,
-              updatedAt: now,
-            })),
-          )
-          .returning({ role: schema.workspaceRoleTable.role });
-        // A short insert is as dangerous as a failed one and does not throw
-        // on its own, so it is checked rather than assumed.
-        if (seeded.length !== DEFAULT_ROLE_NAMES.length) {
-          throw new Error(
-            `default role seed wrote ${seeded.length} of ${DEFAULT_ROLE_NAMES.length} rows`,
-          );
-        }
-
-        // (5) the default team, named after the workspace, and (6) its
-        // creator membership. Both tables' ids are plain text primary keys
-        // with no database default — the plugin generated them.
-        const [team] = await tx
-          .insert(schema.teamTable)
-          .values({
-            id: createId(),
-            name: workspace.name,
-            workspaceId: workspace.id,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .returning();
-        if (!team) {
-          throw new Error("team insert returned no row");
-        }
-
-        await tx.insert(schema.teamMemberTable).values({
-          id: createId(),
-          teamId: team.id,
-          userId: input.ownerId,
-          createdAt: now,
-        });
-
-        // Issue #309 (`work-items.md` § "Default types", `PR-17`): the default
-        // `work_item_type` and `state_template` rows, in the SAME transaction as the
-        // workspace -- without them, `POST /api/projects/{projectId}/work-items` has
-        // no type and no default state to create against on a fresh instance.
-        await seedWorkspaceDefaults(workspace.id, tx);
-
-        // CH-2: a newly created workspace starts with CAB-required change transitions.
-        // The `Approved` workspace template is picked up by future project creation through
-        // `seedProjectStates`; existing workspaces are never changed by this bootstrap.
-        await seedDefaultCabWorkflowInTransaction(workspace.id, tx);
-
-        // The project-scope `project-lead` role (decision log 2026-10-14), so it exists to
-        // assign from the first project on; migration 0124 seeds it for older workspaces.
-        await ensureProjectLeadRole(tx, workspace.id);
-
-        // (7)+(8) the CREATING session selects the new workspace and team, but only when the
-        // creator is also the named owner. Preserved through S4–S7 by explicit decision (retrofit
-        // plan §2.5, "Session selection is preserved through S4–S7"); dropping either would leave
-        // a user who has just made their first workspace with nothing selected and no error.
-        // When an instance administrator hands the workspace to someone else, their own session
-        // must not point at a workspace they do not belong to; the owner's sessions pick it up
-        // through the normal active-workspace fallback.
-        if (input.creatorId === input.ownerId) {
-          await tx
-            .update(schema.sessionTable)
-            .set({
-              activeOrganizationId: workspace.id,
-              activeTeamId: team.id,
-            })
-            .where(eq(schema.sessionTable.id, input.sessionId));
-        }
-
-        // (4)+(9) the durable domain event (EV-1) and the owner's notification: the outbox
-        // row and the inbox row commit or roll back with the workspace itself. This runs
-        // after the owner membership and reach grant are written, because the recipient
-        // resolver re-evaluates `workspace:read` from those persisted facts.
-        const [creator] = await tx
-          .select({ name: schema.userTable.name })
-          .from(schema.userTable)
-          .where(eq(schema.userTable.id, input.creatorId))
-          .limit(1);
-        const event: DomainEventEnvelope<Record<string, unknown>> = {
-          id: `evt_${createId()}`,
-          kind: "workspace.created",
-          occurredAt: now.toISOString(),
-          actor: {
-            type: "person",
-            id: input.creatorId,
-            name: creator?.name ?? "Instance administrator",
-          },
-          scope: {
-            workspaceId: workspace.id,
-            organisationId: internalOrganisation.id,
-          },
-          payload: {
-            workspaceId: workspace.id,
-            workspaceName: workspace.name,
-            ownerId: input.ownerId,
-          },
-          causationId: null,
-          depth: 0,
-          originAutomationId: null,
-        };
-        await enqueueNotificationEvent(tx, event, {
-          // External channel adapters stay with the notification worker slice.
-          resolveRecipients: (resolverTx, envelope) =>
-            resolveWorkspaceCreatedRecipient(
-              resolverTx,
-              envelope,
-              async () => [],
-            ),
-        });
-
-        // D-A: who created the workspace and who it was handed to, in the same transaction so
-        // the audit row commits or rolls back with the workspace itself.
-        await appendAuditLog(tx, {
-          actorId: input.creatorId,
-          actorType: "person",
-          actorIp: input.audit?.actorIp ?? null,
-          userAgent: input.audit?.userAgent ?? null,
-          traceId: input.audit?.traceId ?? null,
-          workspaceId: workspace.id,
-          organisationId: internalOrganisation.id,
-          action: "workspace.created",
-          entityType: "workspace",
-          entityId: workspace.id,
-          before: null,
-          after: {
-            name: workspace.name,
-            slug: workspace.slug,
-            createdBy: input.creatorId,
-            ownerUserId: input.ownerId,
-          },
-        });
-
-        return { workspace, team };
+        return createWorkspaceInTransaction(tx, { ...input, slug });
       });
 
       return created.workspace;
@@ -377,6 +160,236 @@ async function createWorkspace(input: CreateWorkspaceInput) {
       }
     }
   }
+}
+
+/** Shared atomic writer; callers must have verified instance-admin authority.
+ * Deterministic ids are used by the opt-in demo seed only. */
+export async function createWorkspaceInTransaction(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: CreateWorkspaceInput & { slug: string },
+  ids?: {
+    workspaceId: string;
+    teamId: string;
+    teamMemberId: string;
+    now?: Date;
+  },
+) {
+  const slug = input.slug;
+  const now = ids?.now ?? new Date();
+
+  // #192: `workspace.organisation_id` is NOT NULL (decision log 2026-09-22 "#192's
+  // tenant-attribution decision: Option A+D"). Every workspace this route creates is
+  // internal -- there is no route yet that creates one for a customer organisation --
+  // so this is the same internal organisation `seedInternalOrganisationAndStaffPersons`
+  // (`../../utils/seed-internal-organisation.ts`) guarantees exists before the app
+  // ever starts serving requests. Called WITH `tx`, inside this same transaction --
+  // not before it -- because this whole create is specified to commit or roll back
+  // as one unit (this function's own doc comment, and
+  // `workspace-write-create-atomicity.test.ts`'s A2-P6/A2-P7): on a database that has
+  // never had an internal organisation seeded yet, calling this on the plain `db`
+  // connection before the transaction would insert a real, permanent `organisation`
+  // row that a later failure in THIS create (e.g. the default-role seed) could never
+  // roll back, silently breaking that atomicity guarantee. Idempotent get-or-create
+  // either way, so this is just as safe to call again here as at boot.
+  const internalOrganisation = await ensureInternalOrganisation(tx);
+
+  // The named owner must be an existing, active, unsuspended STAFF user, read inside this
+  // transaction so a user deactivated or suspended a moment ago is refused rather than
+  // handed a workspace. Customer-side people and users with no staff identity never qualify.
+  const [ownerCandidate] = await tx
+    .select({
+      banned: schema.userTable.banned,
+    })
+    .from(schema.userTable)
+    .innerJoin(
+      schema.personTable,
+      and(
+        eq(schema.personTable.userId, schema.userTable.id),
+        eq(schema.personTable.side, "staff"),
+        eq(schema.personTable.active, true),
+      ),
+    )
+    .where(eq(schema.userTable.id, input.ownerId))
+    .limit(1);
+  if (!ownerCandidate || ownerCandidate.banned === true) {
+    throw new WorkspaceOwnerNotEligibleError();
+  }
+
+  // (1) the workspace row
+  const [workspace] = await tx
+    .insert(schema.workspaceTable)
+    .values({
+      id: ids?.workspaceId,
+      name: input.name,
+      slug,
+      logo: input.logo ?? null,
+      description: input.description ?? null,
+      organisationId: internalOrganisation.id,
+      createdAt: now,
+    })
+    .returning();
+  if (!workspace) {
+    throw new Error("workspace insert returned no row");
+  }
+
+  // (2) the named owner's membership (the creating instance administrator gets none)
+  await tx.insert(schema.workspaceUserTable).values({
+    workspaceId: workspace.id,
+    userId: input.ownerId,
+    role: "owner",
+    joinedAt: now,
+  });
+
+  // (2b) the owner's explicit workspace `sees_all` grant (decision log 2026-10-14;
+  // rbac.md Reach step 2). Written in the same transaction as the owner row: without
+  // it a fresh owner has no project reach at all. An `owner` grant never reads
+  // `workspace_role`, so it can follow the owner row directly.
+  await seedWorkspaceBuiltInRoles(tx, workspace.id);
+  await syncWorkspaceAdminReach(tx, workspace.id, input.ownerId);
+
+  // (3) the default role rows. `owner` is deliberately NOT among them
+  // (retrofit plan R5): owner authority stays in the compiled-in
+  // static role, and seeding an editable `owner` row would let an
+  // admin edit the workspace creator's authority away.
+  const seeded = await tx
+    .insert(schema.workspaceRoleTable)
+    .values(
+      DEFAULT_ROLE_NAMES.map((role) => ({
+        workspaceId: workspace.id,
+        role,
+        permission: JSON.stringify(defaultRolePayloads[role]),
+        // Issue #318 (security): a genuine built-in seed, not a custom row -- see
+        // `workspace_role.is_system`'s column comment in `schema.ts`.
+        isSystem: true,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    )
+    .returning({ role: schema.workspaceRoleTable.role });
+  // A short insert is as dangerous as a failed one and does not throw
+  // on its own, so it is checked rather than assumed.
+  if (seeded.length !== DEFAULT_ROLE_NAMES.length) {
+    throw new Error(
+      `default role seed wrote ${seeded.length} of ${DEFAULT_ROLE_NAMES.length} rows`,
+    );
+  }
+
+  // (5) the default team, named after the workspace, and (6) its
+  // creator membership. Both tables' ids are plain text primary keys
+  // with no database default — the plugin generated them.
+  const [team] = await tx
+    .insert(schema.teamTable)
+    .values({
+      id: ids?.teamId ?? createId(),
+      name: workspace.name,
+      workspaceId: workspace.id,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+  if (!team) {
+    throw new Error("team insert returned no row");
+  }
+
+  await tx.insert(schema.teamMemberTable).values({
+    id: ids?.teamMemberId ?? createId(),
+    teamId: team.id,
+    userId: input.ownerId,
+    createdAt: now,
+  });
+
+  // Issue #309 (`work-items.md` § "Default types", `PR-17`): the default
+  // `work_item_type` and `state_template` rows, in the SAME transaction as the
+  // workspace -- without them, `POST /api/projects/{projectId}/work-items` has
+  // no type and no default state to create against on a fresh instance.
+  await seedWorkspaceDefaults(workspace.id, tx);
+
+  // CH-2: a newly created workspace starts with CAB-required change transitions.
+  // The `Approved` workspace template is picked up by future project creation through
+  // `seedProjectStates`; existing workspaces are never changed by this bootstrap.
+  await seedDefaultCabWorkflowInTransaction(workspace.id, tx);
+
+  // The project-scope `project-lead` role (decision log 2026-10-14), so it exists to
+  // assign from the first project on; migration 0124 seeds it for older workspaces.
+  await ensureProjectLeadRole(tx, workspace.id);
+
+  // (7)+(8) the CREATING session selects the new workspace and team, but only when the
+  // creator is also the named owner. Preserved through S4–S7 by explicit decision (retrofit
+  // plan §2.5, "Session selection is preserved through S4–S7"); dropping either would leave
+  // a user who has just made their first workspace with nothing selected and no error.
+  // When an instance administrator hands the workspace to someone else, their own session
+  // must not point at a workspace they do not belong to; the owner's sessions pick it up
+  // through the normal active-workspace fallback.
+  if (input.creatorId === input.ownerId) {
+    await tx
+      .update(schema.sessionTable)
+      .set({
+        activeOrganizationId: workspace.id,
+        activeTeamId: team.id,
+      })
+      .where(eq(schema.sessionTable.id, input.sessionId));
+  }
+
+  // (4)+(9) the durable domain event (EV-1) and the owner's notification: the outbox
+  // row and the inbox row commit or roll back with the workspace itself. This runs
+  // after the owner membership and reach grant are written, because the recipient
+  // resolver re-evaluates `workspace:read` from those persisted facts.
+  const [creator] = await tx
+    .select({ name: schema.userTable.name })
+    .from(schema.userTable)
+    .where(eq(schema.userTable.id, input.creatorId))
+    .limit(1);
+  const event: DomainEventEnvelope<Record<string, unknown>> = {
+    id: `evt_${createId()}`,
+    kind: "workspace.created",
+    occurredAt: now.toISOString(),
+    actor: {
+      type: "person",
+      id: input.creatorId,
+      name: creator?.name ?? "Instance administrator",
+    },
+    scope: {
+      workspaceId: workspace.id,
+      organisationId: internalOrganisation.id,
+    },
+    payload: {
+      workspaceId: workspace.id,
+      workspaceName: workspace.name,
+      ownerId: input.ownerId,
+    },
+    causationId: null,
+    depth: 0,
+    originAutomationId: null,
+  };
+  await enqueueNotificationEvent(tx, event, {
+    // External channel adapters stay with the notification worker slice.
+    resolveRecipients: (resolverTx, envelope) =>
+      resolveWorkspaceCreatedRecipient(resolverTx, envelope, async () => []),
+  });
+
+  // D-A: who created the workspace and who it was handed to, in the same transaction so
+  // the audit row commits or rolls back with the workspace itself.
+  await appendAuditLog(tx, {
+    actorId: input.creatorId,
+    actorType: "person",
+    actorIp: input.audit?.actorIp ?? null,
+    userAgent: input.audit?.userAgent ?? null,
+    traceId: input.audit?.traceId ?? null,
+    workspaceId: workspace.id,
+    organisationId: internalOrganisation.id,
+    action: "workspace.created",
+    entityType: "workspace",
+    entityId: workspace.id,
+    before: null,
+    after: {
+      name: workspace.name,
+      slug: workspace.slug,
+      createdBy: input.creatorId,
+      ownerUserId: input.ownerId,
+    },
+  });
+
+  return { workspace, team };
 }
 
 export default createWorkspace;

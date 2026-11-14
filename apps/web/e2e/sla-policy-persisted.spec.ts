@@ -1,6 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -38,21 +44,17 @@ test("SLA policy publishes and reloads its persisted eight-goal snapshot", async
 }, testInfo) => {
   test.setTimeout(120_000);
   page.setDefaultTimeout(10_000);
-  await withMfaCsrfApp(async ({ origin, email, password }) => {
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+  await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
+    await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable SLA Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
-    await page.getByLabel("Workspace name").fill("Persisted SLA Workspace");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
-    const workspaceId = new URL(page.url()).pathname
-      .split("/")
-      .filter(Boolean)
-      .at(-1);
-    if (!workspaceId) throw new Error("No workspace id in the URL.");
+    const workspaceId = await createFirstWorkspace(
+      page,
+      "Persisted SLA Workspace",
+    );
     await enableSlaFeature(page, origin, workspaceId);
 
     const csrf = await page.request.get(

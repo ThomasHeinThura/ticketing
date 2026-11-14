@@ -1,6 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -38,23 +44,17 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
 }, testInfo) => {
   test.setTimeout(90_000);
   page.setDefaultTimeout(8_000);
-  await withMfaCsrfApp(async ({ origin, email, password }) => {
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+  await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
+    await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Calendar Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
-    await page
-      .getByLabel("Workspace name")
-      .fill("Disposable Calendar Workspace");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
-    const workspaceId = new URL(page.url()).pathname
-      .split("/")
-      .filter(Boolean)
-      .at(-1);
-    if (!workspaceId) throw new Error("No workspace id in the URL.");
+    const workspaceId = await createFirstWorkspace(
+      page,
+      "Disposable Calendar Workspace",
+    );
     await enableSlaFeature(page, origin, workspaceId);
 
     await page.goto(

@@ -26,6 +26,7 @@ import {
   FormMessage,
   Input,
   Label,
+  SaveButton,
   ScrollArea,
   Select,
   SelectContent,
@@ -39,9 +40,10 @@ import { useId, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { describeCapability } from "@/components/settings/roles/capability-model";
+import { translatedCapabilityDescription } from "@/components/settings/roles/capability-model";
 import useCreateApiKey from "@/hooks/mutations/api-key/use-create-api-key";
 import { authClient } from "@/lib/auth-client";
+import { localizedErrorMessage } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
@@ -180,6 +182,7 @@ export function CreateApiKeyDialog({
   };
 
   const onSubmit = async (data: FormValues) => {
+    if (isSubmitting) return;
     const expiresInValue =
       data.expiresIn === "never"
         ? null
@@ -214,6 +217,7 @@ export function CreateApiKeyDialog({
 
       form.reset();
       setWriteCapabilities(new Set());
+      toast.success(t("common:actions.saved"));
       onSuccess(result);
       // The plaintext key now lives only in the parent's dialog state; drop the copy React Query
       // keeps in its mutation cache.
@@ -221,9 +225,12 @@ export function CreateApiKeyDialog({
       onClose();
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings:apiKey.createDialog.failedCreate"),
+        localizedErrorMessage(
+          error,
+          t,
+          t("settings:apiKey.createDialog.failedCreate"),
+        ),
+        { error },
       );
     } finally {
       setIsSubmitting(false);
@@ -428,7 +435,10 @@ export function CreateApiKeyDialog({
                                     htmlFor={`${capabilitySwitchId}-${capability}`}
                                     className="text-sm font-medium"
                                   >
-                                    {describeCapability(capability)}
+                                    {translatedCapabilityDescription(
+                                      capability,
+                                      t,
+                                    )}
                                   </Label>
                                   <p className="text-xs text-muted-foreground">
                                     {capability}
@@ -468,7 +478,10 @@ export function CreateApiKeyDialog({
                                       htmlFor={`${capabilitySwitchId}-${capability}`}
                                       className="text-sm font-medium"
                                     >
-                                      {describeCapability(capability)}
+                                      {translatedCapabilityDescription(
+                                        capability,
+                                        t,
+                                      )}
                                     </Label>
                                     <p className="text-xs text-muted-foreground">
                                       {capability}
@@ -502,11 +515,16 @@ export function CreateApiKeyDialog({
               >
                 {t("common:actions.cancel")}
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? t("settings:apiKey.createDialog.creating")
-                  : t("settings:apiKey.createDialog.create")}
-              </Button>
+              <SaveButton
+                type="submit"
+                pending={isSubmitting}
+                success={false}
+                savedLabel={t("common:actions.saved")}
+                workingLabel={t("common:actions.saving")}
+                announceSuccess={false}
+              >
+                {t("settings:apiKey.createDialog.create")}
+              </SaveButton>
             </DialogFooter>
           </form>
         </Form>

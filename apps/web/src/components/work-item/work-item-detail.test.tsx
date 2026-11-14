@@ -1,7 +1,10 @@
+import en from "@i18n/en-US.json";
 import { Button } from "@taskdesk/ui";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { createInstance } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemDetailRow } from "@/types/work-item";
+import { splitI18nNamespaces } from "../../../vite/i18n-namespace-groups";
 import WorkItemDetail, { type WorkItemDetailProps } from "./work-item-detail";
 
 const device = vi.hoisted(() => ({ mobile: false }));
@@ -74,9 +77,15 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+const human = vi.hoisted(() => ({
+  translate: undefined as undefined | ((key: string) => string),
+  language: "en-US",
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, fallback?: string) =>
+      human.translate?.(key) ?? fallback ?? key,
+    i18n: human,
   }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
@@ -136,10 +145,25 @@ vi.mock("@/components/service-management/change-section", () => ({
 }));
 vi.mock("./work-item-audit-history", () => ({ default: () => null }));
 vi.mock("./work-item-activity", () => ({
-  default: ({ readOnly }: { readOnly?: boolean }) => (
+  default: ({
+    readOnly,
+    projectId,
+    isCustomerVisible,
+    isCustomerVisibilityPending,
+  }: {
+    readOnly?: boolean;
+    projectId?: string;
+    isCustomerVisible?: boolean;
+    isCustomerVisibilityPending?: boolean;
+  }) => (
     <div
       data-testid="work-item-activity"
       data-read-only={String(Boolean(readOnly))}
+      data-project-id={projectId ?? ""}
+      data-customer-visible={String(Boolean(isCustomerVisible))}
+      data-customer-visibility-pending={String(
+        Boolean(isCustomerVisibilityPending),
+      )}
     />
   ),
 }));
@@ -238,6 +262,43 @@ const baseProps: WorkItemDetailProps = {
 };
 
 describe("WorkItemDetail", () => {
+  it.each(["page", "pane"] as const)(
+    "renders translated %s detail labels after deferred text is supplied",
+    async (variant) => {
+      const instance = createInstance();
+      await instance.init({
+        lng: "en-US",
+        resources: { "en-US": splitI18nNamespaces(en).slim as typeof en },
+        defaultNS: "common",
+        interpolation: { defaultVariables: { term_project_one: "Project" } },
+      });
+      for (const [namespace, values] of Object.entries(
+        splitI18nNamespaces(en).rest,
+      ))
+        instance.addResourceBundle("en-US", namespace, values);
+      human.translate = (key) => instance.t(key);
+      try {
+        if (variant === "pane")
+          window.history.replaceState(
+            {},
+            "",
+            "/agent/projects/PROJ/work?item=PROJ-123",
+          );
+        render(
+          <WorkItemDetail {...baseProps} item={makeItem()} variant={variant} />,
+        );
+        expect(await screen.findByText("Attachments")).toBeVisible();
+        expect(screen.getByText("SLA")).toBeVisible();
+        expect(document.body.textContent).not.toMatch(
+          /workItemExtras:detail\./,
+        );
+      } finally {
+        human.translate = undefined;
+        window.history.replaceState({}, "", "/");
+      }
+    },
+  );
+
   it("renders the loading skeleton state", () => {
     render(<WorkItemDetail {...baseProps} isLoading={true} />);
     expect(screen.getByTestId("work-item-detail-loading")).toBeInTheDocument();
@@ -260,7 +321,7 @@ describe("WorkItemDetail", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("PROJ-123")).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:detail.notFoundDescription"),
+      screen.getByText("workItemExtras:detail.notFoundDescription"),
     ).toBeInTheDocument();
   });
 
@@ -295,7 +356,7 @@ describe("WorkItemDetail", () => {
     expect(propertiesScroll).toContainElement(properties);
     expect(
       screen.getByRole("separator", {
-        name: "workItems:detail.resizeProperties",
+        name: "workItemExtras:detail.resizeProperties",
       }),
     ).toHaveAttribute("aria-valuemin", "260");
   });
@@ -313,7 +374,7 @@ describe("WorkItemDetail", () => {
     expect(scroll).toHaveClass("min-h-0", "overflow-y-auto");
     expect(
       screen.getByRole("separator", {
-        name: "workItems:detail.resizeProperties",
+        name: "workItemExtras:detail.resizeProperties",
       }),
     ).toBeInTheDocument();
     expect(scroll).toContainElement(screen.getByTestId("work-item-properties"));
@@ -377,7 +438,7 @@ describe("WorkItemDetail", () => {
     expect(screen.queryByTestId("sla-section")).toBeNull();
     expect(screen.queryByTestId("work-item-approvals")).toBeNull();
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:detail.sla.heading" }),
+      screen.getByRole("button", { name: "workItemExtras:detail.sla.heading" }),
     );
     const call = navigate.mock.calls.at(-1)?.[0] as {
       href: string;
@@ -397,14 +458,18 @@ describe("WorkItemDetail", () => {
   it("offers the Time section only where feature.time_tracking is on, collapsed until opened", () => {
     render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
     expect(
-      screen.queryByRole("button", { name: "workItems:detail.time.heading" }),
+      screen.queryByRole("button", {
+        name: "workItemExtras:detail.time.heading",
+      }),
     ).toBeNull();
     cleanup();
     timeFeature.on = true;
     render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
     expect(screen.queryByTestId("time-section")).toBeNull();
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:detail.time.heading" }),
+      screen.getByRole("button", {
+        name: "workItemExtras:detail.time.heading",
+      }),
     );
     const call = navigate.mock.calls.at(-1)?.[0] as { href: string };
     const url = new URL(call.href, "https://taskdesk.example");
@@ -419,7 +484,9 @@ describe("WorkItemDetail", () => {
     timeFeature.logTime = false;
     render(<WorkItemDetail {...baseProps} item={makeItem()} variant="pane" />);
     expect(
-      screen.queryByRole("button", { name: "workItems:detail.time.heading" }),
+      screen.queryByRole("button", {
+        name: "workItemExtras:detail.time.heading",
+      }),
     ).toBeNull();
   });
 
@@ -476,7 +543,7 @@ describe("WorkItemDetail", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("work-item-title")).toBeNull();
     expect(
-      screen.getByText("workItems:detail.unavailable"),
+      screen.getByText("workItemExtras:detail.unavailable"),
     ).toBeInTheDocument();
   });
 
@@ -486,7 +553,152 @@ describe("WorkItemDetail", () => {
     );
     expect(screen.queryByTestId("work-item-description")).toBeNull();
     expect(
-      screen.getByText("workItems:detail.unavailable"),
+      screen.getByText("workItemExtras:detail.unavailable"),
     ).toBeInTheDocument();
+  });
+
+  it("derives customer visibility for F-11 from actual portal reach facts and fails closed while loading", () => {
+    const view = render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          projectId: "proj_internal",
+          requesterId: "cust_1",
+          customerVisibility: "organisation",
+        })}
+        project={{ name: "Internal Ops", slug: "OPS", organisationId: null }}
+      />,
+    );
+    const activity = screen.getByTestId("work-item-activity");
+    expect(activity).toHaveAttribute("data-project-id", "proj_internal");
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Customer project with no customer requester -> not customer-visible even when customerVisibility="organisation".
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({ requesterId: null, customerVisibility: "private" })}
+        project={{ name: "Contoso", slug: "CON", organisationId: "org_1" }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: null,
+          customerVisibility: "organisation",
+        })}
+        project={{ name: "Contoso", slug: "CON", organisationId: "org_1" }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Non-null requester fails closed (pending) while the project record is still loading.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          customerVisibility: "private",
+        })}
+        project={undefined}
+        isProjectLoading={true}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "true",
+    );
+
+    // Fails closed if the project query settles without a project record.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          customerVisibility: "private",
+        })}
+        project={undefined}
+        isProjectLoading={false}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Live customer project + customer requester -> customer-visible.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          customerVisibility: "private",
+        })}
+        project={{
+          name: "Contoso",
+          slug: "CON",
+          organisationId: "org_1",
+          archivedAt: null,
+          deletedAt: null,
+        }}
+        isProjectLoading={false}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "true");
+    expect(activity).toHaveAttribute(
+      "data-customer-visibility-pending",
+      "false",
+    );
+
+    // Archived item or archived project is never portal-reachable.
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({
+          requesterId: "cust_1",
+          archivedAt: "2026-11-12T00:00:00.000Z",
+        })}
+        project={{
+          name: "Contoso",
+          slug: "CON",
+          organisationId: "org_1",
+          archivedAt: null,
+          deletedAt: null,
+        }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
+
+    view.rerender(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem({ requesterId: "cust_1" })}
+        project={{
+          name: "Contoso",
+          slug: "CON",
+          organisationId: "org_1",
+          archivedAt: "2026-11-12T00:00:00.000Z",
+          deletedAt: null,
+        }}
+      />,
+    );
+    expect(activity).toHaveAttribute("data-customer-visible", "false");
   });
 });

@@ -3,7 +3,7 @@ import { PortalAnnouncementDetail } from "@/components/portal/announcements/port
 import {
   parsePortalProjectSearch,
   portalProjectSearchMiddlewares,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
 
 export const Route = createFileRoute("/announcements_/$id")({
   validateSearch: parsePortalProjectSearch,

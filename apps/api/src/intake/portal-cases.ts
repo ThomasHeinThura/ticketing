@@ -5,6 +5,7 @@ import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import db, { schema } from "../database";
+import { customerProjectAccessExists } from "../database/repositories/identity-scope.repository";
 import {
   customerPortalOnSql,
   customerPortalScope,
@@ -277,10 +278,15 @@ function caseSourceSql(context: CaseSourceContext): SQL {
     s.requester_id = ${viewer.personId}
     OR ${participantOf(sql`rp.submission_id = s.id`, viewer)}
   )`;
+  const submissionEffectiveProjectId = sql`COALESCE(
+    (SELECT wi_p.project_id FROM work_item wi_p WHERE wi_p.id = s.work_item_id),
+    rtv.default_project_id,
+    rt.default_project_id
+  )`;
   const submissionPortalOn = customerPortalOnSql(
     portalScope,
     sql`rt.workspace_id`,
-    sql`(SELECT wi_p.project_id FROM work_item wi_p WHERE wi_p.id = s.work_item_id)`,
+    submissionEffectiveProjectId,
   );
   const workItemPortalOn = customerPortalOnSql(
     portalScope,
@@ -328,10 +334,21 @@ function caseSourceSql(context: CaseSourceContext): SQL {
     LEFT JOIN state st ON st.id = wi.state_id
     LEFT JOIN state_template stt ON stt.id = st.state_template_id
     LEFT JOIN project p
-      ON p.id = COALESCE(wi.project_id, rt.default_project_id)
+      ON p.id = ${submissionEffectiveProjectId}
       AND p.organisation_id = ${viewer.organisationId}
       AND p.deleted_at IS NULL
     WHERE s.organisation_id = ${viewer.organisationId}
+      AND (
+        ${submissionEffectiveProjectId} IS NULL
+        OR (
+          p.id IS NOT NULL
+          AND EXISTS (
+            SELECT 1 FROM customer_project_access cpa
+            WHERE cpa.person_id = ${viewer.personId}
+              AND cpa.project_id = p.id
+          )
+        )
+      )
       AND (${submissionOwnOrParticipant} OR s.customer_visibility = 'organisation')
       AND (
         ${submissionOwnOrParticipant}
@@ -385,6 +402,11 @@ function caseSourceSql(context: CaseSourceContext): SQL {
     JOIN state_template stt ON stt.id = st.state_template_id
     WHERE wi.deleted_at IS NULL
       AND wi.archived_at IS NULL
+      AND EXISTS (
+        SELECT 1 FROM customer_project_access cpa
+        WHERE cpa.person_id = ${viewer.personId}
+          AND cpa.project_id = p.id
+      )
       -- Skip only items the submission branch already shows (same requester); an item merged
       -- from a colleague's duplicate or reassigned to a new requester stays a direct row.
       AND NOT EXISTS (
@@ -1177,6 +1199,7 @@ export async function portalCaseCountsByProject(
 export async function organisationProjectIds(
   organisationId: string,
   key: string,
+  personId?: string,
 ): Promise<Set<string>> {
   const rows = await db
     .select({ id: schema.projectTable.id })
@@ -1186,6 +1209,15 @@ export async function organisationProjectIds(
         eq(schema.projectTable.organisationId, organisationId),
         eq(schema.projectTable.slug, key),
         sql`${schema.projectTable.deletedAt} IS NULL`,
+        ...(personId
+          ? [
+              customerProjectAccessExists(
+                personId,
+                organisationId,
+                schema.projectTable.id,
+              ),
+            ]
+          : []),
       ),
     );
   return new Set(rows.map((row) => row.id));

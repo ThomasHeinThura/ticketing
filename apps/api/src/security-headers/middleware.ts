@@ -86,6 +86,13 @@ export function createSecurityHeadersMiddleware(
       .get("content-type")
       ?.toLowerCase()
       .startsWith("text/html");
+    if (
+      context.req.path.replace(/\/+$/, "") === "/auth/reset-password" ||
+      context.req.path.replace(/\/+$/, "") === "/reset-password"
+    ) {
+      headers.set("Referrer-Policy", "no-referrer");
+      headers.set("Cache-Control", "no-store");
+    }
     const hasCsp =
       headers.has("Content-Security-Policy") ||
       headers.has("Content-Security-Policy-Report-Only");

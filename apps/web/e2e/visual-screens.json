@@ -256,6 +256,13 @@
 		"screenshot": "project-timeline.png"
 	},
 	{
+		"name": "project-calendar",
+		"inventoryRoute": "/agent/projects/{key}/calendar",
+		"applicationRoute": "/agent/projects/$projectKey/calendar",
+		"test": "project calendar screen @visual",
+		"screenshot": "project-calendar.png"
+	},
+	{
 		"name": "profile-settings-general",
 		"inventoryRoute": "/dashboard/settings/account/information",
 		"applicationRoute": "/dashboard/settings/account/information",
@@ -826,5 +833,35 @@
 		"applicationRoute": "/dashboard/settings/workspace/time-activities",
 		"test": "workspace settings time activities screen @visual",
 		"screenshot": "workspace-settings-time-activities.png"
+	},
+	{
+		"name": "forgot-password",
+		"inventoryRoute": "/auth/forgot-password",
+		"applicationRoute": "/auth/forgot-password",
+		"test": "forgot-password screen @visual",
+		"screenshot": "forgot-password.png"
+	},
+	{
+		"name": "reset-password",
+		"inventoryRoute": "/auth/reset-password",
+		"applicationRoute": "/auth/reset-password",
+		"test": "reset-password screen @visual",
+		"screenshot": "reset-password.png"
+	},
+	{
+		"name": "portal-forgot-password",
+		"inventoryRoute": "/forgot-password",
+		"applicationRoute": "/forgot-password",
+		"origin": "portal",
+		"test": "portal forgot-password screen @visual",
+		"screenshot": "portal-forgot-password.png"
+	},
+	{
+		"name": "portal-reset-password",
+		"inventoryRoute": "/reset-password",
+		"applicationRoute": "/reset-password",
+		"origin": "portal",
+		"test": "portal reset-password screen @visual",
+		"screenshot": "portal-reset-password.png"
 	}
 ]

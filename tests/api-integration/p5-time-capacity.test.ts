@@ -210,6 +210,11 @@ describe("utilisation and capacity reports use available hours (TC-21, TC-22)", 
       w.member.user.id,
       w.other.user.id,
     ]);
+    // The team owns a project the intended reader reaches.
+    await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: team.id })
+      .where(eq(schema.projectTable.id, w.projectA.id));
     await db
       .update(schema.teamTable)
       .set({ capacityDaysPerWeek: "5" })
@@ -244,6 +249,11 @@ describe("utilisation and capacity reports use available hours (TC-21, TC-22)", 
       w.member.user.id,
       w.other.user.id,
     ]);
+    // The team owns a project the intended reader reaches.
+    await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: team.id })
+      .where(eq(schema.projectTable.id, w.projectA.id));
     await db
       .update(schema.teamMemberTable)
       .set({ allocationPct: 50 })
@@ -264,6 +274,11 @@ describe("utilisation and capacity reports use available hours (TC-21, TC-22)", 
       w.member.user.id,
       w.other.user.id,
     ]);
+    // The team owns a project the intended reader reaches.
+    await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: team.id })
+      .where(eq(schema.projectTable.id, w.projectA.id));
     await db
       .update(schema.teamTable)
       .set({ capacityDaysPerWeek: "5" })
@@ -297,6 +312,11 @@ describe("who a capacity row may list (R6-06)", () => {
       w.member.user.id,
       w.other.user.id,
     ]);
+    // The team owns a project the intended reader reaches.
+    await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: team.id })
+      .where(eq(schema.projectTable.id, w.projectB.id));
     await db
       .update(schema.teamTable)
       .set({ capacityDaysPerWeek: "5" })
@@ -310,7 +330,7 @@ describe("who a capacity row may list (R6-06)", () => {
     expect(
       (await rowsOf(w.lead.user, "capacity")).map((row) => row.team),
     ).not.toContain(team.name);
-    // report:read_all (the owner) lists the team and both members.
+    // The owner reaches project B, which is owned by this team.
     expect(await rowsOf(w.owner.user, "utilisation")).toHaveLength(2);
     expect(
       (await rowsOf(w.owner.user, "capacity")).map((row) => row.team),

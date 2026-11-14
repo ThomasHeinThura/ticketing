@@ -7,6 +7,7 @@ import {
 } from "@taskdesk/ui";
 import { ChevronDown, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { cn } from "@/lib/cn";
 
 export type ProjectViewOverflowItem = {
@@ -14,6 +15,7 @@ export type ProjectViewOverflowItem = {
   label: string;
   icon: LucideIcon;
   active: boolean;
+  disabledReason?: string;
   onSelect: () => void;
 };
 
@@ -45,20 +47,52 @@ export default function ProjectViewOverflowMenu({
         <ChevronDown className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-44 rounded-lg" align="end">
-        {items.map(({ view, label, icon: Icon, active, onSelect }) => (
-          <DropdownMenuItem
-            key={view}
-            className={cn(
-              "h-7 cursor-pointer text-sm",
-              active && "bg-accent text-accent-foreground",
-            )}
-            aria-current={active ? "page" : undefined}
-            onClick={onSelect}
-          >
-            <Icon className="text-muted-foreground" />
-            <span>{label}</span>
-          </DropdownMenuItem>
-        ))}
+        {items.map(
+          ({ view, label, icon: Icon, active, disabledReason, onSelect }) => {
+            const item = (
+              <DropdownMenuItem
+                key={view}
+                aria-disabled={disabledReason ? "true" : undefined}
+                aria-description={disabledReason}
+                className={cn(
+                  "h-7 cursor-pointer text-sm",
+                  active && "bg-accent text-accent-foreground",
+                  disabledReason && "cursor-not-allowed opacity-64",
+                )}
+                aria-current={active ? "page" : undefined}
+                onClickCapture={
+                  disabledReason
+                    ? (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }
+                    : undefined
+                }
+                onKeyDownCapture={
+                  disabledReason
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }
+                      }
+                    : undefined
+                }
+                onClick={disabledReason ? undefined : onSelect}
+              >
+                <Icon className="text-muted-foreground" />
+                <span>{label}</span>
+              </DropdownMenuItem>
+            );
+            return disabledReason ? (
+              <ActionTooltip key={view} label={disabledReason}>
+                {item}
+              </ActionTooltip>
+            ) : (
+              item
+            );
+          },
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

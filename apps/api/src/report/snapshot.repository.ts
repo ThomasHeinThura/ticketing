@@ -27,6 +27,7 @@ import {
   liveFactRows,
   type SnapshotFact,
 } from "./snapshot-facts";
+import { reachableTeam } from "./team-reach";
 import type { ReportContext } from "./types";
 
 /**
@@ -188,7 +189,7 @@ function factFilterSql(ctx: ReportContext, metric: SnapshotMetric): SQL {
       SELECT 1 FROM team_member tm
       JOIN team t ON t.id = tm.team_id AND t.workspace_id = ${ctx.workspaceId}
       JOIN person pe ON pe.user_id = tm.user_id
-      WHERE tm.team_id = ${teamId} AND ${dimensionPredicate})`);
+      WHERE tm.team_id = ${teamId} AND ${dimensionPredicate} AND ${reachableTeam(ctx)})`);
   }
   if ((metric === "time_logged" || metric === "cost_entry") && !ctx.readAnyTime)
     parts.push(sql`ms.dimensions->>'personId' = ${ctx.identity.personId}`);
@@ -346,7 +347,7 @@ function snapshotFilterSql(ctx: ReportContext): SQL {
       SELECT 1 FROM team_member tm
       JOIN team t ON t.id = tm.team_id AND t.workspace_id = ${ctx.workspaceId}
       JOIN person pe ON pe.user_id = tm.user_id
-      WHERE tm.team_id = ${teamId} AND pe.id::text = ms.dimensions->>'assigneeId')`);
+      WHERE tm.team_id = ${teamId} AND pe.id::text = ms.dimensions->>'assigneeId' AND ${reachableTeam(ctx)})`);
   return parts.length ? sql.join(parts, sql` AND `) : sql`true`;
 }
 

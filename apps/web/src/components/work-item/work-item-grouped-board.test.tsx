@@ -56,7 +56,8 @@ vi.mock("@/fetchers/work-item/assign-work-item", () => ({
 vi.mock("@/fetchers/work-item/unassign-work-item", () => ({
   default: (...args: unknown[]) => unassignWorkItem(...args),
 }));
-vi.mock("react-i18next", () => ({
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
       translate(key, options),
@@ -71,6 +72,7 @@ function item(key: string, overrides: Partial<WorkItemRow> = {}): WorkItemRow {
   return {
     id: `id-${key}`,
     projectId: "proj_1",
+    workspaceId: "ws_1",
     key,
     number: Number(key.split("-")[1]),
     title: `Title ${key}`,
@@ -248,6 +250,24 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("WorkItemGroupedBoard (VW-13)", () => {
+  it("refreshes each normal-save query group exactly once after a grouped write", async () => {
+    const { invalidate } = await renderBoard();
+    await drop("WLP-2", "group:priority:urgent");
+    for (const queryKey of [
+      ["work-items", "proj_1"],
+      ["work-items", "detail", "WLP-2"],
+      ["work-items", "activity", "WLP-2"],
+      ["work-items", "transitions", "WLP-2"],
+      ["labels", "ws_1", "work-items", "WLP-2"],
+      ["work-items", "sla"],
+    ])
+      expect(
+        invalidate.mock.calls.filter(
+          ([filter]) =>
+            JSON.stringify(filter?.queryKey) === JSON.stringify(queryKey),
+        ),
+      ).toHaveLength(1);
+  });
   it("starts keyboard drags with Space and permits Space or Enter to drop", async () => {
     await renderBoard();
     const sensors = (

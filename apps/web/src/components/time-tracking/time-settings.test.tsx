@@ -131,10 +131,10 @@ describe("BackdateLimitSetting", () => {
       project: null,
     });
     wrap(<BackdateLimitSetting />);
-    const input = (await screen.findByLabelText(
-      "timeTracking:settings.backdateLimit",
-    )) as HTMLInputElement;
-    expect(input.disabled).toBe(true);
+    expect(
+      await screen.findByText("timeTracking:settings.backdateLimit: 30"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).toBeNull();
     expect(
       screen.queryByRole("button", { name: "timeTracking:actions.save" }),
     ).toBeNull();

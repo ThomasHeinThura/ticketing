@@ -264,6 +264,9 @@ describe("portal organisation backlog", () => {
       .update(schema.projectTable)
       .set({ organisationId: customer.orgId })
       .where(eq(schema.projectTable.id, second.project.id));
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: customer.person.id, projectId: second.project.id });
     const foreign = await buildTenant("backlog-project-foreign");
     const foreignCustomer = await addCustomer(foreign);
     await enableIntake(first);

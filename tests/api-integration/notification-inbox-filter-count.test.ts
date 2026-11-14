@@ -82,6 +82,10 @@ async function createCustomerRequestFixture() {
     .update(schema.projectTable)
     .set({ organisationId: staff.workspace.organisationId })
     .where(eq(schema.projectTable.id, project.id));
+  await db.insert(schema.customerProjectAccessTable).values([
+    { personId: customer.id, projectId: project.id },
+    { personId: otherCustomer.id, projectId: project.id },
+  ]);
   const type = requireRow(
     await db
       .insert(schema.workItemTypeTable)

@@ -1,3 +1,4 @@
+// D-E (12 Nov): report scope remains reach-filtered even with report:read_all.
 /**
  * P5 reports, the core: every route refuses a customer with 403 (RP-18), the honesty rule
  * (RP-1..RP-6), reach filtering (RP-17), tenant isolation and the filter state in the URL (RP-8).
@@ -159,7 +160,7 @@ describe("the honesty rule", () => {
     expect(body.scope.kind).toBe("reach");
     expect(body.scope.projectCount).toBe(1);
     const all = await w.report(w.owner.user, "workload", "&window=7");
-    expect(all.body.scope.kind).toBe("all");
+    expect(all.body.scope.kind).toBe("reach");
     expect(all.body.scope.projectCount).toBeGreaterThanOrEqual(2);
     expect(body.window.live).toBe(true);
     expect(new Date(body.asOf).getTime()).toBeGreaterThan(Date.now() - 60_000);
@@ -264,7 +265,7 @@ describe("reach and tenancy (RP-17)", () => {
       scope: { kind: string };
     };
     expect(stranger.metrics[0]?.value).toBe(0);
-    expect(stranger.scope.kind).toBe("all");
+    expect(stranger.scope.kind).toBe("reach");
   });
 
   it("refuses a workspace the caller is not in", async () => {

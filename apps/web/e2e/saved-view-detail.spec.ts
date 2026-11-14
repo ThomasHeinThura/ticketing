@@ -93,6 +93,15 @@ async function mockSavedViewApi(
   };
   let current = view;
   let pinned = false;
+  await page_.route("**/api/me/identity", (route) =>
+    route.fulfill({
+      json: {
+        personId: "person-e2e",
+        user: { id: "user-g11" },
+        credentialType: "session",
+      },
+    }),
+  );
   await page_.route("**/api/capabilities**", (route) =>
     route.fulfill({
       status: 200,
@@ -115,6 +124,7 @@ async function mockSavedViewApi(
         manageTeam: false,
         removeMembers: false,
         manageServiceCalendars: false,
+        createSavedViews: true,
         shareSavedViews: false,
         manageWorkspaceSettings: false,
         ...capabilities,

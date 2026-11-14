@@ -2,6 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
 import { Client } from "pg";
+import { refreshStaffRegistration } from "../../../apps/api/src/auth/staff-registration";
 import db, { getDatabasePool, schema } from "../../../apps/api/src/database";
 import { migrateWithMembershipProvenanceCutover } from "../../../apps/api/src/database/migrate-membership-provenance";
 import { invalidateFeatureFlagCache } from "../../../apps/api/src/feature-flag/enforce";
@@ -314,6 +315,7 @@ export async function resetTestDatabase(options?: {
   // The portal flag lookups are cached in process for a few seconds (P4R2-L1); a reset
   // database must not answer from the previous test's cache.
   invalidateFeatureFlagCache();
+  await refreshStaffRegistration();
 }
 
 /**

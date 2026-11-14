@@ -23,6 +23,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -40,7 +41,13 @@ import { useTranslation } from "react-i18next";
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import {
+  isForbiddenError,
+  useSettingsAccess,
+} from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import {
   archiveChecklistTemplate,
   archiveWorkItemTemplate,
@@ -305,9 +312,17 @@ function TemplateEditor({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={pending || !valid}>
+            <SaveButton
+              type="submit"
+              disabled={!valid && !pending}
+              pending={pending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:workItemTemplates.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -409,9 +424,17 @@ function ChecklistEditor({
             >
               {t("common:actions.cancel")}
             </Button>
-            <Button type="submit" disabled={pending || !name.trim()}>
+            <SaveButton
+              type="submit"
+              disabled={!name.trim() && !pending}
+              pending={pending}
+              success={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
               {t("settings:workItemTemplates.save")}
-            </Button>
+            </SaveButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -420,6 +443,21 @@ function ChecklistEditor({
 }
 
 function WorkItemTemplatesPage() {
+  const access = useSettingsAccess((permission) =>
+    permission.canManageWorkspaceSettings(),
+  );
+  if (access !== "allowed")
+    return (
+      <SettingsAccessPage
+        access={access}
+        titleKey="settings:workItemTemplates.title"
+        descriptionKey="settings:workItemTemplates.description"
+      />
+    );
+  return <WorkItemTemplatesPageContent />;
+}
+
+function WorkItemTemplatesPageContent() {
   const { t } = useTranslation();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -462,6 +500,7 @@ function WorkItemTemplatesPage() {
         cache.invalidateQueries({ queryKey: ["work-item-templates"] }),
         cache.invalidateQueries({ queryKey: ["checklist-templates"] }),
       ]);
+      toast.success(t("common:actions.saved"));
       close();
     },
   });
@@ -503,6 +542,8 @@ function WorkItemTemplatesPage() {
     (canManage && (templates.isLoading || checklists.isLoading));
   const failed = templates.isError || checklists.isError;
   const rows = showChecklists ? filteredChecklists : filteredTemplates;
+  if (isForbiddenError(templates.error) || isForbiddenError(checklists.error))
+    return <NoAccessPage />;
   return (
     <>
       <PageTitle title={t("settings:workItemTemplates.title")} />

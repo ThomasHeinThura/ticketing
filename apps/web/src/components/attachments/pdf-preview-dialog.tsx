@@ -221,11 +221,11 @@ export default function PdfPreviewDialog({
 
   const open = Boolean(attachment);
   const pageMessage = pageCount
-    ? t("workItems:detail.attachments.pdfPreviewPage", {
+    ? t("workItemExtras:detail.attachments.pdfPreviewPage", {
         page: pageNumber,
         count: pageCount,
       })
-    : t("workItems:detail.attachments.pdfPreviewLoading");
+    : t("workItemExtras:detail.attachments.pdfPreviewLoading");
 
   return (
     <Dialog
@@ -245,7 +245,7 @@ export default function PdfPreviewDialog({
         {attachment && (
           <div className="flex max-h-[90vh] min-h-0 flex-col">
             <DialogTitle className="sr-only">
-              {t("workItems:detail.attachments.pdfPreviewTitle")}:{" "}
+              {t("workItemExtras:detail.attachments.pdfPreviewTitle")}:{" "}
               {attachment.filename}
             </DialogTitle>
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border p-2">
@@ -258,9 +258,11 @@ export default function PdfPreviewDialog({
                   aria-live="polite"
                 >
                   {error === "too_large"
-                    ? t("workItems:detail.attachments.pdfPreviewTooLarge")
+                    ? t("workItemExtras:detail.attachments.pdfPreviewTooLarge")
                     : error === "unavailable"
-                      ? t("workItems:detail.attachments.pdfPreviewUnavailable")
+                      ? t(
+                          "workItemExtras:detail.attachments.pdfPreviewUnavailable",
+                        )
                       : pageMessage}
                 </span>
                 <Button
@@ -268,7 +270,7 @@ export default function PdfPreviewDialog({
                   size="icon-sm"
                   disabled={!pageCount || pageNumber <= 1}
                   aria-label={t(
-                    "workItems:detail.attachments.pdfPreviewPreviousPage",
+                    "workItemExtras:detail.attachments.pdfPreviewPreviousPage",
                   )}
                   onClick={() => sendPage(pageNumber - 1, scale)}
                 >
@@ -279,7 +281,7 @@ export default function PdfPreviewDialog({
                   size="icon-sm"
                   disabled={!pageCount || pageNumber >= pageCount}
                   aria-label={t(
-                    "workItems:detail.attachments.pdfPreviewNextPage",
+                    "workItemExtras:detail.attachments.pdfPreviewNextPage",
                   )}
                   onClick={() => sendPage(pageNumber + 1, scale)}
                 >
@@ -290,7 +292,7 @@ export default function PdfPreviewDialog({
                   size="icon-sm"
                   disabled={scale <= PDF_PREVIEW_LIMITS.scaleMin}
                   aria-label={t(
-                    "workItems:detail.attachments.pdfPreviewZoomOut",
+                    "workItemExtras:detail.attachments.pdfPreviewZoomOut",
                   )}
                   onClick={() =>
                     sendPage(
@@ -306,7 +308,7 @@ export default function PdfPreviewDialog({
                   size="icon-sm"
                   disabled={scale >= PDF_PREVIEW_LIMITS.scaleMax}
                   aria-label={t(
-                    "workItems:detail.attachments.pdfPreviewZoomIn",
+                    "workItemExtras:detail.attachments.pdfPreviewZoomIn",
                   )}
                   onClick={() =>
                     sendPage(
@@ -323,7 +325,7 @@ export default function PdfPreviewDialog({
                     size="icon-sm"
                     render={<a href={getApiUrl(attachment.downloadPath)} />}
                     aria-label={t(
-                      "workItems:detail.attachments.pdfPreviewDownload",
+                      "workItemExtras:detail.attachments.pdfPreviewDownload",
                       { name: attachment.filename },
                     )}
                   >
@@ -333,7 +335,9 @@ export default function PdfPreviewDialog({
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={t("workItems:detail.attachments.closePreview")}
+                  aria-label={t(
+                    "workItemExtras:detail.attachments.closePreview",
+                  )}
                   onClick={() => onOpenChange(false)}
                 >
                   <X className="size-4" />
@@ -344,7 +348,7 @@ export default function PdfPreviewDialog({
               <iframe
                 key={attachment.id}
                 ref={frameRef}
-                title={t("workItems:detail.attachments.pdfPreviewTitle")}
+                title={t("workItemExtras:detail.attachments.pdfPreviewTitle")}
                 src="/pdf-preview.html"
                 sandbox="allow-scripts"
                 referrerPolicy="origin"

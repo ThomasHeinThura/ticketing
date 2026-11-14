@@ -110,7 +110,7 @@ async function makeDefaultState(workspaceId: string, projectId: string) {
   return state;
 }
 
-async function addCustomerIdentity(organisationId: string) {
+async function addCustomerIdentity(organisationId: string, projectId: string) {
   let [customerRole] = await db
     .select({
       id: schema.roleTable.id,
@@ -217,6 +217,11 @@ async function addCustomerIdentity(organisationId: string) {
     })
     .returning();
   if (!membership) throw new Error("addCustomerIdentity: no membership row");
+  // D-D / CP-1 (12 Nov): audience membership requires an explicit project invitation.
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: person.id, projectId })
+    .onConflictDoNothing();
   return { user, person, membership };
 }
 
@@ -774,10 +779,16 @@ describe("API integration: work-item comments (#27)", () => {
       .then(([row]) => row);
     if (!organisation || !foreignOrganisation)
       throw new Error("expected customer organisations");
-    const requester = await addCustomerIdentity(organisation.id);
-    const participant = await addCustomerIdentity(organisation.id);
-    const nonparticipant = await addCustomerIdentity(organisation.id);
-    const foreign = await addCustomerIdentity(foreignOrganisation.id);
+    const requester = await addCustomerIdentity(organisation.id, project.id);
+    const participant = await addCustomerIdentity(organisation.id, project.id);
+    const nonparticipant = await addCustomerIdentity(
+      organisation.id,
+      project.id,
+    );
+    const foreign = await addCustomerIdentity(
+      foreignOrganisation.id,
+      project.id,
+    );
     const [author] = await db
       .select({ id: schema.personTable.id })
       .from(schema.personTable)
@@ -964,8 +975,14 @@ describe("API integration: work-item comments (#27)", () => {
     };
     const customerOrganisation = await makeCustomerOrganisation("serving");
     const foreignOrganisation = await makeCustomerOrganisation("foreign");
-    const customer = await addCustomerIdentity(customerOrganisation.id);
-    const foreign = await addCustomerIdentity(foreignOrganisation.id);
+    const customer = await addCustomerIdentity(
+      customerOrganisation.id,
+      project.id,
+    );
+    const foreign = await addCustomerIdentity(
+      foreignOrganisation.id,
+      project.id,
+    );
     const [workspace] = await db
       .select({ organisationId: schema.workspaceTable.organisationId })
       .from(schema.workspaceTable)
@@ -2292,9 +2309,12 @@ describe("API integration: work-item comments (#27)", () => {
       .returning()
       .then(([row]) => row);
     if (!organisation) throw new Error("expected serving organisation");
-    const requester = await addCustomerIdentity(organisation.id);
-    const participant = await addCustomerIdentity(organisation.id);
-    const nonparticipant = await addCustomerIdentity(organisation.id);
+    const requester = await addCustomerIdentity(organisation.id, project.id);
+    const participant = await addCustomerIdentity(organisation.id, project.id);
+    const nonparticipant = await addCustomerIdentity(
+      organisation.id,
+      project.id,
+    );
     const foreignOrganisation = await db
       .insert(schema.organisationTable)
       .values({
@@ -2307,7 +2327,10 @@ describe("API integration: work-item comments (#27)", () => {
       .returning()
       .then(([row]) => row);
     if (!foreignOrganisation) throw new Error("expected foreign organisation");
-    const foreignCustomer = await addCustomerIdentity(foreignOrganisation.id);
+    const foreignCustomer = await addCustomerIdentity(
+      foreignOrganisation.id,
+      project.id,
+    );
     const [creatorPerson] = await db
       .select({ id: schema.personTable.id })
       .from(schema.personTable)
@@ -2530,7 +2553,10 @@ describe("API integration: work-item comments (#27)", () => {
       .then(([row]) => row);
     if (!customerOrganisation)
       throw new Error("expected customer organisation");
-    const customer = await addCustomerIdentity(customerOrganisation.id);
+    const customer = await addCustomerIdentity(
+      customerOrganisation.id,
+      project.id,
+    );
     const foreignOrganisation = await db
       .insert(schema.organisationTable)
       .values({
@@ -2544,7 +2570,10 @@ describe("API integration: work-item comments (#27)", () => {
       .then(([row]) => row);
     if (!foreignOrganisation)
       throw new Error("expected foreign customer organisation");
-    const foreignCustomer = await addCustomerIdentity(foreignOrganisation.id);
+    const foreignCustomer = await addCustomerIdentity(
+      foreignOrganisation.id,
+      project.id,
+    );
     await db
       .update(schema.projectTable)
       .set({ organisationId: customerOrganisation.id })

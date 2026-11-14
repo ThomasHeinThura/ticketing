@@ -20,25 +20,34 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
+  Skeleton,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { ActionTooltip } from "@/components/common/action-tooltip";
+import { NoAccessPage } from "@/components/common/page-states";
+import { ErrorDisplay } from "@/components/errors/error-display";
 import PageTitle from "@/components/page-title";
 import DefaultCommentVisibilitySetting from "@/components/project/default-comment-visibility-setting";
 import ProjectEngagementSettings from "@/components/project/project-engagement-settings";
+import ProjectNotFound from "@/components/project/project-not-found";
 import {
   classifyPlanningFailure,
   projectKeyError,
 } from "@/components/project/project-planning-form";
 import ProjectPlanningSettings from "@/components/project/project-planning-settings";
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
+import {
+  isForbiddenError,
+  useCapabilityCheckFailed,
+} from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
-import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
+import useGetProject from "@/hooks/queries/project/use-get-project";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -78,14 +87,47 @@ function normalizeProjectValues(
   };
 }
 
+function isNotFoundError(error: unknown) {
+  if (error instanceof HttpError) return error.status === 404;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { status?: unknown }).status === 404
+  );
+}
+
 function RouteComponent() {
   const { t } = useTranslation();
-  const { projectId: routeProjectId } = useParams({ strict: false });
-  const { project: storedProject } = useProjectStore();
+  const { projectId: rawProjectId } = useParams({ strict: false });
+  const projectId = rawProjectId ?? "";
+  const {
+    data: workspace,
+    isLoading: isWorkspaceLoading,
+    isError: isWorkspaceError,
+    error: workspaceError,
+  } = useActiveWorkspace();
+  // The project itself (`GET /project/:id`), not the legacy board payload: this page needs
+  // only its metadata, so it never loads or polls the old column and task data.
+  const {
+    data: projectData,
+    isLoading: isProjectLoading,
+    isError: isProjectError,
+    error: projectError,
+    refetch: refetchProject,
+  } = useGetProject({
+    id: projectId,
+    workspaceId: workspace?.id ?? "",
+  });
+  const project =
+    projectData &&
+    projectData.id === projectId &&
+    workspace?.id &&
+    projectData.workspaceId === workspace?.id
+      ? projectData
+      : undefined;
   // PR-13: a key is 2-8 uppercase letters. The project's own stored key stays valid while
   // unchanged (legacy keys predate the rule); the server applies the same exemption.
-  const storedKey =
-    storedProject?.id === routeProjectId ? (storedProject?.slug ?? null) : null;
+  const storedKey = project?.slug ?? null;
   const projectSchema = useMemo(
     () =>
       z.object({
@@ -126,27 +168,22 @@ function RouteComponent() {
   const [renameKeyOpen, setRenameKeyOpen] = useState(false);
   const [isRenamingKey, setIsRenamingKey] = useState(false);
 
-  const { data: workspace } = useActiveWorkspace();
-  const { projectId: rawProjectId } = useParams({ strict: false });
-  const projectId = rawProjectId ?? "";
-  const { data: fetchedProject } = useGetTasks(projectId);
-  const { project, setProject } = useProjectStore();
-
-  useEffect(() => {
-    if (fetchedProject) {
-      setProject(fetchedProject);
-    }
-  }, [fetchedProject, setProject]);
-
   const { mutateAsync: updateProject } = useUpdateProject();
   const { mutateAsync: deleteProject, isPending: isDeleting } =
     useDeleteProject();
   const deleteProjectButtonRef = useRef<HTMLButtonElement>(null);
-  const { canManageProjects, canDeleteProjects, canExportTasks } =
-    useWorkspacePermission();
-  const canEdit = canManageProjects();
-  const canDelete = canDeleteProjects();
-  const canExport = canExportTasks();
+  const {
+    canUpdateProjects,
+    canDeleteProjects,
+    canExportTasks,
+    isCheckingPermissions,
+  } = useWorkspacePermission();
+  const capabilityCheckFailed = useCapabilityCheckFailed(
+    isCheckingPermissions ? workspace?.id : undefined,
+  );
+  const canEdit = Boolean(project) && canUpdateProjects();
+  const canDelete = Boolean(project) && canDeleteProjects();
+  const canExport = Boolean(project) && canExportTasks();
 
   const projectForm = useForm<ProjectFormValues>({
     resolver: standardSchemaResolver(projectSchema),
@@ -160,7 +197,10 @@ function RouteComponent() {
   });
 
   useEffect(() => {
-    if (!project) return;
+    if (!project) {
+      lastSavedRef.current = null;
+      return;
+    }
 
     const nextValues = {
       name: project.name || "",
@@ -289,15 +329,17 @@ function RouteComponent() {
       });
       lastSavedRef.current = next;
       projectForm.reset(next, { keepDirty: false });
-      // The store is fed by the legacy board query; update it now so nothing keeps using the
-      // old key until that query refetches.
-      setProject({
-        ...project,
-        name: next.name,
-        slug: next.slug,
-        description: next.description,
-        icon: next.icon,
-      });
+      // The store is fed by the legacy board query, not by this page. If it holds this
+      // project, update it now so nothing keeps using the old key until that query refetches.
+      const { project: boardProject, setProject } = useProjectStore.getState();
+      if (boardProject?.id === project.id)
+        setProject({
+          ...boardProject,
+          name: next.name,
+          slug: next.slug,
+          description: next.description,
+          icon: next.icon,
+        });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["tasks", project.id] }),
         queryClient.invalidateQueries({ queryKey: ["projects"] }),
@@ -332,7 +374,6 @@ function RouteComponent() {
     projectForm,
     updateProject,
     queryClient,
-    setProject,
     workspace?.id,
     t,
   ]);
@@ -385,9 +426,9 @@ function RouteComponent() {
         const latest = projectFormRef.current.getValues() as ProjectFormValues;
         const normalized = normalizeProjectValues(latest);
         const last = lastSavedRef.current;
+        if (!last) return;
         // The key is excluded on purpose: leaving the page must never rename it (PR-14).
         const hasPendingChanges =
-          !last ||
           last.name !== normalized.name ||
           last.description !== normalized.description ||
           last.icon !== normalized.icon;
@@ -425,6 +466,77 @@ function RouteComponent() {
     }
   }, [project?.id, deleteProject, openPendingAction, t]);
 
+  if (
+    isWorkspaceLoading ||
+    (Boolean(workspace?.id) && isProjectLoading && Boolean(projectId))
+  ) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div
+          aria-label={t("common:empty.loading")}
+          className="max-w-4xl mx-auto"
+          data-testid="project-general-loading"
+          role="status"
+        >
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </>
+    );
+  }
+
+  if (isWorkspaceError) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div className="max-w-4xl mx-auto">
+          <ErrorDisplay
+            error={workspaceError}
+            onRetry={() =>
+              void queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+            }
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (isProjectError && isForbiddenError(projectError)) {
+    return isCheckingPermissions ? (
+      <SettingsAccessPage
+        access={capabilityCheckFailed ? "error" : "checking"}
+        titleKey="settings:projectGeneral.title"
+        pageTitleKey="settings:projectGeneral.pageTitle"
+        descriptionKey="settings:projectGeneral.subtitle"
+      />
+    ) : (
+      <NoAccessPage />
+    );
+  }
+
+  if (isProjectError && !isNotFoundError(projectError)) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <div className="max-w-4xl mx-auto">
+          <ErrorDisplay
+            error={projectError}
+            onRetry={() => void refetchProject()}
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (!project) {
+    return (
+      <>
+        <PageTitle title={t("settings:projectGeneral.pageTitle")} />
+        <ProjectNotFound className="max-w-4xl mx-auto" />
+      </>
+    );
+  }
+
   return (
     <>
       <PageTitle title={t("settings:projectGeneral.pageTitle")} />
@@ -459,91 +571,98 @@ function RouteComponent() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Popover
-                  open={iconPopoverOpen}
-                  onOpenChange={(open) => {
-                    setIconPopoverOpen(open);
-                    if (!open) setIconSearch("");
-                  }}
-                  modal={true}
-                >
-                  <ActionTooltip
-                    label={t("settings:projectGeneral.pickIconTitle")}
+                {canEdit ? (
+                  <Popover
+                    open={iconPopoverOpen}
+                    onOpenChange={(open) => {
+                      setIconPopoverOpen(open);
+                      if (!open) setIconSearch("");
+                    }}
+                    modal={true}
                   >
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-auto justify-start gap-2 font-normal"
-                        disabled={!canEdit}
-                      >
-                        {(() => {
-                          const selectedKey =
-                            (projectForm.watch("icon") as keyof typeof icons) ||
-                            "Layout";
-                          const SelectedIcon =
-                            icons[selectedKey] || icons.Layout;
-                          return <SelectedIcon className="h-4 w-4" />;
-                        })()}
-                        <span className="truncate text-xs">
-                          {projectForm.watch("icon") || "Layout"}
-                        </span>
-                      </Button>
-                    </PopoverTrigger>
-                  </ActionTooltip>
-                  <PopoverContent className="w-80" align="end">
-                    <div className="space-y-2">
-                      <Input
-                        value={iconSearch}
-                        onChange={(e) => setIconSearch(e.target.value)}
-                        placeholder={t(
-                          "settings:projectGeneral.searchIconsPlaceholder",
-                        )}
-                        className="h-8 text-xs"
-                      />
-                      <div className="max-h-[280px] overflow-y-auto pr-1">
-                        <div className="grid grid-cols-6 gap-1.5">
-                          {Object.entries(icons)
-                            .filter(([iconName]) =>
-                              iconName
-                                .toLowerCase()
-                                .includes(iconSearch.trim().toLowerCase()),
-                            )
-                            .map(([iconName, Icon]) => {
-                              const isSelected =
-                                projectForm.getValues("icon") === iconName;
-                              return (
-                                <ActionTooltip key={iconName} label={iconName}>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      projectForm.setValue("icon", iconName, {
-                                        shouldDirty: true,
-                                        shouldValidate: true,
-                                      });
-                                      setIconPopoverOpen(false);
-                                      setIconSearch("");
-                                    }}
-                                    className={cn(
-                                      "h-10 items-center justify-center rounded-md p-0",
-                                      isSelected &&
-                                        "bg-sidebar-accent text-sidebar-accent-foreground",
-                                    )}
-                                    aria-label={iconName}
+                    <ActionTooltip
+                      label={t("settings:projectGeneral.pickIconTitle")}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-auto justify-start gap-2 font-normal"
+                        >
+                          {(() => {
+                            const selectedKey =
+                              (projectForm.watch(
+                                "icon",
+                              ) as keyof typeof icons) || "Layout";
+                            const SelectedIcon =
+                              icons[selectedKey] || icons.Layout;
+                            return <SelectedIcon className="h-4 w-4" />;
+                          })()}
+                          <span className="truncate text-xs">
+                            {projectForm.watch("icon") || "Layout"}
+                          </span>
+                        </Button>
+                      </PopoverTrigger>
+                    </ActionTooltip>
+                    <PopoverContent className="w-80" align="end">
+                      <div className="space-y-2">
+                        <Input
+                          value={iconSearch}
+                          onChange={(e) => setIconSearch(e.target.value)}
+                          placeholder={t(
+                            "settings:projectGeneral.searchIconsPlaceholder",
+                          )}
+                          className="h-8 text-xs"
+                        />
+                        <div className="max-h-[280px] overflow-y-auto pr-1">
+                          <div className="grid grid-cols-6 gap-1.5">
+                            {Object.entries(icons)
+                              .filter(([iconName]) =>
+                                iconName
+                                  .toLowerCase()
+                                  .includes(iconSearch.trim().toLowerCase()),
+                              )
+                              .map(([iconName, Icon]) => {
+                                const isSelected =
+                                  projectForm.getValues("icon") === iconName;
+                                return (
+                                  <ActionTooltip
+                                    key={iconName}
+                                    label={iconName}
                                   >
-                                    <Icon className="h-4 w-4" />
-                                  </Button>
-                                </ActionTooltip>
-                              );
-                            })}
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        projectForm.setValue("icon", iconName, {
+                                          shouldDirty: true,
+                                          shouldValidate: true,
+                                        });
+                                        setIconPopoverOpen(false);
+                                        setIconSearch("");
+                                      }}
+                                      className={cn(
+                                        "h-10 items-center justify-center rounded-md p-0",
+                                        isSelected &&
+                                          "bg-sidebar-accent text-sidebar-accent-foreground",
+                                      )}
+                                      aria-label={iconName}
+                                    >
+                                      <Icon className="h-4 w-4" />
+                                    </Button>
+                                  </ActionTooltip>
+                                );
+                              })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <span>{projectForm.watch("icon") || "Layout"}</span>
+                )}
               </div>
             </div>
 
@@ -558,23 +677,32 @@ function RouteComponent() {
                     <FormItem>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium">
-                            {t("settings:projectGeneral.projectNameLabel")}
-                          </FormLabel>
+                          {canEdit ? (
+                            <FormLabel className="text-sm font-medium">
+                              {t("settings:projectGeneral.projectNameLabel")}
+                            </FormLabel>
+                          ) : (
+                            <p className="text-sm font-medium">
+                              {t("settings:projectGeneral.projectNameLabel")}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {t("settings:projectGeneral.projectNameHint")}
                           </p>
                         </div>
-                        <FormControl>
-                          <Input
-                            className="w-full sm:w-64"
-                            placeholder={t(
-                              "settings:projectGeneral.projectNamePlaceholder",
-                            )}
-                            disabled={!canEdit}
-                            {...field}
-                          />
-                        </FormControl>
+                        {canEdit ? (
+                          <FormControl>
+                            <Input
+                              className="w-full sm:w-64"
+                              placeholder={t(
+                                "settings:projectGeneral.projectNamePlaceholder",
+                              )}
+                              {...field}
+                            />
+                          </FormControl>
+                        ) : (
+                          <p>{field.value}</p>
+                        )}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -590,25 +718,34 @@ function RouteComponent() {
                     <FormItem>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium">
-                            {t("settings:projectGeneral.keyLabel")}
-                          </FormLabel>
+                          {canEdit ? (
+                            <FormLabel className="text-sm font-medium">
+                              {t("settings:projectGeneral.keyLabel")}
+                            </FormLabel>
+                          ) : (
+                            <p className="text-sm font-medium">
+                              {t("settings:projectGeneral.keyLabel")}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {t("settings:projectGeneral.keyHint", {
                               slug: projectForm.watch("slug") || "ABC",
                             })}
                           </p>
                         </div>
-                        <FormControl>
-                          <Input
-                            className="w-full sm:w-64"
-                            placeholder={t(
-                              "settings:projectGeneral.keyPlaceholder",
-                            )}
-                            disabled={!canEdit}
-                            {...field}
-                          />
-                        </FormControl>
+                        {canEdit ? (
+                          <FormControl>
+                            <Input
+                              className="w-full sm:w-64"
+                              placeholder={t(
+                                "settings:projectGeneral.keyPlaceholder",
+                              )}
+                              {...field}
+                            />
+                          </FormControl>
+                        ) : (
+                          <p>{field.value}</p>
+                        )}
                       </div>
                       <FormMessage />
                       {canEdit && keyChanged && keyProblem === null && (
@@ -658,23 +795,32 @@ function RouteComponent() {
                     <FormItem>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium">
-                            {t("settings:projectGeneral.descriptionLabel")}
-                          </FormLabel>
+                          {canEdit ? (
+                            <FormLabel className="text-sm font-medium">
+                              {t("settings:projectGeneral.descriptionLabel")}
+                            </FormLabel>
+                          ) : (
+                            <p className="text-sm font-medium">
+                              {t("settings:projectGeneral.descriptionLabel")}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {t("settings:projectGeneral.descriptionHint")}
                           </p>
                         </div>
-                        <FormControl>
-                          <Input
-                            className="w-full sm:w-64"
-                            placeholder={t(
-                              "settings:projectGeneral.descriptionPlaceholder",
-                            )}
-                            disabled={!canEdit}
-                            {...field}
-                          />
-                        </FormControl>
+                        {canEdit ? (
+                          <FormControl>
+                            <Input
+                              className="w-full sm:w-64"
+                              placeholder={t(
+                                "settings:projectGeneral.descriptionPlaceholder",
+                              )}
+                              {...field}
+                            />
+                          </FormControl>
+                        ) : (
+                          <p>{field.value}</p>
+                        )}
                       </div>
                       <FormMessage />
                     </FormItem>

@@ -9,6 +9,7 @@ import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
+  createProjectLimitedWorkspaceMember,
   createWorkspaceMember,
   grantProjectRole,
 } from "./helpers/fixtures";
@@ -80,7 +81,9 @@ describe("the capability vocabulary matches the client helpers exactly (A1-P5)",
 
 describe("GET /api/capabilities", () => {
   it("reports public and internal comment choices from the caller's exact built-in role", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createWorkspaceMember({
+      role: "member",
+    });
     const admin = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -104,7 +107,9 @@ describe("GET /api/capabilities", () => {
   });
 
   it("returns false for malformed role membership and denies duplicate membership rows", async () => {
-    const malformed = await createWorkspaceMember({ role: "not-a-built-in" });
+    const malformed = await createWorkspaceMember({
+      role: "not-a-built-in",
+    });
     mockAuthenticatedSession(malformed.user);
     const { app } = createApp();
     const malformedResponse = await app.request(
@@ -248,7 +253,9 @@ describe("GET /api/capabilities", () => {
     // The built-in `customer` role holds `work_item:rank` and `comment:create`, but the agent
     // API answers customers 403 on item-scoped routes (permission matrix; rbac.md), so the
     // flags derive from the same predicate those routes use and the UI is not told it may.
-    const customer = await createWorkspaceMember({ role: "customer" });
+    const customer = await createWorkspaceMember({
+      role: "customer",
+    });
     const now = new Date();
     await db.insert(schema.workspaceRoleTable).values({
       workspaceId: customer.workspace.id,
@@ -281,7 +288,9 @@ describe("GET /api/capabilities", () => {
   it("never derives the strict flags from a legacy permission map that claims more (#708)", async () => {
     // A viewer whose stored legacy statements claim transition/rank/manage_settings.
     // The canonical built-in `viewer` role holds none of the three, so all stay false.
-    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const viewer = await createWorkspaceMember({
+      role: "viewer",
+    });
     await db
       .update(schema.workspaceRoleTable)
       .set({
@@ -306,7 +315,9 @@ describe("GET /api/capabilities", () => {
   });
 
   it("returns false for all three strict flags to a malformed (non built-in) role", async () => {
-    const custom = await createWorkspaceMember({ role: "not-a-built-in" });
+    const custom = await createWorkspaceMember({
+      role: "not-a-built-in",
+    });
     mockAuthenticatedSession(custom.user);
     const { app } = createApp();
 
@@ -356,7 +367,9 @@ describe("GET /api/capabilities", () => {
   });
 
   it("reports bindProjectOrganisation from the strict project:create capability, not the legacy createProjects", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
+    const member = await createWorkspaceMember({
+      role: "member",
+    });
     const admin = await createWorkspaceMember({ role: "admin" });
     const { app } = createApp();
 
@@ -484,7 +497,9 @@ describe("GET /api/capabilities", () => {
   });
 
   it("denies service-calendar management to a viewer", async () => {
-    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const viewer = await createWorkspaceMember({
+      role: "viewer",
+    });
     mockAuthenticatedSession(viewer.user);
     const { app } = createApp();
 
@@ -526,7 +541,9 @@ describe("GET /api/capabilities", () => {
     expect(ownerCapabilities.shareSavedViews).toBe(true);
     expect(ownerCapabilities.manageWorkspaceSettings).toBe(true);
 
-    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const viewer = await createWorkspaceMember({
+      role: "viewer",
+    });
     mockAuthenticatedSession(viewer.user);
     const viewerResponse = await app.request(
       `/api/capabilities?workspaceId=${viewer.workspace.id}`,
@@ -647,70 +664,81 @@ describe("GET /api/capabilities", () => {
 });
 
 describe("project-scoped work capability introspection", () => {
-  it("uses the project override and never reuses another project's flags", async () => {
-    const actor = await createWorkspaceMember({ role: "owner" });
-    const first = await createProjectFixture({
-      workspaceId: actor.workspace.id,
-    });
-    const second = await createProjectFixture({
-      workspaceId: actor.workspace.id,
-    });
-    const person = await db.query.personTable.findFirst({
-      where: eq(schema.personTable.userId, actor.user.id),
-    });
-    expect(person).toBeDefined();
-    for (const [project, caps] of [
-      [first.project, ["project:read", "work_item:read", "comment:create"]],
-      [second.project, ["project:read", "work_item:read", "work_item:update"]],
-    ] as const) {
-      const roleId = randomUUID();
-      await db.insert(schema.roleTable).values({
-        id: roleId,
-        key: roleId,
-        name: "Scoped test",
-        rank: 1,
-        scope: "project",
+  it.each(["owner", "admin", "manager", "custom"] as const)(
+    "project overrides preserve workspace rights for %s and limit custom roles",
+    async (role) => {
+      const actor =
+        role === "custom"
+          ? await createProjectLimitedWorkspaceMember({ role: "owner" })
+          : await createWorkspaceMember({ role });
+      const first = await createProjectFixture({
         workspaceId: actor.workspace.id,
-        capabilities: [...caps],
       });
-      await db.insert(schema.membershipTable).values({
-        id: randomUUID(),
-        personId: person?.id ?? "missing-person",
-        scope: "project",
-        scopeId: project.id,
-        roleId,
+      const second = await createProjectFixture({
+        workspaceId: actor.workspace.id,
       });
-    }
-    mockAuthenticatedSession(actor.user);
-    const { app } = createApp();
-    const workspace = await app.request(
-      `/api/capabilities?workspaceId=${actor.workspace.id}`,
-    );
-    expect(workspace.status).toBe(200);
-    expect((await workspace.json()).updateTasks).toBe(true);
-    const readOnly = await app.request(
-      `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${first.project.id}`,
-    );
-    expect(readOnly.status).toBe(200);
-    expect(await readOnly.json()).toMatchObject({
-      updateTasks: false,
-      assignTasks: false,
-      setPriorityTasks: false,
-      createPublicComments: true,
-    });
-    const editable = await app.request(
-      `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${second.project.id}`,
-    );
-    expect(editable.status).toBe(200);
-    expect(await editable.json()).toMatchObject({
-      updateTasks: true,
-      assignTasks: false,
-      setPriorityTasks: false,
-    });
-  });
+      const person = await db.query.personTable.findFirst({
+        where: eq(schema.personTable.userId, actor.user.id),
+      });
+      expect(person).toBeDefined();
+      for (const [project, caps] of [
+        [first.project, ["project:read", "work_item:read", "comment:create"]],
+        [
+          second.project,
+          ["project:read", "work_item:read", "work_item:update"],
+        ],
+      ] as const) {
+        const roleId = randomUUID();
+        await db.insert(schema.roleTable).values({
+          id: roleId,
+          key: roleId,
+          name: "Scoped test",
+          rank: 1,
+          scope: "project",
+          workspaceId: actor.workspace.id,
+          capabilities: [...caps],
+        });
+        await db.insert(schema.membershipTable).values({
+          id: randomUUID(),
+          personId: person?.id ?? "missing-person",
+          scope: "project",
+          scopeId: project.id,
+          roleId,
+        });
+      }
+      mockAuthenticatedSession(actor.user);
+      const { app } = createApp();
+      const workspace = await app.request(
+        `/api/capabilities?workspaceId=${actor.workspace.id}`,
+      );
+      expect(workspace.status).toBe(200);
+      expect((await workspace.json()).updateTasks).toBe(true);
+      const readOnly = await app.request(
+        `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${first.project.id}`,
+      );
+      expect(readOnly.status).toBe(200);
+      expect(await readOnly.json()).toMatchObject({
+        updateTasks: role !== "custom",
+        assignTasks: role !== "custom",
+        setPriorityTasks: role !== "custom",
+        createPublicComments: true,
+      });
+      const editable = await app.request(
+        `/api/capabilities?workspaceId=${actor.workspace.id}&projectId=${second.project.id}`,
+      );
+      expect(editable.status).toBe(200);
+      expect(await editable.json()).toMatchObject({
+        updateTasks: true,
+        assignTasks: role !== "custom",
+        setPriorityTasks: role !== "custom",
+      });
+    },
+  );
 
   it("a custom workspace role's capabilities (the canonical role row) are the strict authority, and a project role still decides inside its project", async () => {
-    const actor = await createWorkspaceMember({ role: "custom-editor" });
+    const actor = await createWorkspaceMember({
+      role: "custom-editor",
+    });
     // Owner decision, 23 Oct: a custom role's capabilities live in the canonical `role` row.
     await upsertWorkspaceRoleRows(actor.workspace.id, "custom-editor", {
       work_item: ["read", "update"],
@@ -783,8 +811,12 @@ describe("project-scoped work capability introspection", () => {
 
 describe("time and budget capabilities (R6-02, R6-08)", () => {
   it("reports logTime from time_entry:create: the built-in viewer lacks it, a member holds it", async () => {
-    const viewer = await createWorkspaceMember({ role: "viewer" });
-    const member = await createWorkspaceMember({ role: "member" });
+    const viewer = await createWorkspaceMember({
+      role: "viewer",
+    });
+    const member = await createWorkspaceMember({
+      role: "member",
+    });
     const { app } = createApp();
     const read = async (user: typeof viewer.user, workspaceId: string) => {
       mockAuthenticatedSession(user);
@@ -799,8 +831,12 @@ describe("time and budget capabilities (R6-02, R6-08)", () => {
   });
 
   it("resolves readBudgets for the selected project when projectId is given", async () => {
-    const member = await createWorkspaceMember({ role: "member" });
-    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const member = await createWorkspaceMember({
+      role: "member",
+    });
+    const viewer = await createWorkspaceMember({
+      role: "viewer",
+    });
     const memberProject = await createProjectFixture({
       workspaceId: member.workspace.id,
     });

@@ -6,31 +6,32 @@ import {
   useLocation,
   useRouter,
 } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
-import PortalLayout from "@/components/portal/portal-layout";
+import { PageLoading } from "@/components/page-loading";
+import PortalLayout, {
+  preloadPortalChrome,
+} from "@/components/portal/portal-layout";
+import { portalLazyContent } from "@/components/portal/portal-lazy-content";
+import { PortalNotFoundPage as PortalNotFoundState } from "@/components/portal/portal-not-found";
+import { PortalError as PortalErrorState } from "@/components/portal/portal-root-states";
 import type { PortalShellUser } from "@/components/portal/portal-user-menu";
 import { HttpError } from "@/lib/http-error";
+import { importWithRetry } from "@/lib/lazy-retry";
 import { portalAuthClient } from "@/lib/portal-auth-client";
-import { safePortalRedirect } from "@/lib/routes";
+import { safePortalRedirect } from "@/lib/portal-route-search";
+import {
+  organisationPortalState,
+  type PortalStateMarker,
+  readPortalStateMarker,
+} from "@/lib/portal-state";
+
 import queryClient, { portalSessionQueryKey } from "@/query-client";
 
-// Rarely shown, so kept out of the portal's initial bundle (G11 budget).
-const PortalFeatureOff = lazy(() =>
-  import("@/components/portal/portal-feature-off").then((module) => ({
-    default: module.PortalFeatureOff,
-  })),
-);
-
-// The not-found and error frames are rare too; both load on demand.
-const PortalNotFoundState = lazy(() =>
-  import("@/components/portal/portal-not-found").then((module) => ({
-    default: module.PortalNotFoundPage,
-  })),
-);
-const PortalErrorState = lazy(() =>
-  import("@/components/portal/portal-root-states").then((module) => ({
-    default: module.PortalError,
-  })),
+const PortalFeatureOff = portalLazyContent<{ state: PortalStateMarker }>(
+  () =>
+    import("@/components/portal/portal-feature-off").then((module) => ({
+      default: module.PortalFeatureOff,
+    })),
+  <PageLoading portal />,
 );
 
 /**
@@ -40,31 +41,25 @@ const PortalErrorState = lazy(() =>
  */
 function PortalNotFound() {
   const { portalUserId } = Route.useRouteContext();
-  return (
-    <Suspense fallback={null}>
-      <PortalNotFoundState signedIn={Boolean(portalUserId)} />
-    </Suspense>
-  );
+  return <PortalNotFoundState signedIn={Boolean(portalUserId)} />;
 }
 
-function PortalError({ reset }: { reset: () => void }) {
+function PortalError({ reset, error }: { reset: () => void; error: unknown }) {
   const router = useRouter();
   // Clearing the boundary alone would show the same failed match again: run the root's
   // beforeLoad (the session read) once more, then clear it.
   const tryAgain = () => {
     void router.invalidate().finally(reset);
   };
-  return (
-    <Suspense fallback={null}>
-      <PortalErrorState reset={tryAgain} />
-    </Suspense>
-  );
+  return <PortalErrorState reset={tryAgain} error={error} />;
 }
 
 // The sign-in and accept-invitation pages are their own frame and are reachable without a session
 // (the invitee signs in from the accept page).
 const isSignIn = (pathname: string) =>
   pathname === "/sign-in" ||
+  pathname === "/forgot-password" ||
+  pathname === "/reset-password" ||
   pathname === "/portal/sign-in" ||
   pathname.startsWith("/invite/");
 
@@ -86,7 +81,11 @@ async function readPortalSession() {
   const result = await portalAuthClient.getSession();
   if (result.error) {
     if (result.error.status >= 500)
-      throw new HttpError(result.error.status, "session_unavailable");
+      throw new HttpError(
+        result.error.status,
+        "session_unavailable",
+        result.error.requestId,
+      );
     return null;
   }
   return result.data?.session ? result.data : null;
@@ -133,15 +132,11 @@ function shellUser(user: Record<string, unknown>): PortalShellUser {
 }
 
 function PortalRoot() {
+  "use no memo";
   const location = useLocation();
   const { portalUserId, portalUser, portalState } = Route.useRouteContext();
   // P3-R2-03: the host marked the portal as switched off (or unreadable) for this visitor.
-  if (portalState)
-    return (
-      <Suspense fallback={null}>
-        <PortalFeatureOff state={portalState} />
-      </Suspense>
-    );
+  if (portalState) return <PortalFeatureOff state={portalState} />;
   return isSignIn(location.pathname) ? (
     <Outlet />
   ) : (
@@ -153,14 +148,15 @@ function PortalRoot() {
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
-    // Loaded on demand so the portal's initial bundle stays inside its G11 budget.
-    const { readPortalStateMarker, organisationPortalState } = await import(
-      "@/lib/portal-state"
-    );
     const portalState = readPortalStateMarker();
     if (portalState)
       return { portalState, portalUserId: undefined, portalUser: undefined };
     if (isSignIn(location.pathname)) return;
+    preloadPortalChrome();
+    if (location.pathname === "/")
+      void importWithRetry(
+        () => import("@/hooks/queries/portal/prefetch-portal-home"),
+      ).catch(() => undefined);
     const session = await readCachedPortalSession();
     if (!session) {
       // Never keep "signed out" cached: the next navigation after sign-in must read it again.

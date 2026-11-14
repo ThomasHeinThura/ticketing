@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OrganisationProfile } from "@/fetchers/god-mode/organisation-lifecycle";
 import { renderWithQuery } from "@/test/identity-test-harness";
@@ -6,6 +7,7 @@ import { OrganisationProfileEditor } from "./organisation-profile-editor";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
+  update: vi.fn(),
   delete: vi.fn(),
   openPendingAction: vi.fn(),
   toastSuccess: vi.fn(),
@@ -18,6 +20,7 @@ vi.mock(
       typeof import("@/fetchers/god-mode/organisation-lifecycle")
     >()),
     createOrganisation: (...args: unknown[]) => mocks.create(...args),
+    updateOrganisationProfile: (...args: unknown[]) => mocks.update(...args),
   }),
 );
 vi.mock("react-i18next", () => ({
@@ -168,6 +171,60 @@ describe("new organisation profile defaults", () => {
     fireEvent.click(screen.getByRole("button", { name: "createOrganisation" }));
     expect(await screen.findByText("quotaInvalid")).toBeInTheDocument();
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("announces an existing profile save once through the save button", async () => {
+    const organisation: OrganisationProfile = {
+      id: "organisation-1",
+      name: "Customer One",
+      key: "customer-one",
+      emailDomains: [],
+      portalAccess: true,
+      defaultCustomerVisibility: "organisation",
+      active: true,
+      profileEtag: '"profile-v1"',
+      quota: {
+        maxProjects: 20,
+        maxWorkItems: 200,
+        maxStorageBytes: 2048,
+        maxPortalUsers: 30,
+        maxApiRequestsPerMinute: 60,
+        maxWebhooks: 5,
+      },
+      projectDefaults: [],
+    };
+    mocks.update.mockResolvedValue({ ...organisation, name: "Customer Two" });
+    function Editor() {
+      const [completed, setCompleted] = useState(false);
+      return (
+        <OrganisationProfileEditor
+          organisation={organisation}
+          projectDefaultOptions={[]}
+          requestTypeOptions={[]}
+          onSaved={async () => {}}
+          onReload={vi.fn()}
+          completed={completed}
+          onSaveStart={() => setCompleted(false)}
+          onSaveComplete={() => setCompleted(true)}
+        />
+      );
+    }
+    renderWithQuery(<Editor />);
+    fireEvent.change(screen.getByLabelText("nameLabel"), {
+      target: { value: "Customer Two" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "profileSave" }));
+    await screen.findByRole("button", { name: "common:actions.saved" });
+    const announcements = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent?.trim());
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0]).toHaveTextContent("common:actions.saved");
+    expect(screen.getByText("profileSaved")).toHaveAttribute(
+      "aria-live",
+      "off",
+    );
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
   it("routes delete through the shared typed-name pending-action flow", async () => {

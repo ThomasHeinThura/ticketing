@@ -28,6 +28,13 @@ beforeEach(async () => {
 /** Backfills a `person` row (side: staff) for every `user` row that doesn't have one yet —
  * the same boot-time seed the real application runs. */
 async function backfillStaffPersons() {
+  await db
+    .insert(schema.instanceSettingTable)
+    .values({ id: "singleton", staffSelfRegistrationEnabled: true })
+    .onConflictDoUpdate({
+      target: schema.instanceSettingTable.id,
+      set: { staffSelfRegistrationEnabled: true },
+    });
   await seedInternalOrganisationAndStaffPersons();
 }
 
@@ -108,7 +115,7 @@ describe("resolveIdentity (loader) — a real member", () => {
     expect(identity).not.toBeNull();
     expect(identity?.side).toBe("staff");
     expect(identity?.memberships).toEqual([
-      { scope: "workspace", scopeId: workspace.id, seesAll: false },
+      { scope: "workspace", scopeId: workspace.id, seesAll: true },
     ]);
     expect(identity?.authority[0]?.roleKey).toBe("admin");
   });
@@ -229,8 +236,10 @@ describe("resolveIdentity (loader) — a multi-workspace user, and bounded query
 });
 
 describe("resolveIdentity (loader) — sees_all", () => {
-  it("today always resolves seesAll: false (no populated source yet -- see KNOWN GAP 3)", async () => {
-    const { user } = await createWorkspaceMember({ role: "manager" });
+  it("D-E derives manager see-all from the validated system workspace role", async () => {
+    const { user, workspace } = await createWorkspaceMember({
+      role: "manager",
+    });
     await backfillStaffPersons();
 
     const identity = await resolveIdentity({
@@ -238,8 +247,11 @@ describe("resolveIdentity (loader) — sees_all", () => {
       credential: "session",
     });
 
-    expect(identity?.memberships.every((m) => m.seesAll === false)).toBe(true);
-    expect(identity?.reach).toEqual({ kind: "membership" });
+    expect(identity?.memberships.every((m) => m.seesAll === true)).toBe(true);
+    expect(identity?.reach).toEqual({
+      kind: "membership_with_workspaces",
+      workspaceIds: [workspace.id],
+    });
   });
 });
 
@@ -336,6 +348,7 @@ describe("resolveIdentity (loader) — a portal (customer) session", () => {
     expect(identity?.portal).toBe("customer");
     expect(identity?.reach).toEqual({
       kind: "organisation",
+      projectIds: [],
       ids: [organisationId],
     });
     expect(identity?.authority).toEqual([
@@ -371,7 +384,9 @@ describe("resolveIdentity (loader) — anonymous", () => {
 
 describe("resolveIdentity (loader) — a deactivated member", () => {
   it("resolves to null even though real membership and role rows exist", async () => {
-    const { user } = await createWorkspaceMember({ role: "manager" });
+    const { user, workspace } = await createWorkspaceMember({
+      role: "manager",
+    });
     await backfillStaffPersons();
     await db
       .update(schema.personTable)

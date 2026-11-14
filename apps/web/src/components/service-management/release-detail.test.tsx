@@ -120,10 +120,10 @@ describe("release detail calendar", () => {
     );
   });
 
-  it("keeps the planned-date picker disabled without release-management permission", () => {
+  it("shows release values without editing controls when management is denied", () => {
     mocks.canManage = false;
     setup();
-    expect(screen.getByRole("button", { name: "Planned date" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Planned date" })).toBeNull();
     expect(mocks.update).not.toHaveBeenCalled();
   });
 });

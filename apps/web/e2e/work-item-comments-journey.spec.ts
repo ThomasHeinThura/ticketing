@@ -10,11 +10,15 @@ import {
   test,
 } from "@playwright/test";
 import {
+  navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -49,10 +53,11 @@ async function createAdminWorkspace(
   origin: string,
   email: string,
   password: string,
+  setupUrl: string,
 ) {
   await test.step("Setup diagnostic: sign-up page navigation", async () => {
     console.info("Setup diagnostic begin: sign-up page navigation");
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+    await navigateToSetup(page, setupUrl);
     console.info("Setup diagnostic completed: sign-up page navigation");
   });
   await test.step("Setup diagnostic: full-name field entry", async () => {
@@ -113,27 +118,8 @@ async function createAdminWorkspace(
       );
       return factor;
     });
-  await test.step("Setup diagnostic: workspace-name field entry", async () => {
-    console.info("Setup diagnostic begin: workspace-name field entry");
-    await page
-      .getByLabel("Workspace name")
-      .fill("Disposable Comments Workspace");
-    console.info("Setup diagnostic completed: workspace-name field entry");
-  });
-  await test.step("Setup diagnostic: create-workspace button click", async () => {
-    console.info("Setup diagnostic begin: create-workspace button click");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    console.info("Setup diagnostic completed: create-workspace button click");
-  });
-  await test.step("Setup diagnostic: workspace-dashboard navigation assertion", async () => {
-    console.info(
-      "Setup diagnostic begin: workspace-dashboard navigation assertion",
-    );
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
-    console.info(
-      "Setup diagnostic completed: workspace-dashboard navigation assertion",
-    );
-  });
+  await test.step("create and activate the first workspace", () =>
+    createFirstWorkspace(page, "Disposable Comments Workspace"));
   return provisioningUri;
 }
 
@@ -142,7 +128,7 @@ async function signInThroughUi(
   origin: string,
   email: string,
   password: string,
-  provisioningUri: string,
+  provisioningUri?: string,
 ) {
   await test.step("Setup diagnostic: blank-page navigation", async () => {
     console.info("Setup diagnostic begin: blank-page navigation");
@@ -186,11 +172,13 @@ async function signInThroughUi(
     await page.getByRole("button", { name: "Sign in" }).click();
     console.info("Setup diagnostic completed: sign-in button click");
   });
-  await test.step("Setup diagnostic: complete authenticator challenge", async () => {
-    await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
-    await page.locator("#factor-code").fill(totpForUri(provisioningUri));
-    await page.getByRole("button", { name: "Verify and sign in" }).click();
-  });
+  if (provisioningUri) {
+    await test.step("Setup diagnostic: complete authenticator challenge", async () => {
+      await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
+      await page.locator("#factor-code").fill(totpForUri(provisioningUri));
+      await page.getByRole("button", { name: "Verify and sign in" }).click();
+    });
+  }
   await test.step("Setup diagnostic: dashboard navigation assertion", async () => {
     console.info("Setup diagnostic begin: dashboard navigation assertion");
     await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
@@ -289,7 +277,8 @@ async function seedReachableMentionRecipient(
   databaseUrl: string,
   workspaceId: string,
   projectId: string,
-  authorEmail: string,
+  workItemId: string,
+  administratorEmail: string,
 ) {
   // This raw SQL bypasses Drizzle's JavaScript-only `$defaultFn` values. Supply
   // every inserted text primary key for user/person/workspace_member/role/membership;
@@ -302,6 +291,14 @@ async function seedReachableMentionRecipient(
   const recipientMembershipId = `comments-recipient-membership-${randomUUID()}`;
   const authorRoleId = `comments-author-role-${randomUUID()}`;
   const authorMembershipId = `comments-author-membership-${randomUUID()}`;
+  const authorUserId = `comments-author-${randomUUID()}`;
+  const authorPersonId = `comments-author-person-${randomUUID()}`;
+  const authorEmail = `${authorUserId}@example.test`;
+  const customerOrgId = `comments-cust-org-${randomUUID()}`;
+  const customerOrgKey = `cust-${randomUUID().slice(0, 8)}`;
+  const customerUserId = `cust-user-${randomUUID()}`;
+  const customerPersonId = `cust-person-${randomUUID()}`;
+  const customerRequesterName = "Portal Customer Requester";
   const recipientName = "Comments Mention Recipient";
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
@@ -316,14 +313,64 @@ async function seedReachableMentionRecipient(
     expect(organisation.rowCount).toBe(1);
     const organisationId = organisation.rows[0]?.organisation_id;
     expect(organisationId).toBeTruthy();
-    const author = await client.query<{ user_id: string; person_id: string }>(
+    // F-11: public customer replies require actual portal reach (customer org project + customer requester).
+    await client.query(
+      "INSERT INTO organisation (id, key, name, is_internal) VALUES ($1, $2, $3, false)",
+      [customerOrgId, customerOrgKey, "Comments Customer Org"],
+    );
+    await client.query(
+      'INSERT INTO "user" (id, name, email, email_verified) VALUES ($1, $2, $3, true)',
+      [customerUserId, customerRequesterName, `${customerUserId}@example.test`],
+    );
+    await client.query(
+      "INSERT INTO person (id, user_id, organisation_id, side, display_name) VALUES ($1, $2, $3, 'customer', $4)",
+      [customerPersonId, customerUserId, customerOrgId, customerRequesterName],
+    );
+    await client.query(
+      "UPDATE project SET organisation_id = $1 WHERE id = $2",
+      [customerOrgId, projectId],
+    );
+    await client.query(
+      "UPDATE work_item SET requester_id = $1, customer_visibility = 'organisation' WHERE id = $2",
+      [customerPersonId, workItemId],
+    );
+    const administrator = await client.query<{ user_id: string }>(
       `SELECT u.id AS user_id, p.id AS person_id
          FROM "user" AS u
          JOIN person AS p ON p.user_id = u.id
         WHERE u.email = $1 AND p.side = 'staff' AND p.active = true`,
-      [authorEmail],
+      [administratorEmail],
     );
-    expect(author.rowCount).toBe(1);
+    expect(administrator.rowCount).toBe(1);
+    // Owner/admin/manager workspace authority is additive (Thomas, 12 Nov).
+    // A separate member exercises the comment-only project's real update denial.
+    await client.query(
+      'INSERT INTO "user" (id, name, email, email_verified) VALUES ($1, $2, $3, true)',
+      [authorUserId, "Comments E2E Author", authorEmail],
+    );
+    const credential = await client.query(
+      `INSERT INTO account (id, account_id, provider_id, user_id, password, updated_at)
+       SELECT $1, $2, 'credential', $2, password, now()
+         FROM account WHERE user_id = $3 AND provider_id = 'credential'`,
+      [
+        `comments-author-account-${randomUUID()}`,
+        authorUserId,
+        administrator.rows[0]?.user_id,
+      ],
+    );
+    expect(credential.rowCount).toBe(1);
+    await client.query(
+      "INSERT INTO person (id, user_id, organisation_id, side, display_name) VALUES ($1, $2, $3, 'staff', $4)",
+      [authorPersonId, authorUserId, organisationId, "Comments E2E Author"],
+    );
+    await client.query(
+      "INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at) VALUES ($1, $2, $3, 'member', now())",
+      [
+        `comments-author-workspace-member-${randomUUID()}`,
+        workspaceId,
+        authorUserId,
+      ],
+    );
     await client.query(
       'INSERT INTO "user" (id, name, email, email_verified) VALUES ($1, $2, $3, true)',
       [userId, recipientName, `${userId}@example.test`],
@@ -368,7 +415,7 @@ async function seedReachableMentionRecipient(
     );
     await client.query(
       "INSERT INTO membership (id, person_id, scope, scope_id, role_id) VALUES ($1, $2, 'project', $3, $4)",
-      [authorMembershipId, author.rows[0]?.person_id, projectId, authorRoleId],
+      [authorMembershipId, authorPersonId, projectId, authorRoleId],
     );
     await client.query("COMMIT");
     transactionOpen = false;
@@ -378,7 +425,7 @@ async function seedReachableMentionRecipient(
   } finally {
     await client.end();
   }
-  return { personId, recipientName };
+  return { personId, recipientName, authorEmail };
 }
 
 function commentEditor(activity: Locator) {
@@ -392,13 +439,15 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
 }, testInfo) => {
   test.setTimeout(240_000);
 
-  await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, databaseUrl, setupUrl } = fixture;
     await test.step("register and sign in through the actual UI", async () => {
       const provisioningUri = await createAdminWorkspace(
         page,
         origin,
         email,
         password,
+        setupUrl,
       );
       await signInThroughUi(page, origin, email, password, provisioningUri);
     });
@@ -684,9 +733,23 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       databaseUrl,
       item.workspaceId,
       item.projectId,
+      item.id,
       email,
     );
-    await page.reload();
+    await signInThroughUi(page, origin, mentionRecipient.authorEmail, password);
+    const capabilities = await page.request.get(
+      new URL(
+        `/api/capabilities?workspaceId=${item.workspaceId}&projectId=${item.projectId}`,
+        origin,
+      ).toString(),
+    );
+    expect(capabilities.status()).toBe(200);
+    expect(await capabilities.json()).toMatchObject({
+      updateTasks: false,
+      createPublicComments: true,
+      createInternalComments: true,
+    });
+    await page.goto(itemUrl);
     await expect(
       page.getByRole("textbox", { name: "Title", exact: true }),
     ).toHaveAttribute("readonly", "");
@@ -705,13 +768,37 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
 
     const activity = page.getByTestId("work-item-activity");
     await expect(activity).toBeVisible();
-    // Comment visibility is a Kaneo toggle group; the pressed button is the current choice.
-    const visibility = page.getByRole("group", {
+    // F-11: comment visibility is a segmented Tabs control on customer-visible items.
+    const visibility = page.getByRole("tablist", {
       name: "Who can see this comment?",
     });
+    const publicTab = visibility.getByRole("tab", {
+      name: "Reply to customer",
+      exact: true,
+    });
+    const internalTab = visibility.getByRole("tab", {
+      name: "Internal note",
+      exact: true,
+    });
+    await expect(internalTab).toHaveAttribute("aria-selected", "true");
+    await internalTab.focus();
+    await expect(internalTab).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(publicTab).toBeFocused();
+    await expect(publicTab).toHaveAttribute("aria-selected", "false");
+    await page.keyboard.press("Space");
+    await expect(publicTab).toHaveAttribute("aria-selected", "true");
     await expect(
-      visibility.getByRole("button", { name: "Internal", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
+      activity.getByRole("button", { name: "Send to customer" }),
+    ).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(internalTab).toBeFocused();
+    await expect(internalTab).toHaveAttribute("aria-selected", "false");
+    await page.keyboard.press("Enter");
+    await expect(internalTab).toHaveAttribute("aria-selected", "true");
+    await expect(
+      activity.getByRole("button", { name: "Add internal note" }),
+    ).toBeVisible();
     const composer = commentEditor(activity);
     await expect(composer).toBeVisible();
 
@@ -726,9 +813,9 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         await expect(recoveredEditor).toHaveText("Recovered internal draft");
         await expect(
           recoveryPage
-            .getByRole("group", { name: "Who can see this comment?" })
-            .getByRole("button", { name: "Internal", exact: true }),
-        ).toHaveAttribute("aria-pressed", "true");
+            .getByRole("tablist", { name: "Who can see this comment?" })
+            .getByRole("tab", { name: "Internal note", exact: true }),
+        ).toHaveAttribute("aria-selected", "true");
         await recoveryPage.screenshot({
           path: testInfo.outputPath("comments-draft-recovery.png"),
           fullPage: true,
@@ -744,7 +831,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
           `/api/work-items/${item.key}/comments` &&
         response.request().method() === "POST",
     );
-    await activity.getByRole("button", { name: "Send comment" }).click();
+    await activity.getByRole("button", { name: "Add internal note" }).click();
     const internalResponse = await internalSubmit;
     expect(internalResponse.status()).toBe(200);
     expect(internalResponse.request().headers()["content-type"]).toMatch(
@@ -793,11 +880,11 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     });
 
     await visibility
-      .getByRole("button", { name: "Public", exact: true })
+      .getByRole("tab", { name: "Reply to customer", exact: true })
       .click();
     await expect(
-      visibility.getByRole("button", { name: "Public", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
+      visibility.getByRole("tab", { name: "Reply to customer", exact: true }),
+    ).toHaveAttribute("aria-selected", "true");
     const mentionCandidatesResponse = await page.request.get(
       new URL(
         `/api/work-items/${encodeURIComponent(item.key)}/comments/mention-candidates?visibility=public`,
@@ -842,7 +929,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
           `/api/work-items/${item.key}/comments` &&
         response.request().method() === "POST",
     );
-    await activity.getByRole("button", { name: "Send comment" }).click();
+    await activity.getByRole("button", { name: "Send to customer" }).click();
     const publicResponse = await publicSubmit;
     expect(publicResponse.status()).toBe(200);
     expect(publicResponse.request().headers()["content-type"]).toMatch(
@@ -1049,7 +1136,8 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 1280, height: 800 });
 
-  await withMfaCsrfApp(async ({ origin, email, password, fixtureDir }) => {
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, fixtureDir, setupUrl } = fixture;
     await test.step("CA19 phase: workspace setup and sign-in", async () => {
       console.info("CA19 phase begin: workspace setup and sign-in");
       const provisioningUri = await createAdminWorkspace(
@@ -1057,6 +1145,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         origin,
         email,
         password,
+        setupUrl,
       );
       await signInThroughUi(page, origin, email, password, provisioningUri);
       console.info("CA19 phase completed: workspace setup and sign-in");
@@ -1220,10 +1309,10 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
           .click();
         await expect(composer).toContainText(originalText);
         await expect(
-          page
-            .getByRole("group", { name: "Who can see this comment?" })
-            .getByRole("button", { name: "Internal", exact: true }),
-        ).toHaveAttribute("aria-pressed", "true");
+          activity
+            .getByTestId("work-item-comment-composer")
+            .locator('[data-visibility="internal"]'),
+        ).toContainText("Internal note");
 
         await composer.fill(editedText);
         await expect(composer).toContainText(editedText);
@@ -1265,7 +1354,9 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
             new URL(response.url()).pathname === commentPath &&
             response.request().method() === "POST",
         );
-        await activity.getByRole("button", { name: "Send comment" }).click();
+        await activity
+          .getByRole("button", { name: "Add internal note" })
+          .click();
         const commentResponse = await postedResponse;
         expect(commentResponse.status()).toBe(200);
         const postedComment = (await commentResponse.json()) as {

@@ -447,7 +447,7 @@ export default function SubmissionDetailSheetBody({
                             variant="outline"
                             size="sm"
                             aria-label={t(
-                              "workItems:detail.attachments.pdfPreviewOpen",
+                              "workItemExtras:detail.attachments.pdfPreviewOpen",
                               { name: file.filename },
                             )}
                             onClick={() =>
@@ -467,9 +467,12 @@ export default function SubmissionDetailSheetBody({
                               })
                             }
                           >
-                            {t("workItems:detail.attachments.pdfPreviewOpen", {
-                              name: file.filename,
-                            })}
+                            {t(
+                              "workItemExtras:detail.attachments.pdfPreviewOpen",
+                              {
+                                name: file.filename,
+                              },
+                            )}
                           </Button>
                         ) : null}
                         <Button

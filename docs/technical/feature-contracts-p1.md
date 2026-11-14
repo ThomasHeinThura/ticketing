@@ -373,6 +373,7 @@ Backlog is a separate destination rather than a layout, because it has different
 **Shared across layouts**
 
 - `VW-1` Filter, sort, grouping and search live in the URL and survive a layout switch. The board and timeline grouping is `group` (`assignee` or `priority`; `state` is the default and never written), the calendar range is `calendarView` (`week` or `day`) anchored on `date` (`YYYY-MM-DD`), and `month` still names the month view.
+- Clearing the project search returns focus to its input, including when the input is in a popover. The calendar toolbar wraps on phones so its range, navigation, view and permitted selection controls remain usable without horizontal overflow.
 - `VW-2` Layout choice is remembered per project per user, and the URL always wins. See
   [Per-user preferences](feature-contracts-p1.md#views-per-user-preferences).
 - `VW-3` Every layout supports multi-select and the same bulk action bar.
@@ -781,8 +782,7 @@ rebound, and existing projects are not backfilled. `GET /api/project/organisatio
 `project:create`) lists the organisations the create-project selector offers, each with
 `inheritedServiceCalendarId`: the calendar a new project for it inherits in the queried
 workspace (null when none resolves, so a managed service must name one; decision log
-4 November 2026). The list is
-instance-wide (customer organisations are not tied to a workspace), and both it and a create
+4 November 2026). Current instance admins using a non-impersonated browser session see all active customer organisations; other callers see only organisations served by a live project or a soft-deleted project still within its recovery window in that workspace. After permanent deletion or recovery-window expiry the link ends unless another qualifying project exists. A first link requires a current instance admin with a non-impersonated browser session and is audited; other attempts receive 403 `instance_admin_required_for_new_customer_organisation`, whether the unserved ID exists or not. Both the list and a create
 that carries an `organisationId` require the strict `project:create` capability, held by
 owner, admin and manager only; the legacy member permission does not suffice. Creating an
 internal project (no `organisationId`) keeps its existing check. Custom roles cannot bind until the capability migration (#7); the create-project
@@ -1225,10 +1225,14 @@ security-sensitive field in the product.
   client, never by a CSS class, never by a conditional render.
 - `CA-4` Visibility cannot be changed after posting. A comment sent to a customer has been
   sent. Delete and repost, which leaves a visible tombstone.
-- `CA-5` The composer is neutral in both modes: it keeps Kaneo's original composer look
-  with no distinct background. Internal mode is shown by the Internal/Public toggle and the
-  explanatory sentence beside it. Owner decision, 22 Oct 2026 (warning-tinted composer
-  rejected; see `audit.md`, "neutral composer", and roadmap UI-04).
+- `CA-5` On customer-visible work items, the composer presents a two-option control
+  ("Reply to customer" and "Internal note"), mode-specific submit text ("Send to customer" /
+  "Add internal note"), and an audience line ("Visible to the customer" / "Only your team sees
+  this"); when only one mode is allowed or the item is not customer-visible, only that allowed
+  mode is shown (no public mode on non-customer-visible items). Internal mode tints both the
+  composer surface and posted internal comment cards with the shared warning token surface,
+  while posted comments carry "Internal note" / "Reply to customer" badges. Owner decision,
+  12 Nov 2026 (`F-11`, reversing the 22 Oct 2026 neutral-composer decision).
 
 <a id="comments-and-activity-activity"></a>
 ### Activity

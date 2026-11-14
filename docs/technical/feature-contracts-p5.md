@@ -195,7 +195,9 @@ system that models time as money cannot express unbilled effort.
   **minutes**. Never a float — floating-point hours accumulate rounding errors that
   eventually appear on an invoice.
 - `TC-2` An activity type — Development, Support, Meeting, Travel — is required, so time
-  can be analysed by kind.
+  can be analysed by kind. Referenced activities cannot be deleted independently. Workspace
+  erasure removes the referencing entries and timers atomically; foreign-key integrity is
+  checked at commit so cascade order cannot prevent that erasure.
 - `TC-3` A `billable` flag, defaulting from the project.
 - `TC-4` Entries may be logged for a past date, up to a configurable limit (default 30
   days). Beyond that requires `time_entry:log_backdated`.
@@ -532,16 +534,17 @@ Carried from v1's set, which was well chosen, grouped by the question being aske
 | Action | Capability |
 | --- | --- |
 | See reports for your reach | `report:read` |
-| See reports across all projects | `report:read_all` |
+| See reports across reachable projects | `report:read_all` |
 | Export | `report:export` |
 | Create workspace dashboards | `workspace:manage_settings` |
 | See cost and rate data | `time_entry:manage_rates` |
 
 - `RP-17` Every report is filtered to the viewer's reach. Two people running the same
   report legitimately see different numbers, and the scope line explains why. An explicit
-  missing or unreachable project or cycle filter returns 404. `report:read_all` retains its
-  workspace-wide report scope. Stored export metadata and downloads are hidden when the
-  requester no longer reaches a covered project; missing coverage fails closed.
+  missing or unreachable project, cycle or team filter returns 404. `report:read_all` does not widen project reach. Stored export metadata and downloads are hidden when the
+  requester no longer reaches a covered project; missing coverage fails closed. Callers with validated full-workspace reach retain R6-06 workspace team/capacity
+  rights (with `report:read_all`); read_all alone never widens reach. This never widens
+  the project-derived facts included in those reports.
 - `RP-18` **Customers see no reports.** *(v1's `/reports/*` had no access control at all,
   so customers could read the entire SLA portfolio across every customer. This is the
   single worst defect it found, and it is why report routes get their own explicit

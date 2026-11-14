@@ -28,7 +28,8 @@ import {
   getDefaultPortalTerm,
   usePortalTranslation,
 } from "@/lib/i18n/portal-translation";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+
 import {
   isPortalNavigationActive,
   type PortalNavigationMatch,

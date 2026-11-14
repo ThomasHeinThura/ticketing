@@ -1,3 +1,4 @@
+import { HttpError } from "@/lib/http-error";
 import { isChunkLoadError } from "@/lib/lazy-retry";
 
 export type ApiError = {
@@ -8,6 +9,14 @@ export type ApiError = {
 };
 
 export function parseApiError(error: unknown): ApiError {
+  if (error instanceof HttpError && error.status >= 500) {
+    return {
+      message: "common:error.messages.server",
+      type: "server",
+      status: error.status,
+      originalError: error,
+    };
+  }
   if (error instanceof Error) {
     // A failed lazy chunk ("Failed to fetch dynamically imported module") is not a CORS problem:
     // it usually means a new release renamed the chunk, and a reload fixes it.

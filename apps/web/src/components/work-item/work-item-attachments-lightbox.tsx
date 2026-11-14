@@ -61,7 +61,7 @@ export default function WorkItemAttachmentLightbox({
                   variant="ghost"
                   size="icon-sm"
                   disabled={!previous}
-                  aria-label={t("workItems:detail.attachments.previous")}
+                  aria-label={t("workItemExtras:detail.attachments.previous")}
                   onClick={() => previous && onNavigate(previous.id)}
                 >
                   <ChevronLeft className="size-4" />
@@ -73,7 +73,7 @@ export default function WorkItemAttachmentLightbox({
                   variant="ghost"
                   size="icon-sm"
                   disabled={!next}
-                  aria-label={t("workItems:detail.attachments.next")}
+                  aria-label={t("workItemExtras:detail.attachments.next")}
                   onClick={() => next && onNavigate(next.id)}
                 >
                   <ChevronRight className="size-4" />
@@ -82,7 +82,7 @@ export default function WorkItemAttachmentLightbox({
                   variant="ghost"
                   size="icon-sm"
                   render={<a href={attachmentUrl(current.id)} />}
-                  aria-label={t("workItems:detail.attachments.download", {
+                  aria-label={t("workItemExtras:detail.attachments.download", {
                     name: current.filename,
                   })}
                 >
@@ -91,7 +91,9 @@ export default function WorkItemAttachmentLightbox({
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={t("workItems:detail.attachments.closePreview")}
+                  aria-label={t(
+                    "workItemExtras:detail.attachments.closePreview",
+                  )}
                   onClick={() => onOpenChange(false)}
                 >
                   <X className="size-4" />

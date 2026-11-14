@@ -81,7 +81,7 @@ describe("getWorkItem", () => {
   });
 
   it("throws an HttpError carrying the real status for a non-ok response (the screen needs the 404)", async () => {
-    mocks.get.mockResolvedValue({ ok: false, status: 404 });
+    mocks.get.mockResolvedValue(new Response(null, { status: 404 }));
 
     await expect(getWorkItem("PROJ-404")).rejects.toMatchObject({
       name: "HttpError",

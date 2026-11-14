@@ -87,6 +87,15 @@ function listLocales(i18nDir: string) {
     .sort();
 }
 
+function buildGroupLoaderModule(groupName: string, i18nDir: string): string {
+  const safeGroup: I18nNamespaceGroup = groupName === "slim" ? "slim" : "rest";
+  const entries = listLocales(i18nDir).map((locale) => {
+    const safeLocale = locale.replace(/[^A-Za-z-]/gu, "");
+    return `  "${safeLocale}": () => import("${PREFIX}${safeGroup}-${safeLocale}"),`;
+  });
+  return `export default {\n${entries.join("\n")}\n};\n`;
+}
+
 /**
  * Serves each locale catalog as two virtual modules, `slim-<locale>` and `rest-<locale>`, plus
  * a loader table per group. The catalog files stay the single source of truth, so
@@ -117,24 +126,14 @@ export function i18nNamespaceGroups({
       );
       if (tableFile) {
         if (!groupedEntry) return "export default {};\n";
-        const group = tableFile[1];
-        const entries = listLocales(i18nDir).map(
-          (locale) =>
-            `  ${JSON.stringify(locale)}: () => import(${JSON.stringify(`${PREFIX}${group}-${locale}`)}),`,
-        );
-        return `export default {\n${entries.join("\n")}\n};\n`;
+        return buildGroupLoaderModule(tableFile[1], i18nDir);
       }
       if (!isGroupModule(id)) return undefined;
       const name = id.slice(RESOLVED_PREFIX.length);
       const loaders = /^loaders-(slim|rest)$/u.exec(name);
       if (loaders && !groupedEntry) return "export default {};\n";
       if (loaders) {
-        const group = loaders[1];
-        const entries = listLocales(i18nDir).map(
-          (locale) =>
-            `  ${JSON.stringify(locale)}: () => import(${JSON.stringify(`${PREFIX}${group}-${locale}`)}),`,
-        );
-        return `export default {\n${entries.join("\n")}\n};\n`;
+        return buildGroupLoaderModule(loaders[1], i18nDir);
       }
       const group = /^(slim|rest)-([A-Za-z]{2,3}-[A-Za-z]{2,4})$/u.exec(name);
       if (!group) return undefined;
@@ -157,4 +156,36 @@ export function i18nNamespaceGroups({
       });
     },
   };
+}
+
+/** Include the lazy row controls: rows wait for these before they can paint. */
+export function collectRowPaintAssets(
+  chunks: ReadonlyMap<
+    string,
+    {
+      modules: readonly string[];
+      imports: readonly string[];
+      dynamicImports: readonly string[];
+    }
+  >,
+) {
+  const assets = new Set<string>();
+  const visit = (file: string) => {
+    if (assets.has(file)) return;
+    assets.add(file);
+    for (const dependency of chunks.get(file)?.imports ?? []) visit(dependency);
+  };
+  for (const [file, chunk] of chunks) {
+    if (
+      !chunk.modules.some((id) =>
+        /\/components\/work-item\/work-item-(?:kaneo-list|list)\.tsx$/.test(
+          id.replaceAll("\\", "/"),
+        ),
+      )
+    )
+      continue;
+    visit(file);
+    for (const dependency of chunk.dynamicImports) visit(dependency);
+  }
+  return assets;
 }

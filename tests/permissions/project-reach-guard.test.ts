@@ -543,6 +543,8 @@ describe("project reach guard: the real router", () => {
         projectRouteKeys,
         new Set<string>([
           ...PROJECT_WRITE_ROUTE_KEYS,
+          // Session-only self-join has its own role/reach router matrix in b6-join-project.test.ts.
+          "POST /api/projects/{projectId}/join",
           ...PROJECT_READ_ROUTE_KEYS,
           ...PROJECT_RECOVERY_ROUTE_KEYS,
           ...PROJECT_LABEL_ROUTE_KEYS,

@@ -17,6 +17,7 @@ import {
   MenuItem,
   MenuPopup,
   MenuTrigger,
+  SaveButton,
   Skeleton,
 } from "@taskdesk/ui";
 import {
@@ -310,15 +311,20 @@ function MilestoneDialog({
           <Button variant="ghost" disabled={save.isPending} onClick={onClose}>
             {t("common.cancel")}
           </Button>
-          <Button
-            disabled={!name.trim() || !date || save.isPending}
+          <SaveButton
+            disabled={(!name.trim() || !date) && !save.isPending}
+            pending={save.isPending}
+            success={false}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             onClick={() => {
               setProblem(null);
               save.mutate();
             }}
           >
             {t("common.save")}
-          </Button>
+          </SaveButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

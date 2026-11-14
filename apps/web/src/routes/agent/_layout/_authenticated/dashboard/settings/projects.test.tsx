@@ -5,6 +5,7 @@ import { translate } from "@/test/en-translation";
 
 const state = vi.hoisted(() => ({
   pathname: "/dashboard/settings/projects/p1/general",
+  logTime: false,
   projects: [] as Array<{ id: string; name: string }> | undefined,
   archived: [] as Array<{ id: string; name: string }> | undefined,
   listCalls: [] as Array<{ includeArchived?: boolean; enabled: boolean }>,
@@ -43,6 +44,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
       role: "viewer",
       canManageProjectSettings: () => false,
       canReadBudgets: () => false,
+      canLogTime: () => !projectId && state.logTime,
     };
   },
 }));
@@ -69,6 +71,7 @@ const NOT_FOUND = "This Project does not exist or is out of reach.";
 
 beforeEach(() => {
   state.pathname = "/dashboard/settings/projects/p1/general";
+  state.logTime = false;
   state.projects = [{ id: "p1", name: "Help desk" }];
   state.archived = [
     { id: "p1", name: "Help desk" },
@@ -89,6 +92,16 @@ describe("project settings layout", () => {
       state.listCalls.some((call) => call.includeArchived && call.enabled),
     ).toBe(false);
     expect(state.permissionTargets).toContainEqual(["ws_1", "p1"]);
+  });
+
+  it("shows Budget when only the workspace time setting is readable", () => {
+    state.logTime = true;
+    renderLayout();
+    expect(
+      within(screen.getByTestId("settings-sidebar")).getByRole("link", {
+        name: translate("timeTracking:budget.navTitle"),
+      }),
+    ).toBeInTheDocument();
   });
 
   it("denies a project id that is neither listed nor archived, without the settings form or nav", () => {

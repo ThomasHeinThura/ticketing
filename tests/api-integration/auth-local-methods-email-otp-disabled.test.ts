@@ -187,11 +187,13 @@ describe("local sign-in methods with DISABLE_EMAIL_OTP_SIGN_IN (S6)", () => {
       {
         agent: { password: true, magicLink: true, emailOtp: false },
         customer: { password: true, magicLink: false, emailOtp: true },
+        staffSelfRegistrationEnabled: false,
         expectedRevision: current.revision,
       },
       {
         agent: { password: true, magicLink: true, emailOtp: true },
         customer: { password: true, magicLink: false, emailOtp: false },
+        staffSelfRegistrationEnabled: false,
         expectedRevision: current.revision,
       },
     ]) {
@@ -229,6 +231,7 @@ describe("local sign-in methods with DISABLE_EMAIL_OTP_SIGN_IN (S6)", () => {
     const accepted = await put({
       agent: { password: true, magicLink: true, emailOtp: false },
       customer: { password: true, magicLink: false, emailOtp: false },
+      staffSelfRegistrationEnabled: false,
       expectedRevision: current.revision,
     });
     expect(accepted.status, await accepted.clone().text()).toBe(200);

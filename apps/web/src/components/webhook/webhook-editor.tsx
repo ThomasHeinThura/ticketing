@@ -28,11 +28,14 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
+import { ErrorReference } from "@/components/errors/error-reference";
 import {
   FailureAlert,
   StepUpFields,
 } from "@/components/god-mode/step-up-fields";
 import PageTitle from "@/components/page-title";
+import { isForbiddenError } from "@/components/settings/settings-access";
 import {
   createWebhook,
   listWebhooks,
@@ -48,6 +51,7 @@ import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { formatDateTime } from "@/lib/format";
+import { localizedAdminErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { RotateSecretDialog } from "./rotate-secret-dialog";
@@ -58,10 +62,6 @@ import {
   validateWebhookForm,
   WEBHOOK_EVENT_GROUPS,
 } from "./webhook-model";
-
-function errorText(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
 
 type FormState = {
   name: string;
@@ -167,6 +167,9 @@ export function WebhookEditor({ id }: { id: string }) {
 
   const pageTitle = t(isNew ? "editor.newTitle" : "editor.pageTitle");
 
+  if (!isCheckingPermissions && isForbiddenError(webhooks.error))
+    return <NoAccessPage />;
+
   if (loading) {
     return (
       <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
@@ -199,6 +202,7 @@ export function WebhookEditor({ id }: { id: string }) {
             {webhooks.isError
               ? t("editor.loadErrorDescription")
               : t("editor.notFound")}
+            <ErrorReference error={webhooks.error} />
             <Button
               className="w-fit"
               variant="outline"
@@ -403,7 +407,8 @@ function DeleteCard({ webhook }: { webhook: Webhook }) {
         {request.error ? (
           <Alert variant="error">
             <AlertDescription>
-              {errorText(request.error, t("delete.failed"))}
+              {localizedAdminErrorMessage(request.error, t, t("delete.failed"))}
+              <ErrorReference error={request.error} />
             </AlertDescription>
           </Alert>
         ) : null}
@@ -423,7 +428,13 @@ function SendTest({
   const send = useMutation({
     mutationFn: () => sendWebhookTestEvent(webhook.id),
     onSuccess: onResult,
-    onError: (error) => toast.error(errorText(error, t("test.failedToSend"))),
+    onError: (error) =>
+      toast.error(
+        localizedAdminErrorMessage(error, t, t("test.failedToSend")),
+        {
+          error,
+        },
+      ),
   });
   return (
     <Button
@@ -479,7 +490,12 @@ function StatusCard({
     onError: (error) =>
       error.cause === "step_up"
         ? undefined
-        : toast.error(errorText(error, t("editor.saveFailed"))),
+        : toast.error(
+            localizedAdminErrorMessage(error, t, t("editor.saveFailed")),
+            {
+              error,
+            },
+          ),
   });
   const reown = needsReown(webhook);
   return (
@@ -782,7 +798,8 @@ function WebhookForm({
       {save.error && save.error.cause !== "step_up" ? (
         <Alert variant="error">
           <AlertDescription>
-            {errorText(save.error, t("editor.saveFailed"))}
+            {localizedAdminErrorMessage(save.error, t, t("editor.saveFailed"))}
+            <ErrorReference error={save.error} />
           </AlertDescription>
         </Alert>
       ) : null}

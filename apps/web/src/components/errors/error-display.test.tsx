@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import { ErrorDisplay } from "./error-display";
 
 vi.mock("react-i18next", () => ({
@@ -30,4 +31,17 @@ describe("ErrorDisplay", () => {
       "noopener,noreferrer",
     );
   });
+});
+
+it("shows a server reference but not a client error reference", () => {
+  const id = "a".repeat(32);
+  const { rerender } = render(
+    <ErrorDisplay error={new HttpError(500, "failed", id)} />,
+  );
+  expect(screen.getByText("common:error.reference")).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "common:error.copyReference" }),
+  ).toBeTruthy();
+  rerender(<ErrorDisplay error={new HttpError(403, "forbidden", id)} />);
+  expect(screen.queryByText("common:error.reference")).toBeNull();
 });

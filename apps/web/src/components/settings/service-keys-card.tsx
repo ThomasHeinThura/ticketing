@@ -52,7 +52,7 @@ import {
 } from "@/fetchers/service-keys";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
-import { HttpError } from "@/lib/http-error";
+import { HttpError, localizedAdminErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import type { ApiKey } from "@/types/api-key";
@@ -184,9 +184,12 @@ export function ServiceKeysCard() {
     },
     onError: (error) =>
       toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings:serviceKeys.toastRevokeError"),
+        localizedAdminErrorMessage(
+          error,
+          t,
+          t("settings:serviceKeys.toastRevokeError"),
+        ),
+        { error },
       ),
   });
 
@@ -198,9 +201,12 @@ export function ServiceKeysCard() {
     },
     onError: (error) =>
       toast.error(
-        error instanceof Error
-          ? error.message
-          : t("settings:serviceKeys.deleteFailed"),
+        localizedAdminErrorMessage(
+          error,
+          t,
+          t("settings:serviceKeys.deleteFailed"),
+        ),
+        { error },
       ),
   });
 

@@ -3,9 +3,15 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -144,24 +150,59 @@ test("Overview writes persist: milestone, prerequisite, stakeholder stand-down",
 }) => {
   test.setTimeout(180_000);
   page.setDefaultTimeout(10_000);
-  await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
-    await page.goto(new URL("/auth/sign-up", origin).toString());
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, databaseUrl, setupUrl } = fixture;
+    await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill(OWNER);
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
-    await page
-      .getByLabel("Workspace name")
-      .fill("Persisted Overview Workspace");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+    await createFirstWorkspace(page, "Persisted Overview Workspace");
     const project = await createProject(page, origin, databaseUrl);
 
     // Milestone, on the Overview.
+    // Hold the real overview read so the loading-to-content transition is observable.
+    let releaseOverview!: () => void;
+    const overviewGate = new Promise<void>((resolve) => {
+      releaseOverview = resolve;
+    });
+    const overviewUrl = `**/api/project/${project.id}/overview`;
+    await page.route(overviewUrl, async (route) => {
+      await overviewGate;
+      await route.continue();
+    });
+    const overviewStarted = page.waitForRequest((request) =>
+      request.url().endsWith(`/api/project/${project.id}/overview`),
+    );
     await page.goto(
       new URL(`/agent/projects/${project.slug}`, origin).toString(),
+      { waitUntil: "domcontentloaded" },
     );
+    await overviewStarted;
+    await expect(page.getByTestId("page-loading")).toBeVisible();
+    await page.evaluate(() => {
+      const state = window as typeof window & { overviewBlankFrames?: number };
+      state.overviewBlankFrames = 0;
+      const sample = () => {
+        if (document.querySelector('[data-testid="project-overview-page"]'))
+          return;
+        if (!document.querySelector('[data-testid="page-loading"]'))
+          state.overviewBlankFrames = (state.overviewBlankFrames ?? 0) + 1;
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+    releaseOverview();
+    await expect(page.getByTestId("project-overview-page")).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          (window as typeof window & { overviewBlankFrames?: number })
+            .overviewBlankFrames,
+      ),
+    ).toBe(0);
+    await page.unroute(overviewUrl);
     const milestones = page.getByTestId("project-milestones-panel");
     await milestones.getByRole("button", { name: "Add milestone" }).click();
     const milestoneDialog = page.getByRole("dialog", { name: "Add milestone" });

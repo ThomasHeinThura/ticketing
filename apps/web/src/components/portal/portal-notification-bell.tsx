@@ -12,7 +12,7 @@ import { getPortalNotifications } from "@/fetchers/portal-notifications";
 import { usePortalNotificationWebSocket } from "@/hooks/use-portal-notification-websocket";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalNotificationQueryKey } from "@/lib/portal-notification-query-keys";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 export default function PortalNotificationBell() {
   usePortalNotificationWebSocket();

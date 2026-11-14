@@ -17,12 +17,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getPortalAuthMethods } from "@/fetchers/customer-invitation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
+import { routes } from "@/lib/portal-route-builders";
 import {
   type PortalSignInStage,
   parsePortalSignInSearch,
-  routes,
   safePortalRedirect,
-} from "@/lib/routes";
+} from "@/lib/portal-route-search";
+
 import { signInRefusalKey } from "@/lib/sign-in-refusal";
 
 export const Route = createFileRoute("/sign-in")({
@@ -397,6 +398,13 @@ function PortalSignIn() {
               </AlertDescription>
             </Alert>
           ) : null}
+          <Button
+            variant="link"
+            render={<a href="/forgot-password" />}
+            className="w-full"
+          >
+            {t("auth:passwordRecovery.forgot")}
+          </Button>
           {stage === "email" ? (
             <form className="space-y-4" onSubmit={submitEmail}>
               <label

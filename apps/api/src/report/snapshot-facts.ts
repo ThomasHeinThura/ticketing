@@ -1,6 +1,7 @@
 import { type SQL, sql } from "drizzle-orm";
 import { itemFilterSql, num, selectRows, timeFilterSql } from "./context";
 import type { SnapshotMetric } from "./snapshot.logic";
+import { reachableTeam } from "./team-reach";
 import type { ReportContext } from "./types";
 
 /** UTC day of the last instant inside the exclusive end `to`: a window ending now includes today. */
@@ -155,7 +156,7 @@ export async function liveFactRows(
         FROM cost_entry ce JOIN project p ON p.id=ce.project_id LEFT JOIN work_item w ON w.id=ce.work_item_id
         LEFT JOIN person ce_creator ON ce_creator.user_id=ce.created_by
         WHERE ce.workspace_id=${workspaceId} AND p.deleted_at IS NULL
-          AND (${ctx ? sql`(${ctx.reach}) AND (${ctx.filters.projectId ? sql`p.id=${ctx.filters.projectId}` : sql`true`}) AND (${ctx.filters.organisationId ? sql`p.organisation_id=${ctx.filters.organisationId}` : sql`true`}) AND (${ctx.filters.typeId ? sql`w.type_id=${ctx.filters.typeId}` : sql`true`}) AND (${ctx.filters.priority ? sql`w.priority=${ctx.filters.priority}` : sql`true`}) AND (${ctx.filters.teamId ? sql`EXISTS (SELECT 1 FROM team_member tm JOIN person pe ON pe.user_id=tm.user_id JOIN team t ON t.id=tm.team_id AND t.workspace_id=${ctx.workspaceId} WHERE tm.team_id=${ctx.filters.teamId} AND pe.id=ce.person_id)` : sql`true`}) AND (${ctx.readAnyTime ? sql`true` : sql`ce.person_id=${ctx.identity.personId}`})` : sql`true`})
+          AND (${ctx ? sql`(${ctx.reach}) AND (${ctx.filters.projectId ? sql`p.id=${ctx.filters.projectId}` : sql`true`}) AND (${ctx.filters.organisationId ? sql`p.organisation_id=${ctx.filters.organisationId}` : sql`true`}) AND (${ctx.filters.typeId ? sql`w.type_id=${ctx.filters.typeId}` : sql`true`}) AND (${ctx.filters.priority ? sql`w.priority=${ctx.filters.priority}` : sql`true`}) AND (${ctx.filters.teamId ? sql`EXISTS (SELECT 1 FROM team_member tm JOIN person pe ON pe.user_id=tm.user_id JOIN team t ON t.id=tm.team_id AND t.workspace_id=${ctx.workspaceId} WHERE tm.team_id=${ctx.filters.teamId} AND pe.id=ce.person_id AND ${reachableTeam(ctx)})` : sql`true`}) AND (${ctx.readAnyTime ? sql`true` : sql`ce.person_id=${ctx.identity.personId}`})` : sql`true`})
           AND ce.date >= ${from.toISOString().slice(0, 10)}::date AND ce.date <= ${lastDay(to)}::date
         GROUP BY 1,2,3,4`);
       break;

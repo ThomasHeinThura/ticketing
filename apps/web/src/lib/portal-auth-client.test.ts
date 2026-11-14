@@ -26,3 +26,17 @@ it("preserves the server refusal code for translated wrong-portal guidance", asy
     "auth:wrongPortal.useAgentSignIn",
   );
 });
+
+it("never sends the reset capability in a referrer", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(new Response("{}", { status: 200 }));
+  vi.stubGlobal("fetch", fetcher);
+  await portalAuthClient.$fetch("/reset-password", {
+    method: "POST",
+    body: { token: "secret", newPassword: "new-password" },
+  });
+  expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+    referrerPolicy: "no-referrer",
+  });
+});

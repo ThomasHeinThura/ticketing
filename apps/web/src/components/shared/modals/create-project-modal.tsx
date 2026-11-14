@@ -33,6 +33,7 @@ import useCreateProject from "@/hooks/mutations/project/use-create-project";
 import useCustomerOrganisations from "@/hooks/queries/project/use-customer-organisations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import generateProjectSlug from "@/lib/generate-project-id";
 import { toast } from "@/lib/toast";
@@ -69,6 +70,7 @@ function CreateProjectModal({
   defaultKind = "project",
 }: CreateProjectModalProps) {
   const { t } = useTranslation();
+  const { data: session } = authClient.useSession();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("Layout");
@@ -376,7 +378,9 @@ function CreateProjectModal({
                     className="text-xs text-muted-foreground"
                     data-testid="project-organisation-empty"
                   >
-                    {t("common:modals.createProject.organisationEmpty")}
+                    {session?.user?.role === "admin"
+                      ? t("common:modals.createProject.organisationEmpty")
+                      : t("common:modals.createProject.organisationLinkHint")}
                   </p>
                 ) : (
                   <>

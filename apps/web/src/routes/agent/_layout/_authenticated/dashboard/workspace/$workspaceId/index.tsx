@@ -1,8 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Skeleton } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import { withLocationSuffix } from "@/lib/legacy-project-view";
+import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 
 const ProjectsPage = lazy(
   () => import("@/components/project-list/projects-page"),
@@ -11,7 +13,21 @@ const ProjectsPage = lazy(
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/",
 )({
+  // The projects list lives at `/agent`. This old address opens it when the workspace in the
+  // URL is the session's active one; a link to any other workspace still shows that
+  // workspace's list here, because `/agent` only ever shows the active workspace.
+  beforeLoad: ({ context, location, params }) => {
+    const activeWorkspaceId = getActiveOrganizationId(
+      context.session as Parameters<typeof getActiveOrganizationId>[0],
+    );
+    if (activeWorkspaceId && activeWorkspaceId === params.workspaceId)
+      throw redirect({
+        href: withLocationSuffix("/agent", location),
+        replace: true,
+      });
+  },
   component: RouteComponent,
+  // The workspace list deliberately shows its labelled project table shape immediately.
   pendingComponent: ProjectsRouteLoading,
   pendingMs: 0,
   pendingMinMs: 0,

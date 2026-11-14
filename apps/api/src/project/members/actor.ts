@@ -3,6 +3,7 @@ import {
   can,
   expandCapabilities,
   isKeyCredential,
+  selectedGrantsFor,
 } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -16,7 +17,6 @@ import {
   loadProjectAncestorIds,
   loadProjectOwnerTeamIdFor,
 } from "../hierarchy.repository";
-import { callerRankInProject } from "./roster";
 import type { RosterActor } from "./service";
 
 /** The acting person and their rank in the project, for the authority-minting roster writes. */
@@ -56,10 +56,12 @@ export async function resolveRosterActor(
   }
   return {
     personId: identity.personId,
-    rank: callerRankInProject(
-      identity.authority,
-      scope.projectId,
-      scope.workspaceId,
+    rank: Math.max(
+      0,
+      ...selectedGrantsFor(identity, "project", {
+        workspaceId: scope.workspaceId,
+        projectId: scope.projectId,
+      }).map((grant) => grant.rank),
     ),
     actorId: userId,
     actorType: c.get("apiKey") ? "api_key" : "person",

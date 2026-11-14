@@ -1,10 +1,14 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
+  navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -65,7 +69,7 @@ test("native work-item events invalidate a second authenticated browser session"
   browser,
 }) => {
   test.setTimeout(240_000);
-  await withMfaCsrfApp(async ({ origin, email, password }) => {
+  await withMfaCsrfApp(async ({ origin, email, password, setupUrl }) => {
     const firstContext = await browser.newContext({
       locale: "en-GB",
       timezoneId: "UTC",
@@ -86,7 +90,7 @@ test("native work-item events invalidate a second authenticated browser session"
       second.on("crash", () => {
         secondPageCrashed = true;
       });
-      await first.goto(new URL("/auth/sign-up", origin).toString());
+      await navigateToSetup(first, setupUrl);
       await first.getByLabel("Full name").fill("Realtime Journey Admin");
       await first.getByLabel("Email").fill(email);
       await first.locator('input[autocomplete="new-password"]').fill(password);
@@ -96,16 +100,10 @@ test("native work-item events invalidate a second authenticated browser session"
         origin,
         password,
       );
-      await first
-        .getByLabel("Workspace name")
-        .fill("Realtime Journey Workspace");
-      await first.getByRole("button", { name: "Create workspace" }).click();
-      await expect(first).toHaveURL(/\/dashboard\/workspace\//);
-
-      const workspaceId = new URL(first.url()).pathname.match(
-        /\/dashboard\/workspace\/([^/]+)/,
-      )?.[1];
-      expect(workspaceId).toBeTruthy();
+      const workspaceId = await createFirstWorkspace(
+        first,
+        "Realtime Journey Workspace",
+      );
       const projectSlug = uniqueProjectKey();
       const projectResult = await csrfMutation(first, "/api/project", "POST", {
         name: "Native realtime project",

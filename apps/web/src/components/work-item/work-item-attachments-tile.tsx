@@ -73,12 +73,14 @@ export default function WorkItemAttachmentTile({
   const meta = [
     formatAttachmentSize(attachment.size),
     uploaderName
-      ? t("workItems:detail.attachments.uploadedBy", { name: uploaderName })
+      ? t("workItemExtras:detail.attachments.uploadedBy", {
+          name: uploaderName,
+        })
       : null,
     formatDateMedium(attachment.createdAt),
     // AT-3 / A-07: staff see which files the customer can download.
     attachment.customerVisible
-      ? t("workItems:detail.attachments.sharedWithCustomer")
+      ? t("workItemExtras:detail.attachments.sharedWithCustomer")
       : null,
   ]
     .filter(Boolean)
@@ -88,7 +90,7 @@ export default function WorkItemAttachmentTile({
       <Button
         variant="ghost"
         size="icon-sm"
-        aria-label={t("workItems:detail.attachments.delete", {
+        aria-label={t("workItemExtras:detail.attachments.delete", {
           name: attachment.filename,
         })}
         disabled={deleteDisabled}
@@ -102,7 +104,7 @@ export default function WorkItemAttachmentTile({
       <Button
         variant="ghost"
         size="icon-sm"
-        aria-label={t("workItems:detail.attachments.restore", {
+        aria-label={t("workItemExtras:detail.attachments.restore", {
           name: attachment.filename,
         })}
         disabled={restoreDisabled}
@@ -123,10 +125,10 @@ export default function WorkItemAttachmentTile({
     const recoveryMeta = [
       meta,
       attachment.commentId
-        ? t("workItems:detail.attachments.commentParent")
+        ? t("workItemExtras:detail.attachments.commentParent")
         : null,
       recoveryUntil
-        ? t("workItems:detail.attachments.recoverableUntil", {
+        ? t("workItemExtras:detail.attachments.recoverableUntil", {
             date: recoveryUntil,
           })
         : null,
@@ -167,7 +169,7 @@ export default function WorkItemAttachmentTile({
         <Button
           variant="ghost"
           className="h-28 w-full overflow-hidden rounded-lg border border-border p-0"
-          aria-label={t("workItems:detail.attachments.preview", {
+          aria-label={t("workItemExtras:detail.attachments.preview", {
             name: attachment.filename,
           })}
           onClick={() => onPreview(attachment)}
@@ -218,7 +220,7 @@ export default function WorkItemAttachmentTile({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={t("workItems:detail.attachments.pdfPreviewOpen", {
+          aria-label={t("workItemExtras:detail.attachments.pdfPreviewOpen", {
             name: attachment.filename,
           })}
           onClick={() => onPreview(attachment)}

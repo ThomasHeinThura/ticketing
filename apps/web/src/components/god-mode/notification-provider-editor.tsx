@@ -14,6 +14,8 @@ import {
   Label,
   RadioGroup,
   RadioGroupItem,
+  SAVE_FEEDBACK_HOLD_MS,
+  SaveButton,
   Select,
   SelectContent,
   SelectItem,
@@ -21,7 +23,7 @@ import {
   SelectValue,
   Skeleton,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
@@ -88,6 +90,12 @@ function isEmailSettingsForm(
 
 export function NotificationProviderEditor() {
   const { t } = useTranslation("notificationProvider");
+  const [completed, setCompleted] = useState(false);
+  useEffect(() => {
+    if (!completed) return;
+    const timer = setTimeout(() => setCompleted(false), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [completed]);
   const query = useQuery({ queryKey, queryFn: getEmailProvider, retry: false });
   const pluginQuery = useQuery({
     queryKey: ["god-mode", "plugins"],
@@ -127,24 +135,38 @@ export function NotificationProviderEditor() {
       </Alert>
     );
   return (
-    <ProviderForm
-      key={query.data.version}
-      provider={query.data}
-      settingsForm={plugin.settingsForm}
-      localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
-      onReload={() => void query.refetch()}
-    />
+    <>
+      <span role="status" aria-atomic="true" className="sr-only">
+        {completed ? t("saved") : ""}
+      </span>
+      <ProviderForm
+        key={query.data.version}
+        provider={query.data}
+        settingsForm={plugin.settingsForm}
+        localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
+        completed={completed}
+        onStart={() => setCompleted(false)}
+        onSaved={() => setCompleted(true)}
+        onReload={() => void query.refetch()}
+      />
+    </>
   );
 }
 function ProviderForm({
   provider,
   settingsForm,
   localMailpitCaptureAvailable,
+  completed,
+  onStart,
+  onSaved,
   onReload,
 }: {
   provider: EmailProvider;
   settingsForm: Extract<SupportedPlugin["settingsForm"], { available: true }>;
   localMailpitCaptureAvailable: boolean;
+  completed: boolean;
+  onStart: () => void;
+  onSaved: () => void;
   onReload: () => void;
 }) {
   const { t } = useTranslation("notificationProvider");
@@ -200,6 +222,7 @@ function ProviderForm({
       config.requireTLS !== saved.requireTLS ||
       config.username !== saved.username);
   function markEdited() {
+    onStart();
     setEdited(true);
     setTestResult(null);
     setNotice(null);
@@ -366,6 +389,7 @@ function ProviderForm({
       setError(t("credentialsRequired"));
       return;
     }
+    onStart();
     const intent = lifecycle.capture();
     setError(null);
     setNotice(null);
@@ -387,6 +411,7 @@ function ProviderForm({
       if (lifecycle.isCurrent(intent)) setPassword("");
       return;
     }
+    if (lifecycle.isCurrent(intent)) onSaved();
     await queryClient.invalidateQueries({ queryKey });
     if (lifecycle.isCurrent(intent)) {
       setPassword("");
@@ -413,6 +438,7 @@ function ProviderForm({
       setError(t("testDestinationPasswordRequired"));
       return;
     }
+    onStart();
     const intent = lifecycle.capture();
     setError(null);
     setNotice(null);
@@ -647,23 +673,25 @@ function ProviderForm({
               {error}
             </p>
           )}
-          {notice && (
-            <p role="status" className="text-sm">
-              {notice}
-            </p>
-          )}
+          {notice && <p className="text-sm">{notice}</p>}
           <StepUpFields action={step} idPrefix="email-provider-step-up" />
           <FailureAlert
             failure={step.failure}
             onReload={onReload}
             title={t("operationFailed")}
           />
-          <Button
-            disabled={busy || captureUnavailable || sesIncomplete}
+          <SaveButton
+            disabled={verify.isPending || captureUnavailable || sesIncomplete}
+            pending={step.busy}
+            success={completed}
+            retainedSuccess
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
             type="submit"
           >
             {t("save")}
-          </Button>
+          </SaveButton>
         </form>
       </CardContent>
     </Card>

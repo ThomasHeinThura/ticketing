@@ -17,19 +17,24 @@ export function CommentCardPresentation({
   actions,
   footer,
   children,
+  tinted = false,
   className,
   ...props
 }: Omit<ComponentProps<"div">, "children"> & {
   header: ReactNode;
   actions?: ReactNode;
   footer?: ReactNode;
+  tinted?: boolean;
   children: ReactNode;
 }) {
   return (
     <div
       {...props}
       className={cn(
-        "group relative w-full rounded-xl border border-border/80 bg-card/60",
+        "group relative w-full rounded-xl border",
+        tinted
+          ? "border-warning/32 bg-warning/4"
+          : "border-border/80 bg-card/60",
         className,
       )}
     >

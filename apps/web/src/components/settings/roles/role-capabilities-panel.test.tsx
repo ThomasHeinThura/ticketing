@@ -10,7 +10,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceRoleDetail } from "@/fetchers/workspace-roles";
 import { translate } from "@/test/en-translation";
 
-const mocks = vi.hoisted(() => ({ update: vi.fn(), prove: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  update: vi.fn(),
+  prove: vi.fn(),
+  translations: {} as Record<string, string>,
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: (namespace?: string) => ({
@@ -18,6 +22,7 @@ vi.mock("react-i18next", () => ({
       // A hook bound to a namespace (`useTranslation("identityConnections")`) resolves bare keys in it.
       const key =
         namespace && !rawKey.includes(":") ? `${namespace}:${rawKey}` : rawKey;
+      if (mocks.translations[key]) return mocks.translations[key];
       if (typeof options.count === "number") {
         const plural = `${key}_${options.count === 1 ? "one" : "other"}`;
         try {
@@ -130,6 +135,7 @@ const isDisabled = (element: HTMLElement) =>
   element.getAttribute("aria-disabled") === "true";
 
 beforeEach(() => {
+  mocks.translations = {};
   mocks.update.mockReset().mockImplementation((...args: unknown[]) =>
     (args[4] as { dryRun?: boolean } | undefined)?.dryRun
       ? Promise.resolve({
@@ -149,6 +155,39 @@ describe("RoleCapabilitiesPanel", () => {
     expect(
       screen.getAllByText("See work items in reach").length,
     ).toBeGreaterThan(0);
+  });
+
+  it("uses localized catalogue labels, descriptions, groups and implied names", () => {
+    mocks.translations = {
+      "roles:capabilityCatalog.labels.work_item__read": "Lesen lokalisiert",
+      "roles:capabilityCatalog.labels.work_item__update":
+        "Bearbeiten lokalisiert",
+      "roles:capabilityCatalog.descriptions.work_item__read":
+        "Beschreibung lokalisiert",
+      "godModeOrganisations:quotaMaxWorkItems": "Gruppe lokalisiert",
+    };
+    renderPanel(role({ capabilities: [] }));
+    expect(screen.getByText("Gruppe lokalisiert")).toBeInTheDocument();
+    expect(screen.getByText("Beschreibung lokalisiert")).toBeInTheDocument();
+    fireEvent.click(box("Bearbeiten lokalisiert"));
+    expect(box("Lesen lokalisiert")).toBeChecked();
+    expect(
+      screen.getByText(/Also added: Lesen lokalisiert/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Needed by Bearbeiten lokalisiert/),
+    ).toBeInTheDocument();
+  });
+
+  it("translates an unexpected impact response", async () => {
+    mocks.translations = {
+      "roles:clientErrors.unexpectedDryRun": "Lokalisierter Fehler",
+    };
+    mocks.update.mockResolvedValue(role());
+    renderPanel();
+    fireEvent.click(box("Work item: update"));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Lokalisierter Fehler")).toBeInTheDocument();
   });
 
   it("RL-3: disables a capability the caller does not hold, with the reason", () => {

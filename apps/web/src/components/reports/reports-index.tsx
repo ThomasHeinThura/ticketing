@@ -10,12 +10,15 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  PageContainer,
+  PageHeader,
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
 } from "@taskdesk/ui";
 import { LayoutDashboard, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import type { ReportCatalogueEntry } from "@/fetchers/report";
@@ -23,6 +26,7 @@ import { getSavedViews } from "@/fetchers/saved-views";
 import { useReport, useReportCatalogue } from "@/hooks/queries/report";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { HttpError } from "@/lib/http-error";
 import {
   REPORT_CATEGORIES,
   type ReportsIndexSearch,
@@ -176,6 +180,35 @@ function ReportsIndexScreen({
   const saved = (views.data ?? []).filter(
     (view) => view.layout === "table" || view.layout === "chart",
   );
+  if (catalogue.error instanceof HttpError && catalogue.error.status === 403)
+    return <NoAccessPage />;
+  if (!workspace || catalogue.isLoading || catalogue.isError)
+    return (
+      <>
+        <PageTitle title={t("reports:index.title")} />
+        <PageContainer>
+          <PageHeader
+            title={t("reports:index.title")}
+            description={t("reports:index.description")}
+          />
+          {catalogue.isError ? (
+            <>
+              <ReportError error={catalogue.error} />
+              <Button
+                className="w-fit"
+                onClick={() => void catalogue.refetch()}
+              >
+                {t("common:actions.retry")}
+              </Button>
+            </>
+          ) : (
+            <div role="status" aria-label={t("common:pageLoading")}>
+              <Skeleton className="h-48 w-full" />
+            </div>
+          )}
+        </PageContainer>
+      </>
+    );
   const category = search.category;
   const categories = REPORT_CATEGORIES.filter((candidate) =>
     catalogue.data?.data.some((entry) => entry.category === candidate),
@@ -209,9 +242,7 @@ function ReportsIndexScreen({
             ) : null}
           </div>
         </div>
-        {catalogue.isLoading || !workspace ? (
-          <Skeleton className="h-40 w-full" />
-        ) : catalogue.isError || !catalogue.data ? (
+        {catalogue.isError || !catalogue.data ? (
           <ReportError error={catalogue.error} />
         ) : (
           <>

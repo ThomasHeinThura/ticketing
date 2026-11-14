@@ -68,7 +68,9 @@ describe("MoveWorkItemDialog", () => {
   it("cannot be confirmed until a target project is chosen", () => {
     mount();
     expect(
-      screen.getByRole("button", { name: translate("workItems:move.confirm") }),
+      screen.getByRole("button", {
+        name: translate("workItems:move.confirm"),
+      }),
     ).toBeDisabled();
     expect(mocks.move).not.toHaveBeenCalled();
   });

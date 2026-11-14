@@ -5,7 +5,8 @@ import { PortalKpiCard } from "@/components/portal/portal-kpi-card";
 import { usePortalHome } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { formatPortalDuration } from "@/lib/portal-duration";
-import { PORTAL_OUTSTANDING_STATUSES, routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
+import { PORTAL_OUTSTANDING_STATUSES } from "@/lib/portal-route-search";
 
 const OUTSTANDING = PORTAL_OUTSTANDING_STATUSES.join(",");
 
@@ -25,14 +26,16 @@ export function PortalHomeKpis({
   portalUserId,
   project,
   label,
+  prefetched = false,
 }: {
   portalUserId: string;
   project?: string;
   /** The section's accessible name. */
   label: string;
+  prefetched?: boolean;
 }) {
   const { t, i18n } = usePortalTranslation("portal");
-  const home = usePortalHome(portalUserId, project);
+  const home = usePortalHome(portalUserId, project, prefetched);
   const figures = home.data;
 
   return (

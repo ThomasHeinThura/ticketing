@@ -17,7 +17,11 @@ const ids = {
   workItem: "work-item-serving",
 };
 
-function customer(personId: string, organisationId = ids.servingOrganisation) {
+function customer(
+  personId: string,
+  organisationId = ids.servingOrganisation,
+  projectIds: readonly string[] = [ids.project],
+) {
   return {
     userId: `user-${personId}`,
     personId,
@@ -27,7 +31,7 @@ function customer(personId: string, organisationId = ids.servingOrganisation) {
     credential: "session",
     memberships: [],
     teamIds: [],
-    reach: { kind: "organisation", ids: [organisationId] },
+    reach: { kind: "organisation", ids: [organisationId], projectIds },
     authority: [
       {
         roleKey: BUILT_IN_ROLES.customer.key,

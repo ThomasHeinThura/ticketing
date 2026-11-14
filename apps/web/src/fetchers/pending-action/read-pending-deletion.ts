@@ -1,4 +1,8 @@
-import { HttpError, readErrorDetail } from "@/lib/http-error";
+import {
+  HttpError,
+  httpErrorFromResponse,
+  readErrorDetail,
+} from "@/lib/http-error";
 
 const PENDING_APPROVAL = /^pending_approval: ([A-Za-z0-9_-]{1,64})$/;
 
@@ -10,15 +14,20 @@ const PENDING_APPROVAL = /^pending_approval: ([A-Za-z0-9_-]{1,64})$/;
 export async function readPendingDeletion(
   response: Response,
   fallback: string,
+  fallbackKey?: string,
 ): Promise<{ pendingActionId: string }> {
   if (response.status !== 202) {
+    if (response.status >= 500)
+      throw await httpErrorFromResponse(response, fallback, fallbackKey);
     const detail = await readErrorDetail(response, fallback);
     // A repeated request meets the requester's own pending action for the same target; the
     // API names it as `pending_approval: <id>`, so open that one instead of failing.
     const existing =
       response.status === 409 ? PENDING_APPROVAL.exec(detail)?.[1] : undefined;
     if (existing) return { pendingActionId: existing };
-    throw new HttpError(response.status, detail);
+    throw new HttpError(response.status, detail, undefined, {
+      fallbackKey: detail === fallback ? fallbackKey : undefined,
+    });
   }
   const result: unknown = await response.json();
   if (

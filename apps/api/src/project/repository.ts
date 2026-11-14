@@ -1,4 +1,4 @@
-import { and, eq, isNull, max, sql } from "drizzle-orm";
+import { and, eq, isNull, max, or, sql } from "drizzle-orm";
 import type { Executor } from "../database/executor";
 import {
   columnTable,
@@ -7,6 +7,7 @@ import {
   projectTable,
   workspaceTable,
 } from "../database/schema";
+import { dbClockUtc } from "../utils/db-time";
 
 export async function isServableCustomerOrganisation(
   executor: Executor,
@@ -38,6 +39,33 @@ export async function isServableCustomerOrganisation(
     .where(eq(workspaceTable.id, workspaceId))
     .limit(1);
   return workspaceOwner?.isInternal === true;
+}
+
+export function projectServesCustomer() {
+  return or(
+    isNull(projectTable.deletedAt),
+    sql`${projectTable.purgeAfter} > ${dbClockUtc()}`,
+  );
+}
+
+export async function workspaceServesOrganisation(
+  executor: Executor,
+  workspaceId: string,
+  organisationId: string,
+  lock = true,
+) {
+  const query = executor
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.workspaceId, workspaceId),
+        eq(projectTable.organisationId, organisationId),
+        projectServesCustomer(),
+      ),
+    );
+  const [project] = await (lock ? query.for("share") : query).limit(1);
+  return project !== undefined;
 }
 
 export async function lockProjectOrdering(

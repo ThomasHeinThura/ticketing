@@ -76,6 +76,10 @@ async function disarmProjectCreatedOutboxFailure() {
 
 async function fixture() {
   const member = await createWorkspaceMember({ role: "admin" });
+  await db
+    .update(schema.userTable)
+    .set({ role: "admin" })
+    .where(eq(schema.userTable.id, member.user.id));
   const { app } = createApp();
   mockAuthenticatedSession(member.user);
   const [person] = await db
@@ -203,6 +207,25 @@ describe("project domain event envelopes", () => {
   it("attributes an API-key project creation to the authenticated key without exposing its secret", async () => {
     const f = await fixture();
     const key = await createProjectApiKey(f.user.id);
+    mockAnonymousSession();
+    const refused = await createProjectRequest(
+      f.app,
+      f.workspace.id,
+      projectKey(),
+      f.organisation.id,
+      key.rawKey,
+    );
+    expect(refused.status).toBe(403);
+    expect(await refused.text()).toContain(
+      "instance_admin_required_for_new_customer_organisation",
+    );
+    await db.insert(schema.projectTable).values({
+      workspaceId: f.workspace.id,
+      organisationId: f.organisation.id,
+      name: "Existing",
+      slug: projectKey(),
+      icon: "Folder",
+    });
     mockAnonymousSession();
     const response = await createProjectRequest(
       f.app,

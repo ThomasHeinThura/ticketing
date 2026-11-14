@@ -1,3 +1,4 @@
+// D-E (12 Nov): member recipients keep project reach/capability revocation coverage.
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -126,7 +127,7 @@ export function defineNotificationOutboxSuite(zoneLabel: string): void {
       VALUES (${ids.person}, ${ids.user}, ${ids.organisation}, 'staff')`);
       await seedDefaultWorkspaceRoles();
       await db.execute(sql`INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at)
-      VALUES (${`notification-test-member-${suffix}`}, ${ids.workspace}, ${ids.user}, 'admin', clock_timestamp())`);
+      VALUES (${`notification-test-member-${suffix}`}, ${ids.workspace}, ${ids.user}, 'member', clock_timestamp())`);
       const project = await createProjectFixture({
         workspaceId: ids.workspace,
         slug: `notification-test-${suffix}`,
@@ -1143,7 +1144,7 @@ export function defineNotificationOutboxSuite(zoneLabel: string): void {
         );
       } finally {
         await db.execute(sql`INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at)
-        VALUES (${`notification-test-member-${suffix}`}, ${ids.workspace}, ${ids.user}, 'admin', clock_timestamp())`);
+        VALUES (${`notification-test-member-${suffix}`}, ${ids.workspace}, ${ids.user}, 'member', clock_timestamp())`);
       }
     });
 

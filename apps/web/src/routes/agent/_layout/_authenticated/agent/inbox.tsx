@@ -1,9 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import NotificationInbox from "@/components/notification/notification-inbox";
-import { parseAgentInboxSearch } from "@/lib/routes";
+import { notificationInboxOptions } from "@/hooks/queries/notification/notification-inbox-options";
+import { type AgentInboxFilter, parseAgentInboxSearch } from "@/lib/routes";
 
 export const Route = createFileRoute("/_layout/_authenticated/agent/inbox")({
   validateSearch: parseAgentInboxSearch,
+  loaderDeps: ({ search }): { filter: AgentInboxFilter } => ({
+    filter: search.filter ?? "all",
+  }),
+  loader: ({ context, deps, cause }) => {
+    if (cause === "enter")
+      void context.queryClient.prefetchInfiniteQuery(
+        notificationInboxOptions(deps.filter),
+      );
+  },
   component: AgentInboxRoute,
 });
 

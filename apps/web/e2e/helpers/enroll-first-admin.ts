@@ -56,3 +56,35 @@ export async function enrollFirstAdmin(
   await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
   return { provisioningUri, backupCodes };
 }
+
+/** Create and activate the first workspace through onboarding's real UI. */
+export async function createFirstWorkspace(page: Page, name: string) {
+  await page.getByLabel("Workspace name").fill(name);
+  const created = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/workspace" &&
+      response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Create workspace" }).click();
+  const response = await created;
+  expect(response.status()).toBe(200);
+  const workspace = (await response.json()) as { id: string; name: string };
+  expect(workspace.id).toBeTruthy();
+  expect(workspace.name).toBe(name);
+  await expect(page).toHaveURL(/\/agent(?:\?|$)/);
+  // /agent no longer carries the workspace id. The shell resolves it from
+  // the authenticated session; also prove onboarding activated the one created.
+  await expect
+    .poll(async () => {
+      const session = await page.request.get(
+        new URL("/api/auth/get-session", page.url()).toString(),
+      );
+      expect(session.ok()).toBe(true);
+      const body = (await session.json()) as {
+        session: { activeOrganizationId: string | null };
+      };
+      return body.session.activeOrganizationId;
+    })
+    .toBe(workspace.id);
+  return workspace.id;
+}

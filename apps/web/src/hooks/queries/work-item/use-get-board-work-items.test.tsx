@@ -122,4 +122,23 @@ describe("canonical board server sorting", () => {
     );
     expect(mocks.list).not.toHaveBeenCalled();
   });
+  it("keeps a failed deferred search retryable through the query", async () => {
+    mocks.search
+      .mockRejectedValueOnce(new Error("search unavailable"))
+      .mockResolvedValueOnce({ items: [], hasMore: false });
+    const { wrapper } = setup();
+    const view = renderHook(
+      () => useGetBoardWorkItems({ ...base, filter: "priority = high" }),
+      { wrapper },
+    );
+    await waitFor(() => expect(view.result.current.isError).toBe(true));
+    await act(async () => {
+      const result = await view.result.current.refetch();
+      expect(result.error).toBeNull();
+      expect(result.isSuccess).toBe(true);
+      expect(result.data?.pages).toEqual([{ items: [], hasMore: false }]);
+    });
+    expect(mocks.search).toHaveBeenCalledTimes(2);
+    expect(mocks.list).not.toHaveBeenCalled();
+  });
 });

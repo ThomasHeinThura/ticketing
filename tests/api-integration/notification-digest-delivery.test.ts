@@ -292,6 +292,9 @@ async function customerDigestFixture() {
     actor.workspace.organisationId,
     customerPerson.id,
   );
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: customerPerson.id, projectId: project.id });
   await grantWorkItemProjectAccess(actor.user.id, project.id);
   const type = requireRow(
     await db
@@ -464,6 +467,9 @@ async function customerTransitionDigestFixture() {
     actor.workspace.organisationId,
     customerPerson.id,
   );
+  await db
+    .insert(schema.customerProjectAccessTable)
+    .values({ personId: customerPerson.id, projectId: project.id });
   await grantWorkItemProjectAccess(actor.user.id, project.id);
   const type = requireRow(
     await db
@@ -610,6 +616,24 @@ describe("persisted notification digest delivery", () => {
           eq(schema.membershipTable.personId, f.customerPerson.id),
           eq(schema.membershipTable.scope, "organisation"),
           eq(schema.membershipTable.scopeId, f.actor.workspace.organisationId),
+        ),
+      );
+    const send = vi.fn(async () => ({ success: true as const }));
+    await expect(processNextNotificationDigest(send)).resolves.toMatchObject({
+      kind: "claimed",
+      outcome: "suppressed",
+    });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("suppresses a queued customer digest after project access is revoked", async () => {
+    const f = await customerTransitionDigestFixture();
+    await db
+      .delete(schema.customerProjectAccessTable)
+      .where(
+        and(
+          eq(schema.customerProjectAccessTable.personId, f.customerPerson.id),
+          eq(schema.customerProjectAccessTable.projectId, f.item.projectId),
         ),
       );
     const send = vi.fn(async () => ({ success: true as const }));

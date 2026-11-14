@@ -10,9 +10,15 @@ import {
   type Request,
   test,
 } from "@playwright/test";
-import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
+import {
+  navigateToSetup,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 // Decision 4 November 2026: when no service calendar resolves for a new managed service,
@@ -165,25 +171,20 @@ test("asks for a service calendar when none resolves, and creates with the chose
 }, testInfo) => {
   test.setTimeout(300_000);
   page.setDefaultTimeout(10_000);
-  await withMfaCsrfApp(async ({ origin, email, password, databaseUrl }) => {
+  await withMfaCsrfApp(async (fixture) => {
+    const { origin, email, password, databaseUrl, setupUrl } = fixture;
     const at = (path: string) => new URL(path, origin).toString();
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(at("/auth/sign-up"));
+    await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Calendar Admin");
     await page.getByLabel("Email").fill(email);
     await page.locator('input[autocomplete="new-password"]').fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
-    await page
-      .getByLabel("Workspace name")
-      .fill("Disposable Calendar Workspace");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
-    const workspaceId = new URL(page.url()).pathname
-      .split("/")
-      .filter(Boolean)
-      .at(-1);
-    if (!workspaceId) throw new Error("No workspace id in the URL.");
+    const workspaceId = await createFirstWorkspace(
+      page,
+      "Disposable Calendar Workspace",
+    );
 
     // Calendars need `feature.sla`; the catalogue entry needs `feature.service_catalogue`.
     // The workspace has no default calendar, so nothing resolves for an internal service.

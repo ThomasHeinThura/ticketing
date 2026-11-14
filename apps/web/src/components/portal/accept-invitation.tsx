@@ -23,7 +23,7 @@ import {
   getPortalAuthMethods,
 } from "@/fetchers/customer-invitation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
-import { routes } from "@/lib/routes";
+import { routes } from "@/lib/portal-route-builders";
 
 /** The credential rides in the URL fragment (`#t=`), so it never reaches a server log. */
 export function readInviteCredential(hash: string): string | null {

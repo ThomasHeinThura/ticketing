@@ -455,6 +455,10 @@ Proxy startup and internal readiness do not establish public HTTPS or browser be
 Check readiness on both canonical hosts and run the signed-in release smoke before accepting
 the release. See [handover](../handover.md) and [testing](../testing.md).
 
+**Owner-approved fresh local SIT installation (12 Nov 2026).** Set `SIT_COMPOSE_ENV` and `SIT_PRIVATE_DIR` to existing canonical private paths outside the checkout and the selected volumes. Set `DISABLE_REGISTRATION`, `DISABLE_PASSWORD_REGISTRATION` and `DISABLE_WORKSPACE_CREATION` to `true`. Confirm the target Docker daemon in two steps. First run `scripts/deploy.sh local-fresh` (preview is the default when no confirmation is given; `--dry-run` is equivalent, and `--dry-run-allow-open-registration` is accepted only with explicit `--dry-run`). Preview makes no changes and prints the observed Docker daemon ID, the active Docker context and local Unix socket endpoint in use, the Compose project (`taskdesk-codex-testing`), the planned backup directory, and the exact container IDs and volume names it would stop and remove. Verify that the printed daemon ID, context/endpoint and inventory belong to the intended local SIT installation rather than another local daemon. Then run `scripts/deploy.sh local-fresh --confirm-wipe taskdesk-codex-testing --confirm-daemon <daemon-id>` with the exact daemon ID printed by the preview. It verifies `--confirm-daemon <daemon-id>` against the live daemon identity before taking the daemon-project lock, stopping, disconnecting or removing anything, refuses on mismatch or if the daemon/context changes mid-run, re-checks daemon identity and `com.docker.compose.project=taskdesk-codex-testing` ownership immediately before each destructive command, stops the application, isolates the database, checks for client sessions, and proves the dump by a scratch restore and the attachment archive by hashes before removing the originals. Keep the preview and run output. Private archives and credentials contain plaintext secrets; restrict access (`0700`/`0600`). Native PostgreSQL on port 62870 is outside this operation.
+
+If interrupted, do not rerun blindly. First confirm that the active Docker context/endpoint (`docker context show` and `DOCKER_HOST`) and `docker info --format '{{.ID}}'` match the printed daemon ID so recovery commands never target another daemon. Inspect each printed container ID with `docker inspect <id>` and each printed volume with `docker volume inspect <name>`; confirm its exact `com.docker.compose.project` label is `taskdesk-codex-testing`, and compare the actual state with the printed inventory. Also inspect any reported scratch restore-proof or attachment-helper container ID and its marker label before removing it. If no original resource was removed, reconnect any database networks that the run disconnected (`docker network connect`) and start the stopped original containers (`docker start <id>`) after confirming their identities; verify readiness and database connectivity. If removal started, finish the installation or recovery manually on the confirmed daemon using only the inspected project resources and the backup; do not infer targets from backup files or name prefixes. Verify `SHA256SUMS` with `shasum -a 256 -c <backup-directory>/SHA256SUMS` and inspect `postgres.dump` (`pg_restore -l`) and the tar archives (`tar -tf`) before restoring the database and attachment data to verified `taskdesk-codex-testing` volumes. Restore `private-config.tar` and `compose-env.tar` manually to `0700`/`0600` protected locations only after inspecting their members, and use the matching original configuration and credentials when recovering the data. Validate database counts against `counts.txt`, attachment hashes and application readiness on both canonical hosts before accepting the recovered system. A daemon-project lock directory (`taskdesk-sit-taskdesk-codex-testing-<32-character-hash>.lock`; the refusal message prints its exact path) left after a crash is not automatically cleared: inspect its `owner` file (the owning process ID followed by a random token) and the live daemon/process state, then remove that exact lock directory manually only after confirming that no operation owns it.
+
 For other installation modes, see [One-line install](#one-line-install) and the
 production guidance below; those modes have separate requirements.
 
@@ -705,6 +709,54 @@ The old local overlays and alternate-port examples are not the canonical SIT dep
 
 <a id="environments-seed-data"></a>
 #### Seed data
+
+For a **fresh installation after first-administrator setup and verified TOTP**, the current
+demo is `scripts/seed-uat.mjs --uat --credentials-file <private-file-outside-checkout>`
+(run through `pnpm --filter @taskdesk/api exec tsx ../../scripts/seed-uat.mjs ...` from
+source, or `node apps/api/dist/seed-uat.js ...` inside the shipping image).
+It supersedes the old SIT account-reset demo. `scripts/deploy.sh local|sit --seed` opts in;
+without `--seed` deployment does not seed. Complete setup before opting in. The deploy
+wrapper keeps `~/.taskdesk/demo-credentials.json` private and reuses it on later runs;
+direct callers must reuse their original credentials file. Never use either seed to
+repair or overwrite an existing environment. No email provider is configured by the seed.
+
+| Person / role | Projects reached |
+| --- | --- |
+| Existing first instance administrator | God Mode; no demo workspace membership is added |
+| Olivia Owens / owner | All four projects |
+| Arjun Patel / admin | All four projects |
+| Maya Brooks / manager, PM on each project | All four projects |
+| Laura Chen / lead and CAB approver | Customer Support, IT Operations, Website Relaunch |
+| Marcus Reid / member | Customer Support, Website Relaunch; IT Operations through its owning team |
+| Sofia Alvarez / member | All four through explicit project memberships |
+| Victor Nguyen / viewer | Website Relaunch only |
+| Contoso: Emma Clarke | Customer Support managed service only |
+| Contoso: James Wright | Contoso Delivery only |
+| Contoso: Alex Morgan | Both Contoso engagements |
+| Contoso: pending invitee | No access yet; both Contoso engagements selected in invitation |
+| Fabrikam: Nina Berg | Website Relaunch only |
+
+Staff logins use their role key at `uat.taskdesk.test` (`agent1` for Marcus, `agent2` for
+Sofia); customer emails and all passwords are in the private credentials file. Staff
+invitation history records the chosen role for other staff; the instance administrator
+names Olivia as owner at workspace creation, without an owner invitation. Customers receive
+and accept real product invitations with their per-person project selection; the pending
+invitee remains pending. Planning creation audits use the project manager, while private
+views and time entries use their member creator. Announcements are created as drafts
+and then published with separate audit rows. The workspace
+includes planning, time, budgets, reports, documents, attachments, intake, SLA, useful
+portal articles and a pending CAB
+change. The example webhook is disabled. The demo export follows the normal 24-hour
+expiry and is not renewed by rerunning the seed; request a new export in Reports.
+Service statuses are New, Open, Waiting on customer, On hold, Resolved and Closed.
+The two target automations are declared in the seed plan; unavailable product abilities print explicit skip reasons and create no rule.
+
+Verify locally with `node scripts/test-uat-seed.mjs`: it owns one disposable PostgreSQL 18
+container on a random port, migrates, finalizes a verified first-admin fixture, seeds twice,
+checks permissions and relationships, and compares every persisted row across the rerun.
+It prints the full container ID on creation and removal and removes its private test files.
+
+The `minimal`, `realistic` and `hostile` profiles below remain separate developer fixtures:
 
 ```bash
 pnpm seed minimal      # 1 org, 1 project, 10 items — fast tests

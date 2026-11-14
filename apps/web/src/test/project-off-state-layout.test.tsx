@@ -39,8 +39,27 @@ vi.mock("@/components/common/sidebar-toggle", () => ({ default: () => null }));
 vi.mock("@/components/common/canonical-project-realtime", () => ({
   default: () => null,
 }));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: { session: { activeOrganizationId: "w-other" } },
+      isPending: false,
+    }),
+  },
+}));
 vi.mock("@/hooks/queries/project/use-get-project", () => ({
-  default: () => ({ data: { name: "Help", slug: "HELP" } }),
+  default: () => ({
+    isLoading: false,
+    isSuccess: true,
+    isError: false,
+    data: { id: "p1", workspaceId: "w1", name: "Help", slug: "HELP" },
+  }),
+}));
+vi.mock("@/hooks/queries/project/use-get-projects", () => ({
+  default: () => ({
+    isLoading: false,
+    data: [{ id: "p1", workspaceId: "w1", slug: "HELP" }],
+  }),
 }));
 // Keep the real shell in its initial frame without scheduling deferred controls or sidebar.
 vi.mock("@/lib/after-primary-content", () => ({
@@ -90,14 +109,19 @@ import ProjectLayout from "@/components/common/project-layout";
 import { PageDetail } from "@/components/pages/page-detail";
 import { PagesFeatureGate } from "@/components/pages/pages-feature-gate";
 import { PagesList } from "@/components/pages/pages-list";
+import { Route as CanonicalCalendarRoute } from "@/routes/agent/_layout/_authenticated/agent/projects/$projectKey/calendar";
 import { Route as TimelineRoute } from "@/routes/agent/_layout/_authenticated/agent/projects/$projectKey/timeline";
-import { Route as CalendarRoute } from "@/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar";
+import { Route as LegacyCalendarRoute } from "@/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/calendar";
 import { Route as GanttRoute } from "@/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/gantt";
 
 const Timeline = (TimelineRoute as unknown as { component: ComponentType })
   .component;
-const Calendar = (CalendarRoute as unknown as { component: ComponentType })
-  .component;
+const CanonicalCalendar = (
+  CanonicalCalendarRoute as unknown as { component: ComponentType }
+).component;
+const LegacyCalendar = (
+  LegacyCalendarRoute as unknown as { component: ComponentType }
+).component;
 const Gantt = (GanttRoute as unknown as { component: ComponentType }).component;
 
 beforeAll(() => {
@@ -189,7 +213,18 @@ describe("project feature-off heading inside the real project layout", () => {
       true,
     ],
     ["timeline", <Timeline key="Timeline" />, "timeline", true],
-    ["calendar gate", <Calendar key="Calendar" />, "calendar", false],
+    [
+      "calendar",
+      <CanonicalCalendar key="CanonicalCalendar" />,
+      "calendar",
+      false,
+    ],
+    [
+      "legacy calendar gate",
+      <LegacyCalendar key="LegacyCalendar" />,
+      "calendar",
+      false,
+    ],
     ["gantt gate", <Gantt key="Gantt" />, "timeline", false],
   ])("%s", async (_name, page, feature, inheritedFrame) => {
     renderPage(page, inheritedFrame);

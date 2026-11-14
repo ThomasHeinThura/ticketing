@@ -317,7 +317,7 @@ async function failExport(id: string, code: string): Promise<void> {
  * as the request (`callerCaps`, P5-R2-03): at the report's project filter when it has one, and
  * otherwise only while no project role override in the workspace removes them.
  */
-async function currentCaps(
+export async function currentCaps(
   workspaceId: string,
   userId: string,
   identity: ResolvedIdentity,
@@ -336,8 +336,7 @@ async function currentCaps(
     }
   };
   if (!(await holds("report:export"))) return null;
-  const [readAll, manageRates, readAnyTime] = await Promise.all([
-    holds("report:read_all"),
+  const [manageRates, readAnyTime] = await Promise.all([
     projectId === undefined
       ? holds("time_entry:manage_rates")
       : holdsAtProject(
@@ -349,7 +348,7 @@ async function currentCaps(
     holds("time_entry:read_any"),
   ]);
   return {
-    readAll,
+    readAll: false,
     showRates:
       manageRates &&
       (await trackingFeatureEnabled(COST_TRACKING_FEATURE_KEY, workspaceId)) &&
@@ -359,7 +358,7 @@ async function currentCaps(
 }
 
 /**
- * R7-05: the projects a non-`report:read_all` export covers, recorded on the row (inside the
+ * R7-05: the projects an export covers, recorded on the row (inside the
  * `caps` jsonb, so no column is needed) when the file is rendered. Taken after the render, so
  * the list can only be a superset of what the CSV drew from.
  */
@@ -380,15 +379,15 @@ export async function coveredProjectIds(
 
 /**
  * R7-05: true when the requester no longer reaches every project the stored file covered. A
- * requester with `report:read_all` is governed by the capability check instead. A reach-scoped
- * file with no recorded coverage (not written by this code) fails closed.
+ * file with no recorded coverage fails closed, including legacy read-all files.
  */
 export async function exportReachLost(
   row: Pick<ExportRow, "caps" | "workspaceId">,
   identity: ResolvedIdentity,
 ): Promise<boolean> {
   const stored = row.caps as { readAll?: boolean; projectIds?: unknown };
-  if (stored.readAll === true) return false;
+  // Files created before project coverage was recorded cannot be proved safe.
+  if (stored.readAll === true && !("projectIds" in stored)) return true;
   if (
     !Array.isArray(stored.projectIds) ||
     stored.projectIds.some((id) => typeof id !== "string")

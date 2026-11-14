@@ -1,6 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import { Button, ToastProvider } from "@taskdesk/ui";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
@@ -8,7 +8,9 @@ import queryClient from "@/query-client";
 import "@/index.css";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { AppErrorBoundary } from "./components/app-error-boundary";
+import { ServerErrorNotifications } from "./components/errors/server-error-notifications";
 import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-launcher";
+import { PageLoadingAnnouncer } from "./components/page-loading-announcer";
 import AuthProvider from "./components/providers/auth-provider";
 import { DeferredUserPreferencesSync } from "./components/providers/deferred-user-preferences-sync";
 import { ThemeProvider } from "./components/providers/theme-provider";
@@ -17,7 +19,9 @@ import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { followAgentSession } from "./lib/agent-session";
 import { AppI18nProvider } from "./lib/i18n/provider";
 import { initializeNotificationPreferenceHandoff } from "./lib/notification-preference-handoff";
+import { capturePasswordResetToken } from "./lib/password-reset-token";
 import { createRouterParseSearch } from "./lib/project-board-search";
+import { routePendingOptions } from "./lib/route-pending";
 import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
 import { routeTree } from "./routeTree.agent.gen";
 
@@ -40,6 +44,7 @@ function AgentNotFoundPage() {
 
 // Strip signed email fragments synchronously, then finish the bounded cookie
 // handoff before any router or authentication redirect can run.
+capturePasswordResetToken();
 void initializeNotificationPreferenceHandoff().then(
   bootstrapApplication,
   () => {},
@@ -73,6 +78,7 @@ function bootstrapApplication() {
       typeof window === "undefined" ? undefined : window.location.pathname,
     ),
     defaultPreload: "intent",
+    ...routePendingOptions,
     defaultPreloadStaleTime: 0,
     // UX-8: an unknown address shows the branded page inside whichever shell caught it, never
     // the router's bare "Not Found" text.
@@ -160,16 +166,21 @@ function bootstrapApplication() {
         <AppErrorBoundary fallback={RootCrashFallback}>
           <QueryClientProvider client={queryClient}>
             <ThemeProvider>
-              <UserPreferencesEffects />
-              <AuthProvider>
-                <DeferredUserPreferencesSync />
-                <AppI18nProvider>
-                  <KeyboardShortcutsProvider>
-                    <App />
-                    <KeyboardShortcutsHelpLauncher />
-                  </KeyboardShortcutsProvider>
-                </AppI18nProvider>
-              </AuthProvider>
+              <ToastProvider position="bottom-right">
+                <ServerErrorNotifications />
+                <UserPreferencesEffects />
+                <AuthProvider>
+                  <DeferredUserPreferencesSync />
+                  <AppI18nProvider>
+                    <PageLoadingAnnouncer>
+                      <KeyboardShortcutsProvider>
+                        <App />
+                        <KeyboardShortcutsHelpLauncher />
+                      </KeyboardShortcutsProvider>
+                    </PageLoadingAnnouncer>
+                  </AppI18nProvider>
+                </AuthProvider>
+              </ToastProvider>
             </ThemeProvider>
           </QueryClientProvider>
         </AppErrorBoundary>

@@ -4,6 +4,8 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
+| Forgot password | `/auth/forgot-password` | route | P0 | 🟡 |
+| Reset password | `/auth/reset-password` | route | P0 | 🟡 |
 | Sign in (legacy `/agent/sign-in` redirects) | `/auth/sign-in` | route | P0 | 🟡 |
 | MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
 | MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
@@ -30,6 +32,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Team (stakeholders and roster) | `/agent/projects/{key}/team` | route | P2 | 🟡 |
 | Documents (document links, link to Pages) | `/agent/projects/{key}/documents` | route | P2 | 🟡 |
 | Timeline (opens the Kaneo Gantt, `feature.timeline`) | `/agent/projects/{key}/timeline` | route | P5 | 🟡 |
+| Calendar (opens the Kaneo calendar, `feature.calendar`; the old `/dashboard/workspace/{id}/project/{id}/calendar` link redirects here) | `/agent/projects/{key}/calendar` | route | P5 | 🟡 |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
 | Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
 | Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
@@ -121,6 +124,8 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Import run detail | `/god-mode/imports/{id}?workspaceId={workspaceId}` | route | P6 | 🟡 |
 | Users | `/god-mode/users` | route | P4 | 🟡 |
 | Sign in | `/sign-in` | route | P3 | 🟡 |
+| Forgot password | `/forgot-password` | route | P3 | 🟡 |
+| Reset password | `/reset-password` | route | P3 | 🟡 |
 | Accept invitation | `/invite/{id}` | route | P3 | 🟡 |
 | Home | `/` | route | P3 | ⬜ |
 | Request detail (work item) | `/submissions/{ref}` | route | P3 | ⬜ |
@@ -146,7 +151,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 
 | Summary | Count |
 | --- | --- |
-| **Total** | **154** (138 routes + 16 overlays, dialogs and sections) |
+| **Total** | **159** (143 routes + 16 overlays, dialogs and sections) |
 
 ## Overlays, dialogs and embedded sections
 

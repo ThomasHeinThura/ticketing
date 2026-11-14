@@ -239,7 +239,9 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       setNote("");
       setError("");
       announce(
-        t("workItems:journey.transitionDone", { state: input.toStateName }),
+        t("workItems:journey.transitionDone", {
+          state: input.toStateName,
+        }),
       );
       await refresh();
     },
@@ -793,20 +795,22 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
           </div>
         ) : (
           <div className="max-h-72 overflow-y-auto">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-full justify-start gap-2 rounded-none px-2 text-muted-foreground"
-              disabled={assign.isPending || !canUnassign}
-              onClick={() => choosePerson(null)}
-            >
-              {t("workItems:detail.unassigned")}
-              {item.assigneeId === null ? (
-                <Check className="ml-auto h-4 w-4" />
-              ) : (
-                <ShortcutNumber number={1} />
-              )}
-            </Button>
+            {canUnassign ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-full justify-start gap-2 rounded-none px-2 text-muted-foreground"
+                disabled={assign.isPending}
+                onClick={() => choosePerson(null)}
+              >
+                {t("workItems:detail.unassigned")}
+                {item.assigneeId === null ? (
+                  <Check className="ml-auto h-4 w-4" />
+                ) : (
+                  <ShortcutNumber number={1} />
+                )}
+              </Button>
+            ) : null}
             {people.isLoading ? (
               <p className="p-3 text-muted-foreground text-sm" role="status">
                 {t("common:empty.loading")}
@@ -1057,7 +1061,7 @@ function DateControl({
   const emptyLabel =
     field === "startDate"
       ? t("workItems:properties.noStartDate")
-      : t("workItems:detail.noDueDate");
+      : t("workItemExtras:detail.noDueDate");
   const trigger = (
     <Button
       variant="ghost"

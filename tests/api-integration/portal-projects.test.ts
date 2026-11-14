@@ -160,6 +160,9 @@ describe("GET /api/portal/projects", () => {
       serviceCalendarId: calendar.id,
       serviceCalendarMode: "override",
     });
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: fabrikam.person.id, projectId: fabrikamProject.id });
     const { project: archived } = await createProjectFixture({
       workspaceId: s.t.workspaceId,
       name: "Contoso archived",

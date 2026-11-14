@@ -67,7 +67,7 @@ export default function WorkItemAuditHistory({
             ] as const,
         ),
       ),
-      unknown: t("workItems:detail.unavailable"),
+      unknown: t("workItemExtras:detail.unavailable"),
       empty: t("workItems:auditHistory.emptyValue", {
         defaultValue: "(empty)",
       }),
@@ -118,7 +118,9 @@ export default function WorkItemAuditHistory({
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    {t("workItems:auditHistory.when", { defaultValue: "When" })}
+                    {t("workItems:auditHistory.when", {
+                      defaultValue: "When",
+                    })}
                   </TableHead>
                   <TableHead>
                     {t("workItems:auditHistory.action", {

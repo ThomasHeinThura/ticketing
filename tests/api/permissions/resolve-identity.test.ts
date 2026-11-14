@@ -92,7 +92,11 @@ describe("resolveIdentityFromFacts — a member with each built-in workspace rol
 
       expect(identity).not.toBeNull();
       expect(identity?.memberships).toEqual([
-        { scope: "workspace", scopeId: "ws-1", seesAll: false },
+        {
+          scope: "workspace",
+          scopeId: "ws-1",
+          seesAll: ["owner", "admin", "manager"].includes(role),
+        },
       ]);
       expect(identity?.authority).toEqual([
         {
@@ -103,7 +107,11 @@ describe("resolveIdentityFromFacts — a member with each built-in workspace rol
           capabilities: BUILT_IN_ROLES[role].capabilities,
         },
       ]);
-      expect(identity?.reach).toEqual({ kind: "membership" });
+      expect(identity?.reach).toEqual(
+        ["owner", "admin", "manager"].includes(role)
+          ? { kind: "membership_with_workspaces", workspaceIds: ["ws-1"] }
+          : { kind: "membership" },
+      );
     });
   }
 });
@@ -141,7 +149,7 @@ describe("resolveIdentityFromFacts — a multi-workspace user", () => {
     );
 
     expect(identity?.memberships).toEqual([
-      { scope: "workspace", scopeId: "ws-1", seesAll: false },
+      { scope: "workspace", scopeId: "ws-1", seesAll: true },
       { scope: "workspace", scopeId: "ws-2", seesAll: false },
     ]);
     expect(identity?.authority.map((grant) => grant.roleKey)).toEqual([
@@ -485,13 +493,13 @@ describe("resolveIdentityFromFacts — sees_all", () => {
     ).toBe(true);
   });
 
-  it("does not grant reach 'all' when no membership carries sees_all", () => {
+  it("does not grant reach 'all' to an ordinary workspace member", () => {
     const identity = resolveIdentityFromFacts(
       facts({
         workspaceMemberships: [
           {
             workspaceId: "ws-1",
-            role: "admin",
+            role: "member",
             seesAll: false,
             isSystemRole: true,
           },
@@ -696,7 +704,7 @@ describe("resolveIdentityFromFacts — S4 (PR #315 review): the key fact is requ
 });
 
 describe("resolveIdentityFromFacts — a portal (customer) session", () => {
-  it("holds exactly the built-in customer grant, and reach scoped to its own organisation", () => {
+  it("holds exactly the built-in customer grant, and reach scoped to its own organisation with no default projects (D-D)", () => {
     const identity = resolveIdentityFromFacts(
       facts({ person: CUSTOMER_PERSON, workspaceMemberships: [] }),
     );
@@ -706,6 +714,7 @@ describe("resolveIdentityFromFacts — a portal (customer) session", () => {
     expect(identity?.reach).toEqual({
       kind: "organisation",
       ids: ["org-acme"],
+      projectIds: [],
     });
     expect(identity?.authority).toEqual([
       {
@@ -717,6 +726,48 @@ describe("resolveIdentityFromFacts — a portal (customer) session", () => {
       },
     ]);
     expect(identity?.memberships).toEqual([]);
+  });
+
+  it("includes only live, same-organisation customer_project_access rows in customer reach (D-D)", () => {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        person: CUSTOMER_PERSON,
+        workspaceMemberships: [],
+        customerProjectAccess: [
+          {
+            projectId: "proj-own-live",
+            projectOrganisationId: "org-acme",
+            projectDeleted: false,
+          },
+          {
+            projectId: "proj-own-live",
+            projectOrganisationId: "org-acme",
+            projectDeleted: false,
+          },
+          {
+            projectId: "proj-own-deleted",
+            projectOrganisationId: "org-acme",
+            projectDeleted: true,
+          },
+          {
+            projectId: "proj-other-org",
+            projectOrganisationId: "org-other",
+            projectDeleted: false,
+          },
+          {
+            projectId: "proj-internal",
+            projectOrganisationId: null,
+            projectDeleted: false,
+          },
+        ],
+      }),
+    );
+
+    expect(identity?.reach).toEqual({
+      kind: "organisation",
+      ids: ["org-acme"],
+      projectIds: ["proj-own-live"],
+    });
   });
 
   it.each([
@@ -1094,4 +1145,33 @@ describe("resolveIdentityFromFacts — canonical workspace role rows (owner deci
     );
     expect(identity?.authority).toEqual([]);
   });
+});
+
+it("D-E rejects non-system generic workspace grants bearing owner/admin/manager keys", () => {
+  for (const roleKey of ["owner", "admin", "manager"]) {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [],
+        scopedRoleMemberships: [
+          {
+            scope: "workspace",
+            scopeId: "ws-1",
+            seesAll: false,
+            inheritedFrom: null,
+            roleId: "custom-role",
+            roleKey,
+            roleScope: "workspace",
+            roleWorkspaceId: "ws-1",
+            roleIsSystem: false,
+            scopeWorkspaceId: null,
+            scopeExists: true,
+            rank: 70,
+            capabilities: ["project:archive"],
+          },
+        ],
+      }),
+    );
+    expect(identity?.authority).toEqual([]);
+    expect(identity?.memberships).toEqual([]);
+  }
 });

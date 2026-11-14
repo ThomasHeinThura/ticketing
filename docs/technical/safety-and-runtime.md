@@ -102,6 +102,7 @@ from the spec — see [Typed client](#api-design-typed-client).
    browser with `Cache-Control: no-store`; custom unsafe cookie-session requests must echo it
    in `X-TaskDesk-CSRF`. Better Auth bootstrap/login endpoints keep their own trusted-origin
    checks. The detailed token, cookie, fallback and error contract is in the security model.
+   Better Auth's origin check for `/api/auth/*` is explicitly enforced in configuration for both hosts, independently of the environment.
 
 <a id="api-design-base-paths"></a>
 ### Base paths
@@ -2139,6 +2140,12 @@ from adding log data. This witness does not change request processing or shadow 
 **Never logged:** passwords, tokens, API keys, plugin secrets, session cookies, request
 bodies containing custom field values, attachment contents, or arbitrary exception text.
 
+For an unhandled HTTP 5xx, `http.server_error` records the server request id, registered
+route, method, status, bounded error class and up to 15 sanitized stack locations. Stack
+message lines, unrecognized or unresolvable frames, absolute prefixes, and dependency
+paths below the package name are discarded; exception messages are never included. The
+JSON response contains a generic message and the same `requestId` as the response header. The existing 503 `factor_policy_unavailable` message is retained as a fixed public code. Import connection failures retain their fixed, allowlisted 502 reason code.
+
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
 
@@ -3392,7 +3399,14 @@ An initial socket connection and its topic subscription acknowledgements are a p
 state, not an outage. Active queries keep the 30-second foreground polling fallback until
 all requested topics are acknowledged, but the unavailable indicator appears only after a
 connection error, close, or denied subscription. After an outage, keep the indicator and
-polling active through reconnect until all requested topics are acknowledged again.
+polling active through reconnect until all requested topics are acknowledged again. During an outage,
+the agent work list polls only page one as a change detector and offers a manual full refresh when
+the rendered page-one row fields, a row's version or updated time, the SLA badge state or metric,
+row order, partial-failure status, or page-one custom-field display metadata change (ignoring only
+the SLA's remaining time, consumed percentage, and due time); polling leaves cached pages and
+selection untouched. If
+the initial read failed with no cached pages, each tick instead retries the normal initial query once
+and lets an in-flight recovery finish if live updates reconnect before it resolves.
 
 If the WebSocket cannot connect — a proxy that strips upgrades, a hostile corporate
 network — the client falls back to polling active queries every 30 seconds and shows a

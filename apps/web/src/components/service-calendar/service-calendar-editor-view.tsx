@@ -11,11 +11,13 @@ import {
   AlertDialogTitle,
   AlertTitle,
   Button,
+  SaveButton,
   Skeleton,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
 import { CalendarDetailsCard } from "@/components/service-calendar/calendar-details-card";
 import {
@@ -25,6 +27,8 @@ import {
 import { CoveragePreviewCard } from "@/components/service-calendar/coverage-preview-card";
 import { HolidayListCard } from "@/components/service-calendar/holiday-list-card";
 import { WeeklyCoverCard } from "@/components/service-calendar/weekly-cover-card";
+import { isForbiddenError } from "@/components/settings/settings-access";
+import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import type { ServiceCalendar } from "@/fetchers/service-calendar";
 import type {
   CalendarMetadata,
@@ -49,6 +53,18 @@ export function ServiceCalendarEditorView({
 }) {
   const { t } = useTranslation("serviceCalendars");
   const { calendar, loading, isCalendarError, refetchCalendar, saving } = state;
+
+  if (isForbiddenError(state.calendarError)) {
+    if (state.capabilityCheckFailed || state.isCheckingPermissions)
+      return (
+        <SettingsAccessPage
+          access={state.capabilityCheckFailed ? "error" : "checking"}
+          titleKey="serviceCalendars:editor.pageTitle"
+          title={isNew ? t("editor.newTitle") : calendar?.name}
+        />
+      );
+    return <NoAccessPage />;
+  }
 
   if (loading) {
     return (
@@ -111,24 +127,26 @@ export function ServiceCalendarEditorView({
               {isNew ? t("editor.newTitle") : calendar?.name}
             </h1>
           </div>
-          <Button
-            type="submit"
-            form="service-calendar-form"
-            disabled={
-              saving ||
-              (state.calendarConflict !== null &&
-                state.conflictRefreshState !== "ready") ||
-              !state.workspace ||
-              !state.canManageCalendars ||
-              state.isCheckingPermissions
-            }
-          >
-            {saving
-              ? t("editor.saving")
-              : isNew
-                ? t("editor.create")
-                : t("editor.save")}
-          </Button>
+          {state.canManageCalendars && !state.isCheckingPermissions ? (
+            <SaveButton
+              type="submit"
+              form="service-calendar-form"
+              pending={saving}
+              success={!isNew && state.saveSucceeded}
+              announceSuccess={false}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              disabled={
+                (state.calendarConflict !== null &&
+                  state.conflictRefreshState !== "ready") ||
+                !state.workspace ||
+                !state.canManageCalendars ||
+                state.isCheckingPermissions
+              }
+            >
+              {isNew ? t("editor.create") : t("editor.save")}
+            </SaveButton>
+          ) : null}
         </div>
 
         {state.retroactiveImpact > 0 ? (
