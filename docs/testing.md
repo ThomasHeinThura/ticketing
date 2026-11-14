@@ -6,6 +6,8 @@ Testing is whole-product, not per phase (Thomas, 28 Oct 2026). Three levels; eac
 
 GitHub CI is a required gate. All required checks must pass; a failing gate is fixed, never exempted or retried until lucky.
 
+Hosted browser setup uses bounded APT acquisition with strict index failures; the e2e job acquires Ubuntu Docker plugin packages before browser smoke, then tests both toolchains. G8 uses the digest-pinned Playwright image and its bundled browser. These bounds do not pin Ubuntu package versions or replace hosted CI validation.
+
 | Area | CI job / local command |
 | --- | --- |
 | Code | `pnpm lint:ci`, `pnpm typecheck`, `pnpm test` (unit + component), integration on PostgreSQL 18 (4 shards, `vitest.integration.config.ts`), `pnpm test:permissions`, `pnpm check:route-policy`, domain coverage 90% |

@@ -1,0 +1,1208 @@
+{
+	"schemaVersion": 1,
+	"suite": "noble",
+	"architecture": "amd64",
+	"archiveSha256": "c3887485a82a5f69d4ff3dae716f7163526f54e195a10fe0c34700f44b6de10d",
+	"packages": [
+		{
+			"name": "at-spi2-common",
+			"version": "2.52.0-1build1",
+			"architecture": "all",
+			"filename": "at-spi2-common_2.52.0-1build1_all.deb",
+			"size": 8674,
+			"sha256": "7e05959b067031468f21ae46c6653a6813f1dccd994ef12a0b5f75de0ed346b6"
+		},
+		{
+			"name": "docker-buildx",
+			"version": "0.30.1-0ubuntu1~24.04.1",
+			"architecture": "amd64",
+			"filename": "docker-buildx_0.30.1-0ubuntu1~24.04.1_amd64.deb",
+			"size": 16802158,
+			"sha256": "30723359cf4825afa5ac2087cf5833163f80fb74802bc32e0ed6c9efc13e4b3c"
+		},
+		{
+			"name": "docker-compose-v2",
+			"version": "2.40.3+ds1-0ubuntu1~24.04.1",
+			"architecture": "amd64",
+			"filename": "docker-compose-v2_2.40.3+ds1-0ubuntu1~24.04.1_amd64.deb",
+			"size": 14788638,
+			"sha256": "192f3df16d0c832e1cbf2362889da56522267835cfb19541241b3dd0ed964039"
+		},
+		{
+			"name": "dpkg",
+			"version": "1.22.6ubuntu6.6",
+			"architecture": "amd64",
+			"filename": "dpkg_1.22.6ubuntu6.6_amd64.deb",
+			"size": 1282284,
+			"sha256": "ceb6aa4da59fbcb8a3b0549b4280c60b7d849b519859797c8668bdfbe378fb3b"
+		},
+		{
+			"name": "fontconfig-config",
+			"version": "2.15.0-1.1ubuntu2",
+			"architecture": "amd64",
+			"filename": "fontconfig-config_2.15.0-1.1ubuntu2_amd64.deb",
+			"size": 37298,
+			"sha256": "9df0579cd298a1f2b7a40efd519c849745aecd193a09733cf4d1032284a62bbf"
+		},
+		{
+			"name": "fontconfig",
+			"version": "2.15.0-1.1ubuntu2",
+			"architecture": "amd64",
+			"filename": "fontconfig_2.15.0-1.1ubuntu2_amd64.deb",
+			"size": 180204,
+			"sha256": "ddf0aace42b13a5bc38904e848b145b787ea254cddf5213d150254bd654db6e5"
+		},
+		{
+			"name": "fonts-freefont-ttf",
+			"version": "20211204+svn4273-2",
+			"architecture": "all",
+			"filename": "fonts-freefont-ttf_20211204+svn4273-2_all.deb",
+			"size": 5640794,
+			"sha256": "c8283ec9ca390e6ad8d2114cb0942182db62bb97f5142c2f955218fc5f2027b4"
+		},
+		{
+			"name": "fonts-ipafont-gothic",
+			"version": "00303-21ubuntu1",
+			"architecture": "all",
+			"filename": "fonts-ipafont-gothic_00303-21ubuntu1_all.deb",
+			"size": 3513360,
+			"sha256": "71e63f0f88cca672fbb24ed27873d799d8c37233f001aa0bbcdc2f303b1b98a2"
+		},
+		{
+			"name": "fonts-liberation",
+			"version": "1:2.1.5-3",
+			"architecture": "all",
+			"filename": "fonts-liberation_1%3a2.1.5-3_all.deb",
+			"size": 1603290,
+			"sha256": "065c2ab1abc9108b17d401016dc594b79750904390f095845c93bb06e1153acc"
+		},
+		{
+			"name": "fonts-noto-color-emoji",
+			"version": "2.047-0ubuntu0.24.04.1",
+			"architecture": "all",
+			"filename": "fonts-noto-color-emoji_2.047-0ubuntu0.24.04.1_all.deb",
+			"size": 9763994,
+			"sha256": "b102b62ce6a7313315223cff5e052bdf8fc0ad162c9e961ce0dc2202bc139ce2"
+		},
+		{
+			"name": "fonts-tlwg-loma-otf",
+			"version": "1:0.7.3-1",
+			"architecture": "all",
+			"filename": "fonts-tlwg-loma-otf_1%3a0.7.3-1_all.deb",
+			"size": 106786,
+			"sha256": "888038637a15d11993e3a9ddd50f6391a704918b2e38fe75b2f4d74b4fcfda9a"
+		},
+		{
+			"name": "fonts-unifont",
+			"version": "1:15.1.01-1build1",
+			"architecture": "all",
+			"filename": "fonts-unifont_1%3a15.1.01-1build1_all.deb",
+			"size": 2993066,
+			"sha256": "56c9d46ce8223fa29c28eaeb99cabfc3a3159d3eec58f0bbbea839953f4cf363"
+		},
+		{
+			"name": "fonts-wqy-zenhei",
+			"version": "0.9.45-8",
+			"architecture": "all",
+			"filename": "fonts-wqy-zenhei_0.9.45-8_all.deb",
+			"size": 7471624,
+			"sha256": "496969d65dc5664a3291e678d5cbef6815dc308ee5bf37b656c00af2cb490410"
+		},
+		{
+			"name": "gcc-14-base",
+			"version": "14.2.0-4ubuntu2~24.04.1",
+			"architecture": "amd64",
+			"filename": "gcc-14-base_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+			"size": 51014,
+			"sha256": "b95c172411a7fdae70307cf33a9f5320ba5e056b556454543dd5b679d5ce1c4f"
+		},
+		{
+			"name": "libacl1",
+			"version": "2.3.2-1build1.1",
+			"architecture": "amd64",
+			"filename": "libacl1_2.3.2-1build1.1_amd64.deb",
+			"size": 16792,
+			"sha256": "f2bfd3f8f00413d5f1f04fc723063803c56ac0f1e0efae3bc41f2d7276972ec3"
+		},
+		{
+			"name": "libasound2-data",
+			"version": "1.2.11-1ubuntu0.3",
+			"architecture": "all",
+			"filename": "libasound2-data_1.2.11-1ubuntu0.3_all.deb",
+			"size": 21350,
+			"sha256": "0c26896193480d9dbb055e85e8ddfb9c9f34cf19afee340987cd6311e2886fc1"
+		},
+		{
+			"name": "libasound2t64",
+			"version": "1.2.11-1ubuntu0.3",
+			"architecture": "amd64",
+			"filename": "libasound2t64_1.2.11-1ubuntu0.3_amd64.deb",
+			"size": 397772,
+			"sha256": "5d17bfb5683eb99f1be951fe48e1be5bf3c52391913b6b74a8aecf9b4f5e779f"
+		},
+		{
+			"name": "libatk-bridge2.0-0t64",
+			"version": "2.52.0-1build1",
+			"architecture": "amd64",
+			"filename": "libatk-bridge2.0-0t64_2.52.0-1build1_amd64.deb",
+			"size": 66020,
+			"sha256": "22b7d47e3c0f7953a78d3cfd309d1b20771085de9220fbe610c0989b9e808c9b"
+		},
+		{
+			"name": "libatk1.0-0t64",
+			"version": "2.52.0-1build1",
+			"architecture": "amd64",
+			"filename": "libatk1.0-0t64_2.52.0-1build1_amd64.deb",
+			"size": 55282,
+			"sha256": "42c5d4b00954f17c2c3c4b866844f691eb8b6d57bf08b59203e65f12dc84a4f9"
+		},
+		{
+			"name": "libatspi2.0-0t64",
+			"version": "2.52.0-1build1",
+			"architecture": "amd64",
+			"filename": "libatspi2.0-0t64_2.52.0-1build1_amd64.deb",
+			"size": 80548,
+			"sha256": "d686ace4080eca9c2d6ce8de69392a5ac56c846701894c0858922d4ce341a1d7"
+		},
+		{
+			"name": "libaudit-common",
+			"version": "1:3.1.2-2.1ubuntu0.1",
+			"architecture": "all",
+			"filename": "libaudit-common_1%3a3.1.2-2.1ubuntu0.1_all.deb",
+			"size": 5948,
+			"sha256": "b1b6fca3f7ed86db971c073352a6741f1f60f4a94eeb2c1eb0aca8a7e4b11660"
+		},
+		{
+			"name": "libaudit1",
+			"version": "1:3.1.2-2.1ubuntu0.1",
+			"architecture": "amd64",
+			"filename": "libaudit1_1%3a3.1.2-2.1ubuntu0.1_amd64.deb",
+			"size": 47082,
+			"sha256": "326a55fce45a620f12b98baf581fb037eb0fcea1ab3969c54cf177f51be8abfe"
+		},
+		{
+			"name": "libavahi-client3",
+			"version": "0.8-13ubuntu6.2",
+			"architecture": "amd64",
+			"filename": "libavahi-client3_0.8-13ubuntu6.2_amd64.deb",
+			"size": 26810,
+			"sha256": "00609b52ea5a1a9e35fcee4bfba03b6ff743a8015649026cb9109c356762f4d9"
+		},
+		{
+			"name": "libavahi-common-data",
+			"version": "0.8-13ubuntu6.2",
+			"architecture": "amd64",
+			"filename": "libavahi-common-data_0.8-13ubuntu6.2_amd64.deb",
+			"size": 30052,
+			"sha256": "9a03de928ae470c8d127a22dcb8fb8b582922a8f9406fc3ea879f5e98a02eab4"
+		},
+		{
+			"name": "libavahi-common3",
+			"version": "0.8-13ubuntu6.2",
+			"architecture": "amd64",
+			"filename": "libavahi-common3_0.8-13ubuntu6.2_amd64.deb",
+			"size": 23444,
+			"sha256": "edd1f7a4a21e70504d0872c429600f2e13fdff7775c0952145f1afeacede1c82"
+		},
+		{
+			"name": "libblkid1",
+			"version": "2.39.3-9ubuntu6.6",
+			"architecture": "amd64",
+			"filename": "libblkid1_2.39.3-9ubuntu6.6_amd64.deb",
+			"size": 124124,
+			"sha256": "3bcf169cd65e2539059b2287924090fc629f9bf90f595fc25465a7efe950ee82"
+		},
+		{
+			"name": "libbrotli1",
+			"version": "1.1.0-2ubuntu0.1",
+			"architecture": "amd64",
+			"filename": "libbrotli1_1.1.0-2ubuntu0.1_amd64.deb",
+			"size": 330968,
+			"sha256": "70b188a86d81f30d7510aab30e25d638ed5037dded6691af1533952b71ac61de"
+		},
+		{
+			"name": "libbsd0",
+			"version": "0.12.1-1build1.1",
+			"architecture": "amd64",
+			"filename": "libbsd0_0.12.1-1build1.1_amd64.deb",
+			"size": 41238,
+			"sha256": "f3857b0863ac5cfd4263e9bf6cfb1d4be88d5321e4070d5bc2b62b0949e6c86f"
+		},
+		{
+			"name": "libbz2-1.0",
+			"version": "1.0.8-5.1ubuntu0.1",
+			"architecture": "amd64",
+			"filename": "libbz2-1.0_1.0.8-5.1ubuntu0.1_amd64.deb",
+			"size": 34562,
+			"sha256": "36ee08b00b1ee5018b2fce02881b7d2d73c9b4e32990bde3388400d86c48126a"
+		},
+		{
+			"name": "libc6",
+			"version": "2.39-0ubuntu8.9",
+			"architecture": "amd64",
+			"filename": "libc6_2.39-0ubuntu8.9_amd64.deb",
+			"size": 3264314,
+			"sha256": "ff5557d99b51f761c4b7c92368b9cc45565eda17df9bf9eb4b134d09825008be"
+		},
+		{
+			"name": "libcairo2",
+			"version": "1.18.0-3build1",
+			"architecture": "amd64",
+			"filename": "libcairo2_1.18.0-3build1_amd64.deb",
+			"size": 566292,
+			"sha256": "96950b306889ff6e4248bb937b0a3b56e72dacf643fe732214ce375f0f6bbb36"
+		},
+		{
+			"name": "libcap-ng0",
+			"version": "0.8.4-2build2",
+			"architecture": "amd64",
+			"filename": "libcap-ng0_0.8.4-2build2_amd64.deb",
+			"size": 15180,
+			"sha256": "cf1e9437ac7ddf6539dbe87b68858cbdef84d78c6aac243ab3b6e564a52ed930"
+		},
+		{
+			"name": "libcap2",
+			"version": "1:2.66-5ubuntu2.4",
+			"architecture": "amd64",
+			"filename": "libcap2_1%3a2.66-5ubuntu2.4_amd64.deb",
+			"size": 30500,
+			"sha256": "23c627c77c66552a658e62852f244f4946dc543898e0ec5428d5dc6bffde2d6a"
+		},
+		{
+			"name": "libcom-err2",
+			"version": "1.47.0-2.4~exp1ubuntu4.1",
+			"architecture": "amd64",
+			"filename": "libcom-err2_1.47.0-2.4~exp1ubuntu4.1_amd64.deb",
+			"size": 22982,
+			"sha256": "7ab24d3057dabf86db8f771ad6e43f073ed86b6b950d6e8ba22cb9fe6707bbc9"
+		},
+		{
+			"name": "libcups2t64",
+			"version": "2.4.7-1.2ubuntu7.14",
+			"architecture": "amd64",
+			"filename": "libcups2t64_2.4.7-1.2ubuntu7.14_amd64.deb",
+			"size": 274470,
+			"sha256": "b815a3d936718614e403035bb4a545e1323305ea624709bff2e9d94c214f9cc4"
+		},
+		{
+			"name": "libdatrie1",
+			"version": "0.2.13-3build1",
+			"architecture": "amd64",
+			"filename": "libdatrie1_0.2.13-3build1_amd64.deb",
+			"size": 18992,
+			"sha256": "1ae164e40e413eac4fbd38ce1c6ef9591f7a03278ad9076d71fa29258727f447"
+		},
+		{
+			"name": "libdbus-1-3",
+			"version": "1.14.10-4ubuntu4.1",
+			"architecture": "amd64",
+			"filename": "libdbus-1-3_1.14.10-4ubuntu4.1_amd64.deb",
+			"size": 209734,
+			"sha256": "5d630480f04b4b442300ce847a3fa705ea4d14d80ba6de91f99b51a4e4953b08"
+		},
+		{
+			"name": "libdrm-amdgpu1",
+			"version": "2.4.125-1ubuntu0.1~24.04.2",
+			"architecture": "amd64",
+			"filename": "libdrm-amdgpu1_2.4.125-1ubuntu0.1~24.04.2_amd64.deb",
+			"size": 21374,
+			"sha256": "aa29b7898bae596bf07e55ba178cf8d5ea698fe83688e1b34520d86010251a7a"
+		},
+		{
+			"name": "libdrm-common",
+			"version": "2.4.125-1ubuntu0.1~24.04.2",
+			"architecture": "all",
+			"filename": "libdrm-common_2.4.125-1ubuntu0.1~24.04.2_all.deb",
+			"size": 9250,
+			"sha256": "0b60996bc18fa1545e60a47bb0fe1a7f360ec06fe62ba35fb8d8ba2a54e62166"
+		},
+		{
+			"name": "libdrm-intel1",
+			"version": "2.4.125-1ubuntu0.1~24.04.2",
+			"architecture": "amd64",
+			"filename": "libdrm-intel1_2.4.125-1ubuntu0.1~24.04.2_amd64.deb",
+			"size": 63868,
+			"sha256": "847195765b9ef7e7886677aeae9987aa54e496758b4e6e5a4ed2cb580b252244"
+		},
+		{
+			"name": "libdrm2",
+			"version": "2.4.125-1ubuntu0.1~24.04.2",
+			"architecture": "amd64",
+			"filename": "libdrm2_2.4.125-1ubuntu0.1~24.04.2_amd64.deb",
+			"size": 41388,
+			"sha256": "4d3e858dd57be617c49d87c5ddcdb35df744a4f0a559981256ae2ba174718584"
+		},
+		{
+			"name": "libedit2",
+			"version": "3.1-20230828-1build1",
+			"architecture": "amd64",
+			"filename": "libedit2_3.1-20230828-1build1_amd64.deb",
+			"size": 97586,
+			"sha256": "3afbc8ddf835049dd4d88275b9d13680e4c4cdd59e191cbd63424152cc08e00e"
+		},
+		{
+			"name": "libelf1t64",
+			"version": "0.190-1.1ubuntu0.1",
+			"architecture": "amd64",
+			"filename": "libelf1t64_0.190-1.1ubuntu0.1_amd64.deb",
+			"size": 57810,
+			"sha256": "b4aee123a37472d213647594b4f7d4a0d13615b0ca2a6fd33926b768d6b232c2"
+		},
+		{
+			"name": "libexpat1",
+			"version": "2.6.1-2ubuntu0.6",
+			"architecture": "amd64",
+			"filename": "libexpat1_2.6.1-2ubuntu0.6_amd64.deb",
+			"size": 98940,
+			"sha256": "494b8e672f722130c6bca6a7bc4cc31a43ca891a31d60d868bfdd699a3c20b13"
+		},
+		{
+			"name": "libffi8",
+			"version": "3.4.6-1build1",
+			"architecture": "amd64",
+			"filename": "libffi8_3.4.6-1build1_amd64.deb",
+			"size": 24718,
+			"sha256": "637e6a7744de08cd331a41f4efd0d24e6ea9064843dea9d1c6ca87bdb5f038a2"
+		},
+		{
+			"name": "libfontconfig1",
+			"version": "2.15.0-1.1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libfontconfig1_2.15.0-1.1ubuntu2_amd64.deb",
+			"size": 138572,
+			"sha256": "a2bc05cfef021fdb84285036f98eda5ebec3c4b7a378f5aa2bdba5c4d3d8d586"
+		},
+		{
+			"name": "libfontenc1",
+			"version": "1:1.1.8-1build1",
+			"architecture": "amd64",
+			"filename": "libfontenc1_1%3a1.1.8-1build1_amd64.deb",
+			"size": 13996,
+			"sha256": "0c5d57211cac9659e7f4c856f5e1922c4a522fe8bcf5776e9707b2811f965702"
+		},
+		{
+			"name": "libfreetype6",
+			"version": "2.13.2+dfsg-1ubuntu0.2",
+			"architecture": "amd64",
+			"filename": "libfreetype6_2.13.2+dfsg-1ubuntu0.2_amd64.deb",
+			"size": 402610,
+			"sha256": "8c6d3bac5a6197fa2f48b2d56f04f3ffecaa7082eeab91b0939f97a40adc88a6"
+		},
+		{
+			"name": "libfribidi0",
+			"version": "1.0.13-3build1",
+			"architecture": "amd64",
+			"filename": "libfribidi0_1.0.13-3build1_amd64.deb",
+			"size": 26150,
+			"sha256": "6cd50259d39ce0dfafee2632c6268538e6a02590e77161a133e9683af346dd1d"
+		},
+		{
+			"name": "libgbm1",
+			"version": "25.2.8-0ubuntu0.24.04.4",
+			"architecture": "amd64",
+			"filename": "libgbm1_25.2.8-0ubuntu0.24.04.4_amd64.deb",
+			"size": 34172,
+			"sha256": "4bfe348b456db5b445a80e0a3ffb9e9a01b91499bb86e0e568ca3634b134da7e"
+		},
+		{
+			"name": "libgcc-s1",
+			"version": "14.2.0-4ubuntu2~24.04.1",
+			"architecture": "amd64",
+			"filename": "libgcc-s1_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+			"size": 78392,
+			"sha256": "aa7fadbe33b78bcf99885318040601c550c208929565b179891d9a3cc2aa68cd"
+		},
+		{
+			"name": "libgcrypt20",
+			"version": "1.10.3-2ubuntu0.2",
+			"architecture": "amd64",
+			"filename": "libgcrypt20_1.10.3-2ubuntu0.2_amd64.deb",
+			"size": 536494,
+			"sha256": "957b9eeaa83cf6f2d5d5d76dbb8aa31d3297e6781d8a02fa08dcc897ae650a0b"
+		},
+		{
+			"name": "libgl1-mesa-dri",
+			"version": "25.2.8-0ubuntu0.24.04.4",
+			"architecture": "amd64",
+			"filename": "libgl1-mesa-dri_25.2.8-0ubuntu0.24.04.4_amd64.deb",
+			"size": 37950,
+			"sha256": "2dabbe4292b201ca07b38c0672352f68dbfc55b5850f96f89ef54d3b4b6c8a59"
+		},
+		{
+			"name": "libgl1",
+			"version": "1.7.0-1build1",
+			"architecture": "amd64",
+			"filename": "libgl1_1.7.0-1build1_amd64.deb",
+			"size": 101990,
+			"sha256": "e2b2fadeb883f073b566ad1d7874f6702397514d258473e96152a89d4d502a09"
+		},
+		{
+			"name": "libglib2.0-0t64",
+			"version": "2.80.0-6ubuntu3.10",
+			"architecture": "amd64",
+			"filename": "libglib2.0-0t64_2.80.0-6ubuntu3.10_amd64.deb",
+			"size": 1547558,
+			"sha256": "ff1b650f655b36dfe202fdbae6bb02b363c7257b6dd23e4f95ab61f716190df3"
+		},
+		{
+			"name": "libglvnd0",
+			"version": "1.7.0-1build1",
+			"architecture": "amd64",
+			"filename": "libglvnd0_1.7.0-1build1_amd64.deb",
+			"size": 69594,
+			"sha256": "33f5e07c74f73c2bfb44086ae0f9e6da52acd6c104d30ffe8fd768d8253d5e82"
+		},
+		{
+			"name": "libglx-mesa0",
+			"version": "25.2.8-0ubuntu0.24.04.4",
+			"architecture": "amd64",
+			"filename": "libglx-mesa0_25.2.8-0ubuntu0.24.04.4_amd64.deb",
+			"size": 110128,
+			"sha256": "5aa6164059989d476b15caa8ade892b1dec37593934dc4f617ece7ea0d639bc0"
+		},
+		{
+			"name": "libglx0",
+			"version": "1.7.0-1build1",
+			"architecture": "amd64",
+			"filename": "libglx0_1.7.0-1build1_amd64.deb",
+			"size": 38558,
+			"sha256": "aa4953182f30abde90cb5b072e83d7286b557b325769b8686196a7bd396d8795"
+		},
+		{
+			"name": "libgmp10",
+			"version": "2:6.3.0+dfsg-2ubuntu6.1",
+			"architecture": "amd64",
+			"filename": "libgmp10_2%3a6.3.0+dfsg-2ubuntu6.1_amd64.deb",
+			"size": 253460,
+			"sha256": "285f8a505dfa8e1b33f357a9d8d3477ad35bf18c0b34771a6df4c25923f3ae0d"
+		},
+		{
+			"name": "libgnutls30t64",
+			"version": "3.8.3-1.1ubuntu3.6",
+			"architecture": "amd64",
+			"filename": "libgnutls30t64_3.8.3-1.1ubuntu3.6_amd64.deb",
+			"size": 1002902,
+			"sha256": "b8944756260c5ea6b7fac019745f931f905aa7a4df0763676b1b25c911b692e2"
+		},
+		{
+			"name": "libgpg-error0",
+			"version": "1.47-3build2.1",
+			"architecture": "amd64",
+			"filename": "libgpg-error0_1.47-3build2.1_amd64.deb",
+			"size": 70092,
+			"sha256": "93654ee8180a73a0363f25c51dc673d67cbabcbecd164187b8a2deb54d007aef"
+		},
+		{
+			"name": "libgraphite2-3",
+			"version": "1.3.14-2ubuntu0.24.04.1",
+			"architecture": "amd64",
+			"filename": "libgraphite2-3_1.3.14-2ubuntu0.24.04.1_amd64.deb",
+			"size": 73352,
+			"sha256": "2413ea0f6670d6610ee7c2f550551d69fa341f4b9c78e20eb397f0d1bbe914cb"
+		},
+		{
+			"name": "libgssapi-krb5-2",
+			"version": "1.20.1-6ubuntu2.10",
+			"architecture": "amd64",
+			"filename": "libgssapi-krb5-2_1.20.1-6ubuntu2.10_amd64.deb",
+			"size": 142830,
+			"sha256": "0d4a0187bcdbbe3e6a10bfa574100087d12052d0d0ef28614fd6210021c587b2"
+		},
+		{
+			"name": "libharfbuzz0b",
+			"version": "8.3.0-2build2",
+			"architecture": "amd64",
+			"filename": "libharfbuzz0b_8.3.0-2build2_amd64.deb",
+			"size": 468874,
+			"sha256": "d6f7eea2244f98aa0463a056680d4629476bf624767ede301560e24add686b5c"
+		},
+		{
+			"name": "libhogweed6t64",
+			"version": "3.9.1-2.2build1.1",
+			"architecture": "amd64",
+			"filename": "libhogweed6t64_3.9.1-2.2build1.1_amd64.deb",
+			"size": 198548,
+			"sha256": "a9b5f7e9d49ba9060e1c933567046fbc6feab6096799cbf550b7214dc9b0f49b"
+		},
+		{
+			"name": "libice6",
+			"version": "2:1.0.10-1build3",
+			"architecture": "amd64",
+			"filename": "libice6_2%3a1.0.10-1build3_amd64.deb",
+			"size": 41398,
+			"sha256": "ad1edb5303574fee154e487947177e5bd15363aa71b92f78f5a2a7145fdb81c5"
+		},
+		{
+			"name": "libicu74",
+			"version": "74.2-1ubuntu3.1",
+			"architecture": "amd64",
+			"filename": "libicu74_74.2-1ubuntu3.1_amd64.deb",
+			"size": 10860078,
+			"sha256": "c9a70989678660eed9a1e904c74fa043da8bec8e2036856fc16e31ced79b04f8"
+		},
+		{
+			"name": "libidn2-0",
+			"version": "2.3.7-2build1.1",
+			"architecture": "amd64",
+			"filename": "libidn2-0_2.3.7-2build1.1_amd64.deb",
+			"size": 66242,
+			"sha256": "46bfd10df095a23b65f58115de47a547c9a2d14627749bd0423ae78c14be77d3"
+		},
+		{
+			"name": "libk5crypto3",
+			"version": "1.20.1-6ubuntu2.10",
+			"architecture": "amd64",
+			"filename": "libk5crypto3_1.20.1-6ubuntu2.10_amd64.deb",
+			"size": 81944,
+			"sha256": "273f7cc95a68d927d7f71c3e78b7717a16a8d86e646a206bae7bf797150ae9db"
+		},
+		{
+			"name": "libkeyutils1",
+			"version": "1.6.3-3build1",
+			"architecture": "amd64",
+			"filename": "libkeyutils1_1.6.3-3build1_amd64.deb",
+			"size": 9490,
+			"sha256": "0679f198b0128179e46cdf956fb2022c23c758664c00bc8efa0382d509683a8a"
+		},
+		{
+			"name": "libkrb5-3",
+			"version": "1.20.1-6ubuntu2.10",
+			"architecture": "amd64",
+			"filename": "libkrb5-3_1.20.1-6ubuntu2.10_amd64.deb",
+			"size": 347568,
+			"sha256": "60b48c5a3233f1d8caba30d6573edc8e131911ab6d63adcd664f7cbe62708362"
+		},
+		{
+			"name": "libkrb5support0",
+			"version": "1.20.1-6ubuntu2.10",
+			"architecture": "amd64",
+			"filename": "libkrb5support0_1.20.1-6ubuntu2.10_amd64.deb",
+			"size": 34942,
+			"sha256": "9224ede3246a82a845ea97652ecfae57f88e8d8f520d8a186f9157167574fb34"
+		},
+		{
+			"name": "libllvm20",
+			"version": "1:20.1.2-0ubuntu1~24.04.3",
+			"architecture": "amd64",
+			"filename": "libllvm20_1%3a20.1.2-0ubuntu1~24.04.3_amd64.deb",
+			"size": 30574382,
+			"sha256": "f018e71c72c7a4742fb1aff9dc98b45586f42e6ea464d4918af7e3772b7f0658"
+		},
+		{
+			"name": "liblz4-1",
+			"version": "1.9.4-1build1.1",
+			"architecture": "amd64",
+			"filename": "liblz4-1_1.9.4-1build1.1_amd64.deb",
+			"size": 63062,
+			"sha256": "319331270d5cc52d5ebffe51c941d7b01b432bc402c2924b557209a64d4ecbad"
+		},
+		{
+			"name": "liblzma5",
+			"version": "5.6.1+really5.4.5-1ubuntu0.4",
+			"architecture": "amd64",
+			"filename": "liblzma5_5.6.1+really5.4.5-1ubuntu0.4_amd64.deb",
+			"size": 127704,
+			"sha256": "5bcf5da2339331e21d3f42a831e82c61c54c6b2f29804010e8d59abd0ae52167"
+		},
+		{
+			"name": "libmd0",
+			"version": "1.1.0-2build1.1",
+			"architecture": "amd64",
+			"filename": "libmd0_1.1.0-2build1.1_amd64.deb",
+			"size": 26976,
+			"sha256": "e5ba01d3c41f256aaf57ec59aa0554857162e3e7f97cdfbff1ed2c0e8d720ee7"
+		},
+		{
+			"name": "libmount1",
+			"version": "2.39.3-9ubuntu6.6",
+			"architecture": "amd64",
+			"filename": "libmount1_2.39.3-9ubuntu6.6_amd64.deb",
+			"size": 134082,
+			"sha256": "8f2c25589f187dacfdc5bb6be2af0aee6c2ba7b4d2edd1ca4b26753469f07aae"
+		},
+		{
+			"name": "libnettle8t64",
+			"version": "3.9.1-2.2build1.1",
+			"architecture": "amd64",
+			"filename": "libnettle8t64_3.9.1-2.2build1.1_amd64.deb",
+			"size": 181636,
+			"sha256": "6d97fbc1972633083f08f51ccab433606c97bbceb897c631c66495117ca3406f"
+		},
+		{
+			"name": "libnspr4",
+			"version": "2:4.35-1.1build1",
+			"architecture": "amd64",
+			"filename": "libnspr4_2%3a4.35-1.1build1_amd64.deb",
+			"size": 117398,
+			"sha256": "e579e72d091f6c7a13f5a756c31065b15aae5b81840d61b069355aa2283c07b4"
+		},
+		{
+			"name": "libnss3",
+			"version": "2:3.98-1ubuntu0.3",
+			"architecture": "amd64",
+			"filename": "libnss3_2%3a3.98-1ubuntu0.3_amd64.deb",
+			"size": 1444912,
+			"sha256": "e11fdf8c09a068d0f0c3fd90ed971253dfed7227cc20d3d487fd615d4771f1bb"
+		},
+		{
+			"name": "libp11-kit0",
+			"version": "0.25.3-4ubuntu2.2",
+			"architecture": "amd64",
+			"filename": "libp11-kit0_0.25.3-4ubuntu2.2_amd64.deb",
+			"size": 297270,
+			"sha256": "e7c58aeac19d89f5f1492dfaa52b8623bcd56edc40983f5243ad56d94f477bf2"
+		},
+		{
+			"name": "libpango-1.0-0",
+			"version": "1.52.1+ds-1build1",
+			"architecture": "amd64",
+			"filename": "libpango-1.0-0_1.52.1+ds-1build1_amd64.deb",
+			"size": 230606,
+			"sha256": "09dfa5c881ab273ec6bc1830adcefdc407fcd619316e68fb26ca3a23d0fc9f54"
+		},
+		{
+			"name": "libpciaccess0",
+			"version": "0.17-3ubuntu0.24.04.3",
+			"architecture": "amd64",
+			"filename": "libpciaccess0_0.17-3ubuntu0.24.04.3_amd64.deb",
+			"size": 19220,
+			"sha256": "87a3b1c2a09f54d229e5e1f5424adc806e8f99bbb8aa8c8dea114b727f7a5a96"
+		},
+		{
+			"name": "libpcre2-8-0",
+			"version": "10.42-4ubuntu2.2",
+			"architecture": "amd64",
+			"filename": "libpcre2-8-0_10.42-4ubuntu2.2_amd64.deb",
+			"size": 228546,
+			"sha256": "f41da7cb7e979d6b037ea92650c72ec8ec532ec3c93aa8d5b997207de56695ea"
+		},
+		{
+			"name": "libpixman-1-0",
+			"version": "0.42.2-1build1",
+			"architecture": "amd64",
+			"filename": "libpixman-1-0_0.42.2-1build1_amd64.deb",
+			"size": 279306,
+			"sha256": "d9c2931c4c424615eeab9dd5ae08bfc608b84e803c1d3ccddf319270db213421"
+		},
+		{
+			"name": "libpng16-16t64",
+			"version": "1.6.43-5ubuntu0.7",
+			"architecture": "amd64",
+			"filename": "libpng16-16t64_1.6.43-5ubuntu0.7_amd64.deb",
+			"size": 188998,
+			"sha256": "863d6abb089b2820ceba98e6b18f06eaacc55f9b05827001e7b4021a9a7b246c"
+		},
+		{
+			"name": "libselinux1",
+			"version": "3.5-2ubuntu2.1",
+			"architecture": "amd64",
+			"filename": "libselinux1_3.5-2ubuntu2.1_amd64.deb",
+			"size": 79660,
+			"sha256": "6abaa6c26f46ef17764c4a753e0e84de1cdadde5634fd2987621fdc617988d19"
+		},
+		{
+			"name": "libsensors-config",
+			"version": "1:3.6.0-9build1",
+			"architecture": "all",
+			"filename": "libsensors-config_1%3a3.6.0-9build1_all.deb",
+			"size": 5546,
+			"sha256": "148103a436fd273dabfe0fe41dc54873df46227b59b2c7ac7339d7e2ddfd033b"
+		},
+		{
+			"name": "libsensors5",
+			"version": "1:3.6.0-9build1",
+			"architecture": "amd64",
+			"filename": "libsensors5_1%3a3.6.0-9build1_amd64.deb",
+			"size": 26600,
+			"sha256": "515ed1fbe2bc99926c44fe10b1beb9c3510068c344adda334303098d669ba1e5"
+		},
+		{
+			"name": "libsm6",
+			"version": "2:1.2.3-1build3",
+			"architecture": "amd64",
+			"filename": "libsm6_2%3a1.2.3-1build3_amd64.deb",
+			"size": 15684,
+			"sha256": "1d27ebc381b499075a28c504be4d7d424c63b6866354736ac7f8d25813860cdf"
+		},
+		{
+			"name": "libsqlite3-0",
+			"version": "3.45.1-1ubuntu2.9",
+			"architecture": "amd64",
+			"filename": "libsqlite3-0_3.45.1-1ubuntu2.9_amd64.deb",
+			"size": 701804,
+			"sha256": "e04c9d3cf7d0fc4d63332bea2395280550a0b5daef35d19c3c079fc2e96a92e5"
+		},
+		{
+			"name": "libssl3t64",
+			"version": "3.0.13-0ubuntu3.16",
+			"architecture": "amd64",
+			"filename": "libssl3t64_3.0.13-0ubuntu3.16_amd64.deb",
+			"size": 1945300,
+			"sha256": "219f43b1cd836a4da550938db5fda93160d269d39a4edcf1f1ce698a470db797"
+		},
+		{
+			"name": "libstdc++6",
+			"version": "14.2.0-4ubuntu2~24.04.1",
+			"architecture": "amd64",
+			"filename": "libstdc++6_14.2.0-4ubuntu2~24.04.1_amd64.deb",
+			"size": 792064,
+			"sha256": "a51f8de7829211db961a31f02158058ad1a95f92ac6d0a5dff6350e2821c54c0"
+		},
+		{
+			"name": "libsystemd0",
+			"version": "255.4-1ubuntu8.18",
+			"architecture": "amd64",
+			"filename": "libsystemd0_255.4-1ubuntu8.18_amd64.deb",
+			"size": 436342,
+			"sha256": "2da3fa28302cf007075e89cdc3aabe6973916afcd62c3884b86f67b77c73a5b4"
+		},
+		{
+			"name": "libtasn1-6",
+			"version": "4.19.0-3ubuntu0.24.04.2",
+			"architecture": "amd64",
+			"filename": "libtasn1-6_4.19.0-3ubuntu0.24.04.2_amd64.deb",
+			"size": 44468,
+			"sha256": "f82c9ad142f952ea523bda5bfca7bb0802af3a50b8c0f0dd9ec18cdfa104bde7"
+		},
+		{
+			"name": "libthai-data",
+			"version": "0.1.29-2build1",
+			"architecture": "all",
+			"filename": "libthai-data_0.1.29-2build1_all.deb",
+			"size": 158016,
+			"sha256": "6035d4a714290b97816bed7f3bf64921c6358ddb84d1dacdddccdc1cf39bffb7"
+		},
+		{
+			"name": "libthai0",
+			"version": "0.1.29-2build1",
+			"architecture": "amd64",
+			"filename": "libthai0_0.1.29-2build1_amd64.deb",
+			"size": 18914,
+			"sha256": "5ada7045c5f84a4b774e6449151800aa6470e8d01dc9d6124ef4a44ae6af5508"
+		},
+		{
+			"name": "libtinfo6",
+			"version": "6.4+20240113-1ubuntu2.2",
+			"architecture": "amd64",
+			"filename": "libtinfo6_6.4+20240113-1ubuntu2.2_amd64.deb",
+			"size": 108086,
+			"sha256": "b67a6df2bdab61d273eabebd208bb6a3fb12618a390a067e1ee305a409ff03d9"
+		},
+		{
+			"name": "libunistring5",
+			"version": "1.1-2build1.1",
+			"architecture": "amd64",
+			"filename": "libunistring5_1.1-2build1.1_amd64.deb",
+			"size": 535554,
+			"sha256": "203d7657b5f54633fba1a9c9b784d556ef83c9f6787b3185ba55a88e07b865a3"
+		},
+		{
+			"name": "libunwind8",
+			"version": "1.6.2-3build1.1",
+			"architecture": "amd64",
+			"filename": "libunwind8_1.6.2-3build1.1_amd64.deb",
+			"size": 55254,
+			"sha256": "825cb8724bb6b3389587e30c03ab3381f56a2422cafe3b1945f37e055c65e942"
+		},
+		{
+			"name": "libuuid1",
+			"version": "2.39.3-9ubuntu6.6",
+			"architecture": "amd64",
+			"filename": "libuuid1_2.39.3-9ubuntu6.6_amd64.deb",
+			"size": 36596,
+			"sha256": "7e2992d3a79fc05514dc5966558ee9c66a7214a47edf2a36017b9e2777528665"
+		},
+		{
+			"name": "libvulkan1",
+			"version": "1.3.275.0-1build1",
+			"architecture": "amd64",
+			"filename": "libvulkan1_1.3.275.0-1build1_amd64.deb",
+			"size": 142010,
+			"sha256": "ccf4fe8f4461442f27ea2494c7ae650b60bd396fec2688b0c44a27d66a222f74"
+		},
+		{
+			"name": "libx11-6",
+			"version": "2:1.8.7-1ubuntu0.1",
+			"architecture": "amd64",
+			"filename": "libx11-6_2%3a1.8.7-1ubuntu0.1_amd64.deb",
+			"size": 653072,
+			"sha256": "9102f73477081a9a57994c80587ca9760341f644ed51bdfa46f2248083d418b3"
+		},
+		{
+			"name": "libx11-data",
+			"version": "2:1.8.7-1ubuntu0.1",
+			"architecture": "all",
+			"filename": "libx11-data_2%3a1.8.7-1ubuntu0.1_all.deb",
+			"size": 115970,
+			"sha256": "5cb70f7a8e7178e0bae4fd49eee49feaed623d2d821caf6ea5862b66f9e9630b"
+		},
+		{
+			"name": "libx11-xcb1",
+			"version": "2:1.8.7-1ubuntu0.1",
+			"architecture": "amd64",
+			"filename": "libx11-xcb1_2%3a1.8.7-1ubuntu0.1_amd64.deb",
+			"size": 7796,
+			"sha256": "5ce7093e58aaaf753ed0904351a4e07f209e0c282ee8ef4f5f7988d0b40dccc1"
+		},
+		{
+			"name": "libxau6",
+			"version": "1:1.0.9-1build6",
+			"architecture": "amd64",
+			"filename": "libxau6_1%3a1.0.9-1build6_amd64.deb",
+			"size": 7160,
+			"sha256": "e40d29f1d1a62393bacaedebe0da3d9006084152a9f7e5e029293f08ce1c5c80"
+		},
+		{
+			"name": "libxaw7",
+			"version": "2:1.0.14-1build2",
+			"architecture": "amd64",
+			"filename": "libxaw7_2%3a1.0.14-1build2_amd64.deb",
+			"size": 186984,
+			"sha256": "2a9cdc82ecf566de76e05394efc604c9cced49e12c28b10e1ca101062b47bac0"
+		},
+		{
+			"name": "libxcb-dri3-0",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb-dri3-0_1.15-1ubuntu2_amd64.deb",
+			"size": 7142,
+			"sha256": "3d3d0e95e56ae16010a84883196b8153cba62d6831f9aaee2a68c46f20c7c004"
+		},
+		{
+			"name": "libxcb-glx0",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb-glx0_1.15-1ubuntu2_amd64.deb",
+			"size": 24774,
+			"sha256": "d07cde26c70fe92df7c327928371e495cc4570fed2d6518758a5db5715cb34c1"
+		},
+		{
+			"name": "libxcb-present0",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb-present0_1.15-1ubuntu2_amd64.deb",
+			"size": 5676,
+			"sha256": "2e36e6557e87dbfd64df3143cbf81a4f75c3447501a545b4730511d228b0dd17"
+		},
+		{
+			"name": "libxcb-randr0",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb-randr0_1.15-1ubuntu2_amd64.deb",
+			"size": 17862,
+			"sha256": "b5cb519823a05a617b543dc9b6a9289b7648b20048244abe021caa706309835a"
+		},
+		{
+			"name": "libxcb-render0",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb-render0_1.15-1ubuntu2_amd64.deb",
+			"size": 16230,
+			"sha256": "7d83a0668b1a693b5ea2e496206e8371fb6beda4c54a2b4b3902005915c272c5"
+		},
+		{
+			"name": "libxcb-shm0",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb-shm0_1.15-1ubuntu2_amd64.deb",
+			"size": 5756,
+			"sha256": "229d1280d459f1ba44c22939d3f9b61d9d20932d9a646b3fe4ce50be4cdf2325"
+		},
+		{
+			"name": "libxcb-sync1",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb-sync1_1.15-1ubuntu2_amd64.deb",
+			"size": 9312,
+			"sha256": "14286795a258593259923619073e50c15345673befae2733f7b0577b07359aa8"
+		},
+		{
+			"name": "libxcb-xfixes0",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb-xfixes0_1.15-1ubuntu2_amd64.deb",
+			"size": 10190,
+			"sha256": "0b2ab64af92a71e3d1a35e3c819880ee28d04bfac81360df68ae8d8e9663ebd2"
+		},
+		{
+			"name": "libxcb1",
+			"version": "1.15-1ubuntu2",
+			"architecture": "amd64",
+			"filename": "libxcb1_1.15-1ubuntu2_amd64.deb",
+			"size": 47730,
+			"sha256": "e1c6611d11ad7398326f1bf028afc34c3b14c51d917a3426b966ed4b9687fa58"
+		},
+		{
+			"name": "libxcomposite1",
+			"version": "1:0.4.5-1build3",
+			"architecture": "amd64",
+			"filename": "libxcomposite1_1%3a0.4.5-1build3_amd64.deb",
+			"size": 6320,
+			"sha256": "a12d5d9ae70b798cbbf284080eae32b87367561fc9c24492f641b8860ac0f308"
+		},
+		{
+			"name": "libxdamage1",
+			"version": "1:1.1.6-1build1",
+			"architecture": "amd64",
+			"filename": "libxdamage1_1%3a1.1.6-1build1_amd64.deb",
+			"size": 6150,
+			"sha256": "6891faf325e996ebd28ef53ebb9c043dc96f67327500490affc3e89d366d35ed"
+		},
+		{
+			"name": "libxdmcp6",
+			"version": "1:1.1.3-0ubuntu6",
+			"architecture": "amd64",
+			"filename": "libxdmcp6_1%3a1.1.3-0ubuntu6_amd64.deb",
+			"size": 10254,
+			"sha256": "bcd336fce11ce2a45f34d0f95e6980af22529f22147e8f98c156e5cee8ee42bb"
+		},
+		{
+			"name": "libxext6",
+			"version": "2:1.3.4-1build2",
+			"architecture": "amd64",
+			"filename": "libxext6_2%3a1.3.4-1build2_amd64.deb",
+			"size": 30406,
+			"sha256": "45783969a9ece9d7b7b733b8c60981584c53c6bc5ee3b42d295d2f80d1285679"
+		},
+		{
+			"name": "libxfixes3",
+			"version": "1:6.0.0-2build1",
+			"architecture": "amd64",
+			"filename": "libxfixes3_1%3a6.0.0-2build1_amd64.deb",
+			"size": 10764,
+			"sha256": "0ee1015cccd063249e01c0cd0bf45f513c8ac9a1e5e485070c12e69192455e4a"
+		},
+		{
+			"name": "libxfont2",
+			"version": "1:2.0.6-1+deb13u1build0.24.04.2",
+			"architecture": "amd64",
+			"filename": "libxfont2_1%3a2.0.6-1+deb13u1build0.24.04.2_amd64.deb",
+			"size": 93972,
+			"sha256": "e2ed49a20ccff6ffa52719a6cd118538e24c434d9035acd7fb736e7e4f8d6485"
+		},
+		{
+			"name": "libxi6",
+			"version": "2:1.8.1-1build1",
+			"architecture": "amd64",
+			"filename": "libxi6_2%3a1.8.1-1build1_amd64.deb",
+			"size": 32404,
+			"sha256": "0ea7acb5e8a8ce4d6653b30e03a319bfe136db7bfb5ee7cad34c2aa1272ea8d9"
+		},
+		{
+			"name": "libxkbcommon0",
+			"version": "1.6.0-1build1",
+			"architecture": "amd64",
+			"filename": "libxkbcommon0_1.6.0-1build1_amd64.deb",
+			"size": 121944,
+			"sha256": "2b9caeb423efb540296a1cb20b872cc630c23908407ecb5c1c787a617622d664"
+		},
+		{
+			"name": "libxkbfile1",
+			"version": "1:1.1.0-1build4",
+			"architecture": "amd64",
+			"filename": "libxkbfile1_1%3a1.1.0-1build4_amd64.deb",
+			"size": 70010,
+			"sha256": "22ac5b7dca740e606261cebdfaf1a07738e92ad3d123570694374ddb4d5afea2"
+		},
+		{
+			"name": "libxml2",
+			"version": "2.9.14+dfsg-1.3ubuntu3.10",
+			"architecture": "amd64",
+			"filename": "libxml2_2.9.14+dfsg-1.3ubuntu3.10_amd64.deb",
+			"size": 763592,
+			"sha256": "c5a065f85c1e6f605741e365e40cad71c3ceb0e85e2791400bd35b8896e12ad1"
+		},
+		{
+			"name": "libxmu6",
+			"version": "2:1.1.3-3build2",
+			"architecture": "amd64",
+			"filename": "libxmu6_2%3a1.1.3-3build2_amd64.deb",
+			"size": 47610,
+			"sha256": "05c13bce0e9a80139dfa72cc8e7a695b4f7d58b1884423929eade62179d99853"
+		},
+		{
+			"name": "libxmuu1",
+			"version": "2:1.1.3-3build2",
+			"architecture": "amd64",
+			"filename": "libxmuu1_2%3a1.1.3-3build2_amd64.deb",
+			"size": 8958,
+			"sha256": "27428f8d7b63c38424177d5b3b8b2b89d519956ccfe969927cd0a20cdec977c0"
+		},
+		{
+			"name": "libxpm4",
+			"version": "1:3.5.17-1ubuntu0.24.04.2",
+			"architecture": "amd64",
+			"filename": "libxpm4_1%3a3.5.17-1ubuntu0.24.04.2_amd64.deb",
+			"size": 36684,
+			"sha256": "e14b1581dc675ded6519132f5fccb31b39d534117399d3153082e353b6fe2704"
+		},
+		{
+			"name": "libxrandr2",
+			"version": "2:1.5.2-2build1",
+			"architecture": "amd64",
+			"filename": "libxrandr2_2%3a1.5.2-2build1_amd64.deb",
+			"size": 19670,
+			"sha256": "f2955a5e594f5724b58ad241d9231ea191cb36574a0d5e5ca6b661cd41d6256d"
+		},
+		{
+			"name": "libxrender1",
+			"version": "1:0.9.10-1.1build1",
+			"architecture": "amd64",
+			"filename": "libxrender1_1%3a0.9.10-1.1build1_amd64.deb",
+			"size": 19016,
+			"sha256": "d70bd831aebe8d4834b5dd2ed98df26dd6bd27f1042c47543bd7f66df1ae22ea"
+		},
+		{
+			"name": "libxshmfence1",
+			"version": "1.3-1build5",
+			"architecture": "amd64",
+			"filename": "libxshmfence1_1.3-1build5_amd64.deb",
+			"size": 4764,
+			"sha256": "bc6de4bfaf9050a8ba83d4bcfb114131b081084a7972c03417f8523d52b5c742"
+		},
+		{
+			"name": "libxt6t64",
+			"version": "1:1.2.1-1.2build1",
+			"architecture": "amd64",
+			"filename": "libxt6t64_1%3a1.2.1-1.2build1_amd64.deb",
+			"size": 170810,
+			"sha256": "2e4317d5ae1a45e517771ea0b8d93519b5f915ab08983facecd480d64dbd1489"
+		},
+		{
+			"name": "libxxf86vm1",
+			"version": "1:1.1.4-1build4",
+			"architecture": "amd64",
+			"filename": "libxxf86vm1_1%3a1.1.4-1build4_amd64.deb",
+			"size": 9282,
+			"sha256": "48b2799f52b86505d2bc91dcb1bfa6536545635b9849cb693d274d934116a8da"
+		},
+		{
+			"name": "libzstd1",
+			"version": "1.5.5+dfsg2-2build1.1",
+			"architecture": "amd64",
+			"filename": "libzstd1_1.5.5+dfsg2-2build1.1_amd64.deb",
+			"size": 299472,
+			"sha256": "dfcf25061e07aad7efd3f4f880ba5ad4d4d09ebe7fc8cc77ab6b8a161d6d4727"
+		},
+		{
+			"name": "lsb-base",
+			"version": "11.6",
+			"architecture": "all",
+			"filename": "lsb-base_11.6_all.deb",
+			"size": 4606,
+			"sha256": "08a563e3c1984acdb295f12b77b4ec18d2ccf52fd03280a5bea29e506a3350ee"
+		},
+		{
+			"name": "mesa-libgallium",
+			"version": "25.2.8-0ubuntu0.24.04.4",
+			"architecture": "amd64",
+			"filename": "mesa-libgallium_25.2.8-0ubuntu0.24.04.4_amd64.deb",
+			"size": 10783312,
+			"sha256": "0c50c3c18c1b3f3ac4243bbf1533c9202f9d7b4f646807e9ef0df4c801414256"
+		},
+		{
+			"name": "sysvinit-utils",
+			"version": "3.08-6ubuntu3",
+			"architecture": "amd64",
+			"filename": "sysvinit-utils_3.08-6ubuntu3_amd64.deb",
+			"size": 34170,
+			"sha256": "03cf5c9c28a5d186fb7f5214e464f831ff28177695cbb61e66083237267a047e"
+		},
+		{
+			"name": "tar",
+			"version": "1.35+dfsg-3ubuntu0.4",
+			"architecture": "amd64",
+			"filename": "tar_1.35+dfsg-3ubuntu0.4_amd64.deb",
+			"size": 256392,
+			"sha256": "fdf41a87936824e50c8ac11b0b22d1395aeb0754feef2dae5575b5d5a93793ec"
+		},
+		{
+			"name": "x11-common",
+			"version": "1:7.7+23ubuntu3",
+			"architecture": "all",
+			"filename": "x11-common_1%3a7.7+23ubuntu3_all.deb",
+			"size": 21748,
+			"sha256": "b545fa5196dd7467ba3770d6ce575abcd7941071961ea9f7535a319d9d20fd46"
+		},
+		{
+			"name": "x11-xkb-utils",
+			"version": "7.7+8build2",
+			"architecture": "amd64",
+			"filename": "x11-xkb-utils_7.7+8build2_amd64.deb",
+			"size": 170314,
+			"sha256": "69df4191e165f8b89d067f6234fcce89a4923d27d1e66dd92e6d63d6da93cdb0"
+		},
+		{
+			"name": "xauth",
+			"version": "1:1.1.2-1build1",
+			"architecture": "amd64",
+			"filename": "xauth_1%3a1.1.2-1build1_amd64.deb",
+			"size": 25594,
+			"sha256": "037e70571f39384e28c4ad0db07b44de11f0911ee6c02445560979b417012650"
+		},
+		{
+			"name": "xfonts-cyrillic",
+			"version": "1:1.0.5+nmu1",
+			"architecture": "all",
+			"filename": "xfonts-cyrillic_1%3a1.0.5+nmu1_all.deb",
+			"size": 384312,
+			"sha256": "d4a63d4da9f6d58467ccaa22b7b26c009ab46b07f0b1be2138d3bb037e74d2cb"
+		},
+		{
+			"name": "xfonts-encodings",
+			"version": "1:1.0.5-0ubuntu2",
+			"architecture": "all",
+			"filename": "xfonts-encodings_1%3a1.0.5-0ubuntu2_all.deb",
+			"size": 578092,
+			"sha256": "3bac5ff1cba3b001aee1652e3af45d200c415b68e9b27932cb51fe9c464feb40"
+		},
+		{
+			"name": "xfonts-scalable",
+			"version": "1:1.0.3-1.3",
+			"architecture": "all",
+			"filename": "xfonts-scalable_1%3a1.0.3-1.3_all.deb",
+			"size": 304118,
+			"sha256": "517f73a4f6e37332addffe6ff1795d5371f2f9c0863781efc31c4613f69993de"
+		},
+		{
+			"name": "xfonts-utils",
+			"version": "1:7.7+6build3",
+			"architecture": "amd64",
+			"filename": "xfonts-utils_1%3a7.7+6build3_amd64.deb",
+			"size": 94438,
+			"sha256": "8da5fccbc50005d50dd69ef558ae72673435026e1d3134d0c1cc836d22953c44"
+		},
+		{
+			"name": "xkb-data",
+			"version": "2.41-2ubuntu1.1",
+			"architecture": "all",
+			"filename": "xkb-data_2.41-2ubuntu1.1_all.deb",
+			"size": 397328,
+			"sha256": "e99f2a0b4c56cdf35dec489e56b6a8418826cab8ce6306ec6d0bd98e2cd0014a"
+		},
+		{
+			"name": "xserver-common",
+			"version": "2:21.1.12-1ubuntu1.9",
+			"architecture": "all",
+			"filename": "xserver-common_2%3a21.1.12-1ubuntu1.9_all.deb",
+			"size": 35008,
+			"sha256": "ceeac76b9c94973c71e4e6566fa9ff5d3caae9716775d840810a4e1ad749a737"
+		},
+		{
+			"name": "xvfb",
+			"version": "2:21.1.12-1ubuntu1.9",
+			"architecture": "amd64",
+			"filename": "xvfb_2%3a21.1.12-1ubuntu1.9_amd64.deb",
+			"size": 877038,
+			"sha256": "2011271eabcc2eb460e99995c5ef26e46633e87d04f570e305b62f178f7b452c"
+		},
+		{
+			"name": "zlib1g",
+			"version": "1:1.3.dfsg-3.1ubuntu2.3",
+			"architecture": "amd64",
+			"filename": "zlib1g_1%3a1.3.dfsg-3.1ubuntu2.3_amd64.deb",
+			"size": 63158,
+			"sha256": "376249c8de139568221dbb242318cc8cb8f02299e3a62b7432948e1754fbddf9"
+		}
+	]
+}

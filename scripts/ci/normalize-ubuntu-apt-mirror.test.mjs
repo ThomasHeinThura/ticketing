@@ -220,65 +220,42 @@ test("source walk rejects hard-linked config rather than replacing an external a
   }
 });
 
-test("every Playwright dependency install has the bounded Ubuntu mirror pre-step", async () => {
-  const workflowPaths = [
-    [path.resolve(".github/workflows/ci-fast.yml"), { static: "sudo" }],
-    [
-      path.resolve(".github/workflows/ci-full.yml"),
-      { e2e: "sudo", a11y: "sudo", visual: "root", performance: "sudo" },
-    ],
-  ];
-  for (const [workflowPath, expectedExecutors] of workflowPaths) {
+test("browser setup uses the normalizer and bounded acquisition on every runner job", async () => {
+  for (const [workflowPath, jobIds] of [
+    [".github/workflows/ci-fast.yml", ["static"]],
+    [".github/workflows/ci-full.yml", ["e2e", "a11y", "performance"]],
+  ]) {
     const workflow = await readFile(workflowPath, "utf8");
-    const actualJobs = new Set();
-    for (const [jobId, expectedExecutor] of Object.entries(expectedExecutors)) {
-      const jobHeading = new RegExp(`^  ${jobId}:\\s*$`, "m");
-      const start = workflow.search(jobHeading);
-      assert.notEqual(start, -1, `${workflowPath} declares ${jobId}`);
+    for (const jobId of jobIds) {
+      const start = workflow.search(new RegExp(`^  ${jobId}:\\s*$`, "m"));
+      assert.notEqual(start, -1);
       const tail = workflow.slice(start + 1);
-      const nextHeading = /^ {2}[a-z][a-z0-9_-]*:\s*$/m.exec(tail);
-      const end = nextHeading ? start + 1 + nextHeading.index : workflow.length;
-      const job = workflow.slice(start, end);
-      const steps = job.split(/(?=^ {6}- name:)/m);
-      const installSteps = steps
-        .map((step, stepIndex) => ({ step, stepIndex }))
-        .filter(({ step }) =>
-          /playwright install --with-deps chromium/.test(step),
-        );
-      if (installSteps.length === 0) continue;
-
-      actualJobs.add(jobId);
-      assert.equal(
-        installSteps.length,
-        1,
-        `${workflowPath} ${jobId} has one dependency install`,
+      const next = /^ {2}[a-z][a-z0-9_-]*:\s*$/m.exec(tail);
+      const job = workflow.slice(
+        start,
+        next ? start + 1 + next.index : undefined,
       );
-      const { stepIndex } = installSteps[0];
-      assert.ok(stepIndex > 0, `${workflowPath} ${jobId} has a pre-step`);
-      const normalizer = steps[stepIndex - 1];
-      assert.match(
-        normalizer,
-        /name: Normalize Ubuntu APT mirror for Chromium dependencies/,
+      assert.match(job, /^ {4}runs-on: ubuntu-24\.04$/m);
+      const normalize = job.indexOf(
+        'run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs',
       );
-      const invocation = normalizer.match(/^\s+run: (.+)$/m)?.[1];
-      assert.equal(
-        invocation,
-        expectedExecutor === "root"
-          ? "node scripts/ci/normalize-ubuntu-apt-mirror.mjs"
-          : 'sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs',
-        `${workflowPath} ${jobId} runs the helper with its required privileges`,
+      const install = job.indexOf(
+        "run: scripts/ci/acquire-ubuntu-ci-deps.sh chromium",
       );
-      if (expectedExecutor === "root") {
-        assert.match(job, /^ {4}container:\s*$/m);
-      } else {
-        assert.doesNotMatch(job, /^ {4}container:\s*$/m);
-      }
+      assert.ok(
+        normalize >= 0 && install > normalize,
+        `${jobId} normalizes before setup`,
+      );
+      assert.doesNotMatch(job, /playwright install --with-deps/);
     }
-    assert.deepEqual(actualJobs, new Set(Object.keys(expectedExecutors)));
     assert.equal(
-      [...workflow.matchAll(/playwright install --with-deps chromium/g)].length,
-      Object.keys(expectedExecutors).length,
-      `${workflowPath} has no unclassified Playwright dependency installs`,
+      [
+        ...workflow.matchAll(
+          /run: scripts\/ci\/acquire-ubuntu-ci-deps\.sh chromium/g,
+        ),
+      ].length,
+      jobIds.length,
     );
+    assert.doesNotMatch(workflow, /playwright install --with-deps/);
   }
 });
