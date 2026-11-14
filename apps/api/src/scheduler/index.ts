@@ -109,11 +109,11 @@ function createRegisteredJobDefinitions(): ReadonlyArray<RegisteredJobDefinition
     {
       name: "outbox-drain",
       pattern: "*/30 * * * * *",
-      // Parent event envelopes, then immediate notification children (EV-1/EV-2).
+      // Digest groups, parent event envelopes, and their children (EV-1/EV-2).
       handler: drainOutbox,
     },
     {
-      // NO-6: seals collecting digest groups whose window has ended (no provider call).
+      // NO-6: seals and drains digest groups whose window has ended.
       name: "notification-digest",
       pattern: "0 * * * *",
       handler: runNotificationDigest,

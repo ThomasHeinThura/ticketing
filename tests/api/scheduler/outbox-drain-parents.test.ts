@@ -21,6 +21,16 @@ vi.mock("../../../apps/api/src/scheduler/outbox-drain-p4", () => ({
     degraded: false,
   }),
 }));
+vi.mock("../../../apps/api/src/scheduler/notification-digest", () => ({
+  drainNotificationDigests: async () => ({
+    sealed: 0,
+    processed: 0,
+    delivered: 0,
+    deferred: 0,
+    retry: 0,
+    degraded: false,
+  }),
+}));
 
 import {
   drainOutbox,
