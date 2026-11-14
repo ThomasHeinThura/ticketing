@@ -148,7 +148,7 @@ export async function renewJobLease(
 ): Promise<boolean> {
   const result = await executorOrDefault(executor).execute(sql`
     UPDATE job_lease
-       SET "expires_at" = ${dbNowUtc()} + ${ttl}::interval
+       SET "expires_at" = GREATEST("expires_at", ${dbNowUtc()} + ${ttl}::interval)
      WHERE "name" = ${name} AND "owner" = ${owner}
        AND "expires_at" > ${dbNowUtc()}
     RETURNING "name"

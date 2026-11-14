@@ -65,19 +65,29 @@ export async function exportWorkItems(input: {
   return response.text();
 }
 
+const BLOB_REVOKE_DELAY_MS = 40_000;
+
 export function downloadCsvBlob(csv: string, filename: string): void {
   const url = URL.createObjectURL(
     new Blob([csv], { type: "text/csv;charset=utf-8" }),
   );
   const link = document.createElement("a");
+  let clicked = false;
   try {
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
     link.click();
+    clicked = true;
   } finally {
     link.remove();
-    URL.revokeObjectURL(url);
+    if (clicked) {
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, BLOB_REVOKE_DELAY_MS);
+    } else {
+      URL.revokeObjectURL(url);
+    }
   }
 }
 

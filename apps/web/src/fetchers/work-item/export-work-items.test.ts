@@ -7,6 +7,7 @@ vi.mock("@taskdesk/libs", () => ({
 }));
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   mocks.post.mockReset();
@@ -14,6 +15,7 @@ afterEach(() => {
 
 describe("work item CSV downloads", () => {
   it("downloads the CSV with its filename and revokes the object URL", async () => {
+    vi.useFakeTimers();
     const createObjectURL = vi.fn((_blob: Blob) => "blob:work-items");
     const revokeObjectURL = vi.fn();
     vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
@@ -43,6 +45,8 @@ describe("work item CSV downloads", () => {
     expect(
       document.querySelector('a[download="help-work-items.csv"]'),
     ).toBeNull();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(40_000);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:work-items");
   });
 

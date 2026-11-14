@@ -193,5 +193,6 @@ export async function sweepExpiredImpersonations(limit = 50): Promise<number> {
       return ended;
     },
     () => 0,
+    2 * 60 * 1000,
   );
 }

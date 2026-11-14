@@ -129,6 +129,103 @@ describe("leased scheduler jobs", () => {
       false,
     );
   });
+
+  it("waits for an in-flight lease renewal before releasing the lease and marking the run succeeded", async () => {
+    vi.useFakeTimers();
+    const events: string[] = [];
+    let finishHandler: (() => void) | undefined;
+    let resolveRenew: ((owned: boolean) => void) | undefined;
+
+    mocks.renew.mockImplementation(() => {
+      events.push("renew:start");
+      return new Promise<boolean>((resolve) => {
+        resolveRenew = (owned: boolean) => {
+          events.push("renew:end");
+          resolve(owned);
+        };
+      });
+    });
+    mocks.release.mockImplementation(async () => {
+      events.push("release");
+    });
+
+    const running = runScheduledJobWithHistory("example", () =>
+      withJobLease(
+        "example",
+        () =>
+          new Promise<void>((resolve) => {
+            finishHandler = resolve;
+          }),
+        () => undefined,
+      ),
+    );
+
+    await vi.waitFor(() => expect(finishHandler).toBeDefined());
+    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.waitFor(() => expect(resolveRenew).toBeDefined());
+
+    finishHandler?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mocks.release).not.toHaveBeenCalled();
+
+    resolveRenew?.(true);
+    await running;
+
+    expect(events).toEqual(["renew:start", "renew:end", "release"]);
+    const queries = mocks.execute.mock.calls.map(([statement]) =>
+      new PgDialect().sqlToQuery(statement),
+    );
+    const finished = queries.find(
+      (query) =>
+        query.sql.includes("UPDATE instance_job_run") &&
+        query.params.includes("succeeded"),
+    );
+    expect(finished).toBeDefined();
+  });
+
+  it("ignores sub-leases with different names when tracking scheduled job lease ownership and standby history", async () => {
+    vi.useFakeTimers();
+    mocks.claim.mockImplementation((leaseName: string) =>
+      Promise.resolve(leaseName === "automation:rule-1"),
+    );
+
+    await expect(
+      runScheduledJobWithHistory("automation-schedule", async () => {
+        const first = await withJobLease(
+          "automation:rule-1",
+          async () => {
+            await vi.advanceTimersByTimeAsync(10_000);
+            return 1;
+          },
+          () => 0,
+        );
+        const second = await withJobLease(
+          "automation:rule-2",
+          async () => 2,
+          () => 0,
+        );
+        return first + second;
+      }),
+    ).resolves.toBe(1);
+
+    expect(mocks.renew).not.toHaveBeenCalled();
+    const queries = mocks.execute.mock.calls.map(([statement]) =>
+      new PgDialect().sqlToQuery(statement),
+    );
+    expect(
+      queries.some((query) =>
+        query.sql.includes("DELETE FROM instance_job_run"),
+      ),
+    ).toBe(false);
+    expect(
+      queries.some(
+        (query) =>
+          query.sql.includes("UPDATE instance_job_run") &&
+          query.params.includes("succeeded"),
+      ),
+    ).toBe(true);
+  });
 });
 
 it("reuses the locked SLA item and writes cache only for changed metrics", async () => {

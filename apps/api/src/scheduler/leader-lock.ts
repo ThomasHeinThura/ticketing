@@ -19,7 +19,7 @@ export type JobExecutionReservation = {
   runnerId: string;
   leaseOwner?: string;
   onLeaseClaimed?: (leaseOwner: string) => void;
-  onLeaseReleased?: () => void;
+  onLeaseReleased?: () => Promise<void> | void;
   onLeaseHeldElsewhere?: () => void;
   assertRunOwned: () => Promise<boolean>;
 };
@@ -83,7 +83,8 @@ export async function withJobLease<T>(
   const ttl = `${leaseMs} milliseconds`;
 
   const current = executionContext.getStore();
-  if (current?.jobName === name && current.leaseOwner) {
+  const isJobLease = current?.jobName === name;
+  if (isJobLease && current.leaseOwner) {
     await assertJobExecutionOwned();
     return run();
   }
@@ -91,11 +92,11 @@ export async function withJobLease<T>(
   const claimed = await claimJobLease(name, INSTANCE_ID, ttl);
 
   if (!claimed) {
-    current?.onLeaseHeldElsewhere?.();
+    if (isJobLease) current.onLeaseHeldElsewhere?.();
     return whenHeldElsewhere();
   }
 
-  current?.onLeaseClaimed?.(INSTANCE_ID);
+  if (isJobLease) current.onLeaseClaimed?.(INSTANCE_ID);
   try {
     const reservation = current
       ? { ...current, jobName: name, leaseOwner: INSTANCE_ID }
@@ -106,9 +107,12 @@ export async function withJobLease<T>(
       return run();
     });
   } finally {
-    await releaseJobLease(name, INSTANCE_ID).catch((error) => {
-      console.error(`Failed to release the ${name} lease`, error);
-    });
-    current?.onLeaseReleased?.();
+    try {
+      if (isJobLease) await current.onLeaseReleased?.();
+    } finally {
+      await releaseJobLease(name, INSTANCE_ID).catch((error) => {
+        console.error(`Failed to release the ${name} lease`, error);
+      });
+    }
   }
 }
