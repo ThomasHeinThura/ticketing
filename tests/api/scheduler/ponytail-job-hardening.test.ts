@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   evaluate: vi.fn(),
   feature: vi.fn(),
   event: vi.fn(),
+  identity: vi.fn(),
 }));
 vi.mock("../../../apps/api/src/database", async () => ({
   default: {
@@ -27,6 +28,15 @@ vi.mock("../../../apps/api/src/database", async () => ({
   },
   schema: await import("../../../apps/api/src/database/schema"),
 }));
+vi.mock("../../../apps/api/src/permissions/resolve-identity", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../../apps/api/src/permissions/resolve-identity")
+  >("../../../apps/api/src/permissions/resolve-identity");
+  return {
+    ...actual,
+    resolveIdentity: mocks.identity,
+  };
+});
 vi.mock("../../../apps/api/src/scheduler/repository", () => ({
   claimJobLease: mocks.claim,
   ownsJobLease: mocks.owns,
@@ -47,7 +57,11 @@ vi.mock("../../../apps/api/src/scheduler/sla-escalation", () => ({
 
 import { checkIdentityConnectionHealth } from "../../../apps/api/src/identity/connection-health";
 import { sweepExpiredImpersonations } from "../../../apps/api/src/instance/impersonation/finish";
-import { runScheduledJobWithHistory } from "../../../apps/api/src/instance/jobs/runtime";
+import {
+  dispatchOneManualRun,
+  runScheduledJobWithHistory,
+} from "../../../apps/api/src/instance/jobs/runtime";
+import { resolveIdentityFromFacts } from "../../../apps/api/src/permissions/resolve-identity";
 import { checkDueDateReminders } from "../../../apps/api/src/scheduler/due-date-reminders";
 import { withJobLease } from "../../../apps/api/src/scheduler/leader-lock";
 import {
@@ -62,6 +76,25 @@ beforeEach(() => {
   mocks.release.mockResolvedValue(undefined);
   mocks.renew.mockResolvedValue(true);
   mocks.execute.mockResolvedValue({ rowCount: 1, rows: [] });
+  mocks.identity.mockImplementation(async () =>
+    resolveIdentityFromFacts({
+      userId: "admin-user",
+      person: {
+        personId: "admin-person",
+        organisationId: "internal-org",
+        side: "staff",
+        active: true,
+        organisationActive: true,
+        organisationPortalAccess: false,
+        organisationDeleted: false,
+      },
+      banned: false,
+      isInstanceAdmin: true,
+      workspaceMemberships: [],
+      teamMemberships: [],
+      credential: "session",
+    }),
+  );
 });
 afterEach(() => vi.useRealTimers());
 
@@ -225,6 +258,131 @@ describe("leased scheduler jobs", () => {
           query.params.includes("succeeded"),
       ),
     ).toBe(true);
+  });
+
+  function mockManualRunExecutionQueries() {
+    mocks.execute.mockImplementation(async (statement) => {
+      const sqlText = new PgDialect().sqlToQuery(statement).sql;
+      if (sqlText.includes("WHERE trigger = 'manual' AND state = 'queued'")) {
+        return {
+          rowCount: 1,
+          rows: [
+            { id: "manual-1", name: "example", actorPersonId: "admin-person" },
+          ],
+        };
+      }
+      if (sqlText.includes("FROM instance_job_configuration")) {
+        return { rowCount: 1, rows: [{ enabled: true }] };
+      }
+      if (sqlText.includes('SELECT u.id AS "userId"')) {
+        return { rowCount: 1, rows: [{ userId: "admin-user" }] };
+      }
+      return { rowCount: 1, rows: [{ id: "manual-1" }] };
+    });
+  }
+
+  it("skips finishRun when an in-flight manual-run lease renewal returns false during completion", async () => {
+    vi.useFakeTimers();
+    const events: string[] = [];
+    let finishHandler: (() => void) | undefined;
+    let resolveRenew: ((owned: boolean) => void) | undefined;
+
+    mockManualRunExecutionQueries();
+    mocks.renew.mockImplementation(() => {
+      events.push("renew:start");
+      return new Promise<boolean>((resolve) => {
+        resolveRenew = (owned: boolean) => {
+          events.push("renew:end");
+          resolve(owned);
+        };
+      });
+    });
+    mocks.release.mockImplementation(async () => {
+      events.push("release");
+    });
+
+    const dispatched = dispatchOneManualRun(
+      () => () =>
+        new Promise<void>((resolve) => {
+          finishHandler = resolve;
+        }),
+    );
+
+    await vi.waitFor(() => expect(finishHandler).toBeDefined());
+    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.waitFor(() => expect(resolveRenew).toBeDefined());
+
+    finishHandler?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mocks.release).not.toHaveBeenCalled();
+
+    resolveRenew?.(false);
+    await dispatched;
+
+    expect(events).toEqual(["renew:start", "renew:end", "release"]);
+    const queries = mocks.execute.mock.calls.map(([statement]) =>
+      new PgDialect().sqlToQuery(statement),
+    );
+    expect(
+      queries.some(
+        (query) =>
+          query.sql.includes("UPDATE instance_job_run") &&
+          query.params.includes("succeeded"),
+      ),
+    ).toBe(false);
+  });
+
+  it("skips finishRun when an in-flight manual-run lease renewal rejects during completion", async () => {
+    vi.useFakeTimers();
+    const events: string[] = [];
+    let finishHandler: (() => void) | undefined;
+    let rejectRenew: ((error: Error) => void) | undefined;
+
+    mockManualRunExecutionQueries();
+    mocks.renew.mockImplementation(() => {
+      events.push("renew:start");
+      return new Promise<boolean>((_resolve, reject) => {
+        rejectRenew = (error: Error) => {
+          events.push("renew:reject");
+          reject(error);
+        };
+      });
+    });
+    mocks.release.mockImplementation(async () => {
+      events.push("release");
+    });
+
+    const dispatched = dispatchOneManualRun(
+      () => () =>
+        new Promise<void>((resolve) => {
+          finishHandler = resolve;
+        }),
+    );
+
+    await vi.waitFor(() => expect(finishHandler).toBeDefined());
+    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.waitFor(() => expect(rejectRenew).toBeDefined());
+
+    finishHandler?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mocks.release).not.toHaveBeenCalled();
+
+    rejectRenew?.(new Error("db error"));
+    await dispatched;
+
+    expect(events).toEqual(["renew:start", "renew:reject", "release"]);
+    const queries = mocks.execute.mock.calls.map(([statement]) =>
+      new PgDialect().sqlToQuery(statement),
+    );
+    expect(
+      queries.some(
+        (query) =>
+          query.sql.includes("UPDATE instance_job_run") &&
+          query.params.includes("succeeded"),
+      ),
+    ).toBe(false);
   });
 });
 

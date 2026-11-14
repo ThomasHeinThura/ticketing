@@ -443,10 +443,10 @@ function startRunHeartbeat(
       leaseOwner,
     )
       .then((owned) => {
-        if (!owned && !stopped) ownershipLost = true;
+        if (!owned) ownershipLost = true;
       })
       .catch(() => {
-        if (!stopped) ownershipLost = true;
+        ownershipLost = true;
       })
       .finally(() => {
         if (inFlight === tick) inFlight = null;
