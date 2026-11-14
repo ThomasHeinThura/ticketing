@@ -95,13 +95,7 @@ export function Timesheet(props: Props) {
   )
     return (
       <TimesheetFrame>
-        <div
-          style={{
-            visibility: accessPlaceholderVisible ? "visible" : "hidden",
-          }}
-        >
-          <TimesheetLoading />
-        </div>
+        <TimesheetLoading visible={accessPlaceholderVisible} />
       </TimesheetFrame>
     );
   if (access === "error")
@@ -152,9 +146,7 @@ function TimesheetContent({ search, onSearchChange }: Props) {
   if (!probe.error && !entries.error && (pending || placeholderVisible))
     return (
       <TimesheetFrame>
-        <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
-          <TimesheetLoading />
-        </div>
+        <TimesheetLoading visible={placeholderVisible} />
       </TimesheetFrame>
     );
   if (probe.error instanceof TimeTrackingDisabledError)
@@ -327,16 +319,17 @@ function TimesheetFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TimesheetLoading() {
+function TimesheetLoading({ visible = true }: { visible?: boolean }) {
   const { t } = useTranslation();
   return (
-    <div
-      role="status"
-      aria-label={t("timeTracking:timesheet.loading")}
-      className="space-y-3"
-    >
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-40 w-full" />
+    <div role="status" aria-label={t("timeTracking:timesheet.loading")}>
+      <div
+        className="space-y-3"
+        style={{ visibility: visible ? "visible" : "hidden" }}
+      >
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
     </div>
   );
 }

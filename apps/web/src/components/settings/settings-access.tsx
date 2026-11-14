@@ -179,12 +179,11 @@ export function SettingsAccessChecking({
 }) {
   const { t } = useTranslation();
   return (
-    <div
-      role="status"
-      aria-label={t("settings:accessDenied.checking")}
-      style={{ visibility: visible ? "visible" : "hidden" }}
-    >
-      <Skeleton className={className ?? "h-32 w-full"} />
+    <div role="status" aria-label={t("settings:accessDenied.checking")}>
+      <Skeleton
+        className={className ?? "h-32 w-full"}
+        style={{ visibility: visible ? "visible" : "hidden" }}
+      />
     </div>
   );
 }

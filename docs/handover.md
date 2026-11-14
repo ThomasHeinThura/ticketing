@@ -1,5 +1,7 @@
 # Handover — 12 November 2026 (Codex → Claude, fleet in Orca)
 
+> **14 Nov update (Thomas):** Argon coordinates the Orca fleet under `AGENTS.md` using Codex `gpt-6.1-terra` for implementation/tests and independent `gpt-6.1-sol --effort high` / Claude Opus for high-risk reviews, with standing approval to merge reviewed green PRs, close superseded/drop-order PRs, and remove clean merged worktrees. Trains 1–6 (`#1117`, `#1119`, `#1129`, `#1134`, `#1140`, `#1162`) are merged to `main`; local SIT app container is stopped pending `G-2`/`G-4` clean install after Train 7 and `F-3`/`F-7` land.
+
 Read [AGENTS.md](../AGENTS.md), [status](status.md), [roadmap](roadmap.md) and [testing](testing.md) first. Thomas's current instructions override everything here.
 
 ## Who works on version 2

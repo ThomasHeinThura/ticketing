@@ -12,7 +12,12 @@ export function LoadingStatus({
 }) {
   return (
     <>
-      <span role="status" aria-live="polite" className="sr-only">
+      <span
+        role="status"
+        aria-live="polite"
+        aria-label={visible ? label : undefined}
+        className="sr-only"
+      >
         {visible ? label : null}
       </span>
       <div
