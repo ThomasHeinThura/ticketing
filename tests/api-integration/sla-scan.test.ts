@@ -258,12 +258,20 @@ describe("persisted SLA scan and completion", () => {
   it("uses each tenant's pinned policy and skips deleted, archived and resolved items", async () => {
     const a = await fixture(85);
     const b = await fixture(120);
+    const c = await fixture(120);
     await db
       .update(schema.projectTable)
       .set({ archivedAt: new Date() })
       .where(eq(schema.projectTable.id, b.project.id));
+    await db
+      .update(schema.projectTable)
+      .set({
+        deletedAt: new Date(),
+        purgeAfter: new Date(Date.now() + 86_400_000),
+      })
+      .where(eq(schema.projectTable.id, c.project.id));
     expect(await scanSla()).toMatchObject({
-      scanned: 2,
+      scanned: 1,
       emitted: 2,
       degraded: false,
     });
@@ -278,6 +286,7 @@ describe("persisted SLA scan and completion", () => {
       .where(eq(schema.workItemTable.id, a.item.id));
     expect(await scanWorkItemSla(a.item.id)).toBe(0);
     expect(await scanWorkItemSla(b.item.id)).toBe(0);
+    expect(await scanWorkItemSla(c.item.id)).toBe(0);
   });
   it("completion emits met/missed in the actual transition transaction and scanner never settles outcomes", async () => {
     const met = await fixture(20);

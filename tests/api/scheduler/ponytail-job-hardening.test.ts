@@ -170,7 +170,7 @@ it("reuses the locked SLA item and writes cache only for changed metrics", async
   expect(mocks.event).not.toHaveBeenCalled();
 });
 
-it("filters archived projects in the candidate query", async () => {
+it("filters archived and deleted projects in the candidate query", async () => {
   let condition: Parameters<PgDialect["sqlToQuery"]>[0] | undefined;
   const join = vi.fn(() => ({
     where: (value: typeof condition) => {
@@ -185,9 +185,11 @@ it("filters archived projects in the candidate query", async () => {
     degraded: false,
   });
   expect(join).toHaveBeenCalledOnce();
-  expect(
-    new PgDialect().sqlToQuery(condition as NonNullable<typeof condition>).sql,
-  ).toContain('"project"."archived_at" is null');
+  const querySql = new PgDialect().sqlToQuery(
+    condition as NonNullable<typeof condition>,
+  ).sql;
+  expect(querySql).toContain('"project"."archived_at" is null');
+  expect(querySql).toContain('"project"."deleted_at" is null');
 });
 
 it("writes a changed SLA state and still emits its transition", async () => {

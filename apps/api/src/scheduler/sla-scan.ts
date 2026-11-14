@@ -161,6 +161,7 @@ export async function scanSla(): Promise<SlaScanOutcome> {
           .where(
             and(
               isNull(projectTable.archivedAt),
+              isNull(projectTable.deletedAt),
               isNull(workItemTable.resolvedAt),
               isNull(workItemTable.archivedAt),
               isNull(workItemTable.deletedAt),
