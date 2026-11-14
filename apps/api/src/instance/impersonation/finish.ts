@@ -2,6 +2,7 @@ import { sendNotificationEmail } from "@taskdesk/email";
 import { eq, sql } from "drizzle-orm";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db, { schema } from "../../database";
+import { withJobLease } from "../../scheduler/leader-lock";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../observability/runtime";
 
@@ -157,8 +158,11 @@ export async function finishImpersonation(input: {
  * rows, not the session table, so it still works after session cleanup removed the row.
  */
 export async function sweepExpiredImpersonations(limit = 50): Promise<number> {
-  const result = await db.execute(
-    sql`SELECT s.entity_id AS target_user_id, s.actor_id AS impersonator_id,
+  return withJobLease(
+    "impersonation-cap",
+    async () => {
+      const result = await db.execute(
+        sql`SELECT s.entity_id AS target_user_id, s.actor_id AS impersonator_id,
                s.after->>'sessionId' AS session_id
         FROM audit_log s
         WHERE s.action = 'impersonation.started'
@@ -171,20 +175,23 @@ export async function sweepExpiredImpersonations(limit = 50): Promise<number> {
           )
         ORDER BY s.seq ASC
         LIMIT ${limit}`,
+      );
+      let ended = 0;
+      for (const row of result.rows as {
+        target_user_id: string;
+        impersonator_id: string;
+        session_id: string;
+      }[]) {
+        const outcome = await finishImpersonation({
+          sessionId: row.session_id,
+          targetUserId: row.target_user_id,
+          impersonatorUserId: row.impersonator_id,
+          endReason: "cap",
+        });
+        if (outcome.recorded) ended += 1;
+      }
+      return ended;
+    },
+    () => 0,
   );
-  let ended = 0;
-  for (const row of result.rows as {
-    target_user_id: string;
-    impersonator_id: string;
-    session_id: string;
-  }[]) {
-    const outcome = await finishImpersonation({
-      sessionId: row.session_id,
-      targetUserId: row.target_user_id,
-      impersonatorUserId: row.impersonator_id,
-      endReason: "cap",
-    });
-    if (outcome.recorded) ended += 1;
-  }
-  return ended;
 }

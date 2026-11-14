@@ -106,11 +106,13 @@ export async function evaluateStoredWorkItemSla(
   tx: Transaction,
   itemId: string,
   now: Date,
+  existingItem?: typeof workItemTable.$inferSelect,
 ) {
-  const [item] = await tx
-    .select()
-    .from(workItemTable)
-    .where(eq(workItemTable.id, itemId));
+  const item =
+    existingItem ??
+    (
+      await tx.select().from(workItemTable).where(eq(workItemTable.id, itemId))
+    )[0];
   if (!item) throw new Error("Work item disappeared while evaluating SLA");
   const pauses = await tx
     .select()
