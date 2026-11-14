@@ -10,7 +10,10 @@ import {
   navigateToSetup,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 // S5: the managed-service create flow, end to end against the real API and PostgreSQL.
@@ -167,16 +170,10 @@ test("S5 creates managed services from the catalogue and filters them by kind on
     await page.locator('input[autocomplete="new-password"]').fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
-    await page
-      .getByLabel("Workspace name")
-      .fill("Disposable Service Workspace");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
-    const workspaceId = new URL(page.url()).pathname
-      .split("/")
-      .filter(Boolean)
-      .at(-1);
-    if (!workspaceId) throw new Error("No workspace id in the URL.");
+    const workspaceId = await createFirstWorkspace(
+      page,
+      "Disposable Service Workspace",
+    );
 
     const client = api(page, origin);
     // Calendars are a `feature.sla` setting and the catalogue is `feature.service_catalogue`;

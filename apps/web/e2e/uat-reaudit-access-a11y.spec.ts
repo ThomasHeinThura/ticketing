@@ -3,6 +3,7 @@ import { seriousOrCriticalViolations } from "./helpers/axe";
 import {
   DEFAULT_RESOLVED_FEATURES,
   installPerformanceApiFixture,
+  WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
 
 /**
@@ -536,6 +537,10 @@ test.describe("settings when the capability read fails", () => {
       expect(
         paths.filter(
           (p) =>
+            // The instance and workspace TerminologyProviders mount in the
+            // agent shell, before the settings screen checks its capability.
+            p !== "/api/public/terminology" &&
+            p !== `/api/workspaces/${WORKSPACE_ID}/terminology/runtime` &&
             !p.endsWith("/resolved") &&
             /automations|rates|cost-types|submissions|state-templates|features$|terminology|request-types|canned-responses|work-item-templates|customer-invitations|custom-fields|webhooks|sla-policies\/|service-calendars\/|\/api\/time-/u.test(
               p,

@@ -4,7 +4,10 @@ import {
   totpForUri,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -33,9 +36,7 @@ async function createAdminWorkspace(
   const signUpResponse = await signUpResponsePromise;
   expect(signUpResponse.status()).toBe(200);
   const factor = await enrollFirstAdmin(page, origin, password);
-  await page.getByLabel("Workspace name").fill("Disposable MFA Workspace");
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+  await createFirstWorkspace(page, "Disposable MFA Workspace");
   return factor;
 }
 

@@ -8,7 +8,10 @@ import {
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -155,11 +158,7 @@ test("Overview writes persist: milestone, prerequisite, stakeholder stand-down",
     await page.locator('input[autocomplete="new-password"]').fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
-    await page
-      .getByLabel("Workspace name")
-      .fill("Persisted Overview Workspace");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
+    await createFirstWorkspace(page, "Persisted Overview Workspace");
     const project = await createProject(page, origin, databaseUrl);
 
     // Milestone, on the Overview.

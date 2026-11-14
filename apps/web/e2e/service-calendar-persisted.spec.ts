@@ -3,7 +3,10 @@ import {
   navigateToSetup,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -48,16 +51,10 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
     await page.locator('input[autocomplete="new-password"]').fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
-    await page
-      .getByLabel("Workspace name")
-      .fill("Disposable Calendar Workspace");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
-    const workspaceId = new URL(page.url()).pathname
-      .split("/")
-      .filter(Boolean)
-      .at(-1);
-    if (!workspaceId) throw new Error("No workspace id in the URL.");
+    const workspaceId = await createFirstWorkspace(
+      page,
+      "Disposable Calendar Workspace",
+    );
     await enableSlaFeature(page, origin, workspaceId);
 
     await page.goto(

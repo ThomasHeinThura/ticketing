@@ -15,7 +15,10 @@ import {
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import { uniqueProjectKey } from "../../../tests/e2e/helpers/project-key";
-import { enrollFirstAdmin } from "./helpers/enroll-first-admin";
+import {
+  createFirstWorkspace,
+  enrollFirstAdmin,
+} from "./helpers/enroll-first-admin";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
@@ -115,27 +118,8 @@ async function createAdminWorkspace(
       );
       return factor;
     });
-  await test.step("Setup diagnostic: workspace-name field entry", async () => {
-    console.info("Setup diagnostic begin: workspace-name field entry");
-    await page
-      .getByLabel("Workspace name")
-      .fill("Disposable Comments Workspace");
-    console.info("Setup diagnostic completed: workspace-name field entry");
-  });
-  await test.step("Setup diagnostic: create-workspace button click", async () => {
-    console.info("Setup diagnostic begin: create-workspace button click");
-    await page.getByRole("button", { name: "Create workspace" }).click();
-    console.info("Setup diagnostic completed: create-workspace button click");
-  });
-  await test.step("Setup diagnostic: workspace-dashboard navigation assertion", async () => {
-    console.info(
-      "Setup diagnostic begin: workspace-dashboard navigation assertion",
-    );
-    await expect(page).toHaveURL(/\/dashboard\/workspace\//);
-    console.info(
-      "Setup diagnostic completed: workspace-dashboard navigation assertion",
-    );
-  });
+  await test.step("create and activate the first workspace", () =>
+    createFirstWorkspace(page, "Disposable Comments Workspace"));
   return provisioningUri;
 }
 
@@ -144,7 +128,7 @@ async function signInThroughUi(
   origin: string,
   email: string,
   password: string,
-  provisioningUri: string,
+  provisioningUri?: string,
 ) {
   await test.step("Setup diagnostic: blank-page navigation", async () => {
     console.info("Setup diagnostic begin: blank-page navigation");
@@ -188,11 +172,13 @@ async function signInThroughUi(
     await page.getByRole("button", { name: "Sign in" }).click();
     console.info("Setup diagnostic completed: sign-in button click");
   });
-  await test.step("Setup diagnostic: complete authenticator challenge", async () => {
-    await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
-    await page.locator("#factor-code").fill(totpForUri(provisioningUri));
-    await page.getByRole("button", { name: "Verify and sign in" }).click();
-  });
+  if (provisioningUri) {
+    await test.step("Setup diagnostic: complete authenticator challenge", async () => {
+      await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
+      await page.locator("#factor-code").fill(totpForUri(provisioningUri));
+      await page.getByRole("button", { name: "Verify and sign in" }).click();
+    });
+  }
   await test.step("Setup diagnostic: dashboard navigation assertion", async () => {
     console.info("Setup diagnostic begin: dashboard navigation assertion");
     await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
@@ -292,7 +278,7 @@ async function seedReachableMentionRecipient(
   workspaceId: string,
   projectId: string,
   workItemId: string,
-  authorEmail: string,
+  administratorEmail: string,
 ) {
   // This raw SQL bypasses Drizzle's JavaScript-only `$defaultFn` values. Supply
   // every inserted text primary key for user/person/workspace_member/role/membership;
@@ -305,6 +291,9 @@ async function seedReachableMentionRecipient(
   const recipientMembershipId = `comments-recipient-membership-${randomUUID()}`;
   const authorRoleId = `comments-author-role-${randomUUID()}`;
   const authorMembershipId = `comments-author-membership-${randomUUID()}`;
+  const authorUserId = `comments-author-${randomUUID()}`;
+  const authorPersonId = `comments-author-person-${randomUUID()}`;
+  const authorEmail = `${authorUserId}@example.test`;
   const customerOrgId = `comments-cust-org-${randomUUID()}`;
   const customerOrgKey = `cust-${randomUUID().slice(0, 8)}`;
   const customerUserId = `cust-user-${randomUUID()}`;
@@ -345,14 +334,43 @@ async function seedReachableMentionRecipient(
       "UPDATE work_item SET requester_id = $1, customer_visibility = 'organisation' WHERE id = $2",
       [customerPersonId, workItemId],
     );
-    const author = await client.query<{ user_id: string; person_id: string }>(
+    const administrator = await client.query<{ user_id: string }>(
       `SELECT u.id AS user_id, p.id AS person_id
          FROM "user" AS u
          JOIN person AS p ON p.user_id = u.id
         WHERE u.email = $1 AND p.side = 'staff' AND p.active = true`,
-      [authorEmail],
+      [administratorEmail],
     );
-    expect(author.rowCount).toBe(1);
+    expect(administrator.rowCount).toBe(1);
+    // Owner/admin/manager workspace authority is additive (Thomas, 12 Nov).
+    // A separate member exercises the comment-only project's real update denial.
+    await client.query(
+      'INSERT INTO "user" (id, name, email, email_verified) VALUES ($1, $2, $3, true)',
+      [authorUserId, "Comments E2E Author", authorEmail],
+    );
+    const credential = await client.query(
+      `INSERT INTO account (id, account_id, provider_id, user_id, password, updated_at)
+       SELECT $1, $2, 'credential', $2, password, now()
+         FROM account WHERE user_id = $3 AND provider_id = 'credential'`,
+      [
+        `comments-author-account-${randomUUID()}`,
+        authorUserId,
+        administrator.rows[0]?.user_id,
+      ],
+    );
+    expect(credential.rowCount).toBe(1);
+    await client.query(
+      "INSERT INTO person (id, user_id, organisation_id, side, display_name) VALUES ($1, $2, $3, 'staff', $4)",
+      [authorPersonId, authorUserId, organisationId, "Comments E2E Author"],
+    );
+    await client.query(
+      "INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at) VALUES ($1, $2, $3, 'member', now())",
+      [
+        `comments-author-workspace-member-${randomUUID()}`,
+        workspaceId,
+        authorUserId,
+      ],
+    );
     await client.query(
       'INSERT INTO "user" (id, name, email, email_verified) VALUES ($1, $2, $3, true)',
       [userId, recipientName, `${userId}@example.test`],
@@ -397,7 +415,7 @@ async function seedReachableMentionRecipient(
     );
     await client.query(
       "INSERT INTO membership (id, person_id, scope, scope_id, role_id) VALUES ($1, $2, 'project', $3, $4)",
-      [authorMembershipId, author.rows[0]?.person_id, projectId, authorRoleId],
+      [authorMembershipId, authorPersonId, projectId, authorRoleId],
     );
     await client.query("COMMIT");
     transactionOpen = false;
@@ -407,7 +425,7 @@ async function seedReachableMentionRecipient(
   } finally {
     await client.end();
   }
-  return { personId, recipientName };
+  return { personId, recipientName, authorEmail };
 }
 
 function commentEditor(activity: Locator) {
@@ -718,7 +736,20 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       item.id,
       email,
     );
-    await page.reload();
+    await signInThroughUi(page, origin, mentionRecipient.authorEmail, password);
+    const capabilities = await page.request.get(
+      new URL(
+        `/api/capabilities?workspaceId=${item.workspaceId}&projectId=${item.projectId}`,
+        origin,
+      ).toString(),
+    );
+    expect(capabilities.status()).toBe(200);
+    expect(await capabilities.json()).toMatchObject({
+      updateTasks: false,
+      createPublicComments: true,
+      createInternalComments: true,
+    });
+    await page.goto(itemUrl);
     await expect(
       page.getByRole("textbox", { name: "Title", exact: true }),
     ).toHaveAttribute("readonly", "");

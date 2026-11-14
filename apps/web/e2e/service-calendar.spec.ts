@@ -754,7 +754,7 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
 
 test("calendar creation supports keyboard input and read-only access", async ({
   page,
-}) => {
+}, testInfo) => {
   const fixture = await setupCalendarPage(page);
   await page.goto("/dashboard/settings/workspace/calendars");
   await page.getByRole("link", { name: "New calendar" }).click();
@@ -795,8 +795,24 @@ test("calendar creation supports keyboard input and read-only access", async ({
   const hour = timePicker.getByRole("combobox", { name: "Hour" });
   await expect(hour).toBeFocused();
   await page.keyboard.press("Enter");
+  const hourOptions = page.getByRole("listbox", { name: "Hour", exact: true });
+  await expect(hour).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    hourOptions.getByRole("option", { name: "09", exact: true }),
+  ).toBeFocused();
   await page.keyboard.press("Home");
-  for (let i = 0; i < 10; i++) await page.keyboard.press("ArrowDown");
+  await expect(
+    hourOptions.getByRole("option", { name: "00", exact: true }),
+  ).toBeFocused();
+  for (let i = 1; i <= 10; i++) {
+    await page.keyboard.press("ArrowDown");
+    await expect(
+      hourOptions.getByRole("option", {
+        name: String(i).padStart(2, "0"),
+        exact: true,
+      }),
+    ).toBeFocused();
+  }
   await page.keyboard.press("Enter");
   await expect(hour).toHaveText("10");
   await expect(hour).toBeFocused();
@@ -834,13 +850,34 @@ test("calendar creation supports keyboard input and read-only access", async ({
   await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(
     0,
   );
-  await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
+  // Viewers see the saved values as text rather than editing controls.
+  for (const value of [
+    "new-regional-cover",
+    "New regional cover",
+    "America/New_York",
+  ]) {
+    await expect(
+      page
+        .getByRole("definition")
+        .filter({ hasText: new RegExp(`^${value}$`, "u") }),
+    ).toBeVisible();
+  }
+  const monday = page.getByRole("region", { name: "Monday", exact: true });
+  await expect(
+    monday.getByText("Starts: 09:00", { exact: true }),
+  ).toBeVisible();
+  await expect(monday.getByText("Ends: 17:00", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Monday window 1 start", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect(
     page.getByRole("combobox", { name: "IANA timezone", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("calendar-read-only.png"),
+    fullPage: true,
+  });
   await page.goto("/dashboard/settings/workspace/calendars/new");
   await expect(
     page
