@@ -17,6 +17,7 @@ export function LoadingStatus({
         aria-live="polite"
         aria-label={visible ? label : undefined}
         className="sr-only"
+        style={{ fontFamily: "sans-serif" }}
       >
         {visible ? label : null}
       </span>

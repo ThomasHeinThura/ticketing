@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { authClient } from "@/lib/auth-client";
+import { WORK_LIST_PATH_PATTERN } from "@/lib/i18n/work-route-namespaces";
 import type { User } from "@/types/user";
 import { LoadingSkeleton } from "../../app-shell/loading-skeleton";
 
@@ -36,7 +37,13 @@ function AuthProvider({ children }: PropsWithChildren) {
   }
 
   const initialPending = isPending && !hasLoadedOnce.current;
-  const placeholderVisible = useDelayedPending(initialPending);
+  const releaseForWorkListFirstPaint =
+    !initialPending &&
+    typeof window !== "undefined" &&
+    WORK_LIST_PATH_PATTERN.test(window.location.pathname);
+  const placeholderVisible = useDelayedPending(initialPending, {
+    releaseNow: releaseForWorkListFirstPaint,
+  });
 
   // Tag transient Safari "Load failed" errors during the session fetch so
   // instrument.ts's beforeSend can drop them. Better Auth's useSession

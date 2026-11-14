@@ -137,6 +137,43 @@ function portalApiBody(pathname: string): unknown {
           },
         ],
       };
+    case "/api/portal/requests":
+      return {
+        cases: [
+          {
+            ref: "SUB-7",
+            source: "submission",
+            title: "Access to the support workspace",
+            requestTypeName: "Access request",
+            priority: "high",
+            customerStatus: "need_more_info",
+            createdAt: "2026-09-15T00:00:00.000Z",
+            updatedAt: "2026-09-16T09:30:00.000Z",
+            project: {
+              key: "INFRA",
+              name: "Infrastructure managed services platform",
+            },
+            createdBy: { name: null, isYou: true },
+            isRequester: true,
+            customerVisibility: "private",
+            sla: null,
+          },
+        ],
+        page: { hasMore: false, nextCursor: null },
+        meta: { total: 1 },
+      };
+    case "/api/portal/approvals":
+      return { approvals: [] };
+    case "/api/portal/submissions":
+      return { submissions: [], page: { hasMore: false, nextCursor: null } };
+    case "/api/portal/kb":
+      return { data: [], hasMore: false, nextCursor: null };
+    case "/api/portal/releases":
+      return { data: [] };
+    case "/api/portal/announcements":
+      return { data: [], nextCursor: null };
+    case "/api/portal/notification/inbox":
+      return { data: [], unreadCount: 0, hasMore: false, nextCursor: null };
     default:
       return undefined;
   }
@@ -534,7 +571,10 @@ test("rule 3: small interactive elements resolve transition and animation durati
   // `packages/ui` and are recorded in `.handoff/report.md` rather than weakening token checks.
   await page.goto(PREFERENCES_PATH);
   const resetButton = page.getByRole("button", { name: "Reset", exact: true });
-  const sidebarSwitch = page.locator("#preference-sidebar-default");
+  const sidebarSwitch = page.getByRole("switch", {
+    name: "Sidebar Default",
+    exact: true,
+  });
   await expect(resetButton).toBeVisible();
   await expect(sidebarSwitch).toBeVisible();
 
@@ -731,6 +771,7 @@ test("rule 5: interrupted overlays close within one duration, settling board dro
     page.locator('[data-work-item-key="BRD-1"][data-pending="true"]'),
   ).toHaveCount(1);
 
+  await page.getByRole("button", { name: "Select items", exact: true }).click();
   const concurrentCheckbox = page.locator(
     '[data-work-item-key="BRD-2"] [data-slot="checkbox"]',
   );
@@ -742,7 +783,10 @@ test("rule 5: interrupted overlays close within one duration, settling board dro
 
   // 5d. Toggling a Switch twice quickly ends in its starting state.
   await page.goto(PREFERENCES_PATH);
-  const sidebarSwitch = page.locator("#preference-sidebar-default");
+  const sidebarSwitch = page.getByRole("switch", {
+    name: "Sidebar Default",
+    exact: true,
+  });
   await expect(sidebarSwitch).toBeVisible();
   const initialChecked = await sidebarSwitch.getAttribute("aria-checked");
   expect(initialChecked === "true" || initialChecked === "false").toBe(true);
@@ -787,7 +831,10 @@ test("rule 9: reduced-motion disables spatial movement animations and smooth scr
   // 9a. Document scroll-behavior, Button, Switch and SwitchThumb on Preferences.
   await page.goto(PREFERENCES_PATH);
   const resetButton = page.getByRole("button", { name: "Reset", exact: true });
-  const sidebarSwitch = page.locator("#preference-sidebar-default");
+  const sidebarSwitch = page.getByRole("switch", {
+    name: "Sidebar Default",
+    exact: true,
+  });
   const switchThumb = sidebarSwitch.locator('[data-slot="switch-thumb"]');
   await expect(resetButton).toBeVisible();
   await expect(sidebarSwitch).toBeVisible();
@@ -824,6 +871,7 @@ test("rule 9: reduced-motion disables spatial movement animations and smooth scr
     BOARD_ITEM_COUNT,
     { timeout: 30_000 },
   );
+  await page.getByRole("button", { name: "Select items", exact: true }).click();
   const checkbox = page
     .locator('[data-work-item-key="BRD-1"] [data-slot="checkbox"]')
     .first();

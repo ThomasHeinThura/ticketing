@@ -136,3 +136,29 @@ it("commits the skeleton and starts the session before translations load", () =>
   );
   expect(screen.getByRole("status")).toHaveTextContent("Loading…");
 });
+
+it("releases a visible session placeholder immediately on direct work-list visits once resolved", () => {
+  const previousPath = window.location.pathname;
+  window.history.replaceState({}, "", "/agent/projects/WLP/work");
+  try {
+    const view = render(
+      <AuthProvider>
+        <Content />
+      </AuthProvider>,
+    );
+    act(() => vi.advanceTimersByTime(150));
+    expect(
+      view.container.querySelector('[data-slot="skeleton"]'),
+    ).toBeVisible();
+    state.pending = false;
+    state.user = { id: "u" };
+    view.rerender(
+      <AuthProvider>
+        <Content />
+      </AuthProvider>,
+    );
+    expect(screen.getByText("Signed in")).toBeVisible();
+  } finally {
+    window.history.replaceState({}, "", previousPath);
+  }
+});

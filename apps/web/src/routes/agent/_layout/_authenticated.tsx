@@ -155,6 +155,7 @@ function AuthenticatedShell() {
 export const Route = createFileRoute("/_layout/_authenticated")({
   component: AuthenticatedShell,
   errorComponent: SessionRouteError,
+  pendingMinMs: 0,
   beforeLoad: async ({ location, context }) => {
     const { queryClient } = context;
     const checkFactors =

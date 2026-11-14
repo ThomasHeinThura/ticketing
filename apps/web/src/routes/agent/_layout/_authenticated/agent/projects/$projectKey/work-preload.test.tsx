@@ -13,6 +13,7 @@ vi.mock("@/lib/work-list-prefetch", () => ({
     mocks.prefetchWorkListData(...args),
 }));
 vi.mock("@/lib/work-list-first-paint", () => ({
+  WORK_LIST_FIRST_PAINT_WAIT_MS: 300,
   waitForWorkListFirstPaint: (...args: unknown[]) =>
     mocks.waitForWorkListFirstPaint(...args),
 }));
