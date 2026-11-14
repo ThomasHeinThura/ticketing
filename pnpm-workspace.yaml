@@ -33,7 +33,11 @@ overrides:
   express-rate-limit: 8.2.2
   fast-xml-parser: '>=5.5.7'
   markdown-it: 14.1.1
-  minimatch: 10.2.3
+  # F-8 / #1058: patched tooling majors. glob 10.5.0/13.0.6 are affected by
+  # GHSA-3g3m-2fjr-6pw4; minimatch 10.2.3 was pinned inside GHSA-g3hv-75wg-m249.
+  # Keep exact patched minima; exercise archiver/Testcontainers, email and Storybook.
+  glob: 14.0.2
+  minimatch: 11.0.1
   postcss: '>=8.5.23'
   rollup: 4.59.0
   sharp: ^0.35.4                  # was '>=0.35.0'. RAISED (not dropped): the old floor
