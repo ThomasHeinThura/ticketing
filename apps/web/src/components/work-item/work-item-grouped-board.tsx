@@ -20,6 +20,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -194,6 +195,13 @@ export default function WorkItemGroupedBoard({
     [workItems, groups, drag],
   );
   const dndAccessibility = useDndAccessibility(describeDnd);
+  const pending =
+    isLoading ||
+    (field === "assignee" && peopleQuery.isLoading) ||
+    (field === "label" && labelsQuery.isLoading);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow: !pending && groups.length === 0,
+  });
   const [retainFocusId, setRetainFocusId] = useState<string>();
   const onRetainFocus = useCallback(() => setRetainFocusId(undefined), []);
 
@@ -223,12 +231,12 @@ export default function WorkItemGroupedBoard({
     );
   }
 
-  if (
-    isLoading ||
-    (field === "assignee" && peopleQuery.isLoading) ||
-    (field === "label" && labelsQuery.isLoading)
-  ) {
-    return <WorkItemBoardSkeleton />;
+  if (pending || placeholderVisible) {
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        <WorkItemBoardSkeleton visible={placeholderVisible} />
+      </div>
+    );
   }
 
   if (groups.length === 0) {

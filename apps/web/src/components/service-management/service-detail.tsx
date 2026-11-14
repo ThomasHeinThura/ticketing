@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, ExternalLink, Pencil } from "lucide-react";
 import { useState } from "react";
@@ -171,6 +172,9 @@ function StatusCard({
 function ImpactCard({ serviceId }: { serviceId: string }) {
   const { t } = useTranslation("serviceManagement");
   const impact = useServiceImpact(serviceId);
+  const impactPlaceholder = useDelayedPending(impact.isLoading, {
+    releaseNow: impact.isSuccess && impact.data.impacted.length === 0,
+  });
   return (
     <Card>
       <CardHeader>
@@ -185,14 +189,16 @@ function ImpactCard({ serviceId }: { serviceId: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {impact.isLoading ? <LoadingRows /> : null}
+        {!impact.isError && (impact.isLoading || impactPlaceholder) ? (
+          <LoadingRows visible={impactPlaceholder} />
+        ) : null}
         {impact.isError ? (
           <QueryFailure
             error={impact.error}
             onRetry={() => void impact.refetch()}
           />
         ) : null}
-        {impact.data?.cycleDetected ? (
+        {!impactPlaceholder && impact.data?.cycleDetected ? (
           <Alert variant="warning">
             <AlertTitle>{t("services.detail.impact.cycleTitle")}</AlertTitle>
             <AlertDescription>
@@ -200,12 +206,16 @@ function ImpactCard({ serviceId }: { serviceId: string }) {
             </AlertDescription>
           </Alert>
         ) : null}
-        {impact.data && impact.data.impacted.length === 0 ? (
+        {!impactPlaceholder &&
+        impact.data &&
+        impact.data.impacted.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t("services.detail.impact.none")}
           </p>
         ) : null}
-        {impact.data && impact.data.impacted.length > 0 ? (
+        {!impactPlaceholder &&
+        impact.data &&
+        impact.data.impacted.length > 0 ? (
           <ul className="space-y-1 text-sm">
             <li className="font-medium">{impact.data.service.name}</li>
             {impact.data.impacted.map((node) => (
@@ -230,7 +240,9 @@ function ImpactCard({ serviceId }: { serviceId: string }) {
             ))}
           </ul>
         ) : null}
-        {impact.data && impact.data.customers.length > 0 ? (
+        {!impactPlaceholder &&
+        impact.data &&
+        impact.data.customers.length > 0 ? (
           <div className="space-y-1">
             <h3 className="text-sm font-medium">
               {t("services.detail.impact.customers")}
@@ -1029,6 +1041,7 @@ export function ServiceDetailView({ serviceId }: { serviceId: string }) {
   const { data: workspace } = useActiveWorkspace();
   const status = useCatalogueStatus(workspace?.id ?? "");
   const service = useService(serviceId);
+  const placeholderVisible = useDelayedPending(service.isLoading);
   const [editing, setEditing] = useState(false);
   const canManage = status.data?.canManageServices === true;
   const data = service.data;
@@ -1102,8 +1115,9 @@ export function ServiceDetailView({ serviceId }: { serviceId: string }) {
             ) : undefined
           }
         />
-        {service.isLoading ? (
-          <LoadingRows />
+        {!service.isError &&
+        (service.isLoading || (placeholderVisible && service.data)) ? (
+          <LoadingRows visible={placeholderVisible} />
         ) : service.isError || !data ? (
           <QueryFailure
             error={service.error}

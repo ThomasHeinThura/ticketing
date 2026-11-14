@@ -1,5 +1,11 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { Alert, AlertDescription, Skeleton } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  LoadingStatus,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AuthLayout } from "@/components/auth/layout";
 import { SignInForm } from "@/components/auth/sign-in-form";
@@ -37,7 +43,8 @@ function GodModeSignIn() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const { data: config, isLoading } = useGetConfig();
+  const { data: config, isLoading, isError } = useGetConfig();
+  const placeholderVisible = useDelayedPending(isLoading);
   const target = godModeRedirectPath(search.redirect);
 
   return (
@@ -48,12 +55,18 @@ function GodModeSignIn() {
         subtitle={t("auth:godModeSignIn.subtitle")}
       >
         <div className="mt-6" data-testid="god-mode-sign-in-content">
-          {isLoading ? (
-            <div className="space-y-3" data-testid="god-mode-sign-in-loading">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
+          {!isError &&
+          (isLoading || (placeholderVisible && !config?.disableLoginForm)) ? (
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <div className="space-y-3" data-testid="god-mode-sign-in-loading">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            </LoadingStatus>
           ) : config?.disableLoginForm ? (
             // The API refuses local sign-in on this instance, so offer no form that would fail.
             <Alert variant="error">

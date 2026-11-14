@@ -1,3 +1,4 @@
+import { LoadingStatus } from "@taskdesk/ui";
 import { dayToIso, isoToDay } from "@/lib/work-item-date";
 
 export { dayToIso, isoToDay } from "@/lib/work-item-date";
@@ -21,6 +22,7 @@ import {
   ShortcutNumber,
   Spinner,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   CalendarClock,
@@ -217,6 +219,9 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     key: item.key,
     enabled: open || noteFor !== null,
   });
+  const placeholderVisible = useDelayedPending(open && transitions.isLoading, {
+    releaseNow: transitions.isSuccess && transitions.data.length === 0,
+  });
   const triggerRef = useRef<HTMLButtonElement>(null);
   useAccessLostOnQueryError(transitions.error, onAccessLost);
   const pending = useDetailChangePending(item.key);
@@ -293,6 +298,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       canMove &&
       !pending &&
       !transitions.isLoading &&
+      !placeholderVisible &&
       !transitions.isError,
     offers.map((offer) => ({
       onSelect: () => chooseOffer(offer),
@@ -341,10 +347,21 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
         }}
       >
         <DropdownMenuTrigger render={trigger} />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          {null}
+        </LoadingStatus>
         <DropdownMenuContent className="w-64" align="start">
           {error ? <InlineMessage>{error}</InlineMessage> : null}
-          {transitions.isLoading ? (
-            <p className="p-2 text-muted-foreground text-sm" role="status">
+          {!transitions.isError &&
+          (transitions.isLoading || placeholderVisible) ? (
+            <p
+              aria-hidden="true"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+              className="p-2 text-muted-foreground text-sm"
+            >
               {t("common:empty.loading")}
             </p>
           ) : transitions.isError ? (
@@ -566,6 +583,9 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     projectId: item.projectId,
     enabled: open,
   });
+  const placeholderVisible = useDelayedPending(open && people.isLoading, {
+    releaseNow: people.isSuccess && people.data.length === 0,
+  });
   useAccessLostOnQueryError(people.error, onAccessLost);
   const pending = useDetailChangePending(item.key);
   const { canUpdateTasks, canAssignTasks } = useWorkspacePermission(
@@ -683,6 +703,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       canEdit &&
       !pending &&
       !people.isLoading &&
+      !placeholderVisible &&
       !people.isError,
     [
       { onSelect: () => choosePerson(null), disabled: !canUnassign },
@@ -757,10 +778,15 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 )}
               </Button>
             ) : null}
-            {people.isLoading ? (
-              <p className="p-3 text-muted-foreground text-sm" role="status">
-                {t("common:empty.loading")}
-              </p>
+            {!people.isError && (people.isLoading || placeholderVisible) ? (
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
+              >
+                <p className="p-3 text-muted-foreground text-sm">
+                  {t("common:empty.loading")}
+                </p>
+              </LoadingStatus>
             ) : people.isError && !isWorkItemAccessLost(people.error) ? (
               <p className="p-3 text-muted-foreground text-sm" role="alert">
                 {t("workItems:journey.peopleError")}
@@ -817,6 +843,9 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
   const candidates = useGetRequesterCandidates({
     projectId: item.projectId,
     enabled: open && canEdit,
+  });
+  const placeholderVisible = useDelayedPending(open && candidates.isLoading, {
+    releaseNow: candidates.isSuccess && candidates.data.length === 0,
   });
   useAccessLostOnQueryError(candidates.error, onAccessLost);
   const dispatching = useRef(false);
@@ -929,10 +958,16 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
               <Check className="ml-auto h-4 w-4" />
             ) : null}
           </Button>
-          {candidates.isLoading ? (
-            <p className="p-3 text-muted-foreground text-sm" role="status">
-              {t("common:empty.loading")}
-            </p>
+          {!candidates.isError &&
+          (candidates.isLoading || placeholderVisible) ? (
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <p className="p-3 text-muted-foreground text-sm">
+                {t("common:empty.loading")}
+              </p>
+            </LoadingStatus>
           ) : candidates.isError && !isWorkItemAccessLost(candidates.error) ? (
             <p className="p-3 text-muted-foreground text-sm" role="alert">
               {t("workItems:properties.requesterError")}

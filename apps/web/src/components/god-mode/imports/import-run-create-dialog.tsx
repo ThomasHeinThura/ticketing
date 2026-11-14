@@ -12,12 +12,14 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -48,6 +50,10 @@ export function ImportRunCreateDialog({
     enabled: Boolean(workspaceId),
     retry: false,
   });
+  const placeholderVisible = useDelayedPending(
+    Boolean(workspaceId) && projects.isPending,
+    { releaseNow: projects.isSuccess && projects.data?.length === 0 },
+  );
   const permission = useWorkspacePermission(
     workspaceId || undefined,
     projectId || undefined,
@@ -134,8 +140,18 @@ export function ImportRunCreateDialog({
 
           <div className="space-y-2">
             <Label htmlFor="import-run-project">{t("project")}</Label>
-            {projects.isPending ? (
-              <Skeleton className="h-10 w-full" />
+            {!projects.isError && (projects.isPending || placeholderVisible) ? (
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
+              >
+                <Skeleton
+                  className="h-10 w-full"
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                />
+              </LoadingStatus>
             ) : (
               <Select
                 items={(projects.data ?? []).map((project) => ({

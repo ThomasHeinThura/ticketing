@@ -12,6 +12,7 @@ import {
   CardTitle,
   Input,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -142,7 +144,22 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
   const preview = useMutation({ mutationFn: previewTerminology });
   const livePreviewRef = useRef<HTMLDivElement>(null);
 
-  if (query.isPending) return <Skeleton className="h-72 w-full" />;
+  const queryPlaceholderVisible = useDelayedPending(query.isPending);
+  if (
+    !query.isError &&
+    (query.isPending || (queryPlaceholderVisible && query.data))
+  )
+    return (
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-72 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (query.isError)
     return (
       <Alert variant="error" role="alert">
@@ -412,7 +429,11 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
               if (target.scope === "workspace") {
                 const previewElement = livePreviewRef.current;
                 previewElement?.scrollIntoView?.({
-                  behavior: "smooth",
+                  behavior: window.matchMedia?.(
+                    "(prefers-reduced-motion: reduce)",
+                  ).matches
+                    ? "instant"
+                    : "smooth",
                   block: "nearest",
                 });
                 previewElement?.focus();

@@ -6,6 +6,7 @@ import {
   Button,
   Label,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { X } from "lucide-react";
 import { type ComponentProps, useEffect, useId, useRef, useState } from "react";
@@ -169,6 +170,7 @@ export default function SubmissionDetailSheetBody({
     queryKey: ["intake", "submission", ref],
     queryFn: () => getSubmission(ref),
   });
+  const placeholderVisible = useDelayedPending(detail.isLoading);
   const current = detail.data as unknown as SubmissionDetail | undefined;
   const attachments = useQuery({
     queryKey: ["intake", "submission", ref, "attachments"],
@@ -337,8 +339,13 @@ export default function SubmissionDetailSheetBody({
               <AlertDescription>{t("actionError")}</AlertDescription>
             </Alert>
           ) : null}
-          {detail.isLoading ? (
-            <p role="status" className="text-muted-foreground text-sm">
+          {!detail.isError &&
+          (detail.isLoading || (placeholderVisible && current)) ? (
+            <p
+              role="status"
+              className="text-muted-foreground text-sm"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
               {t("loadingDetails")}
             </p>
           ) : current ? (

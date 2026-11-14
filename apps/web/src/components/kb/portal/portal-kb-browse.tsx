@@ -19,6 +19,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -97,6 +98,9 @@ export function PortalKbBrowse({
         limit: 50,
       }),
   });
+  const placeholderVisible = useDelayedPending(articles.isLoading, {
+    releaseNow: articles.isSuccess && articles.data.articles.length === 0,
+  });
   const tree = flatten(categories.data?.categories ?? []);
   return (
     <div className="@container mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
@@ -158,9 +162,10 @@ export function PortalKbBrowse({
               </TabsList>
             </Tabs>
           )}
-          {articles.isLoading ? (
+          {!articles.isError && (articles.isLoading || placeholderVisible) ? (
             <div
               role="status"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
               aria-label={t("kb:portal.loading")}
               className="space-y-3"
             >

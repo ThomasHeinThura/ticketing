@@ -14,6 +14,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -24,6 +25,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
@@ -100,6 +102,10 @@ export function PortalProjectsList({
     });
   }
 
+  const placeholderVisible = useDelayedPending(projects.isLoading, {
+    releaseNow: projects.isSuccess && visible.length === 0,
+  });
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
       <PortalPageTitle title={t("projects.title")} />
@@ -159,18 +165,19 @@ export function PortalProjectsList({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : projects.isLoading ? (
-        <Card>
-          <CardContent
-            className="flex flex-col gap-3 p-4"
-            role="status"
-            aria-label={t("projects.title")}
-          >
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
+      ) : projects.isLoading || placeholderVisible ? (
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Card>
+            <CardContent className="flex flex-col gap-3 p-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </LoadingStatus>
       ) : visible.length === 0 ? (
         <Card>
           <CardContent className="p-8">

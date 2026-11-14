@@ -10,7 +10,12 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLayoutEffect, useRef, useState } from "react";
+import {
+  motionDurationMs,
+  motionEasing,
+  useReducedMotionPreference,
+} from "@taskdesk/ui";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
@@ -52,8 +57,6 @@ const DROP_ANIMATION: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: { active: { opacity: "0.8" } },
   }),
-  duration: 300,
-  easing: "cubic-bezier(0.23, 1, 0.32, 1)",
 };
 
 /**
@@ -111,7 +114,18 @@ export default function useWorkItemGroupDrag({
     useSensor(TouchSensor, TOUCH_SENSOR_OPTIONS),
     useSensor(SynchronousKeyboardSensor, KEYBOARD_SENSOR_OPTIONS),
   );
-  const dropAnimation = DROP_ANIMATION;
+  const reduceMotion = useReducedMotionPreference();
+  const dropAnimation = useMemo(
+    () =>
+      reduceMotion
+        ? null
+        : {
+            ...DROP_ANIMATION,
+            duration: motionDurationMs("slow"),
+            easing: motionEasing("out"),
+          },
+    [reduceMotion],
+  );
 
   useLayoutEffect(() => {
     projectContext.current = projectId;

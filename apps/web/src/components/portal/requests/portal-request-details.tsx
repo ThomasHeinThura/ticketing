@@ -14,6 +14,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, Download } from "lucide-react";
 import { useEffect } from "react";
@@ -89,6 +90,14 @@ export function PortalRequestDetails({
     queryFn: () => getPortalRequestFiles(requestRef),
     enabled: request?.canViewAttachments === true,
   });
+  const placeholderVisible = useDelayedPending(page.isLoading, {
+    releaseNow:
+      page.isSuccess &&
+      request?.canViewAttachments === true &&
+      (files.isError ||
+        (files.isSuccess &&
+          files.data.every((file) => file.state !== "ready"))),
+  });
   const notFound = page.error instanceof HttpError && page.error.status === 404;
 
   // A notification link can carry `#comment-<id>`: bring that message into view.
@@ -154,8 +163,12 @@ export function PortalRequestDetails({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : !request ? (
-        <div className="flex flex-col gap-4" role="status">
+      ) : !request || placeholderVisible ? (
+        <div
+          className="flex flex-col gap-4"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <span className="sr-only">{t("common:empty.loading")}</span>
           <Skeleton className="h-8 w-2/3" />
           <Skeleton className="h-40 w-full" />
@@ -376,13 +389,21 @@ function Files({
 }) {
   const { t } = usePortalTranslation("portal");
   const ready = (files ?? []).filter((file) => file.state === "ready");
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      !loading && !failed && files !== undefined && ready.length === 0,
+  });
   return (
     <section className="flex flex-col gap-3" aria-labelledby="request-files">
       <h2 id="request-files" className="font-medium">
         {t("intake.attachments")}
       </h2>
-      {loading ? (
-        <p role="status" className="text-muted-foreground text-sm">
+      {!failed && (loading || placeholderVisible) ? (
+        <p
+          role="status"
+          className="text-muted-foreground text-sm"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           {t("common:empty.loading")}
         </p>
       ) : failed ? (

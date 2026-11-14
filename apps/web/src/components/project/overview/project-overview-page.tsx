@@ -22,6 +22,7 @@ import {
   Progress,
   ProgressIndicator,
   ProgressTrack,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   AlertTriangle,
@@ -417,7 +418,14 @@ export function ProjectOverviewPage({
     };
   }, [canCreate]);
 
-  if (isLoading || (project && overview.isLoading)) return <PageLoading />;
+  const pending = Boolean(isLoading || (project && overview.isLoading));
+  const placeholderVisible = useDelayedPending(pending);
+  if (!overview.isError && (pending || (placeholderVisible && overview.data)))
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        <PageLoading />
+      </div>
+    );
   if (!project || overview.isError || !overview.data)
     return (
       <div className="mx-auto w-full max-w-6xl p-4 md:p-6">

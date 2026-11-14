@@ -19,6 +19,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { formatPortalDateTime } from "@/components/portal/portal-format";
@@ -74,6 +75,12 @@ export function PortalNotificationInbox({
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
+  const placeholderVisible = useDelayedPending(inbox.isLoading, {
+    releaseNow:
+      inbox.isSuccess &&
+      inbox.data.pages.every((page) => page.data.length === 0),
+  });
+  const loadingView = !inbox.isError && (inbox.isLoading || placeholderVisible);
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: portalNotificationQueryKey });
   const updateOne = useMutation({
@@ -148,12 +155,16 @@ export function PortalNotificationInbox({
           <AlertDescription>{t("notifications.loadFailed")}</AlertDescription>
         </Alert>
       ) : null}
-      {inbox.isLoading ? (
-        <p role="status" className="text-sm text-muted-foreground">
+      {loadingView && placeholderVisible ? (
+        <p
+          role="status"
+          className="text-sm text-muted-foreground"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           {t("common:empty.loading")}
         </p>
       ) : null}
-      {!inbox.isLoading && !inbox.isError && rows.length === 0 ? (
+      {!loadingView && !inbox.isError && rows.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyDescription>{t("notifications.empty")}</EmptyDescription>
@@ -162,21 +173,23 @@ export function PortalNotificationInbox({
       ) : null}
 
       <ol className="flex min-w-0 flex-col gap-3">
-        {rows.map((notification) => (
-          <PortalNotificationCard
-            key={notification.id}
-            notification={notification}
-            pending={
-              updateOne.isPending && updateOne.variables?.id === notification.id
-            }
-            onToggleRead={(id) =>
-              updateOne.mutate({ id, unread: notification.isRead })
-            }
-            onOpen={(id) => {
-              if (!notification.isRead) markOpened.mutate(id);
-            }}
-          />
-        ))}
+        {!loadingView &&
+          rows.map((notification) => (
+            <PortalNotificationCard
+              key={notification.id}
+              notification={notification}
+              pending={
+                updateOne.isPending &&
+                updateOne.variables?.id === notification.id
+              }
+              onToggleRead={(id) =>
+                updateOne.mutate({ id, unread: notification.isRead })
+              }
+              onOpen={(id) => {
+                if (!notification.isRead) markOpened.mutate(id);
+              }}
+            />
+          ))}
       </ol>
 
       {inbox.hasNextPage ? (

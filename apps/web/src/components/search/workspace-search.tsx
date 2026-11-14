@@ -1,5 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Button, Input, ToggleGroup, ToggleGroupItem } from "@taskdesk/ui";
+import {
+  Button,
+  Input,
+  LoadingStatus,
+  ToggleGroup,
+  ToggleGroupItem,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -87,7 +94,11 @@ export default function WorkspaceSearch({
     type: SCOPE_TYPE[scope],
     limit: 20,
   });
-  const showLoading = hasQuery && (isLoading || isFetching);
+  const pending = hasQuery && (isLoading || isFetching);
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow: !pending && data?.results.length === 0,
+  });
+  const showLoading = hasQuery && (pending || placeholderVisible);
 
   const groups = useMemo(
     () =>
@@ -139,7 +150,17 @@ export default function WorkspaceSearch({
             autoFocus
           />
           {showLoading && (
-            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("workspace:search.searching")}
+            >
+              <Loader2
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground"
+              />
+            </LoadingStatus>
           )}
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -180,7 +201,10 @@ export default function WorkspaceSearch({
       {hasQuery ? (
         <div>
           {showLoading && total === 0 ? (
-            <div className="flex items-center justify-center py-12">
+            <div
+              className="flex items-center justify-center py-12"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
               <div className="text-center space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto" />
                 <p className="text-sm text-muted-foreground">

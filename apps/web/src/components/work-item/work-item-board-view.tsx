@@ -1,7 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { client } from "@taskdesk/libs";
-import { Alert, AlertDescription } from "@taskdesk/ui";
-import { lazy, Suspense, useEffect, useMemo } from "react";
+import { Alert, AlertDescription, DelayedSuspense } from "@taskdesk/ui";
+import { lazy, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemAgileScope } from "@/fetchers/work-item/get-work-items";
@@ -333,13 +333,15 @@ export default function WorkItemBoardView({
         />
       )}
       {!isLoading && realtimeProjectId === project.id ? (
-        <Suspense fallback={<WorkItemListLoading />}>
+        <DelayedSuspense
+          fallback={(visible) => <WorkItemListLoading visible={visible} />}
+        >
           <WorkItemListRealtime
             key={project.id}
             projectId={project.id}
             onAvailabilityChange={onRealtimeAvailabilityChange}
           />
-        </Suspense>
+        </DelayedSuspense>
       ) : null}
     </>
   );

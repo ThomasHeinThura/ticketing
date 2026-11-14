@@ -5,6 +5,7 @@ import {
   AlertTitle,
   Input,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -18,7 +19,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
+
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -102,6 +105,9 @@ function RatesSettingsContent() {
   const people = rates.data?.people ?? [];
   const chosenPerson = people.find((person) => person.personId === personId);
   const loading = workspaceLoading || rates.isLoading;
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && rates.isSuccess && rates.data.data.length === 0,
+  });
   const canSubmit =
     Boolean(personId) &&
     minor !== null &&
@@ -110,8 +116,17 @@ function RatesSettingsContent() {
   if (isForbiddenError(rates.error)) return <NoAccessPage />;
   return (
     <RatesSettingsFrame>
-      {loading ? (
-        <Skeleton className="h-32 w-full" role="status" />
+      {!rates.isError && (loading || (placeholderVisible && rates.data)) ? (
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-32 w-full"
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : rates.error instanceof TimeTrackingDisabledError ? (
         <Alert variant="info">
           <AlertTitle>{t("timeTracking:rates.disabledTitle")}</AlertTitle>

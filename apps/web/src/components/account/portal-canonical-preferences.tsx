@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import {
   SelectValue,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -44,6 +46,7 @@ export function PortalCanonicalPreferencesPage({
     queryKey: ["portal", portalUserId, "canonical-notification-preferences"],
     queryFn: getPortalCanonicalPreferences,
   });
+  const placeholderVisible = useDelayedPending(preferences.isLoading);
   const handoff = useQuery({
     queryKey: ["portal", portalUserId, "notification-preference-handoff"],
     queryFn: getPortalEmailLinkHandoff,
@@ -112,13 +115,24 @@ export function PortalCanonicalPreferencesPage({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : preferences.isLoading || !mention || !comment ? (
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
+      ) : preferences.isLoading ||
+        !mention ||
+        !comment ||
+        placeholderVisible ? (
+        <LoadingStatus
+          visible={
+            placeholderVisible ||
+            (!preferences.isLoading && (!mention || !comment))
+          }
+          label={t("common:empty.loading")}
+        >
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </LoadingStatus>
       ) : (
         <div className="space-y-4">
           {selector && !supported ? (

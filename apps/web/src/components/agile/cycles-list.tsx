@@ -14,6 +14,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -70,6 +71,10 @@ export function CyclesList({ projectKey }: { projectKey: string }) {
       !(error instanceof FeatureDisabledError) && count < 2,
   });
 
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && query.data.data.length === 0,
+  });
+
   if (query.error instanceof FeatureDisabledError)
     return (
       <ProjectFeatureOff
@@ -78,11 +83,12 @@ export function CyclesList({ projectKey }: { projectKey: string }) {
         projectKey={projectKey}
       />
     );
-  if (query.isLoading)
+  if (!query.isError && (query.isLoading || placeholderVisible))
     return (
       <div
         className="mx-auto flex max-w-4xl flex-col gap-3 p-4"
         role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         aria-label={t("common.loading")}
       >
         <Skeleton className="h-10 w-full" />

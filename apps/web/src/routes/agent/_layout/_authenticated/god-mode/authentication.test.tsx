@@ -82,8 +82,10 @@ describe("Authentication providers list", () => {
   it("shows a loading state, then staff and customer connections", async () => {
     renderWithQuery(<Component />);
     expect(
-      screen.getByRole("status", { name: "Loading authentication providers" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("status", {
+        name: "Loading authentication providers",
+      }),
+    ).toBeNull();
     expect(await screen.findByText("Staff Entra")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Authentication providers" }),

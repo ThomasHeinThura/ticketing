@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Button, Skeleton } from "@taskdesk/ui";
+import {
+  Button,
+  LoadingStatus,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { LabelCatalogue } from "@/components/settings/label-catalogue";
 import getProject from "@/fetchers/project/get-project";
@@ -21,7 +26,24 @@ function RouteComponent() {
     queryKey: ["project-label-context", projectId],
     queryFn: () => getProject({ id: projectId, workspaceId: "" }),
   });
-  if (project.isPending) return <Skeleton className="h-16 w-full" />;
+  const projectPlaceholderVisible = useDelayedPending(project.isPending);
+  if (
+    !project.isError &&
+    (project.isPending || (projectPlaceholderVisible && project.data))
+  )
+    return (
+      <LoadingStatus
+        visible={projectPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-16 w-full"
+          style={{
+            visibility: projectPlaceholderVisible ? "visible" : "hidden",
+          }}
+        />
+      </LoadingStatus>
+    );
   if (project.isError)
     return (
       <div role="alert" className="space-y-2">

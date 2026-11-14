@@ -23,6 +23,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -34,7 +35,9 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
+
 import { Archive, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -542,6 +545,10 @@ function WorkItemTemplatesPageContent() {
     (canManage && (templates.isLoading || checklists.isLoading));
   const failed = templates.isError || checklists.isError;
   const rows = showChecklists ? filteredChecklists : filteredTemplates;
+  const placeholderVisible = useDelayedPending(busy, {
+    releaseNow:
+      !busy && templates.isSuccess && checklists.isSuccess && rows.length === 0,
+  });
   if (isForbiddenError(templates.error) || isForbiddenError(checklists.error))
     return <NoAccessPage />;
   return (
@@ -568,8 +575,16 @@ function WorkItemTemplatesPageContent() {
             </Button>
           ) : null}
         </div>
-        {busy ? (
-          <Skeleton className="h-24 w-full" />
+        {!failed && (busy || (placeholderVisible && canManage)) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-24 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : !canManage ? (
           <Alert>
             <AlertDescription>

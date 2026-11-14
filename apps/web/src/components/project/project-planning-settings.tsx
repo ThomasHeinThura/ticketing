@@ -5,6 +5,7 @@ import {
   Button,
   Calendar,
   Label,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -15,6 +16,7 @@ import {
   SelectValue,
   Separator,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CalendarDays, TriangleAlert, X } from "lucide-react";
 import { useState } from "react";
@@ -182,18 +184,26 @@ function ProjectPlanningSettings({
   const canEditPlanning = canUpdateProjects() && canManageProjectSettings();
   const canEditParent = canUpdateProjects();
 
-  if (isLoading || (isCheckingPermissions && !project)) {
+  const pending = isLoading || (isCheckingPermissions && !project);
+  const placeholderVisible = useDelayedPending(pending);
+  if (!isError && (pending || (placeholderVisible && project))) {
     return (
-      <section
-        aria-busy="true"
-        aria-label={t("settings:projectGeneral.planning.title")}
-        className="space-y-3"
-        data-testid="project-planning-loading"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-      </section>
+        <section
+          aria-busy="true"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          aria-label={t("settings:projectGeneral.planning.title")}
+          className="space-y-3"
+          data-testid="project-planning-loading"
+        >
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </section>
+      </LoadingStatus>
     );
   }
 

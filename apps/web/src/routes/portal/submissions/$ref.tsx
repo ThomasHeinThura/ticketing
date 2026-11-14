@@ -21,6 +21,7 @@ import {
   EmptyHeader,
   Input,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, Download, Paperclip } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -324,6 +325,13 @@ function PortalSubmissionContent() {
     queryFn: () => getPortalSubmissionAttachments(ref),
     enabled: canViewAttachments,
   });
+  const placeholderVisible = useDelayedPending(page.isLoading, {
+    releaseNow:
+      page.isSuccess &&
+      canViewAttachments &&
+      (attachments.isError ||
+        (attachments.isSuccess && attachments.data.length === 0)),
+  });
   const actions = usePortalRequestActions(portalUserId, ref);
   const canRaisePriority =
     requester &&
@@ -423,8 +431,12 @@ function PortalSubmissionContent() {
             {t("common:actions.retry", { defaultValue: "Retry" })}
           </Button>
         </Alert>
-      ) : !record ? (
-        <div className="flex flex-col gap-4" role="status">
+      ) : !record || placeholderVisible ? (
+        <div
+          className="flex flex-col gap-4"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <span className="sr-only">
             {t("common:empty.loading", { defaultValue: "Loading…" })}
           </span>

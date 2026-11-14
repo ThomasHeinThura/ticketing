@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -37,6 +38,7 @@ function RouteComponent() {
   );
   const failed = budgetAccess === "error" || timeAccess === "error";
   const checking = budgetAccess === "checking" || timeAccess === "checking";
+  const placeholderVisible = useDelayedPending(checking);
   if (
     !failed &&
     !checking &&
@@ -51,8 +53,10 @@ function RouteComponent() {
       <h1 className="sr-only">{t("timeTracking:budget.title")}</h1>
       {failed ? (
         <SettingsAccessError />
-      ) : checking ? (
-        <SettingsAccessChecking />
+      ) : checking ||
+        (placeholderVisible &&
+          (budgetAccess === "allowed" || timeAccess === "allowed")) ? (
+        <SettingsAccessChecking visible={placeholderVisible} />
       ) : (
         <div className="space-y-6">
           {timeAccess === "allowed" ? (

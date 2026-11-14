@@ -13,6 +13,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { PortalAnnouncementsTabs } from "@/components/portal/announcements/portal-announcements-tabs";
@@ -36,6 +37,11 @@ export function PortalReleasesList({
       getPortalReleases({ limit: 20, cursor: pageParam }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
+  const placeholderVisible = useDelayedPending(releases.isPending, {
+    releaseNow:
+      releases.isSuccess &&
+      releases.data.pages.every((page) => page.data.length === 0),
+  });
   const entries = releases.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
@@ -47,8 +53,9 @@ export function PortalReleasesList({
         </p>
       </header>
       <PortalAnnouncementsTabs />
-      {releases.isPending ? (
+      {!releases.isError && (releases.isPending || placeholderVisible) ? (
         <div
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           role="status"
           aria-label={t("portal:releases.loading")}
           className="space-y-3"

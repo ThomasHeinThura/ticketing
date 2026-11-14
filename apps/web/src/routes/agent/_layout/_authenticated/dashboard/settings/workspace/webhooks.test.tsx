@@ -59,10 +59,10 @@ describe("webhooks access", () => {
       expect(screen.queryByText("Webhook list")).toBeNull();
     },
   );
-  it("waits for the permission check", () => {
+  it("waits for the permission check", async () => {
     state.checking = true;
     show();
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(screen.queryByTestId("settings-access-denied")).toBeNull();
   });
   it("opens the list for a webhook manager", () => {

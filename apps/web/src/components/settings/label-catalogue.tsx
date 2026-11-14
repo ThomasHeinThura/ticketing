@@ -28,6 +28,7 @@ import {
   Input,
   Label,
   SaveButton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -90,6 +91,9 @@ export function LabelCatalogue({
     ? (projectQuery.data ?? [])
     : (workspaceQuery.data ?? []).filter((label) => !label.taskId);
   const query = projectId ? projectQuery : workspaceQuery;
+  const placeholderVisible = useDelayedPending(query.isPending, {
+    releaseNow: query.isSuccess && workspaceLabels.length === 0,
+  });
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({
@@ -425,8 +429,15 @@ export function LabelCatalogue({
                     {t("common:actions.retry")}
                   </Button>
                 </div>
-              ) : query.isPending ? (
-                <p role="status">{t("settings:projectLabels.loading")}</p>
+              ) : query.isPending || placeholderVisible ? (
+                <p
+                  role="status"
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                >
+                  {t("settings:projectLabels.loading")}
+                </p>
               ) : workspaceLabels.length === 0 ? (
                 <Empty>
                   <EmptyHeader>

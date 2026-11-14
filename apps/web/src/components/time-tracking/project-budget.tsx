@@ -12,6 +12,7 @@ import {
   CardTitle,
   Input,
   Label,
+  LoadingStatus,
   Progress,
   ProgressIndicator,
   ProgressTrack,
@@ -22,6 +23,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -326,8 +328,25 @@ function CreateBudgetForm({ projectId }: { projectId: string }) {
 export function ProjectBudget({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const budget = useProjectBudget(projectId);
-  if (budget.isLoading)
-    return <Skeleton className="h-32 w-full" role="status" />;
+  const placeholderVisible = useDelayedPending(budget.isLoading, {
+    releaseNow: budget.isSuccess && budget.data.data.length === 0,
+  });
+  if (
+    !budget.isError &&
+    (budget.isLoading || (placeholderVisible && budget.data))
+  )
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-32 w-full"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (budget.error instanceof TimeTrackingDisabledError)
     return (
       <Alert variant="info">

@@ -20,6 +20,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import {
@@ -212,6 +213,12 @@ export default function WorkItemBoard({
       ),
     [itemsByState],
   );
+  const placeholderVisible = useDelayedPending(isLoading || !states, {
+    releaseNow:
+      !isLoading &&
+      Boolean(states) &&
+      (states?.length === 0 || workItems?.length === 0),
+  });
   const [retainFocusId, setRetainFocusId] = useState<string>();
   const onRetainFocus = useCallback(() => setRetainFocusId(undefined), []);
 
@@ -229,8 +236,12 @@ export default function WorkItemBoard({
     );
   }
 
-  if (isLoading || !states) {
-    return <WorkItemBoardSkeleton />;
+  if (isLoading || !states || placeholderVisible) {
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        <WorkItemBoardSkeleton visible={placeholderVisible} />
+      </div>
+    );
   }
 
   if (states.length === 0) {

@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -39,7 +41,22 @@ export function OrganisationCustomerVisibilityCard({
   const { t } = useTranslation("identityConnections");
   const query = useOrganisationCustomerVisibility(organisationId);
 
-  if (query.isPending) return <Skeleton className="h-48 w-full" />;
+  const queryPlaceholderVisible = useDelayedPending(query.isPending);
+  if (
+    !query.isError &&
+    (query.isPending || (queryPlaceholderVisible && query.data))
+  )
+    return (
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-48 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (query.isError)
     return (
       <Card>

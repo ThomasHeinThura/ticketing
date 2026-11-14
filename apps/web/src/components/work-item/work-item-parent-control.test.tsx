@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
@@ -207,4 +213,20 @@ describe("Kaneo parent control", () => {
       screen.getByRole("button", { name: "workItems:parent.label" }),
     ).toBeDisabled();
   });
+});
+
+it("keeps a loaded parent candidate visible throughout background refetch", async () => {
+  const { client } = setup();
+  open();
+  typeKey("OPS-2");
+  expect(await screen.findByText("OPS-2 · Candidate")).toBeVisible();
+  fake.candidate.mockImplementation(() => new Promise(() => {}));
+  await act(async () => {
+    void client.invalidateQueries({
+      queryKey: ["work-items", "parent-candidate"],
+    });
+  });
+  await waitFor(() => expect(fake.candidate).toHaveBeenCalledTimes(2));
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(screen.getByText("OPS-2 · Candidate")).toBeVisible();
 });

@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Input,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { GitBranch } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -65,6 +67,9 @@ export default function WorkItemParentControl({
     enabled: open && canUpdateTasks() && validKey,
     retry: false,
   });
+  const placeholderVisible = useDelayedPending(
+    open && validKey && candidate.isPending,
+  );
   const reachableCandidate = candidate.isError ? undefined : candidate.data;
   const eligible = reachableCandidate?.projectId === item.projectId;
   useEffect(() => {
@@ -154,7 +159,13 @@ export default function WorkItemParentControl({
           className="flex flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            if (validKey && eligible && !mutation.isPending)
+            if (
+              validKey &&
+              eligible &&
+              !candidate.isFetching &&
+              !placeholderVisible &&
+              !mutation.isPending
+            )
               mutation.mutate(key);
           }}
         >
@@ -169,12 +180,19 @@ export default function WorkItemParentControl({
               setError("");
             }}
           />
-          {validKey && candidate.isFetching ? (
-            <p role="status" className="text-xs text-muted-foreground">
-              {t("workItems:parent.loading")}
-            </p>
+          {validKey &&
+          !candidate.isError &&
+          (candidate.isPending || placeholderVisible) ? (
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("workItems:parent.loading")}
+            >
+              <p className="text-xs text-muted-foreground">
+                {t("workItems:parent.loading")}
+              </p>
+            </LoadingStatus>
           ) : null}
-          {validKey && eligible && reachableCandidate ? (
+          {validKey && !placeholderVisible && eligible && reachableCandidate ? (
             <p className="text-sm text-foreground">
               {reachableCandidate.key} · {reachableCandidate.title}
             </p>
@@ -199,6 +217,7 @@ export default function WorkItemParentControl({
               !validKey ||
               !eligible ||
               candidate.isFetching ||
+              placeholderVisible ||
               mutation.isPending
             }
           >

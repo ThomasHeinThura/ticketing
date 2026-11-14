@@ -28,6 +28,7 @@ import {
   SaveButton,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   ArrowDown,
@@ -326,6 +327,9 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
   });
 
   const loading = workspaceLoading || fields.isLoading || sections.isLoading;
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && sections.isSuccess && sections.data.length === 0,
+  });
   const allFields = fields.data?.data ?? [];
   const active = allFields.filter((field) => field.deletedAt === null);
   const orderedSections = sections.data ?? [];
@@ -397,9 +401,12 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
           </Alert>
         ) : null}
 
-        {loading ? (
+        {!fields.isError &&
+        !sections.isError &&
+        (loading || placeholderVisible) ? (
           <div
             role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             aria-label={t("customFields:list.loading")}
             className="space-y-3"
           >

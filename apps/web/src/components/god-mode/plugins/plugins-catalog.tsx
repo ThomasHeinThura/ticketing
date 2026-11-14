@@ -11,7 +11,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { listSupportedPlugins } from "@/fetchers/god-mode/plugins";
@@ -29,7 +31,24 @@ export function PluginsCatalog() {
     throwOnError: false,
   });
 
-  if (query.isPending) return <Skeleton className="h-40 w-full" />;
+  const queryPlaceholderVisible = useDelayedPending(query.isPending, {
+    releaseNow: query.isSuccess && query.data.plugins.length === 0,
+  });
+  if (
+    !query.isError &&
+    (query.isPending || (queryPlaceholderVisible && query.data))
+  )
+    return (
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-40 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (query.error instanceof HttpError && query.error.status === 403)
     return (
       <Alert variant="info">

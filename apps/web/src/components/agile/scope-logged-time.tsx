@@ -1,5 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { Alert, AlertDescription, Badge, Skeleton } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Badge,
+  LoadingStatus,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { getTimeSummary } from "@/fetchers/time-tracking";
 import { useTimeTrackingFeatures } from "@/hooks/queries/time-tracking/use-time-tracking";
@@ -57,8 +64,23 @@ export function ScopeLoggedTime({
     retry: 1,
   });
 
+  const placeholderVisible = useDelayedPending(summary.isLoading);
   if (!enabled) return null;
-  if (summary.isLoading) return <Skeleton className="h-14 w-48" />;
+  if (
+    !summary.isError &&
+    (summary.isLoading || (placeholderVisible && summary.data))
+  )
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-14 w-48"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (summary.isError || !summary.data)
     return (
       <Alert variant="error">

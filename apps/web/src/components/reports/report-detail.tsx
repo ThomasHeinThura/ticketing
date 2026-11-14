@@ -4,7 +4,9 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronLeft, Download, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -90,11 +92,16 @@ function ReportDetailScreen({
   const catalogue = useReportCatalogue(workspaceId);
   const entry = catalogue.data?.data.find((report) => report.key === reportKey);
   const report = useReport(workspaceId, reportKey, search);
+  const placeholderVisible = useDelayedPending(report.isLoading || !workspace, {
+    releaseNow:
+      Boolean(workspace) && report.isSuccess && report.data.empty !== null,
+  });
   const [drilling, setDrilling] = useState<string | null>(search.drill ?? null);
   const exporting = useExportAction(() =>
     exportReport(workspaceId, reportKey, search),
   );
-  if (!workspace || report.isLoading) return <SettingsAccessChecking />;
+  if (!report.isError && (!workspace || report.isLoading || placeholderVisible))
+    return <SettingsAccessChecking visible={placeholderVisible} />;
   if (report.error instanceof HttpError && report.error.status === 403)
     return <NoAccessPage />;
   const title = t(`reports:catalogue.${reportKey}.title`, {
@@ -150,8 +157,17 @@ function ReportDetailScreen({
           choices={report.data?.choices ?? []}
           organisations={reportOrganisationChoices(report.data)}
         />
-        {report.isLoading || !workspace ? (
-          <Skeleton className="h-48 w-full" />
+        {!report.isError &&
+        (report.isLoading || !workspace || placeholderVisible) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-48 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : report.isError || !report.data ? (
           <ReportError error={report.error} />
         ) : (

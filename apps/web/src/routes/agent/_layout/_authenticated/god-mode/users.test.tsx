@@ -13,6 +13,8 @@ import { Route } from "./users";
 const mocks = vi.hoisted(() => ({
   search: { user: "user-a" } as Record<string, string | undefined>,
   changed: (() => {}) as () => void,
+  directoryPending: false,
+  selectedError: false,
   grantAdmin: vi.fn(),
   suspend: vi.fn(),
   createProof: vi.fn(),
@@ -61,7 +63,8 @@ vi.mock("@/fetchers/god-mode/instance-users", () => ({
 
 vi.mock("@/hooks/queries/god-mode/use-instance-users", () => ({
   useInstanceUsers: () => ({
-    isPending: false,
+    isPending: mocks.directoryPending,
+    isSuccess: !mocks.directoryPending,
     isError: false,
     isFetching: false,
     data: { data: [userA, userB], page: { hasMore: false } },
@@ -70,7 +73,7 @@ vi.mock("@/hooks/queries/god-mode/use-instance-users", () => ({
   useInstanceUser: (id?: string) => ({
     data: id === userB.id ? userB : userA,
     isPending: false,
-    isError: false,
+    isError: mocks.selectedError,
   }),
   useInstanceUserActions: () => ({
     suspend: { isPending: false, mutateAsync: mocks.suspend },
@@ -126,6 +129,29 @@ async function flushActionContextEffect() {
 
 describe("God Mode Users table", () => {
   afterEach(() => cleanup());
+
+  it("shows a selected-user error during the retained directory placeholder", () => {
+    mocks.search = { user: userA.id };
+    mocks.directoryPending = true;
+    mocks.selectedError = false;
+    vi.useFakeTimers();
+    try {
+      render(<Harness />);
+      act(() => vi.advanceTimersByTime(200));
+      mocks.directoryPending = false;
+      act(() => mocks.changed());
+      act(() => vi.advanceTimersByTime(20));
+      mocks.selectedError = true;
+      act(() => mocks.changed());
+      expect(screen.getByText("instanceUsers:copy.2dc7a078a492")).toBeVisible();
+      expect(screen.queryByRole("status")).toBeNull();
+    } finally {
+      cleanup();
+      mocks.directoryPending = false;
+      mocks.selectedError = false;
+      vi.useRealTimers();
+    }
+  });
 
   it("shows a status badge for an ordinary active account and titles truncated cells", () => {
     mocks.search = {};

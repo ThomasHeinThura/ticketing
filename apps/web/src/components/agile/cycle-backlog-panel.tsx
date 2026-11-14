@@ -1,5 +1,13 @@
 import { useDraggable } from "@dnd-kit/core";
-import { Alert, AlertDescription, Badge, Button, Skeleton } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Badge,
+  Button,
+  LoadingStatus,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { GripVertical, Plus } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -103,6 +111,9 @@ export function CycleBacklogPanel({
       ),
     [query.data, kind],
   );
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && items.length === 0,
+  });
   return (
     <section
       aria-label={t(kind === "cycle" ? "backlog.title" : "backlog.moduleTitle")}
@@ -117,8 +128,16 @@ export function CycleBacklogPanel({
           ? t(kind === "cycle" ? "backlog.hint" : "backlog.moduleHint")
           : t("backlog.readOnly")}
       </p>
-      {query.isLoading ? (
-        <Skeleton className="h-20 w-full" />
+      {!query.isError && (query.isLoading || placeholderVisible) ? (
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-20 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : query.isError ? (
         <Alert variant="error">
           <AlertDescription>{t("backlog.loadFailed")}</AlertDescription>

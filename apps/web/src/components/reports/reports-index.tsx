@@ -10,11 +10,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   PageContainer,
   PageHeader,
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { LayoutDashboard, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -57,6 +59,9 @@ function Kpi({
   const { t } = useTranslation();
   const result = useReport(workspaceId, report, {});
   const found = result.data?.metrics.find((entry) => entry.key === metric);
+  const placeholderVisible = useDelayedPending(result.isLoading, {
+    releaseNow: result.isSuccess && (!found || result.data.empty !== null),
+  });
   return (
     <Link
       to={routes.reportDetail.path}
@@ -70,8 +75,18 @@ function Kpi({
               defaultValue: found?.label ?? metric,
             })}
           </p>
-          {result.isLoading ? (
-            <Skeleton className="h-8 w-20" />
+          {!result.isError && (result.isLoading || placeholderVisible) ? (
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-8 w-20"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : found?.value === null ? (
             // RP-1's sentence is body copy, not a figure, so the tile keeps its size.
             <p className="text-muted-foreground text-sm">
@@ -180,9 +195,27 @@ function ReportsIndexScreen({
   const saved = (views.data ?? []).filter(
     (view) => view.layout === "table" || view.layout === "chart",
   );
+  const category = search.category;
+  const cataloguePlaceholder = useDelayedPending(
+    catalogue.isLoading || !workspace,
+    {
+      releaseNow:
+        Boolean(workspace) &&
+        catalogue.isSuccess &&
+        (views.isError || catalogue.data.data.length === 0),
+    },
+  );
+  const viewsPlaceholder = useDelayedPending(views.isLoading, {
+    releaseNow: views.isSuccess && saved.length === 0,
+  });
   if (catalogue.error instanceof HttpError && catalogue.error.status === 403)
     return <NoAccessPage />;
-  if (!workspace || catalogue.isLoading || catalogue.isError)
+  if (
+    !workspace ||
+    catalogue.isLoading ||
+    catalogue.isError ||
+    cataloguePlaceholder
+  )
     return (
       <>
         <PageTitle title={t("reports:index.title")} />
@@ -202,14 +235,16 @@ function ReportsIndexScreen({
               </Button>
             </>
           ) : (
-            <div role="status" aria-label={t("common:pageLoading")}>
+            <LoadingStatus
+              visible={cataloguePlaceholder}
+              label={t("common:pageLoading")}
+            >
               <Skeleton className="h-48 w-full" />
-            </div>
+            </LoadingStatus>
           )}
         </PageContainer>
       </>
     );
-  const category = search.category;
   const categories = REPORT_CATEGORIES.filter((candidate) =>
     catalogue.data?.data.some((entry) => entry.category === candidate),
   );
@@ -317,8 +352,20 @@ function ReportsIndexScreen({
                   {t("reports:index.savedDescription")}
                 </p>
               </div>
-              {views.isLoading ? (
-                <Skeleton className="h-16 w-full" />
+              {!views.isError && (views.isLoading || viewsPlaceholder) ? (
+                <LoadingStatus
+                  visible={viewsPlaceholder}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-16 w-full"
+                    style={{
+                      visibility: viewsPlaceholder ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
+              ) : views.isError ? (
+                <ReportError error={views.error} />
               ) : saved.length === 0 ? (
                 <Alert variant="info">
                   <AlertDescription>

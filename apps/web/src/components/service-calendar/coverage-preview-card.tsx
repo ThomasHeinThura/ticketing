@@ -7,7 +7,9 @@ import {
   CardTitle,
   Input,
   Label,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -31,6 +33,7 @@ export function CoveragePreviewCard({
 }) {
   const { t } = useTranslation("serviceCalendars");
   const [yearDraft, setYearDraft] = useState(String(year));
+  const placeholderVisible = useDelayedPending(preview.isLoading);
 
   useEffect(() => setYearDraft(String(year)), [year]);
 
@@ -78,8 +81,19 @@ export function CoveragePreviewCard({
             <p className="text-sm text-muted-foreground">
               {t("preview.saveToCalculate")}
             </p>
-          ) : preview.isLoading ? (
-            <Skeleton className="h-20 w-full" />
+          ) : !preview.isError &&
+            (preview.isLoading || (placeholderVisible && preview.data)) ? (
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-20 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : preview.isError ? (
             <div className="space-y-2">
               <p className="text-sm text-destructive">

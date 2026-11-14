@@ -88,10 +88,10 @@ describe.each([
     ).toHaveFocus();
     expect(editor).not.toHaveBeenCalled();
   });
-  it("waits for capability loading", () => {
+  it("waits for capability loading", async () => {
     state.checking = true;
     show(Page);
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(screen.queryByTestId("settings-access-denied")).toBeNull();
     expect(editor).not.toHaveBeenCalled();
   });

@@ -363,7 +363,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive-strong px-1 text-[9px] font-semibold leading-none text-destructive-strong-foreground ring-2 ring-sidebar transition-[scale,opacity] duration-200 ease-out starting:scale-75 starting:opacity-0 motion-reduce:starting:scale-100">
+                      <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive-strong px-1 text-[9px] font-semibold leading-none text-destructive-strong-foreground ring-2 ring-sidebar transition-[scale,opacity] duration-base ease-out starting:scale-75 starting:opacity-0 motion-reduce:starting:scale-100">
                         {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     )}
@@ -437,7 +437,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                           <div className="flex items-center gap-2">
                             <span
                               className={cn(
-                                "truncate text-sm transition-colors duration-150",
+                                "truncate text-sm transition-colors duration-fast",
                                 notification.isRead
                                   ? "text-muted-foreground"
                                   : "font-medium text-foreground",
@@ -455,7 +455,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                           {content && (
                             <p
                               className={cn(
-                                "mt-0.5 line-clamp-1 text-xs transition-colors duration-150",
+                                "mt-0.5 line-clamp-1 text-xs transition-colors duration-fast",
                                 notification.isRead
                                   ? "text-muted-foreground"
                                   : "text-muted-foreground",

@@ -4,6 +4,7 @@ import {
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,6 +42,9 @@ export default function CommentVersionHistory({
     enabled: open,
   });
   const versions = history.data?.pages.flatMap((page) => page.data) ?? [];
+  const placeholderVisible = useDelayedPending(open && history.isLoading, {
+    releaseNow: history.isSuccess && versions.length === 0,
+  });
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -96,8 +100,13 @@ export default function CommentVersionHistory({
             </li>
           ))}
         </ol>
-        {history.isLoading && (
-          <p role="status">{t("activity:timeline.historyLoading")}</p>
+        {!history.isError && (history.isLoading || placeholderVisible) && (
+          <p
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
+            {t("activity:timeline.historyLoading")}
+          </p>
         )}
         {history.isError && (
           <div role="alert" className="flex items-center gap-2 text-sm">
@@ -111,11 +120,14 @@ export default function CommentVersionHistory({
             </Button>
           </div>
         )}
-        {!history.isLoading && !history.isError && versions.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            {t("activity:timeline.historyEmpty")}
-          </p>
-        )}
+        {!history.isLoading &&
+          !placeholderVisible &&
+          !history.isError &&
+          versions.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              {t("activity:timeline.historyEmpty")}
+            </p>
+          )}
         {history.hasNextPage && (
           <Button
             className="mt-2"

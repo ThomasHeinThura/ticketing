@@ -19,6 +19,7 @@ import {
   PageContainer,
   PageHeader,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   CalendarDays,
@@ -78,12 +79,18 @@ function ServiceCalendarsRouteContent() {
     useWorkspacePermission();
   const canManageCalendars = canManageServiceCalendars();
 
-  if (location.pathname.startsWith(`${routes.serviceCalendars.path}/`)) {
+  const onChildRoute = location.pathname.startsWith(
+    `${routes.serviceCalendars.path}/`,
+  );
+  const loading = isWorkspaceLoading || isLoading;
+  const placeholderVisible = useDelayedPending(!onChildRoute && loading, {
+    releaseNow: !loading && !isError && calendars?.data.length === 0,
+  });
+  if (onChildRoute) {
     return <Outlet />;
   }
 
   if (isForbiddenError(error)) return <NoAccessPage />;
-  const loading = isWorkspaceLoading || isLoading;
   const resetToFirstPage = () =>
     void navigate({
       to: routes.serviceCalendars.path,
@@ -130,10 +137,11 @@ function ServiceCalendarsRouteContent() {
           <AlertDescription>{t("list.toolsDescription")}</AlertDescription>
         </Alert>
 
-        {loading ? (
+        {!isError && (loading || placeholderVisible) ? (
           <div
             className="space-y-3"
             role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             aria-label={t("list.loading")}
           >
             <Skeleton className="h-16 w-full" />
@@ -198,7 +206,7 @@ function ServiceCalendarsRouteContent() {
             </CardContent>
           </Card>
         )}
-        {!loading && !isError && calendars ? (
+        {!loading && !placeholderVisible && !isError && calendars ? (
           <nav
             aria-label={t("common:pagination.label")}
             className="flex items-center justify-between"

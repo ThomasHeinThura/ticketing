@@ -11,6 +11,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -18,6 +19,7 @@ import {
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Info } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -135,6 +137,12 @@ export function DashboardWidgetCard({
     : !report?.chart?.series.some((series) =>
         series.values.some((value) => value !== null),
       );
+  const placeholderVisible = useDelayedPending(data.isLoading, {
+    releaseNow:
+      data.isSuccess &&
+      (Boolean(report?.empty) ||
+        (widget.chartType === "number" ? !first : noPlottableData)),
+  });
   return (
     <Card
       className="flex h-full flex-col overflow-hidden"
@@ -206,8 +214,19 @@ export function DashboardWidgetCard({
           >
             <div className="space-y-2">
               {footer}
-              {data.isLoading ? (
-                <Skeleton className="h-full min-h-16 w-full" />
+              {!data.isError &&
+              (data.isLoading || (placeholderVisible && data.data)) ? (
+                <LoadingStatus
+                  visible={placeholderVisible}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-full min-h-16 w-full"
+                    style={{
+                      visibility: placeholderVisible ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
               ) : data.isError || !report ? (
                 <ReportError error={data.error} />
               ) : report.empty ? (

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Input } from "@taskdesk/ui";
+import { Button, Input, useDelayedPending } from "@taskdesk/ui";
 import { Paperclip } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -176,6 +176,13 @@ export default function WorkItemAttachments({
   const recoverable = rows.filter(
     (attachment) => attachment.state === "deleted",
   );
+  const placeholderVisible = useDelayedPending(list.isLoading, {
+    releaseNow:
+      list.isSuccess &&
+      (showRecoverable
+        ? recoverable.length === 0
+        : ready.length === 0 && uploads.length === 0),
+  });
   const images = useMemo(
     () => ready.filter((attachment) => isInlineImage(attachment.mimeType)),
     [ready],
@@ -245,8 +252,12 @@ export default function WorkItemAttachments({
         </p>
       ) : null}
       <WorkItemUploadList uploads={uploads} />
-      {list.isLoading ? (
-        <p className="text-muted-foreground text-sm" role="status">
+      {!list.isError && (list.isLoading || placeholderVisible) ? (
+        <p
+          className="text-muted-foreground text-sm"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           {t("common:empty.loading")}
         </p>
       ) : list.isError ? (

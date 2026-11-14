@@ -11,8 +11,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -130,11 +132,20 @@ export function PortalKbArticleView({
     queryFn: () => getPortalKbArticle(id),
     retry: false,
   });
-  if (article.isLoading)
+  const placeholderVisible = useDelayedPending(article.isLoading);
+  if (
+    !article.isError &&
+    (article.isLoading || (placeholderVisible && article.data))
+  )
     return (
-      <div className="mx-auto w-full max-w-3xl p-6">
-        <Skeleton className="h-40 w-full" />
-      </div>
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <div className="mx-auto w-full max-w-3xl p-6">
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </LoadingStatus>
     );
   if (article.isError || !article.data) {
     const missing =

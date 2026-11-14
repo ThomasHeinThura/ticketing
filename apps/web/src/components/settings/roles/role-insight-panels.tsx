@@ -21,6 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -102,6 +103,7 @@ export function RolePreviewPanel({
     queryKey: ["workspace-role-preview", workspaceId, role.id, capabilities],
     queryFn: () => previewRole(workspaceId, role.id, [...capabilities]),
   });
+  const previewPlaceholder = useDelayedPending(preview.isLoading);
   const list = (
     title: string,
     entries: { key: string; label: string; allowed: boolean }[],
@@ -135,8 +137,13 @@ export function RolePreviewPanel({
         <AlertTitle>{t("roles:preview.notImpersonation")}</AlertTitle>
         <AlertDescription>{t("roles:preview.description")}</AlertDescription>
       </Alert>
-      {preview.isLoading ? (
-        <div role="status" aria-label={t("roles:preview.loading")}>
+      {!preview.isError &&
+      (preview.isLoading || (previewPlaceholder && preview.data)) ? (
+        <div
+          role="status"
+          aria-label={t("roles:preview.loading")}
+          style={{ visibility: previewPlaceholder ? "visible" : "hidden" }}
+        >
           <Skeleton className="h-48 w-full" />
         </div>
       ) : preview.isError || !preview.data ? (
@@ -270,9 +277,19 @@ export function RoleHistoryPanel({
     dateStyle: "medium",
     timeStyle: "short",
   });
-  if (history.isLoading)
+  const placeholderVisible = useDelayedPending(history.isLoading, {
+    releaseNow: history.isSuccess && history.data.length === 0,
+  });
+  if (
+    !history.isError &&
+    (history.isLoading || (placeholderVisible && history.data))
+  )
     return (
-      <div role="status" aria-label={t("roles:history.loading")}>
+      <div
+        role="status"
+        aria-label={t("roles:history.loading")}
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      >
         <Skeleton className="h-32 w-full" />
       </div>
     );

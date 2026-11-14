@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -259,6 +260,13 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const services = useServices(listReady ? workspaceId : "");
   const releases = useReleases(listReady ? workspaceId : "", search.serviceId);
+  const statusPlaceholder = useDelayedPending(statusPending, {
+    releaseNow: Boolean(status.data && releases.isError),
+  });
+  const listPlaceholder = useDelayedPending(releases.isLoading || !workspace, {
+    releaseNow:
+      Boolean(workspace) && releases.isSuccess && releases.data.length === 0,
+  });
   const [creating, setCreating] = useState(false);
   if ([status.error, releases.error].some(isForbiddenError))
     return <NoAccessPage />;
@@ -281,8 +289,9 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
           active="releases"
           canManageServices={status.data?.canManageServices === true}
         />
-        {statusPending ? (
-          <LoadingRows />
+        {statusPending ||
+        (statusPlaceholder && !catalogueOff && !status.isError) ? (
+          <LoadingRows visible={statusPlaceholder} />
         ) : catalogueOff ? (
           <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : (
@@ -310,8 +319,9 @@ export function ReleasesList({ search }: { search: ReleaseListSearch }) {
                 }
               />
             </div>
-            {releases.isLoading || !workspace ? (
-              <LoadingRows />
+            {!releases.isError &&
+            (releases.isLoading || !workspace || listPlaceholder) ? (
+              <LoadingRows visible={listPlaceholder} />
             ) : releases.isError ? (
               <QueryFailure
                 error={releases.error}

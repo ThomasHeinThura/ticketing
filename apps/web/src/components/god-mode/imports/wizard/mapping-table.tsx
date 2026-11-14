@@ -13,6 +13,7 @@ import {
   EmptyTitle,
   Frame,
   Label,
+  LoadingStatus,
   Skeleton,
   Switch,
   Table,
@@ -21,6 +22,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -259,7 +261,26 @@ export function MappingStep({
     },
   });
 
-  if (mapping.isPending) return <Skeleton className="h-72 w-full" />;
+  const mappingPlaceholderVisible = useDelayedPending(mapping.isPending, {
+    releaseNow: mapping.isSuccess && mapping.data.entries.length === 0,
+  });
+  if (
+    !mapping.isError &&
+    (mapping.isPending || (mappingPlaceholderVisible && mapping.data))
+  )
+    return (
+      <LoadingStatus
+        visible={mappingPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-72 w-full"
+          style={{
+            visibility: mappingPlaceholderVisible ? "visible" : "hidden",
+          }}
+        />
+      </LoadingStatus>
+    );
   if (mapping.isError)
     return (
       <Alert variant="error">

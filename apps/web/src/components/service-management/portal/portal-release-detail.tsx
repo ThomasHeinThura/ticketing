@@ -9,7 +9,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { getPortalRelease } from "@/fetchers/portal/releases";
@@ -32,12 +34,21 @@ export function PortalReleaseDetail({
     retry: false,
   });
 
-  if (release.isPending)
+  const placeholderVisible = useDelayedPending(release.isPending);
+  if (
+    !release.isError &&
+    (release.isPending || (placeholderVisible && release.data))
+  )
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
-      </div>
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </LoadingStatus>
     );
   if (release.isError) {
     const unavailable =

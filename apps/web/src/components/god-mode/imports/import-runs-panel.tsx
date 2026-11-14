@@ -11,6 +11,7 @@ import {
   EmptyTitle,
   Frame,
   Label,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -18,6 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -93,8 +95,32 @@ export function ImportRunsPanel({
     enabled: Boolean(selectedWorkspaceId),
     retry: false,
   });
+  const runsPlaceholder = useDelayedPending(runs.isPending, {
+    releaseNow:
+      runs.isSuccess && runs.data.pages.every((page) => page.runs.length === 0),
+  });
 
-  if (workspaces.isPending) return <Skeleton className="h-72 w-full" />;
+  const workspacesPlaceholderVisible = useDelayedPending(workspaces.isPending, {
+    releaseNow: workspaces.isSuccess && availableWorkspaces.length === 0,
+  });
+  if (
+    !workspaces.isError &&
+    (workspaces.isPending ||
+      (workspacesPlaceholderVisible && workspaces.data && !runs.isError))
+  )
+    return (
+      <LoadingStatus
+        visible={workspacesPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-72 w-full"
+          style={{
+            visibility: workspacesPlaceholderVisible ? "visible" : "hidden",
+          }}
+        />
+      </LoadingStatus>
+    );
   if (workspaces.error instanceof HttpError && workspaces.error.status === 403)
     return (
       <Alert variant="info">
@@ -179,8 +205,16 @@ export function ImportRunsPanel({
             <EmptyDescription>{t("noWorkspacesDescription")}</EmptyDescription>
           </EmptyHeader>
         </Empty>
-      ) : runs.isPending ? (
-        <Skeleton className="h-64 w-full" />
+      ) : !runs.isError && (runs.isPending || runsPlaceholder) ? (
+        <LoadingStatus
+          visible={runsPlaceholder}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-64 w-full"
+            style={{ visibility: runsPlaceholder ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : runs.isError ? (
         <Alert variant="error">
           <AlertTitle>{t("loadErrorTitle")}</AlertTitle>

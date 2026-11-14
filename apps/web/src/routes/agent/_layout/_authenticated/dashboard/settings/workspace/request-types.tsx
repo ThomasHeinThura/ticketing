@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -315,6 +316,13 @@ function RequestTypesEditor() {
   };
   const loading =
     types.isLoading || groupOrder.isLoading || workItemTypes.isLoading;
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      !loading &&
+      types.isSuccess &&
+      (types.data as unknown as { requestTypes: RequestType[] }).requestTypes
+        .length === 0,
+  });
   const groupOrderChanged =
     groupOrder.data !== undefined &&
     (groupOrder.data.groups.length !== groupOrderDraft.length ||
@@ -398,8 +406,16 @@ function RequestTypesEditor() {
           )}
         </Alert>
       )}
-      {loading ? (
-        <p role="status">{t("loading")}</p>
+      {!types.isError &&
+      !groupOrder.isError &&
+      !workItemTypes.isError &&
+      (loading || placeholderVisible) ? (
+        <p
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
+          {t("loading")}
+        </p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(16rem,1fr)_2fr]">
           <div className="flex min-w-0 flex-col gap-4">

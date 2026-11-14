@@ -7,6 +7,7 @@ import WorkItemCustomFields from "./work-item-custom-fields";
 const mocks = vi.hoisted(() => ({ mutate: vi.fn(), canEdit: true }));
 vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock("react-i18next", () => ({
+  initReactI18next: { type: "3rdParty", init: vi.fn() },
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
       translate(key, options),

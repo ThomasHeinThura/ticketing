@@ -20,6 +20,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Skeleton,
@@ -29,7 +30,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
+
 import { ChevronLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -177,6 +180,10 @@ function WorkflowListView({
     queryFn: () => getWorkflows(workspaceId ?? ""),
     enabled: Boolean(workspaceId),
   });
+  const listPlaceholder = useDelayedPending(list.isLoading || !workspaceId, {
+    releaseNow:
+      Boolean(workspaceId) && list.isSuccess && list.data.length === 0,
+  });
   const [creating, setCreating] = useState(false);
   if (isForbiddenError(list.error)) return <NoAccessPage />;
   return (
@@ -211,15 +218,16 @@ function WorkflowListView({
           </AlertDescription>
         </Alert>
       ) : null}
-      {list.isLoading || !workspaceId ? (
-        <div
-          className="space-y-3"
-          role="status"
-          aria-label={t("settings:workflows.loading")}
+      {!list.isError && (list.isLoading || !workspaceId || listPlaceholder) ? (
+        <LoadingStatus
+          visible={listPlaceholder}
+          label={t("settings:workflows.loading")}
         >
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </LoadingStatus>
       ) : list.isError ? (
         <Alert variant="error">
           <AlertTitle>{t("settings:workflows.loadErrorTitle")}</AlertTitle>
@@ -440,6 +448,7 @@ function WorkflowDetailView({
     report: WorkflowValidation | undefined;
   } | null>(null);
   const workflow = detail.data;
+  const detailPlaceholder = useDelayedPending(detail.isLoading || !workflow);
   const latest = workflow?.versions.reduce<
     WorkflowDetail["versions"][number] | undefined
   >(
@@ -534,16 +543,19 @@ function WorkflowDetailView({
           </AlertDescription>
         </Alert>
       ) : null}
-      {detail.isLoading || !workflow ? (
+      {detail.isLoading ||
+      !workflow ||
+      (detailPlaceholder && !detail.isError) ? (
         detail.isError ? null : (
-          <div
-            className="space-y-3"
-            role="status"
-            aria-label={t("settings:workflows.loading")}
+          <LoadingStatus
+            visible={detailPlaceholder}
+            label={t("settings:workflows.loading")}
           >
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </LoadingStatus>
         )
       ) : (
         <>

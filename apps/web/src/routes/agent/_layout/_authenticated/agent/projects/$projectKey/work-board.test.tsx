@@ -631,7 +631,9 @@ describe("pending work item sheet navigation", () => {
     act(() => view.rerender(<Component />));
     const dialog = await screen.findByRole("dialog");
     await waitFor(() => expect(state.paneReadyKeys.at(-1)).toBe("WLP-2"));
-    expect(await screen.findByTestId("work-item-detail-loading")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-detail-loading")).toBeVisible(),
+    );
     expect(sidePaneBodyModule.delayNext).toBe(false);
     dialog.focus();
     fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });

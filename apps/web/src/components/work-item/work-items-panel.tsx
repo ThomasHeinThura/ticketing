@@ -1,4 +1,4 @@
-import { Alert, AlertDescription } from "@taskdesk/ui";
+import { Alert, AlertDescription, useDelayedPending } from "@taskdesk/ui";
 import {
   lazy,
   memo,
@@ -179,6 +179,11 @@ function WorkItemsPanel({
     tableModulesLoaded,
     layout === "table" && (Boolean(project) || !isLoading),
   );
+  const modulePending =
+    !isError &&
+    !previewable &&
+    (layout === "list" ? !kaneoListReady : !tableModuleReady);
+  const modulePlaceholder = useDelayedPending(modulePending);
   const [projectLifecycle, setProjectLifecycle] = useState(() => ({
     projectId: project?.id,
     generation: 0,
@@ -302,7 +307,7 @@ function WorkItemsPanel({
     onOpenItem,
   };
 
-  const listFallback =
+  const fallbackContent =
     previewable && workItems && previewStates ? (
       <WorkItemLightList
         projectId={project?.id}
@@ -311,6 +316,32 @@ function WorkItemsPanel({
       />
     ) : (
       <WorkItemListLoading />
+    );
+  const listFallback = previewable ? (
+    fallbackContent
+  ) : (
+    <div style={{ visibility: modulePlaceholder ? "visible" : "hidden" }}>
+      {fallbackContent}
+    </div>
+  );
+
+  const listContent =
+    !isError && !previewable && (modulePending || modulePlaceholder) ? (
+      listFallback
+    ) : layout === "list" ? (
+      kaneoListReady ? (
+        <WorkItemKaneoList {...listProps} onCreateInState={onCreateInState} />
+      ) : (
+        listFallback
+      )
+    ) : tableModuleReady ? (
+      <WorkItemList
+        {...listProps}
+        customFieldColumns={workItemsResult?.customFieldColumns}
+        customFieldPeople={workItemsResult?.customFieldPeople}
+      />
+    ) : (
+      listFallback
     );
 
   return (
@@ -330,26 +361,7 @@ function WorkItemsPanel({
           </Alert>
         </div>
       ) : null}
-      <Suspense fallback={listFallback}>
-        {layout === "list" ? (
-          kaneoListReady ? (
-            <WorkItemKaneoList
-              {...listProps}
-              onCreateInState={onCreateInState}
-            />
-          ) : (
-            listFallback
-          )
-        ) : tableModuleReady ? (
-          <WorkItemList
-            {...listProps}
-            customFieldColumns={workItemsResult?.customFieldColumns}
-            customFieldPeople={workItemsResult?.customFieldPeople}
-          />
-        ) : (
-          <WorkItemListLoading />
-        )}
-      </Suspense>
+      <Suspense fallback={listFallback}>{listContent}</Suspense>
       {project &&
       !isLoading &&
       projectLifecycle.projectId === project.id &&

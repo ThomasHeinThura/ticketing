@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Alert, AlertDescription, AlertTitle, Skeleton } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { EstimateSettings } from "@/components/agile/estimate-settings";
 import { NoAccessPage } from "@/components/common/page-states";
@@ -45,6 +51,8 @@ function RouteComponent() {
     isCheckingPermissions ? workspace?.id : undefined,
     projectId,
   );
+  const pending = !workspace || isCheckingPermissions || isLoading;
+  const placeholderVisible = useDelayedPending(pending);
   if (isCheckingPermissions)
     return (
       <SettingsAccessPage
@@ -52,10 +60,11 @@ function RouteComponent() {
         titleKey="agile:estimates.pageTitle"
       />
     );
-  if (!workspace || isLoading)
+  if (!workspace || isLoading || (placeholderVisible && project))
     return (
       <div
         className="max-w-4xl mx-auto"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         role="status"
         aria-label={t("common.loading")}
       >

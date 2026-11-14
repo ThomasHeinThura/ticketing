@@ -100,12 +100,12 @@ describe("workspace settings members (L-03)", () => {
     expect(screen.getByTestId("members-table")).toBeTruthy();
   });
 
-  it("shows a loading state until the active workspace is known", () => {
+  it("delays the loading state until the active workspace is known", async () => {
     mocks.activeWorkspace = undefined;
     mocks.activeLoading = true;
     render(<Page />);
     expect(
-      screen.getByRole("status", { name: "common:empty.loading" }),
+      await screen.findByRole("status", { name: "common:empty.loading" }),
     ).toBeTruthy();
     expect(screen.queryByTestId("members-table")).toBeNull();
   });

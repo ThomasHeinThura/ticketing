@@ -5,7 +5,7 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { Skeleton } from "@taskdesk/ui";
+import { LoadingStatus, Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import WorkspaceLayout from "@/components/common/workspace-layout";
@@ -91,24 +91,31 @@ function AgentHome() {
     error: workspacesError,
     refetch: refetchWorkspaces,
   } = useGetWorkspaces();
-  const fallback = (
+  const workspace = activeWorkspace ?? workspaces?.[0];
+  const pending = !workspace && (isLoading || isWorkspacesLoading);
+  const placeholderVisible = useDelayedPending(pending);
+  const fallback = (visible: boolean) => (
     <WorkspaceLayout title={t("navigation:sidebar.projects")}>
-      <div
-        aria-label={t("common:empty.loading")}
-        className="flex flex-col gap-4 p-6"
-        data-testid="workspace-projects-route-pending"
-        role="status"
-      >
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
+      <LoadingStatus visible={visible} label={t("common:empty.loading")}>
+        <div
+          data-testid="workspace-projects-route-pending"
+          className="flex flex-col gap-4 p-6"
+        >
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </LoadingStatus>
     </WorkspaceLayout>
   );
   // No active workspace yet (activation still landing): show the first one. No workspace at
   // all: onboarding, as /dashboard does. Never bounce back to /dashboard, which would loop.
-  const workspace = activeWorkspace ?? workspaces?.[0];
+  if (!workspacesError && (pending || placeholderVisible))
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        {fallback(placeholderVisible)}
+      </div>
+    );
   if (!workspace) {
-    if (isLoading || isWorkspacesLoading) return fallback;
     // Failed discovery is not evidence that this account has no workspace.
     if (workspacesError)
       return (
@@ -122,7 +129,7 @@ function AgentHome() {
     return <Navigate to="/onboarding" />;
   }
   return (
-    <Suspense fallback={fallback}>
+    <Suspense fallback={fallback(true)}>
       <ProjectsPage
         workspaceId={workspace.id}
         recoveryMode={recovery === "deleted"}

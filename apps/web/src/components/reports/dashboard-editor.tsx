@@ -27,6 +27,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -38,6 +39,7 @@ import {
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   ArrowLeftRight,
@@ -886,6 +888,9 @@ function DashboardEditorScreen({ search }: { search: DashboardSearch }) {
     list.find((entry) => entry.isDefault) ??
     list[0];
   const dashboard = useDashboard(workspaceId, chosen?.id ?? "");
+  const placeholderVisible = useDelayedPending(
+    dashboards.isLoading || !workspace || dashboard.isLoading,
+  );
   if ([dashboards.error, dashboard.error].some(isForbiddenError))
     return <NoAccessPage />;
   return (
@@ -908,8 +913,21 @@ function DashboardEditorScreen({ search }: { search: DashboardSearch }) {
             {t("reports:editor.description")}
           </p>
         </div>
-        {dashboards.isLoading || !workspace || dashboard.isLoading ? (
-          <Skeleton className="h-48 w-full" />
+        {!dashboards.isError &&
+        !dashboard.isError &&
+        (dashboards.isLoading ||
+          !workspace ||
+          dashboard.isLoading ||
+          placeholderVisible) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-48 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : dashboards.isError ? (
           <ReportError error={dashboards.error} />
         ) : dashboard.isError || !dashboard.data ? (

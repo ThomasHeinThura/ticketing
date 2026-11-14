@@ -4,17 +4,12 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  DelayedSuspense,
+  LoadingStatus,
   Skeleton,
 } from "@taskdesk/ui";
 import { Layers, TriangleAlert } from "lucide-react";
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CREATE_TASK_PROPERTY_BUTTON_CLASS,
@@ -360,15 +355,21 @@ export default function CreateWorkItemDialogForm({
           maxLength={TITLE_MAX_LENGTH}
           placeholder={t("common:modals.createTask.taskTitlePlaceholder")}
           autoFocus
+          data-autofocus
           required
           disabled={locked}
           data-testid="create-work-item-title"
         />
         <div className="min-h-[200px]">
-          <Suspense
-            fallback={
-              <Skeleton className="min-h-44 w-full" aria-hidden="true" />
-            }
+          <DelayedSuspense
+            fallback={(visible) => (
+              <LoadingStatus
+                visible={visible}
+                label={t("common:empty.loading")}
+              >
+                <Skeleton className="min-h-44 w-full" />
+              </LoadingStatus>
+            )}
           >
             <CommentEditor
               value={description}
@@ -387,7 +388,7 @@ export default function CreateWorkItemDialogForm({
               className={TASK_DESCRIPTION_EDITOR_CLASS}
               disabled={locked}
             />
-          </Suspense>
+          </DelayedSuspense>
         </div>
         <CreateWorkItemStagedAttachments
           rows={attachments.rows}
@@ -551,7 +552,7 @@ export default function CreateWorkItemDialogForm({
         />
 
         {isTypesError ? (
-          <div className="flex items-center gap-2">
+          <div role="alert" className="flex items-center gap-2">
             <p className="text-sm text-destructive-foreground">
               {t("workItems:create.typesError")}
             </p>

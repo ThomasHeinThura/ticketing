@@ -12,6 +12,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  useDelayedPending,
   useIsMobile,
 } from "@taskdesk/ui";
 import { ChevronDown, ChevronRight, Info, TriangleAlert } from "lucide-react";
@@ -108,6 +109,7 @@ export default function WorkItemDetail({
 }: WorkItemDetailProps) {
   const { t } = useTranslation();
   const isCompactPage = useIsMobile(1024);
+  const placeholderVisible = useDelayedPending(isLoading || !item);
   const [availableLayoutWidth, setAvailableLayoutWidth] = useState(() =>
     typeof window === "undefined" ? 1280 : window.innerWidth,
   );
@@ -160,7 +162,7 @@ export default function WorkItemDetail({
 
   if (isNotFound) {
     return (
-      <Empty data-testid="work-item-detail-not-found">
+      <Empty data-testid="work-item-detail-not-found" role="alert">
         <EmptyHeader>
           <EmptyTitle>{workItemKey}</EmptyTitle>
           <EmptyDescription>
@@ -188,8 +190,12 @@ export default function WorkItemDetail({
     );
   }
 
-  if (isLoading || !item) {
-    return <WorkItemDetailLoading />;
+  if (isLoading || !item || placeholderVisible) {
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        <WorkItemDetailLoading visible={placeholderVisible} />
+      </div>
+    );
   }
 
   const description = extractDescription(item.description);

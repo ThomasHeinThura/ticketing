@@ -8,7 +8,9 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -68,6 +70,11 @@ function DashboardViewScreen({
     list.find((entry) => entry.isDefault) ??
     list[0];
   const dashboard = useDashboard(workspaceId, chosen?.id ?? "");
+  const dashboardsPlaceholder = useDelayedPending(
+    dashboards.isLoading || !workspace,
+    { releaseNow: dashboards.isSuccess && list.length === 0 },
+  );
+  const dashboardPlaceholder = useDelayedPending(dashboard.isLoading);
   const catalogue = useReportCatalogue(workspaceId);
   const { wide, measureRef } = useWideGrid();
   if ([dashboards.error, dashboard.error].some(isForbiddenError))
@@ -118,8 +125,21 @@ function DashboardViewScreen({
             </Button>
           </div>
         </div>
-        {dashboards.isLoading || !workspace ? (
-          <Skeleton className="h-48 w-full" />
+        {dashboard.isError && chosen ? (
+          <ReportError error={dashboard.error} />
+        ) : !dashboards.isError &&
+          (dashboards.isLoading || !workspace || dashboardsPlaceholder) ? (
+          <LoadingStatus
+            visible={dashboardsPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-48 w-full"
+              style={{
+                visibility: dashboardsPlaceholder ? "visible" : "hidden",
+              }}
+            />
+          </LoadingStatus>
         ) : dashboards.isError ? (
           <ReportError error={dashboards.error} />
         ) : !chosen ? (
@@ -131,8 +151,19 @@ function DashboardViewScreen({
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
-        ) : dashboard.isLoading ? (
-          <Skeleton className="h-48 w-full" />
+        ) : !dashboard.isError &&
+          (dashboard.isLoading || dashboardPlaceholder) ? (
+          <LoadingStatus
+            visible={dashboardPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-48 w-full"
+              style={{
+                visibility: dashboardPlaceholder ? "visible" : "hidden",
+              }}
+            />
+          </LoadingStatus>
         ) : dashboard.isError || !dashboard.data ? (
           <ReportError error={dashboard.error} />
         ) : (

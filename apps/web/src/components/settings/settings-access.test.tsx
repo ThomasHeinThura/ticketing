@@ -181,7 +181,9 @@ describe("settings access when the capability read fails", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByTestId("settings-access-error")).toHaveLength(1);
     expect(
-      screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+      await screen.findByRole("status", {
+        name: "settings:accessDenied.checking",
+      }),
     ).toBeInTheDocument();
   });
 });
@@ -256,7 +258,9 @@ describe("settings access requiring a fresh capability on revisit", () => {
         </QueryClientProvider>,
       );
       expect(
-        screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+        await screen.findByRole("status", {
+          name: "settings:accessDenied.checking",
+        }),
       ).toBeInTheDocument();
       expect(editorRequest).not.toHaveBeenCalled();
       expect(mocks.capabilitiesGet).not.toHaveBeenCalled();
@@ -270,7 +274,9 @@ describe("settings access requiring a fresh capability on revisit", () => {
         expect(mocks.capabilitiesGet).toHaveBeenCalledTimes(1),
       );
       expect(
-        screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+        await screen.findByRole("status", {
+          name: "settings:accessDenied.checking",
+        }),
       ).toBeInTheDocument();
       expect(editorRequest).not.toHaveBeenCalled();
       resolve(respond(200, { [flag]: false }));
@@ -321,7 +327,9 @@ describe("settings access requiring a fresh capability on revisit", () => {
         </QueryClientProvider>,
       );
       expect(
-        screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+        await screen.findByRole("status", {
+          name: "settings:accessDenied.checking",
+        }),
       ).toBeInTheDocument();
       expect(mounted).not.toHaveBeenCalled();
       expect(mocks.capabilitiesGet).not.toHaveBeenCalled();
@@ -378,7 +386,9 @@ describe("settings access requiring a fresh capability on revisit", () => {
         </QueryClientProvider>,
       );
       expect(
-        screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+        await screen.findByRole("status", {
+          name: "settings:accessDenied.checking",
+        }),
       ).toBeInTheDocument();
       expect(mounted).not.toHaveBeenCalled();
       resolve(respond(200, { [flag]: false }));

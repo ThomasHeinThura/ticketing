@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Badge,
   Button,
+  LoadingStatus,
   Separator,
   SidebarTrigger,
   Table,
@@ -11,6 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CheckCircle, Loader2, Mail, X } from "lucide-react";
 import { useState } from "react";
@@ -35,7 +37,14 @@ function InvitationsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: invitations = [], isLoading } = usePendingInvitations();
+  const {
+    data: invitations = [],
+    isLoading,
+    isSuccess,
+  } = usePendingInvitations();
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: isSuccess && invitations.length === 0,
+  });
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const acceptInvitationMutation = useAcceptInvitation();
@@ -147,10 +156,20 @@ function InvitationsPage() {
         </Layout.Header>
         <Layout.Content>
           <div className="p-6 space-y-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
+            {isLoading || placeholderVisible ? (
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
+              >
+                <div
+                  className="flex items-center justify-center py-20"
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                >
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              </LoadingStatus>
             ) : invitations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/50 mb-4">

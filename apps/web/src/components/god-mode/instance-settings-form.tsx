@@ -11,6 +11,7 @@ import {
   CardTitle,
   Input,
   Label,
+  LoadingStatus,
   SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Select,
@@ -19,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -147,7 +149,22 @@ export function InstanceSettingsForm() {
     queryFn: getInstanceSettings,
     retry: false,
   });
-  if (query.isPending) return <Skeleton className="h-64 w-full" />;
+  const queryPlaceholderVisible = useDelayedPending(query.isPending);
+  if (
+    !query.isError &&
+    (query.isPending || (queryPlaceholderVisible && query.data))
+  )
+    return (
+      <LoadingStatus
+        visible={queryPlaceholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-64 w-full"
+          style={{ visibility: queryPlaceholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (query.isError)
     return (
       <Alert variant="error">

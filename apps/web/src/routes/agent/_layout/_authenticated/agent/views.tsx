@@ -11,7 +11,14 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { Button, Card, CardContent, Input, Skeleton } from "@taskdesk/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
@@ -170,6 +177,13 @@ function SavedViewsIndexRoute() {
   const visibleViews = (views.data ?? []).filter((view) =>
     view.name.toLocaleLowerCase().includes(query?.toLocaleLowerCase() ?? ""),
   );
+  const placeholderVisible = useDelayedPending(
+    isWorkspaceLoading || views.isLoading,
+    {
+      releaseNow:
+        !isWorkspaceLoading && views.isSuccess && visibleViews.length === 0,
+    },
+  );
   const counts = useQueries({
     queries: visibleViews.map((view) => ({
       queryKey: savedViewKeys.count(user?.id, view.id, view.updatedAt),
@@ -283,8 +297,14 @@ function SavedViewsIndexRoute() {
             : t("createError")}
         </p>
       ) : null}
-      {isWorkspaceLoading || views.isLoading ? (
-        <div className="space-y-3" role="status" aria-label={t("loading")}>
+      {!views.isError &&
+      (isWorkspaceLoading || views.isLoading || placeholderVisible) ? (
+        <div
+          className="space-y-3"
+          role="status"
+          aria-label={t("loading")}
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </div>

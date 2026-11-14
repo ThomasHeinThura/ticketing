@@ -73,7 +73,7 @@ async function mount() {
 describe("direct-link detail translations", () => {
   it("holds the pane until all text is ready and then shows human labels", async () => {
     const instance = await mount();
-    expect(screen.getByTestId("work-item-detail-loading")).toHaveTextContent(
+    expect(screen.getByRole("status")).toHaveTextContent(
       en.workItems.detail.loading,
     );
     expect(screen.queryByText(/Project Unassigned/)).not.toBeInTheDocument();

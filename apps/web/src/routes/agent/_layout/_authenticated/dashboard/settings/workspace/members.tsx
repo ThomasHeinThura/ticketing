@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Skeleton } from "@taskdesk/ui";
+import { Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { WorkspaceMembersSettings } from "@/components/team/workspace-members-screen";
@@ -18,21 +18,23 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { data: workspace, isLoading } = useActiveWorkspace();
+  const { data: workspace, isLoading, isError } = useActiveWorkspace();
+  const placeholderVisible = useDelayedPending(isLoading);
   return (
     <>
       <PageTitle title={t("team:members.pageTitle")} />
-      {workspace ? (
-        <WorkspaceMembersSettings workspaceId={workspace.id} />
-      ) : isLoading ? (
+      {!isError && (isLoading || (placeholderVisible && workspace)) ? (
         <div
           role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           aria-label={t("common:empty.loading")}
           className="space-y-3 p-6"
         >
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-10 w-full" />
         </div>
+      ) : workspace ? (
+        <WorkspaceMembersSettings workspaceId={workspace.id} />
       ) : null}
     </>
   );

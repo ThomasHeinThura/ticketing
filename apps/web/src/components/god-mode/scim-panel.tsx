@@ -6,6 +6,7 @@ import {
   Button,
   Separator,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -58,9 +59,18 @@ export function ScimPanel({
 }) {
   const { t } = useTranslation("identityConnections");
   const query = useScimAdminSettings(connectionId, true);
-  if (query.isPending) {
+  const placeholderVisible = useDelayedPending(query.isPending);
+  if (
+    !query.isError &&
+    (query.isPending || (placeholderVisible && query.data))
+  ) {
     return (
-      <div aria-label={t("scim.loading")} className="space-y-3" role="status">
+      <div
+        aria-label={t("scim.loading")}
+        className="space-y-3"
+        role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      >
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-40 w-full" />
       </div>

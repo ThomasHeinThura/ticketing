@@ -103,7 +103,7 @@ describe("IdentityConnectionEvents", () => {
     expect(await screen.findByText("No events")).toBeInTheDocument();
   });
 
-  it("shows a loading state before data", () => {
+  it("delays the loading state before data", async () => {
     mocks.events.mockReturnValue(new Promise(() => {}));
     renderWithQuery(
       <IdentityConnectionEvents
@@ -113,8 +113,13 @@ describe("IdentityConnectionEvents", () => {
       />,
     );
     expect(
-      screen.getByRole("status", { name: "Loading provisioning history" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("status", { name: "Loading provisioning history" }),
+    ).toBeNull();
+    expect(
+      await screen.findByRole("status", {
+        name: "Loading provisioning history",
+      }),
+    ).toBeVisible();
   });
 
   it("explains denied access, a missing connection and a plain failure, each with retry where useful", async () => {

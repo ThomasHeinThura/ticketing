@@ -141,7 +141,7 @@ function ToastItem({
   return (
     <Toast.Root
       className={cn(
-        "absolute z-[calc(9999-var(--toast-index))] h-(--toast-calc-height) w-full select-none rounded-lg border bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 [transition:transform_.5s_cubic-bezier(.22,1,.36,1),opacity_.5s,height_.15s] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+        "absolute z-[calc(9999-var(--toast-index))] h-(--toast-calc-height) w-full select-none rounded-lg border bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 [transition:transform_var(--duration-base)_var(--ease-out),opacity_var(--duration-base)_var(--ease-out),height_var(--duration-fast)_var(--ease-out)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
         // Base positioning using data-position
         "data-[position*=right]:right-0 data-[position*=right]:left-auto",
         "data-[position*=left]:right-auto data-[position*=left]:left-0",
@@ -181,6 +181,7 @@ function ToastItem({
         "data-expanded:data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(var(--toast-swipe-movement-y)-100%-var(--toast-inset)))]",
         "data-expanded:data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+100%+var(--toast-inset)))]",
       )}
+      data-slot="toast-popup"
       data-position={position}
       key={toast.id}
       swipeDirection={
@@ -192,7 +193,7 @@ function ToastItem({
       }
       toast={toast}
     >
-      <Toast.Content className="pointer-events-auto flex items-center justify-between gap-1.5 overflow-hidden px-3.5 py-3 text-sm transition-opacity duration-250 data-behind:not-data-expanded:pointer-events-none data-behind:opacity-0 data-expanded:opacity-100">
+      <Toast.Content className="pointer-events-auto flex items-center justify-between gap-1.5 overflow-hidden px-3.5 py-3 text-sm transition-opacity duration-base data-behind:not-data-expanded:pointer-events-none data-behind:opacity-0 data-expanded:opacity-100">
         <div className="flex gap-2">
           {Icon && (
             <div
@@ -276,7 +277,7 @@ function AnchoredToastItem({
     >
       <Toast.Root
         className={cn(
-          "relative text-balance border bg-popover not-dark:bg-clip-padding text-popover-foreground text-xs transition-[scale,opacity] before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+          "relative text-balance border bg-popover not-dark:bg-clip-padding text-popover-foreground text-xs transition-[scale,opacity] duration-fast ease-out before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
           tooltipStyle
             ? "rounded-md shadow-md/5 before:rounded-[calc(var(--radius-md)-1px)]"
             : "rounded-lg shadow-lg/5 before:rounded-[calc(var(--radius-lg)-1px)]",

@@ -28,6 +28,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -438,6 +439,7 @@ export function TeamDetailView({
     return () => clearTimeout(timer);
   }, [savedTeamId]);
   const team = useTeam(teamId, showInactive);
+  const placeholderVisible = useDelayedPending(team.isLoading);
   if (isForbiddenError(team.error)) return <NoAccessPage />;
   return (
     <>
@@ -461,8 +463,12 @@ export function TeamDetailView({
             ) : null}
           </div>
         </div>
-        {team.isLoading ? (
-          <div role="status" aria-label={t("teams:detail.loading")}>
+        {!team.isError && (team.isLoading || placeholderVisible) ? (
+          <div
+            role="status"
+            aria-label={t("teams:detail.loading")}
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             <Skeleton className="h-48 w-full" />
           </div>
         ) : team.isError || !team.data ? (

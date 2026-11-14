@@ -13,6 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowDown, ArrowUp, ListFilter } from "lucide-react";
 import {
@@ -320,6 +321,10 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
 
   const isLoading =
     isWorkspaceLoading || isProjectsLoading || itemsQuery.isLoading;
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading && itemsQuery.isSuccess && flatBacklogItems.length === 0,
+  });
   const isError = isProjectsError || itemsQuery.isError;
   // The list loaded and this key is not in it: the Project does not exist or is out of reach.
   // A failed list keeps the Retry alert below, since a retry may then help.
@@ -338,7 +343,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
       </>
     );
 
-  if (isLoading)
+  if (!isError && (isLoading || placeholderVisible))
     return (
       <>
         <PageTitle
@@ -346,7 +351,9 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
             defaultValue: "Backlog",
           })}
         />
-        <PageLoading frame="backlog" />
+        <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+          <PageLoading frame="backlog" />
+        </div>
       </>
     );
 

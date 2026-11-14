@@ -5,6 +5,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import type { ServiceCalendarUsage } from "@/fetchers/service-calendar";
@@ -60,6 +61,7 @@ export function CalendarUsageCard({
   const { t } = useTranslation("serviceCalendars");
   const openPendingAction = useOpenPendingAction();
   const requestDeletion = useRequestServiceCalendarDeletion();
+  const placeholderVisible = useDelayedPending(usage.isLoading);
   const counts = usage.data?.counts;
   const inUse = counts ? usageIsInUse(counts) : true;
 
@@ -84,8 +86,13 @@ export function CalendarUsageCard({
         <CardDescription>{t("usage.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {usage.isLoading ? (
-          <p role="status" className="text-sm text-muted-foreground">
+        {!usage.isError &&
+        (usage.isLoading || (placeholderVisible && counts)) ? (
+          <p
+            role="status"
+            className="text-sm text-muted-foreground"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             {t("usage.loading")}
           </p>
         ) : usage.isError || !counts ? (

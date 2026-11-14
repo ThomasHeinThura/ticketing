@@ -107,8 +107,10 @@ describe("ConnectedAccountsPanel", () => {
       name: translate("common:actions.tryAgain"),
     });
     fireEvent.click(retry);
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      translate("auth:accountSecurity.identityLinks.loading"),
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        translate("auth:accountSecurity.identityLinks.loading"),
+      ),
     );
     expect(mocks.list).toHaveBeenCalledTimes(2);
 

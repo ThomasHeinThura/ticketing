@@ -3,6 +3,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -203,8 +205,6 @@ export function WorkspaceProjectDefaultsPanel({
     }
   };
 
-  if (!workspaceFeatures.isLoading && !slaOn) return null;
-  if (!isCheckingPermissions && !canEdit) return null;
   const loading =
     workspaceFeatures.isLoading ||
     settings.isLoading ||
@@ -212,17 +212,26 @@ export function WorkspaceProjectDefaultsPanel({
     calendarQuery.isLoading;
   const loadError =
     settings.isError || slaQuery.isError || calendarQuery.isError;
-  if (loading) {
+  const placeholderVisible = useDelayedPending(loading);
+  if (!workspaceFeatures.isLoading && !slaOn) return null;
+  if (!isCheckingPermissions && !canEdit) return null;
+  if (!loadError && (loading || placeholderVisible)) {
     return (
-      <section
-        className="space-y-3"
-        aria-busy="true"
-        data-testid="workspace-project-defaults-loading"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </section>
+        <section
+          className="space-y-3"
+          aria-busy="true"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          data-testid="workspace-project-defaults-loading"
+        >
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+        </section>
+      </LoadingStatus>
     );
   }
 

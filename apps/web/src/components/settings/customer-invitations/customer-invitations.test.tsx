@@ -131,11 +131,15 @@ afterEach(() => {
 });
 
 describe("customer invitations screen", () => {
-  it("waits for permission without a denial or reads", () => {
+  it("waits for permission without a denial or reads", async () => {
     mocks.canInvite = false;
     mocks.checking = true;
     renderScreen();
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("status", {
+        name: "settings:accessDenied.checking",
+      }),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("settings-access-denied")).toBeNull();
     expect(mocks.listOrganisations).not.toHaveBeenCalled();
   });

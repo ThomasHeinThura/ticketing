@@ -21,6 +21,7 @@ import {
   SaveButton,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -85,7 +86,8 @@ export function LocalSignInMethodsCard() {
   const [draft, setDraft] = useState<LocalAuthConfiguration | null>(null);
   const [confirming, setConfirming] = useState(false);
 
-  if (query.isPending)
+  const placeholderVisible = useDelayedPending(query.isPending);
+  if (!query.isError && (query.isPending || (placeholderVisible && query.data)))
     return (
       <Card>
         <CardHeader>
@@ -95,6 +97,7 @@ export function LocalSignInMethodsCard() {
         </CardHeader>
         <CardContent>
           <div
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             aria-label={t("signInMethods.loading")}
             className="space-y-3"
             role="status"

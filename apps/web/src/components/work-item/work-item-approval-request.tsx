@@ -17,12 +17,14 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Check } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -123,6 +125,19 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
     enabled: Boolean(state && canRequest && kindAllowed && validTransition),
     staleTime: 0,
   });
+  const contextPlaceholder = useDelayedPending(
+    Boolean(state) && context.isPending,
+    { releaseNow: context.isSuccess && candidates.isError },
+  );
+  const candidatesPlaceholder = useDelayedPending(
+    Boolean(state && canRequest && kindAllowed && validTransition) &&
+      candidates.isPending,
+    {
+      releaseNow:
+        candidates.isSuccess &&
+        candidates.data.pages.every((page) => page.data.length === 0),
+    },
+  );
   const accessLost =
     candidates.error instanceof HttpError &&
     [403, 404].includes(candidates.error.status);
@@ -201,8 +216,18 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
               {t("workItemExtras:detail.approvals.request.description")}
             </DialogDescription>
           </DialogHeader>
-          {context.isPending ? (
-            <Skeleton className="h-12 w-full" />
+          {!context.isError && (context.isPending || contextPlaceholder) ? (
+            <LoadingStatus
+              visible={contextPlaceholder}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-12 w-full"
+                style={{
+                  visibility: contextPlaceholder ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : context.isError ? (
             <Alert role="alert">
               <AlertDescription>
@@ -360,7 +385,10 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                     <Label>
                       {t("workItemExtras:detail.approvals.request.approver")}
                     </Label>
-                    <Command items={people} filter={null}>
+                    <Command
+                      items={candidatesPlaceholder ? [] : people}
+                      filter={null}
+                    >
                       <CommandInput
                         aria-label={t(
                           "workItemExtras:detail.approvals.request.search",
@@ -400,10 +428,17 @@ function ApprovalRequestForm({ workItemKey }: { workItemKey: string }) {
                         )}
                       </CommandList>
                     </Command>
-                    {candidates.isPending && (
-                      <p>{t("workItemExtras:detail.approvals.loading")}</p>
-                    )}
+                    {!candidates.isError &&
+                      (candidates.isPending || candidatesPlaceholder) && (
+                        <LoadingStatus
+                          visible={candidatesPlaceholder}
+                          label={t("workItemExtras:detail.approvals.loading")}
+                        >
+                          <p>{t("workItemExtras:detail.approvals.loading")}</p>
+                        </LoadingStatus>
+                      )}
                     {!candidates.isPending &&
+                      !candidatesPlaceholder &&
                       !candidates.isError &&
                       people.length === 0 && (
                         <p className="text-sm text-muted-foreground">

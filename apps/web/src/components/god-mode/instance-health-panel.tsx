@@ -10,7 +10,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -57,7 +59,19 @@ export function InstanceHealthPanel() {
     retry: false,
   });
   const [rotating, setRotating] = useState(false);
-  if (query.isPending) return <Skeleton className="h-48 w-full" />;
+  const placeholderVisible = useDelayedPending(query.isPending);
+  if (!query.isError && (query.isPending || (placeholderVisible && query.data)))
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-48 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (query.isError)
     return (
       <Alert variant="error">

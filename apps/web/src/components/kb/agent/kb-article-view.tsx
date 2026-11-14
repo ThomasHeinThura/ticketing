@@ -17,10 +17,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  LoadingStatus,
   Skeleton,
   Tabs,
   TabsList,
   TabsTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -99,7 +101,26 @@ function VersionHistory({
       await queryClient.invalidateQueries({ queryKey: ["kb"] });
     },
   });
-  if (versions.isLoading) return <Skeleton className="h-24 w-full" />;
+  const placeholderVisible = useDelayedPending(versions.isLoading, {
+    releaseNow: versions.isSuccess && versions.data.versions.length === 0,
+  });
+  const detailPlaceholderVisible = useDelayedPending(detail.isLoading);
+  if (
+    !versions.isError &&
+    (versions.isLoading ||
+      (placeholderVisible && versions.data && !detail.isError))
+  )
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-24 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (!versions.data?.versions.length)
     return (
       <p className="text-muted-foreground text-sm">{t("kb:versions.empty")}</p>
@@ -138,8 +159,19 @@ function VersionHistory({
           <p className="text-muted-foreground text-sm">
             {t("kb:versions.choose")}
           </p>
-        ) : detail.isLoading ? (
-          <Skeleton className="h-32 w-full" />
+        ) : !detail.isError &&
+          (detail.isLoading || detailPlaceholderVisible) ? (
+          <LoadingStatus
+            visible={detailPlaceholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-32 w-full"
+              style={{
+                visibility: detailPlaceholderVisible ? "visible" : "hidden",
+              }}
+            />
+          </LoadingStatus>
         ) : detail.data ? (
           <Card>
             <CardHeader>
@@ -175,7 +207,24 @@ function VersionHistory({
 function FeedbackTab({ articleId }: { articleId: string }) {
   const { t } = useTranslation();
   const feedback = useKbFeedback(articleId);
-  if (feedback.isLoading) return <Skeleton className="h-24 w-full" />;
+  const placeholderVisible = useDelayedPending(feedback.isLoading, {
+    releaseNow: feedback.isSuccess && feedback.data.comments.length === 0,
+  });
+  if (
+    !feedback.isError &&
+    (feedback.isLoading || (placeholderVisible && feedback.data))
+  )
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-24 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (!feedback.data)
     return (
       <Alert variant="error">
@@ -254,7 +303,22 @@ export function KbArticleView({
       await queryClient.invalidateQueries({ queryKey: kbKeys.article(id) });
     },
   });
-  if (detail.isLoading) return <Skeleton className="m-6 h-40" />;
+  const placeholderVisible = useDelayedPending(detail.isLoading);
+  if (
+    !detail.isError &&
+    (detail.isLoading || (placeholderVisible && detail.data))
+  )
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="m-6 h-40"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (detail.isError || !detail.data) {
     const missing =
       detail.error instanceof HttpError && detail.error.status === 404;

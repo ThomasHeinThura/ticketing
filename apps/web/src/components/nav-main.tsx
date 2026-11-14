@@ -244,7 +244,7 @@ export function NavMain() {
           }
         >
           <span>{t("navigation:sidebar.overview")}</span>
-          <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-200" />
+          <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-base" />
         </CollapsibleTrigger>
         <CollapsiblePanel>
           <SidebarGroupContent>

@@ -21,7 +21,9 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -113,6 +115,20 @@ export default function WorkItemRelations({
       last.page.hasMore ? (last.page.nextCursor ?? undefined) : undefined,
     enabled: pickerOpen,
   });
+  const relationsPlaceholder = useDelayedPending(relations.isPending, {
+    releaseNow:
+      relations.isSuccess &&
+      relations.data.data.length === 0 &&
+      relations.data.hiddenCount === 0,
+  });
+  const candidatesPlaceholder = useDelayedPending(
+    pickerOpen && candidates.isPending,
+    {
+      releaseNow:
+        candidates.isSuccess &&
+        candidates.data.pages.every((page) => page.data.length === 0),
+    },
+  );
   const create = useMutation({
     mutationKey: ["relation-create", itemKey],
     mutationFn: ({
@@ -193,8 +209,18 @@ export default function WorkItemRelations({
           update({ ...state, picker: true });
         }}
       >
-        {relations.isPending ? (
-          <Skeleton className="h-8 w-full" />
+        {!relations.isError && (relations.isPending || relationsPlaceholder) ? (
+          <LoadingStatus
+            visible={relationsPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-8 w-full"
+              style={{
+                visibility: relationsPlaceholder ? "visible" : "hidden",
+              }}
+            />
+          </LoadingStatus>
         ) : relations.isError ? (
           <p role="alert" className="text-xs px-2 py-1">
             {t("workItems:relations.error")}{" "}
@@ -335,8 +361,19 @@ export default function WorkItemRelations({
               }
             />
             <CommandPanel>
-              {candidates.isPending ? (
-                <Skeleton className="h-8 w-full" />
+              {!candidateFatal &&
+              (candidates.isPending || candidatesPlaceholder) ? (
+                <LoadingStatus
+                  visible={candidatesPlaceholder}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-8 w-full"
+                    style={{
+                      visibility: candidatesPlaceholder ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
               ) : candidateFatal ? (
                 <p role="alert" className="text-xs px-2 py-1">
                   {t("workItems:relations.searchError")}{" "}

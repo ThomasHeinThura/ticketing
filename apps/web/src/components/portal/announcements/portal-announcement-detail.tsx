@@ -6,7 +6,9 @@ import {
   Button,
   Card,
   CardContent,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AnnouncementSeverityBadge } from "@/components/announcements/announcement-severity-badge";
@@ -32,6 +34,7 @@ export function PortalAnnouncementDetail({
     queryFn: () => getPortalAnnouncement(id),
     retry: false,
   });
+  const placeholderVisible = useDelayedPending(announcement.isPending);
   const back = (
     <Button
       variant="ghost"
@@ -42,12 +45,19 @@ export function PortalAnnouncementDetail({
     </Button>
   );
 
-  if (announcement.isPending)
+  if (!announcement.isError && (announcement.isPending || placeholderVisible))
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
         <PortalPageTitle title={t("portal:announcements.title")} />
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <div className="flex flex-col gap-6">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </LoadingStatus>
       </div>
     );
   if (announcement.isError) {

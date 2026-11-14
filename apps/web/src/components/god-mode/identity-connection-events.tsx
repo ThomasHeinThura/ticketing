@@ -8,6 +8,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
@@ -48,6 +49,9 @@ export function IdentityConnectionEvents({
 }) {
   const { t, i18n } = useTranslation("identityConnections");
   const events = useIdentityConnectionEvents(connectionId, cursor, true);
+  const placeholderVisible = useDelayedPending(events.isPending, {
+    releaseNow: events.isSuccess && events.data.data.length === 0,
+  });
   const page = events.data;
 
   return (
@@ -77,8 +81,9 @@ export function IdentityConnectionEvents({
           </AlertDescription>
         </Alert>
       ) : null}
-      {events.isPending ? (
+      {!events.isError && (events.isPending || placeholderVisible) ? (
         <div
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           aria-label={t("events.loading")}
           className="space-y-2"
           role="status"
@@ -87,7 +92,7 @@ export function IdentityConnectionEvents({
           <Skeleton className="h-14 w-full" />
         </div>
       ) : null}
-      {page && page.data.length === 0 ? (
+      {!placeholderVisible && page && page.data.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyTitle>{t("events.emptyTitle")}</EmptyTitle>
@@ -95,7 +100,7 @@ export function IdentityConnectionEvents({
           </EmptyHeader>
         </Empty>
       ) : null}
-      {page && page.data.length > 0 ? (
+      {!placeholderVisible && page && page.data.length > 0 ? (
         <ol aria-label={t("events.listLabel")} className="space-y-2">
           {page.data.map((event, index) => (
             <li
