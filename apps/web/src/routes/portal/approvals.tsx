@@ -15,6 +15,7 @@ import {
   EmptyState,
   Label,
   LoadingStatus,
+  PageContainer,
   Skeleton,
   Table,
   TableBody,
@@ -90,7 +91,7 @@ function PortalApprovals() {
         ? "approvals.forbidden"
         : "approvals.failed";
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="4xl">
       <PortalPageTitle title={t("approvals.title")} />
       <header>
         <h1 className="font-semibold text-lg">{t("approvals.title")}</h1>
@@ -253,6 +254,6 @@ function PortalApprovals() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   LoadingStatus,
+  PageContainer,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -44,17 +45,17 @@ export function PortalReleaseDetail({
         visible={placeholderVisible}
         label={t("common:empty.loading")}
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+        <PageContainer scroll={false} gutter="default" width="3xl">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-32 w-full" />
-        </div>
+        </PageContainer>
       </LoadingStatus>
     );
   if (release.isError) {
     const unavailable =
       release.error instanceof HttpError && release.error.status === 404;
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <PageContainer scroll={false} gutter="default" width="3xl">
         {/* The page keeps one h1 while it shows only the error. */}
         <h1 className="sr-only">{t("portal:releases.title")}</h1>
         <Button
@@ -71,13 +72,13 @@ export function PortalReleaseDetail({
               : t("portal:releases.loadFailed")}
           </AlertDescription>
         </Alert>
-      </div>
+      </PageContainer>
     );
   }
 
   const entry = release.data;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <PageContainer scroll={false} gutter="default" width="3xl">
       <Button
         variant="ghost"
         className="w-fit"
@@ -117,6 +118,6 @@ export function PortalReleaseDetail({
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

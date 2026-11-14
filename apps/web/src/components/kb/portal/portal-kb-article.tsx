@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
   LoadingStatus,
+  PageContainer,
   Skeleton,
   Textarea,
   useDelayedPending,
@@ -178,7 +179,7 @@ export function PortalKbArticleView({
   }
   const data = article.data;
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+    <PageContainer scroll={false} gutter="default" width="3xl">
       <Button
         variant="ghost"
         className="w-fit"
@@ -215,6 +216,6 @@ export function PortalKbArticleView({
           </ul>
         </section>
       ) : null}
-    </div>
+    </PageContainer>
   );
 }

@@ -15,6 +15,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   LoadingStatus,
+  PageContainer,
   Skeleton,
   Table,
   TableBody,
@@ -107,7 +108,7 @@ export function PortalProjectsList({
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="6xl">
       <PortalPageTitle title={t("projects.title")} />
       <header className="flex flex-col gap-1 border-b border-border pb-4">
         <h1 className="font-semibold text-2xl">{t("projects.title")}</h1>
@@ -276,6 +277,6 @@ export function PortalProjectsList({
           </Table>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

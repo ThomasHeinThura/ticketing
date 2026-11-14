@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   LoadingStatus,
+  PageContainer,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -47,7 +48,7 @@ export function PortalAnnouncementDetail({
 
   if (!announcement.isError && (announcement.isPending || placeholderVisible))
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <PageContainer scroll={false} gutter="responsive" width="4xl">
         <PortalPageTitle title={t("portal:announcements.title")} />
         <LoadingStatus
           visible={placeholderVisible}
@@ -58,14 +59,14 @@ export function PortalAnnouncementDetail({
             <Skeleton className="h-32 w-full" />
           </div>
         </LoadingStatus>
-      </div>
+      </PageContainer>
     );
   if (announcement.isError) {
     const unavailable =
       announcement.error instanceof HttpError &&
       announcement.error.status === 404;
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+      <PageContainer scroll={false} gutter="responsive" width="4xl">
         <PortalPageTitle title={t("portal:announcements.title")} />
         {/* The page keeps one h1 while it shows only the error. */}
         <h1 className="sr-only">{t("portal:announcements.title")}</h1>
@@ -77,13 +78,13 @@ export function PortalAnnouncementDetail({
               : t("portal:announcements.loadFailed")}
           </AlertDescription>
         </Alert>
-      </div>
+      </PageContainer>
     );
   }
 
   const entry = announcement.data;
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="4xl">
       <PortalPageTitle title={entry.title} />
       {back}
       <header className="space-y-2">
@@ -109,6 +110,6 @@ export function PortalAnnouncementDetail({
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

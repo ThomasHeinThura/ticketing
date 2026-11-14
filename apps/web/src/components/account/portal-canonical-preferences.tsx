@@ -12,6 +12,7 @@ import {
   CardTitle,
   Label,
   LoadingStatus,
+  PageContainer,
   SaveButton,
   Select,
   SelectContent,
@@ -82,7 +83,7 @@ export function PortalCanonicalPreferencesPage({
     (value) => value.eventKind === "work_item.commented",
   );
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+    <PageContainer scroll={false} gutter="default" width="4xl">
       <header className="border-b border-border pb-4">
         <h1 className="text-2xl font-semibold">
           {t("portal:account.notifications.title")}
@@ -181,7 +182,7 @@ export function PortalCanonicalPreferencesPage({
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

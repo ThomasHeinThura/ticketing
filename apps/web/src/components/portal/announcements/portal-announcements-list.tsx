@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   EmptyState,
+  PageContainer,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -66,7 +67,7 @@ export function PortalAnnouncementsList({
   const entries = announcements.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="4xl">
       <PortalPageTitle title={t("portal:announcements.title")} />
       <header className="space-y-1">
         <h1 className="font-semibold text-2xl">
@@ -145,6 +146,6 @@ export function PortalAnnouncementsList({
           ) : null}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
