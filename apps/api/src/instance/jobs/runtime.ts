@@ -289,6 +289,7 @@ async function heartbeatRun(
   id: string,
   runnerId: string,
   manualJobName?: string,
+  leaseOwnerOverride?: string,
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     const result = await tx.execute(sql`
@@ -304,7 +305,7 @@ async function heartbeatRun(
     if (manualJobName) {
       return renewJobLease(
         manualJobName,
-        runnerId,
+        leaseOwnerOverride ?? runnerId,
         `${RUN_LEASE_SECONDS} seconds`,
         tx,
       );
@@ -596,9 +597,16 @@ export async function runScheduledJobWithHistory<T>(
   if (!runId) return handler();
 
   let ownershipLost = false;
+  let activeLeaseOwner: string | undefined;
+  let skippedHeldElsewhere = false;
   const started = performance.now();
   const heartbeat = setInterval(() => {
-    void heartbeatRun(runId as string, runnerId)
+    void heartbeatRun(
+      runId as string,
+      runnerId,
+      activeLeaseOwner ? name : undefined,
+      activeLeaseOwner,
+    )
       .then((owned) => {
         if (!owned) ownershipLost = true;
       })
@@ -614,6 +622,15 @@ export async function runScheduledJobWithHistory<T>(
         jobName: name,
         runId,
         runnerId,
+        onLeaseClaimed: (owner) => {
+          activeLeaseOwner = owner;
+        },
+        onLeaseReleased: () => {
+          activeLeaseOwner = undefined;
+        },
+        onLeaseHeldElsewhere: () => {
+          skippedHeldElsewhere = true;
+        },
         assertRunOwned: () => runReservationOwned(runId as string, runnerId),
       },
       async () => {
@@ -636,7 +653,13 @@ export async function runScheduledJobWithHistory<T>(
     clearInterval(heartbeat);
     throw error;
   }
-  if (!ownershipLost)
+  if (skippedHeldElsewhere) {
+    await db
+      .execute(
+        sql`DELETE FROM instance_job_run WHERE id = ${runId} AND state = 'running' AND runner_id = ${runnerId}`,
+      )
+      .catch(() => undefined);
+  } else if (!ownershipLost)
     await finishRun({
       id: runId,
       runnerId,

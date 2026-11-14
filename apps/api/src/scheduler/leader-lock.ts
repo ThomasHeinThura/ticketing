@@ -18,6 +18,9 @@ export type JobExecutionReservation = {
   runId: string;
   runnerId: string;
   leaseOwner?: string;
+  onLeaseClaimed?: (leaseOwner: string) => void;
+  onLeaseReleased?: () => void;
+  onLeaseHeldElsewhere?: () => void;
   assertRunOwned: () => Promise<boolean>;
 };
 
@@ -88,9 +91,11 @@ export async function withJobLease<T>(
   const claimed = await claimJobLease(name, INSTANCE_ID, ttl);
 
   if (!claimed) {
+    current?.onLeaseHeldElsewhere?.();
     return whenHeldElsewhere();
   }
 
+  current?.onLeaseClaimed?.(INSTANCE_ID);
   try {
     const reservation = current
       ? { ...current, jobName: name, leaseOwner: INSTANCE_ID }
@@ -104,5 +109,6 @@ export async function withJobLease<T>(
     await releaseJobLease(name, INSTANCE_ID).catch((error) => {
       console.error(`Failed to release the ${name} lease`, error);
     });
+    current?.onLeaseReleased?.();
   }
 }

@@ -4,6 +4,7 @@ import createNotification from "../notification/controllers/create-notification"
 import {
   assertJobExecutionOwned,
   JobExecutionReservationLostError,
+  withJobLease,
 } from "./leader-lock";
 import { REMINDER_WINDOW_MINUTES } from "./reminder-timing";
 import {
@@ -85,44 +86,51 @@ async function processReminder(
 }
 
 export async function checkDueDateReminders(): Promise<{ degraded: boolean }> {
-  const now = new Date();
-  const windows = buildWindows(now);
-  let degraded = false;
+  return withJobLease(
+    "due-date-reminders",
+    async () => {
+      const now = new Date();
+      const windows = buildWindows(now);
+      let degraded = false;
 
-  for (const window of Object.values(windows)) {
-    await assertJobExecutionOwned();
-    try {
-      const tasks = await getTasksNeedingReminder(
-        window.start,
-        window.end,
-        window.type,
-      );
-
-      for (const task of tasks) {
-        // A reminder is one unit from its sent marker through notification
-        // creation. Check only before beginning the next task.
+      for (const window of Object.values(windows)) {
         await assertJobExecutionOwned();
         try {
-          await processReminder(task, window.type, window.notificationType);
+          const tasks = await getTasksNeedingReminder(
+            window.start,
+            window.end,
+            window.type,
+          );
+
+          for (const task of tasks) {
+            // A reminder is one unit from its sent marker through notification
+            // creation. Check only before beginning the next task.
+            await assertJobExecutionOwned();
+            try {
+              await processReminder(task, window.type, window.notificationType);
+            } catch (error) {
+              if (error instanceof JobExecutionReservationLostError)
+                throw error;
+              degraded = true;
+              console.error("Failed to process due date reminder", {
+                taskId: task.id,
+                reminderType: window.type,
+                error,
+              });
+            }
+          }
         } catch (error) {
           if (error instanceof JobExecutionReservationLostError) throw error;
           degraded = true;
-          console.error("Failed to process due date reminder", {
-            taskId: task.id,
+          console.error("Failed to query tasks for due date reminders", {
             reminderType: window.type,
             error,
           });
         }
       }
-    } catch (error) {
-      if (error instanceof JobExecutionReservationLostError) throw error;
-      degraded = true;
-      console.error("Failed to query tasks for due date reminders", {
-        reminderType: window.type,
-        error,
-      });
-    }
-  }
 
-  return { degraded };
+      return { degraded };
+    },
+    () => ({ degraded: false }),
+  );
 }

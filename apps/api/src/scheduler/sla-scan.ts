@@ -51,7 +51,7 @@ export async function scanWorkItemSla(itemId: string): Promise<number> {
     const row = clock.rows[0];
     if (!row) throw new Error("Database clock unavailable");
     const now = new Date(row.now);
-    const { metrics } = await evaluateStoredWorkItemSla(tx, item.id, now);
+    const { metrics } = await evaluateStoredWorkItemSla(tx, item.id, now, item);
     const cached = await tx
       .select()
       .from(workItemSlaCacheTable)
@@ -63,22 +63,29 @@ export async function scanWorkItemSla(itemId: string): Promise<number> {
         (previous?.state ?? "none") as SlaState,
         metric.state,
       );
-      await tx
-        .insert(workItemSlaCacheTable)
-        .values({
-          workItemId: item.id,
-          metric: metric.metric,
-          state: metric.state,
-          dueAt: metric.dueAt,
-          computedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: [
-            workItemSlaCacheTable.workItemId,
-            workItemSlaCacheTable.metric,
-          ],
-          set: { state: metric.state, dueAt: metric.dueAt, computedAt: now },
-        });
+      if (
+        !previous ||
+        previous.state !== metric.state ||
+        (previous.dueAt?.getTime() ?? null) !==
+          (metric.dueAt?.getTime() ?? null)
+      ) {
+        await tx
+          .insert(workItemSlaCacheTable)
+          .values({
+            workItemId: item.id,
+            metric: metric.metric,
+            state: metric.state,
+            dueAt: metric.dueAt,
+            computedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [
+              workItemSlaCacheTable.workItemId,
+              workItemSlaCacheTable.metric,
+            ],
+            set: { state: metric.state, dueAt: metric.dueAt, computedAt: now },
+          });
+      }
       for (const kind of decision.emit) {
         // SLA-16 / EV-1: the outbox row and the assignee/lead (and, on a breach, first
         // escalation stakeholder) fan-out commit with the cache write. A breach also starts the
@@ -150,8 +157,10 @@ export async function scanSla(): Promise<SlaScanOutcome> {
         const candidates = await db
           .select({ id: workItemTable.id })
           .from(workItemTable)
+          .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
           .where(
             and(
+              isNull(projectTable.archivedAt),
               isNull(workItemTable.resolvedAt),
               isNull(workItemTable.archivedAt),
               isNull(workItemTable.deletedAt),

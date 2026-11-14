@@ -49,7 +49,7 @@ export async function suggestDuplicatesForQueueRows(
           AND p.id IN (${projects})
           AND p.deleted_at IS NULL AND p.archived_at IS NULL
           AND wi.deleted_at IS NULL AND wi.archived_at IS NULL
-          AND wi.created_at > ${cutoff}
+          AND wi.created_at > ${cutoff.toISOString()}::timestamp
           AND wi.title % seed.summary
           AND similarity(wi.title, seed.summary) > 0.3
         ORDER BY score DESC, wi.created_at DESC, wi.id ASC
