@@ -153,10 +153,30 @@ function readPendingCheckpoint({ privateDir, stamp, dbName, daemonId, image }) {
     try {
       other = JSON.parse(readFileSync(otherFile, "utf8"));
     } catch {
+      if (entry.name > stamp)
+        throw new Error(
+          `Fresh checkpoint ${stamp} cannot be verified because newer checkpoint ${entry.name} is unreadable.`,
+        );
       continue;
     }
-    if (!other || other.project !== PROJECT || other.daemonId !== daemonId)
+    if (!other || typeof other !== "object") {
+      if (entry.name > stamp)
+        throw new Error(
+          `Fresh checkpoint ${stamp} cannot be verified because newer checkpoint ${entry.name} is unreadable.`,
+        );
       continue;
+    }
+    if (
+      typeof other.project !== "string" ||
+      typeof other.daemonId !== "string"
+    ) {
+      if (entry.name > stamp)
+        throw new Error(
+          `Fresh checkpoint ${stamp} cannot be verified because newer checkpoint ${entry.name} is unreadable.`,
+        );
+      continue;
+    }
+    if (other.project !== PROJECT || other.daemonId !== daemonId) continue;
     const otherTs = Date.parse(other.createdAt || "");
     const isNewer =
       Number.isFinite(otherTs) && Number.isFinite(parsedTs)
@@ -247,6 +267,20 @@ function readValidatedCredentials(credentialsFile) {
       `Fresh credential artifact ${basename(credentialsFile)} is missing seeded accounts.`,
     );
   }
+  if (
+    parsed.accounts.some(
+      (account) =>
+        !account ||
+        typeof account.email !== "string" ||
+        account.email.length === 0 ||
+        typeof account.password !== "string" ||
+        account.password.length === 0,
+    )
+  ) {
+    throw new Error(
+      `Fresh credential artifact ${basename(credentialsFile)} has invalid account entries.`,
+    );
+  }
   return parsed;
 }
 
@@ -263,6 +297,30 @@ function removeContainerCredentials({ cmd, containerId }) {
     throw new Error(
       `Failed to remove temporary sit-credentials.json from container ${containerId}: ${error.message}`,
     );
+  }
+}
+
+function restoreContainerCredentials({ cmd, containerId, credentials }) {
+  try {
+    cmd(
+      "docker",
+      [
+        "exec",
+        "-i",
+        containerId,
+        "sh",
+        "-c",
+        'umask 077 && rm -f "$1" && cat > "$1"',
+        "restore-creds",
+        "/tmp/sit-credentials.json",
+      ],
+      { input: readFileSync(credentials) },
+    );
+  } catch (error) {
+    try {
+      removeContainerCredentials({ cmd, containerId });
+    } catch {}
+    throw error;
   }
 }
 
@@ -295,34 +353,74 @@ function ensureHostCredentials({
         `Fresh checkpoint ${checkpoint.stamp} is missing ${basename(credentials)}.`,
       );
     }
-    readValidatedCredentials(credentials);
-    removeContainerCredentials({ cmd, containerId });
+    let valid = false;
+    try {
+      readValidatedCredentials(credentials);
+      valid = true;
+    } finally {
+      if (!valid) {
+        try {
+          removeContainerCredentials({ cmd, containerId });
+        } catch {}
+      } else {
+        removeContainerCredentials({ cmd, containerId });
+      }
+    }
     return checkpoint;
   }
 
-  let seedError = null;
+  // Restore any preserved or container-resident credentials before re-running
+  // the idempotent UAT seed so passwords never drift on recovery.
   if (existsSync(credentials)) {
-    readValidatedCredentials(credentials);
-    removeContainerCredentials({ cmd, containerId });
-  } else if (tryRescueContainerCredentials({ cmd, containerId, credentials })) {
-    readValidatedCredentials(credentials);
-    removeContainerCredentials({ cmd, containerId });
-  } else {
+    let valid = false;
     try {
-      cmd("docker", [
-        "exec",
-        containerId,
-        "node",
-        "apps/api/dist/seed-uat.js",
-        "--uat",
-        "--credentials-file",
-        "/tmp/sit-credentials.json",
-      ]);
-    } catch (error) {
-      seedError = error;
+      readValidatedCredentials(credentials);
+      valid = true;
+    } finally {
+      if (!valid) {
+        try {
+          removeContainerCredentials({ cmd, containerId });
+        } catch {}
+      }
     }
+    restoreContainerCredentials({ cmd, containerId, credentials });
+  } else if (tryRescueContainerCredentials({ cmd, containerId, credentials })) {
+    let valid = false;
+    try {
+      readValidatedCredentials(credentials);
+      valid = true;
+    } catch (validationError) {
+      try {
+        unlinkSync(credentials);
+      } catch {}
+      throw validationError;
+    } finally {
+      if (!valid) {
+        try {
+          removeContainerCredentials({ cmd, containerId });
+        } catch {}
+      }
+    }
+    restoreContainerCredentials({ cmd, containerId, credentials });
+  }
 
-    let savedFromContainer = false;
+  let seedError = null;
+  try {
+    cmd("docker", [
+      "exec",
+      containerId,
+      "node",
+      "apps/api/dist/seed-uat.js",
+      "--uat",
+      "--credentials-file",
+      "/tmp/sit-credentials.json",
+    ]);
+  } catch (error) {
+    seedError = error;
+  }
+
+  let copiedThisAttempt = false;
+  if (!existsSync(credentials)) {
     try {
       writeCommandOutputAtomically(credentials, cmd, "docker", [
         "exec",
@@ -330,26 +428,51 @@ function ensureHostCredentials({
         "cat",
         "/tmp/sit-credentials.json",
       ]);
-      savedFromContainer = true;
+      copiedThisAttempt = true;
     } catch (copyError) {
-      if (!seedError) throw copyError;
+      // Leave /tmp/sit-credentials.json intact if host copy did not finish.
+      if (seedError) throw seedError;
+      throw copyError;
     }
+  }
 
-    if (savedFromContainer) {
-      readValidatedCredentials(credentials);
-      removeContainerCredentials({ cmd, containerId });
-    } else if (seedError) {
-      throw seedError;
+  let validated = false;
+  try {
+    readValidatedCredentials(credentials);
+    validated = true;
+  } catch (validationError) {
+    if (copiedThisAttempt) {
+      try {
+        unlinkSync(credentials);
+      } catch {}
     }
+    throw validationError;
+  } finally {
+    if (!validated) {
+      try {
+        removeContainerCredentials({ cmd, containerId });
+      } catch {}
+    } else {
+      removeContainerCredentials({ cmd, containerId });
+    }
+  }
+
+  const credentialsSavedAt = clock().toISOString();
+  if (seedError) {
+    writePrivateJsonAtomically(checkpointFile, {
+      ...checkpoint,
+      status: "awaiting_setup",
+      credentialsSavedAt,
+    });
+    throw seedError;
   }
 
   const activeCheckpoint = {
     ...checkpoint,
     status: "seeded_awaiting_smoke",
-    credentialsSavedAt: clock().toISOString(),
+    credentialsSavedAt,
   };
   writePrivateJsonAtomically(checkpointFile, activeCheckpoint);
-  if (seedError) throw seedError;
   return activeCheckpoint;
 }
 

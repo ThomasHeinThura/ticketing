@@ -60,6 +60,7 @@ const getTaskTimeEntriesRoute = createRoute({
     // #290: a task that doesn't exist and a task in a workspace the caller can't
     // reach both answer this same 404 now, via `workspaceAccess.fromTaskId()`.
     400: errorResponse("taskId must not contain a NUL (\\u0000) byte"),
+    403: errorResponse("Forbidden"),
     404: errorResponse("Task not found"),
   },
 });
@@ -82,6 +83,7 @@ const getTimeEntryRoute = createRoute({
     // #290: a nonexistent entry and an entry in a workspace the caller can't reach
     // both answer this same 404 now, via `workspaceAccess.fromTimeEntry()`.
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
+    403: errorResponse("Forbidden"),
     404: errorResponse("Time entry not found"),
   },
 });
