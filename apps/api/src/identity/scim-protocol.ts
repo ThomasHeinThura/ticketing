@@ -4,12 +4,14 @@ import {
   DEFAULT_SCIM_PROFILE_MAPPING,
   effectiveScimMatchAttributes,
   mapScimProfile,
+  parseScimGroupFilter,
   parseScimProfileAttributeMapping,
   parseScimUser,
   parseScimUserFilter,
+  type ScimGroupFilterAttribute,
   validateScimPutExternalId,
 } from "@taskdesk/domain";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, type SQL, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
@@ -357,6 +359,19 @@ function scimUserPredicates(authority: ScimRequestAuthority) {
   ];
 }
 
+function groupFilterPredicate(field: ScimGroupFilterAttribute, value: string) {
+  switch (field) {
+    case "displayName":
+      return sql`lower(${schema.scimGroupTable.displayName}) = lower(${value}) and ${schema.scimGroupTable.displayName} <> ''`;
+    case "externalId":
+      return sql`lower(${schema.scimGroupTable.externalId}) = lower(${value}) and ${schema.scimGroupTable.externalId} <> ''`;
+  }
+}
+
+function scimGroupPredicates(authority: ScimRequestAuthority) {
+  return [eq(schema.scimGroupTable.scimConnectionId, authority.connectionId)];
+}
+
 type ScimUserRow = {
   id: string;
   externalId: string | null;
@@ -533,12 +548,14 @@ const groupListRoute = createRoute({
   summary: "List groups in this SCIM connection's directory",
   request: {
     query: z.object({
+      filter: z.string().max(512).optional(),
       startIndex: z.coerce.number().int().min(1).max(100_000).optional(),
       count: z.coerce.number().int().min(1).max(100).optional(),
     }),
   },
   responses: {
     200: jsonResponse("SCIM groups", scimListSchema),
+    400: jsonResponse("Invalid SCIM filter", scimListSchema),
     403: jsonResponse("SCIM resource is not allowed", scimListSchema),
   },
 });
@@ -1544,14 +1561,21 @@ export default scim
         ),
       );
     const query = c.req.valid("query");
+    const parsedFilter = parseScimGroupFilter(query.filter);
+    if (!parsedFilter.ok)
+      return scimResponse(
+        c.json(scimErrorBody(400, "Unsupported filter", "invalidFilter"), 400),
+      );
+    const filter = parsedFilter.value;
+    const predicates: SQL[] = scimGroupPredicates(authority);
+    if (filter) {
+      predicates.push(groupFilterPredicate(filter.attribute, filter.value));
+    }
     const startIndex = query.startIndex ?? 1;
     const pageCount = query.count ?? 100;
-    const [total] = await countScimGroups(authority.connectionId);
-    const groups = await listScimGroupIds(
-      authority.connectionId,
-      pageCount,
-      startIndex - 1,
-    );
+    const where = and(...predicates);
+    const [total] = await countScimGroups(where);
+    const groups = await listScimGroupIds(where, pageCount, startIndex - 1);
     const resources = await Promise.all(
       groups.map((group) => readScimGroup(authority.connectionId, group.id)),
     );

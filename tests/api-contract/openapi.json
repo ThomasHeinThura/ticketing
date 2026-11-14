@@ -125301,6 +125301,15 @@
         "parameters": [
           {
             "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "filter",
+            "in": "query"
+          },
+          {
+            "schema": {
               "type": "integer",
               "minimum": 1,
               "maximum": 100000
@@ -125323,6 +125332,17 @@
         "responses": {
           "200": {
             "description": "SCIM groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM filter",
             "content": {
               "application/json": {
                 "schema": {
