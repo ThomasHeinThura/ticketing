@@ -289,6 +289,7 @@ async function heartbeatRun(
   id: string,
   runnerId: string,
   manualJobName?: string,
+  leaseOwnerOverride?: string,
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     const result = await tx.execute(sql`
@@ -304,7 +305,7 @@ async function heartbeatRun(
     if (manualJobName) {
       return renewJobLease(
         manualJobName,
-        runnerId,
+        leaseOwnerOverride ?? runnerId,
         `${RUN_LEASE_SECONDS} seconds`,
         tx,
       );
@@ -421,6 +422,58 @@ async function markExpiredRunsLeaseLost() {
   `);
 }
 
+function startRunHeartbeat(
+  runId: string,
+  runnerId: string,
+  jobName: string,
+  initialLeaseOwner?: string,
+) {
+  let ownershipLost = false;
+  let activeLeaseOwner = initialLeaseOwner;
+  let stopped = false;
+  let inFlight: Promise<void> | null = null;
+
+  const timer = setInterval(() => {
+    if (stopped || inFlight) return;
+    const leaseOwner = activeLeaseOwner;
+    const tick = heartbeatRun(
+      runId,
+      runnerId,
+      leaseOwner ? jobName : undefined,
+      leaseOwner,
+    )
+      .then((owned) => {
+        if (!owned) ownershipLost = true;
+      })
+      .catch(() => {
+        ownershipLost = true;
+      })
+      .finally(() => {
+        if (inFlight === tick) inFlight = null;
+      });
+    inFlight = tick;
+  }, RUN_HEARTBEAT_MS);
+  timer.unref?.();
+
+  return {
+    claimLease(owner: string) {
+      activeLeaseOwner = owner;
+    },
+    async detachLease() {
+      activeLeaseOwner = undefined;
+      await inFlight;
+    },
+    async stop() {
+      stopped = true;
+      clearInterval(timer);
+      await inFlight;
+    },
+    hasLostOwnership() {
+      return ownershipLost;
+    },
+  };
+}
+
 async function startClaimedManualRun(
   run: {
     id: string;
@@ -432,24 +485,16 @@ async function startClaimedManualRun(
 ) {
   const runnerId = run.runnerId;
   const started = performance.now();
-  let ownershipLost = false;
-  const heartbeat = setInterval(() => {
-    void heartbeatRun(run.id, runnerId, run.name)
-      .then((owned) => {
-        if (!owned) ownershipLost = true;
-      })
-      .catch(() => {
-        ownershipLost = true;
-      });
-  }, RUN_HEARTBEAT_MS);
-  heartbeat.unref?.();
+  const heartbeat = startRunHeartbeat(run.id, runnerId, run.name, runnerId);
   try {
     if (!(await actorStillAuthorized(run.actorPersonId))) {
+      await heartbeat.stop();
       await failAuthorization({ id: run.id, runnerId });
       return;
     }
     const handler = executeHandler(run.name);
     if (!handler) {
+      await heartbeat.stop();
       await finishRun({
         id: run.id,
         runnerId,
@@ -472,7 +517,8 @@ async function startClaimedManualRun(
         return handler();
       },
     );
-    if (!ownershipLost)
+    await heartbeat.stop();
+    if (!heartbeat.hasLostOwnership())
       await finishRun({
         id: run.id,
         runnerId,
@@ -481,9 +527,10 @@ async function startClaimedManualRun(
         errorCode: null,
       });
   } catch (error) {
+    await heartbeat.stop();
     if (error instanceof JobExecutionReservationLostError) {
       await markRunLeaseLost(run.id, runnerId).catch(() => undefined);
-    } else if (!ownershipLost) {
+    } else if (!heartbeat.hasLostOwnership()) {
       await finishRun({
         id: run.id,
         runnerId,
@@ -493,7 +540,7 @@ async function startClaimedManualRun(
       });
     }
   } finally {
-    clearInterval(heartbeat);
+    await heartbeat.stop();
     await releaseJobLease(run.name, runnerId).catch(() => undefined);
   }
 }
@@ -595,18 +642,9 @@ export async function runScheduledJobWithHistory<T>(
   }
   if (!runId) return handler();
 
-  let ownershipLost = false;
+  const heartbeat = startRunHeartbeat(runId, runnerId, name);
+  let skippedHeldElsewhere = false;
   const started = performance.now();
-  const heartbeat = setInterval(() => {
-    void heartbeatRun(runId as string, runnerId)
-      .then((owned) => {
-        if (!owned) ownershipLost = true;
-      })
-      .catch(() => {
-        ownershipLost = true;
-      });
-  }, RUN_HEARTBEAT_MS);
-  heartbeat.unref?.();
   let result: T;
   try {
     result = await withJobExecutionReservation(
@@ -614,6 +652,13 @@ export async function runScheduledJobWithHistory<T>(
         jobName: name,
         runId,
         runnerId,
+        onLeaseClaimed: (owner) => {
+          heartbeat.claimLease(owner);
+        },
+        onLeaseReleased: () => heartbeat.detachLease(),
+        onLeaseHeldElsewhere: () => {
+          skippedHeldElsewhere = true;
+        },
         assertRunOwned: () => runReservationOwned(runId as string, runnerId),
       },
       async () => {
@@ -622,9 +667,10 @@ export async function runScheduledJobWithHistory<T>(
       },
     );
   } catch (error) {
+    await heartbeat.stop();
     if (error instanceof JobExecutionReservationLostError) {
       await markRunLeaseLost(runId, runnerId).catch(() => undefined);
-    } else if (!ownershipLost) {
+    } else if (!heartbeat.hasLostOwnership()) {
       await finishRun({
         id: runId,
         runnerId,
@@ -633,10 +679,16 @@ export async function runScheduledJobWithHistory<T>(
         errorCode: "handler_failed",
       }).catch(() => undefined);
     }
-    clearInterval(heartbeat);
     throw error;
   }
-  if (!ownershipLost)
+  await heartbeat.stop();
+  if (skippedHeldElsewhere) {
+    await db
+      .execute(
+        sql`DELETE FROM instance_job_run WHERE id = ${runId} AND state = 'running' AND runner_id = ${runnerId}`,
+      )
+      .catch(() => undefined);
+  } else if (!heartbeat.hasLostOwnership())
     await finishRun({
       id: runId,
       runnerId,
@@ -644,6 +696,5 @@ export async function runScheduledJobWithHistory<T>(
       durationMs: Math.max(0, Math.round(performance.now() - started)),
       errorCode: null,
     }).catch(() => undefined);
-  clearInterval(heartbeat);
   return result;
 }

@@ -1,9 +1,8 @@
 import { Button } from "@taskdesk/ui";
-import { saveAs } from "file-saver";
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { exportWorkItems } from "@/fetchers/work-item/export-work-items";
+import { downloadWorkItemsCsv } from "@/fetchers/work-item/export-work-items";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
@@ -31,14 +30,12 @@ export function TasksImportExport({ project }: TasksImportExportProps) {
     setIsExporting(true);
     try {
       toast.loading(t("settings:tasksImportExport.exporting"));
-      const csv = await exportWorkItems({
+      await downloadWorkItemsCsv({
         workspaceId: project.workspaceId,
         projectSlug: project.slug,
         sort: "key",
         dir: "asc",
       });
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      saveAs(blob, `${project.slug.toLowerCase()}-work-items.csv`);
 
       toast.dismiss();
       toast.success(t("settings:tasksImportExport.exportSuccess"));

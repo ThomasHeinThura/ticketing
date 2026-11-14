@@ -3846,7 +3846,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/portal/catalogue.tsx:PortalCatalogueContent",
-					"jsx:div[0]/section[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:PageContainer[0]/section[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -3861,7 +3861,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/portal/catalogue.tsx:PortalCatalogueContent",
-					"jsx:div[0]/section[0]/form[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:PageContainer[0]/section[0]/form[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -3876,7 +3876,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/portal/catalogue.tsx:PortalCatalogueContent",
-					"jsx:div[0]/section[0]/form[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"jsx:PageContainer[0]/section[0]/form[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -6750,7 +6750,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/portal/catalogue.tsx:PortalCatalogueContent",
-					"jsx:div[0]/section[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:PageContainer[0]/section[0]/form[0]/div[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -6765,7 +6765,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/portal/catalogue.tsx:PortalCatalogueContent",
-					"jsx:div[0]/section[0]/form[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:PageContainer[0]/section[0]/form[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -6780,7 +6780,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/portal/catalogue.tsx:PortalCatalogueContent",
-					"jsx:div[0]/section[0]/form[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"jsx:PageContainer[0]/section[0]/form[0]/label[0]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -11136,7 +11136,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
-			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
+			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
 		],
@@ -11805,7 +11805,7 @@
 					"apps/web/src/routes/portal/catalogue.tsx:/catalogue",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
+				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/catalogue.tsx"
 			},
@@ -11878,7 +11878,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#1",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/request-types.tsx::RequestTypesEditor::div[0]/div[0]/section[0]/p[0]::text-destructive#2",
-			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
+			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
 		],
@@ -12547,7 +12547,7 @@
 					"apps/web/src/routes/portal/catalogue.tsx:/catalogue",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
+				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/section[0]/form[0]/div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/catalogue.tsx"
 			},
@@ -16815,7 +16815,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -16829,7 +16829,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -16843,7 +16843,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -17440,7 +17440,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -17454,7 +17454,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -17468,7 +17468,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -25385,7 +25385,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
 					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
@@ -25399,7 +25399,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
 					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
@@ -25413,7 +25413,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
 					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
@@ -27258,7 +27258,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -27272,7 +27272,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -27286,7 +27286,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -27914,7 +27914,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -27928,7 +27928,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -27942,7 +27942,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -30274,7 +30274,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:PageContainer[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -30285,7 +30285,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:PageContainer[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -30563,7 +30563,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:PageContainer[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -30574,7 +30574,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:PageContainer[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -32615,7 +32615,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -32629,7 +32629,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -32643,7 +32643,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -33441,7 +33441,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -33455,7 +33455,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -33469,7 +33469,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -36681,8 +36681,8 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/activity/comment-card-presentation.tsx::ActivityEventPresentation::TimelineItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/svg[0]::text-muted-foreground#0",
@@ -36787,7 +36787,7 @@
 			"apps/web/src/components/kb/agent/kb-list.tsx::ArticlesView::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-list.tsx::KbList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/kb-article-content.tsx::KbTableOfContents::nav[0]/ul[0]/li[0]/a[0]::text-muted-foreground#0",
-			"apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
@@ -36817,8 +36817,8 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#1",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#1",
@@ -36836,18 +36836,18 @@
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::span[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-reply-form.tsx::PortalReplyForm::form[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-reply-form.tsx::PortalReplyForm::form[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-request-details.tsx::Files::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-request-details.tsx::Files::section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-request-details.tsx::Files::section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/join-project.tsx::JoinProject::span[0]/span[0]::text-muted-foreground#0",
@@ -36909,9 +36909,9 @@
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::DependenciesCard::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[1]::text-muted-foreground#0",
@@ -37158,18 +37158,18 @@
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[1]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[3]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[3]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/approvals.tsx::PortalApprovals::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/index.tsx::PortalHome::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/nav[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/approvals.tsx::PortalApprovals::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/index.tsx::PortalHome::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/nav[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
 			"packages/ui/src/components/accordion.tsx::AccordionPanel::AccordionPrimitive.Panel[0]::text-muted-foreground#0",
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 			"packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
@@ -37208,7 +37208,7 @@
 					"apps/web/src/routes/portal/account.tsx:/account",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -37219,7 +37219,7 @@
 					"apps/web/src/routes/portal/account.tsx:/account",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -39328,7 +39328,7 @@
 					"apps/web/src/routes/portal/kb.tsx:/kb",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/kb/portal/portal-kb-browse.tsx"
 			},
@@ -39804,7 +39804,7 @@
 					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
 			},
@@ -39815,7 +39815,7 @@
 					"apps/web/src/routes/portal/announcements.tsx:/announcements",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx"
 			},
@@ -40277,7 +40277,7 @@
 					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
 			},
@@ -40288,7 +40288,7 @@
 					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
 			},
@@ -40299,7 +40299,7 @@
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
 			},
@@ -40310,7 +40310,7 @@
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
 			},
@@ -40321,7 +40321,7 @@
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
 			},
@@ -40409,7 +40409,7 @@
 					"apps/web/src/routes/portal/requests_.$ref.tsx:/requests_/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/requests/portal-request-details.tsx"
 			},
@@ -40420,7 +40420,7 @@
 					"apps/web/src/routes/portal/requests_.$ref.tsx:/requests_/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/requests/portal-request-details.tsx"
 			},
@@ -41537,7 +41537,7 @@
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -41548,7 +41548,7 @@
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -41559,7 +41559,7 @@
 					"apps/web/src/routes/portal/releases.tsx:/releases",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-releases-list.tsx"
 			},
@@ -46398,7 +46398,7 @@
 					"apps/web/src/routes/portal/approvals.tsx:/approvals",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/approvals.tsx::PortalApprovals::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/approvals.tsx::PortalApprovals::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/approvals.tsx"
 			},
@@ -46409,7 +46409,7 @@
 					"apps/web/src/routes/portal/catalogue.tsx:/catalogue",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/catalogue.tsx"
 			},
@@ -46420,7 +46420,7 @@
 					"apps/web/src/routes/portal/catalogue.tsx:/catalogue",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/catalogue.tsx"
 			},
@@ -46431,7 +46431,7 @@
 					"apps/web/src/routes/portal/index.tsx:/",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/index.tsx"
 			},
@@ -46442,7 +46442,7 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -46453,7 +46453,7 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -46464,7 +46464,7 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/nav[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/nav[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -46475,7 +46475,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -46486,7 +46486,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -46497,7 +46497,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -46508,7 +46508,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -46519,7 +46519,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -48846,8 +48846,8 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/activity/comment-card-presentation.tsx::ActivityEventPresentation::TimelineItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/svg[0]::text-muted-foreground#0",
@@ -48952,7 +48952,7 @@
 			"apps/web/src/components/kb/agent/kb-list.tsx::ArticlesView::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/agent/kb-list.tsx::KbList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/kb/kb-article-content.tsx::KbTableOfContents::nav[0]/ul[0]/li[0]/a[0]::text-muted-foreground#0",
-			"apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/Bell[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/notification/notification-inbox.tsx::NotificationInbox::div[0]/div[0]/p[1]::text-muted-foreground#0",
@@ -48982,8 +48982,8 @@
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#0",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/p[2]::text-muted-foreground#1",
 			"apps/web/src/components/pending-action/pending-action-approval.tsx::PendingActionApproval::section[0]/ul[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]::text-muted-foreground#1",
@@ -49001,18 +49001,18 @@
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-notification-inbox.tsx::PortalNotificationInbox::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/projects/portal-project-details.tsx::InformationCard::span[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-reply-form.tsx::PortalReplyForm::form[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-reply-form.tsx::PortalReplyForm::form[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-request-details.tsx::Files::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-request-details.tsx::Files::section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/requests/portal-request-details.tsx::Files::section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/IconComponent[0]::text-muted-foreground#0",
 			"apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/join-project.tsx::JoinProject::span[0]/span[0]::text-muted-foreground#0",
@@ -49074,9 +49074,9 @@
 			"apps/web/src/components/service-management/change-section.tsx::ChangeForm::div[0]/form[0]/fieldset[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::ServiceReference::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/change-section.tsx::WorkItemChangeSection::p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::DependenciesCard::p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/service-detail.tsx::ServiceDetailView::PageContainer[0]/PageHeader[0]/dl[0]/dt[1]::text-muted-foreground#0",
@@ -49323,18 +49323,18 @@
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[1]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[3]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/div[0]/div[3]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/approvals.tsx::PortalApprovals::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/header[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/index.tsx::PortalHome::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/nav[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/p[0]::text-muted-foreground#1",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/approvals.tsx::PortalApprovals::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/index.tsx::PortalHome::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/nav[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
 			"packages/ui/src/components/accordion.tsx::AccordionPanel::AccordionPrimitive.Panel[0]::text-muted-foreground#0",
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 			"packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
@@ -49374,7 +49374,7 @@
 					"apps/web/src/routes/portal/account.tsx:/account",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -49385,7 +49385,7 @@
 					"apps/web/src/routes/portal/account.tsx:/account",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -51494,7 +51494,7 @@
 					"apps/web/src/routes/portal/kb.tsx:/kb",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/kb/portal/portal-kb-browse.tsx::PortalKbBrowse::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/kb/portal/portal-kb-browse.tsx"
 			},
@@ -51970,7 +51970,7 @@
 					"apps/web/src/routes/portal/announcements_.$id.tsx:/announcements_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
 			},
@@ -51981,7 +51981,7 @@
 					"apps/web/src/routes/portal/announcements.tsx:/announcements",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx::PortalAnnouncementsList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/announcements/portal-announcements-list.tsx"
 			},
@@ -52443,7 +52443,7 @@
 					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
 			},
@@ -52454,7 +52454,7 @@
 					"apps/web/src/routes/portal/projects_.$projectKey.tsx:/projects_/$projectKey",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-project-details.tsx::PortalProjectDetails::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-project-details.tsx"
 			},
@@ -52465,7 +52465,7 @@
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
 			},
@@ -52476,7 +52476,7 @@
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
 			},
@@ -52487,7 +52487,7 @@
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/projects/portal-projects-list.tsx::PortalProjectsList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/projects/portal-projects-list.tsx"
 			},
@@ -52575,7 +52575,7 @@
 					"apps/web/src/routes/portal/requests_.$ref.tsx:/requests_/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/requests/portal-request-details.tsx"
 			},
@@ -52586,7 +52586,7 @@
 					"apps/web/src/routes/portal/requests_.$ref.tsx:/requests_/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/requests/portal-request-details.tsx::PortalRequestDetails::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/portal/requests/portal-request-details.tsx"
 			},
@@ -53703,7 +53703,7 @@
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -53714,7 +53714,7 @@
 					"apps/web/src/routes/portal/releases_.$id.tsx:/releases_/$id",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/header[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/header[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -53725,7 +53725,7 @@
 					"apps/web/src/routes/portal/releases.tsx:/releases",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-releases-list.tsx::PortalReleasesList::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/service-management/portal/portal-releases-list.tsx"
 			},
@@ -58564,7 +58564,7 @@
 					"apps/web/src/routes/portal/approvals.tsx:/approvals",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/approvals.tsx::PortalApprovals::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/approvals.tsx::PortalApprovals::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/approvals.tsx"
 			},
@@ -58575,7 +58575,7 @@
 					"apps/web/src/routes/portal/catalogue.tsx:/catalogue",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/header[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/catalogue.tsx"
 			},
@@ -58586,7 +58586,7 @@
 					"apps/web/src/routes/portal/catalogue.tsx:/catalogue",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/section[0]/form[0]/div[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/catalogue.tsx"
 			},
@@ -58597,7 +58597,7 @@
 					"apps/web/src/routes/portal/index.tsx:/",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/index.tsx::PortalHome::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/index.tsx"
 			},
@@ -58608,7 +58608,7 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -58619,7 +58619,7 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -58630,7 +58630,7 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/nav[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/nav[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -58641,7 +58641,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -58652,7 +58652,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -58663,7 +58663,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/p[0]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -58674,7 +58674,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/ul[0]/li[0]/span[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -58685,7 +58685,7 @@
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::div[0]/section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/ul[0]/li[0]/span[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/submissions/$ref.tsx"
 			},
@@ -61019,7 +61019,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
 					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
@@ -61033,7 +61033,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
 					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
@@ -61047,7 +61047,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
 					"primitive:TabsPrimitive.Indicator:active-tab-bounds"
@@ -61867,7 +61867,7 @@
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#3",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#4",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#5",
-			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::PageContainer[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/projects/portal-project-details.tsx::DocumentsCard::Section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
@@ -61961,7 +61961,7 @@
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::DetailsCard::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
@@ -63713,10 +63713,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx:PortalAnnouncementDetail",
-					"jsx:div[0]/Card[0]/CardContent[0]/p[0]",
+					"jsx:PageContainer[0]/Card[0]/CardContent[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::PageContainer[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
 			},
@@ -64915,10 +64915,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-management/portal/portal-release-detail.tsx:PortalReleaseDetail",
-					"jsx:div[0]/Card[0]/CardContent[0]/p[0]",
+					"jsx:PageContainer[0]/Card[0]/CardContent[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -67664,7 +67664,7 @@
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#3",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#4",
 			"apps/web/src/components/pages/pages-list.tsx::PagesList::div[0]/ul[0]/li[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#5",
-			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::PageContainer[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/cases/portal-case-table.tsx::PortalCaseSeverity::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/projects/portal-project-details.tsx::ContactsCard::Section[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/projects/portal-project-details.tsx::DocumentsCard::Section[0]/ul[0]/li[0]/p[0]::text-muted-foreground#0",
@@ -67758,7 +67758,7 @@
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-calendar/window-fields.tsx::WindowFields::div[0]/div[3]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/announcements-list.tsx::AnnouncementCard::Card[0]/CardPanel[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChangesCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::ChecklistCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/service-management/release-detail.tsx::DetailsCard::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
@@ -69510,10 +69510,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/announcements/portal-announcement-detail.tsx:PortalAnnouncementDetail",
-					"jsx:div[0]/Card[0]/CardContent[0]/p[0]",
+					"jsx:PageContainer[0]/Card[0]/CardContent[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx::PortalAnnouncementDetail::PageContainer[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/portal/announcements/portal-announcement-detail.tsx"
 			},
@@ -70712,10 +70712,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/service-management/portal/portal-release-detail.tsx:PortalReleaseDetail",
-					"jsx:div[0]/Card[0]/CardContent[0]/p[0]",
+					"jsx:PageContainer[0]/Card[0]/CardContent[0]/p[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::div[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/service-management/portal/portal-release-detail.tsx::PortalReleaseDetail::PageContainer[0]/Card[0]/CardContent[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/service-management/portal/portal-release-detail.tsx"
 			},
@@ -89788,7 +89788,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -89802,7 +89802,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -89816,7 +89816,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -91160,7 +91160,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -91174,7 +91174,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -91188,7 +91188,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/portal/projects/portal-projects-list.tsx:PortalProjectsList",
-					"jsx:div[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
+					"jsx:PageContainer[0]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[2]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/portal/projects.tsx:/projects",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -92554,7 +92554,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
 			"packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
@@ -96527,10 +96527,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/portal/catalogue.tsx:PortalCatalogueContent",
-					"jsx:div[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]",
+					"jsx:PageContainer[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]",
 					"Button->packages/ui/src/components/button.tsx:Button>bg-popover"
 				],
-				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/routes/portal/catalogue.tsx"
 			},
@@ -98151,7 +98151,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/users.tsx::UserActionDialog::Dialog[0]/DialogContent[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
 			"packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
@@ -102124,10 +102124,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/portal/catalogue.tsx:PortalCatalogueContent",
-					"jsx:div[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]",
+					"jsx:PageContainer[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]",
 					"Button->packages/ui/src/components/button.tsx:Button>bg-popover"
 				],
-				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::div[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/portal/catalogue.tsx::PortalCatalogueContent::PageContainer[0]/div[0]/section[0]/ul[0]/li[0]/Button[0]/span[0]/small[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/routes/portal/catalogue.tsx"
 			},
@@ -104678,7 +104678,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:PageContainer[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -104689,7 +104689,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:PageContainer[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -105889,7 +105889,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
+					"jsx:PageContainer[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[0]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -105900,7 +105900,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/kb/portal/portal-kb-browse.tsx:PortalKbBrowse",
-					"jsx:div[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
+					"jsx:PageContainer[0]/div[1]/div[0]/Tabs[0]/TabsList[0]/TabsTrigger[1]"
 				],
 				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
@@ -110197,7 +110197,7 @@
 			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskFooter::DialogFooter[0]/div[0]/label[0]/Checkbox[0]::text-primary#0",
 			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::div[0]/a[0]::text-primary#0",
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/LoadingStatus[0]/div[0]/Loader2[0]::text-primary#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
 			"packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0"
 		],
 		"occurrences": [
@@ -110304,7 +110304,7 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},
@@ -110338,7 +110338,7 @@
 			"apps/web/src/components/shared/modals/create-task-presentation.tsx::CreateTaskFooter::DialogFooter[0]/div[0]/label[0]/Checkbox[0]::text-primary#0",
 			"apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::div[0]/a[0]::text-primary#0",
 			"apps/web/src/routes/agent/invitation/accept.$inviteId.tsx::AcceptInvitation::AuthLayout[0]/LoadingStatus[0]/div[0]/Loader2[0]::text-primary#0",
-			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
+			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
 			"packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0"
 		],
 		"occurrences": [
@@ -110445,7 +110445,7 @@
 					"apps/web/src/routes/portal/requests.tsx:/requests",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::div[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
+				"id": "apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[0]/Link[0]::text-primary#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/portal/requests.tsx"
 			},

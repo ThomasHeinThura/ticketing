@@ -5,9 +5,13 @@ import { resolve } from "node:path";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, isNull } from "drizzle-orm";
 import db, { getDatabasePool, schema } from "../../../apps/api/src/database";
+import { ensureInternalOrganisation } from "../../../apps/api/src/utils/seed-internal-organisation";
 
 type SeedInput =
   | { phase: "instance" }
+  | { phase: "auth-ui" }
+  | { phase: "staff"; workspaceId: string }
+  | { phase: "off"; workspaceId: string }
   | {
       phase: "workspace";
       workspaceId: string;
@@ -147,6 +151,44 @@ async function createPortalPerson(
 }
 
 async function main(input: SeedInput) {
+  if (
+    input.phase === "staff" ||
+    input.phase === "off" ||
+    input.phase === "auth-ui"
+  ) {
+    const target = new URL(process.env.TASKDESK_DATABASE_URL ?? "");
+    if (
+      !/^\/mfa_csrf_[a-f0-9]{32}_test$/.test(target.pathname) ||
+      ["62870", "62873"].includes(target.port)
+    )
+      throw new Error(
+        "This seed phase requires a disposable MFA/CSRF fixture database",
+      );
+  }
+  if (input.phase === "auth-ui") {
+    await db.insert(schema.instancePluginConfigTable).values({
+      id: `a87-mail-${randomUUID()}`,
+      pluginId: "notify.email",
+      instanceKey: "default",
+      displayName: "Disposable UI availability only",
+      enabled: true,
+      scope: "instance",
+      workspaceId: null,
+      portalScope: null,
+      config: {
+        host: "smtp.example.invalid",
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        username: null,
+        fromAddress: "fixture@example.test",
+        replyTo: null,
+      },
+      secrets: null,
+      configVersion: 1,
+    });
+    return { emailUi: true };
+  }
   if (input.phase === "instance") {
     // Migration 0096 creates every canonical instance flag disabled. Enable the
     // existing row only in this disposable E2E fixture instead of inserting a
@@ -180,6 +222,91 @@ async function main(input: SeedInput) {
     return { feature: "feature.intake", actual };
   }
 
+  if (input.phase === "off") {
+    const actual = required(
+      await db
+        .insert(schema.workspaceFeatureFlagTable)
+        .values({
+          workspaceId: input.workspaceId,
+          featureKey: "feature.intake",
+          enabled: false,
+        })
+        .onConflictDoUpdate({
+          target: [
+            schema.workspaceFeatureFlagTable.workspaceId,
+            schema.workspaceFeatureFlagTable.featureKey,
+          ],
+          set: { enabled: false },
+        })
+        .returning({ enabled: schema.workspaceFeatureFlagTable.enabled }),
+      "disabled intake flag",
+    );
+    if (actual.enabled !== false)
+      throw new Error("Intake flag did not persist disabled");
+    return actual;
+  }
+  if (input.phase === "staff") {
+    const internal = await ensureInternalOrganisation();
+    const people: Record<string, SeededPerson> = {};
+    for (const key of ["member", "lead", "admin"] as const) {
+      const person = await createPortalPerson(`Mobile ${key}`, `mobile-${key}`);
+      const [identity] = await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.id, person.personId));
+      if (!identity?.userId) throw new Error("Staff fixture identity missing");
+      await db
+        .update(schema.personTable)
+        .set({ side: "staff", organisationId: internal.id })
+        .where(eq(schema.personTable.id, person.personId));
+      await db
+        .delete(schema.membershipTable)
+        .where(eq(schema.membershipTable.personId, person.personId));
+      const role = BUILT_IN_ROLES[key];
+      const [stored] = await db
+        .select()
+        .from(schema.roleTable)
+        .where(
+          and(
+            eq(schema.roleTable.key, key),
+            eq(schema.roleTable.workspaceId, input.workspaceId),
+          ),
+        );
+      const actual =
+        stored ??
+        required(
+          await db
+            .insert(schema.roleTable)
+            .values({
+              scope: role.scope,
+              key: role.key,
+              rank: role.rank,
+              name: key,
+              capabilities: [...role.capabilities],
+              workspaceId: input.workspaceId,
+              isSystem: true,
+              isEditable: false,
+            })
+            .returning(),
+          "staff role",
+        );
+      await db.insert(schema.membershipTable).values({
+        personId: person.personId,
+        scope: "workspace",
+        scopeId: input.workspaceId,
+        roleId: actual.id,
+        seesAll: false,
+      });
+      await db.insert(schema.workspaceUserTable).values({
+        userId: identity.userId,
+        workspaceId: input.workspaceId,
+        role: key,
+        joinedAt: new Date(),
+      });
+      people[key] = { ...person, organisationId: internal.id };
+    }
+    return people;
+  }
   const customer = await createPortalPerson(
     "Intake primary requester",
     "intake-requester",

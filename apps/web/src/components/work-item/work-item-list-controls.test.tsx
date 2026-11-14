@@ -12,8 +12,7 @@ import WorkItemListControls from "./work-item-list-controls";
 
 const mocks = vi.hoisted(() => ({
   canExport: false,
-  exportWorkItems: vi.fn(),
-  saveAs: vi.fn(),
+  downloadWorkItemsCsv: vi.fn(),
   customFields: [] as unknown[],
 }));
 
@@ -39,17 +38,13 @@ vi.mock("@/hooks/queries/custom-field/use-custom-fields", () => ({
 }));
 
 vi.mock("@/fetchers/work-item/export-work-items", () => ({
-  exportWorkItems: (...args: unknown[]) => mocks.exportWorkItems(...args),
-}));
-
-vi.mock("file-saver", () => ({
-  saveAs: (...args: unknown[]) => mocks.saveAs(...args),
+  downloadWorkItemsCsv: (...args: unknown[]) =>
+    mocks.downloadWorkItemsCsv(...args),
 }));
 
 beforeEach(() => {
   mocks.canExport = false;
-  mocks.exportWorkItems.mockReset();
-  mocks.saveAs.mockReset();
+  mocks.downloadWorkItemsCsv.mockReset();
   mocks.customFields = [];
 });
 
@@ -121,9 +116,7 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
     expect(screen.queryByTestId("work-item-export-csv")).toBeNull();
 
     mocks.canExport = true;
-    mocks.exportWorkItems.mockResolvedValueOnce(
-      "key,title\r\nWLP-1,Fix outage\r\n",
-    );
+    mocks.downloadWorkItemsCsv.mockResolvedValueOnce(undefined);
     rerender(
       <WorkItemListControls
         filter="priority:high"
@@ -140,8 +133,10 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
 
     const exportButton = screen.getByTestId("work-item-export-csv");
     fireEvent.click(exportButton);
-    await waitFor(() => expect(mocks.exportWorkItems).toHaveBeenCalledOnce());
-    expect(mocks.exportWorkItems).toHaveBeenCalledWith({
+    await waitFor(() =>
+      expect(mocks.downloadWorkItemsCsv).toHaveBeenCalledOnce(),
+    );
+    expect(mocks.downloadWorkItemsCsv).toHaveBeenCalledWith({
       workspaceId: "ws_1",
       projectSlug: "WLP",
       filter: "priority:high",
@@ -149,12 +144,11 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
       dir: "desc",
       columns: ["key", "title", "cf.asset_tag"],
     });
-    expect(mocks.saveAs).toHaveBeenCalledOnce();
   });
 
   it("shows a translated alert when the server refuses an export over the 10,000-row limit (422)", async () => {
     mocks.canExport = true;
-    mocks.exportWorkItems.mockRejectedValueOnce(
+    mocks.downloadWorkItemsCsv.mockRejectedValueOnce(
       new HttpError(422, "Export exceeds maximum of 10000 rows"),
     );
     render(
@@ -173,5 +167,28 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
     expect(alert).toHaveTextContent(
       translate("workItems:list.exportLimitExceeded"),
     );
+  });
+
+  it.each([
+    [new HttpError(429, "rate limited"), "workItems:list.exportRateLimited"],
+    [new Error("failed"), "workItems:list.exportFailed"],
+  ])("shows a translated error when export fails", async (error, key) => {
+    mocks.canExport = true;
+    mocks.downloadWorkItemsCsv.mockRejectedValueOnce(error);
+    render(
+      <WorkItemListControls
+        filter=""
+        mode="visual"
+        onModeChange={vi.fn()}
+        onApply={vi.fn()}
+        workspaceId="ws_1"
+        projectSlug="WLP"
+      />,
+    );
+    await screen.findByTestId("filter-editor");
+    fireEvent.click(screen.getByTestId("work-item-export-csv"));
+    expect(
+      await screen.findByTestId("work-item-export-error"),
+    ).toHaveTextContent(translate(key));
   });
 });

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../../apps/api/src/scheduler/leader-lock", () => ({
   assertJobExecutionOwned: () => mocks.assertOwned(),
+  withJobLease: (_name: string, run: () => unknown) => run(),
   JobExecutionReservationLostError: mocks.ReservationLost,
 }));
 vi.mock(

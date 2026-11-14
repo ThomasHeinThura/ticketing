@@ -11,6 +11,7 @@ import {
   Button,
   Checkbox,
   Input,
+  PageContainer,
   Select,
   SelectContent,
   SelectItem,
@@ -352,7 +353,7 @@ function PortalCatalogueContent() {
   const visible = (field: FormSchema["fields"][number]) =>
     fieldVisibility.get(field.key) ?? true;
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="4xl">
       <PortalPageTitle
         title={selected?.name ?? t("portal:intake.catalogueTitle")}
       />
@@ -833,7 +834,7 @@ function PortalCatalogueContent() {
           )}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

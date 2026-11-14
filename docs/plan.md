@@ -150,6 +150,18 @@ No new dependency: Base UI, framer-motion and CSS already cover it.
 | G-4 | Clean installs | Local SIT on Tue 17 and Thu 19; UAT host on Sat 21 (section 8) | M each |
 | G-5 | Self-review | Fri 20 review done; highs and mediums fixed | L |
 
+### Stream P — Ponytail audit, review and performance hardening (Approved 14 Nov)
+
+| ID | Item | Done when | Effort |
+| --- | --- | --- | --- |
+| P-1 | `duplicate-suggestions.ts` UTC cutoff cast | `findDuplicateSuggestions` passes `${cutoff.toISOString()}::timestamp` instead of a raw `Date` so `node-postgres` never shifts the 90-day cutoff by local `TZ` | S |
+| P-2 | `sla-scan` query & write reduction | `scanSla` filters live projects in the candidate query, passes the locked `work_item` row into `evaluateStoredWorkItemSla`, and skips `work_item_sla_cache` upserts when `state` and `dueAt` are unchanged | S–M |
+| P-3 | Leader leases on remaining 3 cron jobs | `due-date-reminders`, `plugin-health`, and `impersonation-cap` wrap execution in `withJobLease` so multi-replica deployments never run duplicate scans or OIDC discovery probes | S |
+| P-4 | Scheduled job history lease renewal & standby filter | `runScheduledJobWithHistory` renews `job_lease.expires_at` on heartbeats and discards standby no-op runs when the lease is held elsewhere | S–M |
+| P-5 | Unused dependency removal & `valibot` → `zod` (Approved) | Remove 27 unused dependencies from `apps/web/package.json` & `apps/api/package.json` and replace `valibot` with `zod` in `redis-broadcast-adapter.ts` | S |
+| P-6 | CSV download helper & `KbTriageSuggestions` early return | Share `downloadWorkItemsCsv` via native `URL.createObjectURL` (removing `file-saver`) and skip `KbTriageSuggestions` debounce timer when `feature.knowledge_base` is off | S |
+| P-7 | MFA/CSRF fixture hardening (uncommitted in main checkout, reviewed 14 Nov) | Re-applied on current `main` (checkout is 288 commits behind): keep `isDisposableDatabaseUrl`, `disposableChildEnv`, `cleanupDisposableContainers` and `tests/api/mfa-csrf-disposable-safety.test.ts` (7/7 pass); drop the `^` hono/node-server bump unless still needed, then exact pins and a lockfile regenerated on `main`; delete the ~20 dead empty `SMTP_*`/OAuth env lines; stop the 7 `spawnChild` callers passing an `env` the fixture ignores; skip re-journalling the known container id; keep only the "Gemini 4 Hydrogen" word change in `AGENTS.md`; affected e2e journeys pass | S |
+
 ### After UAT
 
 G11 work. Tooling PRs #1104, #1105, #1108, #1109, #1112. From the [reference comparison](report/reference-comparison-2026-11-12.md): customer admin and organisation-wide sharing, request participants, saved replies, satisfaction rating, follow-up reminders, agent queues with counts, customer-facing status names, undo on toasts, shortcut hints. Deleting the dead Kaneo screens and the old `/task` API. Changing the app-wide data-freshness defaults. Real-time "is typing". Corner smoothing and page-to-page transitions. Pages editor (L-04). God Mode extras (A-29 to A-34). Public projects. Sign-up rules for company single sign-on.
@@ -248,6 +260,7 @@ Never touched: native PostgreSQL 62870, the v1 UAT project, credentials files.
 | 9 | Worktrees with unsaved work, parked-PR worktrees | Keep until after UAT, close earlier when safe. Parked ones are reused as work lanes. |
 | 10 | Original 8 Nov files, old browser scripts | Deleted 12 Nov. The 132 GB evidence folder is deleted once nothing refers to it. |
 | 11 | #1115 (edits CI workflows) | Approved if CI machine failures continue |
+| 19 | Ponytail audit, review & dependency cleanup (P-1..P-6) | Approved 14 Nov ("all approve add that those into the plan.md and continue all taks, roadmpa") |
 
 **Defaults that apply unless you say otherwise:**
 

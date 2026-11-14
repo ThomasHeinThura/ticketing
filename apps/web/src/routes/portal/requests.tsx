@@ -18,6 +18,7 @@ import {
   Frame,
   FramePanel,
   LoadingStatus,
+  PageContainer,
   Skeleton,
   Table,
   TableBody,
@@ -230,7 +231,7 @@ function PortalRequestsPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">
+    <PageContainer scroll={false} gutter="responsive" width="6xl">
       <PortalPageTitle
         title={backlogMode ? t("requests.backlog") : t("cases.listTitle")}
       />
@@ -571,6 +572,6 @@ function PortalRequestsPage() {
           </Button>
         </nav>
       ) : null}
-    </div>
+    </PageContainer>
   );
 }

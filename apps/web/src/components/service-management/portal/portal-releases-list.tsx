@@ -12,6 +12,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  PageContainer,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -45,7 +46,7 @@ export function PortalReleasesList({
   const entries = releases.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+    <PageContainer scroll={false} gutter="default" width="4xl">
       <header className="space-y-1">
         <h1 className="font-semibold text-2xl">{t("portal:releases.title")}</h1>
         <p className="text-muted-foreground">
@@ -117,6 +118,6 @@ export function PortalReleasesList({
           ) : null}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
