@@ -258,6 +258,29 @@ test("requires explicit project and daemon confirmation and rejects removed reco
     ["--confirm-daemon", "daemon-1234"],
   ])
     assert.throws(() => executeFresh({ ...f.opts, args }), /confirm-wipe/);
+  for (const [args, pattern] of [
+    [["--resume-seed", "2026-11-12T12-00-00-000Z"], /confirm-daemon/],
+    [
+      ["--resume-seed", "../evil", "--confirm-daemon", "daemon-1234"],
+      /checkpoint stamp/,
+    ],
+    [
+      [
+        "--resume-seed",
+        "2026-11-12T12-00-00-000Z",
+        "--confirm-wipe",
+        PROJECT,
+        "--confirm-daemon",
+        "daemon-1234",
+      ],
+      /Cannot combine --resume-seed/,
+    ],
+    [
+      ["--resume-seed", "2026-11-12T12-00-00-000Z", "--dry-run"],
+      /Cannot combine --resume-seed/,
+    ],
+  ])
+    assert.throws(() => executeFresh({ ...f.opts, args }), pattern);
   assert.equal(f.calls.length, 0);
 });
 

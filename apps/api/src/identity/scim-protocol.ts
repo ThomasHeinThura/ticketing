@@ -282,6 +282,10 @@ function scimResponse<T extends Response>(response: T): T {
 scim.onError(async (error, c) => {
   if (!(error instanceof HTTPException)) throw error;
   const status = error.status;
+  if (status === 400 && error.message.startsWith("filter:"))
+    return scimResponse(
+      c.json(scimErrorBody(400, "Invalid filter", "invalidFilter"), 400),
+    );
   if (status === 401) {
     await recordScimAuthFailure(error);
     return scimResponse(c.json(scimErrorBody(401, "Unauthorized"), 401));
@@ -364,7 +368,7 @@ function groupFilterPredicate(field: ScimGroupFilterAttribute, value: string) {
     case "displayName":
       return sql`lower(${schema.scimGroupTable.displayName}) = lower(${value}) and ${schema.scimGroupTable.displayName} <> ''`;
     case "externalId":
-      return sql`lower(${schema.scimGroupTable.externalId}) = lower(${value}) and ${schema.scimGroupTable.externalId} <> ''`;
+      return sql`${schema.scimGroupTable.externalId} = ${value} and ${schema.scimGroupTable.externalId} <> ''`;
   }
 }
 

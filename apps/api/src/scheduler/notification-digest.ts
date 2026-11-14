@@ -18,9 +18,11 @@ export type NotificationDigestRun = {
 export async function drainNotificationDigests({
   budgetMs = 240_000,
   maxGroups = 100,
+  send,
 }: {
   budgetMs?: number;
   maxGroups?: number;
+  send?: Parameters<typeof processNextNotificationDigest>[0];
 } = {}): Promise<NotificationDigestRun> {
   const startedAt = Date.now();
   const outcome: NotificationDigestRun = {
@@ -33,14 +35,27 @@ export async function drainNotificationDigests({
   };
   try {
     outcome.sealed = await sealDueDigestGroups();
-  } catch {
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        job: NOTIFICATION_DIGEST_JOB,
+        phase: "seal",
+        error: error instanceof Error ? error.name : "UnknownError",
+        message:
+          error instanceof Error
+            ? error.message.slice(0, 200)
+            : String(error).slice(0, 200),
+      }),
+    );
     outcome.degraded = true;
     return outcome;
   }
   while (outcome.processed < maxGroups && Date.now() - startedAt < budgetMs) {
     await assertJobExecutionOwned();
     try {
-      const result = await processNextNotificationDigest();
+      const result = send
+        ? await processNextNotificationDigest(send)
+        : await processNextNotificationDigest();
       if (result.kind === "idle") break;
       outcome.processed++;
       if (result.outcome === "delivered") outcome.delivered++;
@@ -49,7 +64,18 @@ export async function drainNotificationDigests({
         outcome.retry++;
         outcome.degraded = true;
       }
-    } catch {
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          job: NOTIFICATION_DIGEST_JOB,
+          phase: "deliver",
+          error: error instanceof Error ? error.name : "UnknownError",
+          message:
+            error instanceof Error
+              ? error.message.slice(0, 200)
+              : String(error).slice(0, 200),
+        }),
+      );
       outcome.degraded = true;
       break;
     }

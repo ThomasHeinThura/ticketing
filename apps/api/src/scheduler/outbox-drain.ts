@@ -73,13 +73,12 @@ export async function drainParentEvents() {
 }
 
 /**
- * Reserve time for digest and P4 work while keeping existing per-drain limits.
- * An in-flight provider call is allowed to finish after its budget expires.
+ * Keep parents, immediate notifications, and P4 consumers ahead of batched digests,
+ * giving digests up to 10 s of remaining tick budget. An in-flight provider call is
+ * allowed to finish after its budget expires.
  */
 export async function drainOutbox() {
   const startedAt = Date.now();
-  await assertJobExecutionOwned();
-  const digests = await drainNotificationDigests({ budgetMs: 10_000 });
   await assertJobExecutionOwned();
   const parents = await drainParentEvents();
   await assertJobExecutionOwned();
@@ -89,6 +88,10 @@ export async function drainOutbox() {
   );
   await assertJobExecutionOwned();
   const consumers = await drainP4Consumers();
+  await assertJobExecutionOwned();
+  const digests = await drainNotificationDigests({
+    budgetMs: Math.max(0, Math.min(10_000, 29_000 - (Date.now() - startedAt))),
+  });
   const degraded =
     digests.degraded ||
     parents.degraded ||

@@ -101,6 +101,7 @@ function parseScimEqFilter<T extends string>(
   attributes: ReadonlyMap<string, T>,
 ): ScimResult<{ attribute: T; value: string } | null> {
   if (input === undefined) return { ok: true, value: null };
+  if (input.length > 512) return { ok: false, reason: "invalid_resource" };
   const match = input.match(
     /^\s*([A-Za-z][A-Za-z0-9.]*)\s+eq\s+"((?:\\.|[^"\\])*)"\s*$/iu,
   );
@@ -110,17 +111,21 @@ function parseScimEqFilter<T extends string>(
   if (!rawAttribute || rawValue === undefined)
     return { ok: false, reason: "invalid_resource" };
   const attribute = attributes.get(rawAttribute);
-  const value = rawValue.replace(/\\(["\\])/gu, "$1");
-  if (
-    !attribute ||
-    value.includes("\\") ||
-    [...value].some((character) => {
-      const code = character.codePointAt(0) ?? 0;
-      return code < 0x20 || code === 0x7f;
-    })
-  )
+  if (!attribute) return { ok: false, reason: "invalid_resource" };
+  let parsedValue: unknown;
+  try {
+    parsedValue = JSON.parse(`"${rawValue}"`);
+  } catch {
     return { ok: false, reason: "invalid_resource" };
-  return { ok: true, value: { attribute, value } };
+  }
+  if (typeof parsedValue !== "string")
+    return { ok: false, reason: "invalid_resource" };
+  for (const character of parsedValue) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code < 0x20 || code === 0x7f || (code >= 0xd800 && code <= 0xdfff))
+      return { ok: false, reason: "invalid_resource" };
+  }
+  return { ok: true, value: { attribute, value: parsedValue } };
 }
 
 export function parseScimUserFilter(

@@ -108,6 +108,14 @@ describe("parseScimGroupFilter", () => {
       ok: true,
       value: { attribute: "externalId", value: "ext-2" },
     });
+    expect(parseScimGroupFilter('displayName eq "Domain\\\\Admins"')).toEqual({
+      ok: true,
+      value: { attribute: "displayName", value: "Domain\\Admins" },
+    });
+    expect(parseScimGroupFilter('displayName eq "Caf\\u00e9"')).toEqual({
+      ok: true,
+      value: { attribute: "displayName", value: "Café" },
+    });
   });
 
   it.each([
@@ -120,6 +128,9 @@ describe("parseScimGroupFilter", () => {
     'displayName eq "A" or displayName eq "B"',
     "displayName eq Group",
     'displayName eq "bad\\nvalue"',
+    'displayName eq "bad\\avalue"',
+    'displayName eq "bad\\ud800value"',
+    `displayName eq "${"x".repeat(500)}"`,
     `displayName eq "bad${String.fromCharCode(1)}value"`,
     `externalId eq "bad${String.fromCharCode(0x7f)}value"`,
     "",

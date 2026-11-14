@@ -430,11 +430,62 @@ describe("P-21 GET /scim/v2/Groups honours filter", () => {
       Resources: [],
     });
 
+    const teamUpperId = await createGroup("TeamA", "Team Upper");
+    const teamLowerId = await createGroup("teama", "Team Lower");
+    const byUpperExt = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('externalId eq "TeamA"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(byUpperExt.status, await byUpperExt.clone().text()).toBe(200);
+    expect(await byUpperExt.json()).toMatchObject({
+      totalResults: 1,
+      itemsPerPage: 1,
+      Resources: [
+        { id: teamUpperId, externalId: "TeamA", displayName: "Team Upper" },
+      ],
+    });
+    const byLowerExt = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('externalId eq "teama"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(byLowerExt.status, await byLowerExt.clone().text()).toBe(200);
+    expect(await byLowerExt.json()).toMatchObject({
+      totalResults: 1,
+      itemsPerPage: 1,
+      Resources: [
+        { id: teamLowerId, externalId: "teama", displayName: "Team Lower" },
+      ],
+    });
+
+    const slashId = await createGroup("ext-slash", "Domain\\Admins");
+    const cafeId = await createGroup("ext-cafe", "Café");
+    const bySlash = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('displayName eq "Domain\\\\Admins"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(bySlash.status, await bySlash.clone().text()).toBe(200);
+    expect(await bySlash.json()).toMatchObject({
+      totalResults: 1,
+      Resources: [
+        { id: slashId, externalId: "ext-slash", displayName: "Domain\\Admins" },
+      ],
+    });
+    const byCafe = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('displayName eq "Caf\\u00e9"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(byCafe.status, await byCafe.clone().text()).toBe(200);
+    expect(await byCafe.json()).toMatchObject({
+      totalResults: 1,
+      Resources: [{ id: cafeId, externalId: "ext-cafe", displayName: "Café" }],
+    });
+
     for (const invalid of [
       'id eq "x"',
       'displayName co "Group"',
       'displayName eq "Group One" and externalId eq "ext-group-1"',
       "displayName eq Group",
+      `displayName eq "${"a".repeat(500)}"`,
     ]) {
       const invalidResponse = await app.request(
         `/scim/v2/Groups?filter=${encodeURIComponent(invalid)}`,
@@ -445,5 +496,14 @@ describe("P-21 GET /scim/v2/Groups honours filter", () => {
         scimType: "invalidFilter",
       });
     }
+
+    const oversizedUserFilter = await app.request(
+      `/scim/v2/Users?filter=${encodeURIComponent(`userName eq "${"a".repeat(500)}"`)}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(oversizedUserFilter.status).toBe(400);
+    expect(await oversizedUserFilter.json()).toMatchObject({
+      scimType: "invalidFilter",
+    });
   });
 });

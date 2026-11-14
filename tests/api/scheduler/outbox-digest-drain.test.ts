@@ -106,7 +106,7 @@ describe("outbox digest drain", () => {
     });
   });
 
-  it("reserves time for all drain steps under sustained backlog", async () => {
+  it("keeps parents, immediate children, and P4 ahead of digests under sustained backlog", async () => {
     let now = 0;
     vi.spyOn(Date, "now").mockImplementation(() => now);
     mocks.digest.mockImplementation(async () => {
@@ -126,14 +126,47 @@ describe("outbox digest drain", () => {
       return { webhooks: null, automations: null, degraded: false };
     });
     const outcome = await drainOutbox();
-    expect(outcome.digests.processed).toBe(10);
     expect(outcome.parents.processed).toBe(5);
-    expect(outcome.children.processed).toBe(1);
+    expect(outcome.children.processed).toBe(11);
     expect(mocks.p4).toHaveBeenCalledOnce();
+    expect(outcome.digests.processed).toBe(0);
     expect(now).toBe(29_000);
   });
 
-  it("reports a sealing or claim failure as degraded", async () => {
+  it("caps digests at 10 s of remaining budget after parents, children, and P4", async () => {
+    let now = 0;
+    let parentsLeft = 2;
+    let childrenLeft = 3;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    mocks.parent.mockImplementation(async () => {
+      if (parentsLeft-- <= 0) return { kind: "idle" };
+      now += 1_000;
+      return { kind: "delivered" };
+    });
+    mocks.child.mockImplementation(async () => {
+      if (childrenLeft-- <= 0) return { kind: "idle" };
+      now += 1_000;
+      return { kind: "delivered" };
+    });
+    mocks.p4.mockImplementation(async () => {
+      now += 4_000;
+      return { webhooks: null, automations: null, degraded: false };
+    });
+    mocks.digest.mockImplementation(async () => {
+      now += 1_000;
+      return { kind: "claimed", outcome: "delivered" };
+    });
+    const outcome = await drainOutbox();
+    expect(outcome.parents.processed).toBe(2);
+    expect(outcome.children.processed).toBe(3);
+    expect(outcome.digests.processed).toBe(10);
+    expect(now).toBe(19_000);
+  });
+
+  it("logs and marks degraded on sealing or claim failure", async () => {
+    const errorLog = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     mocks.seal.mockRejectedValueOnce(new Error("database unavailable"));
     expect(await drainNotificationDigests()).toMatchObject({
       sealed: 0,
@@ -147,6 +180,7 @@ describe("outbox digest drain", () => {
       processed: 0,
       degraded: true,
     });
+    expect(errorLog).toHaveBeenCalledTimes(2);
   });
 
   it("stops before a claim when the job reservation is lost", async () => {

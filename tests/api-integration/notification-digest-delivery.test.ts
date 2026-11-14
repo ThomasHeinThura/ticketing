@@ -18,6 +18,7 @@ import { listVisibleNotificationInbox } from "../../apps/api/src/notification/in
 import { verifyNotificationPreferenceLink } from "../../apps/api/src/notification/preference-link";
 import { resolveWorkItemEventRecipients } from "../../apps/api/src/notification/work-item-recipients";
 import { updateEmailProvider } from "../../apps/api/src/notification-provider/service";
+import { drainNotificationDigests } from "../../apps/api/src/scheduler/notification-digest";
 import { createComment } from "../../apps/api/src/work-item/controllers/create-comment";
 import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -941,5 +942,85 @@ describe("persisted notification digest delivery", () => {
       SELECT state, attempts FROM notification_digest WHERE id = ${candidate.digestId}
     `);
     expect(completed.rows[0]).toEqual({ state: "delivered", attempts: 2 });
+  });
+
+  it("seals and delivers 30 due digest groups in one real PostgreSQL drain run", async () => {
+    const f = await fixture();
+    for (let i = 0; i < 30; i++) {
+      const comment = await createComment(
+        f.item.id,
+        f.actor.workspace.id,
+        f.actor.user.id,
+        "person",
+        {
+          visibility: "public",
+          body: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  { type: "text", text: `Synthetic digest comment ${i}` },
+                ],
+              },
+            ],
+          },
+        },
+      );
+      const offsetStart = `${i + 2} hours`;
+      const offsetEnd = `${i + 1} hours`;
+      await db.execute(sql`
+        UPDATE notification_digest
+           SET window_start_at = (clock_timestamp() AT TIME ZONE 'UTC') - ${offsetStart}::interval,
+               window_end_at = (clock_timestamp() AT TIME ZONE 'UTC') - ${offsetEnd}::interval,
+               next_attempt_at = (clock_timestamp() AT TIME ZONE 'UTC') - ${offsetEnd}::interval
+         WHERE id = (
+           SELECT d.digest_id
+             FROM notification_delivery d
+             JOIN outbox o ON o.event_id = d.event_id
+            WHERE o.kind = 'work_item.commented'
+              AND o.payload->'payload'->>'commentId' = ${comment.id}
+              AND d.recipient_person_id = ${f.recipientPerson.id}
+         )
+      `);
+    }
+
+    const delivered: Array<{ to: string; idempotencyKey?: string }> = [];
+    const send: DigestEmailSend = async (to, _subject, _data, options) => {
+      delivered.push({ to, idempotencyKey: options?.idempotencyKey });
+      return { success: true };
+    };
+
+    const outcome = await drainNotificationDigests({
+      budgetMs: 10_000,
+      maxGroups: 100,
+      send,
+    });
+    expect(outcome).toEqual({
+      sealed: 30,
+      processed: 30,
+      delivered: 30,
+      deferred: 0,
+      retry: 0,
+      degraded: false,
+    });
+    expect(delivered).toHaveLength(30);
+    expect(new Set(delivered.map((entry) => entry.idempotencyKey)).size).toBe(
+      30,
+    );
+
+    const stateCounts = await db.execute<{
+      delivered_groups: number;
+      remaining_groups: number;
+    }>(sql`
+      SELECT
+        count(*) FILTER (WHERE state = 'delivered')::int AS delivered_groups,
+        count(*) FILTER (WHERE state IN ('collecting', 'pending', 'delivering'))::int AS remaining_groups
+      FROM notification_digest
+    `);
+    expect(stateCounts.rows[0]).toEqual({
+      delivered_groups: 30,
+      remaining_groups: 0,
+    });
   });
 });

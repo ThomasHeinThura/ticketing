@@ -200,7 +200,16 @@ function createDaemonState({
 
   const networkId = `${idPrefix}${"f".repeat(64 - idPrefix.length)}`;
   const volumes = new Map();
-  const createVolumeRecord = (key, { rows, files } = {}) => {
+  const createVolumeRecord = (
+    key,
+    {
+      rows,
+      files,
+      setupCompleted = false,
+      adminTotpVerified = false,
+      customerPasswordEnabled = false,
+    } = {},
+  ) => {
     const name = `${PROJECT}_${key}`;
     volumes.set(name, {
       Name: name,
@@ -217,6 +226,9 @@ function createDaemonState({
               rows: rows ? { ...rows } : {},
               activeWriters: 0,
               appRoleReady: Boolean(rows && Object.keys(rows).length > 0),
+              setupCompleted,
+              adminTotpVerified,
+              customerPasswordEnabled,
             }
           : undefined,
       files:
@@ -1254,6 +1266,20 @@ function createRealChainWorld(t) {
           return { status: 1, stdout: "" };
         }
       }
+      if (joined.includes("ON_ERROR_STOP=1") && sub.includes("setup-check")) {
+        const sqlText = String(options.input || "");
+        if (
+          !sqlText.includes("instance_setting") ||
+          !sqlText.includes("two_factor") ||
+          !sqlText.includes("instance_plugin_config")
+        )
+          return { status: 1, stdout: "" };
+        const pgDb = daemon.volumes.get(`${PROJECT}_postgres-data`)?.db;
+        return writeStdoutOrFd(
+          options,
+          `${pgDb?.setupCompleted ? "1" : "0"}|${pgDb?.adminTotpVerified ? "1" : "0"}|${pgDb?.customerPasswordEnabled ? "1" : "0"}\n`,
+        );
+      }
       if (
         joined.includes("ON_ERROR_STOP=1") &&
         (sub[0] === "psql" || sub.includes("counts"))
@@ -1573,11 +1599,18 @@ test("real chain: refuses missing --confirm-daemon, wrong daemon id, and context
   assert.equal(w.destructiveDaemonCalls(w.otherDaemon).length, 0);
 });
 
-test("real chain: completes full fresh install through real preflight, restore proof (with dbName) and guarded upgrade", (t) => {
+test("real chain: Stage 1 checkpoints empty instance for /setup + portal auth and Stage 2 --resume-seed enforces gates before seeding", (t) => {
   const w = createRealChainWorld(t);
   w.execute();
 
-  assert.ok(w.logs.includes("Fresh install smoke passed."));
+  const stamp = "2026-11-12T12-00-00-000Z";
+  assert.ok(
+    w.logs.some((line) =>
+      line.includes(`Fresh empty install ready (checkpoint ${stamp})`),
+    ),
+    "Expected Stage 1 checkpoint instructions",
+  );
+  assert.equal(w.logs.includes("Fresh install smoke passed."), false);
   assert.ok(
     w.logs.includes(
       "Restore proof matched database counts and attachment hashes.",
@@ -1597,12 +1630,8 @@ test("real chain: completes full fresh install through real preflight, restore p
     assert.equal(running.length, 1, `Expected running fresh ${svc}`);
   }
 
-  // Backup artifacts exist outside removed volumes with valid checksums and 0700/0600 permissions
-  const backupDir = join(
-    w.privateDir,
-    "fresh-backups",
-    "2026-11-12T12-00-00-000Z",
-  );
+  // Backup artifacts exist outside removed volumes with valid checksums and 0700/0600 permissions; seeding has NOT run yet
+  const backupDir = join(w.privateDir, "fresh-backups", stamp);
   assert.equal(statSync(backupDir).mode & 0o777, 0o700);
   for (const artifact of [
     "postgres.dump",
@@ -1611,10 +1640,57 @@ test("real chain: completes full fresh install through real preflight, restore p
     "compose-env.tar",
     "counts.txt",
     "SHA256SUMS",
-    "sit-credentials.json",
+    "fresh-setup-pending.json",
   ]) {
     assert.ok(existsSync(join(backupDir, artifact)), `Missing ${artifact}`);
   }
+  assert.equal(existsSync(join(backupDir, "sit-credentials.json")), false);
+  assert.equal(
+    w.sitDaemon.calls.some(
+      (argv) =>
+        argv[0] === "exec" && argv.includes("apps/api/dist/seed-uat.js"),
+    ),
+    false,
+    "Stage 1 must not seed before interactive /setup with TOTP and portal auth configuration",
+  );
+  const pendingCheckpoint = JSON.parse(
+    readFileSync(join(backupDir, "fresh-setup-pending.json"), "utf8"),
+  );
+  assert.equal(pendingCheckpoint.status, "awaiting_setup");
+  assert.equal(
+    statSync(join(backupDir, "fresh-setup-pending.json")).mode & 0o777,
+    0o600,
+  );
+
+  // Stage 2 refuses until /setup, verified admin TOTP, and customer auth.password are complete
+  const resumeArgs = [
+    "--resume-seed",
+    stamp,
+    "--confirm-daemon",
+    w.sitDaemon.daemonId,
+  ];
+  assert.throws(
+    () => w.execute({ args: resumeArgs }),
+    /Initial instance setup is incomplete/,
+  );
+
+  const freshPg = w.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db;
+  freshPg.setupCompleted = true;
+  assert.throws(
+    () => w.execute({ args: resumeArgs }),
+    /First-admin setup requires a verified TOTP factor/,
+  );
+
+  freshPg.adminTotpVerified = true;
+  assert.throws(
+    () => w.execute({ args: resumeArgs }),
+    /Enable Email\/Password authentication/,
+  );
+
+  // Once all Stage 2 prerequisites hold, Stage 2 seeds once and runs smoke
+  freshPg.customerPasswordEnabled = true;
+  w.execute({ args: resumeArgs });
+  assert.ok(w.logs.includes("Fresh install smoke passed."));
   assert.ok(existsSync(join(backupDir, "sit-credentials.json")));
   assert.ok(
     w.sitDaemon.calls.some(
@@ -1623,7 +1699,7 @@ test("real chain: completes full fresh install through real preflight, restore p
         argv.includes("apps/api/dist/seed-uat.js") &&
         argv.includes("--uat"),
     ),
-    "Expected fresh install to invoke apps/api/dist/seed-uat.js --uat",
+    "Expected Stage 2 to invoke apps/api/dist/seed-uat.js --uat",
   );
   assert.ok(
     !w.sitDaemon.calls.some((argv) =>
@@ -1631,6 +1707,12 @@ test("real chain: completes full fresh install through real preflight, restore p
     ),
     "Fresh install must never invoke seed-sit-users.js",
   );
+  const seededCheckpoint = JSON.parse(
+    readFileSync(join(backupDir, "fresh-setup-pending.json"), "utf8"),
+  );
+  assert.equal(seededCheckpoint.status, "seeded");
+  assert.throws(() => w.execute({ args: resumeArgs }), /already seeded/);
+
   const countsContent = readFileSync(join(backupDir, "counts.txt"), "utf8");
   const sumsContent = readFileSync(join(backupDir, "SHA256SUMS"), "utf8");
   w.assertNoSecretsLogged([countsContent]);
@@ -2027,6 +2109,10 @@ test("real chain: concurrent invocation with different env-file and private-dir 
 
   w.execute();
   assert.equal(concurrentChecked, true);
-  assert.ok(w.logs.includes("Fresh install smoke passed."));
+  assert.ok(
+    w.logs.some((line) =>
+      line.includes("Fresh empty install ready (checkpoint"),
+    ),
+  );
   w.assertNoSecretsLogged();
 });
