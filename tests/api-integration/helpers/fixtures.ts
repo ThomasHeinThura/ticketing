@@ -370,6 +370,7 @@ export async function grantProjectRole(
  * role is a separate gate and is still checked by each route.
  */
 export const WORK_ITEM_PROJECT_CAPABILITIES = [
+  "workspace:read",
   "project:read",
   "work_item:read",
   "work_item:create",
@@ -416,6 +417,7 @@ export async function grantProjectAccessForWorkspaceRole(
   for (const project of projects) {
     if (role === "viewer") {
       await grantProjectRole(userId, project.id, [
+        "workspace:read",
         "project:read",
         "work_item:read",
       ]);
@@ -450,6 +452,7 @@ export async function grantProjectAccessToWorkspaceMembers(
     if (!person) continue;
     if (member.role === "viewer") {
       await grantProjectRole(member.userId, projectId, [
+        "workspace:read",
         "project:read",
         "work_item:read",
       ]);
@@ -475,6 +478,7 @@ export const PROJECT_MANAGE_CAPABILITIES = [
   "time_entry:create",
   "time_entry:read_any",
   "time_entry:update_any",
+  "time_entry:update_own",
 ] as const;
 
 export function grantProjectManageAccess(userId: string, projectId: string) {

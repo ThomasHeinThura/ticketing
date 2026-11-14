@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   findTimeEntryMutationTarget: vi.fn(),
   lockTimeEntryForUpdate: vi.fn(),
-  assertCallerHasCapabilityOrOwner: vi.fn(),
+  assertLegacyEntryAuthority: vi.fn(),
   projectFeatureEnabled: vi.fn(),
   lockTaskAndAssertProjectLive: vi.fn(),
   updateTimeEntryById: vi.fn(),
@@ -30,9 +30,9 @@ vi.mock("../../../apps/api/src/time-entry/repository", () => ({
     mocks.updateTimeEntryById(...args),
 }));
 
-vi.mock("../../../apps/api/src/utils/require-workspace-capability", () => ({
-  assertCallerHasCapabilityOrOwner: (...args: unknown[]) =>
-    mocks.assertCallerHasCapabilityOrOwner(...args),
+vi.mock("../../../apps/api/src/time-entry/authorization", () => ({
+  assertLegacyEntryAuthority: (...args: unknown[]) =>
+    mocks.assertLegacyEntryAuthority(...args),
 }));
 
 vi.mock("../../../apps/api/src/feature-flag/enforce", () => ({
@@ -63,7 +63,7 @@ describe("updateTimeEntry", () => {
     );
     mocks.findTimeEntryMutationTarget.mockResolvedValue(undefined);
     mocks.lockTimeEntryForUpdate.mockResolvedValue(undefined);
-    mocks.assertCallerHasCapabilityOrOwner.mockResolvedValue(undefined);
+    mocks.assertLegacyEntryAuthority.mockResolvedValue(undefined);
     mocks.projectFeatureEnabled.mockResolvedValue(true);
     mocks.lockTaskAndAssertProjectLive.mockResolvedValue({
       workspaceId: "workspace-1",
@@ -99,7 +99,6 @@ describe("updateTimeEntry", () => {
 
     await updateTimeEntry({
       identity,
-      credential: { kind: "session" },
       timeEntryId: "time-entry-1",
       startTime: nextStartTime,
       description: "renamed",
@@ -120,15 +119,19 @@ describe("updateTimeEntry", () => {
       identity,
       "task-1",
     );
-    expect(mocks.assertCallerHasCapabilityOrOwner).toHaveBeenCalledWith(
-      "workspace-1",
-      identity.userId,
-      "time_entry:update_any",
-      "time_entry:update_own",
-      true,
-      { kind: "session" },
+    expect(mocks.assertLegacyEntryAuthority).toHaveBeenCalledWith(
       mocks.tx,
+      identity,
+      expect.objectContaining({
+        workspaceId: "workspace-1",
+        projectId: "project-1",
+      }),
+      "time_entry:update_any",
+      { capability: "time_entry:update_own", isOwner: expect.any(Function) },
     );
+    expect(
+      mocks.assertLegacyEntryAuthority.mock.calls[0]?.[4].isOwner(identity),
+    ).toBe(true);
     expect(mocks.projectFeatureEnabled).toHaveBeenCalledWith(
       "feature.time_tracking",
       "project-1",
@@ -164,7 +167,6 @@ describe("updateTimeEntry", () => {
     await expect(
       updateTimeEntry({
         identity,
-        credential: { kind: "session" },
         timeEntryId: "time-entry-1",
         startTime: new Date("2026-08-10T12:00:00.000Z"),
       }),
@@ -205,7 +207,6 @@ describe("updateTimeEntry", () => {
     await expect(
       updateTimeEntry({
         identity,
-        credential: { kind: "session" },
         timeEntryId: "time-entry-1",
         startTime: new Date("2026-08-10T12:00:00.000Z"),
         endTime: new Date("2026-08-10T11:00:00.000Z"),
@@ -248,7 +249,6 @@ describe("updateTimeEntry", () => {
 
     await updateTimeEntry({
       identity,
-      credential: { kind: "session" },
       timeEntryId: "time-entry-1",
       startTime: nextStartTime,
     });
@@ -283,25 +283,28 @@ describe("updateTimeEntry", () => {
       ownerPersonId: "another-person",
       endTime: null,
     });
-    mocks.assertCallerHasCapabilityOrOwner.mockRejectedValue({ status: 403 });
+    mocks.assertLegacyEntryAuthority.mockRejectedValue({ status: 403 });
 
     await expect(
       updateTimeEntry({
         identity,
-        credential: { kind: "session" },
         timeEntryId: "time-entry-1",
         startTime: new Date("2026-08-10T12:00:00.000Z"),
       }),
     ).rejects.toMatchObject({ status: 403 });
-    expect(mocks.assertCallerHasCapabilityOrOwner).toHaveBeenCalledWith(
-      "workspace-1",
-      identity.userId,
-      "time_entry:update_any",
-      "time_entry:update_own",
-      false,
-      { kind: "session" },
+    expect(mocks.assertLegacyEntryAuthority).toHaveBeenCalledWith(
       mocks.tx,
+      identity,
+      expect.objectContaining({
+        workspaceId: "workspace-1",
+        projectId: "project-1",
+      }),
+      "time_entry:update_any",
+      { capability: "time_entry:update_own", isOwner: expect.any(Function) },
     );
+    expect(
+      mocks.assertLegacyEntryAuthority.mock.calls[0]?.[4].isOwner(identity),
+    ).toBe(false);
     expect(mocks.updateTimeEntryById).not.toHaveBeenCalled();
   });
 
@@ -317,7 +320,6 @@ describe("updateTimeEntry", () => {
     await expect(
       updateTimeEntry({
         identity,
-        credential: { kind: "session" },
         timeEntryId: "time-entry-1",
         startTime: new Date("2026-08-10T12:00:00.000Z"),
       }),

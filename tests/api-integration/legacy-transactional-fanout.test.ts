@@ -466,7 +466,6 @@ describe("legacy transactional event fanout", () => {
     const entry = await createTimeEntry({
       taskId: task.id,
       identity,
-      credential: { kind: "session" },
       startTime: new Date("2026-10-25T08:00:00.000Z"),
       endTime: new Date("2026-10-25T08:30:00.000Z"),
     });

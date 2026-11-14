@@ -1,3 +1,4 @@
+import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -12,6 +13,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectAccessToWorkspaceMembers,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 import { setProjectTimeFlag, setTimeFlags } from "./helpers/p5-time";
@@ -271,10 +273,6 @@ describe("legacy time-entry canonical boundary", () => {
       createTimeEntry({
         taskId: w.task.id,
         identity: principal,
-        credential: {
-          kind: "api_key",
-          scope: { permissions: { time_entry: ["create", "update_any"] } },
-        },
         startTime: new Date(START),
         endTime: new Date(END),
       }),
@@ -423,5 +421,56 @@ describe("legacy time-entry canonical boundary", () => {
       .from(schema.taskTimeEntryTable)
       .where(eq(schema.taskTimeEntryTable.taskId, w.task.id));
     expect(entries).toHaveLength(0);
+  });
+
+  it("lets the project role, not the workspace role, decide legacy create and update", async () => {
+    const w = await world();
+    const entry = await createEntry(w.b.user, w.task.id);
+    const lead = await createWorkspaceMember({ role: "lead" });
+    const member = await createWorkspaceMember({ role: "member" });
+    for (const actor of [lead, member])
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: w.a.workspace.id,
+        userId: actor.user.id,
+        role: actor === lead ? "lead" : "member",
+        joinedAt: new Date(),
+      });
+    // A workspace lead narrowed to project-viewer here; a workspace member lifted to project-lead.
+    await grantProjectRole(
+      lead.user.id,
+      w.project.id,
+      BUILT_IN_ROLES.viewer.capabilities,
+    );
+    await grantProjectRole(
+      member.user.id,
+      w.project.id,
+      BUILT_IN_ROLES.lead.capabilities,
+    );
+
+    mockAuthenticatedSession(lead.user);
+    expect(
+      (
+        await call("POST", "/api/time-entry", {
+          taskId: w.task.id,
+          startTime: START,
+          endTime: END,
+        })
+      ).status,
+    ).toBe(403);
+    expect((await update(entry.id, "narrowed")).status).toBe(403);
+    expect((await stored(entry.id)).description).toBe("original");
+
+    mockAuthenticatedSession(member.user);
+    expect(
+      (
+        await call("POST", "/api/time-entry", {
+          taskId: w.task.id,
+          startTime: START,
+          endTime: END,
+        })
+      ).status,
+    ).toBe(200);
+    expect((await update(entry.id, "lifted")).status).toBe(200);
+    expect((await stored(entry.id)).description).toBe("lifted");
   });
 });

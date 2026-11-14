@@ -3,10 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectFeatureEnabled } from "../../feature-flag/enforce";
 import { isServicePrincipalId } from "../../permissions/service-principal";
-import {
-  assertCallerHasCapabilityOrOwner,
-  type CapabilityCredential,
-} from "../../utils/require-workspace-capability";
+import { assertLegacyEntryAuthority } from "../authorization";
 import { resolveDuration } from "../duration";
 import {
   findTimeEntryMutationTarget,
@@ -17,7 +14,6 @@ import {
 
 type UpdateTimeEntryParams = {
   identity: ResolvedIdentity;
-  credential: CapabilityCredential;
   timeEntryId: string;
   startTime: Date;
   endTime?: Date;
@@ -25,8 +21,7 @@ type UpdateTimeEntryParams = {
 };
 
 async function updateTimeEntry(params: UpdateTimeEntryParams) {
-  const { identity, credential, timeEntryId, startTime, endTime, description } =
-    params;
+  const { identity, timeEntryId, startTime, endTime, description } = params;
   if (identity.side !== "staff" || isServicePrincipalId(identity.userId))
     throw new HTTPException(403, { message: "Forbidden" });
   const target = await findTimeEntryMutationTarget(identity, timeEntryId);
@@ -49,14 +44,19 @@ async function updateTimeEntry(params: UpdateTimeEntryParams) {
     if (!existingTimeEntry) {
       throw new HTTPException(404, { message: "Time entry not found" });
     }
-    await assertCallerHasCapabilityOrOwner(
-      task.workspaceId,
-      identity.userId,
-      "time_entry:update_any",
-      "time_entry:update_own",
-      existingTimeEntry.ownerPersonId === identity.personId,
-      credential,
+    await assertLegacyEntryAuthority(
       tx,
+      identity,
+      {
+        workspaceId: task.workspaceId,
+        projectId: task.projectId,
+        workItemId: task.id,
+      },
+      "time_entry:update_any",
+      {
+        capability: "time_entry:update_own",
+        isOwner: (fresh) => existingTimeEntry.ownerPersonId === fresh.personId,
+      },
     );
     if (
       !(await projectFeatureEnabled(

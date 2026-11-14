@@ -9,10 +9,6 @@ import {
   jsonResponse,
 } from "../openapi";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
-import {
-  capabilityCredential,
-  requireWorkspaceCapability,
-} from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import {
   legacyEntryOwner,
@@ -56,9 +52,7 @@ const getTaskTimeEntriesRoute = createRoute({
   middleware: [
     workspaceAccess.fromTaskId("taskId", {
       requireProjectReach: true,
-      deferCapability: true,
     }),
-    requireWorkspaceCapability("time_entry:read_any"),
   ] as const,
   request: { params: taskIdParam },
   responses: {
@@ -80,9 +74,7 @@ const getTimeEntryRoute = createRoute({
   middleware: [
     workspaceAccess.fromTimeEntry("id", {
       requireProjectReach: true,
-      deferCapability: true,
     }),
-    requireWorkspaceCapability("time_entry:read_any"),
   ] as const,
   request: { params: timeEntryParam },
   responses: {
@@ -105,11 +97,9 @@ const createTimeEntryRoute = createRoute({
   middleware: [
     workspaceAccess.fromTaskId("taskId", {
       requireProjectReach: true,
-      deferCapability: true,
       requireLiveProjectForTask: true,
     }),
     requireMutationIdentity,
-    requireWorkspaceCapability("time_entry:create"),
     requireLegacyTimeTracking,
   ] as const,
   request: {
@@ -140,7 +130,6 @@ const updateTimeEntryRoute = createRoute({
   middleware: [
     workspaceAccess.fromTimeEntry("id", {
       requireProjectReach: true,
-      deferCapability: true,
       requireLiveProjectForTask: true,
     }),
     requireMutationIdentity,
@@ -188,7 +177,6 @@ const timeEntry = apiRouter()
       await createTimeEntry({
         taskId,
         identity: await mutationIdentity(c),
-        credential: capabilityCredential(c.get("apiKey")),
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : undefined,
         description,
@@ -203,7 +191,6 @@ const timeEntry = apiRouter()
     return c.json(
       await updateTimeEntry({
         identity: await mutationIdentity(c),
-        credential: capabilityCredential(c.get("apiKey")),
         timeEntryId: id,
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : undefined,
