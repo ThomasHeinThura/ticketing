@@ -22,7 +22,7 @@ import {
   ensureCustomerRole,
   insertOrganisation,
 } from "./helpers/p5-invite";
-import { emailMock, sentPasswordResetEmails } from "./mocks/email";
+import { emailMock, sentRecoveryLinkEmails } from "./mocks/email";
 
 /**
  * A-05: a password sign-in on the wrong host answers 403 with a code naming the right door. It
@@ -140,7 +140,7 @@ async function expectRefused(
 }
 
 beforeEach(async () => {
-  sentPasswordResetEmails.length = 0;
+  sentRecoveryLinkEmails.length = 0;
   emailMock.failTransport = false;
   await resetTestDatabase();
   await db
@@ -312,7 +312,7 @@ describe("password recovery portal and credential boundaries", () => {
     expect((await complete("agent", staffToken)).status).toBe(400);
     await requestReset("agent", staff.user.email);
     await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(sentPasswordResetEmails).toHaveLength(0);
+    expect(sentRecoveryLinkEmails).toHaveLength(0);
   });
   it("sends on the right host, revokes sessions and accepts the token only once", async () => {
     const staff = await staffUser();
@@ -320,8 +320,8 @@ describe("password recovery portal and credential boundaries", () => {
       (await passwordSignIn("agent", staff.user.email, staff.password)).status,
     ).toBe(200);
     expect((await requestReset("agent", staff.user.email)).status).toBe(200);
-    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
-    const message = sentPasswordResetEmails[0];
+    await vi.waitFor(() => expect(sentRecoveryLinkEmails).toHaveLength(1));
+    const message = sentRecoveryLinkEmails[0];
     if (!message) throw new Error("Reset email not delivered");
     const link = new URL(message.resetLink);
     expect(link.origin).toBe(new URL(getConfiguredAgentOrigin()).origin);
@@ -343,8 +343,8 @@ describe("password recovery portal and credential boundaries", () => {
     expect((await requestReset("portal", customer.user.email)).status).toBe(
       200,
     );
-    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
-    const message = sentPasswordResetEmails[0];
+    await vi.waitFor(() => expect(sentRecoveryLinkEmails).toHaveLength(1));
+    const message = sentRecoveryLinkEmails[0];
     if (!message) throw new Error("Reset email not delivered");
     const link = new URL(message.resetLink);
     expect(link.origin).toBe(new URL(getConfiguredCustomerOrigin()).origin);
@@ -357,7 +357,7 @@ describe("password recovery portal and credential boundaries", () => {
       const response = await requestReset("agent", staff.user.email);
       expect(response.status).toBe(200);
     }
-    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(3));
+    await vi.waitFor(() => expect(sentRecoveryLinkEmails).toHaveLength(3));
     const audit = await db
       .select()
       .from(schema.auditLogTable)
@@ -367,8 +367,8 @@ describe("password recovery portal and credential boundaries", () => {
   it("stores only digests and supersedes the earlier link on a newer request", async () => {
     const staff = await staffUser();
     await requestReset("agent", staff.user.email);
-    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
-    const first = new URL(sentPasswordResetEmails[0]?.resetLink ?? "");
+    await vi.waitFor(() => expect(sentRecoveryLinkEmails).toHaveLength(1));
+    const first = new URL(sentRecoveryLinkEmails[0]?.resetLink ?? "");
     const earlier = linkToken(first);
     const raw = earlier.split(".")[0] ?? "";
     const rows = await db
@@ -382,9 +382,9 @@ describe("password recovery portal and credential boundaries", () => {
       await hashResetIdentifier(`reset-password:${raw}`),
     );
     await requestReset("agent", staff.user.email);
-    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(2));
+    await vi.waitFor(() => expect(sentRecoveryLinkEmails).toHaveLength(2));
     const newer = linkToken(
-      new URL(sentPasswordResetEmails[1]?.resetLink ?? ""),
+      new URL(sentRecoveryLinkEmails[1]?.resetLink ?? ""),
     );
     expect((await complete("agent", earlier)).status).toBe(400);
     expect((await complete("agent", newer)).status).toBe(200);
@@ -394,9 +394,9 @@ describe("password recovery portal and credential boundaries", () => {
   it("allows only one concurrent reset completion", async () => {
     const staff = await staffUser();
     await requestReset("agent", staff.user.email);
-    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
+    await vi.waitFor(() => expect(sentRecoveryLinkEmails).toHaveLength(1));
     const token = linkToken(
-      new URL(sentPasswordResetEmails[0]?.resetLink ?? ""),
+      new URL(sentRecoveryLinkEmails[0]?.resetLink ?? ""),
     );
     const results = await Promise.all([
       complete("agent", token),
@@ -421,9 +421,9 @@ describe("password recovery portal and credential boundaries", () => {
       ?.split(";", 1)[0];
     if (!cookie) throw new Error("Session cookie missing");
     await requestReset("agent", staff.user.email);
-    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
+    await vi.waitFor(() => expect(sentRecoveryLinkEmails).toHaveLength(1));
     const token = linkToken(
-      new URL(sentPasswordResetEmails[0]?.resetLink ?? ""),
+      new URL(sentRecoveryLinkEmails[0]?.resetLink ?? ""),
     );
     const change = await sharedApp().request(
       `${getConfiguredAgentOrigin()}/api/auth/change-password`,
@@ -570,8 +570,8 @@ describe("password recovery portal and credential boundaries", () => {
       },
     );
     expect(response.status).toBe(200);
-    await vi.waitFor(() => expect(sentPasswordResetEmails).toHaveLength(1));
-    const url = new URL(sentPasswordResetEmails[0]?.resetLink ?? "");
+    await vi.waitFor(() => expect(sentRecoveryLinkEmails).toHaveLength(1));
+    const url = new URL(sentRecoveryLinkEmails[0]?.resetLink ?? "");
     expect(url.origin).toBe(new URL(getConfiguredAgentOrigin()).origin);
   });
   it("answers identically for missing, passwordless, suspended and throttled addresses", async () => {

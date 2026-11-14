@@ -20,14 +20,14 @@ export async function sendOtpEmail(
   return undefined;
 }
 
-export const sentPasswordResetEmails: { to: string; resetLink: string }[] = [];
+export const sentRecoveryLinkEmails: { to: string; resetLink: string }[] = [];
 export async function sendPasswordResetEmail(
   to: string,
   _subject: string,
   data: { resetLink: string },
 ): Promise<void> {
   if (emailMock.failTransport) throw new Error("transport failure");
-  sentPasswordResetEmails.push({ to, resetLink: data.resetLink });
+  sentRecoveryLinkEmails.push({ to, resetLink: data.resetLink });
 }
 
 /** Every invitation email handed to the mailer, so a test can read the link a recipient would. */
