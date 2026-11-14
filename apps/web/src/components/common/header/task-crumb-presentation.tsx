@@ -51,15 +51,17 @@ export function TaskCrumbOptionsPresentation({
   onSelect,
   children,
   empty = true,
+  busy = false,
 }: {
   options: { value: string; label: string; disabled?: boolean }[];
   onSelect: (value: string) => void;
   children?: ReactNode;
   empty?: boolean;
+  busy?: boolean;
 }) {
   const { t } = useTranslation();
   return (
-    <DropdownMenuContent className="w-80" align="start">
+    <DropdownMenuContent aria-busy={busy} className="w-80" align="start">
       <DropdownMenuGroup>
         <DropdownMenuLabel className="text-[11px] uppercase tracking-wide">
           {t("navigation:search.groups.task")}

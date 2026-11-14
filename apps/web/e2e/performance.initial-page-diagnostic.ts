@@ -16,11 +16,13 @@ import {
   sanitizeCpuProfileNodes,
 } from "./helpers/aggregate-cpu-profile";
 import {
+  BOARD_ITEM_COUNT,
+  BOARD_PROJECT_KEY,
+  boardItemId,
   installPerformanceApiFixture,
   PERFORMANCE_BASE_URL,
-  PROJECT_ID,
+  WORK_ITEM_KEY,
   WORK_LIST_PATH,
-  WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
@@ -853,7 +855,10 @@ async function withDiagnosticProfile(
       timelineEvents.push(sanitized);
     }
   });
-  await installPerformanceApiFixture(page);
+  await installPerformanceApiFixture(page, {
+    boardProject: true,
+    workflowCapabilities: true,
+  });
   await page.addInitScript(() => {
     const allowedMarks = new Set([
       "document-start",
@@ -1081,26 +1086,25 @@ async function visitInitialWorkList(page: Page) {
 }
 
 async function prepareTaskState(page: Page) {
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/task/legacy-task-1`,
-    { waitUntil: "domcontentloaded" },
-  );
-  await page.getByRole("button", { name: "Backlog", exact: true }).waitFor({
+  await page.goto(`/agent/work-items/${WORK_ITEM_KEY}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.getByTestId("work-item-detail")).toBeVisible({
     timeout: 30_000,
   });
-  await page.getByRole("button", { name: "Backlog", exact: true }).click();
+  const stateControl = page.getByTestId("work-item-state-control");
+  await expect(stateControl).toHaveText("Backlog", { timeout: 30_000 });
+  await stateControl.click();
 }
 
 async function visitTaskState(page: Page) {
   await page
-    .getByRole("button", { name: /^In progress/ })
-    .last()
+    .locator('[data-slot="menu-popup"]')
+    .getByRole("menuitem", { name: /^In progress/ })
     .click();
-  await expect(
-    page.locator('[data-slot="popover-trigger"]:visible').filter({
-      hasText: "In progress",
-    }),
-  ).toBeVisible();
+  await expect(page.getByTestId("work-item-state-control")).toHaveText(
+    "In progress",
+  );
   await page.waitForFunction(
     () => {
       const metrics = (
@@ -1130,26 +1134,25 @@ async function visitTaskState(page: Page) {
 }
 
 async function prepareTaskAssignment(page: Page) {
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/task/legacy-task-1`,
-    { waitUntil: "domcontentloaded" },
-  );
-  await page
-    .getByRole("button", { name: /Unassigned/ })
-    .last()
-    .click({ timeout: 30_000 });
+  await page.goto(`/agent/work-items/${WORK_ITEM_KEY}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.getByTestId("work-item-detail")).toBeVisible({
+    timeout: 30_000,
+  });
+  const assignee = page.getByTestId("work-item-assignee-control");
+  await expect(assignee).toHaveText(/Unassigned/, { timeout: 30_000 });
+  await assignee.click();
 }
 
 async function visitTaskAssignment(page: Page) {
   await page
+    .locator('[data-slot="popover-popup"]')
     .getByRole("button", { name: /G11 Agent/ })
-    .last()
     .click({ timeout: 30_000 });
-  await expect(
-    page.locator('[data-slot="popover-trigger"]:visible').filter({
-      hasText: "G11 Agent",
-    }),
-  ).toBeVisible();
+  await expect(page.getByTestId("work-item-assignee-control")).toHaveText(
+    /G11 Agent/,
+  );
   await page.waitForFunction(
     () => {
       const metrics = (
@@ -1183,18 +1186,25 @@ async function visitTaskAssignment(page: Page) {
   });
 }
 
+const BOARD_PATH = `/agent/projects/${BOARD_PROJECT_KEY}/work?layout=board`;
+const BOARD_CARD_SELECTOR =
+  '[data-testid="work-item-board-card"] [data-task-id]';
+
 async function visitBoard(page: Page) {
   await installLastItemPaintRecorder(page, {
     kind: "board",
-    expectedCount: 200,
+    expectedCount: BOARD_ITEM_COUNT,
     metric: "boardPaint",
+    canonical: {
+      selector: BOARD_CARD_SELECTOR,
+      expectedIds: Array.from({ length: BOARD_ITEM_COUNT }, (_, index) =>
+        boardItemId(index + 1),
+      ),
+    },
   });
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
-    { waitUntil: "domcontentloaded" },
-  );
-  await expect(page.locator('[data-task-id^="legacy-task-"]')).toHaveCount(
-    200,
+  await page.goto(BOARD_PATH, { waitUntil: "domcontentloaded" });
+  await expect(page.locator(BOARD_CARD_SELECTOR)).toHaveCount(
+    BOARD_ITEM_COUNT,
     { timeout: 30_000 },
   );
   await page.waitForFunction(
@@ -1224,29 +1234,24 @@ async function visitBoard(page: Page) {
   });
 }
 
-async function visitBoardTaskDetailsSheet(page: Page) {
-  await page.goto(
-    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
-    { waitUntil: "domcontentloaded" },
+async function prepareBoardTaskDetailsSheet(page: Page) {
+  await page.goto(BOARD_PATH, { waitUntil: "domcontentloaded" });
+  await expect(page.locator(BOARD_CARD_SELECTOR)).toHaveCount(
+    BOARD_ITEM_COUNT,
+    { timeout: 30_000 },
   );
-  const firstTaskCard = page.locator('[data-task-id^="legacy-task-"]').first();
-  await expect(firstTaskCard).toBeVisible({ timeout: 30_000 });
-  const taskId = await firstTaskCard.getAttribute("data-task-id");
-  if (!taskId) throw new Error("The first board card had no task identity.");
+}
 
-  await firstTaskCard.click();
-  await expect(page).toHaveURL(new RegExp(`[?&]taskId=${taskId}(?:&|$)`));
-  await expect(
-    page.locator('.taskdesk-tiptap-prose[contenteditable="true"]'),
-  ).toBeVisible({
+async function visitBoardTaskDetailsSheet(page: Page) {
+  await page.getByText("Seeded board item 1", { exact: true }).click();
+  await expect(page).toHaveURL(/[?&]item=BRD-1(?:&|$)/);
+  await expect(page.getByTestId("work-item-side-pane")).toBeVisible({
     timeout: 30_000,
   });
 
   await page.keyboard.press("Escape");
-  await expect(page).not.toHaveURL(/[?&]taskId=/);
-  await expect(
-    page.locator('.taskdesk-tiptap-prose[contenteditable="true"]'),
-  ).toHaveCount(0);
+  await expect(page).not.toHaveURL(/[?&]item=/);
+  await expect(page.getByTestId("work-item-side-pane")).toHaveCount(0);
   await page.keyboard.press("?");
   const helpDialog = page.getByRole("dialog");
   await expect(helpDialog).toBeVisible();
@@ -1292,7 +1297,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       browser,
       "board task selection opens editor and Escape closes sheet",
       false,
-      async () => {},
+      prepareBoardTaskDetailsSheet,
       visitBoardTaskDetailsSheet,
     ),
   ];

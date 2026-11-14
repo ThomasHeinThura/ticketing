@@ -11,9 +11,11 @@ import {
   CardTitle,
   Input,
   Label,
+  LoadingStatus,
   Radio,
   RadioGroup,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -79,6 +81,12 @@ export function ConnectStep({
   const saved = (sources.data ?? []).filter(
     (source) => source.pluginId === pluginId,
   );
+  const sourcesPlaceholder = useDelayedPending(sources.isPending, {
+    releaseNow: sources.isSuccess && saved.length === 0,
+  });
+  const projectsPlaceholder = useDelayedPending(projects.isPending, {
+    releaseNow: projects.isSuccess && projects.data?.length === 0,
+  });
   const reusing = saved.find((source) => source.id === existingId);
 
   const connect = useMutation({
@@ -221,8 +229,18 @@ export function ConnectStep({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {sources.isPending ? (
-              <Skeleton className="h-10 w-full" />
+            {!sources.isError && (sources.isPending || sourcesPlaceholder) ? (
+              <LoadingStatus
+                visible={sourcesPlaceholder}
+                label={t("common:empty.loading")}
+              >
+                <Skeleton
+                  className="h-10 w-full"
+                  style={{
+                    visibility: sourcesPlaceholder ? "visible" : "hidden",
+                  }}
+                />
+              </LoadingStatus>
             ) : saved.length > 0 ? (
               <div className="space-y-2">
                 <Label htmlFor="import-wizard-existing">
@@ -348,8 +366,19 @@ export function ConnectStep({
               <Label htmlFor="import-wizard-target-project">
                 {t("wizard.connect.targetProject")}
               </Label>
-              {projects.isPending ? (
-                <Skeleton className="h-9 w-full" />
+              {!projects.isError &&
+              (projects.isPending || projectsPlaceholder) ? (
+                <LoadingStatus
+                  visible={projectsPlaceholder}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-9 w-full"
+                    style={{
+                      visibility: projectsPlaceholder ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
               ) : (
                 <PickerPopover
                   id="import-wizard-target-project"

@@ -10,7 +10,9 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  LoadingStatus,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -60,6 +62,7 @@ function PortalSignIn() {
     queryFn: getPortalAuthMethods,
     staleTime: 60_000,
   });
+  const placeholderVisible = useDelayedPending(authMethods.isPending);
   // Checked again where it is used, so no route or router change can let an unchecked value
   // through: only a same-origin portal path is ever a destination.
   const safeRedirect = safePortalRedirect(search.redirect);
@@ -451,10 +454,17 @@ function PortalSignIn() {
             </form>
           ) : null}
           {stage === "password" ? (
-            authMethods.isPending ? (
-              <div role="status" aria-label={t("auth:signInForm.signingIn")}>
-                <Skeleton className="h-10 w-full" />
-              </div>
+            !authMethods.isError &&
+            (authMethods.isPending ||
+              (placeholderVisible && authMethods.data?.password)) ? (
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("auth:signInForm.signingIn")}
+              >
+                <div>
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </LoadingStatus>
             ) : authMethods.data?.password ? (
               <form className="space-y-4" onSubmit={submitPassword}>
                 {/* Shown as wrapping text, not a read-only input, so a long address is never cut off. */}

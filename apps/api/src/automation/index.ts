@@ -14,6 +14,7 @@ import {
   registeredDeletionRequestSchema,
   requestRegisteredDeletion,
 } from "../pending-action/deletion-targets";
+import { liveRegisteredJobCatalog } from "../scheduler";
 import {
   listReachOf,
   requireReachFilteredList,
@@ -461,13 +462,20 @@ async function createRule(
         },
       ]),
     };
-  const validated = validateRuleDefinition({
-    trigger: body.trigger,
-    scheduleCron: body.scheduleCron ?? null,
-    conditions: body.conditions,
-    actions: body.actions,
-    projectFilter: body.projectFilter ?? null,
-  });
+  const validated = validateRuleDefinition(
+    {
+      trigger: body.trigger,
+      scheduleCron: body.scheduleCron ?? null,
+      conditions: body.conditions,
+      actions: body.actions,
+      projectFilter: body.projectFilter ?? null,
+    },
+    {
+      scheduleAvailable: liveRegisteredJobCatalog().some(
+        (job) => job.name === "automation-schedule" && job.enabled,
+      ),
+    },
+  );
   if (!validated.ok) return { error: problemsResponse(validated.problems) };
   if (validated.value.projectFilter)
     await assertProjectFilterValid(
@@ -554,21 +562,28 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
           400,
         );
       const trigger = body.trigger ?? existing.trigger;
-      const validated = validateRuleDefinition({
-        trigger,
-        scheduleCron:
-          body.scheduleCron !== undefined
-            ? body.scheduleCron
-            : trigger === existing.trigger
-              ? existing.scheduleCron
-              : null,
-        conditions: body.conditions ?? existing.conditions,
-        actions: body.actions ?? existing.actions,
-        projectFilter:
-          body.projectFilter !== undefined
-            ? body.projectFilter
-            : existing.projectFilter,
-      });
+      const validated = validateRuleDefinition(
+        {
+          trigger,
+          scheduleCron:
+            body.scheduleCron !== undefined
+              ? body.scheduleCron
+              : trigger === existing.trigger
+                ? existing.scheduleCron
+                : null,
+          conditions: body.conditions ?? existing.conditions,
+          actions: body.actions ?? existing.actions,
+          projectFilter:
+            body.projectFilter !== undefined
+              ? body.projectFilter
+              : existing.projectFilter,
+        },
+        {
+          scheduleAvailable: liveRegisteredJobCatalog().some(
+            (job) => job.name === "automation-schedule" && job.enabled,
+          ),
+        },
+      );
       if (!validated.ok) {
         const problems = problemsResponse(validated.problems);
         return c.json(problems.body, problems.status);
@@ -631,13 +646,20 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
     const identity = await authoriseRuleScope(c, scope, "manage");
     await requireFeature(scope);
     // Re-validate the stored rule: vocabulary and role may have changed since it was saved.
-    const validated = validateRuleDefinition({
-      trigger: existing.trigger,
-      scheduleCron: existing.scheduleCron,
-      conditions: existing.conditions,
-      actions: existing.actions,
-      projectFilter: existing.projectFilter,
-    });
+    const validated = validateRuleDefinition(
+      {
+        trigger: existing.trigger,
+        scheduleCron: existing.scheduleCron,
+        conditions: existing.conditions,
+        actions: existing.actions,
+        projectFilter: existing.projectFilter,
+      },
+      {
+        scheduleAvailable: liveRegisteredJobCatalog().some(
+          (job) => job.name === "automation-schedule" && job.enabled,
+        ),
+      },
+    );
     if (!validated.ok) {
       const problems = problemsResponse(validated.problems);
       return c.json(problems.body, 422);

@@ -361,11 +361,11 @@ describe("announcements management", () => {
       ).toBeInTheDocument();
     },
   );
-  it("shows loading while service permission is being checked", () => {
+  it("shows loading while service permission is being checked", async () => {
     mocks.canManage = false;
     mocks.statusLoading = true;
     setup();
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(screen.queryByTestId("settings-access-denied")).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ import {
   Button,
   SaveButton,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
@@ -54,6 +55,7 @@ export function ServiceCalendarEditorView({
   const { t } = useTranslation("serviceCalendars");
   const { calendar, loading, isCalendarError, refetchCalendar, saving } = state;
 
+  const placeholderVisible = useDelayedPending(loading);
   if (isForbiddenError(state.calendarError)) {
     if (state.capabilityCheckFailed || state.isCheckingPermissions)
       return (
@@ -66,11 +68,18 @@ export function ServiceCalendarEditorView({
     return <NoAccessPage />;
   }
 
-  if (loading) {
+  if (
+    !isCalendarError &&
+    (loading || (placeholderVisible && (isNew || calendar)))
+  ) {
     return (
       <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={t("editor.pageTitle")} />
-        <div role="status" aria-label={t("editor.loading")}>
+        <div
+          role="status"
+          aria-label={t("editor.loading")}
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <Skeleton className="h-12 w-2/3" />
           <Skeleton className="mt-4 h-72 w-full" />
         </div>

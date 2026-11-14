@@ -1,4 +1,4 @@
-import { Cron } from "croner";
+import { Cron, CronPattern } from "croner";
 import {
   type AutomationAction,
   BUILTIN_ACTION_TYPES,
@@ -20,6 +20,7 @@ import {
   AUTOMATION_SCHEDULE_TRIGGER,
   isAutomationEventTrigger,
 } from "./constants";
+import { scheduleOccurrence } from "./schedule-occurrence";
 
 /**
  * Save-time validation of a rule definition. Every problem names its path, and a recognised but
@@ -55,7 +56,7 @@ const AVAILABLE_ACTION_TYPES: ReadonlySet<string> = new Set(
 export function validateRuleDefinition(
   input: RuleDefinitionInput,
   options: {
-    /** `schedule` has no executor in this build; when false it is refused as unavailable. */
+    /** The scheduler catalog owns availability; omitted/false fails closed. */
     scheduleAvailable?: boolean;
   } = {},
 ):
@@ -74,10 +75,33 @@ export function validateRuleDefinition(
       });
     } else {
       const cron = input.scheduleCron?.trim() ?? "";
-      let valid = cron.length > 0 && cron.length <= 100;
+      let valid =
+        cron.length > 0 && cron.length <= 100 && cron.split(/\s+/).length === 5;
       if (valid) {
         try {
-          new Cron(cron, { paused: true });
+          const parsed = new Cron(cron, { paused: true, timezone: "UTC" });
+          const start = new Date();
+          const horizon = new Date(start);
+          horizon.setUTCFullYear(horizon.getUTCFullYear() + 5);
+          const next = parsed.nextRun(start);
+          parsed.stop();
+          valid =
+            next !== null &&
+            next <= horizon &&
+            scheduleOccurrence(cron, start) !== null;
+          // At most 1,440 simple array checks; no enumeration of thousands of runs.
+          const fields = new CronPattern(cron, "UTC");
+          if (
+            scheduleMinimumGap(fields, false) < 5 ||
+            (scheduleMinimumGap(fields) < 5 &&
+              scheduleHasAdjacentDays(cron, start, horizon))
+          ) {
+            problems.push({
+              code: "invalid",
+              path: "scheduleCron",
+              message: "schedule_minimum_interval",
+            });
+          }
         } catch {
           valid = false;
         }
@@ -87,7 +111,7 @@ export function validateRuleDefinition(
           code: "invalid",
           path: "scheduleCron",
           message:
-            "a valid cron expression is required for the schedule trigger",
+            "a valid five-field cron expression is required for the schedule trigger",
         });
       else scheduleCron = cron;
     }
@@ -175,12 +199,15 @@ export function validateRuleDefinition(
       if (
         record.basis !== undefined &&
         (field !== "age" ||
-          (record.basis !== "created_at" && record.basis !== "updated_at"))
+          (record.basis !== "created_at" &&
+            record.basis !== "updated_at" &&
+            record.basis !== "resolved_at"))
       ) {
         problems.push({
           code: "invalid",
           path: `${path}.basis`,
-          message: "basis applies only to age (created_at or updated_at)",
+          message:
+            "basis applies only to age (created_at, updated_at or resolved_at)",
         });
         return;
       }
@@ -189,10 +216,18 @@ export function validateRuleDefinition(
         op: op as ConditionOp,
         ...(record.value !== undefined ? { value: record.value } : {}),
         ...(record.basis !== undefined
-          ? { basis: record.basis as "created_at" | "updated_at" }
+          ? {
+              basis: record.basis as
+                | "created_at"
+                | "updated_at"
+                | "resolved_at",
+            }
           : {}),
       };
-      const problem = conditionValueProblem(condition);
+      const problem =
+        field === "actor_role" && input.trigger !== "work_item.commented"
+          ? "actor_role applies only to work_item.commented"
+          : conditionValueProblem(condition);
       if (problem) {
         problems.push({ code: "invalid", path, message: problem });
         return;
@@ -271,4 +306,55 @@ export function validateRuleDefinition(
 /** Does any stored action need the triggering event to carry a work item? */
 export function actionsNeedWorkItem(actions: readonly AutomationAction[]) {
   return actions.some((action) => action.type !== "call_webhook");
+}
+
+/** Fixed upper bound: 24 hour checks and at most 1,440 minute checks. */
+export function scheduleMinimumGap(
+  fields: { hour: number[]; minute: number[] },
+  includeMidnight = true,
+): number {
+  const minutes: number[] = [];
+  for (let h = 0; h < 24; h++) {
+    if (!fields.hour[h]) continue;
+    for (let m = 0; m < 60; m++) if (fields.minute[m]) minutes.push(h * 60 + m);
+  }
+  return Math.min(
+    ...minutes.map(
+      (m, i) =>
+        m -
+        (minutes[i - 1] ??
+          (includeMidnight
+            ? (minutes.at(-1) ?? 0) - 1440
+            : Number.NEGATIVE_INFINITY)),
+    ),
+  );
+}
+
+/** Only midnight gaps need calendar checks. At most 1,828 UTC day matches. */
+function scheduleHasAdjacentDays(
+  pattern: string,
+  start: Date,
+  end: Date,
+): boolean {
+  const calendar = new Cron(`0 0 ${pattern.split(/\s+/).slice(2).join(" ")}`, {
+    paused: true,
+    timezone: "UTC",
+  });
+  try {
+    let previous = false;
+    const day = new Date(start);
+    day.setUTCHours(0, 0, 0, 0);
+    for (
+      let i = 0;
+      i < 1828 && day <= end;
+      i++, day.setUTCDate(day.getUTCDate() + 1)
+    ) {
+      const matches = calendar.match(day);
+      if (matches && previous) return true;
+      previous = matches;
+    }
+    return false;
+  } finally {
+    calendar.stop();
+  }
 }

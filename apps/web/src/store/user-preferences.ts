@@ -70,7 +70,10 @@ export const useUserPreferencesStore = create<UserPreferencesStore>()(
           document.documentElement.style.removeProperty("--y");
         }
 
-        if ("startViewTransition" in document) {
+        if (
+          "startViewTransition" in document &&
+          !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        ) {
           document.startViewTransition(() => {
             set({ theme });
           });

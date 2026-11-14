@@ -16,6 +16,7 @@ import {
   TabsList,
   TabsPanel,
   TabsTab,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -163,6 +164,9 @@ export function RoleDetailView({
   const queryClient = useQueryClient();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const role = useRole(workspace?.id ?? "", roleId);
+  const placeholderVisible = useDelayedPending(
+    workspaceLoading || role.isLoading,
+  );
   if (isForbiddenError(role.error)) return <NoAccessPage />;
   return (
     <>
@@ -195,8 +199,13 @@ export function RoleDetailView({
             ) : null}
           </div>
         </div>
-        {workspaceLoading || role.isLoading ? (
-          <div role="status" aria-label={t("roles:detail.loading")}>
+        {!role.isError &&
+        (workspaceLoading || role.isLoading || placeholderVisible) ? (
+          <div
+            role="status"
+            aria-label={t("roles:detail.loading")}
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
             <Skeleton className="h-48 w-full" />
           </div>
         ) : role.error instanceof HttpError && role.error.status === 404 ? (

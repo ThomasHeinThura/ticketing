@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -68,9 +69,10 @@ export function S3DraftPanel() {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  if (query.isPending)
+  const placeholderVisible = useDelayedPending(query.isPending);
+  if (!query.isError && (query.isPending || placeholderVisible))
     return (
-      <Card>
+      <Card style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
         <CardContent>{t("draft.loading")}</CardContent>
       </Card>
     );

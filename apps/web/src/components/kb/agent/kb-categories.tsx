@@ -21,12 +21,14 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -151,6 +153,9 @@ export function KbCategories({
   const queryClient = useQueryClient();
   const openPendingAction = useOpenPendingAction();
   const categories = useKbCategories(workspaceId);
+  const placeholderVisible = useDelayedPending(categories.isLoading, {
+    releaseNow: categories.isSuccess && categories.data.categories.length === 0,
+  });
   const [name, setName] = useState("");
   const [parent, setParent] = useState(ROOT);
   const [renaming, setRenaming] = useState<KbCategory | null>(null);
@@ -245,8 +250,16 @@ export function KbCategories({
           </CardContent>
         </Card>
       ) : null}
-      {categories.isLoading ? (
-        <Skeleton className="h-24 w-full" />
+      {!categories.isError && (categories.isLoading || placeholderVisible) ? (
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-24 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : categories.isError ? (
         <Alert variant="error">
           <AlertDescription>{t("kb:categories.loadError")}</AlertDescription>

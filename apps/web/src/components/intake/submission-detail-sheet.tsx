@@ -1,6 +1,6 @@
-import { Button, Skeleton } from "@taskdesk/ui";
+import { Button, DelayedSuspense, LoadingStatus, Skeleton } from "@taskdesk/ui";
 import { X } from "lucide-react";
-import { lazy, Suspense, useCallback, useRef } from "react";
+import { lazy, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TaskDetailsSheetFrame } from "@/components/task/task-details-sheet";
 
@@ -14,9 +14,11 @@ export const SUBMISSION_ROW_ATTRIBUTE = "data-submission-ref";
 function SubmissionDetailSheetLoading({
   submissionRef,
   onClose,
+  visible,
 }: {
   submissionRef: string;
   onClose: () => void;
+  visible: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -38,11 +40,13 @@ function SubmissionDetailSheetLoading({
           <X className="size-4" aria-hidden="true" />
         </Button>
       </div>
-      <div className="flex flex-col gap-4 px-4 py-4">
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-      </div>
+      <LoadingStatus visible={visible} label={t("common:empty.loading")}>
+        <div className="flex flex-col gap-4 px-4 py-4">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      </LoadingStatus>
     </div>
   );
 }
@@ -88,13 +92,14 @@ export function SubmissionDetailSheet({
       finalFocus={finalFocus}
     >
       {(visibleRef) => (
-        <Suspense
-          fallback={
+        <DelayedSuspense
+          fallback={(visible) => (
             <SubmissionDetailSheetLoading
               submissionRef={visibleRef}
               onClose={onClose}
+              visible={visible}
             />
-          }
+          )}
         >
           <SubmissionDetailSheetBody
             submissionRef={visibleRef}
@@ -103,7 +108,7 @@ export function SubmissionDetailSheet({
             onClose={onClose}
             onOpenWorkItem={onOpenWorkItem}
           />
-        </Suspense>
+        </DelayedSuspense>
       )}
     </TaskDetailsSheetFrame>
   );

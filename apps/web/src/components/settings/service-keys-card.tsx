@@ -25,12 +25,14 @@ import {
   DialogTitle,
   Frame,
   FramePanel,
+  LoadingStatus,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Ban, ServerCog, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -173,6 +175,10 @@ export function ServiceKeysCard() {
       !(error instanceof HttpError && error.status === 403) && count < 2,
   });
 
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && query.data.length === 0,
+  });
+
   const revoke = useMutation({
     mutationFn: (key: ApiKey) => revokeServiceKey(workspaceId, key.id),
     onSuccess: async () => {
@@ -237,14 +243,23 @@ export function ServiceKeysCard() {
         </Card>
         <Card className="!rounded-none">
           <CardPanel>
-            {query.isLoading ? (
-              <Frame>
-                <FramePanel className="p-8">
-                  <p className="text-center text-sm text-muted-foreground">
-                    {t("settings:serviceKeys.loading")}
-                  </p>
-                </FramePanel>
-              </Frame>
+            {!query.isError && (query.isLoading || placeholderVisible) ? (
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
+              >
+                <Frame
+                  style={{
+                    visibility: placeholderVisible ? "visible" : "hidden",
+                  }}
+                >
+                  <FramePanel className="p-8">
+                    <p className="text-center text-sm text-muted-foreground">
+                      {t("settings:serviceKeys.loading")}
+                    </p>
+                  </FramePanel>
+                </Frame>
+              </LoadingStatus>
             ) : keys.length === 0 ? (
               <Frame>
                 <FramePanel className="p-8">

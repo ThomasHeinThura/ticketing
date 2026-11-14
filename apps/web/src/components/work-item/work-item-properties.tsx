@@ -1,8 +1,9 @@
+import { LoadingStatus } from "@taskdesk/ui";
 import { dayToIso, isoToDay } from "@/lib/work-item-date";
 
 export { dayToIso, isoToDay } from "@/lib/work-item-date";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -19,7 +20,9 @@ import {
   PopoverContent,
   PopoverTrigger,
   ShortcutNumber,
+  Spinner,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   CalendarClock,
@@ -36,10 +39,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import { TaskPropertiesPresentation } from "@/components/task/task-detail-presentation";
-import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import { getWorkItemLabels } from "@/fetchers/work-item/get-work-item-labels";
-import transitionWorkItem from "@/fetchers/work-item/transition-work-item";
-import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import useGetAssignablePeople from "@/hooks/queries/work-item/use-get-assignable-people";
 import useGetRequesterCandidates from "@/hooks/queries/work-item/use-get-requester-candidates";
 import useGetWorkItemTransitions from "@/hooks/queries/work-item/use-get-work-item-transitions";
@@ -49,7 +49,6 @@ import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
 import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
-import { HttpError } from "@/lib/http-error";
 import { getPriorityLabel } from "@/lib/i18n/domain";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
@@ -66,6 +65,12 @@ import {
 import { workItemTransitionReasonKey } from "@/lib/work-item-transition-reasons";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { WorkItemDetailField, WorkItemDetailRow } from "@/types/work-item";
+import {
+  detailChangeErrorKey,
+  startDetailAssigneeChange,
+  startDetailStateChange,
+  useDetailChangePending,
+} from "./detail-instant-change";
 import {
   isClosingCategory,
   useOpenChildrenGuard,
@@ -84,8 +89,6 @@ import {
   useRefreshWorkItem,
   useSaveWorkItemFields,
   workItemDetailKey,
-  workItemMutationScope,
-  writeWorkItemResponse,
 } from "./work-item-save";
 import UnavailableField from "./work-item-unavailable-field";
 
@@ -200,6 +203,13 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { announce } = useWorkItemFeedback();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [open, setOpen] = useState(false);
   const [noteFor, setNoteFor] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -209,67 +219,50 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     key: item.key,
     enabled: open || noteFor !== null,
   });
+  const placeholderVisible = useDelayedPending(open && transitions.isLoading, {
+    releaseNow: transitions.isSuccess && transitions.data.length === 0,
+  });
   const triggerRef = useRef<HTMLButtonElement>(null);
   useAccessLostOnQueryError(transitions.error, onAccessLost);
-  const refresh = useRefreshWorkItem(item);
+  const pending = useDetailChangePending(item.key);
   const offers = transitions.data ?? [];
-  const transition = useMutation({
-    scope: workItemMutationScope(item.key),
-    mutationFn: async (input: {
-      toStateTemplateId: string;
-      note?: string;
-      toStateName: string;
-    }) => {
-      const result = await transitionWorkItem({
-        key: item.key,
-        toStateTemplateId: input.toStateTemplateId,
-        ...(input.note ? { note: input.note } : {}),
-      });
-      writeWorkItemResponse(queryClient, item.key, result, {
-        stateName: input.toStateName,
-        ...(result && typeof result === "object" && "stateId" in result
-          ? { stateId: (result as { stateId: string }).stateId }
-          : {}),
-      });
-      return result;
-    },
-    onSuccess: async (_result, input) => {
+  const sendOffer = (offer: (typeof offers)[number], note?: string) => {
+    const started = startDetailStateChange(
+      queryClient,
+      item,
+      {
+        stateId: offer.toStateId,
+        toStateTemplateId: offer.toStateTemplateId,
+        toStateName: offer.toStateName,
+        toStateCategory: offer.toStateCategory ?? item.stateCategory,
+        note,
+      },
+      {
+        onSuccess: () =>
+          announce(
+            t("workItems:journey.transitionDone", { state: offer.toStateName }),
+          ),
+        onError: (error) => {
+          if (isWorkItemAccessLost(error)) {
+            if (mounted.current) onAccessLost();
+            return;
+          }
+          toast.error(t(detailChangeErrorKey(error, "state")));
+        },
+      },
+    );
+    if (started) {
+      announce(t("workItems:journey.saving"));
       setOpen(false);
       setNoteFor(null);
       setNote("");
       setError("");
-      announce(
-        t("workItems:journey.transitionDone", {
-          state: input.toStateName,
-        }),
-      );
-      await refresh();
-    },
-    onError: async (mutationError) => {
-      if (isWorkItemAccessLost(mutationError)) {
-        onAccessLost();
-        return;
-      }
-      // Back to the offers, which show the error and the server's current moves.
-      setNoteFor(null);
-      setNote("");
-      setOpen(true);
-      setError(
-        mutationError instanceof HttpError && mutationError.status === 409
-          ? t("workItems:journey.transitionConflict")
-          : mutationError instanceof HttpError && mutationError.status === 422
-            ? t("workItems:journey.transitionUnavailable")
-            : t("workItems:journey.saveError"),
-      );
-      // The offers may have changed under us; show the server's current ones.
-      await refresh();
-    },
-  });
+    }
+  };
   const { canTransitionTasks } = useWorkspacePermission(
     item.workspaceId,
     item.projectId,
   );
-  const dispatching = useRef(false);
   const childrenGuard = useOpenChildrenGuard();
   const canMove =
     canTransitionTasks() && !item.unavailableFields.includes("stateName");
@@ -277,13 +270,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     const onlyNote =
       offer.blockedBy.length > 0 &&
       offer.blockedBy.every((reason) => reason.reasonCode === "note.required");
-    if (
-      !canMove ||
-      transition.isPending ||
-      dispatching.current ||
-      (!offer.available && !onlyNote)
-    )
-      return;
+    if (!canMove || pending || (!offer.available && !onlyNote)) return;
     setError("");
     // `RH-10`/`WI-18`: closing a parent that still has open children asks first (and never
     // closes the children). Not asked again for the note step: the move is already chosen.
@@ -295,18 +282,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
         setNoteFor(offer.transitionId);
         return;
       }
-      dispatching.current = true;
-      transition.mutate(
-        {
-          toStateTemplateId: offer.toStateTemplateId,
-          toStateName: offer.toStateName,
-        },
-        {
-          onSettled: () => {
-            dispatching.current = false;
-          },
-        },
-      );
+      sendOffer(offer);
     };
     void childrenGuard.guard({
       key: item.key,
@@ -320,8 +296,9 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
     open &&
       !noteFor &&
       canMove &&
-      !transition.isPending &&
+      !pending &&
       !transitions.isLoading &&
+      !placeholderVisible &&
       !transitions.isError,
     offers.map((offer) => ({
       onSelect: () => chooseOffer(offer),
@@ -345,9 +322,12 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
       variant="ghost"
       size="sm"
       {...propertyTriggerProps(canTransitionTasks(), compact)}
+      disabled={!canMove}
+      aria-disabled={pending || undefined}
+      aria-busy={pending || undefined}
       data-testid="work-item-state-control"
     >
-      {icon}
+      {pending ? <Spinner aria-hidden="true" /> : icon}
       <span className="truncate font-semibold text-xs">{item.stateName}</span>
     </Button>
   );
@@ -356,20 +336,32 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
   return (
     <>
       {/* The moves are menu items (arrow keys, typeahead, Escape, focus back to the
-          trigger). A move stays open until the server answers, as Kaneo's popover did. */}
+          trigger). A choice closes immediately; both detail controls wait for settlement. */}
       <DropdownMenu
         open={open}
         modal={false}
         onOpenChange={(next) => {
+          if (next && pending) return;
           setOpen(next);
           if (!next) setError("");
         }}
       >
         <DropdownMenuTrigger render={trigger} />
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          {null}
+        </LoadingStatus>
         <DropdownMenuContent className="w-64" align="start">
           {error ? <InlineMessage>{error}</InlineMessage> : null}
-          {transitions.isLoading ? (
-            <p className="p-2 text-muted-foreground text-sm" role="status">
+          {!transitions.isError &&
+          (transitions.isLoading || placeholderVisible) ? (
+            <p
+              aria-hidden="true"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+              className="p-2 text-muted-foreground text-sm"
+            >
               {t("common:empty.loading")}
             </p>
           ) : transitions.isError ? (
@@ -399,7 +391,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
                   key={offer.transitionId}
                   label={offer.toStateName}
                   closeOnClick={false}
-                  disabled={blocked || transition.isPending}
+                  disabled={blocked || pending}
                   className="h-auto min-h-8 flex-col items-start gap-0 py-1.5"
                   onClick={() => chooseOffer(offer)}
                 >
@@ -437,11 +429,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
               className="flex flex-col gap-2 p-2"
               onSubmit={(event) => {
                 event.preventDefault();
-                transition.mutate({
-                  toStateTemplateId: noteOffer.toStateTemplateId,
-                  toStateName: noteOffer.toStateName,
-                  note: note.trim() || undefined,
-                });
+                sendOffer(noteOffer, note.trim() || undefined);
               }}
             >
               <p className="font-medium text-sm">{noteOffer.toStateName}</p>
@@ -456,7 +444,7 @@ function StateControl({ item, compact, onAccessLost }: ControlProps) {
                 type="submit"
                 size="sm"
                 disabled={
-                  transition.isPending ||
+                  pending ||
                   (noteOffer.notePolicy === "required" && !note.trim())
                 }
               >
@@ -574,6 +562,13 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { announce } = useWorkItemFeedback();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [open, setOpen] = useState(false);
   // `AS-3`: taking work already held by someone else needs an explicit second step.
   const [confirmFor, setConfirmFor] = useState<string | null>(null);
@@ -588,65 +583,11 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     projectId: item.projectId,
     enabled: open,
   });
-  useAccessLostOnQueryError(people.error, onAccessLost);
-  const refresh = useRefreshWorkItem(item);
-  const assign = useMutation({
-    scope: workItemMutationScope(item.key),
-    mutationFn: async ({
-      person,
-      holder,
-    }: {
-      person: { personId: string; name: string | null } | null;
-      holder: string | null;
-    }) => {
-      const result =
-        person === null
-          ? await unassignWorkItem(item.key, holder)
-          : await assignWorkItem({
-              key: item.key,
-              assigneeId: person.personId,
-              expectedCurrentAssigneeId: holder,
-            });
-      writeWorkItemResponse(queryClient, item.key, result, {
-        assigneeId: person?.personId ?? null,
-        assigneeName: person?.name ?? null,
-        // The picker only offers active people on the project roster (AS-5).
-        assigneeActive: person ? true : null,
-        assigneeOnProject: person ? true : null,
-      });
-      return result;
-    },
-    onSuccess: async (_result, { person }) => {
-      setOpen(false);
-      setConfirmFor(null);
-      setError("");
-      announce(
-        person === null
-          ? t("workItems:journey.unassignDone")
-          : t("workItems:journey.assignDone", {
-              name: person.name ?? t("workItems:journey.unnamedPerson"),
-            }),
-      );
-      await refresh();
-    },
-    onError: async (mutationError, { person }) => {
-      setConfirmFor(null);
-      if (isWorkItemAccessLost(mutationError)) {
-        onAccessLost();
-        return;
-      }
-      setError(
-        mutationError instanceof HttpError && mutationError.status === 409
-          ? t("workItems:journey.assignmentConflict")
-          : person === null
-            ? t("workItems:journey.unassignmentError")
-            : t("workItems:journey.assignmentError"),
-      );
-      await queryClient.invalidateQueries({
-        queryKey: workItemDetailKey(item.key),
-      });
-    },
+  const placeholderVisible = useDelayedPending(open && people.isLoading, {
+    releaseNow: people.isSuccess && people.data.length === 0,
   });
+  useAccessLostOnQueryError(people.error, onAccessLost);
+  const pending = useDetailChangePending(item.key);
   const { canUpdateTasks, canAssignTasks } = useWorkspacePermission(
     item.workspaceId,
     item.projectId,
@@ -666,9 +607,14 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       variant="ghost"
       size="sm"
       {...propertyTriggerProps(canEdit, compact)}
+      disabled={!canEdit}
+      aria-disabled={pending || undefined}
+      aria-busy={pending || undefined}
       data-testid="work-item-assignee-control"
     >
-      {name ? (
+      {pending ? (
+        <Spinner aria-hidden="true" />
+      ) : name ? (
         <Avatar className="h-[16px] w-[16px]">
           <AvatarFallback className="text-[8px]">
             {getInitials(item.assigneeName ?? name)}
@@ -693,32 +639,51 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
       (canUpdateTasks() &&
         list.some((person) => person.personId === item.assigneeId)));
   const confirmPerson = list.find((person) => person.personId === confirmFor);
-  const dispatching = useRef(false);
   const dispatchAssignment = (
     person: { personId: string; name: string | null } | null,
   ) => {
-    if (
-      !canEdit ||
-      assign.isPending ||
-      dispatching.current ||
-      (person === null && !canUnassign)
-    )
-      return;
-    dispatching.current = true;
-    assign.mutate(
-      { person, holder: item.assigneeId },
+    if (!canEdit || pending || (person === null && !canUnassign)) return;
+    const started = startDetailAssigneeChange(
+      queryClient,
+      item,
+      person,
+      item.assigneeId,
       {
-        onSettled: () => {
-          dispatching.current = false;
+        onSuccess: () =>
+          announce(
+            person === null
+              ? t("workItems:journey.unassignDone")
+              : t("workItems:journey.assignDone", {
+                  name: person.name ?? t("workItems:journey.unnamedPerson"),
+                }),
+          ),
+        onError: (error) => {
+          if (isWorkItemAccessLost(error)) {
+            if (mounted.current) onAccessLost();
+            return;
+          }
+          toast.error(
+            t(
+              detailChangeErrorKey(
+                error,
+                person === null ? "unassign" : "assign",
+              ),
+            ),
+          );
         },
       },
     );
+    if (started) {
+      announce(t("workItems:journey.saving"));
+      setOpen(false);
+      setConfirmFor(null);
+      setError("");
+    }
   };
   const choosePerson = (person: (typeof list)[number] | null) => {
     if (
       !canEdit ||
-      assign.isPending ||
-      dispatching.current ||
+      pending ||
       person?.personId === item.assigneeId ||
       (person === null && !canUnassign)
     )
@@ -736,8 +701,9 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     open &&
       !confirmFor &&
       canEdit &&
-      !assign.isPending &&
+      !pending &&
       !people.isLoading &&
+      !placeholderVisible &&
       !people.isError,
     [
       { onSelect: () => choosePerson(null), disabled: !canUnassign },
@@ -753,6 +719,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
     <Popover
       open={open}
       onOpenChange={(next) => {
+        if (next && pending) return;
         setOpen(next);
         if (!next) {
           setConfirmFor(null);
@@ -774,7 +741,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                disabled={assign.isPending}
+                disabled={pending}
                 onClick={() =>
                   dispatchAssignment({
                     personId: confirmPerson.personId,
@@ -800,7 +767,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 variant="ghost"
                 size="sm"
                 className="h-8 w-full justify-start gap-2 rounded-none px-2 text-muted-foreground"
-                disabled={assign.isPending}
+                disabled={pending}
                 onClick={() => choosePerson(null)}
               >
                 {t("workItems:detail.unassigned")}
@@ -811,10 +778,15 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                 )}
               </Button>
             ) : null}
-            {people.isLoading ? (
-              <p className="p-3 text-muted-foreground text-sm" role="status">
-                {t("common:empty.loading")}
-              </p>
+            {!people.isError && (people.isLoading || placeholderVisible) ? (
+              <LoadingStatus
+                visible={placeholderVisible}
+                label={t("common:empty.loading")}
+              >
+                <p className="p-3 text-muted-foreground text-sm">
+                  {t("common:empty.loading")}
+                </p>
+              </LoadingStatus>
             ) : people.isError && !isWorkItemAccessLost(people.error) ? (
               <p className="p-3 text-muted-foreground text-sm" role="alert">
                 {t("workItems:journey.peopleError")}
@@ -826,9 +798,7 @@ function AssigneeControl({ item, compact, onAccessLost }: ControlProps) {
                   variant="ghost"
                   size="sm"
                   className="h-8 w-full justify-start gap-2 rounded-none px-2"
-                  disabled={
-                    assign.isPending || item.assigneeId === person.personId
-                  }
+                  disabled={pending || item.assigneeId === person.personId}
                   onClick={() => choosePerson(person)}
                 >
                   <Avatar className="h-[16px] w-[16px]">
@@ -873,6 +843,9 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
   const candidates = useGetRequesterCandidates({
     projectId: item.projectId,
     enabled: open && canEdit,
+  });
+  const placeholderVisible = useDelayedPending(open && candidates.isLoading, {
+    releaseNow: candidates.isSuccess && candidates.data.length === 0,
   });
   useAccessLostOnQueryError(candidates.error, onAccessLost);
   const dispatching = useRef(false);
@@ -985,10 +958,16 @@ function RequesterControl({ item, compact, onAccessLost }: ControlProps) {
               <Check className="ml-auto h-4 w-4" />
             ) : null}
           </Button>
-          {candidates.isLoading ? (
-            <p className="p-3 text-muted-foreground text-sm" role="status">
-              {t("common:empty.loading")}
-            </p>
+          {!candidates.isError &&
+          (candidates.isLoading || placeholderVisible) ? (
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <p className="p-3 text-muted-foreground text-sm">
+                {t("common:empty.loading")}
+              </p>
+            </LoadingStatus>
           ) : candidates.isError && !isWorkItemAccessLost(candidates.error) ? (
             <p className="p-3 text-muted-foreground text-sm" role="alert">
               {t("workItems:properties.requesterError")}

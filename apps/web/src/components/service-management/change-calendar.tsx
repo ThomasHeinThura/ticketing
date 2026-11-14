@@ -24,6 +24,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { addDays, addMonths, endOfMonth, startOfMonth } from "date-fns";
 import { Plus } from "lucide-react";
@@ -140,6 +141,12 @@ function CalendarTab({
   const from = weeks[0]?.[0] ?? startOfMonth(visibleMonth);
   const last = weeks.at(-1)?.at(-1) ?? endOfMonth(visibleMonth);
   const calendar = useChangeCalendar(workspaceId, from, addDays(last, 1));
+  const placeholderVisible = useDelayedPending(calendar.isLoading, {
+    releaseNow:
+      calendar.isSuccess &&
+      calendar.data.changes.length === 0 &&
+      calendar.data.freezes.length === 0,
+  });
   useEffect(() => {
     if (isForbiddenError(calendar.error)) onForbidden();
   }, [calendar.error, onForbidden]);
@@ -221,7 +228,9 @@ function CalendarTab({
           ),
         )}
       </ul>
-      {calendar.data && calendar.data.conflicts.length > 0 ? (
+      {!placeholderVisible &&
+      calendar.data &&
+      calendar.data.conflicts.length > 0 ? (
         <Alert variant="warning">
           <AlertTitle>{t("calendar.conflicts.title")}</AlertTitle>
           <AlertDescription>
@@ -239,8 +248,12 @@ function CalendarTab({
           </AlertDescription>
         </Alert>
       ) : null}
-      {calendar.isLoading ? <LoadingRows /> : null}
-      {calendar.data && calendar.data.changes.length > 0 ? (
+      {!calendar.isError && (calendar.isLoading || placeholderVisible) ? (
+        <LoadingRows visible={placeholderVisible} />
+      ) : null}
+      {!placeholderVisible &&
+      calendar.data &&
+      calendar.data.changes.length > 0 ? (
         <Table aria-label={t("calendar.table.label")}>
           <TableHeader>
             <TableRow>
@@ -325,6 +338,9 @@ function FreezesTab({
   const invalidate = useInvalidateServiceManagement();
   const [showCancelled, setShowCancelled] = useState(false);
   const freezes = useFreezes(workspaceId, showCancelled);
+  const placeholderVisible = useDelayedPending(freezes.isLoading, {
+    releaseNow: freezes.isSuccess && freezes.data.length === 0,
+  });
   useEffect(() => {
     if (isForbiddenError(freezes.error)) onForbidden();
   }, [freezes.error, onForbidden]);
@@ -357,14 +373,16 @@ function FreezesTab({
           </Button>
         ) : null}
       </div>
-      {freezes.isLoading ? <LoadingRows /> : null}
+      {!freezes.isError && (freezes.isLoading || placeholderVisible) ? (
+        <LoadingRows visible={placeholderVisible} />
+      ) : null}
       {freezes.isError && !isForbiddenError(freezes.error) ? (
         <QueryFailure
           error={freezes.error}
           onRetry={() => void freezes.refetch()}
         />
       ) : null}
-      {freezes.data && freezes.data.length === 0 ? (
+      {!placeholderVisible && freezes.data && freezes.data.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyTitle>{t("freezes.emptyTitle")}</EmptyTitle>
@@ -372,7 +390,7 @@ function FreezesTab({
           </EmptyHeader>
         </Empty>
       ) : null}
-      {freezes.data && freezes.data.length > 0 ? (
+      {!placeholderVisible && freezes.data && freezes.data.length > 0 ? (
         <CardFrame>
           {freezes.data.map((freeze) => (
             <Card key={freeze.id}>
@@ -437,6 +455,9 @@ function OverridesTab({
 }) {
   const { t } = useTranslation("serviceManagement");
   const overrides = useFreezeOverrides(workspaceId, enabled);
+  const placeholderVisible = useDelayedPending(overrides.isLoading, {
+    releaseNow: overrides.isSuccess && overrides.data.length === 0,
+  });
   useEffect(() => {
     if (enabled && isForbiddenError(overrides.error)) onForbidden();
   }, [enabled, overrides.error, onForbidden]);
@@ -449,17 +470,19 @@ function OverridesTab({
       <p className="max-w-2xl text-sm text-muted-foreground">
         {t("overrides.description")}
       </p>
-      {overrides.isLoading ? <LoadingRows /> : null}
+      {!overrides.isError && (overrides.isLoading || placeholderVisible) ? (
+        <LoadingRows visible={placeholderVisible} />
+      ) : null}
       {overrides.isError && !isForbiddenError(overrides.error) ? (
         <QueryFailure
           error={overrides.error}
           onRetry={() => void overrides.refetch()}
         />
       ) : null}
-      {overrides.data && overrides.data.length === 0 ? (
+      {!placeholderVisible && overrides.data && overrides.data.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("overrides.empty")}</p>
       ) : null}
-      {overrides.data && overrides.data.length > 0 ? (
+      {!placeholderVisible && overrides.data && overrides.data.length > 0 ? (
         <Table aria-label={t("overrides.title")}>
           <TableHeader>
             <TableRow>
@@ -524,6 +547,7 @@ export function ChangeCalendarView({
   // and the legend, and the calendar is not requested.
   const catalogueOff = status.data?.enabled === false;
   const statusPending = !status.data && !status.isError;
+  const statusPlaceholder = useDelayedPending(statusPending);
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   if (
     isForbiddenError(status.error) ||
@@ -548,8 +572,9 @@ export function ChangeCalendarView({
           active="changes"
           canManageServices={status.data?.canManageServices === true}
         />
-        {statusPending ? (
-          <LoadingRows />
+        {statusPending ||
+        (statusPlaceholder && !catalogueOff && !status.isError) ? (
+          <LoadingRows visible={statusPlaceholder} />
         ) : catalogueOff ? (
           <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : (
@@ -583,7 +608,7 @@ export function ChangeCalendarView({
               )}
             </div>
             {!workspace ? (
-              <LoadingRows />
+              <LoadingRows visible={statusPlaceholder} />
             ) : tab === "calendar" ? (
               <CalendarTab
                 workspaceId={workspace.id}

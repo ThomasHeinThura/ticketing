@@ -160,14 +160,14 @@ describe("request type editor", () => {
 
   it.each(["denied", "checking"])(
     "does not fetch editor data while %s",
-    (state) => {
+    async (state) => {
       mocks.role = "viewer";
       mocks.checking = state === "checking";
       renderPage();
       expect(
         state === "denied"
           ? screen.getByTestId("settings-access-denied")
-          : screen.getByRole("status", {
+          : await screen.findByRole("status", {
               name: "settings:accessDenied.checking",
             }),
       ).toBeTruthy();

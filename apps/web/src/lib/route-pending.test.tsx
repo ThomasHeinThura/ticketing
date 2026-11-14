@@ -53,6 +53,8 @@ it("uses the shared page placeholder for a pending route", async () => {
   await act(async () => {
     finish();
   });
+  expect(screen.getByTestId("page-loading")).toBeVisible();
+  expect(screen.queryByText("Loaded")).toBeNull();
   await screen.findByText("Loaded");
 });
 

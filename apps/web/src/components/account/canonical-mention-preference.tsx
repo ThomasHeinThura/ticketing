@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import {
   SelectValue,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -34,6 +36,7 @@ type PreferenceKind = "mention" | "comment" | "teamNotification";
 export function CanonicalMentionPreference() {
   const { t } = useTranslation("notificationProvider");
   const preferences = useGetNotificationPreferences();
+  const placeholderVisible = useDelayedPending(preferences.isLoading);
   const [notices, setNotices] = useState<Record<PreferenceKind, string | null>>(
     {
       mention: null,
@@ -106,6 +109,19 @@ export function CanonicalMentionPreference() {
     );
   return (
     <div className="space-y-4">
+      <LoadingStatus
+        visible={
+          placeholderVisible &&
+          !preferences.isError &&
+          (preferences.isLoading ||
+            Boolean(
+              preference || teamNotificationPreference || commentPreference,
+            ))
+        }
+        label={t("common:empty.loading")}
+      >
+        {null}
+      </LoadingStatus>
       <span className="sr-only" role="status" aria-atomic="true">
         {announcement?.message ?? ""}
       </span>
@@ -140,8 +156,15 @@ export function CanonicalMentionPreference() {
                 </AlertDescription>
               </Alert>
             )}
-            {preferences.isLoading ? (
-              <Skeleton className="h-12 w-full" />
+            {!preferences.isError &&
+            (preferences.isLoading || (placeholderVisible && preference)) ? (
+              <Skeleton
+                aria-hidden="true"
+                className="h-12 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
             ) : preferences.isError || !preference ? (
               <Alert variant="error">
                 <AlertDescription>{t("mention.unavailable")}</AlertDescription>
@@ -182,8 +205,16 @@ export function CanonicalMentionPreference() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {preferences.isLoading ? (
-              <Skeleton className="h-12 w-full" />
+            {!preferences.isError &&
+            (preferences.isLoading ||
+              (placeholderVisible && teamNotificationPreference)) ? (
+              <Skeleton
+                aria-hidden="true"
+                className="h-12 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
             ) : preferences.isError || !teamNotificationPreference ? (
               <Alert variant="error">
                 <AlertDescription>{t("mention.unavailable")}</AlertDescription>
@@ -217,8 +248,16 @@ export function CanonicalMentionPreference() {
             <CardDescription>{t("comment.description")}</CardDescription>
           </CardHeader>
           <CardContent>
-            {preferences.isLoading ? (
-              <Skeleton className="h-12 w-full" />
+            {!preferences.isError &&
+            (preferences.isLoading ||
+              (placeholderVisible && commentPreference)) ? (
+              <Skeleton
+                aria-hidden="true"
+                className="h-12 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
             ) : preferences.isError || !commentPreference ? (
               <Alert variant="error">
                 <AlertDescription>{t("mention.unavailable")}</AlertDescription>

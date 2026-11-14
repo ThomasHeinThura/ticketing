@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Label,
+  LoadingStatus,
   SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Select,
@@ -17,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -42,6 +44,7 @@ function timeZones(current: string): string[] {
 export function QuietHoursPreference() {
   const { t } = useTranslation("notificationProvider");
   const preferences = useGetNotificationPreferences();
+  const placeholderVisible = useDelayedPending(preferences.isLoading);
   const [completed, setCompleted] = useState(false);
   useEffect(() => {
     if (!completed) return;
@@ -56,8 +59,17 @@ export function QuietHoursPreference() {
         <CardDescription>{t("quietHours.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {preferences.isLoading ? (
-          <Skeleton className="h-12 w-full" />
+        {!preferences.isError &&
+        (preferences.isLoading || placeholderVisible) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-12 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : preferences.isError ? (
           <Alert variant="error">
             <AlertDescription>{t("quietHours.unavailable")}</AlertDescription>

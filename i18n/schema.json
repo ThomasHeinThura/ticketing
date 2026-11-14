@@ -12972,6 +12972,12 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"noEmailNotice": {
+							"type": "string"
+						},
+						"configureEmail": {
+							"type": "string"
+						},
 						"pendingBadge": {
 							"type": "string"
 						},
@@ -13025,6 +13031,8 @@
 						}
 					},
 					"required": [
+						"noEmailNotice",
+						"configureEmail",
 						"pendingBadge",
 						"expires",
 						"expiredOn",
@@ -15283,6 +15291,12 @@
 						"transitionsError": {
 							"type": "string"
 						},
+						"transitionForbidden": {
+							"type": "string"
+						},
+						"assignmentForbidden": {
+							"type": "string"
+						},
 						"transitionConflict": {
 							"type": "string"
 						},
@@ -15403,6 +15417,8 @@
 						"transitionsEmpty",
 						"loadingTransitions",
 						"transitionsError",
+						"transitionForbidden",
+						"assignmentForbidden",
 						"transitionConflict",
 						"transitionUnavailable",
 						"assignmentHeading",
@@ -22039,9 +22055,12 @@
 								}
 							},
 							"required": ["received"]
+						},
+						"schedule": {
+							"type": "string"
 						}
 					},
-					"required": ["work_item", "sla", "approval", "submission"]
+					"required": ["work_item", "sla", "approval", "submission", "schedule"]
 				},
 				"priorities": {
 					"type": "object",
@@ -22176,6 +22195,12 @@
 								"actionValueRequired": {
 									"type": "string"
 								},
+								"actorRoleTriggerRequired": {
+									"type": "string"
+								},
+								"scheduleMinimumInterval": {
+									"type": "string"
+								},
 								"conditionValueRequired": {
 									"type": "string"
 								}
@@ -22185,8 +22210,22 @@
 								"roleRequired",
 								"actionsRequired",
 								"actionValueRequired",
+								"actorRoleTriggerRequired",
+								"scheduleMinimumInterval",
 								"conditionValueRequired"
 							]
+						},
+						"schedule": {
+							"type": "string"
+						},
+						"everyFiveMinutes": {
+							"type": "string"
+						},
+						"hourly": {
+							"type": "string"
+						},
+						"daily": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -22212,7 +22251,11 @@
 						"create",
 						"save",
 						"saveFailed",
-						"problems"
+						"problems",
+						"schedule",
+						"everyFiveMinutes",
+						"hourly",
+						"daily"
 					]
 				},
 				"conditions": {
@@ -22298,6 +22341,9 @@
 								},
 								"assignee": {
 									"type": "string"
+								},
+								"actor_role": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -22309,7 +22355,8 @@
 								"age",
 								"comment_visibility",
 								"field_changed",
-								"assignee"
+								"assignee",
+								"actor_role"
 							]
 						},
 						"ops": {
@@ -22396,6 +22443,12 @@
 								"assignee",
 								"labels"
 							]
+						},
+						"customer": {
+							"type": "string"
+						},
+						"basisResolved": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -22416,7 +22469,9 @@
 						"fields",
 						"ops",
 						"visibility",
-						"changeable"
+						"changeable",
+						"customer",
+						"basisResolved"
 					]
 				},
 				"actions": {

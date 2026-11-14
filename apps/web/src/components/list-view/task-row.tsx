@@ -7,6 +7,8 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
+  motionDurationMs,
+  motionEasing,
   useKeyboardPress,
 } from "@taskdesk/ui";
 import { format } from "date-fns";
@@ -164,7 +166,9 @@ function TaskRow({
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || "transform 200ms cubic-bezier(0.23, 1, 0.32, 1)",
+    transition:
+      transition ||
+      `transform ${motionDurationMs("base")}ms ${motionEasing("out")}`,
     touchAction: isDragging ? "none" : "auto",
   };
 
@@ -234,7 +238,7 @@ function TaskRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "border-b border-border/50 transition-colors duration-150",
+        "border-b border-border/50 transition-colors duration-fast",
         isDragging && "opacity-50",
         selected && "bg-accent/60 shadow-sm ring-1 ring-inset ring-ring/30",
         focused && "ring-2 ring-inset ring-ring/50",

@@ -17,6 +17,7 @@ import {
   EmptyTitle,
   Frame,
   FramePanel,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -24,6 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowDown, ArrowUp, Download } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -102,6 +104,19 @@ function PortalRequestsPage() {
     getNextPageParam: (lastPage) => lastPage.page.nextCursor ?? undefined,
     enabled: backlogMode,
   });
+  const casesPlaceholder = useDelayedPending(!backlogMode && query.isLoading, {
+    releaseNow:
+      !backlogMode && query.isSuccess && query.data.cases.length === 0,
+  });
+  const backlogPlaceholder = useDelayedPending(
+    backlogMode && backlogQuery.isLoading,
+    {
+      releaseNow:
+        backlogMode &&
+        backlogQuery.isSuccess &&
+        backlogQuery.data.pages.every((page) => page.items.length === 0),
+    },
+  );
   const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
   const [pendingFocusDirection, setPendingFocusDirection] = useState<
     -1 | 1 | null
@@ -299,14 +314,19 @@ function PortalRequestsPage() {
           </AlertDescription>
         </Alert>
       ) : backlogMode ? (
-        backlogQuery.isLoading ? (
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </CardContent>
-          </Card>
+        backlogQuery.isLoading || backlogPlaceholder ? (
+          <LoadingStatus
+            visible={backlogPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Card>
+              <CardContent className="flex flex-col gap-3 p-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+          </LoadingStatus>
         ) : backlogItems.length === 0 ? (
           <Card>
             <CardContent className="p-8">
@@ -440,8 +460,16 @@ function PortalRequestsPage() {
             </div>
           </>
         )
-      ) : !query.data ? (
-        <Skeleton className="h-64 w-full rounded-xl" />
+      ) : !query.data || casesPlaceholder ? (
+        <LoadingStatus
+          visible={casesPlaceholder}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-64 w-full rounded-xl"
+            style={{ visibility: casesPlaceholder ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : cases.length === 0 ? (
         <Frame>
           <FramePanel className="p-8">

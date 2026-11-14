@@ -23,12 +23,16 @@ import {
   AlertDescription,
   Badge,
   Button,
+  LoadingStatus,
+  motionDurationMs,
+  motionEasing,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { GripVertical, Plus } from "lucide-react";
 import { type CSSProperties, useCallback, useState } from "react";
@@ -87,7 +91,10 @@ function SortableStateRow({
     disabled: !canEdit,
     // The reorder already moves the row; animating the index change too replays it.
     animateLayoutChanges: () => false,
-    transition: { duration: 200, easing: "var(--ease-out)" },
+    transition: {
+      duration: motionDurationMs("base"),
+      easing: motionEasing("out"),
+    },
   });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -212,16 +219,25 @@ export default function ProjectStatesEditor({
     }
   };
 
-  if (isLoading) {
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && (states?.length === 0 || inheritance.isError),
+  });
+  if (!isError && (isLoading || (placeholderVisible && states))) {
     return (
-      <div
-        aria-busy="true"
-        className="space-y-2"
-        data-testid="project-states-loading"
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
       >
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
+        <div
+          aria-busy="true"
+          className="space-y-2"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          data-testid="project-states-loading"
+        >
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </LoadingStatus>
     );
   }
 

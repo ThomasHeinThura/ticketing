@@ -3,12 +3,15 @@ import {
   Alert,
   AlertDescription,
   Button,
+  DelayedSuspense,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  LoadingStatus,
+  useDelayedPending,
 } from "@taskdesk/ui";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SubmissionQueueTable } from "@/components/intake/submission-queue-table";
 import { isForbiddenError } from "@/components/settings/settings-access";
@@ -225,6 +228,15 @@ export function IntakeQueuePanel({
     () => parseRows(results.data?.workItems.data),
     [results.data?.workItems.data],
   );
+  const pending =
+    queue.isLoading || results.isLoading || !queue.data || !results.data;
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow:
+      !pending &&
+      results.isSuccess &&
+      results.data.submissions.submissions.length === 0 &&
+      results.data.workItems.data.length === 0,
+  });
   const sorts = currentSort(queue.data, workItemQuery?.sorts);
   const columns = currentColumns(queue.data, workItemQuery?.columns);
   const storedFilter = record(queueWorkItemQuery(queue.data).filter);
@@ -264,10 +276,15 @@ export function IntakeQueuePanel({
     );
   }
 
-  if (queue.isLoading || results.isLoading || !queue.data || !results.data) {
-    return <p role="status">{t("queue.loading")}</p>;
+  if (pending || placeholderVisible) {
+    return (
+      <LoadingStatus visible={placeholderVisible} label={t("queue.loading")}>
+        <p>{t("queue.loading")}</p>
+      </LoadingStatus>
+    );
   }
 
+  if (!queue.data || !results.data) return null;
   const submissions = results.data.submissions;
   const workItems = results.data.workItems;
   const storedSubmissionFilter = record(
@@ -366,7 +383,9 @@ export function IntakeQueuePanel({
         </div>
         {filterControlsOpen && (
           <div id="intake-queue-work-item-controls">
-            <Suspense fallback={<p role="status">{t("queue.loading")}</p>}>
+            <DelayedSuspense
+              fallback={<p role="status">{t("queue.loading")}</p>}
+            >
               <WorkItemListControls
                 filter={filter}
                 mode={filterMode}
@@ -382,7 +401,7 @@ export function IntakeQueuePanel({
                 sort={sorts[0]?.field}
                 dir={sorts[0]?.order}
               />
-            </Suspense>
+            </DelayedSuspense>
           </div>
         )}
         <WorkItemList

@@ -43,7 +43,7 @@ export function ListColumnSection({
   return (
     <div
       className={cn(
-        "border-b border-border/50 transition-colors duration-150 overflow-auto",
+        "border-b border-border/50 transition-colors duration-fast overflow-auto",
         showDropIndicator && "border-l-4 border-l-ring bg-accent/35",
       )}
     >
@@ -105,7 +105,7 @@ export function ListColumnSection({
       {expanded && (
         <div
           ref={setNodeRef}
-          className="bg-card transition-[translate,opacity] duration-150 ease-out starting:-translate-y-1 starting:opacity-0 motion-reduce:starting:translate-y-0"
+          className="bg-card transition-[translate,opacity] duration-fast ease-out starting:-translate-y-1 starting:opacity-0 motion-reduce:starting:translate-y-0"
         >
           <SortableContext
             items={column.tasks}

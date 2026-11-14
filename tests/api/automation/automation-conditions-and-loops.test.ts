@@ -193,7 +193,7 @@ describe("field comparisons", () => {
     expect(conditionFieldAvailability("type")).toBe("available");
     // `sla_state` has a loader now (computed on read with the list's SLA badge logic).
     expect(conditionFieldAvailability("sla_state")).toBe("available");
-    expect(conditionFieldAvailability("actor_role")).toBe("unavailable");
+    expect(conditionFieldAvailability("actor_role")).toBe("available");
     expect(conditionFieldAvailability("cf.cost_centre")).toBe("unavailable");
     expect(conditionFieldAvailability("nonsense")).toBe("unknown");
   });

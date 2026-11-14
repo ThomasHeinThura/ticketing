@@ -6,6 +6,7 @@ import {
   Badge,
   Input,
   Label,
+  LoadingStatus,
   SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Skeleton,
@@ -16,7 +17,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
+
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -194,12 +197,26 @@ function TimeActivitiesSettingsContent() {
     onError: (error) => toast.error(message(error)),
   });
   const loading = workspaceLoading || activities.isLoading;
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      !loading && activities.isSuccess && activities.data.length === 0,
+  });
   const disabled = activities.error instanceof TimeTrackingDisabledError;
   if (isForbiddenError(activities.error)) return <NoAccessPage />;
   return (
     <TimeActivitiesSettingsFrame>
-      {loading ? (
-        <Skeleton className="h-32 w-full" role="status" />
+      {!activities.isError &&
+      (loading || (placeholderVisible && activities.data)) ? (
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-32 w-full"
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : disabled ? (
         <Alert variant="info">
           <AlertTitle>{t("timeTracking:timesheet.disabledTitle")}</AlertTitle>

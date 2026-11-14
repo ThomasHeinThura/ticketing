@@ -21,6 +21,7 @@ import {
   TableRow,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronLeft, ChevronRight, Copy, Plus } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -87,10 +88,14 @@ export function Timesheet(props: Props) {
   // `GET /api/time-entries` needs `time_entry:create`: a role without it (reached by URL only, the
   // nav hides it) sees the permission notice and the timesheet never fires the 403s.
   const access = useSettingsAccess((permission) => permission.canLogTime());
-  if (access === "checking")
+  const accessPlaceholderVisible = useDelayedPending(access === "checking");
+  if (
+    access === "checking" ||
+    (access === "allowed" && accessPlaceholderVisible)
+  )
     return (
       <TimesheetFrame>
-        <TimesheetLoading />
+        <TimesheetLoading visible={accessPlaceholderVisible} />
       </TimesheetFrame>
     );
   if (access === "error")
@@ -128,10 +133,20 @@ function TimesheetContent({ search, onSearchChange }: Props) {
   const timer = useTimer(workspaceId);
   const activities = useTimeActivities(workspaceId);
 
-  if (workspaceLoading || probe.isLoading || (start && entries.isLoading))
+  const pending = Boolean(
+    workspaceLoading || probe.isLoading || (start && entries.isLoading),
+  );
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow:
+      !pending &&
+      everyone &&
+      entries.isSuccess &&
+      entries.data.data.length === 0,
+  });
+  if (!probe.error && !entries.error && (pending || placeholderVisible))
     return (
       <TimesheetFrame>
-        <TimesheetLoading />
+        <TimesheetLoading visible={placeholderVisible} />
       </TimesheetFrame>
     );
   if (probe.error instanceof TimeTrackingDisabledError)
@@ -304,16 +319,17 @@ function TimesheetFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TimesheetLoading() {
+function TimesheetLoading({ visible = true }: { visible?: boolean }) {
   const { t } = useTranslation();
   return (
-    <div
-      role="status"
-      aria-label={t("timeTracking:timesheet.loading")}
-      className="space-y-3"
-    >
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-40 w-full" />
+    <div role="status" aria-label={t("timeTracking:timesheet.loading")}>
+      <div
+        className="space-y-3"
+        style={{ visibility: visible ? "visible" : "hidden" }}
+      >
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
     </div>
   );
 }

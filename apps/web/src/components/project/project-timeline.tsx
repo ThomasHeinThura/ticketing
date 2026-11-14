@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Button, Toggle, useIsMobile } from "@taskdesk/ui";
+import { Button, Toggle, useDelayedPending, useIsMobile } from "@taskdesk/ui";
 import {
   addDays,
   differenceInCalendarDays,
@@ -228,8 +228,14 @@ export default function ProjectTimeline({
   });
 
   const hasFilterChips = buildScheduleFilterChips(search).length > 0;
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading &&
+      Boolean(project) &&
+      (parsedTasks.length === 0 || scheduledTasks.length === 0),
+  });
   const loadStatus = scheduleViewStatus({
-    isLoading,
+    isLoading: isLoading || placeholderVisible,
     isError,
     isEmpty: false,
   });
@@ -321,7 +327,9 @@ export default function ProjectTimeline({
 
   const scrollToToday = useCallback((behavior: ScrollBehavior = "smooth") => {
     todayCellRef.current?.scrollIntoView({
-      behavior,
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : behavior,
       inline: "center",
       block: "nearest",
     });
@@ -552,6 +560,7 @@ export default function ProjectTimeline({
         {loadStatus === "loading" || loadStatus === "error" ? (
           <ScheduleViewState
             layout="gantt"
+            visible={placeholderVisible}
             status={loadStatus}
             isFiltered={false}
             onRetry={() => void refetch()}

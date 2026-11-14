@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   Calendar,
@@ -393,6 +394,9 @@ function WorkItemActivity({
   // The API returns newest first; grouping reverses once so the rendered list
   // reads chronologically with the newest entry at the bottom.
   const visibleRows = filterActivityRows(rows, filter);
+  const placeholderVisible = useDelayedPending(activity.isLoading, {
+    releaseNow: activity.isSuccess && visibleRows.length === 0,
+  });
   const hasFocusedComment = Boolean(
     focusedComment &&
       visibleRows.some((row) => isComment(row) && row.id === focusedComment),
@@ -546,12 +550,13 @@ function WorkItemActivity({
           </AlertDescription>
         </Alert>
       )}
-      {activity.isLoading && (
+      {!activity.isError && (activity.isLoading || placeholderVisible) && (
         // Timeline placeholders remain below the composer; status stays accessible.
         <div
           role="status"
           aria-busy="true"
           className="flex flex-col gap-3"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           data-testid="work-item-activity-loading"
         >
           <span className="sr-only">{t("activity:timeline.loading")}</span>
@@ -568,13 +573,18 @@ function WorkItemActivity({
           ))}
         </div>
       )}
-      {!activity.isLoading && !activity.isError && visibleRows.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          {t("activity:timeline.empty")}
-        </p>
-      )}
+      {!activity.isLoading &&
+        !placeholderVisible &&
+        !activity.isError &&
+        visibleRows.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {t("activity:timeline.empty")}
+          </p>
+        )}
       <Timeline role="list" aria-label={t("activity:timeline.heading")}>
-        {groupConsecutiveActivity(visibleRows).map((group, index, groups) => {
+        {groupConsecutiveActivity(
+          placeholderVisible && !activity.isError ? [] : visibleRows,
+        ).map((group, index, groups) => {
           const row = group[0];
           const profile =
             isComment(row) && Object.hasOwn(row, "actorPersonId")

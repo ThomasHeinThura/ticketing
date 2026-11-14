@@ -1,5 +1,11 @@
 import { Button } from "@taskdesk/ui";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type Task from "@/types/task";
 import TaskStatusPopover from "./task-status-popover";
@@ -89,7 +95,11 @@ describe("TaskStatusPopover", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Status" }));
 
-    expect(await screen.findByText("common:empty.loading")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "common:empty.loading",
+      ),
+    );
   });
 
   it("shows error feedback when status options fail to load", async () => {

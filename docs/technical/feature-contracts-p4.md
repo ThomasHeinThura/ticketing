@@ -2175,8 +2175,22 @@ Field comparisons using the same grammar as filters in
 [search-and-saved-views.md](feature-contracts-p1.md#search-and-saved-views): type, state, state group, priority,
 assignee, requester, label, organisation, project, custom field (`cf.<key>`), plus four
 automation-specific condition keys: `age` (integer minutes since `created_at` or
-`updated_at`), `sla_state` (`ok`|`at_risk`|`breached`|`met`|`missed`),
-`comment_visibility` (`public`|`internal`), and `actor_role` (role key or `customer`).
+`updated_at` or `resolved_at`), `sla_state` (`ok`|`at_risk`|`breached`|`met`|`missed`),
+`comment_visibility` (`public`|`internal`), and `actor_role` (only `eq customer` is backed,
+only on `work_item.commented`; other role values remain refused).
+
+- `AM-14` Plan G-1 schedules evaluate project items through the ordinary action executor.
+  UTC schedules catch up once to the latest occurrence after downtime; intervals below five minutes are refused. Scans are bounded and continue from a
+  durable cursor stored in a stable metadata run; candidate rows must match and are capped at 50 pending/running per rule. Event runs retain global FIFO within their lane; at least every fifth successful claim prefers schedules when pending (per executor process). Existing run history suppresses candidates by rule version and item. Pending/running runs block the same rule version and item across all stays. For completed items with a recorded completed-group entry (the same activity-derived instant as AM-15), finished runs suppress only when enqueued at or after that entry; finished runs from a prior stay do not suppress the new stay. Without a recorded entry, there is no stay boundary: all retained runs of the rule version count. Failed/refused/skipped/abandoned candidates re-evaluate on a later due window at least 24 hours after the previous enqueue, with a fresh event id; this backoff is scoped to the current completed stay when its entry is recorded, and still applies when entry history is missing. Expired scheduled leases are abandoned before capacity is counted. No per-item map is retained; ordinary terminal history uses the existing 30-day purge. After that retention expires a still-matching item can be evaluated again; already-target items remain excluded in SQL. Cron validation requires a next occurrence within five years and a catch-up occurrence available from the same bounded search used by due computation; invalid stored schedules record a skipped progress row. Scheduled snapshots refresh between actions; concurrent scans cannot enqueue a candidate twice for one sweep. Disabled
+  rules, disabled feature scopes, and archived/deleted projects/items never act. Run claims,
+  effective-role checks, transition guards, audit attribution and loop suppression are shared
+  with event rules. Candidate version mismatch is skipped after a rule edit. Schedule availability uses this process's live registration catalog and enabled state; it does not attest that a separate jobs-role replica is healthy. Existing event rules retain their previous item-loading and missing-item outcomes.
+- `AM-15` `actor_role eq customer` requires a persisted public comment with actor type
+  `person` whose author has `person.side = customer`. Staff, internal, API-key, system and
+  automation comments fail. `age` basis `resolved_at` derives the latest transition activity
+  entering the `completed` group from another group; moving within that group and later notes
+  preserve the clock, leaving and reentering restarts it. Missing history fails closed.
+  This basis does not reuse the SLA-effect-controlled `work_item.resolved_at` column.
 
 - `AM-1` Conditions combine with AND. An OR is expressed by writing two rules — which is
   simpler to read than nested logic, and reads better in a list.

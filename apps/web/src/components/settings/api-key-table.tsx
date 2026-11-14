@@ -10,12 +10,14 @@ import {
   Button,
   Frame,
   FramePanel,
+  LoadingStatus,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Ban, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -46,6 +48,9 @@ function formatDate(value: Date | string | null) {
 
 export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
   const { t } = useTranslation();
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && apiKeys.length === 0,
+  });
   const { mutateAsync: revokeApiKey } = useRevokeApiKey();
   const { mutateAsync: requestDeleteApiKey } = useRequestApiKeyDeletion();
   const openPendingAction = useOpenPendingAction();
@@ -113,15 +118,22 @@ export function ApiKeyTable({ apiKeys, isLoading }: ApiKeyTableProps) {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || placeholderVisible) {
     return (
-      <Frame>
-        <FramePanel className="p-8">
-          <p className="text-sm text-muted-foreground text-center">
-            {t("settings:apiKey.table.loading")}
-          </p>
-        </FramePanel>
-      </Frame>
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Frame
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
+          <FramePanel className="p-8">
+            <p className="text-sm text-muted-foreground text-center">
+              {t("settings:apiKey.table.loading")}
+            </p>
+          </FramePanel>
+        </Frame>
+      </LoadingStatus>
     );
   }
 

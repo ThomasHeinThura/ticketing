@@ -17,6 +17,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
@@ -36,6 +37,10 @@ function IdentityConnectionsRoute() {
   const location = useLocation();
   const isAdmin = useInstanceAdminSignal();
   const connections = useIdentityConnections(isAdmin);
+  const placeholderVisible = useDelayedPending(
+    isAdmin && connections.isPending,
+    { releaseNow: connections.isSuccess && connections.data.length === 0 },
+  );
 
   if (location.pathname.startsWith(`${routes.identityConnections.path}/`))
     return <Outlet />;
@@ -80,9 +85,11 @@ function IdentityConnectionsRoute() {
           ) : null}
         </header>
 
-        {connections.isPending ? (
+        {!connections.isError &&
+        (connections.isPending || placeholderVisible) ? (
           <div
             aria-label={t("list.loading")}
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             className="space-y-3"
             role="status"
           >
@@ -119,7 +126,9 @@ function IdentityConnectionsRoute() {
           </Alert>
         ) : null}
 
-        {connections.isSuccess && connections.data.length === 0 ? (
+        {!placeholderVisible &&
+        connections.isSuccess &&
+        connections.data.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyTitle>{t("list.emptyTitle")}</EmptyTitle>
@@ -128,7 +137,9 @@ function IdentityConnectionsRoute() {
           </Empty>
         ) : null}
 
-        {connections.isSuccess && connections.data.length > 0 ? (
+        {!placeholderVisible &&
+        connections.isSuccess &&
+        connections.data.length > 0 ? (
           <section aria-label={t("list.configured")} className="grid gap-3">
             {connections.data.map((connection) => {
               const staff = connection.portalScope === "agent";

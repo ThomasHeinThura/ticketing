@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   initializeScheduler,
+  liveRegisteredJobCatalog,
+  registeredJobByName,
   registeredJobs,
   shutdownScheduler,
 } from "../../../apps/api/src/scheduler";
@@ -22,6 +24,26 @@ import {
 describe("scheduler registration", () => {
   afterEach(() => {
     shutdownScheduler();
+  });
+
+  it("registers the automation schedule with a real minute handler", () => {
+    initializeScheduler();
+    const job = registeredJobByName("automation-schedule");
+    expect(job?.getPattern()).toBe("* * * * *");
+    expect(typeof (job as unknown as { fn?: unknown })?.fn).toBe("function");
+  });
+
+  it("reports no live registration before startup or after shutdown", () => {
+    shutdownScheduler();
+    expect(liveRegisteredJobCatalog()).toEqual([]);
+    initializeScheduler();
+    expect(
+      liveRegisteredJobCatalog().some(
+        (job) => job.name === "automation-schedule",
+      ),
+    ).toBe(true);
+    shutdownScheduler();
+    expect(liveRegisteredJobCatalog()).toEqual([]);
   });
 
   it("registers at least one job", () => {

@@ -1,7 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Alert, AlertDescription, SidebarTrigger } from "@taskdesk/ui";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  Alert,
+  AlertDescription,
+  DelayedSuspense,
+  SidebarTrigger,
+  useDelayedPending,
+} from "@taskdesk/ui";
+import { lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Layout from "@/components/common/layout";
 import { TaskPageFrame } from "@/components/common/task-layout";
@@ -118,12 +124,16 @@ function WorkItemDetailRouteComponent() {
     accessLostKey === key ||
     (error instanceof HttpError && error.status === 404);
   const item = isNotFound ? undefined : cachedItem;
+  const detailPlaceholder = useDelayedPending(!item && !isNotFound && !isError);
   return (
     <>
       <PageTitle title={item?.title ? `${item.title} · ${key}` : key} />
       <div className="flex h-full min-w-0 w-full flex-1 flex-col overflow-hidden bg-background">
-        <Suspense fallback={<WorkItemDetailLoading />}>
-          {item ? (
+        <DelayedSuspense
+          immediate={isNotFound || isError}
+          fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
+        >
+          {item && !detailPlaceholder ? (
             <WorkItemDetailWithProject
               item={item}
               workItemKey={key}
@@ -162,7 +172,11 @@ function WorkItemDetailRouteComponent() {
                 />
               }
             >
-              <WorkItemDetailLoading />
+              <div
+                style={{ visibility: detailPlaceholder ? "visible" : "hidden" }}
+              >
+                <WorkItemDetailLoading visible={detailPlaceholder} />
+              </div>
             </TaskPageFrame>
           ) : (
             <TaskPageFrame
@@ -192,7 +206,7 @@ function WorkItemDetailRouteComponent() {
               />
             </TaskPageFrame>
           )}
-        </Suspense>
+        </DelayedSuspense>
       </div>
     </>
   );

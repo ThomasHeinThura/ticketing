@@ -35,6 +35,7 @@ export function PageLoadingAnnouncer({ children }: PropsWithChildren) {
       {children}
       <span
         className="sr-only"
+        style={{ fontFamily: "sans-serif" }}
         aria-live="polite"
         aria-atomic="true"
         data-testid="loading-announcer"

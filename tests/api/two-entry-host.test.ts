@@ -5,12 +5,12 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { createServer, type RequestListener } from "node:http";
-import { createRequire } from "node:module";
+import { createServer } from "node:http";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getRequestListener } from "@hono/node-server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { portalAuth } from "../../apps/api/src/auth";
 import { getDatabasePool } from "../../apps/api/src/database";
@@ -32,18 +32,6 @@ vi.mock("../../apps/api/src/feature-flag/enforce", async (importOriginal) => ({
   customerPortalStateForUser: async () => null,
   customerPortalStateForSubmission: async () => "on" as const,
 }));
-
-const requireFromApi = createRequire(
-  fileURLToPath(new URL("../../apps/api/package.json", import.meta.url)),
-);
-type HonoFetch = (
-  request: Request,
-  env?: unknown,
-  executionCtx?: unknown,
-) => Response | Promise<Response>;
-const { getRequestListener } = requireFromApi("@hono/node-server") as {
-  getRequestListener: (fetch: HonoFetch) => RequestListener;
-};
 
 describe("P0 host and static isolation", () => {
   let agentRoot: string;
@@ -641,14 +629,78 @@ describe("P0 host and static isolation", () => {
     expect(response.status).toBe(503);
   });
 
+  it("refuses raw backslash paths before the portal can reach an agent-only route", async () => {
+    const { app } = createApp({
+      staticRoot: agentRoot,
+      portalStaticRoot: portalRoot,
+    });
+    const fetch = vi.fn(app.fetch);
+    const server = createServer(getRequestListener(fetch));
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const address = server.address();
+    if (!address || typeof address === "string")
+      throw new Error("Expected a TCP listener.");
+    const query = vi
+      .spyOn(getDatabasePool(), "query")
+      .mockRejectedValue(new Error("Host-denied requests must not query."));
+    try {
+      // Send the request-target over TCP: app.request()/Request would normalize
+      // the backslashes before the Node adapter could reject them.
+      const exchange = (path: string) =>
+        new Promise<string>((resolve, reject) => {
+          const socket = connect(address.port, "127.0.0.1");
+          let raw = "";
+          socket.setEncoding("utf8");
+          socket.setTimeout(5_000, () => {
+            socket.destroy();
+            reject(new Error("Timed out waiting for the HTTP response."));
+          });
+          socket.on("data", (chunk) => {
+            raw += chunk;
+          });
+          socket.on("error", reject);
+          socket.on("end", () => resolve(raw));
+          socket.on("connect", () =>
+            socket.write(
+              `GET ${path} HTTP/1.1\r\nHost: portal.localhost:5174\r\nConnection: close\r\n\r\n`,
+            ),
+          );
+        });
+
+      const canonical = await exchange("/api/workspaces");
+      expect(canonical).toMatch(/^HTTP\/1\.1 404\b/u);
+      expect(canonical).toContain('{"message":"Not Found"}');
+      expect(fetch).toHaveBeenCalledTimes(1);
+      fetch.mockClear();
+
+      for (const path of [
+        "/api\\workspaces",
+        "/public\\..\\api/workspaces",
+        "http://portal.localhost:5174/api\\workspaces",
+      ]) {
+        const response = await exchange(path);
+        expect(response, path).toMatch(/^HTTP\/1\.1 400\b/u);
+        expect(response, path).not.toMatch(/set-cookie:/iu);
+        expect(response, path).not.toContain("MARKER");
+      }
+      expect(fetch).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+    } finally {
+      query.mockRestore();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
   it("rejects repeated raw Host fields at the actual Node HTTP boundary", async () => {
     const { app } = createApp({
       staticRoot: agentRoot,
       portalStaticRoot: portalRoot,
     });
-    const server = createServer(
-      getRequestListener(app.fetch as unknown as HonoFetch),
-    );
+    const server = createServer(getRequestListener(app.fetch));
     await new Promise<void>((resolve) =>
       server.listen(0, "127.0.0.1", resolve),
     );

@@ -29,6 +29,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -87,6 +88,12 @@ function InstanceUsersPage() {
   );
   const directory = useInstanceUsers(filters);
   const selected = useInstanceUser(search.user);
+  const directoryPlaceholder = useDelayedPending(directory.isPending, {
+    releaseNow:
+      directory.isSuccess &&
+      (directory.data.data.length === 0 ||
+        Boolean(search.user && selected.isError)),
+  });
   const actions = useInstanceUserActions();
   const action = search.action;
   const [reason, setReason] = useState("");
@@ -365,9 +372,22 @@ function InstanceUsersPage() {
         />
       </section>
 
-      {directory.isPending ? (
+      {search.user && selected.isError ? (
+        <UserDetails
+          user={selected.data}
+          isLoading={selected.isPending}
+          isError={selected.isError}
+          onClose={() => navigateSearch({ user: undefined })}
+          onAction={(nextAction) =>
+            navigateSearch({ action: nextAction ?? undefined })
+          }
+        />
+      ) : null}
+      {!directory.isError &&
+      (directory.isPending || (directoryPlaceholder && directory.data)) ? (
         <div
           role="status"
+          style={{ visibility: directoryPlaceholder ? "visible" : "hidden" }}
           aria-label={t("instanceUsers:copy.352046dda7cf")}
           className="space-y-3"
         >
@@ -533,7 +553,7 @@ function InstanceUsersPage() {
             </CardContent>
           </Card>
 
-          {search.user && (
+          {search.user && !selected.isError && (
             <UserDetails
               user={selected.data}
               isLoading={selected.isPending}
@@ -590,9 +610,14 @@ function UserDetails({
   onAction: (action: GodModeUserAction | null) => void;
 }) {
   const { t } = useTranslation();
-  if (isLoading)
+  const placeholderVisible = useDelayedPending(isLoading);
+  if (!isError && (isLoading || (placeholderVisible && user)))
     return (
-      <Card role="status" aria-label={t("instanceUsers:copy.4135684d2d0a")}>
+      <Card
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        role="status"
+        aria-label={t("instanceUsers:copy.4135684d2d0a")}
+      >
         <CardContent className="space-y-3 p-5">
           <Skeleton className="h-6 w-2/3" />
           <Skeleton className="h-4 w-full" />

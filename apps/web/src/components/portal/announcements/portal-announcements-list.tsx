@@ -11,6 +11,7 @@ import {
   CardTitle,
   EmptyState,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Megaphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -57,6 +58,11 @@ export function PortalAnnouncementsList({
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     retry: false,
   });
+  const placeholderVisible = useDelayedPending(announcements.isPending, {
+    releaseNow:
+      announcements.isSuccess &&
+      announcements.data.pages.every((page) => page.data.length === 0),
+  });
   const entries = announcements.data?.pages.flatMap((page) => page.data) ?? [];
 
   return (
@@ -71,11 +77,13 @@ export function PortalAnnouncementsList({
         </p>
       </header>
       <PortalAnnouncementsTabs />
-      {announcements.isPending ? (
+      {!announcements.isError &&
+      (announcements.isPending || placeholderVisible) ? (
         <div
           role="status"
           aria-label={t("portal:announcements.loading")}
           className="space-y-3"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
         >
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />

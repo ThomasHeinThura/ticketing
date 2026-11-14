@@ -83,8 +83,8 @@ describe("Provider editor route", () => {
   it("shows a loading state and then the connection tabs with the connection tab open", async () => {
     renderWithQuery(<Component />);
     expect(
-      screen.getByRole("status", { name: "Loading authentication provider" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("status", { name: "Loading authentication provider" }),
+    ).toBeNull();
     expect(
       await screen.findByRole("heading", { name: "Staff Entra", level: 1 }),
     ).toBeInTheDocument();

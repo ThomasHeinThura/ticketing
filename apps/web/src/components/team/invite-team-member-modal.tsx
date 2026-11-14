@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod/v4";
 import { PickerPopover } from "@/components/common/picker-popover";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
+import { NoEmailNotice } from "@/components/invitation/no-email-notice";
 import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-workspace-user";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -176,6 +177,7 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="contents">
               <DialogPanel>
+                <NoEmailNotice />
                 <FormField
                   control={form.control}
                   name="email"

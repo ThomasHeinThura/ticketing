@@ -96,11 +96,13 @@ describe("workspace terminology access", () => {
     expect(screen.getByTestId("settings-access-denied")).toBeTruthy();
     expect(mocks.editor).not.toHaveBeenCalled();
   });
-  it("waits for capabilities without mounting the editor", () => {
+  it("waits for capabilities without mounting the editor", async () => {
     mocks.checking = true;
     renderPage();
     expect(
-      screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+      await screen.findByRole("status", {
+        name: "settings:accessDenied.checking",
+      }),
     ).toBeTruthy();
     expect(mocks.editor).not.toHaveBeenCalled();
   });

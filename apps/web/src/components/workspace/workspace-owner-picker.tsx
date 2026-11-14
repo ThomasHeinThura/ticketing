@@ -6,6 +6,7 @@ import {
   ComboboxList,
   ComboboxPopup,
   ComboboxStatus,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -75,6 +76,12 @@ export function WorkspaceOwnerPicker({
     limit: "20",
     ...(query ? { q: query } : {}),
   });
+  const placeholderVisible = useDelayedPending(isPending, {
+    releaseNow:
+      !isPending &&
+      !isError &&
+      data?.data.filter((user) => !user.isSuspended).length === 0,
+  });
   const options = useMemo<OwnerOption[]>(
     () =>
       (data?.data ?? [])
@@ -108,11 +115,17 @@ export function WorkspaceOwnerPicker({
       />
       <ComboboxPopup>
         <ComboboxStatus>
-          {isPending
-            ? t("workspace:create.ownerLoading")
-            : isError
-              ? t("workspace:create.ownerError")
-              : null}
+          {isError ? (
+            t("workspace:create.ownerError")
+          ) : isPending || placeholderVisible ? (
+            <span
+              style={{
+                visibility: placeholderVisible ? "visible" : "hidden",
+              }}
+            >
+              {t("workspace:create.ownerLoading")}
+            </span>
+          ) : null}
         </ComboboxStatus>
         <ComboboxEmpty>{t("workspace:create.ownerEmpty")}</ComboboxEmpty>
         <ComboboxList>

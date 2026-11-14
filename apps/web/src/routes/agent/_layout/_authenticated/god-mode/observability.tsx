@@ -10,6 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
@@ -73,6 +74,7 @@ function ObservabilitySettings() {
   const [oneTimeToken, setOneTimeToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const placeholderVisible = useDelayedPending(!settings && !error);
 
   const request = useCallback(async (path: string, init?: RequestInit) => {
     const response = await apiFetch(getApiUrl(path), {
@@ -262,7 +264,7 @@ function ObservabilitySettings() {
             </AlertDescription>
           </Alert>
         ) : null}
-        {settings ? (
+        {settings && !placeholderVisible ? (
           <>
             <section className="space-y-4 rounded-md border p-4">
               <h2 className="text-lg font-medium">
@@ -510,8 +512,13 @@ function ObservabilitySettings() {
               </div>
             </section>
           </>
-        ) : (
-          <p role="status">{t("observability.loading")}</p>
+        ) : error ? null : (
+          <p
+            role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          >
+            {t("observability.loading")}
+          </p>
         )}
       </section>
     </>

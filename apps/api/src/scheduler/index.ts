@@ -1,5 +1,9 @@
 import { Cron } from "croner";
 import { runCycleSnapshotJob } from "../agile/cycle-snapshot-job";
+import {
+  AUTOMATION_SCHEDULE_JOB,
+  runAutomationSchedule,
+} from "../automation/schedule";
 import { runCustomerInvitationDeliveryJob } from "../customer-invitation/delivery/worker";
 import { checkIdentityConnectionHealth } from "../identity/connection-health";
 import { sweepExpiredImpersonations } from "../instance/impersonation/finish";
@@ -95,6 +99,12 @@ function withCheckIn<T>(name: string, fn: () => Promise<T>) {
 
 function createRegisteredJobDefinitions(): ReadonlyArray<RegisteredJobDefinition> {
   const definitions: ReadonlyArray<RegisteredJobDefinition> = [
+    {
+      name: AUTOMATION_SCHEDULE_JOB,
+      pattern: "* * * * *",
+      handler: runAutomationSchedule,
+      timezone: "UTC",
+    },
     // background-jobs.md's cadence table.
     {
       name: "outbox-drain",
@@ -389,6 +399,12 @@ export function nextScheduledAt(
   } catch {
     return null;
   }
+}
+
+/** Live registration catalog, without the God Mode discovery fallback. */
+export function liveRegisteredJobCatalog(): readonly RegisteredJobStatus[] {
+  const names = new Set(registeredDefinitions.map((job) => job.name));
+  return registeredJobCatalog().filter((job) => names.has(job.name));
 }
 
 /** Exact job names and live schedule state registered in this process. */

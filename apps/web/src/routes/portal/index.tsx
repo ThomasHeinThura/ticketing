@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import { Button, useDelayedPending } from "@taskdesk/ui";
 import { PageLoading } from "@/components/page-loading";
 import type { PortalCaseFilterPatch } from "@/components/portal/cases/portal-case-filters";
 import { PortalOutstandingCases } from "@/components/portal/cases/portal-outstanding-cases";
@@ -74,14 +74,25 @@ function PortalHome() {
     outstandingCasesQuery(search, project),
     { prefetched: true },
   );
+  const pending = home.isLoading || projects.isLoading || cases.isLoading;
+  const placeholderVisible = useDelayedPending(pending);
   const update = (patch: PortalCaseFilterPatch) =>
     void navigate({
       search: (previous: PortalHomeSearch) => ({ ...previous, ...patch }),
       replace: true,
     });
 
-  if (home.isLoading || projects.isLoading || cases.isLoading)
-    return <PageLoading portal />;
+  if (
+    !home.isError &&
+    !projects.isError &&
+    !cases.isError &&
+    (pending || placeholderVisible)
+  )
+    return (
+      <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+        <PageLoading portal />
+      </div>
+    );
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6">

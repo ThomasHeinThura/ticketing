@@ -28,6 +28,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -35,7 +36,9 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
+
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -300,6 +303,9 @@ function CannedResponsesPageContent() {
   );
   const busy =
     !workspace || isCheckingPermissions || (canManage && library.isLoading);
+  const placeholderVisible = useDelayedPending(busy, {
+    releaseNow: !busy && library.isSuccess && filtered.length === 0,
+  });
   if (isForbiddenError(library.error)) return <NoAccessPage />;
   return (
     <>
@@ -323,8 +329,16 @@ function CannedResponsesPageContent() {
             </Button>
           ) : null}
         </div>
-        {busy ? (
-          <Skeleton className="h-24 w-full" />
+        {!library.isError && (busy || (placeholderVisible && canManage)) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-24 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : !canManage ? (
           <Alert>
             <AlertDescription>

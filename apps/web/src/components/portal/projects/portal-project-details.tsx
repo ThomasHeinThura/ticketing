@@ -14,6 +14,7 @@ import {
   ProgressIndicator,
   ProgressTrack,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   ArrowLeft,
@@ -539,6 +540,7 @@ export function PortalProjectDetails({
       !(error instanceof HttpError && error.status === 404) && count < 2,
     refetchOnMount: "always",
   });
+  const placeholderVisible = useDelayedPending(query.isLoading);
   const project = query.data;
   const notFound =
     query.error instanceof HttpError && query.error.status === 404;
@@ -586,8 +588,10 @@ export function PortalProjectDetails({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : !project ? (
-        <DetailsSkeleton />
+      ) : !project || placeholderVisible ? (
+        <div style={{ visibility: placeholderVisible ? "visible" : "hidden" }}>
+          <DetailsSkeleton />
+        </div>
       ) : (
         <>
           <header className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">

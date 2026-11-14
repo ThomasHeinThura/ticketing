@@ -61,8 +61,8 @@ vi.mock("@/components/activity/comment-editor", () => ({
   },
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
-vi.mock("react-i18next", () => ({
-  initReactI18next: { type: "3rdParty", init: () => undefined },
+vi.mock("react-i18next", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 

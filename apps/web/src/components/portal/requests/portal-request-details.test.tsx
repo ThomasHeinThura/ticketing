@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { expectNoA11yViolations } from "@taskdesk/ui/test/a11y";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -104,6 +105,43 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("PortalRequestDetails", () => {
+  it("shows a file-list denial during the retained request placeholder", async () => {
+    vi.useFakeTimers();
+    try {
+      let resolveRequest!: (value: PortalRequestDetail) => void;
+      let rejectFiles!: (error: Error) => void;
+      getPortalRequest.mockReturnValue(
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        }),
+      );
+      getPortalRequestFiles.mockReturnValue(
+        new Promise((_, reject) => {
+          rejectFiles = reject;
+        }),
+      );
+      render(<PortalRequestDetails portalUserId="u1" requestRef="SUP-12" />, {
+        wrapper,
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      await act(async () => {
+        resolveRequest(detail());
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(getPortalRequestFiles).toHaveBeenCalledOnce();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(19);
+        rejectFiles(new HttpError(403, "Denied"));
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.getByText("intake.attachmentListError")).toBeVisible();
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
+  });
   it("shows the request, its public conversation and the team's shared files", async () => {
     getPortalRequest.mockResolvedValue(detail());
     getPortalRequestFiles.mockResolvedValue([

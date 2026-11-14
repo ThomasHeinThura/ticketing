@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@taskdesk/ui", async () => {
   const React = await import("react");
-  const { Button } =
+  const { Button, useDelayedPending } =
     await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
   const PopoverContext = React.createContext<{
     open: boolean;
@@ -29,6 +29,7 @@ vi.mock("@taskdesk/ui", async () => {
     disabled: boolean;
   } | null>(null);
   return {
+    useDelayedPending,
     Button: ({
       children,
       ...props

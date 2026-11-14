@@ -202,7 +202,7 @@ describe("rule validation", () => {
     if (!schedule.ok) expect(schedule.problems[0]?.code).toBe("unavailable");
     const sla = validateRuleDefinition({
       ...ok,
-      conditions: [{ field: "actor_role", op: "eq", value: "customer" }],
+      conditions: [{ field: "cf.cost_centre", op: "eq", value: "customer" }],
     });
     expect(sla.ok).toBe(false);
     if (!sla.ok)

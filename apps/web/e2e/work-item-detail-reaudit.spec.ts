@@ -324,6 +324,7 @@ for (const colorScheme of THEMES)
     await page.getByTestId("create-work-item-trigger").click();
 
     const priority = page.getByTestId("create-work-item-priority-trigger");
+    await expect(priority).toBeVisible();
     await priority.focus();
     await page.keyboard.press("ArrowDown");
     const options = page.getByRole("menuitemradio");

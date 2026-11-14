@@ -68,13 +68,16 @@ function location(pathname: string) {
 describe("agent session with the real Better Auth store (S7b)", () => {
   let stop: (() => void) | undefined;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules();
     fetchStub.mockClear();
     server.signedIn = true;
     server.sessionStatus = 200;
     // Better Auth captures `fetch` when the client is created, so stub it before importing.
     vi.stubGlobal("fetch", fetchStub);
+    // Load the real route graph as fixture setup, after resetting the store and
+    // installing fetch. Keep cold module transformation out of the session journey.
+    await import("@/routes/agent/_layout/_authenticated");
   });
 
   afterEach(() => {
@@ -120,8 +123,7 @@ describe("agent session with the real Better Auth store (S7b)", () => {
     expect((thrown as { options?: { to?: string } }).options?.to).toBe(
       "/auth/sign-in",
     );
-    // Importing the real route module afresh is slow on a loaded runner.
-  }, 30_000);
+  });
 
   // The store hint defers the factor read only after a definitive "signed out". Every state in
   // which nothing is known must keep the old behaviour.

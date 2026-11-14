@@ -13,6 +13,7 @@ import {
   AlertDescription,
   Badge,
   Button,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -22,6 +23,7 @@ import {
   TableRow,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CheckCheck, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -263,6 +265,12 @@ export function CycleDetailScreen({
     onError: () => toast.error(t("cycles.deleteFailed")),
   });
 
+  const placeholderVisible = useDelayedPending(cycleQuery.isLoading, {
+    releaseNow: cycleQuery.isSuccess && burndownQuery.isError,
+  });
+  const burndownPlaceholder = useDelayedPending(burndownQuery.isLoading);
+  const projectPlaceholder = useDelayedPending(!project);
+
   if (cycleQuery.error instanceof FeatureDisabledError)
     return (
       <ProjectFeatureOff
@@ -271,16 +279,14 @@ export function CycleDetailScreen({
         projectKey={projectKey}
       />
     );
-  if (cycleQuery.isLoading)
+  if (!cycleQuery.isError && (cycleQuery.isLoading || placeholderVisible))
     return (
-      <div
-        className="mx-auto flex max-w-5xl flex-col gap-3 p-4"
-        role="status"
-        aria-label={t("common.loading")}
-      >
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-40 w-full" />
-      </div>
+      <LoadingStatus visible={placeholderVisible} label={t("common.loading")}>
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 p-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </LoadingStatus>
     );
   if (cycleQuery.isError || !cycleQuery.data)
     return (
@@ -376,8 +382,17 @@ export function CycleDetailScreen({
 
       <section aria-label={t("burndown.title")} className="flex flex-col gap-2">
         <h2 className="font-medium text-sm">{t("burndown.title")}</h2>
-        {burndownQuery.isLoading ? (
-          <Skeleton className="h-40 w-full" />
+        {!burndownQuery.isError &&
+        (burndownQuery.isLoading || burndownPlaceholder) ? (
+          <LoadingStatus
+            visible={burndownPlaceholder}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-40 w-full"
+              style={{ visibility: burndownPlaceholder ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : burndownQuery.isError || !burndownQuery.data ? (
           <Alert variant="error">
             <AlertDescription>{t("burndown.loadFailed")}</AlertDescription>
@@ -416,7 +431,7 @@ export function CycleDetailScreen({
               </ToggleGroup>
             </div>
             <DropSurface active={cycle.canEditItems}>
-              {project ? (
+              {project && !projectPlaceholder ? (
                 <ScopedWorkSurface
                   project={{ id: project.id, slug: project.slug }}
                   workspaceId={workspaceId}
@@ -425,7 +440,17 @@ export function CycleDetailScreen({
                   canEditItems={cycle.canEditItems}
                 />
               ) : (
-                <Skeleton className="h-40 w-full" />
+                <LoadingStatus
+                  visible={projectPlaceholder}
+                  label={t("common:empty.loading")}
+                >
+                  <Skeleton
+                    className="h-40 w-full"
+                    style={{
+                      visibility: projectPlaceholder ? "visible" : "hidden",
+                    }}
+                  />
+                </LoadingStatus>
               )}
             </DropSurface>
           </section>

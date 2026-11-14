@@ -58,7 +58,9 @@ describe("CreateWorkItemDialog shared shell", () => {
     expect(trigger).toHaveFocus();
     fireEvent.click(trigger);
     expect(await screen.findByRole("dialog")).toBeVisible();
-    expect(await screen.findByTestId("create-work-item-form")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByTestId("create-work-item-form")).toBeVisible(),
+    );
 
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     await waitFor(() => expect(trigger).toHaveFocus());

@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { Skeleton } from "@taskdesk/ui";
+import { LoadingStatus, Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import WorkspaceSearch from "@/components/search/workspace-search";
@@ -19,12 +19,20 @@ function AgentSearchRoute() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const { data: workspace, isLoading } = useActiveWorkspace();
+  const placeholderVisible = useDelayedPending(isLoading);
+  if (isLoading || (placeholderVisible && workspace))
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <div className="p-4">
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </LoadingStatus>
+    );
   if (!workspace)
-    return isLoading ? (
-      <div className="p-4">
-        <Skeleton className="h-10 w-full" />
-      </div>
-    ) : (
+    return (
       // /agent home resolves the first workspace or sends the user to onboarding.
       <Navigate to="/agent" replace />
     );

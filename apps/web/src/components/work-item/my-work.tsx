@@ -12,6 +12,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -135,9 +136,16 @@ function MyWorkItems({ lens }: { lens: "assigned" | "watching" }) {
 function MyApprovals() {
   const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useGetMyApprovals();
-  if (isLoading) {
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && !isError && data?.approvals.length === 0,
+  });
+  if (!isError && (isLoading || placeholderVisible)) {
     return (
-      <p className="text-muted-foreground text-sm" role="status">
+      <p
+        className="text-muted-foreground text-sm"
+        role="status"
+        style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+      >
         {t("common:empty.loading")}
       </p>
     );

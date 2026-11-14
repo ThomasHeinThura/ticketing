@@ -4,11 +4,13 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  LoadingStatus,
   Skeleton,
   Tabs,
   TabsList,
   TabsPanel,
   TabsTab,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
@@ -50,6 +52,14 @@ function IdentityConnectionEditorRoute() {
   const creating = id === "new";
   const isAdmin = useInstanceAdminSignal();
   const connections = useIdentityConnections(!creating && isAdmin);
+  const placeholderVisible = useDelayedPending(
+    isAdmin && !creating && connections.isPending,
+    {
+      releaseNow:
+        connections.isSuccess &&
+        !connections.data.some((item) => item.id === id),
+    },
+  );
 
   const tab: IdentityConnectionTab = search.tab ?? "connection";
   const go = (next: IdentityConnectionEditorSearch, replace = false) =>
@@ -106,15 +116,17 @@ function IdentityConnectionEditorRoute() {
           <BackLink />
         </div>
 
-        {connections.isPending ? (
-          <div
-            aria-label={t("detail.loading")}
-            className="space-y-3"
-            role="status"
+        {!connections.isError &&
+        (connections.isPending || placeholderVisible) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("detail.loading")}
           >
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-64 w-full" />
-          </div>
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </LoadingStatus>
         ) : null}
 
         {connections.isError ? (
@@ -143,7 +155,7 @@ function IdentityConnectionEditorRoute() {
           </Alert>
         ) : null}
 
-        {connections.isSuccess && !connection ? (
+        {!placeholderVisible && connections.isSuccess && !connection ? (
           <Alert variant="warning">
             <AlertTitle>{t("detail.notFoundTitle")}</AlertTitle>
             <AlertDescription>

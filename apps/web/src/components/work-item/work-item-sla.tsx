@@ -3,6 +3,7 @@ import {
   Progress,
   ProgressIndicator,
   ProgressTrack,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CircleAlert, Pause } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -80,6 +81,7 @@ export default function WorkItemSla({
 }) {
   const { t } = useTranslation();
   const query = useGetWorkItemSla(workItemKey);
+  const placeholderVisible = useDelayedPending(query.isLoading);
   // `calendarName`, `atRiskThresholdPct` and `pauses` come from the staff route; a response
   // without them (an older server) renders the clocks alone.
   const calendarName = query.data?.calendarName ?? null;
@@ -100,8 +102,15 @@ export default function WorkItemSla({
       >
         {t("workItemExtras:detail.sla.heading")}
       </h2>
-      {query.isLoading ? (
-        <p className="text-muted-foreground text-sm" role="status">
+      {query.isLoading ||
+      (placeholderVisible &&
+        !query.isError &&
+        Array.isArray(query.data?.metrics)) ? (
+        <p
+          className="text-muted-foreground text-sm"
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           {t("common:empty.loading")}
         </p>
       ) : query.isError || !Array.isArray(query.data?.metrics) ? (

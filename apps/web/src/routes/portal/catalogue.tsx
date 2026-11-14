@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Paperclip, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -130,6 +131,10 @@ function PortalCatalogueContent() {
     catalogue.isLoading ||
     (needsSelectionMetadata && selectionMetadata.isLoading) ||
     (Boolean(key) && selectedType.isLoading);
+  const placeholderVisible = useDelayedPending(primaryLoading, {
+    releaseNow:
+      !primaryLoading && !key && catalogue.isSuccess && entries.length === 0,
+  });
   const storageKey =
     selected && portalUserId
       ? `taskdesk:intake-draft:${encodeURIComponent(portalUserId)}:${encodeURIComponent(selected.key)}:${selected.version}`
@@ -402,8 +407,11 @@ function PortalCatalogueContent() {
           />
         </label>
       )}
-      {primaryLoading && !primaryError ? (
-        <p role="status">
+      {!primaryError && (primaryLoading || placeholderVisible) ? (
+        <p
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           {t("common:empty.loading", { defaultValue: "Loading…" })}
         </p>
       ) : primaryError ? null : selected ? (

@@ -1621,3 +1621,18 @@ describe("original card display preferences over persisted projections", () => {
     );
   });
 });
+
+it("releases a slow empty board immediately when its item list resolves", () => {
+  vi.useFakeTimers();
+  try {
+    const view = board({ isLoading: true, workItems: undefined });
+    act(() => vi.advanceTimersByTime(200));
+    expect(screen.getByTestId("work-item-board-loading")).toBeVisible();
+    view.rerender({ isLoading: false, workItems: [] });
+    expect(screen.queryByTestId("work-item-board-loading")).toBeNull();
+    expect(screen.getAllByTestId("work-item-board-column")).toHaveLength(3);
+  } finally {
+    cleanup();
+    vi.useRealTimers();
+  }
+});

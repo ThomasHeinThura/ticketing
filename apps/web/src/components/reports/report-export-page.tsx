@@ -11,8 +11,10 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
+  LoadingStatus,
   Skeleton,
   Spinner,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   ChevronLeft,
@@ -83,6 +85,7 @@ export function ReportExportPage(props: { exportId: string }) {
 function ReportExportPageScreen({ exportId }: { exportId: string }) {
   const { t } = useTranslation();
   const exported = useReportExport(exportId);
+  const placeholderVisible = useDelayedPending(exported.isLoading);
   const download = useMutation({
     mutationFn: () => downloadReportExport(exportId),
     onSuccess: ({ filename, blob }) => saveBlob(filename, blob),
@@ -121,8 +124,16 @@ function ReportExportPageScreen({ exportId }: { exportId: string }) {
             {t("reports:exportPage.subtitle")}
           </p>
         </div>
-        {state === "loading" ? (
-          <Skeleton className="h-48 w-full" />
+        {state === "loading" || (placeholderVisible && !exported.isError) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-48 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            />
+          </LoadingStatus>
         ) : (
           <ExportState
             state={state}

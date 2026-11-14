@@ -9,6 +9,7 @@ import {
   AlertTitle,
   Badge,
   Frame,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -16,6 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { getMcpUsage } from "@/fetchers/god-mode/mcp-usage";
@@ -37,7 +39,21 @@ export function McpUsagePanel() {
     retry: false,
   });
 
-  if (query.isPending) return <Skeleton className="h-64 w-full" />;
+  const placeholderVisible = useDelayedPending(query.isPending, {
+    releaseNow: query.isSuccess && query.data.keys.length === 0,
+  });
+  if (!query.isError && (query.isPending || (placeholderVisible && query.data)))
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-64 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (query.error instanceof HttpError && query.error.status === 403)
     return (
       <Alert variant="info">

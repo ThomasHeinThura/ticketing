@@ -4,6 +4,7 @@ import {
   Checkbox,
   Input,
   Label,
+  LoadingStatus,
   NumberField,
   NumberFieldDecrement,
   NumberFieldGroup,
@@ -19,6 +20,7 @@ import {
   SelectValue,
   Separator,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CheckCircle, Trash2 } from "lucide-react";
 import React from "react";
@@ -584,6 +586,9 @@ function ReportExportEmailPreference() {
 export function NotificationPreferencesSettings() {
   const { t } = useTranslation();
   const { data: preferences, isLoading } = useGetNotificationPreferences();
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow: !isLoading && !preferences,
+  });
   const { data: workspacesData } = useGetWorkspaces();
   const { mutateAsync: updatePreferences, isPending: isSavingPreferences } =
     useUpdateNotificationPreferences();
@@ -675,13 +680,21 @@ export function NotificationPreferencesSettings() {
     [preferences?.workspaces],
   );
 
-  if (isLoading) {
+  if (isLoading || placeholderVisible) {
     return (
-      <div className="space-y-4">
-        <div className="h-24 animate-pulse rounded-md bg-muted" />
-        <div className="h-24 animate-pulse rounded-md bg-muted" />
-        <div className="h-48 animate-pulse rounded-md bg-muted" />
-      </div>
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <div
+          className="space-y-4"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
+          <div className="h-24 animate-pulse rounded-md bg-muted" />
+          <div className="h-24 animate-pulse rounded-md bg-muted" />
+          <div className="h-48 animate-pulse rounded-md bg-muted" />
+        </div>
+      </LoadingStatus>
     );
   }
 

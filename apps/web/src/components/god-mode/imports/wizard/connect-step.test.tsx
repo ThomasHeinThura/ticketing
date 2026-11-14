@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { engineRun, i18nMock, renderWithQuery } from "./test-support";
 
@@ -83,6 +89,42 @@ async function fillAzureDevops() {
 }
 
 describe("ConnectStep", () => {
+  it("releases the placeholders when both lookups return empty", async () => {
+    let resolveSources!: (value: unknown[]) => void;
+    let resolveProjects!: (value: unknown[]) => void;
+    mocks.listSources.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSources = resolve;
+      }),
+    );
+    mocks.projects.mockReturnValue(
+      new Promise((resolve) => {
+        resolveProjects = resolve;
+      }),
+    );
+    vi.useFakeTimers();
+    try {
+      renderStep();
+      fireEvent.click(screen.getByRole("radio", { name: /Azure DevOps/ }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(screen.getAllByRole("status")).toHaveLength(2);
+      await act(async () => {
+        resolveSources([]);
+        resolveProjects([]);
+        await vi.advanceTimersByTimeAsync(20);
+      });
+      expect(screen.getByLabelText("Connection name")).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "Target project" }),
+      ).toBeTruthy();
+      expect(screen.queryByRole("status")).toBeNull();
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
+  });
   it("sends the credential once under `credential`, never in config, and never shows it again", async () => {
     const { onCreated } = renderStep();
     await fillAzureDevops();

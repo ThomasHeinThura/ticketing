@@ -16,6 +16,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import {
@@ -119,6 +120,9 @@ export function AutomationRunsDialog({
       last.page.hasMore ? (last.page.nextBefore ?? undefined) : undefined,
   });
   const rows = query.data?.pages.flatMap((page) => page.data) ?? [];
+  const placeholderVisible = useDelayedPending(query.isLoading, {
+    releaseNow: query.isSuccess && rows.length === 0,
+  });
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
@@ -130,8 +134,12 @@ export function AutomationRunsDialog({
           <DialogDescription>{t("runs.description")}</DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] space-y-3 overflow-y-auto px-6">
-          {query.isLoading ? (
-            <div role="status" aria-label={t("runs.loading")}>
+          {!query.isError && (query.isLoading || placeholderVisible) ? (
+            <div
+              role="status"
+              aria-label={t("runs.loading")}
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
               <Skeleton className="h-16 w-full" />
             </div>
           ) : query.isError ? (

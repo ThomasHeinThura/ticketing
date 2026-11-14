@@ -12,6 +12,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Input,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
@@ -44,6 +46,9 @@ function GodModeAuditRoute() {
     action: actionFilter.trim() || undefined,
   });
 
+  const placeholderVisible = useDelayedPending(isAdmin && query.isLoading, {
+    releaseNow: query.isSuccess && query.data.rows.length === 0,
+  });
   if (!isAdmin) {
     return (
       <>
@@ -147,14 +152,19 @@ function GodModeAuditRoute() {
               </Button>
             </AlertDescription>
           </Alert>
-        ) : query.isLoading ? (
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-4">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </CardContent>
-          </Card>
+        ) : query.isLoading || placeholderVisible ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Card>
+              <CardContent className="flex flex-col gap-3 p-4">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </CardContent>
+            </Card>
+          </LoadingStatus>
         ) : rows.length === 0 ? (
           <Card>
             <CardContent className="p-8">

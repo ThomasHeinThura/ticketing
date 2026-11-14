@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { FeatureOff, PageContainer, PageHeader, Skeleton } from "@taskdesk/ui";
+import {
+  FeatureOff,
+  LoadingStatus,
+  PageContainer,
+  PageHeader,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
@@ -51,11 +58,27 @@ export function ReportsFeatureGate({
 }) {
   const { data: workspace } = useActiveWorkspace();
   const state = useReportsFeature(workspace?.id);
-  if (state === "on" || state === "unknown") return <>{children}</>;
-  return <ReportsOff title={title} loading={state === "loading"} />;
+  const placeholderVisible = useDelayedPending(state === "loading");
+  if (state === "unknown" || (state === "on" && !placeholderVisible))
+    return <>{children}</>;
+  return (
+    <ReportsOff
+      title={title}
+      loading={state === "loading" || state === "on"}
+      placeholderVisible={placeholderVisible}
+    />
+  );
 }
 
-function ReportsOff({ title, loading }: { title: string; loading: boolean }) {
+function ReportsOff({
+  title,
+  loading,
+  placeholderVisible,
+}: {
+  title: string;
+  loading: boolean;
+  placeholderVisible: boolean;
+}) {
   const { t } = useTranslation();
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const canManage = canManageWorkspaceSettings();
@@ -65,10 +88,16 @@ function ReportsOff({ title, loading }: { title: string; loading: boolean }) {
       <PageContainer>
         <PageHeader title={title} />
         {loading ? (
-          <Skeleton
-            className="h-40 w-full"
-            data-testid="reports-feature-loading"
-          />
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton
+              className="h-40 w-full"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+              data-testid="reports-feature-loading"
+            />
+          </LoadingStatus>
         ) : (
           // UX-1a (SR-02): the shared off state, with the way to switch it on for an admin.
           <FeatureOff

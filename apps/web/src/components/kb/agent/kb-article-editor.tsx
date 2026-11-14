@@ -26,6 +26,7 @@ import {
   FieldDescription,
   Input,
   Label,
+  LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
@@ -33,6 +34,7 @@ import {
   SelectValue,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -637,7 +639,22 @@ export function KbArticleEditor({
 }) {
   const { t } = useTranslation();
   const detail = useKbArticle(id);
-  if (detail.isLoading) return <Skeleton className="m-6 h-40" />;
+  const placeholderVisible = useDelayedPending(detail.isLoading);
+  if (
+    !detail.isError &&
+    (detail.isLoading || (placeholderVisible && detail.data))
+  )
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="m-6 h-40"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   if (detail.isError || !detail.data) {
     const missing =
       detail.error instanceof HttpError && detail.error.status === 404;

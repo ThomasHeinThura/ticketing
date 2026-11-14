@@ -37,8 +37,8 @@ function isElementNonInteractive(target: EventTarget | null): boolean {
 
 /**
  * Mirrors pointer `:active` feedback onto `[data-pressed]` for keyboard activation (`Enter`
- * and optionally `Space`), while marking `[data-keyboard-press]` through the release frame
- * so keyboard press and release stay instantaneous (plan section 6 rule 8).
+ * and optionally `Space`), while keeping `[data-keyboard-press]` active until a subsequent
+ * pointer interaction or disable so keyboard press and release stay instantaneous (plan section 6 rule 8).
  *
  * When idle, `"data-pressed"` and `"data-keyboard-press"` are omitted from the returned object
  * so `mergeProps(defaultProps, props, keyboardPressProps)` preserves any external `data-pressed`
@@ -56,42 +56,19 @@ export function useKeyboardPress(
   const [pressed, setPressed] = React.useState(false);
   const [keyboardMode, setKeyboardMode] = React.useState(false);
   const activeKeyRef = React.useRef<string | null>(null);
-  const releaseFrameRef = React.useRef<number | null>(null);
-
-  const cancelReleaseFrame = React.useCallback(() => {
-    if (
-      releaseFrameRef.current !== null &&
-      typeof cancelAnimationFrame === "function"
-    ) {
-      cancelAnimationFrame(releaseFrameRef.current);
-      releaseFrameRef.current = null;
-    }
-  }, []);
-
-  React.useEffect(() => cancelReleaseFrame, [cancelReleaseFrame]);
 
   React.useEffect(() => {
     if (!enabled || disabled) {
-      cancelReleaseFrame();
       activeKeyRef.current = null;
       setPressed(false);
       setKeyboardMode(false);
     }
-  }, [cancelReleaseFrame, disabled, enabled]);
+  }, [disabled, enabled]);
 
   const releaseKeyboardPress = React.useCallback(() => {
     activeKeyRef.current = null;
     setPressed(false);
-    cancelReleaseFrame();
-    if (typeof requestAnimationFrame === "function") {
-      releaseFrameRef.current = requestAnimationFrame(() => {
-        releaseFrameRef.current = null;
-        setKeyboardMode(false);
-      });
-    } else {
-      setKeyboardMode(false);
-    }
-  }, [cancelReleaseFrame]);
+  }, []);
 
   const onKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
@@ -118,19 +95,11 @@ export function useKeyboardPress(
         event.key === "Enter" || (allowSpace && event.key === " ");
       if (!isActivationKey || event.repeat) return;
 
-      cancelReleaseFrame();
       activeKeyRef.current = event.key;
       setKeyboardMode(true);
       setPressed(true);
     },
-    [
-      allowSpace,
-      cancelReleaseFrame,
-      disabled,
-      enabled,
-      releaseKeyboardPress,
-      shouldIgnoreEvent,
-    ],
+    [allowSpace, disabled, enabled, releaseKeyboardPress, shouldIgnoreEvent],
   );
 
   const onKeyUp = React.useCallback(
@@ -160,11 +129,10 @@ export function useKeyboardPress(
   }, [pressed, releaseKeyboardPress]);
 
   const onPointerDown = React.useCallback(() => {
-    cancelReleaseFrame();
     activeKeyRef.current = null;
     if (pressed) setPressed(false);
     if (keyboardMode) setKeyboardMode(false);
-  }, [cancelReleaseFrame, keyboardMode, pressed]);
+  }, [keyboardMode, pressed]);
 
   const showPressed = enabled && !disabled && pressed;
   const showKeyboardMode = enabled && !disabled && keyboardMode;

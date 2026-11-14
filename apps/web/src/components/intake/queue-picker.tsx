@@ -16,6 +16,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -160,6 +161,9 @@ export function IntakeQueuePicker({
       onSelect(queue.id);
     },
   });
+  const placeholderVisible = useDelayedPending(queues.isLoading, {
+    releaseNow: queues.isSuccess && queues.data.length === 0,
+  });
   const selectable =
     queues.data?.some((queue) => queue.id === queueId) ?? false;
 
@@ -181,7 +185,14 @@ export function IntakeQueuePicker({
           })),
         ]}
       />
-      {queues.isLoading && <span role="status">{t("queue.loading")}</span>}
+      {!queues.isError && (queues.isLoading || placeholderVisible) && (
+        <span
+          role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
+          {t("queue.loading")}
+        </span>
+      )}
       {canCreate && (
         <Button
           variant="outline"

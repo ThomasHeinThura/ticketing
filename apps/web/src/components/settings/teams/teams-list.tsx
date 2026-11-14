@@ -26,6 +26,7 @@ import {
   Label,
   SaveButton,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -167,6 +168,9 @@ export function TeamsList() {
   const canManage = canManageWorkspaceSettings() && !isCheckingPermissions;
   const [creating, setCreating] = useState(false);
   const loading = workspaceLoading || teams.isLoading;
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && teams.isSuccess && teams.data.length === 0,
+  });
   if (isForbiddenError(teams.error)) return <NoAccessPage />;
   return (
     <>
@@ -186,8 +190,9 @@ export function TeamsList() {
             </Button>
           ) : null}
         </div>
-        {loading ? (
+        {!teams.isError && (loading || placeholderVisible) ? (
           <div
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             role="status"
             aria-label={t("teams:list.loading")}
             className="space-y-3"

@@ -32,6 +32,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { type ReactElement, useId, useState } from "react";
@@ -610,6 +611,12 @@ export function AnnouncementsList() {
   const canManage = status.data?.canManageServices === true && !catalogueOff;
   const { canManageWorkspaceSettings } = useWorkspacePermission();
   const announcements = useAnnouncements(workspaceId, canManage);
+  const statusPlaceholder = useDelayedPending(status.isLoading || !workspace, {
+    releaseNow: Boolean(status.data && workspace && announcements.isError),
+  });
+  const listPlaceholder = useDelayedPending(announcements.isLoading, {
+    releaseNow: announcements.isSuccess && announcements.data.length === 0,
+  });
   const [editing, setEditing] = useState<Announcement | "new" | null>(null);
   if (
     !workspace ||
@@ -629,7 +636,7 @@ export function AnnouncementsList() {
               onRetry={() => void status.refetch()}
             />
           ) : (
-            <SettingsAccessChecking />
+            <SettingsAccessChecking visible={statusPlaceholder} />
           )}
         </PageFrame>
       </>
@@ -656,8 +663,11 @@ export function AnnouncementsList() {
           active="announcements"
           canManageServices={status.data?.canManageServices === true}
         />
-        {status.isLoading || !workspace ? (
-          <LoadingRows />
+        {!status.isError &&
+        (status.isLoading ||
+          !workspace ||
+          (statusPlaceholder && !catalogueOff)) ? (
+          <LoadingRows visible={statusPlaceholder} />
         ) : catalogueOff ? (
           <CatalogueOff canManageFeatures={canManageWorkspaceSettings()} />
         ) : status.isError ? (
@@ -665,8 +675,9 @@ export function AnnouncementsList() {
             error={status.error}
             onRetry={() => void status.refetch()}
           />
-        ) : announcements.isLoading ? (
-          <LoadingRows />
+        ) : !announcements.isError &&
+          (announcements.isLoading || listPlaceholder) ? (
+          <LoadingRows visible={listPlaceholder} />
         ) : announcements.isError ? (
           <QueryFailure
             error={announcements.error}

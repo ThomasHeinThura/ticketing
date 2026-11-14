@@ -1,10 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
+import { startDetailAssigneeChange } from "./detail-instant-change";
 import WorkItemProperties from "./work-item-properties";
 
 const mocks = vi.hoisted(() => ({
@@ -451,6 +456,7 @@ describe("WorkItemProperties", () => {
   it("opens the status moves from the keyboard and moves between them with the arrow keys", async () => {
     mocks.transitions = ["In progress", "Review"].map((name, index) => ({
       transitionId: `t${index}`,
+      toStateId: "target-state",
       toStateTemplateId: `tpl-${index}`,
       toStateName: name,
       notePolicy: "none",
@@ -476,6 +482,7 @@ describe("WorkItemProperties", () => {
     mocks.transitions = [
       {
         transitionId: "t-note",
+        toStateId: "target-state",
         toStateTemplateId: "tpl-review",
         toStateName: "Review",
         notePolicy: "required",
@@ -505,6 +512,7 @@ describe("WorkItemProperties", () => {
     mocks.transitions = [
       {
         transitionId: "t1",
+        toStateId: "target-state",
         toStateTemplateId: "tpl-progress",
         toStateName: "In progress",
         notePolicy: "none",
@@ -517,15 +525,18 @@ describe("WorkItemProperties", () => {
     fireEvent.click(
       await screen.findByRole("menuitem", { name: /In progress/ }),
     );
-    expect(
-      await screen.findByText("workItems:journey.transitionUnavailable"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "workItems:journey.transitionUnavailable",
+      ),
+    );
   });
 
   it("disables an unavailable transition even when it gives no reason", async () => {
     mocks.transitions = [
       {
         transitionId: "t9",
+        toStateId: "target-state",
         toStateTemplateId: "tpl-held",
         toStateName: "Held",
         notePolicy: "none",
@@ -545,6 +556,7 @@ describe("WorkItemProperties", () => {
     mocks.transitions = [
       {
         transitionId: "t4",
+        toStateId: "target-state",
         toStateTemplateId: "tpl-review",
         toStateName: "Review",
         notePolicy: "optional",
@@ -587,6 +599,7 @@ describe("WorkItemProperties", () => {
     mocks.transitions = [
       {
         transitionId: "t1",
+        toStateId: "target-state",
         toStateTemplateId: "tpl-progress",
         toStateName: "In progress",
         notePolicy: "none",
@@ -595,6 +608,7 @@ describe("WorkItemProperties", () => {
       },
       {
         transitionId: "t2",
+        toStateId: "target-state",
         toStateTemplateId: "tpl-done",
         toStateName: "Done",
         notePolicy: "none",
@@ -623,6 +637,7 @@ describe("WorkItemProperties", () => {
     mocks.transitions = [
       {
         transitionId: "t3",
+        toStateId: "target-state",
         toStateTemplateId: "tpl-closed",
         toStateName: "Closed",
         notePolicy: "required",
@@ -667,6 +682,7 @@ describe("WorkItemProperties", () => {
     const closeOffer = (notePolicy: "none" | "required") => [
       {
         transitionId: "close",
+        toStateId: "target-state",
         toStateTemplateId: "tpl-done",
         toStateName: "Done",
         toStateCategory: "completed",
@@ -748,70 +764,49 @@ describe("WorkItemProperties", () => {
     });
   });
 
-  it.each(["assign", "unassign"] as const)(
-    "keeps the confirmed holder when %s waits behind another write",
-    async (action) => {
-      mocks.assign.mockResolvedValue({ key: "HELP-7", version: 6 });
-      mocks.unassign.mockResolvedValue({ key: "HELP-7", version: 6 });
-      mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
-      const original = item({
-        assigneeId: "person-1",
-        assigneeName: "Riley Fox",
-      });
-      const { client } = renderProps(
-        <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
-        original,
-      );
-      let release: () => void = () => {};
-      const blocker = client.getMutationCache().build(client, {
-        scope: { id: "work-item:HELP-7" },
-        mutationFn: () =>
-          new Promise<void>((resolve) => {
-            release = resolve;
-          }),
-      });
-      const blocking = blocker.execute(undefined);
-      await waitFor(() => expect(blocker.state.status).toBe("pending"));
-      fireEvent.click(screen.getByRole("button", { name: /Riley Fox/ }));
-      if (action === "assign") {
-        fireEvent.click(
-          await screen.findByRole("button", { name: /Casey Ray/ }),
-        );
-        fireEvent.click(
-          screen.getByRole("button", {
-            name: "workItems:journey.confirmAssignment",
-          }),
-        );
-      } else {
-        fireEvent.click(
-          await screen.findByRole("button", {
-            name: "workItems:detail.unassigned",
-          }),
-        );
-      }
-      expect(mocks.assign).not.toHaveBeenCalled();
-      expect(mocks.unassign).not.toHaveBeenCalled();
-      client.setQueryData(
-        ["work-items", "detail", original.key],
-        item({ assigneeId: "person-3", version: 5 }),
-      );
-      release();
-      await blocking;
-      if (action === "assign") {
-        await waitFor(() =>
-          expect(mocks.assign).toHaveBeenCalledWith({
-            key: "HELP-7",
-            assigneeId: "person-2",
-            expectedCurrentAssigneeId: "person-1",
-          }),
-        );
-      } else {
-        await waitFor(() =>
-          expect(mocks.unassign).toHaveBeenCalledWith("HELP-7", "person-1"),
-        );
-      }
-    },
-  );
+  it("blocks both controls while another item write is pending, without queuing a choice", async () => {
+    const original = item({
+      assigneeId: "person-1",
+      assigneeName: "Riley Fox",
+    });
+    const { client } = renderProps(
+      <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
+      original,
+    );
+    let release = () => {};
+    const blocker = client.getMutationCache().build(client, {
+      scope: { id: "work-item:HELP-7" },
+      mutationFn: () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    });
+    const pending = blocker.execute(undefined);
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      ),
+    );
+    expect(screen.getByTestId("work-item-state-control")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    expect(screen.queryByRole("button", { name: /Casey Ray/ })).toBeNull();
+    expect(mocks.assign).not.toHaveBeenCalled();
+    expect(mocks.unassign).not.toHaveBeenCalled();
+    release();
+    await pending;
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-assignee-control"),
+      ).not.toHaveAttribute("aria-disabled"),
+    );
+    expect(screen.getByTestId("work-item-state-control")).not.toHaveAttribute(
+      "aria-disabled",
+    );
+  });
 
   it.each([true, false])(
     "update-only caller can unassign only their own item (self: %s)",
@@ -1096,6 +1091,7 @@ describe("original numbered property shortcuts", () => {
     mocks.transitions = [
       {
         transitionId: "blocked",
+        toStateId: "target-state",
         toStateTemplateId: "blocked-template",
         toStateName: "CAB done",
         notePolicy: "none",
@@ -1104,6 +1100,7 @@ describe("original numbered property shortcuts", () => {
       },
       {
         transitionId: "note",
+        toStateId: "target-state",
         toStateTemplateId: "note-template",
         toStateName: "Close with note",
         notePolicy: "required",
@@ -1137,6 +1134,7 @@ describe("original numbered property shortcuts", () => {
     mocks.transitions = [
       {
         transitionId: "edge",
+        toStateId: "target-state",
         toStateTemplateId: "actual-template",
         toStateName: "Actual next",
         notePolicy: "none",
@@ -1303,4 +1301,270 @@ it("P6-R1-04: flags a stale source link and never links a non-http(s) URL", () =
   expect(origin).toHaveAttribute("data-stale", "true");
   expect(origin).toHaveTextContent("workItems:properties.importedFromStale");
   expect(screen.queryByRole("link", { name: /openSource/ })).toBeNull();
+});
+
+function CachedProperties({
+  selected,
+  accessLost,
+}: {
+  selected: WorkItemDetailRow;
+  accessLost: () => void;
+}) {
+  const { data = selected } = useQuery({
+    queryKey: ["work-items", "detail", selected.key],
+    queryFn: async () => selected,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  return <WorkItemProperties item={data} onAccessLost={accessLost} />;
+}
+
+it.each(["success", "refusal"] as const)(
+  "state closes immediately, displays cached optimism, locks both controls and settles on %s",
+  async (outcome) => {
+    let resolve = (_value: unknown) => {};
+    let reject = (_error: unknown) => {};
+    mocks.transition.mockReturnValue(
+      new Promise((yes, no) => {
+        resolve = yes;
+        reject = no;
+      }),
+    );
+    mocks.transitions = [
+      {
+        transitionId: "t1",
+        toStateId: "target-state",
+        toStateTemplateId: "tpl-progress",
+        toStateName: "In progress",
+        toStateCategory: "started",
+        notePolicy: "none",
+        available: true,
+        blockedBy: [],
+      },
+    ];
+    const original = item({ stateId: "todo" });
+    const { client } = renderProps(
+      <CachedProperties selected={original} accessLost={vi.fn()} />,
+      original,
+    );
+    fireEvent.click(screen.getByTestId("work-item-state-control"));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: /In progress/ }),
+    );
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-state-control")).toHaveTextContent(
+        "In progress",
+      ),
+    );
+    expect(screen.getByTestId("work-item-state-control")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByTestId("work-item-state-control")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    if (outcome === "success") resolve({ version: 5 });
+    else reject(new HttpError(403, "forbidden"));
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-state-control")).not.toHaveAttribute(
+        "aria-disabled",
+      ),
+    );
+    expect(
+      screen.getByTestId("work-item-assignee-control"),
+    ).not.toHaveAttribute("aria-disabled");
+    // This harness's actual settle GET returns the original server row.
+    await waitFor(() =>
+      expect(
+        client.getQueryData<WorkItemDetailRow>([
+          "work-items",
+          "detail",
+          original.key,
+        ])?.stateName,
+      ).toBe("To do"),
+    );
+    if (outcome === "refusal")
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "workItems:journey.transitionForbidden",
+      );
+  },
+);
+
+it.each(["unmount", "switch"] as const)(
+  "finishes a write after %s without touching the next item's caches",
+  async (action) => {
+    let reject = (_error: unknown) => {};
+    mocks.assign.mockReturnValue(
+      new Promise((_yes, no) => {
+        reject = no;
+      }),
+    );
+    mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+    const original = item();
+    const accessLost = vi.fn();
+    const rendered = renderProps(
+      <CachedProperties selected={original} accessLost={accessLost} />,
+      original,
+    );
+    fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+    fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("work-item-assignee-control"),
+      ).toHaveTextContent("Casey Ray"),
+    );
+    const other = item({
+      key: "OTHER-2",
+      projectId: "p2",
+      assigneeName: "Other holder",
+      assigneeId: "other",
+    });
+    const otherKey = ["work-items", "detail", other.key];
+    rendered.client.setQueryData(otherKey, other);
+    if (action === "unmount") rendered.unmount();
+    else
+      rendered.rerender(
+        <QueryClientProvider client={rendered.client}>
+          <CachedProperties selected={other} accessLost={accessLost} />
+        </QueryClientProvider>,
+      );
+    reject(new HttpError(409, "holder changed"));
+    await waitFor(() => expect(rendered.client.isMutating()).toBe(0));
+    expect(mocks.assign).toHaveBeenCalledExactlyOnceWith({
+      key: "HELP-7",
+      assigneeId: "person-2",
+      expectedCurrentAssigneeId: null,
+    });
+    expect(rendered.client.getQueryData(otherKey)).toEqual(other);
+    expect(rendered.client.getQueryState(otherKey)?.isInvalidated).toBe(false);
+    expect(
+      rendered.client.getQueryData<WorkItemDetailRow>([
+        "work-items",
+        "detail",
+        original.key,
+      ])?.assigneeId,
+    ).toBeNull();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "workItems:journey.assignmentConflict",
+    );
+  },
+);
+
+it("requires reassignment confirmation, closes its real popover at dispatch, and rolls back a held 409 with the original holder", async () => {
+  let reject = (_error: unknown) => {};
+  mocks.assign.mockReturnValue(
+    new Promise((_yes, no) => {
+      reject = no;
+    }),
+  );
+  mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
+  const original = item({ assigneeId: "person-1", assigneeName: "Riley Fox" });
+  renderProps(
+    <CachedProperties selected={original} accessLost={vi.fn()} />,
+    original,
+  );
+  fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+  fireEvent.click(await screen.findByRole("button", { name: /Casey Ray/ }));
+  expect(mocks.assign).not.toHaveBeenCalled();
+  expect(document.querySelector('[data-slot="popover-popup"]')).not.toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: "workItems:journey.confirmAssignment" }),
+  );
+  await waitFor(() =>
+    expect(document.querySelector('[data-slot="popover-popup"]')).toBeNull(),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Casey Ray",
+    ),
+  );
+  expect(screen.getByTestId("work-item-state-control")).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  expect(screen.getByTestId("work-item-assignee-control")).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  expect(mocks.assign).toHaveBeenCalledExactlyOnceWith({
+    key: "HELP-7",
+    assigneeId: "person-2",
+    expectedCurrentAssigneeId: "person-1",
+  });
+  reject(new HttpError(409, "holder changed"));
+  await waitFor(() =>
+    expect(screen.getByTestId("work-item-assignee-control")).toHaveTextContent(
+      "Riley Fox",
+    ),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("work-item-state-control")).not.toHaveAttribute(
+      "aria-disabled",
+    ),
+  );
+  expect(screen.getByTestId("work-item-assignee-control")).not.toHaveAttribute(
+    "aria-disabled",
+  );
+  expect(mocks.toastError).toHaveBeenCalledWith(
+    "workItems:journey.assignmentConflict",
+  );
+});
+
+it("never offers Unassign or sends its request for an unassigned item", async () => {
+  renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+  fireEvent.click(screen.getByTestId("work-item-assignee-control"));
+  expect(document.querySelector('[data-slot="popover-popup"]')).not.toBeNull();
+  expect(
+    document.querySelector('[data-slot="popover-popup"]')?.textContent,
+  ).not.toContain("workItems:detail.unassigned");
+  fireEvent.keyDown(document, { key: "1" });
+  expect(mocks.unassign).not.toHaveBeenCalled();
+});
+
+it("a detail priority save waits for pending assignment and sends the new version while a second detail choice is refused", async () => {
+  let resolve = (_value: unknown) => {};
+  mocks.assign.mockReturnValue(
+    new Promise((yes) => {
+      resolve = yes;
+    }),
+  );
+  mocks.update.mockResolvedValue({
+    key: "HELP-7",
+    version: 6,
+    priority: "urgent",
+  });
+  const original = item();
+  const { client } = renderProps(
+    <WorkItemProperties item={original} onAccessLost={vi.fn()} />,
+    original,
+  );
+  const pending = startDetailAssigneeChange(
+    client,
+    original,
+    { personId: "casey", name: "Casey" },
+    null,
+    { onSuccess: vi.fn(), onError: vi.fn() },
+  );
+  await waitFor(() => expect(mocks.assign).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByTestId("work-item-state-control"));
+  expect(screen.queryByRole("menu")).toBeNull();
+  fireEvent.click(screen.getByTestId("work-item-priority-control"));
+  fireEvent.click(await screen.findByRole("menuitemradio", { name: /Urgent/ }));
+  await waitFor(() => expect(client.isMutating()).toBe(2));
+  expect(mocks.update).not.toHaveBeenCalled();
+  resolve({ assigneeId: "casey", version: 5 });
+  await pending;
+  await waitFor(() =>
+    expect(mocks.update).toHaveBeenCalledExactlyOnceWith({
+      key: "HELP-7",
+      version: 5,
+      priority: "urgent",
+    }),
+  );
+  client.clear();
 });

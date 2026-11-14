@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -44,6 +44,35 @@ afterEach(() => {
 });
 
 describe("PortalKbBrowse layout", () => {
+  it("shows an empty result immediately after a slow load", async () => {
+    vi.useFakeTimers();
+    try {
+      let resolve!: (value: { articles: never[]; total: number }) => void;
+      mocks.list.mockReturnValue(
+        new Promise((done) => {
+          resolve = done;
+        }),
+      );
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <PortalKbBrowse search={{}} scope="customer-1" />
+        </QueryClientProvider>,
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(screen.getByRole("status")).toBeVisible();
+      await act(async () => {
+        resolve({ articles: [], total: 0 });
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(screen.getByText("kb:portal.emptyTitle")).toBeVisible();
+      expect(screen.queryByRole("status")).toBeNull();
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
+  });
   // A-22: the portal sidebar takes ~240px of the viewport, so a viewport breakpoint put the
   // categories beside the articles in a ~220px column at 768px. The two columns now follow the
   // page's own width (a container query), and stack below it. jsdom has no layout, so the

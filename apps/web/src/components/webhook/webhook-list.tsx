@@ -18,6 +18,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -88,6 +89,9 @@ export function WebhookList() {
   });
   const loading =
     workspaceLoading || isCheckingPermissions || (canManage && query.isLoading);
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && query.isSuccess && query.data.length === 0,
+  });
   const webhooks = query.data ?? [];
 
   if (isForbiddenError(query.error)) return <NoAccessPage />;
@@ -119,9 +123,10 @@ export function WebhookList() {
             <AlertTitle>{t("list.readOnlyTitle")}</AlertTitle>
             <AlertDescription>{t("list.readOnlyDescription")}</AlertDescription>
           </Alert>
-        ) : loading ? (
+        ) : !query.isError && (loading || (placeholderVisible && canManage)) ? (
           <div
             role="status"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
             aria-label={t("list.loading")}
             className="space-y-3"
           >

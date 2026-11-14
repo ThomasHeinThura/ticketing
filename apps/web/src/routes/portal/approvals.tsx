@@ -14,6 +14,7 @@ import {
   DialogTitle,
   EmptyState,
   Label,
+  LoadingStatus,
   Skeleton,
   Table,
   TableBody,
@@ -22,6 +23,7 @@ import {
   TableHeader,
   TableRow,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { CheckCircle } from "lucide-react";
 import { useState } from "react";
@@ -53,6 +55,9 @@ function PortalApprovals() {
   const query = useQuery({
     queryKey: ["portal", portalUserId, "approvals"],
     queryFn: getPortalApprovals,
+  });
+  const placeholderVisible = useDelayedPending(query.isPending, {
+    releaseNow: query.isSuccess && query.data.approvals.length === 0,
   });
   const [noteDraft, setNoteDraft] = useState({ id: selectedId, value: "" });
   const note = noteDraft.id === selectedId ? noteDraft.value : "";
@@ -103,8 +108,16 @@ function PortalApprovals() {
             {t("common:actions.retry")}
           </Button>
         </Alert>
-      ) : query.isPending ? (
-        <Skeleton className="h-24 w-full" />
+      ) : query.isPending || placeholderVisible ? (
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Skeleton
+            className="h-24 w-full"
+            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+          />
+        </LoadingStatus>
       ) : !query.data.approvals.length ? (
         // UX-1a (CP-4): the shared empty look, with the way back to the customer's requests.
         <EmptyState

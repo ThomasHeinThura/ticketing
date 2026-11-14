@@ -1,4 +1,4 @@
-import { ShortcutNumber } from "@taskdesk/ui";
+import { LoadingStatus, ShortcutNumber, useDelayedPending } from "@taskdesk/ui";
 import type { ReactElement, RefObject } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -31,6 +31,9 @@ export default function TaskStatusPopover({
 }: TaskStatusPopoverProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const placeholderVisible = useDelayedPending(open && isLoading, {
+    releaseNow: !isLoading && !isError && columns.length === 0,
+  });
   const latestTaskRef = useRef(task);
   latestTaskRef.current = task;
   const statusOptions = useMemo(
@@ -76,7 +79,10 @@ export default function TaskStatusPopover({
     [handleStatusChange, statusOptions],
   );
 
-  useNumberedShortcuts(open, shortcutOptions);
+  useNumberedShortcuts(
+    open && !isLoading && !placeholderVisible && !isError,
+    shortcutOptions,
+  );
 
   if (!canEdit) return <>{children}</>;
 
@@ -93,10 +99,18 @@ export default function TaskStatusPopover({
       }}
       trigger={children}
       header={
-        isLoading ? (
-          <div className="p-3 text-center text-sm text-muted-foreground">
-            {t("common:empty.loading")}
-          </div>
+        !isError && (isLoading || placeholderVisible) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <div
+              className="p-3 text-center text-sm text-muted-foreground"
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
+              {t("common:empty.loading")}
+            </div>
+          </LoadingStatus>
         ) : isError ? (
           <div className="p-3 text-center text-sm text-destructive">
             {t("common:error.title")}
@@ -104,7 +118,7 @@ export default function TaskStatusPopover({
         ) : null
       }
       options={
-        isLoading || isError
+        isLoading || placeholderVisible || isError
           ? []
           : statusOptions.map((status, index) => ({
               value: status.value,

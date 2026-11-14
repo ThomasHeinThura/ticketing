@@ -15,6 +15,7 @@ import {
   FieldLabel,
   Input,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -23,6 +24,7 @@ import {
   SelectValue,
   Skeleton,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw, Save, Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -144,6 +146,12 @@ export function SlaPolicyEditor({ id }: { id: string }) {
   const [conflict, setConflict] = useState(false);
   const hydratedPolicyId = useRef<string | null>(null);
   const loading = !isNew && isLoading;
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow: !loading && Boolean(policy) && (typesError || calendarsError),
+  });
+  const typesPlaceholder = useDelayedPending(typesLoading, {
+    releaseNow: !typesLoading && !typesError && types?.length === 0,
+  });
   const saving = createPolicy.isPending || updatePolicy.isPending;
   const publishing = publishPolicy.isPending;
   const hasInvalidTarget = selectedTypeIds.some((typeId) =>
@@ -291,11 +299,15 @@ export function SlaPolicyEditor({ id }: { id: string }) {
       );
     return <NoAccessPage />;
   }
-  if (loading) {
+  if (!isError && (loading || (placeholderVisible && policy))) {
     return (
       <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={t("editor.title")} />
-        <div role="status" aria-label={t("editor.loading")}>
+        <div
+          role="status"
+          aria-label={t("editor.loading")}
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <Skeleton className="h-12 w-2/3" />
           <Skeleton className="mt-4 h-72 w-full" />
         </div>
@@ -534,8 +546,19 @@ export function SlaPolicyEditor({ id }: { id: string }) {
                 <p className="text-muted-foreground text-xs">
                   {t("editor.typesHelp")}
                 </p>
-                {typesLoading ? (
-                  <Skeleton className="h-10 w-full" />
+                {!typesError &&
+                (typesLoading || (typesPlaceholder && types)) ? (
+                  <LoadingStatus
+                    visible={typesPlaceholder}
+                    label={t("common:empty.loading")}
+                  >
+                    <Skeleton
+                      className="h-10 w-full"
+                      style={{
+                        visibility: typesPlaceholder ? "visible" : "hidden",
+                      }}
+                    />
+                  </LoadingStatus>
                 ) : typesError ? (
                   <p className="text-sm text-destructive" role="alert">
                     {t("editor.typesError")}

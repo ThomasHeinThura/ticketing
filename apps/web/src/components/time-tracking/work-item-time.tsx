@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   Label,
+  LoadingStatus,
   Skeleton,
   Switch,
   Table,
@@ -14,6 +15,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Pencil, Play, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -122,8 +124,22 @@ export default function WorkItemTime({
     onError: (error) => toast.error(message(error)),
   });
 
-  if (entries.isLoading || activities.isLoading)
-    return <Skeleton className="h-16 w-full" />;
+  const pending = entries.isLoading || activities.isLoading;
+  const placeholderVisible = useDelayedPending(pending, {
+    releaseNow: !pending && entries.isSuccess && entries.data.data.length === 0,
+  });
+  if (!entries.isError && (pending || (placeholderVisible && list)))
+    return (
+      <LoadingStatus
+        visible={placeholderVisible}
+        label={t("common:empty.loading")}
+      >
+        <Skeleton
+          className="h-16 w-full"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        />
+      </LoadingStatus>
+    );
   // A-10: tracking is off for this item's project; say so instead of a load failure.
   if (entries.error instanceof TimeTrackingDisabledError)
     return (

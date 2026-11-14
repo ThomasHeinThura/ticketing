@@ -28,6 +28,9 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
+  LoadingStatus,
+  motionDurationMs,
+  motionEasing,
   Progress,
   Select,
   SelectContent,
@@ -41,6 +44,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { LayoutGrid, Plus } from "lucide-react";
 import {
@@ -92,7 +96,10 @@ function SortableProjectRow({
     // replays the same move from a stale offset.
     animateLayoutChanges: () => false,
     // dnd-kit defaults to `ease`; this is the app's curve.
-    transition: { duration: 200, easing: "var(--ease-out)" },
+    transition: {
+      duration: motionDurationMs("base"),
+      easing: motionEasing("out"),
+    },
   });
 
   const style: CSSProperties = {
@@ -148,7 +155,11 @@ export default function ProjectsPage({
   const setKindFilter = onKindFilterChange ?? setLocalKindFilter;
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const navigate = useNavigate();
-  const { data: listedProjects, isLoading } = useGetProjects({
+  const {
+    data: listedProjects,
+    isLoading,
+    isError,
+  } = useGetProjects({
     workspaceId,
     includeArchived: recoveryMode,
     includeDeleted: recoveryMode,
@@ -197,6 +208,13 @@ export default function ProjectsPage({
         : orderedProjects,
     [orderedProjects, kindFilter],
   );
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading &&
+      !isError &&
+      Boolean(visibleProjects) &&
+      visibleProjects?.length === 0,
+  });
 
   const { canCreateProjects, canUpdateProjects, canArchiveProjects } =
     useWorkspacePermission();
@@ -316,7 +334,7 @@ export default function ProjectsPage({
     });
   };
 
-  if (isLoading) {
+  if (!isError && (isLoading || (placeholderVisible && listedProjects))) {
     return (
       <WorkspaceLayout
         title={t("workspace:projects.pageTitle")}
@@ -334,45 +352,52 @@ export default function ProjectsPage({
           ) : null
         }
       >
-        <Table data-testid="workspace-projects-loading">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-foreground font-medium">
-                {t("workspace:projects.title")}
-              </TableHead>
-              <TableHead className="text-foreground font-medium">
-                {t("workspace:projects.progress")}
-              </TableHead>
-              <TableHead className="text-foreground font-medium">
-                {t("workspace:projects.targetDate")}
-              </TableHead>
-              <TableHead className="text-foreground font-medium">
-                {t("workspace:projects.status")}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[1, 2, 3].map((i) => (
-              <TableRow key={i}>
-                <TableCell className="py-3">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-5 w-5" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                </TableCell>
-                <TableCell className="py-3">
-                  <Skeleton className="h-2 w-20" />
-                </TableCell>
-                <TableCell className="py-3">
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
-                <TableCell className="py-3">
-                  <Skeleton className="h-5 w-16" />
-                </TableCell>
+        <LoadingStatus
+          visible={placeholderVisible}
+          label={t("common:empty.loading")}
+        >
+          <Table data-testid="workspace-projects-loading">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.title")}
+                </TableHead>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.progress")}
+                </TableHead>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.targetDate")}
+                </TableHead>
+                <TableHead className="text-foreground font-medium">
+                  {t("workspace:projects.status")}
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody
+              style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+            >
+              {[1, 2, 3].map((i) => (
+                <TableRow key={i}>
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-5 w-5" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Skeleton className="h-2 w-20" />
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <Skeleton className="h-5 w-16" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </LoadingStatus>
         <PageTitle title={t("workspace:projects.pageTitle")} />
         <h1 className="sr-only">{t("workspace:projects.pageTitle")}</h1>
       </WorkspaceLayout>

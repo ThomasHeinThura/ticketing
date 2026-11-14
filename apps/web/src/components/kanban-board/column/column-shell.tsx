@@ -14,7 +14,7 @@ export function ColumnShell({
   return (
     <div
       {...props}
-      className={`group relative flex h-full min-h-0 w-full flex-col rounded-xl border transition-colors duration-150 ${
+      className={`group relative flex h-full min-h-0 w-full flex-col rounded-xl border transition-colors duration-fast ${
         isOver
           ? "border-ring/40 bg-accent/60 shadow-md ring-2 ring-ring/30"
           : "border-border/70 bg-muted/40 shadow-xs/5 hover:border-border/90 dark:bg-card/90"

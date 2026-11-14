@@ -1,4 +1,5 @@
-import { lazy, Suspense, useLayoutEffect } from "react";
+import { DelayedSuspense } from "@taskdesk/ui";
+import { lazy, useLayoutEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { TaskDetailsSheetFrame } from "@/components/task/task-details-sheet";
 import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
@@ -31,13 +32,15 @@ export default function WorkItemSidePane({
       ariaLabel={t("workItems:sidePane.ariaLabel", { key: itemKey ?? "" })}
     >
       {(visibleItemKey) => (
-        <Suspense fallback={<WorkItemDetailLoading />}>
+        <DelayedSuspense
+          fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
+        >
           <WorkItemSidePaneBody
             key={visibleItemKey}
             itemKey={visibleItemKey}
             onClose={onClose}
           />
-        </Suspense>
+        </DelayedSuspense>
       )}
     </TaskDetailsSheetFrame>
   );

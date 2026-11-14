@@ -9,6 +9,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
@@ -38,6 +39,13 @@ export function KbFeatureGate({ children }: { children: ReactNode }) {
     retry: false,
   });
 
+  const pending = loadingWorkspace || !workspaceId || !features.data;
+  const placeholderVisible = useDelayedPending(pending);
+  const on =
+    features.data?.some(
+      (feature) => feature.key === KB_FEATURE && feature.enabled,
+    ) ?? false;
+
   if (features.isError)
     return (
       <Shell>
@@ -53,17 +61,18 @@ export function KbFeatureGate({ children }: { children: ReactNode }) {
         </Alert>
       </Shell>
     );
-  if (loadingWorkspace || !workspaceId || !features.data)
+  if (pending || (placeholderVisible && on))
     return (
       <Shell>
-        <div role="status" aria-label={t("kb:list.loading")}>
+        <div
+          role="status"
+          aria-label={t("kb:list.loading")}
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <Skeleton className="h-24 w-full" />
         </div>
       </Shell>
     );
-  const on = features.data.some(
-    (feature) => feature.key === KB_FEATURE && feature.enabled,
-  );
   if (!on)
     return (
       <Shell>

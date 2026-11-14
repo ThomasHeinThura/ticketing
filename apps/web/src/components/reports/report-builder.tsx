@@ -8,9 +8,11 @@ import {
   CardContent,
   Input,
   Label,
+  LoadingStatus,
   Skeleton,
   ToggleGroup,
   ToggleGroupItem,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { ChevronLeft, Download, Save } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -227,6 +229,13 @@ function ReportBuilderScreen({ search }: { search: ReportBuilderSearch }) {
     chartType,
   };
   const preview = useCustomPreview(workspaceId, previewBody);
+  const placeholderVisible = useDelayedPending(
+    preview.isLoading || !workspace,
+    {
+      releaseNow:
+        Boolean(workspace) && preview.isSuccess && preview.data.empty !== null,
+    },
+  );
   const catalogue = useReportCatalogue(workspaceId);
   const exporting = useExportAction(() =>
     exportCustomReport({ workspaceId, ...previewBody }),
@@ -426,8 +435,19 @@ function ReportBuilderScreen({ search }: { search: ReportBuilderSearch }) {
           </CardContent>
         </Card>
         <div className="space-y-4" aria-live="polite">
-          {preview.isLoading || !workspace ? (
-            <Skeleton className="h-48 w-full" />
+          {!preview.isError &&
+          (preview.isLoading || !workspace || placeholderVisible) ? (
+            <LoadingStatus
+              visible={placeholderVisible}
+              label={t("common:empty.loading")}
+            >
+              <Skeleton
+                className="h-48 w-full"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              />
+            </LoadingStatus>
           ) : preview.isError || !preview.data ? (
             <ReportError error={preview.error} />
           ) : (

@@ -134,7 +134,7 @@ export default function WorkItemLightList({
           return (
             <div
               key={state.id}
-              className="border-b border-border/50 transition-colors duration-150 overflow-auto"
+              className="border-b border-border/50 transition-colors duration-fast overflow-auto"
             >
               <div className="flex items-center justify-between py-2 px-4 bg-muted/60 border-b border-border/50">
                 <div
@@ -216,7 +216,7 @@ function LightRow({
     ? getDueDateStatus(item.dueDate, isFinal)
     : undefined;
   return (
-    <div className="border-b border-border/50 transition-colors duration-150">
+    <div className="border-b border-border/50 transition-colors duration-fast">
       <div className="group relative m-0 flex w-full min-w-0 max-w-none flex-row items-center gap-3 border-0 p-0 px-4 py-1.5">
         {preferences.showPriority ? (
           <div>

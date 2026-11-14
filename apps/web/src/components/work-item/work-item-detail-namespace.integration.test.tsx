@@ -1,6 +1,12 @@
 import en from "@i18n/en-US.json";
 import { Button } from "@taskdesk/ui";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, expect, it, vi } from "vitest";
 import type { WorkItemDetailRow } from "@/types/work-item";
@@ -335,7 +341,7 @@ it.each(["page", "pane"] as const)(
     fireEvent.click(
       screen.getByRole("button", { name: en.common.actions.retry }),
     );
-    expect(await screen.findByText("Attachments")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("Attachments")).toBeVisible());
     expect(screen.getByText("SLA")).toBeVisible();
     expect(areAllNamespacesLoaded()).toBe(true);
     expect(network.requests).toBeGreaterThan(1);

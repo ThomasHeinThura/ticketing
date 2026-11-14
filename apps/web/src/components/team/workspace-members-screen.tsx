@@ -1,4 +1,4 @@
-import { Button, Skeleton } from "@taskdesk/ui";
+import { Button, Skeleton, useDelayedPending } from "@taskdesk/ui";
 import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -35,12 +35,24 @@ export function WorkspaceMembersContent({
   onInviteClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { data: workspace, isLoading } = useGetFullWorkspace({ workspaceId });
+  const {
+    data: workspace,
+    isLoading,
+    isError,
+  } = useGetFullWorkspace({ workspaceId });
+  const placeholderVisible = useDelayedPending(isLoading, {
+    releaseNow:
+      !isLoading &&
+      !isError &&
+      workspace?.members.length === 0 &&
+      workspace?.pendingInvitations.length === 0,
+  });
   return (
     <>
-      {isLoading ? (
+      {!isError && (isLoading || (placeholderVisible && workspace)) ? (
         <div
           role="status"
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           aria-label={t("common:empty.loading")}
           className="space-y-3"
         >

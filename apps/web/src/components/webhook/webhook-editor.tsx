@@ -16,6 +16,7 @@ import {
   Label,
   Skeleton,
   Switch,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import {
   ArrowLeft,
@@ -165,16 +166,21 @@ export function WebhookEditor({ id }: { id: string }) {
     isCheckingPermissions ||
     (canManage && !isNew && webhooks.isLoading);
 
+  const placeholderVisible = useDelayedPending(loading);
   const pageTitle = t(isNew ? "editor.newTitle" : "editor.pageTitle");
 
   if (!isCheckingPermissions && isForbiddenError(webhooks.error))
     return <NoAccessPage />;
 
-  if (loading) {
+  if (!webhooks.isError && (loading || (placeholderVisible && canManage))) {
     return (
       <div className="flex h-full w-full min-w-0 flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title={pageTitle} />
-        <div role="status" aria-label={t("editor.loading")}>
+        <div
+          role="status"
+          aria-label={t("editor.loading")}
+          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        >
           <Skeleton className="h-12 w-2/3" />
           <Skeleton className="mt-4 h-72 w-full" />
         </div>

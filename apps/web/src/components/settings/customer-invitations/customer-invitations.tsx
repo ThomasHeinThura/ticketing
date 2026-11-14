@@ -19,6 +19,7 @@ import {
   EmptyTitle,
   Input,
   Label,
+  LoadingStatus,
   SaveButton,
   Select,
   SelectContent,
@@ -32,12 +33,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
+import { NoEmailNotice } from "@/components/invitation/no-email-notice";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
@@ -170,6 +173,7 @@ function InviteDialog({
             }}
           >
             <div className="space-y-4 px-6">
+              <NoEmailNotice />
               <div className="space-y-2">
                 <Label htmlFor="customer-invitation-email">
                   {t("customerInvitations:create.email")}
@@ -469,6 +473,14 @@ function CustomerInvitationsContent({
     useState<SentCustomerInvitation | null>(null);
   const loading =
     workspaceLoading || isCheckingPermissions || organisations.isLoading;
+  const placeholderVisible = useDelayedPending(loading, {
+    releaseNow:
+      !loading && organisations.isSuccess && organisations.data.length === 0,
+  });
+  const invitationsPlaceholder = useDelayedPending(
+    Boolean(selected) && invitations.isLoading,
+    { releaseNow: invitations.isSuccess && invitations.data.length === 0 },
+  );
 
   if ([organisations.error, invitations.error].some(isForbiddenError))
     return <NoAccessPage />;
@@ -476,6 +488,9 @@ function CustomerInvitationsContent({
     <>
       <PageTitle title={t("customerInvitations:title")} />
       <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+        {canInvite && selected && !inviting && !resentInvitation ? (
+          <NoEmailNotice />
+        ) : null}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold">
@@ -492,15 +507,18 @@ function CustomerInvitationsContent({
             </Button>
           ) : null}
         </div>
-        {loading ? (
-          <div
-            role="status"
-            aria-label={t("customerInvitations:loading")}
-            className="space-y-3"
+        {!organisations.isError &&
+        (loading ||
+          (placeholderVisible && canInvite && !invitations.isError)) ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("customerInvitations:loading")}
           >
-            <Skeleton className="h-10 w-72" />
-            <Skeleton className="h-24 w-full" />
-          </div>
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-72" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </LoadingStatus>
         ) : !canInvite ? (
           <Alert variant="info">
             <AlertTitle>{t("customerInvitations:denied.title")}</AlertTitle>
@@ -563,8 +581,19 @@ function CustomerInvitationsContent({
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
-            ) : invitations.isLoading ? (
-              <Skeleton className="h-24 w-full" />
+            ) : !invitations.isError &&
+              (invitations.isLoading || invitationsPlaceholder) ? (
+              <LoadingStatus
+                visible={invitationsPlaceholder}
+                label={t("common:empty.loading")}
+              >
+                <Skeleton
+                  className="h-24 w-full"
+                  style={{
+                    visibility: invitationsPlaceholder ? "visible" : "hidden",
+                  }}
+                />
+              </LoadingStatus>
             ) : invitations.isError ? (
               <Alert variant="error">
                 <AlertTitle>

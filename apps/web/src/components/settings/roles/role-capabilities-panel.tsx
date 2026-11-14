@@ -18,8 +18,10 @@ import {
   DialogTitle,
   Input,
   Label,
+  LoadingStatus,
   SaveButton,
   Textarea,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -169,6 +171,7 @@ export function RoleCapabilitiesPanel({
       return result;
     },
   });
+  const impactPlaceholder = useDelayedPending(impactPreview.isPending);
   const save = useMutation({
     mutationFn: async () => {
       const input = rolePatch();
@@ -408,15 +411,28 @@ export function RoleCapabilitiesPanel({
             <DialogHeader>
               <DialogTitle>{t("roles:save.confirmTitle")}</DialogTitle>
               <DialogDescription>
-                {impactPreview.data
-                  ? t("roles:save.impact", {
-                      people: impactPreview.data.affected.people,
-                      workItems: impactPreview.data.affected.workItems,
-                      projects: impactPreview.data.affected.projects,
-                    })
-                  : impactPreview.isError
-                    ? t("common:error.title")
-                    : t("common:empty.loading")}
+                {impactPreview.data && !impactPlaceholder ? (
+                  t("roles:save.impact", {
+                    people: impactPreview.data.affected.people,
+                    workItems: impactPreview.data.affected.workItems,
+                    projects: impactPreview.data.affected.projects,
+                  })
+                ) : impactPreview.isError ? (
+                  t("common:error.title")
+                ) : (
+                  <LoadingStatus
+                    visible={impactPlaceholder}
+                    label={t("common:empty.loading")}
+                  >
+                    <span
+                      style={{
+                        visibility: impactPlaceholder ? "visible" : "hidden",
+                      }}
+                    >
+                      {t("common:empty.loading")}
+                    </span>
+                  </LoadingStatus>
+                )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 px-6">
@@ -512,6 +528,7 @@ export function RoleCapabilitiesPanel({
                   !save.isPending &&
                   (!impactPreview.data ||
                     impactPreview.isPending ||
+                    impactPlaceholder ||
                     !stepUp.canRun ||
                     (removesOwn && typedName.trim() !== role.name))
                 }

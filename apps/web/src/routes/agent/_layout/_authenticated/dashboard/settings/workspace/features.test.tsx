@@ -71,11 +71,13 @@ describe("workspace features settings", () => {
     expect(mocks.panel).not.toHaveBeenCalled();
   });
 
-  it("waits on the capability check without mounting the panel", () => {
+  it("waits on the capability check without mounting the panel", async () => {
     mocks.checking = true;
     renderPage();
     expect(
-      screen.getByRole("status", { name: "settings:accessDenied.checking" }),
+      await screen.findByRole("status", {
+        name: "settings:accessDenied.checking",
+      }),
     ).toBeTruthy();
     expect(mocks.panel).not.toHaveBeenCalled();
   });

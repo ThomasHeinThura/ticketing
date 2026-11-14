@@ -331,7 +331,7 @@ export default function WorkItemKaneoList({
             ))}
           </div>
         </WorkItemContextMenu>
-        <DragOverlay>
+        <DragOverlay dropAnimation={drag.dropAnimation}>
           {drag.dragged ? (
             <TaskDragPreview
               task={workItemKaneoView(drag.dragged)}

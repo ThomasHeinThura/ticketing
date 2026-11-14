@@ -1,5 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Alert, AlertDescription, AlertTitle, Skeleton } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  LoadingStatus,
+  Skeleton,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import { AutomationRulesPanel } from "@/components/automation/automation-rules-panel";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -27,15 +34,15 @@ function RouteComponent() {
     workspaceId: workspace?.id ?? "",
   });
   const project = projects?.find((candidate) => candidate.id === projectId);
-  if (!workspace || isCheckingPermissions || isLoading)
+  const pending = !workspace || isCheckingPermissions || isLoading;
+  const placeholderVisible = useDelayedPending(pending);
+  if (pending || (placeholderVisible && project))
     return (
-      <div
-        className="max-w-4xl mx-auto"
-        role="status"
-        aria-label={t("list.loading")}
-      >
-        <Skeleton className="h-24 w-full" />
-      </div>
+      <LoadingStatus visible={placeholderVisible} label={t("list.loading")}>
+        <div className="max-w-4xl mx-auto">
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </LoadingStatus>
     );
   if (!project)
     return (

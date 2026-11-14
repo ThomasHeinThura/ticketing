@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { headingLevels } from "@/test/headings";
 
@@ -69,6 +69,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 describe("PagesFeatureGate", () => {
@@ -99,9 +100,14 @@ describe("PagesFeatureGate", () => {
   });
 
   it("waits for the project and the switch before deciding", () => {
+    vi.useFakeTimers();
     mocks.project = { project: undefined, workspaceId: "", isLoading: true };
-    renderGate();
-    expect(screen.getByRole("status", { name: "common.loading" })).toBeTruthy();
+    const { container } = renderGate();
+    expect(container.querySelector('[role="status"]')).not.toBeVisible();
+    act(() => vi.advanceTimersByTime(150));
+    expect(
+      screen.getByRole("status", { name: "common.loading" }),
+    ).toBeVisible();
     expect(screen.queryByTestId("pages-project-not-found")).toBeNull();
     expect(screen.queryByTestId("feature-off-pages")).toBeNull();
   });

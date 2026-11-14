@@ -13,6 +13,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   FeatureOff,
+  useDelayedPending,
 } from "@taskdesk/ui";
 import { Filter } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -72,6 +73,7 @@ function IntakeRoute() {
   // `feature.intake` is off by default. While it is off every intake read answers 404, so
   // nothing is fetched and the page shows the calm off state instead of load errors.
   const features = useWorkspaceFeatures(workspace.data?.id);
+  const placeholderVisible = useDelayedPending(features.isLoading);
   const intakeOn = features.isOn("feature.intake");
   const canRead = canTriage && intakeOn;
   const {
@@ -206,8 +208,15 @@ function IntakeRoute() {
         </Layout.Header>
         <Layout.Content className="overflow-y-auto">
           <div className="flex flex-col gap-3 px-4 py-3">
-            {features.isLoading ? (
-              <p role="status">{t("loading")}</p>
+            {!features.isError && (features.isLoading || placeholderVisible) ? (
+              <p
+                role="status"
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+              >
+                {t("loading")}
+              </p>
             ) : features.isError ? (
               // A failed read is not "off": offer Retry instead of the off notice.
               <Alert variant="error" role="alert">
