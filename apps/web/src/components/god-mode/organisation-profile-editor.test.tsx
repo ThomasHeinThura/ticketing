@@ -5,6 +5,33 @@ import type { OrganisationProfile } from "@/fetchers/god-mode/organisation-lifec
 import { renderWithQuery } from "@/test/identity-test-harness";
 import { OrganisationProfileEditor } from "./organisation-profile-editor";
 
+const noticeState = vi.hoisted(() => ({
+  hasSmtp: true as boolean | undefined,
+  loading: false,
+  fetching: false,
+  error: false,
+}));
+vi.mock("@/hooks/queries/config/use-get-config", () => ({
+  default: () => ({
+    data:
+      noticeState.hasSmtp === undefined
+        ? undefined
+        : { hasSmtp: noticeState.hasSmtp },
+    isLoading: noticeState.loading,
+    isFetching: noticeState.fetching,
+    isError: noticeState.error,
+  }),
+}));
+vi.mock("@/hooks/use-instance-admin-signal", () => ({
+  useInstanceAdminSignal: () => true,
+}));
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
+
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
@@ -42,9 +69,47 @@ vi.mock("@/fetchers/god-mode/organisations", async (importOriginal) => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  Object.assign(noticeState, {
+    hasSmtp: true,
+    loading: false,
+    fetching: false,
+    error: false,
+  });
 });
 
 describe("new organisation profile defaults", () => {
+  it.each([
+    [false, false, false, false, true],
+    [true, false, false, false, false],
+    [false, true, false, false, false],
+    [false, false, true, false, false],
+    [false, false, false, true, false],
+    [undefined, false, false, true, false],
+  ])(
+    "handles provider %s, loading %s, fetching %s, error %s",
+    (hasSmtp, loading, fetching, error, visible) => {
+      Object.assign(noticeState, { hasSmtp, loading, fetching, error });
+      renderWithQuery(
+        <OrganisationProfileEditor
+          organisation={null}
+          projectDefaultOptions={[]}
+          requestTypeOptions={[]}
+          onSaved={vi.fn()}
+          onReload={vi.fn()}
+        />,
+      );
+      expect(
+        Boolean(screen.queryByText("team:invitations.noEmailNotice")),
+      ).toBe(visible);
+      const link = screen.queryByRole("link", {
+        name: "team:invitations.configureEmail",
+      });
+      if (visible)
+        expect(link).toHaveAttribute("href", "/god-mode/notifications");
+      else expect(link).toBeNull();
+    },
+  );
+
   it("keeps the queued invitation acknowledgement when navigation unmounts the editor", async () => {
     mocks.create.mockResolvedValue({
       profile: {
@@ -193,6 +258,7 @@ describe("new organisation profile defaults", () => {
       },
       projectDefaults: [],
     };
+    noticeState.hasSmtp = false;
     mocks.update.mockResolvedValue({ ...organisation, name: "Customer Two" });
     function Editor() {
       const [completed, setCompleted] = useState(false);
@@ -210,6 +276,7 @@ describe("new organisation profile defaults", () => {
       );
     }
     renderWithQuery(<Editor />);
+    expect(screen.queryByText("team:invitations.noEmailNotice")).toBeNull();
     fireEvent.change(screen.getByLabelText("nameLabel"), {
       target: { value: "Customer Two" },
     });

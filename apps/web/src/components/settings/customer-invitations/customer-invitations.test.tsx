@@ -10,6 +10,28 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CustomerInvitation } from "@/fetchers/customer-invitation";
 import { HttpError } from "@/lib/http-error";
 
+const noticeState = vi.hoisted(() => ({
+  hasSmtp: true as boolean | undefined,
+  loading: false,
+  fetching: false,
+  error: false,
+  admin: false,
+}));
+vi.mock("@/hooks/queries/config/use-get-config", () => ({
+  default: () => ({
+    data:
+      noticeState.hasSmtp === undefined
+        ? undefined
+        : { hasSmtp: noticeState.hasSmtp },
+    isLoading: noticeState.loading,
+    isFetching: noticeState.fetching,
+    isError: noticeState.error,
+  }),
+}));
+vi.mock("@/hooks/use-instance-admin-signal", () => ({
+  useInstanceAdminSignal: () => noticeState.admin,
+}));
+
 const mocks = vi.hoisted(() => ({
   listOrganisations: vi.fn(),
   listInvitations: vi.fn(),
@@ -26,6 +48,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
   useNavigate: () => mocks.navigate,
   useRouter: () => ({
     history: { canGoBack: () => true, back: vi.fn() },
@@ -240,6 +265,8 @@ describe("customer invitations screen", () => {
   });
 
   it("resends a pending invitation and shows the result card when no email provider is set up", async () => {
+    noticeState.hasSmtp = false;
+    noticeState.loading = false;
     mocks.listOrganisations.mockResolvedValue([
       { id: "o1", key: "acme", name: "Acme" },
     ]);
@@ -326,5 +353,48 @@ describe("customer invitations screen", () => {
     ).toBeTruthy();
     expect(mocks.listOrganisations).not.toHaveBeenCalled();
     expect(screen.queryByText("customerInvitations:invite")).toBeNull();
+  });
+});
+
+describe("no email notice on customer invitations", () => {
+  it.each([
+    [false, false, false, false, true],
+    [true, false, false, false, false],
+    [false, true, false, false, false],
+    [false, false, true, false, false],
+    [false, false, false, true, false],
+    [undefined, false, false, true, false],
+  ])(
+    "handles provider %s, loading %s, fetching %s, error %s",
+    async (hasSmtp, loading, fetching, error, visible) => {
+      noticeState.hasSmtp = hasSmtp;
+      noticeState.loading = loading;
+      noticeState.fetching = fetching;
+      noticeState.error = error;
+      noticeState.admin = false;
+      mocks.listOrganisations.mockResolvedValue([{ id: "o1", name: "Acme" }]);
+      mocks.listInvitations.mockResolvedValue([invitation("a", "pending")]);
+      renderScreen();
+      await screen.findByText("a@example.test");
+      expect(
+        Boolean(screen.queryByText("team:invitations.noEmailNotice")),
+      ).toBe(visible);
+      expect(screen.queryByText("team:invitations.configureEmail")).toBeNull();
+    },
+  );
+  it("offers the email settings link only to instance admins", async () => {
+    noticeState.hasSmtp = false;
+    noticeState.loading = false;
+    noticeState.fetching = false;
+    noticeState.error = false;
+    noticeState.admin = true;
+    mocks.listOrganisations.mockResolvedValue([{ id: "o1", name: "Acme" }]);
+    mocks.listInvitations.mockResolvedValue([]);
+    renderScreen();
+    expect(
+      await screen.findByRole("link", {
+        name: "team:invitations.configureEmail",
+      }),
+    ).toHaveAttribute("href", "/god-mode/notifications");
   });
 });

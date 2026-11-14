@@ -21,6 +21,7 @@ import {
 } from "@taskdesk/ui";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { NoEmailNotice } from "@/components/invitation/no-email-notice";
 import type {
   CreateOrganisationInput,
   OrganisationProfile,
@@ -727,6 +728,9 @@ export function OrganisationProfileEditor({
                 <p className="text-sm text-muted-foreground">
                   {t("initialContactDescription")}
                 </p>
+              </div>
+              <div className="md:col-span-2">
+                <NoEmailNotice />
               </div>
               <div className="min-w-0 space-y-2">
                 <Label htmlFor="organisation-initial-contact-email">

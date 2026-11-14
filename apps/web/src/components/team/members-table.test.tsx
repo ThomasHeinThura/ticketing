@@ -13,6 +13,33 @@ import type {
 } from "@/types/workspace-user";
 import MembersTable from "./members-table";
 
+const noticeState = vi.hoisted(() => ({
+  hasSmtp: true as boolean | undefined,
+  loading: false,
+  fetching: false,
+  error: false,
+  admin: false,
+}));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
+vi.mock("@/hooks/queries/config/use-get-config", () => ({
+  default: () => ({
+    data:
+      noticeState.hasSmtp === undefined
+        ? undefined
+        : { hasSmtp: noticeState.hasSmtp },
+    isLoading: noticeState.loading,
+    isFetching: noticeState.fetching,
+    isError: noticeState.error,
+  }),
+}));
+vi.mock("@/hooks/use-instance-admin-signal", () => ({
+  useInstanceAdminSignal: () => noticeState.admin,
+}));
+
 const copyToClipboard = vi.fn();
 const success = vi.fn();
 const error = vi.fn();
@@ -631,4 +658,53 @@ describe("MembersTable narrow widths (finding #4)", () => {
     remove.focus();
     expect(remove).toHaveFocus();
   });
+});
+
+describe("no email notice above staff resends", () => {
+  it.each([
+    [false, false, false, false, true],
+    [true, false, false, false, false],
+    [false, true, false, false, false],
+    [false, false, true, false, false],
+    [false, false, false, true, false],
+    [undefined, false, false, true, false],
+  ])(
+    "handles provider %s, loading %s, fetching %s, error %s",
+    (hasSmtp, loading, fetching, error, visible) => {
+      noticeState.hasSmtp = hasSmtp;
+      noticeState.loading = loading;
+      noticeState.fetching = fetching;
+      noticeState.error = error;
+      noticeState.admin = false;
+      render(
+        <MembersTable
+          workspaceId="workspace-1"
+          invitations={[pendingInvitation]}
+          users={[]}
+        />,
+      );
+      expect(
+        Boolean(screen.queryByText("team:invitations.noEmailNotice")),
+      ).toBe(visible);
+      expect(screen.queryByText("team:invitations.configureEmail")).toBeNull();
+    },
+  );
+});
+
+it("offers email settings to an instance admin when email is missing", () => {
+  noticeState.hasSmtp = false;
+  noticeState.loading = false;
+  noticeState.fetching = false;
+  noticeState.error = false;
+  noticeState.admin = true;
+  render(
+    <MembersTable
+      workspaceId="workspace-1"
+      invitations={[pendingInvitation]}
+      users={[]}
+    />,
+  );
+  expect(
+    screen.getByRole("link", { name: "team:invitations.configureEmail" }),
+  ).toHaveAttribute("href", "/god-mode/notifications");
 });

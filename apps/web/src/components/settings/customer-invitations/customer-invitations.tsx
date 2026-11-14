@@ -38,6 +38,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
+import { NoEmailNotice } from "@/components/invitation/no-email-notice";
 import PageTitle from "@/components/page-title";
 import {
   isForbiddenError,
@@ -170,6 +171,7 @@ function InviteDialog({
             }}
           >
             <div className="space-y-4 px-6">
+              <NoEmailNotice />
               <div className="space-y-2">
                 <Label htmlFor="customer-invitation-email">
                   {t("customerInvitations:create.email")}
@@ -476,6 +478,9 @@ function CustomerInvitationsContent({
     <>
       <PageTitle title={t("customerInvitations:title")} />
       <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
+        {canInvite && selected && !inviting && !resentInvitation ? (
+          <NoEmailNotice />
+        ) : null}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold">

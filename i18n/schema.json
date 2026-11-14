@@ -12972,6 +12972,12 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"noEmailNotice": {
+							"type": "string"
+						},
+						"configureEmail": {
+							"type": "string"
+						},
 						"pendingBadge": {
 							"type": "string"
 						},
@@ -13025,6 +13031,8 @@
 						}
 					},
 					"required": [
+						"noEmailNotice",
+						"configureEmail",
 						"pendingBadge",
 						"expires",
 						"expiredOn",

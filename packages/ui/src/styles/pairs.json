@@ -87326,6 +87326,58 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/invitation/no-email-notice.tsx:NoEmailNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/customer-invitations.tsx:/_layout/_authenticated/dashboard/settings/workspace/customer-invitations",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/invitation/no-email-notice.tsx:NoEmailNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/members.tsx:/_layout/_authenticated/dashboard/settings/workspace/members",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/invitation/no-email-notice.tsx:NoEmailNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/members.tsx:RouteComponent",
+					"jsx:WorkspaceLayout[0]/WorkspaceMembersContent[0]",
+					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
+					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/pending-action/pending-action-approval.tsx:PendingActionApproval",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/pending-actions/$id.tsx:/_layout/_authenticated/dashboard/settings/account/pending-actions/$id",
@@ -87649,6 +87701,19 @@
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/invitation/no-email-notice.tsx:NoEmailNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
 			{
 				"backdropLayers": ["bg-popover"],
 				"category": "body",

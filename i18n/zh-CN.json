@@ -3138,6 +3138,8 @@
 			"you": "你"
 		},
 		"invitations": {
+			"noEmailNotice": "Email is not set up, so invitations will not be emailed. Copy the invitation link and send it yourself.",
+			"configureEmail": "Set up email in God Mode",
 			"pendingBadge": "待处理",
 			"expires": "{{date}} 过期",
 			"expiredOn": "Expired {{date}}",
