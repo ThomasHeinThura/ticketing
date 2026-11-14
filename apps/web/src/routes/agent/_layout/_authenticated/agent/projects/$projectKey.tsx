@@ -52,7 +52,6 @@ export const Route = createFileRoute(
       return;
     startOverviewReads(context, params.projectKey);
   },
-  pendingMinMs: 0,
   component: ProjectRootRoute,
 });
 

@@ -137,7 +137,7 @@ it("commits the skeleton and starts the session before translations load", () =>
   expect(screen.getByRole("status")).toHaveTextContent("Loading…");
 });
 
-it("releases a visible session placeholder immediately on direct work-list visits once resolved", () => {
+it("retains a visible session placeholder for at least 300 ms on direct work-list visits once shown", () => {
   const previousPath = window.location.pathname;
   window.history.replaceState({}, "", "/agent/projects/WLP/work");
   try {
@@ -150,6 +150,7 @@ it("releases a visible session placeholder immediately on direct work-list visit
     expect(
       view.container.querySelector('[data-slot="skeleton"]'),
     ).toBeVisible();
+    act(() => vi.advanceTimersByTime(1));
     state.pending = false;
     state.user = { id: "u" };
     view.rerender(
@@ -157,6 +158,12 @@ it("releases a visible session placeholder immediately on direct work-list visit
         <Content />
       </AuthProvider>,
     );
+    act(() => vi.advanceTimersByTime(290));
+    expect(
+      view.container.querySelector('[data-slot="skeleton"]'),
+    ).toBeVisible();
+    expect(screen.queryByText("Signed in")).toBeNull();
+    act(() => vi.advanceTimersByTime(10));
     expect(screen.getByText("Signed in")).toBeVisible();
   } finally {
     window.history.replaceState({}, "", previousPath);

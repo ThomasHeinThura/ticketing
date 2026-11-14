@@ -53,10 +53,7 @@ import {
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { normalizeCanonicalWorkItemSelection } from "@/lib/normalize-canonical-work-item-selection";
-import {
-  WORK_LIST_FIRST_PAINT_WAIT_MS,
-  waitForWorkListFirstPaint,
-} from "@/lib/work-list-first-paint";
+import { waitForWorkListFirstPaint } from "@/lib/work-list-first-paint";
 import { prefetchWorkListData } from "@/lib/work-list-prefetch";
 
 type CreateDialogShellComponent =
@@ -228,8 +225,6 @@ export const Route = createFileRoute(
   },
   // A direct visit to the grouped list renders once its rows are here, briefly (see
   // `waitForWorkListFirstPaint`), so the preview paints with the shell (G11 work-list LCP).
-  pendingMs: WORK_LIST_FIRST_PAINT_WAIT_MS,
-  pendingMinMs: 0,
   loader: ({ context, cause }) =>
     waitForWorkListFirstPaint({ cause, reads: context.workListFirstPaint }),
   component: WorkItemsRouteComponent,
