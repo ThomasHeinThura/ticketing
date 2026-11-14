@@ -195,6 +195,7 @@ function createDaemonState({
   privateDir,
 }) {
   let seq = 1;
+  let dbGenSeq = 0;
   const makeId = () =>
     `${idPrefix}${(seq++).toString(16).padStart(64 - idPrefix.length, "0")}`;
 
@@ -208,9 +209,12 @@ function createDaemonState({
       setupCompleted = false,
       adminTotpVerified = false,
       customerPasswordEnabled = false,
+      generationId,
     } = {},
   ) => {
     const name = `${PROJECT}_${key}`;
+    const resolvedGenId =
+      generationId || `700000000000000000${++dbGenSeq}:${16384 + dbGenSeq}`;
     volumes.set(name, {
       Name: name,
       Driver: "local",
@@ -229,6 +233,7 @@ function createDaemonState({
               setupCompleted,
               adminTotpVerified,
               customerPasswordEnabled,
+              generationId: resolvedGenId,
             }
           : undefined,
       files:
@@ -1266,12 +1271,26 @@ function createRealChainWorld(t) {
           return { status: 1, stdout: "" };
         }
       }
+      if (joined.includes("ON_ERROR_STOP=1") && sub.includes("db-gen")) {
+        const sqlText = String(options.input || "");
+        if (
+          !sqlText.includes("pg_control_system") ||
+          !sqlText.includes("pg_database")
+        )
+          return { status: 1, stdout: "" };
+        const pgDb = daemon.volumes.get(`${PROJECT}_postgres-data`)?.db;
+        return writeStdoutOrFd(
+          options,
+          `${pgDb?.generationId || "7000000000000000001:16385"}\n`,
+        );
+      }
       if (joined.includes("ON_ERROR_STOP=1") && sub.includes("setup-check")) {
         const sqlText = String(options.input || "");
         if (
           !sqlText.includes("instance_setting") ||
           !sqlText.includes("two_factor") ||
-          !sqlText.includes("instance_plugin_config")
+          !sqlText.includes("instance_plugin_config") ||
+          !sqlText.includes("scope = 'instance'")
         )
           return { status: 1, stdout: "" };
         const pgDb = daemon.volumes.get(`${PROJECT}_postgres-data`)?.db;
@@ -1657,6 +1676,12 @@ test("real chain: Stage 1 checkpoints empty instance for /setup + portal auth an
     readFileSync(join(backupDir, "fresh-setup-pending.json"), "utf8"),
   );
   assert.equal(pendingCheckpoint.status, "awaiting_setup");
+  assert.equal(pendingCheckpoint.image, NEXT_IMAGE);
+  assert.match(pendingCheckpoint.dbGeneration, /^\d+:\d+$/);
+  assert.equal(
+    pendingCheckpoint.dbGeneration,
+    w.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db.generationId,
+  );
   assert.equal(
     statSync(join(backupDir, "fresh-setup-pending.json")).mode & 0o777,
     0o600,
@@ -2113,6 +2138,260 @@ test("real chain: concurrent invocation with different env-file and private-dir 
     w.logs.some((line) =>
       line.includes("Fresh empty install ready (checkpoint"),
     ),
+  );
+  w.assertNoSecretsLogged();
+});
+
+function completeStage1AndSetup(w) {
+  w.execute();
+  const stamp = "2026-11-12T12-00-00-000Z";
+  const freshPg = w.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db;
+  freshPg.setupCompleted = true;
+  freshPg.adminTotpVerified = true;
+  freshPg.customerPasswordEnabled = true;
+  return {
+    stamp,
+    backupDir: join(w.privateDir, "fresh-backups", stamp),
+    resumeArgs: [
+      "--resume-seed",
+      stamp,
+      "--confirm-daemon",
+      w.sitDaemon.daemonId,
+    ],
+  };
+}
+
+test("real chain: Stage 2 rescues container credentials after post-commit seed failure, smoke failure, copy failure, and rm cleanup failure without re-seeding", (t) => {
+  // 1. Post-commit seed-uat.js failure rescues /tmp/sit-credentials.json -> cleanup -> retry runs smoke only
+  const postCommit = createRealChainWorld(t);
+  const pc = completeStage1AndSetup(postCommit);
+  let postCommitSeedCalls = 0;
+  postCommit.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      postCommitSeedCalls += 1;
+      if (postCommitSeedCalls > 1)
+        throw new Error("seed-uat.js must not re-run after credentials rescue");
+      const app = [...postCommit.sitDaemon.containers.values()].find(
+        (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+      );
+      app.tmpFiles.set(
+        argv[argv.indexOf("--credentials-file") + 1],
+        JSON.stringify({
+          accounts: [
+            {
+              email: "admin@taskdesk.example",
+              password: FAKE_SECRETS.seedAdminPass,
+              role: "owner",
+              side: "agent",
+            },
+          ],
+        }),
+      );
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => postCommit.execute({ args: pc.resumeArgs }),
+    /docker exec failed/,
+  );
+  assert.ok(existsSync(join(pc.backupDir, "sit-credentials.json")));
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(pc.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded_awaiting_smoke",
+  );
+  for (const c of postCommit.sitDaemon.containers.values()) {
+    assert.equal(c.tmpFiles.has("/tmp/sit-credentials.json"), false);
+  }
+  postCommit.execute({ args: pc.resumeArgs });
+  assert.equal(postCommitSeedCalls, 1);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(pc.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded",
+  );
+
+  // 2. Host copy failure after seed preserves container creds; retry rescues via cat without re-seeding
+  const copyFail = createRealChainWorld(t);
+  const cf = completeStage1AndSetup(copyFail);
+  let copyFailSeedCalls = 0;
+  let failedCopyOnce = false;
+  copyFail.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      copyFailSeedCalls += 1;
+      if (copyFailSeedCalls > 1)
+        throw new Error(
+          "seed-uat.js must not re-run when container creds exist",
+        );
+    }
+    if (
+      !failedCopyOnce &&
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("cat") &&
+      argv.includes("/tmp/sit-credentials.json") &&
+      copyFailSeedCalls === 1
+    ) {
+      failedCopyOnce = true;
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => copyFail.execute({ args: cf.resumeArgs }),
+    /docker exec failed/,
+  );
+  assert.equal(existsSync(join(cf.backupDir, "sit-credentials.json")), false);
+  const cfApp = [...copyFail.sitDaemon.containers.values()].find(
+    (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+  );
+  assert.equal(cfApp.tmpFiles.has("/tmp/sit-credentials.json"), true);
+  copyFail.execute({ args: cf.resumeArgs });
+  assert.equal(copyFailSeedCalls, 1);
+  assert.equal(cfApp.tmpFiles.has("/tmp/sit-credentials.json"), false);
+  assert.ok(existsSync(join(cf.backupDir, "sit-credentials.json")));
+
+  // 3. Container rm -f failure throws loudly and retry completes cleanup + smoke without re-seeding
+  const rmFail = createRealChainWorld(t);
+  const rf = completeStage1AndSetup(rmFail);
+  let rmFailSeedCalls = 0;
+  let failedRmOnce = false;
+  rmFail.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      rmFailSeedCalls += 1;
+      if (rmFailSeedCalls > 1)
+        throw new Error("seed-uat.js must not re-run after host creds saved");
+    }
+    if (
+      !failedRmOnce &&
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("rm") &&
+      argv.includes("/tmp/sit-credentials.json")
+    ) {
+      failedRmOnce = true;
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => rmFail.execute({ args: rf.resumeArgs }),
+    /Failed to remove temporary sit-credentials\.json from container/,
+  );
+  assert.ok(existsSync(join(rf.backupDir, "sit-credentials.json")));
+  rmFail.execute({ args: rf.resumeArgs });
+  assert.equal(rmFailSeedCalls, 1);
+  assert.ok(rmFail.logs.includes("Fresh install smoke passed."));
+
+  // 4. release-smoke.mjs failure retries from seeded_awaiting_smoke without re-running seed-uat.js
+  const smokeFail = createRealChainWorld(t);
+  const sf = completeStage1AndSetup(smokeFail);
+  let sfSeedCalls = 0;
+  let failedSmokeOnce = false;
+  smokeFail.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      sfSeedCalls += 1;
+      if (sfSeedCalls > 1)
+        throw new Error("seed-uat.js must not re-run during smoke retry");
+    }
+    if (
+      !failedSmokeOnce &&
+      bin === "node" &&
+      argv[0] === "scripts/sit/release-smoke.mjs"
+    ) {
+      failedSmokeOnce = true;
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => smokeFail.execute({ args: sf.resumeArgs }),
+    /node scripts\/sit\/release-smoke\.mjs failed/,
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(sf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded_awaiting_smoke",
+  );
+  smokeFail.execute({ args: sf.resumeArgs });
+  assert.equal(sfSeedCalls, 1);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(sf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded",
+  );
+  smokeFail.assertNoSecretsLogged();
+});
+
+test("real chain: Stage 2 refuses superseded checkpoint, image mismatch, and PostgreSQL generation mismatch", (t) => {
+  const w = createRealChainWorld(t);
+  w.execute({ clock: () => new Date("2026-11-12T12:00:00.000Z") });
+  const oldStamp = "2026-11-12T12-00-00-000Z";
+  w.execute({ clock: () => new Date("2026-11-12T13:00:00.000Z") });
+  const newStamp = "2026-11-12T13-00-00-000Z";
+
+  const freshPg = w.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db;
+  freshPg.setupCompleted = true;
+  freshPg.adminTotpVerified = true;
+  freshPg.customerPasswordEnabled = true;
+
+  assert.throws(
+    () =>
+      w.execute({
+        args: [
+          "--resume-seed",
+          oldStamp,
+          "--confirm-daemon",
+          w.sitDaemon.daemonId,
+        ],
+      }),
+    new RegExp(`superseded by newer checkpoint ${newStamp}`),
+  );
+
+  // Image mismatch on current checkpoint refuses before running seeding
+  const newCheckpointFile = join(
+    w.privateDir,
+    "fresh-backups",
+    newStamp,
+    "fresh-setup-pending.json",
+  );
+  const origCheckpoint = JSON.parse(readFileSync(newCheckpointFile, "utf8"));
+  writeFileSync(
+    newCheckpointFile,
+    `${JSON.stringify({ ...origCheckpoint, image: PREV_IMAGE }, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+  assert.throws(
+    () =>
+      w.execute({
+        args: [
+          "--resume-seed",
+          newStamp,
+          "--confirm-daemon",
+          w.sitDaemon.daemonId,
+        ],
+      }),
+    /does not match target image/,
+  );
+
+  // DB generation mismatch refuses cleanly
+  writeFileSync(
+    newCheckpointFile,
+    `${JSON.stringify({ ...origCheckpoint, dbGeneration: "9999999999999999999:99999" }, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+  assert.throws(
+    () =>
+      w.execute({
+        args: [
+          "--resume-seed",
+          newStamp,
+          "--confirm-daemon",
+          w.sitDaemon.daemonId,
+        ],
+      }),
+    /does not match current PostgreSQL database generation/,
   );
   w.assertNoSecretsLogged();
 });

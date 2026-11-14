@@ -109,7 +109,7 @@ function createRegisteredJobDefinitions(): ReadonlyArray<RegisteredJobDefinition
     {
       name: "outbox-drain",
       pattern: "*/30 * * * * *",
-      // Digest groups, parent event envelopes, and their children (EV-1/EV-2).
+      // Parent event envelopes, immediate children (EV-1/EV-2), P4 consumers, and digest groups.
       handler: drainOutbox,
     },
     {

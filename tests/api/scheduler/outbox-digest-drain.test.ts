@@ -127,9 +127,9 @@ describe("outbox digest drain", () => {
     });
     const outcome = await drainOutbox();
     expect(outcome.parents.processed).toBe(5);
-    expect(outcome.children.processed).toBe(11);
+    expect(outcome.children.processed).toBe(9);
     expect(mocks.p4).toHaveBeenCalledOnce();
-    expect(outcome.digests.processed).toBe(0);
+    expect(outcome.digests.processed).toBe(2);
     expect(now).toBe(29_000);
   });
 

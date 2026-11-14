@@ -27,6 +27,7 @@ function fixture(t) {
     helper: "d".repeat(64),
     migration: "e".repeat(64),
     newApp: "f".repeat(64),
+    newDb: "0".repeat(64),
   };
   const labels = (service) => ({
     "com.docker.compose.project": PROJECT,
@@ -170,12 +171,17 @@ function fixture(t) {
         stdout = ids.helper;
       } else if (args[0] === "exec" && args.includes("writers"))
         stdout = `${sessions}\n`;
+      else if (args[0] === "exec" && args.includes("db-gen"))
+        stdout = "7000000000000000001:16385\n";
       else if (args.includes("pg_restore")) stdout = "1; entry\n";
-      else if (args[0] === "compose" && args.includes("run")) {
+      else if (args[0] === "compose" && args.includes("up")) {
+        if (args.includes("postgres"))
+          containers.set(ids.newDb, container(ids.newDb, "postgres"));
+      } else if (args[0] === "compose" && args.includes("run")) {
         containers.set(ids.migration, container(ids.migration, "migrate"));
         stdout = ids.migration;
       } else if (args[0] === "compose" && args.includes("ps"))
-        stdout = ids.newApp;
+        stdout = args.at(-1) === "postgres" ? ids.newDb : ids.newApp;
       else if (args[0] === "wait") stdout = "0";
     }
     if (typeof options.stdio?.[1] === "number")

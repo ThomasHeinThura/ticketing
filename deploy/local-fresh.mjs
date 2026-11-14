@@ -7,6 +7,7 @@ import {
   fsyncSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   renameSync,
   unlinkSync,
@@ -38,11 +39,13 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const split = (s) => s.trim().split(/\s+/).filter(Boolean);
 const USAGE = `Preview with no flags or --dry-run; execute with --confirm-wipe ${PROJECT} --confirm-daemon <daemon-id> or --resume-seed <stamp> --confirm-daemon <daemon-id>.`;
 const STAMP_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/;
+const DB_GENERATION_SQL =
+  "SELECT s.system_identifier::text || ':' || d.oid::text FROM pg_control_system() s CROSS JOIN pg_database d WHERE d.datname = current_database();";
 const SETUP_CHECK_SQL = [
   "SELECT",
   "  CASE WHEN EXISTS(SELECT 1 FROM instance_setting WHERE id = 'singleton' AND setup_completed_at IS NOT NULL) THEN '1' ELSE '0' END,",
   "  CASE WHEN EXISTS(SELECT 1 FROM \"user\" u JOIN two_factor tf ON tf.user_id = u.id WHERE u.role = 'admin' AND u.two_factor_enabled = true AND tf.verified = true) THEN '1' ELSE '0' END,",
-  "  CASE WHEN EXISTS(SELECT 1 FROM instance_plugin_config WHERE plugin_id = 'auth.password' AND enabled = true AND portal_scope IN ('both', 'customer')) THEN '1' ELSE '0' END;",
+  "  CASE WHEN EXISTS(SELECT 1 FROM instance_plugin_config WHERE plugin_id = 'auth.password' AND enabled = true AND scope = 'instance' AND portal_scope IN ('both', 'customer')) THEN '1' ELSE '0' END;",
 ].join(" ");
 
 function writePrivateJsonAtomically(file, payload) {
@@ -75,7 +78,33 @@ function writePrivateJsonAtomically(file, payload) {
   }
 }
 
-function readPendingCheckpoint({ privateDir, stamp, dbName, daemonId }) {
+function readDbGeneration({ cmd, dbContainer, dbName }) {
+  const raw = cmd(
+    "docker",
+    [
+      "exec",
+      "-i",
+      dbContainer,
+      "sh",
+      "-c",
+      'exec psql -X -A -t -F "|" -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$1"',
+      "db-gen",
+      dbName,
+    ],
+    { input: `${DB_GENERATION_SQL}\n` },
+  );
+  const generation = raw
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .find(Boolean);
+  if (!generation || !/^\d+:\d+$/.test(generation))
+    throw new Error(
+      "Could not inspect PostgreSQL database generation identity.",
+    );
+  return generation;
+}
+
+function readPendingCheckpoint({ privateDir, stamp, dbName, daemonId, image }) {
   const backupsRoot = resolve(privateDir, "fresh-backups");
   const backup = resolve(backupsRoot, stamp);
   if (dirname(backup) !== backupsRoot || !existsSync(backup))
@@ -97,9 +126,53 @@ function readPendingCheckpoint({ privateDir, stamp, dbName, daemonId }) {
     throw new Error(
       `Fresh checkpoint ${stamp} does not match target instance.`,
     );
+  if (parsed.image !== image)
+    throw new Error(`Fresh checkpoint ${stamp} does not match target image.`);
+  if (
+    typeof parsed.dbGeneration !== "string" ||
+    !/^\d+:\d+$/.test(parsed.dbGeneration)
+  )
+    throw new Error(
+      `Fresh checkpoint ${stamp} is missing PostgreSQL database generation identity.`,
+    );
+  const parsedTs = Date.parse(parsed.createdAt || "");
+  for (const entry of readdirSync(backupsRoot, { withFileTypes: true })) {
+    if (
+      !entry.isDirectory() ||
+      entry.name === stamp ||
+      !STAMP_PATTERN.test(entry.name)
+    )
+      continue;
+    const otherFile = resolve(
+      backupsRoot,
+      entry.name,
+      "fresh-setup-pending.json",
+    );
+    if (!existsSync(otherFile)) continue;
+    let other;
+    try {
+      other = JSON.parse(readFileSync(otherFile, "utf8"));
+    } catch {
+      continue;
+    }
+    if (!other || other.project !== PROJECT || other.daemonId !== daemonId)
+      continue;
+    const otherTs = Date.parse(other.createdAt || "");
+    const isNewer =
+      Number.isFinite(otherTs) && Number.isFinite(parsedTs)
+        ? otherTs > parsedTs || (otherTs === parsedTs && entry.name > stamp)
+        : entry.name > stamp;
+    if (isNewer)
+      throw new Error(
+        `Fresh checkpoint ${stamp} has been superseded by newer checkpoint ${entry.name}.`,
+      );
+  }
   if (parsed.status === "seeded")
     throw new Error(`Fresh checkpoint ${stamp} is already seeded.`);
-  if (parsed.status !== "awaiting_setup")
+  if (
+    parsed.status !== "awaiting_setup" &&
+    parsed.status !== "seeded_awaiting_smoke"
+  )
     throw new Error(`Fresh checkpoint ${stamp} is not awaiting setup.`);
   return { backup, sums, checkpointFile, checkpoint: parsed };
 }
@@ -159,6 +232,127 @@ function verifyPublicReady(cmd) {
     ]);
 }
 
+function readValidatedCredentials(credentialsFile) {
+  const raw = readFileSync(credentialsFile, "utf8");
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(
+      `Fresh credential artifact ${basename(credentialsFile)} is not valid JSON.`,
+    );
+  }
+  if (!Array.isArray(parsed?.accounts) || parsed.accounts.length === 0) {
+    throw new Error(
+      `Fresh credential artifact ${basename(credentialsFile)} is missing seeded accounts.`,
+    );
+  }
+  return parsed;
+}
+
+function removeContainerCredentials({ cmd, containerId }) {
+  try {
+    cmd("docker", [
+      "exec",
+      containerId,
+      "rm",
+      "-f",
+      "/tmp/sit-credentials.json",
+    ]);
+  } catch (error) {
+    throw new Error(
+      `Failed to remove temporary sit-credentials.json from container ${containerId}: ${error.message}`,
+    );
+  }
+}
+
+function tryRescueContainerCredentials({ cmd, containerId, credentials }) {
+  try {
+    writeCommandOutputAtomically(credentials, cmd, "docker", [
+      "exec",
+      containerId,
+      "cat",
+      "/tmp/sit-credentials.json",
+    ]);
+    return true;
+  } catch (error) {
+    if (error.message === "docker exec failed.") return false;
+    throw error;
+  }
+}
+
+function ensureHostCredentials({
+  cmd,
+  containerId,
+  credentials,
+  checkpointFile,
+  checkpoint,
+  clock,
+}) {
+  if (checkpoint.status === "seeded_awaiting_smoke") {
+    if (!existsSync(credentials)) {
+      throw new Error(
+        `Fresh checkpoint ${checkpoint.stamp} is missing ${basename(credentials)}.`,
+      );
+    }
+    readValidatedCredentials(credentials);
+    removeContainerCredentials({ cmd, containerId });
+    return checkpoint;
+  }
+
+  let seedError = null;
+  if (existsSync(credentials)) {
+    readValidatedCredentials(credentials);
+    removeContainerCredentials({ cmd, containerId });
+  } else if (tryRescueContainerCredentials({ cmd, containerId, credentials })) {
+    readValidatedCredentials(credentials);
+    removeContainerCredentials({ cmd, containerId });
+  } else {
+    try {
+      cmd("docker", [
+        "exec",
+        containerId,
+        "node",
+        "apps/api/dist/seed-uat.js",
+        "--uat",
+        "--credentials-file",
+        "/tmp/sit-credentials.json",
+      ]);
+    } catch (error) {
+      seedError = error;
+    }
+
+    let savedFromContainer = false;
+    try {
+      writeCommandOutputAtomically(credentials, cmd, "docker", [
+        "exec",
+        containerId,
+        "cat",
+        "/tmp/sit-credentials.json",
+      ]);
+      savedFromContainer = true;
+    } catch (copyError) {
+      if (!seedError) throw copyError;
+    }
+
+    if (savedFromContainer) {
+      readValidatedCredentials(credentials);
+      removeContainerCredentials({ cmd, containerId });
+    } else if (seedError) {
+      throw seedError;
+    }
+  }
+
+  const activeCheckpoint = {
+    ...checkpoint,
+    status: "seeded_awaiting_smoke",
+    credentialsSavedAt: clock().toISOString(),
+  };
+  writePrivateJsonAtomically(checkpointFile, activeCheckpoint);
+  if (seedError) throw seedError;
+  return activeCheckpoint;
+}
+
 function seedAndSmoke({
   cmd,
   dc,
@@ -166,34 +360,25 @@ function seedAndSmoke({
   env,
   composeEnv,
   backup,
+  checkpointFile,
+  checkpoint,
+  clock,
   safeReport,
 }) {
   const ids = split(dc(["ps", "-q", "taskdesk"]));
   if (ids.length !== 1 || !/^[a-f0-9]{64}$/.test(ids[0]))
     throw new Error("Fresh app is ambiguous.");
-  checkedContainer(ids[0]);
+  const containerId = ids[0];
+  checkedContainer(containerId);
   const credentials = resolve(backup, "sit-credentials.json");
-  try {
-    cmd("docker", [
-      "exec",
-      ids[0],
-      "node",
-      "apps/api/dist/seed-uat.js",
-      "--uat",
-      "--credentials-file",
-      "/tmp/sit-credentials.json",
-    ]);
-    writeCommandOutputAtomically(credentials, cmd, "docker", [
-      "exec",
-      ids[0],
-      "cat",
-      "/tmp/sit-credentials.json",
-    ]);
-  } finally {
-    try {
-      cmd("docker", ["exec", ids[0], "rm", "-f", "/tmp/sit-credentials.json"]);
-    } catch {}
-  }
+  const activeCheckpoint = ensureHostCredentials({
+    cmd,
+    containerId,
+    credentials,
+    checkpointFile,
+    checkpoint,
+    clock,
+  });
   verifyPublicReady(cmd);
   const smokeOutput = cmd(
     "node",
@@ -209,6 +394,11 @@ function seedAndSmoke({
   );
   for (const line of smokeOutput.split(/\r?\n/).filter(Boolean))
     safeReport(line);
+  writePrivateJsonAtomically(checkpointFile, {
+    ...activeCheckpoint,
+    status: "seeded",
+    seededAt: clock().toISOString(),
+  });
   safeReport("Fresh install smoke passed.");
 }
 
@@ -587,12 +777,22 @@ export function executeFresh({
         stamp: resumeStamp,
         dbName,
         daemonId: daemon.daemonId,
+        image,
       });
       cmd("shasum", ["-a", "256", "-c", resumeSums]);
       safeReport(`Docker daemon ID: ${daemon.daemonId}`);
       safeReport(`Compose project: ${PROJECT}`);
       safeReport(`Resuming seed from checkpoint: ${resumeStamp}`);
       sameDaemon();
+      const liveDbGeneration = readDbGeneration({
+        cmd,
+        dbContainer: plan.db,
+        dbName,
+      });
+      if (liveDbGeneration !== checkpoint.dbGeneration)
+        throw new Error(
+          `Fresh checkpoint ${resumeStamp} does not match current PostgreSQL database generation.`,
+        );
       assertSetupAndPortalAuthReady({
         cmd,
         dbContainer: plan.db,
@@ -605,12 +805,10 @@ export function executeFresh({
         env,
         composeEnv,
         backup: resumeBackup,
+        checkpointFile,
+        checkpoint,
+        clock,
         safeReport,
-      });
-      writePrivateJsonAtomically(checkpointFile, {
-        ...checkpoint,
-        status: "seeded",
-        seededAt: clock().toISOString(),
       });
       return;
     }
@@ -965,12 +1163,22 @@ export function executeFresh({
         throw new Error("Fresh app is ambiguous.");
       checkedContainer(ids[0]);
       verifyPublicReady(cmd);
+      const pgIds = split(dc(["ps", "-q", "postgres"]));
+      if (pgIds.length !== 1 || !/^[a-f0-9]{64}$/.test(pgIds[0]))
+        throw new Error("Fresh PostgreSQL container is ambiguous.");
+      checkedContainer(pgIds[0]);
+      const dbGeneration = readDbGeneration({
+        cmd,
+        dbContainer: pgIds[0],
+        dbName,
+      });
       const checkpointFile = resolve(backup, "fresh-setup-pending.json");
       writePrivateJsonAtomically(checkpointFile, {
         stamp,
         project: PROJECT,
         dbName,
         image,
+        dbGeneration,
         daemonId: daemon.daemonId,
         createdAt: clock().toISOString(),
         status: "awaiting_setup",

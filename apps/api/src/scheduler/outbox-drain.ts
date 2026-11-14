@@ -82,9 +82,9 @@ export async function drainOutbox() {
   await assertJobExecutionOwned();
   const parents = await drainParentEvents();
   await assertJobExecutionOwned();
-  // The P4 webhook and automation drains have 8 s and 5 s budgets respectively.
+  // Reserve 13 s for P4 consumers (8 s webhooks + 5 s automations) plus a 2 s digest floor.
   const children = await drainImmediateNotifications(
-    Math.max(0, Math.min(20_000, 29_000 - (Date.now() - startedAt) - 13_000)),
+    Math.max(0, Math.min(20_000, 29_000 - (Date.now() - startedAt) - 15_000)),
   );
   await assertJobExecutionOwned();
   const consumers = await drainP4Consumers();

@@ -443,7 +443,7 @@ describe("legacy time-entry canonical boundary", () => {
     expect(entries).toHaveLength(0);
   });
 
-  it("lets the project role, not the workspace role, decide legacy create and update", async () => {
+  it("lets the project role, not the workspace role, decide legacy read, create, and update", async () => {
     const w = await world();
     const entry = await createEntry(w.b.user, w.task.id);
     const lead = await createWorkspaceMember({ role: "lead" });
@@ -476,6 +476,28 @@ describe("legacy time-entry canonical boundary", () => {
       w.project.id,
       BUILT_IN_ROLES.admin.capabilities,
     );
+
+    // Narrowed workspace lead loses project time_entry:read_any on legacy GET routes.
+    mockAuthenticatedSession(lead.user);
+    expect((await call("GET", `/api/time-entry/${entry.id}`)).status).toBe(403);
+    expect(
+      (await call("GET", `/api/time-entry/task/${w.task.id}`)).status,
+    ).toBe(403);
+
+    // Lifted workspace viewer and member gain project time_entry:read_any on legacy GET routes.
+    for (const lifted of [viewer.user, member.user]) {
+      mockAuthenticatedSession(lifted);
+      const single = await call("GET", `/api/time-entry/${entry.id}`);
+      expect(single.status).toBe(200);
+      expect(((await single.json()) as { id: string }).id).toBe(entry.id);
+      const list = await call("GET", `/api/time-entry/task/${w.task.id}`);
+      expect(list.status).toBe(200);
+      expect(
+        ((await list.json()) as Array<{ id: string }>).some(
+          (row) => row.id === entry.id,
+        ),
+      ).toBe(true);
+    }
 
     mockAuthenticatedSession(lead.user);
     expect(
