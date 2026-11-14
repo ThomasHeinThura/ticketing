@@ -11,6 +11,10 @@ import {
   grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  deleteThroughApproval,
+  ensureAgentSession,
+} from "./helpers/pending-deletion";
 
 function call(method: string, path: string, body?: unknown) {
   const { app } = createApp();
@@ -62,6 +66,8 @@ describe("project label catalogue honours project roles", () => {
 
   it("refuses a workspace lead narrowed to project-viewer and admits a member made project-lead", async () => {
     const w = await world();
+    await ensureAgentSession(w.narrowedLead.user.id);
+    await ensureAgentSession(w.liftedMember.user.id);
     await grantProjectRole(
       w.narrowedLead.user.id,
       w.project.id,
@@ -73,21 +79,37 @@ describe("project label catalogue honours project roles", () => {
       BUILT_IN_ROLES.lead.capabilities,
     );
     const body = { name: "Fresh", color: "teal" };
+    const renamed = { name: "Updated", color: "teal" };
 
     mockAuthenticatedSession(w.narrowedLead.user);
     expect((await call("GET", w.url)).status).toBe(200);
+    expect(
+      await (
+        await call(
+          "GET",
+          `/api/capabilities?workspaceId=${w.project.workspaceId}&projectId=${w.project.id}`,
+        )
+      ).json(),
+    ).toMatchObject({ manageLabels: false });
     expect((await call("POST", w.url, body)).status).toBe(403);
-    expect((await call("PATCH", `${w.url}/${w.label.id}`, body)).status).toBe(
-      403,
-    );
+    expect(
+      (await call("PATCH", `${w.url}/${w.label.id}`, renamed)).status,
+    ).toBe(403);
     expect((await call("DELETE", `${w.url}/${w.label.id}`)).status).toBe(403);
 
     mockAuthenticatedSession(w.liftedMember.user);
+    expect(
+      await (
+        await call(
+          "GET",
+          `/api/capabilities?workspaceId=${w.project.workspaceId}&projectId=${w.project.id}`,
+        )
+      ).json(),
+    ).toMatchObject({ manageLabels: true });
     expect((await call("POST", w.url, body)).status).toBe(200);
-    expect((await call("PATCH", `${w.url}/${w.label.id}`, body)).status).toBe(
-      200,
-    );
-    expect((await call("DELETE", `${w.url}/${w.label.id}`)).status).toBe(202);
+    expect(
+      (await call("PATCH", `${w.url}/${w.label.id}`, renamed)).status,
+    ).toBe(200);
     expect(
       (
         await db
@@ -95,6 +117,17 @@ describe("project label catalogue honours project roles", () => {
           .from(schema.labelTable)
           .where(eq(schema.labelTable.id, w.label.id))
       )[0],
-    ).toMatchObject({ name: "Fresh" });
+    ).toMatchObject({ name: "Updated" });
+    await deleteThroughApproval(
+      createApp().app,
+      w.liftedMember.user,
+      `${w.url}/${w.label.id}`,
+    );
+    expect(
+      await db
+        .select()
+        .from(schema.labelTable)
+        .where(eq(schema.labelTable.id, w.label.id)),
+    ).toHaveLength(0);
   });
 });

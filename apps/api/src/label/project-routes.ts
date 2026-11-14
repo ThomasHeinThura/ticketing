@@ -14,6 +14,7 @@ import {
   requestRegisteredDeletion,
 } from "../pending-action/deletion-targets";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { PROJECT_LABEL_DELETION_ROUTE } from "./label-deletion-target";
 import {
@@ -44,7 +45,14 @@ const values = z.object({
 const response = labelSchema
   .extend({ projectId: z.string().nullable() })
   .openapi("ProjectLabel");
-const scope = () => [
+const readScope = () => [
+  workspaceAccess.fromProject("projectId", {
+    requireProjectReach: true,
+    deferCapability: true,
+  }),
+  requireWorkspaceCapability("workspace:read"),
+];
+const writeScope = () => [
   workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
 ];
 const errors = {
@@ -58,7 +66,7 @@ const list = createRoute({
   operationId: "listProjectLabels",
   tags: ["Labels"],
   summary: "List the project label catalogue",
-  middleware: scope(),
+  middleware: readScope(),
   request: { params: projectParam },
   responses: {
     200: jsonResponse("Project labels", z.array(response)),
@@ -71,7 +79,7 @@ const create = createRoute({
   operationId: "createProjectLabel",
   tags: ["Labels"],
   summary: "Create a project catalogue label",
-  middleware: scope(),
+  middleware: writeScope(),
   request: {
     params: projectParam,
     body: {
@@ -90,7 +98,7 @@ const update = createRoute({
   operationId: "updateProjectLabel",
   tags: ["Labels"],
   summary: "Edit a project catalogue label",
-  middleware: scope(),
+  middleware: writeScope(),
   request: {
     params: projectLabelParam,
     body: {
@@ -112,7 +120,7 @@ const remove = createRoute({
   summary: "Delete a project label and journal its removed assignments",
   description:
     "Requests a durable pending deletion (202). The label and its work-item assignments are unchanged until the requester approves; approval clears the assignments (journaled) and deletes the label.",
-  middleware: scope(),
+  middleware: writeScope(),
   request: { params: projectLabelParam },
   responses: {
     202: jsonResponse(

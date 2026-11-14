@@ -32,8 +32,10 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectManageAccess,
+  grantProjectRole,
   grantWorkItemProjectAccess,
   requireRow,
+  WORK_ITEM_PROJECT_CAPABILITIES,
 } from "./helpers/fixtures";
 import { setTimeFlags } from "./helpers/p5-time";
 
@@ -42,7 +44,10 @@ async function fixture() {
   const { project } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });
-  await grantWorkItemProjectAccess(member.user.id, project.id);
+  await grantProjectRole(member.user.id, project.id, [
+    ...WORK_ITEM_PROJECT_CAPABILITIES,
+    "time_entry:create",
+  ]);
   const recipientId = `legacy-fanout-recipient-${randomUUID()}`;
   const recipient = requireRow(
     await db
