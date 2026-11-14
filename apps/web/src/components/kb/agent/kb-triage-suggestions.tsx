@@ -36,9 +36,10 @@ export function KbTriageSuggestions({
   const knowledgeBaseOn = features.isOn("feature.knowledge_base");
   const [settled, setSettled] = useState(text.trim());
   useEffect(() => {
+    if (!knowledgeBaseOn) return;
     const timer = setTimeout(() => setSettled(text.trim()), 300);
     return () => clearTimeout(timer);
-  }, [text]);
+  }, [knowledgeBaseOn, text]);
   const suggestions = useQuery({
     queryKey: ["kb", workspaceId, "triage-suggestions", settled],
     queryFn: () => getKbSuggestions(workspaceId, settled),
