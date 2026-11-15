@@ -24859,54 +24859,6 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
-				"oidcGroups": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"empty": {
-							"type": "string"
-						},
-						"invalidExternalId": {
-							"type": "string"
-						},
-						"organisation": {
-							"type": "string"
-						},
-						"title": {
-							"type": "string"
-						},
-						"description": {
-							"type": "string"
-						},
-						"externalIdHelp": {
-							"type": "string"
-						},
-						"evidenceNote": {
-							"type": "string"
-						},
-						"loading": {
-							"type": "string"
-						},
-						"loadFailed": {
-							"type": "string"
-						},
-						"notSaved": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"empty",
-						"invalidExternalId",
-						"organisation",
-						"title",
-						"description",
-						"externalIdHelp",
-						"evidenceNote",
-						"loading",
-						"loadFailed",
-						"notSaved"
-					]
-				},
 				"common": {
 					"type": "object",
 					"additionalProperties": false,
@@ -26343,6 +26295,54 @@
 						"registrationEnvironmentDisabled",
 						"registrationOn",
 						"registrationOff"
+					]
+				},
+				"oidcGroups": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"externalIdHelp": {
+							"type": "string"
+						},
+						"evidenceNote": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"notSaved": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"invalidExternalId": {
+							"type": "string"
+						},
+						"organisation": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"externalIdHelp",
+						"evidenceNote",
+						"loading",
+						"loadFailed",
+						"notSaved",
+						"empty",
+						"invalidExternalId",
+						"organisation"
 					]
 				}
 			},

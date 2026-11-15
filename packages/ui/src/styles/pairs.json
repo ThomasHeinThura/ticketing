@@ -17375,6 +17375,23 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[3]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
 					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -18031,6 +18048,23 @@
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[3]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
@@ -27290,6 +27324,131 @@
 	},
 	{
 		"fg": "--color-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/tabs.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-input"
+		},
+		"surfaceContext": "caller-chain",
+		"occurrenceIds": [
+			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
+		],
+		"occurrences": [
+			{
+				"backdropLayers": [
+					"*:data-[slot=tabs-tab]:hover:bg-accent",
+					"bg-background"
+				],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": [
+					"*:data-[slot=tabs-tab]:hover:bg-accent",
+					"bg-background"
+				],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			}
+		],
+		"backdropLayers": [
+			"*:data-[slot=tabs-tab]:hover:bg-accent",
+			"bg-background"
+		]
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/tabs.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-input"
+		},
+		"surfaceContext": "caller-chain",
+		"occurrenceIds": [
+			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
+		],
+		"occurrences": [
+			{
+				"backdropLayers": ["bg-muted", "bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-muted", "bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			}
+		],
+		"backdropLayers": ["bg-muted", "bg-background"]
+	},
+	{
+		"fg": "--color-foreground",
 		"bg": "--color-muted",
 		"category": "body",
 		"minRatio": 4.5,
@@ -27871,6 +28030,23 @@
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[3]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
@@ -28573,6 +28749,23 @@
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[3]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
@@ -33322,6 +33515,23 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[3]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
 					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -34192,6 +34402,23 @@
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[3]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
@@ -89110,6 +89337,131 @@
 	},
 	{
 		"fg": "--color-muted-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/tabs.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-muted-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-input"
+		},
+		"surfaceContext": "caller-chain",
+		"occurrenceIds": [
+			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0"
+		],
+		"occurrences": [
+			{
+				"backdropLayers": [
+					"*:data-[slot=tabs-tab]:hover:bg-accent",
+					"bg-background"
+				],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": [
+					"*:data-[slot=tabs-tab]:hover:bg-accent",
+					"bg-background"
+				],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			}
+		],
+		"backdropLayers": [
+			"*:data-[slot=tabs-tab]:hover:bg-accent",
+			"bg-background"
+		]
+	},
+	{
+		"fg": "--color-muted-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/tabs.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-muted-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-input"
+		},
+		"surfaceContext": "caller-chain",
+		"occurrenceIds": [
+			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0"
+		],
+		"occurrences": [
+			{
+				"backdropLayers": ["bg-muted", "bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-muted", "bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
+					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
+					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
+					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/portal/requests.tsx:/requests",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			}
+		],
+		"backdropLayers": ["bg-muted", "bg-background"]
+	},
+	{
+		"fg": "--color-muted-foreground",
 		"bg": "--color-muted",
 		"category": "body",
 		"minRatio": 4.5,
@@ -91305,6 +91657,23 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[3]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
 					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -92735,6 +93104,23 @@
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[2]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:OrganisationIdentityRoute",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[3]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/organisations/$id/identity.tsx:/_layout/_authenticated/god-mode/organisations/$id/identity",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
@@ -118931,255 +119317,5 @@
 				"usage": "packages/ui/src/components/toast-viewport.tsx"
 			}
 		]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-input",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "packages/ui/src/components/tabs.tsx",
-		"backdrop": "--color-background",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"dark": "dark:bg-input"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": [
-					"*:data-[slot=tabs-tab]:hover:bg-accent",
-					"bg-background"
-				],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
-					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/tabs.tsx"
-			},
-			{
-				"backdropLayers": [
-					"*:data-[slot=tabs-tab]:hover:bg-accent",
-					"bg-background"
-				],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
-					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/tabs.tsx"
-			}
-		],
-		"backdropLayers": [
-			"*:data-[slot=tabs-tab]:hover:bg-accent",
-			"bg-background"
-		]
-	},
-	{
-		"fg": "--color-foreground",
-		"bg": "--color-input",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "packages/ui/src/components/tabs.tsx",
-		"backdrop": "--color-background",
-		"foregroundClass": "text-foreground",
-		"backgroundClass": {
-			"dark": "dark:bg-input"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-muted", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
-					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/tabs.tsx"
-			},
-			{
-				"backdropLayers": ["bg-muted", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
-					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/tabs.tsx"
-			}
-		],
-		"backdropLayers": ["bg-muted", "bg-background"]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-input",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "packages/ui/src/components/tabs.tsx",
-		"backdrop": "--color-background",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"dark": "dark:bg-input"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": [
-					"*:data-[slot=tabs-tab]:hover:bg-accent",
-					"bg-background"
-				],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
-					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/tabs.tsx"
-			},
-			{
-				"backdropLayers": [
-					"*:data-[slot=tabs-tab]:hover:bg-accent",
-					"bg-background"
-				],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
-					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/tabs.tsx"
-			}
-		],
-		"backdropLayers": [
-			"*:data-[slot=tabs-tab]:hover:bg-accent",
-			"bg-background"
-		]
-	},
-	{
-		"fg": "--color-muted-foreground",
-		"bg": "--color-input",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "packages/ui/src/components/tabs.tsx",
-		"backdrop": "--color-background",
-		"foregroundClass": "text-muted-foreground",
-		"backgroundClass": {
-			"dark": "dark:bg-input"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-muted", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
-					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[0]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/tabs.tsx"
-			},
-			{
-				"backdropLayers": ["bg-muted", "bg-background"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"active-tab-indicator:packages/ui/src/components/tabs.tsx:TabsList",
-					"primitive:TabsPrimitive.Indicator:active-tab-bounds",
-					"apps/web/src/routes/portal/requests.tsx:PortalRequestsPage",
-					"jsx:Tabs[0]/TabsList[0]/TabsTrigger[1]",
-					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
-					"apps/web/src/routes/portal/requests.tsx:/requests",
-					"apps/web/src/index.css:body>@apply bg-background"
-				],
-				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/tabs.tsx"
-			}
-		],
-		"backdropLayers": ["bg-muted", "bg-background"]
 	}
 ]
