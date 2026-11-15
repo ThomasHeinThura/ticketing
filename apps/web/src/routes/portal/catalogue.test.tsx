@@ -28,6 +28,19 @@ vi.mock("@tanstack/react-router", () => ({
     useRouteContext: () => ({ portalUserId: "customer-a" }),
   }),
   useNavigate: () => mocks.navigate,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children?: import("react").ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a {...props} href={to}>
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock("@/fetchers/intake", () => ({
@@ -332,18 +345,24 @@ describe("portal catalogue route", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("tells a no-match search apart from an organisation with no request types", async () => {
+  it("tells a no-match search apart from an organisation with no request types and offers a clear next step (J-09)", async () => {
     mocks.search = { q: "zzz", key: undefined };
     mocks.getCatalogue.mockResolvedValue(emptyCatalogue);
     const view = renderCatalogue();
-    expect(
-      await screen.findByText("No request types match your search."),
-    ).toBeVisible();
+    const noMatch = await screen.findByText(
+      "No request types match your search.",
+    );
+    expect(noMatch).toBeVisible();
+    expect(noMatch.closest("[data-slot=empty]")).not.toBeNull();
     expect(
       screen.queryByText(
         "No request types are available for your organisation.",
       ),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      search: { key: undefined },
+    });
 
     mocks.search = { q: "", key: undefined };
     view.rerender(
@@ -351,11 +370,15 @@ describe("portal catalogue route", () => {
         <PortalCatalogue />
       </QueryClientProvider>,
     );
-    expect(
-      await screen.findByText(
-        "No request types are available for your organisation.",
-      ),
-    ).toBeVisible();
+    const emptyTitle = await screen.findByText(
+      "No request types are available for your organisation.",
+    );
+    expect(emptyTitle).toBeVisible();
+    expect(emptyTitle.closest("[data-slot=empty]")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "My requests" })).toHaveAttribute(
+      "href",
+      "/requests",
+    );
   });
 
   it("replaces the form once the request exists, so a failed file upload cannot send it twice", async () => {
@@ -486,6 +509,23 @@ describe("portal catalogue route", () => {
     );
     expect(mocks.complete).toHaveBeenCalledWith({ ref: "SUB-8", id: "att-1" });
     fetchMock.mockRestore();
+  });
+
+  it("searches from a full-width search box and lays request types out as a card grid (CP-3)", async () => {
+    mocks.search = { q: "", key: undefined };
+    renderCatalogue();
+    const card = await screen.findByRole("button", { name: /Access request/u });
+    const search = screen.getByRole("searchbox", { name: "Search requests" });
+    expect(search.closest("[data-slot=input-group]")).toHaveClass("w-full");
+    // No bare "Filter"/"Search" label above the box any more.
+    expect(screen.queryByText("Search", { selector: "label" })).toBeNull();
+    // Each card leads with an icon and ends with a chevron, inside a responsive grid.
+    expect(card.querySelectorAll("svg[aria-hidden=true]")).toHaveLength(2);
+    expect(card.closest("ul")).toHaveClass("@3xl:grid-cols-3");
+    fireEvent.change(search, { target: { value: "vpn" } });
+    expect(mocks.navigate).toHaveBeenLastCalledWith({
+      search: { q: "vpn", key: undefined },
+    });
   });
 
   it("moves focus to the form heading when a card is opened", async () => {

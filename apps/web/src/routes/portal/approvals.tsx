@@ -13,6 +13,7 @@ import {
   DialogPanel,
   DialogTitle,
   EmptyState,
+  Frame,
   Label,
   LoadingStatus,
   PageContainer,
@@ -27,7 +28,11 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { CheckCircle } from "lucide-react";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
+import {
+  formatPortalDate,
+  formatPortalDateTime,
+} from "@/components/portal/portal-format";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
   decidePortalApproval,
@@ -42,13 +47,25 @@ import {
   portalProjectSearchMiddlewares,
 } from "@/lib/portal-route-search";
 
+const APPROVAL_STATE_TONE: Record<
+  string,
+  NonNullable<ComponentProps<typeof Badge>["variant"]>
+> = {
+  pending: "warning",
+  approved: "success",
+  rejected: "error",
+  expired: "outline",
+  withdrawn: "outline",
+};
+
 export const Route = createFileRoute("/approvals")({
   validateSearch: parsePortalApprovalsSearch,
   search: { middlewares: portalProjectSearchMiddlewares },
   component: PortalApprovals,
 });
 function PortalApprovals() {
-  const { t } = usePortalTranslation("portal");
+  const { t, i18n } = usePortalTranslation("portal");
+  const locale = i18n?.resolvedLanguage || i18n?.language || undefined;
   const { portalUserId } = Route.useRouteContext();
   const { approval: selectedId } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -90,6 +107,13 @@ function PortalApprovals() {
           [403, 404].includes(mutation.error.status)
         ? "approvals.forbidden"
         : "approvals.failed";
+  const stateLabel = (state: string) =>
+    t(`approvals.state.${state}`, { defaultValue: state });
+  const stateTone = (
+    state: string,
+  ): NonNullable<ComponentProps<typeof Badge>["variant"]> =>
+    APPROVAL_STATE_TONE[state] ?? "outline";
+
   return (
     <PageContainer scroll={false} gutter="responsive" width="4xl">
       <PortalPageTitle title={t("approvals.title")} />
@@ -135,41 +159,81 @@ function PortalApprovals() {
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("approvals.request")}</TableHead>
-              <TableHead>{t("requests.status")}</TableHead>
-              <TableHead>{t("approvals.expires")}</TableHead>
-              <TableHead>{t("approvals.decision")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.data.approvals.map((approval) => (
-              <TableRow key={approval.id}>
-                <TableCell>
-                  {approval.workItemKey} · {approval.workItemTitle}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{approval.state}</Badge>
-                </TableCell>
-                <TableCell>
-                  {new Date(approval.expiresAt).toLocaleString()}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      void navigate({ search: { approval: approval.id } })
-                    }
-                  >
-                    {t("approvals.review")}
-                  </Button>
-                </TableCell>
+        <Frame className="@container">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("approvals.request")}</TableHead>
+                <TableHead className="hidden @2xl:table-cell">
+                  {t("requests.status")}
+                </TableHead>
+                <TableHead className="hidden @2xl:table-cell">
+                  {t("approvals.expires")}
+                </TableHead>
+                <TableHead className="text-end">
+                  {t("approvals.decision")}
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {query.data.approvals.map((approval) => {
+                const fullExpires = formatPortalDateTime(
+                  approval.expiresAt,
+                  locale,
+                );
+                return (
+                  <TableRow key={approval.id}>
+                    <TableCell className="max-w-0 whitespace-normal">
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <span className="break-words font-medium">
+                          {approval.workItemKey} · {approval.workItemTitle}
+                        </span>
+                        {approval.requester.displayName ? (
+                          <span className="break-words text-muted-foreground text-xs">
+                            {t("cases.columns.requester")}:{" "}
+                            {approval.requester.displayName}
+                          </span>
+                        ) : null}
+                        <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs @2xl:hidden">
+                          <Badge variant={stateTone(approval.state)}>
+                            {stateLabel(approval.state)}
+                          </Badge>
+                          <time
+                            dateTime={approval.expiresAt}
+                            title={fullExpires}
+                          >
+                            {formatPortalDate(approval.expiresAt, locale)}
+                          </time>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden @2xl:table-cell">
+                      <Badge variant={stateTone(approval.state)}>
+                        {stateLabel(approval.state)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden text-muted-foreground text-xs @2xl:table-cell">
+                      <time dateTime={approval.expiresAt} title={fullExpires}>
+                        {formatPortalDate(approval.expiresAt, locale)}
+                      </time>
+                    </TableCell>
+                    <TableCell className="text-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          void navigate({ search: { approval: approval.id } })
+                        }
+                      >
+                        {t("approvals.review")}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Frame>
       )}
       <Dialog
         open={Boolean(selectedId)}
@@ -191,6 +255,25 @@ function PortalApprovals() {
             </DialogDescription>
           </DialogHeader>
           <DialogPanel>
+            {selected ? (
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+                {selected.requester.displayName ? (
+                  <span className="w-full break-words">
+                    {t("cases.columns.requester")}:{" "}
+                    {selected.requester.displayName}
+                  </span>
+                ) : null}
+                <Badge variant={stateTone(selected.state)}>
+                  {stateLabel(selected.state)}
+                </Badge>
+                <span>
+                  {t("approvals.expires")}:{" "}
+                  <time dateTime={selected.expiresAt}>
+                    {formatPortalDateTime(selected.expiresAt, locale)}
+                  </time>
+                </span>
+              </div>
+            ) : null}
             {mutation.isError && mutation.variables?.id === selectedId ? (
               <Alert variant="error">
                 <AlertDescription>{t(errorKey)}</AlertDescription>

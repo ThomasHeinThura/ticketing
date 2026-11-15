@@ -3917,7 +3917,8 @@
 			"backlogItem": "{{term_request_one}}",
 			"reorder": "Reorder",
 			"backlogPagination": "Backlog pagination",
-			"backlogMore": "Load more"
+			"backlogMore": "Load more",
+			"viewLabel": "Views"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3937,7 +3938,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Approval requests from the support team appear here."
+			"emptyDescription": "Approval requests from the support team appear here.",
+			"state": {
+				"pending": "Pending",
+				"approved": "Approved",
+				"rejected": "Rejected",
+				"expired": "Expired",
+				"withdrawn": "Withdrawn"
+			}
 		},
 		"unavailable": {
 			"title": "Customer portal unavailable",

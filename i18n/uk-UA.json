@@ -3945,7 +3945,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Подання"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3965,7 +3966,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Тут відображаються запити на схвалення від служби підтримки."
+			"emptyDescription": "Тут відображаються запити на схвалення від служби підтримки.",
+			"state": {
+				"pending": "Очікує рішення",
+				"approved": "Схвалено",
+				"rejected": "Відхилено",
+				"expired": "Прострочено",
+				"withdrawn": "Відкликано"
+			}
 		},
 		"unavailable": {
 			"title": "Портал клієнтів недоступний",

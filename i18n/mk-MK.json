@@ -3917,7 +3917,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Прикази"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3937,7 +3938,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Барањата за одобрување од тимот за поддршка се појавуваат тука."
+			"emptyDescription": "Барањата за одобрување од тимот за поддршка се појавуваат тука.",
+			"state": {
+				"pending": "Во тек",
+				"approved": "Одобрено",
+				"rejected": "Одбиено",
+				"expired": "Истечено",
+				"withdrawn": "Повлечено"
+			}
 		},
 		"unavailable": {
 			"title": "Порталот за клиенти не е достапен",

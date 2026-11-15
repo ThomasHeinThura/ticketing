@@ -3917,7 +3917,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Görünümler"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3937,7 +3938,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Destek ekibinden gelen onay istekleri burada görünür."
+			"emptyDescription": "Destek ekibinden gelen onay istekleri burada görünür.",
+			"state": {
+				"pending": "Beklemede",
+				"approved": "Onaylandı",
+				"rejected": "Reddedildi",
+				"expired": "Süresi doldu",
+				"withdrawn": "Geri çekildi"
+			}
 		},
 		"unavailable": {
 			"title": "Müşteri portalı kullanılamıyor",
