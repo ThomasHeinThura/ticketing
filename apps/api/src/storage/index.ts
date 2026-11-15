@@ -151,6 +151,10 @@ function driver() {
   return getStorageDriver() === "s3" ? s3Driver : filesystemDriver;
 }
 
+export function getMaxImageUploadBytes(): number {
+  return driver().getMaxImageUploadBytes();
+}
+
 export function validateTaskAssetUploadInput(
   contentType: string,
   size: number,
@@ -162,7 +166,7 @@ export function assertTaskImageKeyMatchesContext(
   key: string,
   context: Omit<
     TaskImageUploadContext,
-    "filename" | "contentType" | "apiBaseUrl"
+    "filename" | "contentType" | "size" | "apiBaseUrl"
   >,
 ) {
   return driver().assertTaskImageKeyMatchesContext(key, context);

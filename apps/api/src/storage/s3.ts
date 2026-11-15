@@ -148,7 +148,7 @@ export function getBrowserStorageOrigins(): string[] {
   return browserStorageOrigins({ endpoint, bucket, forcePathStyle });
 }
 
-function getMaxImageUploadBytes() {
+export function getMaxImageUploadBytes(): number {
   return parsePositiveInt(
     process.env.S3_MAX_IMAGE_UPLOAD_BYTES,
     DEFAULT_MAX_IMAGE_UPLOAD_BYTES,
@@ -206,6 +206,11 @@ export async function createTaskImageUploadUrl(
   context: TaskImageUploadContext,
 ): Promise<TaskImageUploadUrl> {
   const config = getStorageConfig();
+  validateUploadInput(
+    context.contentType,
+    context.size,
+    config.maxImageUploadBytes,
+  );
   const client = getClient(config);
   const rawKey = buildObjectKey(context);
   const key = applyKeyPrefix(config.keyPrefix, rawKey);
@@ -214,10 +219,12 @@ export async function createTaskImageUploadUrl(
     Bucket: config.bucket,
     Key: key,
     ContentType: context.contentType,
+    ContentLength: context.size,
   });
 
   const uploadUrl = await getSignedUrl(client, command, {
     expiresIn: config.presignTtlSeconds,
+    signableHeaders: new Set(["content-length", "content-type"]),
   });
 
   return {
@@ -235,7 +242,10 @@ export function assertStorageConfigured() {
 
 export function assertTaskImageKeyMatchesContext(
   key: string,
-  context: Omit<TaskImageUploadContext, "filename" | "contentType">,
+  context: Omit<
+    TaskImageUploadContext,
+    "filename" | "contentType" | "size" | "apiBaseUrl"
+  >,
 ) {
   const config = getStorageConfig();
   return matchesKeyContext(key, context, config.keyPrefix);

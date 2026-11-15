@@ -94,7 +94,11 @@ export type ImportApprovalRequest = (
     ip: string | null;
     userAgent: string | null;
   },
-) => Promise<{ pendingActionId: string; auditFailure?: boolean }>;
+) => Promise<{
+  pendingActionId: string;
+  expiresAt: Date;
+  auditFailure?: boolean;
+}>;
 
 export type ImportAccessContext = { context: Context; actor: ImportActor };
 
@@ -1062,7 +1066,10 @@ export async function commitImportChunk(
     }
     if (chunk.state === "pending_approval" && chunk.pendingActionId) {
       const [pending] = await tx
-        .select({ state: schema.pendingActionTable.state })
+        .select({
+          state: schema.pendingActionTable.state,
+          expiresAt: schema.pendingActionTable.expiresAt,
+        })
         .from(schema.pendingActionTable)
         .where(
           and(
@@ -1071,7 +1078,23 @@ export async function commitImportChunk(
           ),
         )
         .limit(1);
-      if (pending?.state === "pending")
+      if (pending?.state === "pending") {
+        if (chunk.expiresAt.getTime() < pending.expiresAt.getTime()) {
+          await tx
+            .update(CHUNK)
+            .set({ expiresAt: pending.expiresAt })
+            .where(eq(CHUNK.id, chunk.id));
+        }
+        if (
+          run.dryRunDigest !== null &&
+          run.dryRunExpiresAt !== null &&
+          run.dryRunExpiresAt.getTime() < pending.expiresAt.getTime()
+        ) {
+          await tx
+            .update(RUN)
+            .set({ dryRunExpiresAt: pending.expiresAt })
+            .where(eq(RUN.id, run.id));
+        }
         return {
           kind: "pending_approval" as const,
           pendingActionId: chunk.pendingActionId,
@@ -1079,6 +1102,7 @@ export async function commitImportChunk(
           chunkId: chunk.chunkId,
           runVersion: run.version,
         };
+      }
     }
     if (chunk.state !== "previewed")
       throw new HTTPException(409, {
@@ -1182,11 +1206,16 @@ export async function commitImportChunk(
       ip: input.ip ?? null,
       userAgent: input.userAgent ?? null,
     });
+    const nextChunkExpiresAt =
+      chunk.expiresAt.getTime() >= approval.expiresAt.getTime()
+        ? chunk.expiresAt
+        : approval.expiresAt;
     await tx
       .update(CHUNK)
       .set({
         state: "pending_approval",
         pendingActionId: approval.pendingActionId,
+        expiresAt: nextChunkExpiresAt,
         inputPayload: { records: canonicalRecords(input.records) },
       })
       .where(eq(CHUNK.id, chunk.id));
@@ -1198,9 +1227,22 @@ export async function commitImportChunk(
         chunkId: chunk.chunkId,
       },
     ].slice(-100);
+    const nextDryRunExpiresAt =
+      run.dryRunDigest !== null && run.dryRunExpiresAt !== null
+        ? run.dryRunExpiresAt.getTime() >= approval.expiresAt.getTime()
+          ? run.dryRunExpiresAt
+          : approval.expiresAt
+        : null;
     await tx
       .update(RUN)
-      .set({ version: run.version + 1, log, updatedAt: new Date() })
+      .set({
+        version: run.version + 1,
+        ...(nextDryRunExpiresAt !== null
+          ? { dryRunExpiresAt: nextDryRunExpiresAt }
+          : {}),
+        log,
+        updatedAt: new Date(),
+      })
       .where(eq(RUN.id, run.id));
     return {
       kind: "pending_approval" as const,

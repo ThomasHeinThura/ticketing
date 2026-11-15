@@ -17532,6 +17532,16 @@
               }
             }
           },
+          "429": {
+            "description": "Organisation storage limit reached",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Image uploads are not configured on this instance",
             "content": {
@@ -17639,6 +17649,16 @@
           },
           "404": {
             "description": "Task not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Organisation storage limit reached",
             "content": {
               "text/plain": {
                 "schema": {

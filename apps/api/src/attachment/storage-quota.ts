@@ -17,6 +17,7 @@ export async function assertOrganisationStorageQuota(
     workspaceId: string;
     additionalBytes: number;
     excludeAttachmentId?: string;
+    excludeAssetId?: string;
   },
 ) {
   const usage = await readOrganisationStorageUsage(executor, {
@@ -25,6 +26,7 @@ export async function assertOrganisationStorageQuota(
     ...(input.excludeAttachmentId
       ? { excludeAttachmentId: input.excludeAttachmentId }
       : {}),
+    ...(input.excludeAssetId ? { excludeAssetId: input.excludeAssetId } : {}),
   });
   if (!usage) return;
   if (usage.usedBytes + input.additionalBytes > usage.maxStorageBytes) {

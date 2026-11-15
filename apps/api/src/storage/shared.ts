@@ -47,6 +47,7 @@ export type TaskImageUploadContext = {
   surface: UploadSurface;
   filename: string;
   contentType: string;
+  size: number;
   /**
    * The caller's validated configured public API origin. It is not derived from the
    * internal request URL, forwarded headers, or an unvalidated Host value. NOT expected to
@@ -108,7 +109,7 @@ export function getFileExtension(filename: string) {
 export function buildObjectKeyPrefix(
   context: Omit<
     TaskImageUploadContext,
-    "filename" | "contentType" | "apiBaseUrl"
+    "filename" | "contentType" | "size" | "apiBaseUrl"
   >,
 ) {
   const surfaceFolder =
@@ -125,7 +126,7 @@ export function buildObjectKeyPrefix(
   ].join("/");
 }
 
-export function buildObjectKey(context: TaskImageUploadContext) {
+export function buildObjectKey(context: Omit<TaskImageUploadContext, "size">) {
   const extension = getFileExtension(context.filename);
   const objectKeyPrefix = buildObjectKeyPrefix(context);
   const timestamp = Date.now();
@@ -162,7 +163,7 @@ export function matchesKeyContext(
   key: string,
   context: Omit<
     TaskImageUploadContext,
-    "filename" | "contentType" | "apiBaseUrl"
+    "filename" | "contentType" | "size" | "apiBaseUrl"
   >,
   keyPrefix: string,
 ): boolean {
@@ -228,7 +229,7 @@ export function validateUploadInput(
     throw new Error("A valid content type is required.");
   }
 
-  if (size <= 0) {
+  if (!Number.isInteger(size) || size <= 0) {
     throw new Error("Upload size must be greater than zero.");
   }
 

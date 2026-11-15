@@ -161,11 +161,9 @@ export async function completeSubmissionAttachment(input: {
       return { attachment: ready, finalKey, reopenWorkItemId };
     })
     .catch(async (error: unknown) => {
-      if (error instanceof HTTPException && error.status === 400) {
-        // Use only the locator captured after the scoped, locked authorization read.
-        if (authorizedFinalKey)
-          await deleteStorageObject(authorizedFinalKey).catch(() => {});
-      }
+      // Use only the locator captured after the scoped, locked authorization read.
+      if (authorizedFinalKey)
+        await deleteStorageObject(authorizedFinalKey).catch(() => {});
       throw error;
     });
   if ("error" in result) {
