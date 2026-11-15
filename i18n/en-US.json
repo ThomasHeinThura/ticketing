@@ -9804,7 +9804,7 @@
 		}
 	},
 	"godModePlugins": {
-		"title": "Plugins & Subprocessors",
+		"title": "Plugins",
 		"description": "Review optional outbound integrations and subprocessors configured on this instance.",
 		"forbiddenTitle": "Instance administrators only",
 		"forbiddenDescription": "You need instance administration access to view plugin configuration.",

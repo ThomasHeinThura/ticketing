@@ -394,7 +394,10 @@ export function LegalHoldsPanel() {
 
   const query = useLegalHolds({ status: statusFilter });
   const placeholderVisible = useDelayedPending(query.isPending, {
-    releaseNow: query.isSuccess && query.data.holds.length === 0,
+    releaseNow:
+      query.isSuccess &&
+      Array.isArray(query.data?.holds) &&
+      query.data.holds.length === 0,
   });
 
   if (
@@ -432,7 +435,11 @@ export function LegalHoldsPanel() {
     );
   }
 
-  const { activeCount, holds } = query.data;
+  const holds = Array.isArray(query.data?.holds) ? query.data.holds : [];
+  const activeCount =
+    typeof query.data?.activeCount === "number"
+      ? query.data.activeCount
+      : holds.length;
 
   return (
     <Card id="legal-holds-section">
