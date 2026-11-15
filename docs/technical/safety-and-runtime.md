@@ -464,6 +464,8 @@ introduced.
 <a id="api-design-oidc-group-mapping-administration"></a>
 #### OIDC group-mapping administration
 
+`GET /api/instance/identity-connections/{id}/oidc-group-mappings/mapping-options` is a session-only instance-admin read with `Cache-Control: no-store`. It uses `validateOidcMappingRole` and the SCIM selector query, cursor and response shapes, without requiring a SCIM child. The SCIM selector retains its missing-child `404` contract.
+
 The existing agent connection editor and organisation Identity tab use this single route
 family. The organisation screen is server-filtered through the connection's persisted
 `organisation_id`; it does not supply or select an organisation in a mapping request.

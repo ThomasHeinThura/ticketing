@@ -158,4 +158,41 @@ describe("proveIdentityOperation", () => {
       ),
     ).rejects.toMatchObject({ kind: "conflict", currentVersion: 12 });
   });
+  it.each(["oidc_group_mapping_create", "oidc_group_mapping_update"] as const)(
+    "binds %s to its exact operation request",
+    async (operation) => {
+      const request = { configVersion: 7, enabled: false };
+      const binding =
+        operation === "oidc_group_mapping_update"
+          ? { operation, connectionId: "conn/1", mappingId: "map/1", request }
+          : {
+              operation,
+              connectionId: "conn/1",
+              request: {
+                ...request,
+                externalGroupId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                externalGroupNameSnapshot: null,
+                scope: "organisation" as const,
+                roleId: "customer",
+              },
+            };
+      await proveIdentityOperation(binding, {
+        method: "totp",
+        secret: "123456",
+      });
+      expect(mocks.challenge.mock.calls[0][0]).toEqual({
+        json: { kind: "operation", ...binding },
+      });
+      expect(mocks.prove.mock.calls[0][0]).toEqual({
+        json: {
+          kind: "operation",
+          ...binding,
+          challengeId: "challenge-1",
+          nonce: "n".repeat(43),
+          method: "totp",
+          code: "123456",
+        },
+      });
+    },
+  );
 });

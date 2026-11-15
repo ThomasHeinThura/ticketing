@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
 import { IdentityConnectionEditor } from "@/components/god-mode/identity-connection-editor";
 import { IdentityConnectionEvents } from "@/components/god-mode/identity-connection-events";
+import { OidcGroupMappingsSettings } from "@/components/god-mode/oidc-group-mappings-settings";
 import { OrganisationCustomerVisibilityCard } from "@/components/god-mode/organisation-customer-visibility-card";
 import { ScimPanel } from "@/components/god-mode/scim-panel";
 import PageTitle from "@/components/page-title";
@@ -145,7 +146,8 @@ function OrganisationIdentityRoute() {
         {!placeholderVisible && connection ? (
           <Tabs
             onValueChange={(value) => {
-              if (value === "scim") go({ tab: "scim" });
+              if (value === "groups") go({ tab: "groups" });
+              else if (value === "scim") go({ tab: "scim" });
               else if (value === "events") go({ tab: "events" });
               else go({});
             }}
@@ -155,6 +157,7 @@ function OrganisationIdentityRoute() {
               <TabsTab value="connection">
                 {t("detail.tabs.connection")}
               </TabsTab>
+              <TabsTab value="groups">{t("oidcGroups.title")}</TabsTab>
               <TabsTab value="scim">{t("detail.tabs.scim")}</TabsTab>
               <TabsTab value="events">{t("detail.tabs.events")}</TabsTab>
             </TabsList>
@@ -162,6 +165,15 @@ function OrganisationIdentityRoute() {
               <IdentityConnectionEditor
                 connection={connection}
                 onReload={() => void query.refetch()}
+              />
+            </TabsPanel>
+            <TabsPanel value="groups">
+              <OidcGroupMappingsSettings
+                connectionId={connection.id}
+                openMapping={search.oidcMapping}
+                onOpenMapping={(oidcMapping) =>
+                  go({ tab: "groups", ...(oidcMapping ? { oidcMapping } : {}) })
+                }
               />
             </TabsPanel>
             <TabsPanel value="scim">

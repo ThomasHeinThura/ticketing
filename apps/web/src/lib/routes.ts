@@ -292,6 +292,7 @@ export function godModeUserActionBinding(
 
 export const IDENTITY_CONNECTION_TABS = [
   "connection",
+  "groups",
   "scim",
   "events",
 ] as const;
@@ -304,6 +305,7 @@ export type IdentityConnectionEditorSearch = {
   eventsCursor?: string;
   /** A SCIM group mapping id being edited, or `new` for the add form. Only meaningful on the scim tab. */
   mapping?: string;
+  oidcMapping?: string;
 };
 
 const EVENTS_CURSOR_PATTERN = /^[A-Za-z0-9_-]{1,512}$/u;
@@ -318,6 +320,18 @@ export function parseIdentityConnectionEditorSearch(
       ...(typeof value.eventsCursor === "string" &&
       EVENTS_CURSOR_PATTERN.test(value.eventsCursor)
         ? { eventsCursor: value.eventsCursor }
+        : {}),
+    };
+  }
+  if (value.tab === "groups") {
+    return {
+      tab: "groups",
+      ...(typeof value.oidcMapping === "string" &&
+      value.oidcMapping.length > 0 &&
+      value.oidcMapping.length <= 128 &&
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: URL identifiers reject control bytes.
+      !/[\u0000-\u001f\u007f]/u.test(value.oidcMapping)
+        ? { oidcMapping: value.oidcMapping }
         : {}),
     };
   }
@@ -342,6 +356,7 @@ export function parseIdentityConnectionEditorSearchFromQueryString(
     tab: params.get("tab") ?? undefined,
     eventsCursor: params.get("eventsCursor") ?? undefined,
     mapping: params.get("mapping") ?? undefined,
+    oidcMapping: params.get("oidcMapping") ?? undefined,
   });
 }
 
@@ -1603,6 +1618,7 @@ export const routes = {
       if (resolved.eventsCursor)
         query.set("eventsCursor", resolved.eventsCursor);
       if (resolved.mapping) query.set("mapping", resolved.mapping);
+      if (resolved.oidcMapping) query.set("oidcMapping", resolved.oidcMapping);
       const suffix = query.toString();
       const path = `/god-mode/authentication/${encodeURIComponent(params.id)}`;
       return suffix ? `${path}?${suffix}` : path;
@@ -1621,6 +1637,7 @@ export const routes = {
       if (resolved.eventsCursor)
         query.set("eventsCursor", resolved.eventsCursor);
       if (resolved.mapping) query.set("mapping", resolved.mapping);
+      if (resolved.oidcMapping) query.set("oidcMapping", resolved.oidcMapping);
       const suffix = query.toString();
       const path = `/god-mode/organisations/${encodeURIComponent(params.id)}/identity`;
       return suffix ? `${path}?${suffix}` : path;

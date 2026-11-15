@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { IdentityAccessDenied } from "@/components/god-mode/identity-access-denied";
 import { IdentityConnectionEditor } from "@/components/god-mode/identity-connection-editor";
 import { IdentityConnectionEvents } from "@/components/god-mode/identity-connection-events";
+import { OidcGroupMappingsSettings } from "@/components/god-mode/oidc-group-mappings-settings";
 import { ScimPanel } from "@/components/god-mode/scim-panel";
 import PageTitle from "@/components/page-title";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
@@ -201,7 +202,8 @@ function IdentityConnectionEditorRoute() {
             <h1 className="text-2xl font-semibold">{connection.displayName}</h1>
             <Tabs
               onValueChange={(value) => {
-                if (value === "scim") go({ tab: "scim" });
+                if (value === "groups") go({ tab: "groups" });
+                else if (value === "scim") go({ tab: "scim" });
                 else if (value === "events") go({ tab: "events" });
                 else go({});
               }}
@@ -211,6 +213,7 @@ function IdentityConnectionEditorRoute() {
                 <TabsTab value="connection">
                   {t("detail.tabs.connection")}
                 </TabsTab>
+                <TabsTab value="groups">{t("oidcGroups.title")}</TabsTab>
                 <TabsTab value="scim">{t("detail.tabs.scim")}</TabsTab>
                 <TabsTab value="events">{t("detail.tabs.events")}</TabsTab>
               </TabsList>
@@ -218,6 +221,18 @@ function IdentityConnectionEditorRoute() {
                 <IdentityConnectionEditor
                   connection={connection}
                   onReload={() => void connections.refetch()}
+                />
+              </TabsPanel>
+              <TabsPanel value="groups">
+                <OidcGroupMappingsSettings
+                  connectionId={connection.id}
+                  openMapping={search.oidcMapping}
+                  onOpenMapping={(oidcMapping) =>
+                    go({
+                      tab: "groups",
+                      ...(oidcMapping ? { oidcMapping } : {}),
+                    })
+                  }
                 />
               </TabsPanel>
               <TabsPanel value="scim">
