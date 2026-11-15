@@ -340,7 +340,7 @@ function userFilterPredicate(
 ) {
   switch (field) {
     case "externalId":
-      return sql`lower(${schema.externalIdentityTable.scimExternalId}) = lower(${value}) and ${schema.externalIdentityTable.scimExternalId} <> ''`;
+      return sql`${schema.externalIdentityTable.scimExternalId} = ${value} and ${schema.externalIdentityTable.scimExternalId} <> ''`;
     case "userName":
       return sql`lower(${schema.externalIdentityTable.userNameSnapshot}) = lower(${value})`;
     case "displayName":
