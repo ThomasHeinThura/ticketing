@@ -6152,6 +6152,74 @@
 			"submit": "Start rotation",
 			"title": "Rotate secrets",
 			"jobs": "View rotation runs"
+		},
+		"legalHolds": {
+			"activeBadge": "Active legal holds: {{count}}",
+			"columns": {
+				"actions": "Actions",
+				"placed": "Placed",
+				"reason": "Reason",
+				"scope": "Scope",
+				"status": "Status",
+				"target": "Target"
+			},
+			"description": "Preservation holds block scheduled retention purges, right-to-erasure anonymisation, and hard purges for held organisations and people.",
+			"emptyDescription": "No active or historical preservation holds match the selected filter.",
+			"emptyTitle": "No legal holds recorded",
+			"filterLabel": "Filter legal holds by status",
+			"filters": {
+				"active": "Active only",
+				"all": "All holds",
+				"lifted": "Lifted only"
+			},
+			"lift": {
+				"cancel": "Cancel",
+				"close": "Close",
+				"description": "Lifting the hold on {{target}} allows normal retention windows and approved purges to resume.",
+				"errorAlreadyLifted": "This legal hold has already been lifted.",
+				"errorGeneric": "The legal hold could not be lifted. Try again.",
+				"errorTitle": "Could not lift legal hold",
+				"reasonLabel": "Lift note (optional)",
+				"reasonPlaceholder": "Optional reference or closure note for the audit trail…",
+				"submit": "Lift legal hold",
+				"title": "Lift legal hold"
+			},
+			"liftAction": "Lift hold",
+			"loadErrorDescription": "Try again to inspect active and historical preservation holds.",
+			"loadErrorTitle": "Legal holds could not be loaded",
+			"place": {
+				"cancel": "Cancel",
+				"close": "Close",
+				"description": "Preserve records for an organisation or person. Purges and erasure requests for the held scope are suspended while the hold remains active.",
+				"errorConflict": "An active legal hold already exists for this target.",
+				"errorGeneric": "The legal hold could not be saved. Try again.",
+				"errorNotFound": "The specified organisation or person does not exist.",
+				"errorTitle": "Could not place legal hold",
+				"organisationIdLabel": "Organisation ID",
+				"organisationIdPlaceholder": "Enter organisation ID",
+				"personIdLabel": "Person or user ID",
+				"personIdPlaceholder": "Enter person or user ID",
+				"pickOrganisation": "Select organisation",
+				"pickPerson": "Select person",
+				"pickPlaceholder": "Choose from directory…",
+				"reasonLabel": "Preservation reason",
+				"reasonPlaceholder": "Document the matter, legal reference, or preservation notice…",
+				"scopeLabel": "Hold scope",
+				"submit": "Place hold",
+				"title": "Place legal hold"
+			},
+			"placeAction": "Place legal hold",
+			"scopes": {
+				"organisation": "Organisation",
+				"person": "Person"
+			},
+			"statuses": {
+				"active": "Active",
+				"lifted": "Lifted"
+			},
+			"tableLabel": "Instance legal holds",
+			"title": "Legal holds",
+			"unavailableBadge": "Legal hold status unavailable"
 		}
 	},
 	"godModeSettings": {
@@ -9669,7 +9737,10 @@
 		"forbiddenTitle": "Instance administrators only",
 		"healthNotRecorded": "Last health-check result is unavailable.",
 		"kinds": {
-			"notification": "Notification"
+			"notification": "Notification",
+			"identity": "Identity & provisioning",
+			"observability": "Observability & telemetry",
+			"storage": "Object storage"
 		},
 		"loadErrorDescription": "Try again. Internal provider details are withheld from this view.",
 		"loadErrorTitle": "Plugins could not be loaded",
@@ -9687,7 +9758,14 @@
 			"invalid": "Configuration needs attention",
 			"unconfigured": "Unconfigured"
 		},
-		"title": "Plugins"
+		"title": "Plugins",
+		"dataProcessed": "Data processed: {{value}}",
+		"destination": "Outbound status: {{value}}",
+		"subprocessorCredentialConfigured": "Integration credentials are configured.",
+		"subprocessorCredentialNotConfigured": "No external credentials are configured.",
+		"subprocessorsActiveCount": "Active outbound integrations: {{count}}",
+		"subprocessorsDescription": "No external subprocessors are active by default. Optional outbound integrations transmit data only when enabled below.",
+		"subprocessorsTitle": "Subprocessor & outbound integration register"
 	},
 	"godModeStorage": {
 		"backendTitle": "Active backend",

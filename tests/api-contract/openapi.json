@@ -93789,11 +93789,11 @@
         "tags": [
           "Instance"
         ],
-        "summary": "List supported instance plugin configuration",
-        "description": "Lists only plugins with a real supported instance configuration runtime. Secret values and plugin configuration are omitted.",
+        "summary": "List supported instance plugins and outbound subprocessors",
+        "description": "Lists optional outbound integrations and subprocessors (email relay, S3 storage, identity providers, telemetry) with live activation state and redacted destination summaries. Secret values and raw endpoints are omitted.",
         "responses": {
           "200": {
-            "description": "Supported instance plugins",
+            "description": "Supported instance plugins and subprocessors",
             "content": {
               "application/json": {
                 "schema": {
@@ -93811,19 +93811,33 @@
                           "id": {
                             "type": "string",
                             "enum": [
-                              "notify.email"
+                              "notify.email",
+                              "storage.s3",
+                              "identity.sso",
+                              "observability.telemetry"
                             ]
                           },
                           "name": {
                             "type": "string",
-                            "enum": [
-                              "Email"
-                            ]
+                            "minLength": 1,
+                            "maxLength": 128
                           },
                           "kind": {
                             "type": "string",
                             "enum": [
-                              "notification"
+                              "notification",
+                              "storage",
+                              "identity",
+                              "observability"
+                            ]
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "outbound_email",
+                              "object_storage",
+                              "identity_provider",
+                              "telemetry"
                             ]
                           },
                           "state": {
@@ -93849,6 +93863,25 @@
                           },
                           "credentialConfigured": {
                             "type": "boolean"
+                          },
+                          "dataProcessed": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "destinationSummary": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "configPath": {
+                            "type": "string",
+                            "enum": [
+                              "/god-mode/notifications",
+                              "/god-mode/storage",
+                              "/god-mode/authentication",
+                              "/god-mode/observability"
+                            ]
                           },
                           "settingsForm": {
                             "anyOf": [
@@ -93983,10 +94016,14 @@
                           "id",
                           "name",
                           "kind",
+                          "category",
                           "state",
                           "source",
                           "configVersion",
                           "credentialConfigured",
+                          "dataProcessed",
+                          "destinationSummary",
+                          "configPath",
                           "settingsForm"
                         ]
                       }
@@ -94093,12 +94130,36 @@
                           "detail"
                         ]
                       }
+                    },
+                    "legalHolds": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "ok",
+                            "unknown"
+                          ]
+                        },
+                        "activeCount": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "activeCount"
+                      ]
                     }
                   },
                   "required": [
                     "checkedAt",
                     "state",
-                    "checks"
+                    "checks",
+                    "legalHolds"
                   ]
                 }
               }
@@ -94109,6 +94170,726 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/legal-holds": {
+      "get": {
+        "operationId": "listInstanceLegalHolds",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "List legal holds",
+        "description": "Lists active and lifted legal holds ordered by active holds first and most recently placed first, along with the total active hold count.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "lifted",
+                "all"
+              ],
+              "default": "all"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "organisation",
+                "person"
+              ]
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": false,
+            "name": "scopeId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Legal holds and active hold count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "activeCount": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "holds": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "organisation",
+                              "person"
+                            ]
+                          },
+                          "scopeId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "lifted"
+                            ]
+                          },
+                          "targetLabel": {
+                            "type": "string"
+                          },
+                          "targetSecondaryLabel": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "placedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "placedBy": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "email": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "email"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "liftedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "liftedBy": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "email": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "email"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "scope",
+                          "scopeId",
+                          "status",
+                          "targetLabel",
+                          "targetSecondaryLabel",
+                          "reason",
+                          "placedAt",
+                          "placedBy",
+                          "liftedAt",
+                          "liftedBy"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "checkedAt",
+                    "activeCount",
+                    "holds"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "placeInstanceLegalHold",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Place a legal hold",
+        "description": "Places an organisation-scoped or person-scoped legal hold under SHARE ROW EXCLUSIVE table lock, blocking retention purges, erasures, and hard purges for the held scope.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "organisation",
+                      "person"
+                    ]
+                  },
+                  "scopeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "scope",
+                  "scopeId",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Placed legal hold",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "organisation",
+                        "person"
+                      ]
+                    },
+                    "scopeId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "lifted"
+                      ]
+                    },
+                    "targetLabel": {
+                      "type": "string"
+                    },
+                    "targetSecondaryLabel": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "placedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "placedBy": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "liftedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "liftedBy": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "scope",
+                    "scopeId",
+                    "status",
+                    "targetLabel",
+                    "targetSecondaryLabel",
+                    "reason",
+                    "placedAt",
+                    "placedBy",
+                    "liftedAt",
+                    "liftedBy"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid legal hold request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Hold target not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An active legal hold already exists for this target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/legal-holds/{id}/lift": {
+      "post": {
+        "operationId": "liftInstanceLegalHold",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Lift an active legal hold",
+        "description": "Marks an active legal hold as lifted under SHARE ROW EXCLUSIVE table lock and appends a hash-chained audit entry.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lifted legal hold",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "organisation",
+                        "person"
+                      ]
+                    },
+                    "scopeId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "lifted"
+                      ]
+                    },
+                    "targetLabel": {
+                      "type": "string"
+                    },
+                    "targetSecondaryLabel": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "placedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "placedBy": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "liftedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "liftedBy": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "scope",
+                    "scopeId",
+                    "status",
+                    "targetLabel",
+                    "targetSecondaryLabel",
+                    "reason",
+                    "placedAt",
+                    "placedBy",
+                    "liftedAt",
+                    "liftedBy"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid lift request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Legal hold not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Legal hold is already lifted",
             "content": {
               "application/json": {
                 "schema": {

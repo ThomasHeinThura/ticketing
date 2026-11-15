@@ -198,13 +198,52 @@ describe("appendAuditLog", () => {
     expect(verifyResult.rowsChecked).toBe(1);
   });
 
-  it("rejects legal_hold.placed/lifted as not yet wired", async () => {
-    await expect(
-      appendAuditLog(db, baseInput({ action: "legal_hold.placed" })),
-    ).rejects.toThrow(/not wired yet/i);
-    await expect(
-      appendAuditLog(db, baseInput({ action: "legal_hold.lifted" })),
-    ).rejects.toThrow(/not wired yet/i);
+  it("writes and verifies legal_hold.placed and legal_hold.lifted cleanly on the hash chain", async () => {
+    const org = await makeOrganisation();
+    const holdId = `hold-${randomUUID()}`;
+    const orgId = org.id;
+    const placed = await appendAuditLog(
+      db,
+      baseInput({
+        action: "legal_hold.placed",
+        entityType: "legal_hold",
+        entityId: holdId,
+        organisationId: orgId,
+        before: null,
+        after: {
+          scope: "organisation",
+          scopeId: orgId,
+          reason: "Regulatory preservation notice",
+        },
+      }),
+    );
+    const lifted = await appendAuditLog(
+      db,
+      baseInput({
+        action: "legal_hold.lifted",
+        entityType: "legal_hold",
+        entityId: holdId,
+        organisationId: orgId,
+        before: { liftedAt: null },
+        after: {
+          scope: "organisation",
+          scopeId: orgId,
+          liftedBy: "admin-user-1",
+          liftedAt: "2026-11-15T12:00:00.000Z",
+          reason: "Preservation obligation closed",
+        },
+      }),
+    );
+
+    const rawPlaced = await readRawRow(placed.id);
+    const rawLifted = await readRawRow(lifted.id);
+    expect(rawPlaced.action).toBe("legal_hold.placed");
+    expect(rawLifted.action).toBe("legal_hold.lifted");
+    expect(rawLifted.prev_hash).toBe(rawPlaced.row_hash);
+
+    const verifyResult = await verifyAuditChain(db);
+    expect(verifyResult.ok).toBe(true);
+    expect(verifyResult.rowsChecked).toBe(2);
   });
 
   it("#344: records project_id for a project-scoped action, and the chain still verifies (the column is never hashed)", async () => {

@@ -22,15 +22,37 @@ export type PluginSettingsFormManifest =
   | { version: 1; available: true; fields: PluginSettingsFormField[] }
   | { version: 1; available: false };
 
+export type SupportedPluginKind =
+  | "notification"
+  | "storage"
+  | "identity"
+  | "observability";
+
+export type SubprocessorCategory =
+  | "outbound_email"
+  | "object_storage"
+  | "identity_provider"
+  | "telemetry";
+
+export type SupportedPluginConfigPath =
+  | "/god-mode/notifications"
+  | "/god-mode/storage"
+  | "/god-mode/authentication"
+  | "/god-mode/observability";
+
 export type SupportedPlugin = {
   id: string;
   name: string;
-  kind: "notification";
+  kind: SupportedPluginKind;
+  category?: SubprocessorCategory;
   state: "unconfigured" | "enabled" | "disabled" | "invalid";
   source: "runtime" | "bootstrap" | "unconfigured";
   configVersion: number;
   credentialConfigured: boolean;
-  settingsForm: PluginSettingsFormManifest;
+  dataProcessed?: string;
+  destinationSummary?: string;
+  configPath?: SupportedPluginConfigPath;
+  settingsForm?: PluginSettingsFormManifest;
 };
 
 export type SupportedPlugins = {

@@ -22,6 +22,7 @@ import {
   type HealthState,
 } from "@/fetchers/god-mode/instance-health";
 import { formatDateTime } from "@/lib/format";
+import { LegalHoldsPanel } from "./legal-holds-panel";
 import { RotateSecretsDialog } from "./rotate-secrets-dialog";
 
 const BADGE: Record<
@@ -50,7 +51,7 @@ function detailLine(
     .join(" · ");
 }
 
-/** God Mode landing page: what is working and what is not, at a glance. */
+/** God Mode landing page: what is working and what is not, at a glance, plus active legal holds. */
 export function InstanceHealthPanel() {
   const { t } = useTranslation("godModeHealth");
   const query = useQuery({
@@ -83,70 +84,85 @@ export function InstanceHealthPanel() {
       </Alert>
     );
   const health = query.data;
+  const activeLegalHolds = health.legalHolds?.activeCount;
+  const holdsAvailable =
+    health.legalHolds?.state === "ok" && activeLegalHolds != null;
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-3">
-          <CardTitle>{t("overall")}</CardTitle>
-          <Badge variant={BADGE[health.state]}>
-            {t(`states.${health.state}`)}
-          </Badge>
-        </div>
-        <CardDescription>
-          {t("checkedAt", { when: formatDateTime(health.checkedAt) })}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ul className="divide-y divide-border">
-          {health.checks.map((check) => (
-            <li
-              key={check.key}
-              className="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:justify-between"
+    <div className="min-w-0 space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center gap-3">
+            <CardTitle>{t("overall")}</CardTitle>
+            <Badge variant={BADGE[health.state]}>
+              {t(`states.${health.state}`)}
+            </Badge>
+            <Badge
+              variant={
+                holdsAvailable && activeLegalHolds > 0 ? "warning" : "secondary"
+              }
             >
-              <div className="min-w-0 space-y-1">
-                <p className="font-medium text-sm">
-                  {t(`checks.${check.key}.name`, { defaultValue: check.key })}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {t(`checks.${check.key}.description`, { defaultValue: "" })}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {detailLine(t, check)}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {check.key === "secrets_encryption" &&
-                check.detail.keyConfigured === true &&
-                check.detail.rekeyComplete !== true ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setRotating(true)}
-                  >
-                    {t("rotateSecrets.action")}
-                  </Button>
-                ) : null}
-                <Badge variant={BADGE[check.state]}>
-                  {t(`states.${check.state}`)}
-                </Badge>
-              </div>
-            </li>
-          ))}
-        </ul>
-        <div className="pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={query.isFetching}
-            onClick={() => void query.refetch()}
-          >
-            {t("refresh")}
-          </Button>
-        </div>
-      </CardContent>
-      {rotating ? (
-        <RotateSecretsDialog onClose={() => setRotating(false)} />
-      ) : null}
-    </Card>
+              {holdsAvailable
+                ? t("legalHolds.activeBadge", { count: activeLegalHolds })
+                : t("legalHolds.unavailableBadge")}
+            </Badge>
+          </div>
+          <CardDescription>
+            {t("checkedAt", { when: formatDateTime(health.checkedAt) })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="divide-y divide-border">
+            {health.checks.map((check) => (
+              <li
+                key={check.key}
+                className="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:justify-between"
+              >
+                <div className="min-w-0 space-y-1">
+                  <p className="font-medium text-sm">
+                    {t(`checks.${check.key}.name`, { defaultValue: check.key })}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {t(`checks.${check.key}.description`, { defaultValue: "" })}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {detailLine(t, check)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {check.key === "secrets_encryption" &&
+                  check.detail.keyConfigured === true &&
+                  check.detail.rekeyComplete !== true ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRotating(true)}
+                    >
+                      {t("rotateSecrets.action")}
+                    </Button>
+                  ) : null}
+                  <Badge variant={BADGE[check.state]}>
+                    {t(`states.${check.state}`)}
+                  </Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={query.isFetching}
+              onClick={() => void query.refetch()}
+            >
+              {t("refresh")}
+            </Button>
+          </div>
+        </CardContent>
+        {rotating ? (
+          <RotateSecretsDialog onClose={() => setRotating(false)} />
+        ) : null}
+      </Card>
+      <LegalHoldsPanel />
+    </div>
   );
 }

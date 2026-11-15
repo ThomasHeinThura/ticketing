@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import db from "../database";
+import { fenceLegalHolds } from "../scheduler/soft-delete-purge.repository";
 
 /**
  * `NO-17` retention: delete read notifications whose `read_at` is older than
@@ -63,7 +64,9 @@ const UNDER_OPEN_HOLD = sql`(
 
 /** Returns the number of notifications deleted. */
 export async function purgeReadNotifications(): Promise<number> {
-  const result = await db.execute(sql`
+  return db.transaction(async (tx) => {
+    await fenceLegalHolds(tx);
+    const result = await tx.execute(sql`
     DELETE FROM "notification" n
     WHERE n."read_at" IS NOT NULL
       AND n."read_at" < (clock_timestamp() AT TIME ZONE 'UTC') - make_interval(
@@ -79,5 +82,6 @@ export async function purgeReadNotifications(): Promise<number> {
           AND d."state" = 'pending'
       )
   `);
-  return result.rowCount ?? 0;
+    return result.rowCount ?? 0;
+  });
 }

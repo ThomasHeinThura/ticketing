@@ -43,13 +43,32 @@ const settingsFormSchema = z.union([
   z.object({ version: z.literal(1), available: z.literal(false) }).strict(),
 ]);
 const pluginSchema = z.object({
-  id: z.literal("notify.email"),
-  name: z.literal("Email"),
-  kind: z.literal("notification"),
+  id: z.enum([
+    "notify.email",
+    "storage.s3",
+    "identity.sso",
+    "observability.telemetry",
+  ]),
+  name: z.string().min(1).max(128),
+  kind: z.enum(["notification", "storage", "identity", "observability"]),
+  category: z.enum([
+    "outbound_email",
+    "object_storage",
+    "identity_provider",
+    "telemetry",
+  ]),
   state: z.enum(["unconfigured", "enabled", "disabled", "invalid"]),
   source: z.enum(["runtime", "bootstrap", "unconfigured"]),
   configVersion: z.number().int().nonnegative(),
   credentialConfigured: z.boolean(),
+  dataProcessed: z.string().min(1).max(500),
+  destinationSummary: z.string().min(1).max(500),
+  configPath: z.enum([
+    "/god-mode/notifications",
+    "/god-mode/storage",
+    "/god-mode/authentication",
+    "/god-mode/observability",
+  ]),
   settingsForm: settingsFormSchema,
 });
 const responseSchema = z.object({
@@ -62,12 +81,15 @@ const getRoute = createRoute({
   path,
   operationId: "listSupportedInstancePlugins",
   tags: ["Instance"],
-  summary: "List supported instance plugin configuration",
+  summary: "List supported instance plugins and outbound subprocessors",
   description:
-    "Lists only plugins with a real supported instance configuration runtime. Secret values and plugin configuration are omitted.",
+    "Lists optional outbound integrations and subprocessors (email relay, S3 storage, identity providers, telemetry) with live activation state and redacted destination summaries. Secret values and raw endpoints are omitted.",
   middleware: [requireSessionOnly()] as const,
   responses: {
-    200: jsonResponse("Supported instance plugins", responseSchema),
+    200: jsonResponse(
+      "Supported instance plugins and subprocessors",
+      responseSchema,
+    ),
     403: jsonResponse("Forbidden", errorSchema),
   },
 });

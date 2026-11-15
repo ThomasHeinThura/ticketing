@@ -712,4 +712,46 @@ export const instancePolicies = {
     elevated: true,
     sessionOnly: true,
   },
+  "GET /api/instance/legal-holds": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance administrators inspect organisation and person legal holds across the instance",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only legal hold register metadata and active counts per operations-and-distribution.md § Legal hold; exposes no credentials or tenant content",
+    sessionOnly: true,
+  },
+  "POST /api/instance/legal-holds": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance administrators place preservation holds on organisations or people across the instance",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "docs/plan.md H-1: preservation-only, non-destructive mutation outside the closed permissions.md section Elevated and audited actions inventory (exactly enforced by tests/permissions/elevated-actions.test.ts); requires non-impersonated session-only instance:admin and transactional legal_hold.placed/legal_hold.lifted audit",
+    sessionOnly: true,
+  },
+  "POST /api/instance/legal-holds/{id}/lift": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance administrators lift existing preservation holds across the instance",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "docs/plan.md H-1: preservation-only, non-destructive mutation outside the closed permissions.md section Elevated and audited actions inventory (exactly enforced by tests/permissions/elevated-actions.test.ts); requires non-impersonated session-only instance:admin and transactional legal_hold.placed/legal_hold.lifted audit",
+    sessionOnly: true,
+  },
 } as const satisfies PolicyMap;

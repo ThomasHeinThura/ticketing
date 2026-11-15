@@ -117,4 +117,100 @@ describe("supported plugin catalog", () => {
       /default|smtp\.example|passwordPreview|••••/iu,
     );
   });
+
+  it("returns all four subprocessor register entries disabled by default and reflects live runtime counts without leaking endpoints", () => {
+    const defaults = projectSupportedPlugins(provider());
+    expect(defaults.map((item) => item.id)).toEqual([
+      "notify.email",
+      "storage.s3",
+      "identity.sso",
+      "observability.telemetry",
+    ]);
+    for (const item of defaults) {
+      expect(item.state).toBe("unconfigured");
+      expect(item.destinationSummary).toBe("Disabled");
+      expect(item.dataProcessed.length).toBeGreaterThan(0);
+    }
+
+    const configured = projectSupportedPlugins(
+      provider({
+        version: 2,
+        source: "runtime",
+        enabled: true,
+        config: {
+          host: "smtp.secret-relay.internal",
+          port: 587,
+          secure: false,
+          requireTLS: true,
+          username: "relay-user",
+          fromAddress: "ops@example.test",
+          replyTo: null,
+        },
+        passwordConfigured: true,
+      }),
+      {
+        storage: {
+          driver: "s3",
+          configuration: "configured",
+          hasDraft: true,
+          draftVersion: 3,
+          draftCredentialConfigured: true,
+        },
+        identity: {
+          totalCount: 2,
+          enabledCount: 2,
+          scimEnabledCount: 1,
+          maxConfigVersion: 5,
+        },
+        telemetry: {
+          metricsTokenConfigured: true,
+          observabilityConfigVersion: 2,
+          pluginRowCount: 0,
+          pluginEnabledCount: 0,
+          pluginMaxVersion: 0,
+          pluginCredentialConfigured: false,
+        },
+      },
+    );
+
+    expect(configured).toEqual([
+      expect.objectContaining({
+        id: "notify.email",
+        category: "outbound_email",
+        state: "enabled",
+        destinationSummary: "Configured SMTP relay",
+        configPath: "/god-mode/notifications",
+      }),
+      expect.objectContaining({
+        id: "storage.s3",
+        category: "object_storage",
+        state: "enabled",
+        source: "bootstrap",
+        destinationSummary: "Active S3-compatible object storage",
+        configPath: "/god-mode/storage",
+      }),
+      expect.objectContaining({
+        id: "identity.sso",
+        category: "identity_provider",
+        state: "enabled",
+        source: "runtime",
+        destinationSummary: "2 active OIDC connections, 1 SCIM enabled",
+        configPath: "/god-mode/authentication",
+      }),
+      expect.objectContaining({
+        id: "observability.telemetry",
+        category: "telemetry",
+        state: "enabled",
+        source: "runtime",
+        destinationSummary: "Authenticated metrics scrape endpoint enabled",
+        configPath: "/god-mode/observability",
+      }),
+    ]);
+
+    const serialized = JSON.stringify(configured);
+    expect(serialized).not.toContain("smtp.secret-relay.internal");
+    expect(serialized).not.toContain("relay-user");
+    expect(serialized).not.toContain("ops@example.test");
+    expect(serialized).not.toContain("secrets");
+  });
 });

@@ -590,5 +590,53 @@
 		"pr": 1131,
 		"reason": "The second-factor challenge for saving local sign-in settings is bound to the staff sign-up switch value, so a proof cannot be reused for a different switch state.",
 		"decision": "Thomas, owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
+	},
+	{
+		"operation": "GET /instance/plugins",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "fea10cdacffc",
+		"pr": 1186,
+		"reason": "Expanded GET /instance/plugins inventory to expose configured runtime sub-processor kinds including identity for W12 H-1.",
+		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+	},
+	{
+		"operation": "GET /instance/plugins",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "6fe6d1658a8c",
+		"pr": 1186,
+		"reason": "Expanded GET /instance/plugins inventory to expose identity.sso sub-processor entries for W12 H-1.",
+		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+	},
+	{
+		"operation": "GET /instance/plugins",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "cfc411c6660d",
+		"pr": 1186,
+		"reason": "Expanded GET /instance/plugins inventory to expose observability sub-processor kinds for W12 H-1.",
+		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+	},
+	{
+		"operation": "GET /instance/plugins",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "d20e99f4fae1",
+		"pr": 1186,
+		"reason": "Expanded GET /instance/plugins inventory to expose observability.telemetry sub-processor entries for W12 H-1.",
+		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+	},
+	{
+		"operation": "GET /instance/plugins",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "04717b5601ec",
+		"pr": 1186,
+		"reason": "Expanded GET /instance/plugins inventory to expose storage sub-processor kinds for W12 H-1.",
+		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+	},
+	{
+		"operation": "GET /instance/plugins",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "d9f2fb75d839",
+		"pr": 1186,
+		"reason": "Expanded GET /instance/plugins inventory to expose storage.s3 sub-processor entries for W12 H-1.",
+		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
 	}
 ]

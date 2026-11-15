@@ -13,13 +13,9 @@
  * own authoritative doc (audit-trail.md here, events.md there), and a code-level list
  * that drifts from its doc fails a test rather than silently mis-validating.
  *
- * `legal_hold.placed`/`legal_hold.lifted` are included in the set below (so a real
- * future caller does not fail validation) but nothing in this codebase writes them yet —
- * `schema.ts`'s comment on `legalHoldTable` says so explicitly: "placing a hold is
- * specified as audited ... and this repository has no audit-log write path yet ... the
- * table lands first ... placing and lifting follow the audit-log writer (issue #37's
- * remaining scope), tracked on #198." That remains true after this slice: this PR adds
- * the writer, not the legal-hold wiring, which is #198's job.
+ * `legal_hold.placed` and `legal_hold.lifted` are wired to the instance legal-hold
+ * endpoints (`/api/instance/legal-holds`) and write hash-chained audit rows inside the
+ * hold placement and lift transactions.
  */
 export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // Authentication lifecycle, with the provider used.
@@ -238,7 +234,7 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "ai.sent_externally",
   // MC-4: mark each MCP request as agent-originated without recording request content.
   "mcp.request",
-  // Tenancy lifecycle. legal_hold.* not wired yet — see doc comment above.
+  // Tenancy lifecycle and legal holds.
   "organisation.created",
   "organisation.updated",
   "organisation.suspended",
@@ -261,13 +257,6 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "pending_action.viewed",
 ]);
 
-/** Actions no writer may ever accept, even though they parse as valid dotted keys —
- * `legal_hold.*` is deliberately excluded from what THIS writer will actually insert
- * until #198 wires it, per the module doc comment above. Kept as a separate export
- * (rather than removed from `AUDIT_ONLY_ACTIONS`) so the catalogue itself stays a
- * faithful transcription of the spec, and the "not wired yet" restriction lives in code
- * that visibly says why, next to the check that enforces it. */
-export const AUDIT_ACTIONS_NOT_YET_WIRED = new Set<string>([
-  "legal_hold.placed",
-  "legal_hold.lifted",
-]);
+/** Actions reserved in the catalogue that no writer may accept yet. Kept exported for
+ * `audit-writer.ts`; empty now that `legal_hold.placed` and `legal_hold.lifted` are wired. */
+export const AUDIT_ACTIONS_NOT_YET_WIRED = new Set<string>([]);

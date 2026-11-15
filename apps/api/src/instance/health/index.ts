@@ -3,6 +3,7 @@ import db from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { getSecretsRekeyProgress } from "../../secrets/rekey";
+import { countActiveLegalHolds } from "../legal-holds";
 import { requireCurrentInstanceAdmin } from "../require-instance-admin";
 import {
   classifyDatabase,
@@ -25,6 +26,10 @@ const healthSchema = z.object({
       ),
     }),
   ),
+  legalHolds: z.object({
+    state: z.enum(["ok", "unknown"]),
+    activeCount: z.number().int().nonnegative().nullable(),
+  }),
 });
 
 const getRoute = createRoute({
@@ -86,22 +91,41 @@ async function guarded(
   }
 }
 
+async function legalHoldsStatus() {
+  try {
+    return { state: "ok" as const, activeCount: await countActiveLegalHolds() };
+  } catch {
+    return { state: "unknown" as const, activeCount: null };
+  }
+}
+
 const routes = apiRouter().openapi(getRoute, async (c) => {
   await requireCurrentInstanceAdmin(c, "GET", "/api/instance/health");
   setShadowLegacyAuthorization(c, "allowed");
   c.header("Cache-Control", "no-store");
-  const checks = await Promise.all([
-    databaseCheck(),
-    guarded("secrets_encryption", async () =>
-      classifySecrets(await getSecretsRekeyProgress()),
-    ),
-    guarded("outbox", deliveryCheck),
+  const [checks, legalHolds] = await Promise.all([
+    Promise.all([
+      databaseCheck(),
+      guarded("secrets_encryption", async () =>
+        classifySecrets(await getSecretsRekeyProgress()),
+      ),
+      guarded("outbox", deliveryCheck),
+    ]),
+    legalHoldsStatus(),
   ]);
   const state = checks.reduce<HealthCheck["state"]>(
     (worst, check) => (WORST[check.state] > WORST[worst] ? check.state : worst),
-    "ok",
+    legalHolds.state,
   );
-  return c.json({ checkedAt: new Date().toISOString(), state, checks }, 200);
+  return c.json(
+    {
+      checkedAt: new Date().toISOString(),
+      state,
+      checks,
+      legalHolds,
+    },
+    200,
+  );
 });
 
 export default routes;
