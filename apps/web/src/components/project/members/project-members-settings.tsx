@@ -70,14 +70,14 @@ type Props = { projectId: string };
  * pattern. Direct rows can be re-roled and removed; rows inherited from an ancestor project
  * are shown read-only with the ancestor named, a role change on one writes the explicit child
  * row that overrides it (`PR-3`), and removing one explains it is removed at the parent
- * (`PR-4`). The server decides every refusal; the controls follow the project-update
- * capability the way the planning settings do.
+ * (`PR-4`). The server decides every refusal; roster and customer-access controls follow
+ * project-scoped `canManageMembers` (respecting RL-3 custom role decoupling), falling back to
+ * the workspace project-update capability when absent, while `callerRank` bounds assignable roles.
  */
 function ProjectMembersSettings({ projectId }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { canUpdateProjects } = useWorkspacePermission();
-  const canManage = Boolean(canUpdateProjects());
   const { data, isLoading, isError, error, refetch } =
     useGetProjectMembers(projectId);
   const { mutateAsync: updateRole, isPending: isChangingRole } =
@@ -134,8 +134,14 @@ function ProjectMembersSettings({ projectId }: Props) {
   }
 
   const roles: RosterRoleView[] = data.roles;
-  // The roster response will carry the caller's rank; until it does every role is offered.
-  const callerRank = (data as { callerRank?: number }).callerRank;
+  // Project-scoped canManageMembers governs roster and customer-access controls (respecting
+  // RL-3 custom role rank/capability decoupling); workspace capability remains the fallback
+  // when the response omits canManageMembers. callerRank bounds assignableRoles only.
+  const callerRank = data.callerRank;
+  const canManage =
+    typeof data.canManageMembers === "boolean"
+      ? data.canManageMembers
+      : Boolean(canUpdateProjects());
   const grantableRoles = assignableRoles(roles, callerRank);
 
   const handleChangeRole = async (
@@ -176,7 +182,7 @@ function ProjectMembersSettings({ projectId }: Props) {
 
   return (
     <section className="space-y-4" data-testid="project-members">
-      <CustomerProjectAccess projectId={projectId} />
+      {canManage ? <CustomerProjectAccess projectId={projectId} /> : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h2 className="text-md font-medium">

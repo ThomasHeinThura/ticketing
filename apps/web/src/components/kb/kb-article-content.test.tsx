@@ -113,6 +113,38 @@ describe("KbArticleContent", () => {
     expect(() => render(<KbArticleContent body={null} />)).not.toThrow();
     expect(() => render(<KbArticleContent body="x" />)).not.toThrow();
   });
+
+  it("renders level-1 document headings as h2 and falls back to h2 for non-integer levels", () => {
+    const { container } = render(
+      <KbArticleContent
+        body={doc(
+          {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [text("Overview")],
+          },
+          {
+            type: "heading",
+            attrs: { level: 2.5 },
+            content: [text("Details")],
+          },
+          {
+            type: "heading",
+            content: [text("Summary")],
+          },
+        )}
+      />,
+    );
+    expect(container.querySelector("h1")).toBeNull();
+    const h2 = screen.getByRole("heading", { level: 2, name: "Overview" });
+    expect(h2).toHaveAttribute("id", "overview");
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Details" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Summary" }),
+    ).toBeTruthy();
+  });
 });
 
 describe("customer view and table of contents", () => {

@@ -49,7 +49,7 @@ function ProjectCard({ project }: { project: PortalProjectOption }) {
       </CardHeader>
       <CardPanel>
         <dl className="grid grid-cols-2 gap-3 text-sm">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col justify-between gap-1">
             <dt className="text-muted-foreground">
               {t("projects.columns.actionRequired")}
             </dt>
@@ -61,7 +61,7 @@ function ProjectCard({ project }: { project: PortalProjectOption }) {
               )}
             </dd>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col justify-between gap-1">
             <dt className="text-muted-foreground">
               {t("projects.columns.outstanding")}
             </dt>

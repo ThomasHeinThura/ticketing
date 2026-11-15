@@ -136,7 +136,7 @@ describe("OnboardingFlow (D-A, 12 Nov 2026)", () => {
     expect(screen.queryByTestId("no-workspace-empty")).toBeNull();
   });
 
-  it("shows the create form with an owner picker to an instance admin", () => {
+  it("shows the create form with an owner picker and God Mode link to an instance admin", () => {
     mocks.canCreate = true;
     render(<OnboardingFlow />);
 
@@ -146,6 +146,8 @@ describe("OnboardingFlow (D-A, 12 Nov 2026)", () => {
     expect(
       screen.getByRole("button", { name: "Create workspace" }),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "God Mode" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/god-mode" });
   });
 
   it("shows neither screen while the signed-in role is still loading", () => {

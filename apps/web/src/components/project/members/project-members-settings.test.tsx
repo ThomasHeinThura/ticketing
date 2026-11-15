@@ -10,11 +10,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProjectMembersSettings from "./project-members-settings";
 
 vi.mock("./customer-project-access", () => ({
-  CustomerProjectAccess: () => null,
+  CustomerProjectAccess: () => <div data-testid="customer-project-access" />,
 }));
 
 const mocks = vi.hoisted(() => ({
   canUpdate: true,
+  callerRank: undefined as number | undefined,
+  canManageMembers: undefined as boolean | undefined,
   members: [] as unknown[],
   navigate: vi.fn(),
   removeMember: vi.fn(),
@@ -37,6 +39,8 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
 vi.mock("@/hooks/queries/project-member/use-get-project-members", () => ({
   default: () => ({
     data: {
+      callerRank: mocks.callerRank,
+      canManageMembers: mocks.canManageMembers,
       members: mocks.members,
       roles: [
         {
@@ -49,6 +53,12 @@ vi.mock("@/hooks/queries/project-member/use-get-project-members", () => ({
           roleKey: "project-member",
           roleName: "Project member",
           roleRank: 40,
+          roleId: null,
+        },
+        {
+          roleKey: "project-lead",
+          roleName: "Project lead",
+          roleRank: 50,
           roleId: null,
         },
       ],
@@ -110,6 +120,8 @@ const inherited = {
 
 beforeEach(() => {
   mocks.canUpdate = true;
+  mocks.callerRank = undefined;
+  mocks.canManageMembers = undefined;
   mocks.members = [direct, inherited];
   mocks.removeMember.mockReset().mockResolvedValue({});
 });
@@ -131,6 +143,7 @@ describe("ProjectMembersSettings", () => {
   it("offers no add or row controls without the capability", () => {
     mocks.canUpdate = false;
     render(<ProjectMembersSettings projectId="p1" />);
+    expect(screen.queryByTestId("customer-project-access")).toBeNull();
     expect(
       screen.queryByRole("button", {
         name: "settings:projectMembers.addMember",
@@ -221,5 +234,50 @@ describe("ProjectMembersSettings", () => {
     mocks.members = [];
     render(<ProjectMembersSettings projectId="p1" />);
     expect(screen.getByTestId("project-members-empty-warning")).toBeTruthy();
+  });
+
+  it("shows add and customer-access controls to a promoted project-lead member", () => {
+    mocks.canUpdate = false;
+    mocks.callerRank = 50;
+    mocks.canManageMembers = true;
+    render(<ProjectMembersSettings projectId="p1" />);
+    expect(screen.getByTestId("customer-project-access")).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: "settings:projectMembers.addMember",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("shows add and customer-access controls for an RL-3 custom role at rank 30 holding project:manage_members", () => {
+    mocks.canUpdate = false;
+    mocks.callerRank = 30;
+    mocks.canManageMembers = true;
+    render(<ProjectMembersSettings projectId="p1" />);
+    expect(screen.getByTestId("customer-project-access")).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: "settings:projectMembers.addMember",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", { name: /actionsFor/ }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("hides add, row, and customer-access controls when canManageMembers is false even at high rank", () => {
+    mocks.canUpdate = true;
+    mocks.callerRank = 60;
+    mocks.canManageMembers = false;
+    render(<ProjectMembersSettings projectId="p1" />);
+    expect(screen.queryByTestId("customer-project-access")).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "settings:projectMembers.addMember",
+      }),
+    ).toBeNull();
+    expect(
+      screen.queryAllByRole("button", { name: /actionsFor/ }),
+    ).toHaveLength(0);
   });
 });
