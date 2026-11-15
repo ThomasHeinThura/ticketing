@@ -22,6 +22,7 @@ import {
   currentWorkspaceReachPredicate,
 } from "../database/repositories/identity-scope.repository";
 import {
+  assetTable,
   attachmentTable,
   commentTable,
   instanceFeatureFlagTable,
@@ -890,7 +891,12 @@ export const DEFAULT_MAX_STORAGE_BYTES = 21_474_836_480;
 
 export async function readOrganisationStorageUsage(
   executor: Executor,
-  input: { workspaceId: string; excludeAttachmentId?: string; lock?: boolean },
+  input: {
+    workspaceId: string;
+    excludeAttachmentId?: string;
+    excludeAssetId?: string;
+    lock?: boolean;
+  },
 ) {
   const [workspace] = await executor
     .select({ organisationId: workspaceTable.organisationId })
@@ -908,7 +914,7 @@ export async function readOrganisationStorageUsage(
     .from(organisationQuotaTable)
     .where(eq(organisationQuotaTable.organisationId, workspace.organisationId))
     .limit(1);
-  const [usage] = await executor
+  const [attachmentUsage] = await executor
     .select({
       used: sql<string>`coalesce(sum(${attachmentTable.size}), 0)`,
     })
@@ -927,10 +933,26 @@ export async function readOrganisationStorageUsage(
           : undefined,
       ),
     );
+  const [assetUsage] = await executor
+    .select({
+      used: sql<string>`coalesce(sum(${assetTable.size}), 0)`,
+    })
+    .from(assetTable)
+    .innerJoin(workspaceTable, eq(workspaceTable.id, assetTable.workspaceId))
+    .where(
+      and(
+        eq(workspaceTable.organisationId, workspace.organisationId),
+        isNull(assetTable.detachedAt),
+        input.excludeAssetId
+          ? ne(assetTable.id, input.excludeAssetId)
+          : undefined,
+      ),
+    );
   return {
     organisationId: workspace.organisationId,
     maxStorageBytes: quota?.maxStorageBytes ?? DEFAULT_MAX_STORAGE_BYTES,
-    usedBytes: Number(usage?.used ?? 0),
+    usedBytes:
+      Number(attachmentUsage?.used ?? 0) + Number(assetUsage?.used ?? 0),
   };
 }
 

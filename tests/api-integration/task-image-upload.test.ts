@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -21,6 +21,12 @@ const originalStorageDriver = process.env[storageDriverEnv];
 const filesystemRootEnv = "TASKDESK_STORAGE_FILESYSTEM_ROOT";
 const originalFilesystemRoot = process.env[filesystemRootEnv];
 let filesystemRoot: string;
+
+async function stageFilesystemObject(key: string, byteLength: number) {
+  const filePath = join(filesystemRoot, key);
+  await mkdir(dirname(filePath), { recursive: true });
+  await writeFile(filePath, Buffer.alloc(byteLength, 0x61));
+}
 
 function restoreAgentUrl() {
   if (originalAgentUrl === undefined) delete process.env.TASKDESK_AGENT_URL;
@@ -43,6 +49,7 @@ describe("API integration: task image upload finalize", () => {
     await resetTestDatabase();
     filesystemRoot = await mkdtemp(join(tmpdir(), "taskdesk-task-image-"));
     process.env[filesystemRootEnv] = filesystemRoot;
+    delete process.env[storageDriverEnv];
 
     process.env.S3_ENDPOINT = "https://storage.example.test";
     process.env.S3_BUCKET = "test-bucket";
@@ -116,6 +123,7 @@ describe("API integration: task image upload finalize", () => {
     expect(upload.uploadUrl.match(/\/api\//gu)).toHaveLength(1);
 
     const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/test-image.png`;
+    await stageFilesystemObject(key, 12345);
 
     const response = await app.request(
       new Request(
@@ -206,6 +214,7 @@ describe("API integration: task image upload finalize", () => {
     const { app } = createApp();
 
     const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/fallback-image.png`;
+    await stageFilesystemObject(key, 12345);
 
     const response = await app.request(
       `${agentOrigin}/api/task/image-upload/${task.id}/finalize`,
@@ -257,6 +266,7 @@ describe("API integration: task image upload finalize", () => {
     const { app } = createApp();
 
     const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/persist-asset.png`;
+    await stageFilesystemObject(key, 45678);
 
     const response = await app.request(
       `/api/task/image-upload/${task.id}/finalize`,
@@ -324,6 +334,7 @@ describe("API integration: task image upload finalize", () => {
     const { app } = createApp();
 
     const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/report.pdf`;
+    await stageFilesystemObject(key, 102400);
 
     const response = await app.request(
       `/api/task/image-upload/${task.id}/finalize`,
