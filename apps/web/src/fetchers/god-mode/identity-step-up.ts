@@ -3,6 +3,8 @@ import { ensureIdentityAdminOk } from "./identity-admin-error";
 import type {
   IdentityConnectionConfigureBody,
   IdentityConnectionCreateBody,
+  OidcGroupMappingCreateInput,
+  OidcGroupMappingUpdateInput,
   ScimAdminRequest,
 } from "./identity-connections";
 import type { StepUpMethod } from "./instance-users";
@@ -16,6 +18,17 @@ import type { S3DraftRequest } from "./s3-draft";
  * the same request object is sent to the challenge, the proof and the mutation.
  */
 export type IdentityOperationBinding =
+  | {
+      operation: "oidc_group_mapping_create";
+      connectionId: string;
+      request: OidcGroupMappingCreateInput;
+    }
+  | {
+      operation: "oidc_group_mapping_update";
+      connectionId: string;
+      mappingId: string;
+      request: OidcGroupMappingUpdateInput;
+    }
   | ({
       operation: "storage_config_save" | "storage_config_test";
     } & S3DraftRequest)

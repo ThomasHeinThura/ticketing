@@ -514,6 +514,21 @@ export const instancePolicies = {
       elevated: true,
       sessionOnly: true,
     },
+  "GET /api/instance/identity-connections/{id}/oidc-group-mappings/mapping-options":
+    {
+      capability: "instance:admin",
+      scope: "instance",
+      scopeSource: "instance",
+      reach: {
+        exempt: "no_single_resource",
+        reason:
+          "connection-bound selector options are instance identity metadata",
+      },
+      elevated: false,
+      sessionOnly: true,
+      elevationExemptionReason:
+        "read-only eligible target and role metadata contains no credentials or grants",
+    },
   "GET /api/instance/identity-connections/{id}/scim/mapping-options": {
     capability: "instance:admin",
     scope: "instance",

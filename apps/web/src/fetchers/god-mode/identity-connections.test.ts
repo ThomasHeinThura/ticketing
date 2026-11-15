@@ -11,11 +11,15 @@ vi.mock("@/fetchers/get-api-url", () => ({
 import {
   configureIdentityConnection,
   createIdentityConnection,
+  createOidcGroupMapping,
   getIdentityConnections,
+  getOidcGroupMappings,
+  getOidcMappingOptions,
   getScimAdminSettings,
   patchScimAdmin,
   revokeScimBearer,
   rotateScimBearer,
+  updateOidcGroupMapping,
 } from "./identity-connections";
 
 const TOKEN = "p".repeat(43);
@@ -120,5 +124,54 @@ describe("identity administration requests", () => {
     }).catch((error: unknown) => error);
     expect(failure).toMatchObject({ status: 403, kind: "step_up" });
     expect(JSON.stringify(failure)).not.toContain(TOKEN);
+  });
+  it("reads OIDC options and mappings using encoded connection ids", async () => {
+    await getOidcMappingOptions("conn/1", "ws/1", "cursor+");
+    expect(lastCall().url).toBe(
+      "https://api.example.test/api/instance/identity-connections/conn%2F1/oidc-group-mappings/mapping-options?limit=100&workspaceId=ws%2F1&cursor=cursor%2B",
+    );
+    expect(lastCall().init.body).toBeUndefined();
+    await getOidcGroupMappings("conn/1");
+    expect(lastCall().url).toContain("conn%2F1/oidc-group-mappings");
+  });
+  it("sends exact OIDC writes and excludes proof secrets from non-OK failures", async () => {
+    const body = { configVersion: 7, enabled: false };
+    await updateOidcGroupMapping({
+      connectionId: "conn/1",
+      mappingId: "map/1",
+      body,
+      stepUpToken: TOKEN,
+    });
+    expect(lastCall().url).toContain("conn%2F1/oidc-group-mappings/map%2F1");
+    expect(lastCall().init.method).toBe("PATCH");
+    expect(JSON.parse(lastCall().init.body ?? "null")).toEqual(body);
+    expect(lastCall().init.headers?.["x-taskdesk-step-up-token"]).toBe(TOKEN);
+    const createBody = {
+      configVersion: 7,
+      externalGroupId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      externalGroupNameSnapshot: null,
+      scope: "organisation" as const,
+      roleId: "customer",
+      enabled: true,
+    };
+    await createOidcGroupMapping({
+      connectionId: "conn/1",
+      body: createBody,
+      stepUpToken: TOKEN,
+    });
+    expect(lastCall().init.method).toBe("POST");
+    expect(JSON.parse(lastCall().init.body ?? "null")).toEqual(createBody);
+    mocks.apiFetch.mockResolvedValue(
+      new Response(JSON.stringify({ title: "Invalid mapping" }), {
+        status: 422,
+      }),
+    );
+    const error = await updateOidcGroupMapping({
+      connectionId: "conn/1",
+      mappingId: "map/1",
+      body,
+      stepUpToken: TOKEN,
+    }).catch((e) => e);
+    expect(JSON.stringify(error)).not.toContain(TOKEN);
   });
 });

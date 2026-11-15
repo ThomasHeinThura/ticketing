@@ -26,6 +26,7 @@ import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { invalidateNativeAuthorization } from "../ws";
+import { oidcMappingOptionsRoute } from "./mapping-options-route";
 import {
   lockScimGrantClosure,
   retryIdentityGrantClosure,
@@ -48,6 +49,7 @@ import {
   listOidcMappingAffectedUserIds,
   lockFullIdentityConnection,
   lockOidcGroupMappingById,
+  readOidcMappingOptions,
   retireOidcGroupGrants,
   validateOidcMappingRole,
 } from "./repository";
@@ -217,6 +219,21 @@ async function mappingTargetIsValid(
 }
 
 const routes = apiRouter()
+  .openapi(oidcMappingOptionsRoute, async (c) => {
+    await requireCurrentInstanceAdmin(
+      c,
+      "GET",
+      "/api/instance/identity-connections/{id}/oidc-group-mappings/mapping-options",
+    );
+    setShadowLegacyAuthorization(c, "allowed");
+    const { id } = c.req.valid("param");
+    const query = c.req.valid("query");
+    c.header("Cache-Control", "no-store");
+    const result = await readOidcMappingOptions({ connectionId: id, ...query });
+    if (result === false) return c.json(problem(400, "Invalid cursor"), 400);
+    if (result === null) return c.json(problem(404, "Not found"), 404);
+    return c.json(result, 200);
+  })
   .openapi(getRoute, async (c) => {
     c.header("Cache-Control", "no-store");
     await requireCurrentInstanceAdmin(

@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   configureIdentityConnection,
   createIdentityConnection,
+  createOidcGroupMapping,
   type IdentityConnection,
   patchScimAdmin,
   revokeScimBearer,
   rotateScimBearer,
   type ScimAdminSettings,
+  updateOidcGroupMapping,
 } from "@/fetchers/god-mode/identity-connections";
 import {
   identityConnectionsKey,
@@ -49,7 +51,7 @@ export function useIdentityConnectionMutations(connectionId: string) {
         (current) =>
           current && current.id === connection.id ? connection : current,
       );
-      return refreshScim();
+      return refreshConnections();
     },
   });
   const updateScim = useMutation({
@@ -88,5 +90,23 @@ export function useIdentityConnectionMutations(connectionId: string) {
       await Promise.all([refreshConnections(), refreshScim()]);
     },
   });
-  return { create, configure, updateScim, rotateToken, revokeToken };
+  const createOidcMapping = useMutation({
+    mutationFn: createOidcGroupMapping,
+    gcTime: 0,
+    onSuccess: refreshConnections,
+  });
+  const updateOidcMapping = useMutation({
+    mutationFn: updateOidcGroupMapping,
+    gcTime: 0,
+    onSuccess: refreshConnections,
+  });
+  return {
+    create,
+    configure,
+    updateScim,
+    rotateToken,
+    revokeToken,
+    createOidcMapping,
+    updateOidcMapping,
+  };
 }

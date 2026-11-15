@@ -60,6 +60,13 @@ vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
     typeof import("@/fetchers/god-mode/identity-connections")
   >()),
   getIdentityConnections: (...args: unknown[]) => mocks.list(...args),
+  getOidcGroupMappings: async () => ({ data: [], configVersion: 7 }),
+  getOidcMappingOptions: async () => ({
+    kind: "customer",
+    target: null,
+    role: null,
+    nextCursor: null,
+  }),
   getScimAdminSettings: () => new Promise(() => {}),
   getIdentityConnectionEvents: () => new Promise(() => {}),
 }));
@@ -183,5 +190,12 @@ describe("Provider editor route", () => {
     expect(await screen.findByText("Access denied")).toBeInTheDocument();
     expect(screen.queryByLabelText("Connection name")).toBeNull();
     expect(mocks.list).not.toHaveBeenCalled();
+  });
+  it("renders the OIDC groups tab", async () => {
+    mocks.search = { tab: "groups" };
+    renderWithQuery(<Component />);
+    expect(
+      await screen.findByRole("heading", { name: "OIDC group mappings" }),
+    ).toBeInTheDocument();
   });
 });

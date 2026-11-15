@@ -1312,6 +1312,7 @@ GET    /api/instance/identity-connections/{id}/events             instance:admin
 POST   /api/instance/identity-connections                         instance:admin  E
 PATCH  /api/instance/identity-connections/{id}                    instance:admin  E
 DELETE /api/instance/identity-connections/{id}                    instance:admin  E  (pending action — typed name + step-up)
+GET    /api/instance/identity-connections/{id}/oidc-group-mappings/mapping-options instance:admin (session-only; read-only; no SCIM child required)
 GET    /api/instance/identity-connections/{id}/oidc-group-mappings instance:admin (read-only; explicit elevation exemption)
 POST   /api/instance/identity-connections/{id}/oidc-group-mappings instance:admin E (session-only; PA-15 operation-bound step-up)
 PATCH  /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId} instance:admin E (session-only; PA-15 operation-bound step-up)
