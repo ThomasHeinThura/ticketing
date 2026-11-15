@@ -1,7 +1,14 @@
 // Generate self-contained docs/report/report.html from docs/report/data.json. Never hand-edit the output.
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
-const data = JSON.parse(readFileSync("docs/report/data.json", "utf8"));
+const data = JSON.parse(
+  readFileSync(
+    existsSync("docs/report/data.json")
+      ? "docs/report/data.json"
+      : "docs/archive/reports/data.json",
+    "utf8",
+  ),
+);
 const esc = (s) =>
   String(s).replace(
     /[&<>"]/g,

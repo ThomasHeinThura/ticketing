@@ -2,7 +2,7 @@
 
 Manual and browser test cases per screen. Run on local SIT (agent `https://ticketing.localhost`, portal `https://portal.localhost`, port 443) with seeded data, never on the live `taskdesk_browser_journey_1022_test` database with resetting fixtures. Every screen also gets the **common checks** below. Result column: P pass, F fail, B blocked, blank = not run. Route inventory: [screens.md](screens.md).
 
-Current scoped execution: [browser evidence](report/browser/) records real UI mutations and reload checks, including work-item editing, cycle/module/page creation and MFA. Blank results below remain unaccepted until the complete row and common checks pass.
+Current scoped execution: [browser evidence](archive/reports/browser) records real UI mutations and reload checks, including work-item editing, cycle/module/page creation and MFA. Blank results below remain unaccepted until the complete row and common checks pass.
 
 ## Common checks (every screen)
 
@@ -53,7 +53,7 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | Screen | Route | Test | Expected | Result |
 | --- | --- | --- | --- | :-: |
 | Triage | `/agent/triage?state=new&ref={ref}` | Accept, decline with reason, request clarification | State changes; clarification auto-declines on expiry | |
-| Saved intake queues | `/agent/triage?queue={id}` | Paired filter persistence, CAS, private visibility, responsive labels | Both saved queries remain distinct; stale writes refused; readable mobile table | Earlier26-check functional pass; deployed192375/1440dark labels/layout pass and mobile repair inspected. Remaining common/role/flag cases pending. [Evidence](report/browser/intake-queues192/readonly.json) |
+| Saved intake queues | `/agent/triage?queue={id}` | Paired filter persistence, CAS, private visibility, responsive labels | Both saved queries remain distinct; stale writes refused; readable mobile table | Earlier26-check functional pass; deployed192375/1440dark labels/layout pass and mobile repair inspected. Remaining common/role/flag cases pending. [Evidence](archive/reports/browser/intake-queues192/readonly.json) |
 | Approvals | `/agent/my-work?lens=approvals` | Approve, reject, expired approval | Decision recorded and audited | |
 | Request types | `/dashboard/settings/workspace/request-types?requestTypeId={id}` | Edit form fields, intake window | Portal form reflects change | |
 | SLA policies and editor | `/dashboard/settings/workspace/sla-policies/{id}` | Create policy, attach calendar, breach item | Clock, pause and breach shown; escalation notifies recipients | |
@@ -92,8 +92,8 @@ Current scoped execution: [browser evidence](report/browser/) records real UI mu
 | Webhook security posture / incident rotation | `/god-mode/webhooks` | List full-reach owners; refresh/paginate; enter one distinct replacement secret per current webhook; step-up; change set/version; replay proof | Metadata excludes URLs/secrets/bodies; current instance admin only; rotation all-or-nothing with digest-bound proof and 24h dual signatures | Posture empty state: six width/theme states pass on189; incident rotation source190, browser pending |
 | General settings | `/god-mode/general` | Change retention days, timezone | Saved; last-changed shown | |
 | Feature flags | `/god-mode/features`; project: `/agent/projects/{key}/settings/features` (redirects to `/dashboard/settings/projects/{id}/features`) | Lock at instance, override at project, clear override | Write below lock returns 409; stale version returns 409 | |
-| Notification channels | `/god-mode/notifications` | Configure SMTP, send test | Test email delivered | Scoped schema-form render/validation/cancel passes375/768/1440 light/dark; provider unchanged. Actual test-send journey remains pending. [Evidence](report/browser/gm5-schema-form/gm5-schema-form-20261026.json) |
-| Customer notifications | `/notifications` (portal host) | Produce public comment; live update; read/unread; unread URL; comment link; bell | Own-request inbox updates without reload or polling; actions persist; exact public comment opens | Scoped186 browser journey passes18 assertions with a real customer cookie and one owned QA comment. Six complete-shell sizes/themes pass, each with one authenticated socket and bell menu. Broader negative/role/flag matrix pending. [Evidence](report/browser/portal-notifications186/journey.json) |
+| Notification channels | `/god-mode/notifications` | Configure SMTP, send test | Test email delivered | Scoped schema-form render/validation/cancel passes375/768/1440 light/dark; provider unchanged. Actual test-send journey remains pending. [Evidence](archive/reports/browser/gm5-schema-form/gm5-schema-form-20261026.json) |
+| Customer notifications | `/notifications` (portal host) | Produce public comment; live update; read/unread; unread URL; comment link; bell | Own-request inbox updates without reload or polling; actions persist; exact public comment opens | Scoped186 browser journey passes18 assertions with a real customer cookie and one owned QA comment. Six complete-shell sizes/themes pass, each with one authenticated socket and bell menu. Broader negative/role/flag matrix pending. [Evidence](archive/reports/browser/portal-notifications186/journey.json) |
 | Notifications | `/agent/inbox` | Quiet hours, digest, mark unread | Quiet hours defer except SLA breach; read state persists | |
 | Users | `/god-mode/users` | Deactivate user | Removed from rosters; sessions revoked | |
 
@@ -127,7 +127,7 @@ Fresh feature acceptance pending. Scripted sign-in on the audit copy is authoriz
 
 | Screen | Route | Test | Expected | Result |
 | --- | --- | --- | --- | :-: |
-| Import history/detail | `/god-mode/imports`, `…/{id}` | Create an own run; reload; direct link; Back; selected workspace; non-admin | Persisted run; matching workspace retained in URL; non-admin API/UI denied | Scoped192 pass: creation/persistence, direct detail/Back,375/768/1440 light/dark and non-admin denial. Remaining common/role/empty/error cases pending. [Evidence](report/browser/imports192/journey.json), [denial](report/browser/imports192/non-admin.json) |
+| Import history/detail | `/god-mode/imports`, `…/{id}` | Create an own run; reload; direct link; Back; selected workspace; non-admin | Persisted run; matching workspace retained in URL; non-admin API/UI denied | Scoped192 pass: creation/persistence, direct detail/Back,375/768/1440 light/dark and non-admin denial. Remaining common/role/empty/error cases pending. [Evidence](archive/reports/browser/imports192/journey.json), [denial](archive/reports/browser/imports192/non-admin.json) |
 | Large import approval | Profile pending-action dialog/detail | Preview and submit51 records/links; exact count and fresh authentication; retry | No targets before owner approval; exactly-once commit | 51-record owner browser approval passes at375/768/1440 light/dark; wrong count/missing proof blocked; retry leaves51 targets/links and totals unchanged. Temporary key revoked, flag restored.51-link browser approval remains pending. |
 
 ## Not testable yet

@@ -34,11 +34,11 @@ Open questions and their defaults are in [plan](plan.md) section 10.
 
 ## Audit of 12 Nov
 
-[Report](report/project-audit-2026-11-12.md). Main findings: fixes written but unmerged (19 open PRs); effort had drifted to release tooling and G11; no written finish line; most browser tests use a fake server; screens wait for the server before they move; no shared page frame. Security: with open sign-up, any account could create a workspace and reach every customer organisation. Until plan items B-1, B-2 and B-7 ship, every install sets `DISABLE_REGISTRATION`, `DISABLE_PASSWORD_REGISTRATION` and `DISABLE_WORKSPACE_CREATION` to `true`.
+[Report](archive/reports/project-audit-2026-11-12.md). Main findings: fixes written but unmerged (19 open PRs); effort had drifted to release tooling and G11; no written finish line; most browser tests use a fake server; screens wait for the server before they move; no shared page frame. Security: with open sign-up, any account could create a workspace and reach every customer organisation. Until plan items B-1, B-2 and B-7 ship, every install sets `DISABLE_REGISTRATION`, `DISABLE_PASSWORD_REGISTRATION` and `DISABLE_WORKSPACE_CREATION` to `true`.
 
 ## Reference comparison of 12 Nov
 
-[Report](report/reference-comparison-2026-11-12.md): TaskDesk against Plane, Kaneo, Jira, Jira Service Management, OpenProject and ticketing products on features, access, workflow and design. Outcome: keep the breadth, follow the shared pattern (private invite-only projects, customers see their own requests, reply and internal note separate), and do not build public projects, anonymous roles or Jira-style schemes. Items it added are in the [plan](plan.md) section 11.
+[Report](archive/reports/reference-comparison-2026-11-12.md): TaskDesk against Plane, Kaneo, Jira, Jira Service Management, OpenProject and ticketing products on features, access, workflow and design. Outcome: keep the breadth, follow the shared pattern (private invite-only projects, customers see their own requests, reply and internal note separate), and do not build public projects, anonymous roles or Jira-style schemes. Items it added are in the [plan](plan.md) section 11.
 
 ## Checkout and worktrees
 

@@ -1,6 +1,6 @@
 # UAT completion plan — 12 to 23 November 2026
 
-Owner: Thomas. Coordinator: Claude, running the agent fleet in Orca. This plan replaces the 30 Oct UAT week plan and the 8 Nov A8 order in the [roadmap](roadmap.md). Background: [audit of 12 Nov](report/project-audit-2026-11-12.md). Rules: [AGENTS.md](../AGENTS.md). Current state: [handover](handover.md). An independent Opus review of this plan was folded in on 12 Nov.
+Owner: Thomas. Coordinator: Claude, running the agent fleet in Orca. This plan replaces the 30 Oct UAT week plan and the 8 Nov A8 order in the [roadmap](roadmap.md). Background: [audit of 12 Nov](archive/reports/project-audit-2026-11-12.md). Rules: [AGENTS.md](../AGENTS.md). Current state: [handover](handover.md). An independent Opus review of this plan was folded in on 12 Nov.
 
 ## 1. Goal and finish line
 
@@ -208,7 +208,7 @@ No new dependency: Base UI, framer-motion and CSS already cover it.
 
 ### After UAT
 
-G11 work. Tooling PRs #1104, #1105, #1108, #1109, #1112. From the [reference comparison](report/reference-comparison-2026-11-12.md): customer admin and organisation-wide sharing, request participants, saved replies, satisfaction rating, follow-up reminders, agent queues with counts, customer-facing status names, undo on toasts, shortcut hints. Deleting the dead Kaneo screens and the old `/task` API. Changing the app-wide data-freshness defaults. Real-time "is typing". Corner smoothing and page-to-page transitions. Pages editor (L-04). God Mode extras (A-29 to A-34). Public projects. Sign-up rules for company single sign-on.
+G11 work. Tooling PRs #1104, #1105, #1108, #1109, #1112. From the [reference comparison](archive/reports/reference-comparison-2026-11-12.md): customer admin and organisation-wide sharing, request participants, saved replies, satisfaction rating, follow-up reminders, agent queues with counts, customer-facing status names, undo on toasts, shortcut hints. Deleting the dead Kaneo screens and the old `/task` API. Changing the app-wide data-freshness defaults. Real-time "is typing". Corner smoothing and page-to-page transitions. Pages editor (L-04). God Mode extras (A-29 to A-34). Public projects. Sign-up rules for company single sign-on.
 
 ## 5. Schedule
 
@@ -322,7 +322,7 @@ Never touched: native PostgreSQL 62870, the v1 UAT project, credentials files.
 
 ## 11. Reference comparison (12 Nov)
 
-Full table: [reference comparison](report/reference-comparison-2026-11-12.md) — 42 topics against Plane, Kaneo, Jira, Jira Service Management, OpenProject, Zendesk, Freshdesk, Zammad, ServiceNow and Linear.
+Full table: [reference comparison](archive/reports/reference-comparison-2026-11-12.md) — 42 topics against Plane, Kaneo, Jira, Jira Service Management, OpenProject, Zendesk, Freshdesk, Zammad, ServiceNow and Linear.
 
 - **TaskDesk is ahead** on breadth and on ticketing depth: versioned workflows, SLA calendars, approvals, knowledge-base suggestions, custom roles, and an instance admin that single sign-on can never grant. These are kept as they are.
 - **TaskDesk is behind** on polish and on the 12 Nov decisions not yet in code. Both are this plan.
