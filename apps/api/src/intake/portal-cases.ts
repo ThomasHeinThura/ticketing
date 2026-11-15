@@ -12,6 +12,7 @@ import {
   projectsWithFeatureEnabled,
 } from "../feature-flag/enforce";
 import { csvRow } from "../report/logic";
+import { escapeLikePattern } from "../search/like-pattern";
 import { PORTAL_PRIORITIES } from "./portal-priority";
 import { loadPortalSla, type PortalSla } from "./portal-sla";
 import {
@@ -483,10 +484,6 @@ async function caseSource(
   });
 }
 
-function escapeLike(value: string) {
-  return value.replace(/[\\%_]/gu, (match) => `\\${match}`);
-}
-
 function filterConditions(viewer: PortalViewer, filters: PortalCaseFilters) {
   const conditions: SQL[] = [];
   if (filters.scope === "mine")
@@ -516,7 +513,7 @@ function filterConditions(viewer: PortalViewer, filters: PortalCaseFilters) {
     conditions.push(sql`c.created_at < ${end.toISOString()}::timestamptz`);
   }
   if (filters.q) {
-    const pattern = `%${escapeLike(filters.q)}%`;
+    const pattern = `%${escapeLikePattern(filters.q)}%`;
     conditions.push(
       sql`(c.ref ILIKE ${pattern} OR c.title ILIKE ${pattern} OR c.request_type_name ILIKE ${pattern})`,
     );

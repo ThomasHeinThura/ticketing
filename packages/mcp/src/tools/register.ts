@@ -1058,6 +1058,7 @@ export function registerTools(
     },
     async (args) =>
       run(async () => {
+        const version = args.expectedVersion ?? (await readVersion(args.key));
         const labels = await client.json<
           Array<{ id: string; assigned: boolean }>
         >(`/api/work-items/${enc(args.key)}/labels`, { method: "GET" });
@@ -1077,7 +1078,7 @@ export function registerTools(
           args.key,
           args.idempotencyKey,
           { labelIds },
-          args.expectedVersion,
+          version,
         );
       }),
   );

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { csvCell } from "../../apps/api/src/report/logic";
 import {
   checkAndRecordExportRateLimit,
   collectExportPages,
@@ -27,16 +28,16 @@ describe("work item CSV export", () => {
       },
     ];
     expect(workItemsCsv(rows, ["key", "title"])).toBe(
-      '"Key","Title"\r\n"OPS-1","hello, ""world""\nnext"\r\n',
+      'Key,Title\r\nOPS-1,"hello, ""world""\nnext"\r\n',
     );
     expect(
       workItemsCsvHeader(["key", "title"]) +
         workItemsCsvRows(rows, ["key", "title"]),
-    ).toBe('"Key","Title"\r\n"OPS-1","hello, ""world""\nnext"\r\n');
+    ).toBe('Key,Title\r\nOPS-1,"hello, ""world""\nnext"\r\n');
     expect(workItemsCsvRows([], ["key", "title"])).toBe("");
   });
 
-  it("exports selected custom fields by their registered name and escapes formulas", () => {
+  it("exports selected custom fields by their registered name, preserves numbers, and escapes formulas", () => {
     const fields = [
       {
         key: "severity",
@@ -53,6 +54,12 @@ describe("work item CSV export", () => {
         format: "text",
         options: [],
       },
+      {
+        key: "delta",
+        name: "Delta",
+        format: "number",
+        options: [],
+      },
     ] as const;
     const rows = [
       {
@@ -62,11 +69,13 @@ describe("work item CSV export", () => {
         assigneeName: null,
         priority: null,
         dueDate: null,
-        customFieldValues: { severity: "high", note: "=SUM(A1:A2)" },
+        customFieldValues: { severity: "high", note: "=SUM(A1:A2)", delta: -5 },
       },
     ];
-    expect(workItemsCsv(rows, ["key", "cf.severity", "cf.note"], fields)).toBe(
-      '"Key","Severity","Customer note"\r\n"OPS-1","High","\'=SUM(A1:A2)"\r\n',
+    expect(
+      workItemsCsv(rows, ["key", "cf.severity", "cf.note", "cf.delta"], fields),
+    ).toBe(
+      "Key,Severity,Customer note,Delta\r\nOPS-1,High,'=SUM(A1:A2),-5\r\n",
     );
   });
 
@@ -105,11 +114,11 @@ describe("work item CSV export", () => {
       },
     ];
     expect(workItemsCsv(rows, ["cf.owner"], fields, people)).toBe(
-      '"Owner"\r\n"Morgan"\r\n""\r\n',
+      "Owner\r\nMorgan\r\n\r\n",
     );
   });
 
-  it.each(["=1+1", "  =1+1", "\t@SUM(A1:A2)", "\n-2+3", "+cmd"])(
+  it.each(["=1+1", "  =1+1", "\t@SUM(A1:A2)", "\n-2+3", "+cmd", "\u000b=1+1"])(
     "prefixes formula-shaped cell %j as text",
     (title) => {
       const csv = workItemsCsv(
@@ -125,7 +134,8 @@ describe("work item CSV export", () => {
         ],
         ["title"],
       );
-      expect(csv).toContain(`"'${title.replaceAll('"', '""')}"`);
+      expect(csv).toBe(`Title\r\n${csvCell(title)}\r\n`);
+      expect(csv.slice("Title\r\n".length)).toMatch(/^"?'/);
     },
   );
 

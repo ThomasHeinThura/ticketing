@@ -1,10 +1,11 @@
 /** Bulk operations retain per-item reach; deletion waits for durable typed-count approval. */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
+import * as realtime from "../../apps/api/src/ws";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -182,6 +183,7 @@ describe("API integration: bulk work item operations (#23 fourth slice)", () => 
   beforeEach(async () => {
     await resetTestDatabase();
   });
+  afterEach(() => vi.restoreAllMocks());
 
   it("WI-25: bulk deletion waits for typed-count browser approval", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
@@ -1169,5 +1171,64 @@ describe("API integration: bulk work item operations (#23 fourth slice)", () => 
     expect(properties).toHaveProperty("expectedCurrentAssigneeIds");
     expect(properties).toHaveProperty("labelId");
     expect(properties).toHaveProperty("dueDate");
+  });
+
+  it("bulk archive records the outbox row and publishes the realtime hint for each archived item (P-26)", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const first = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Bulk archive one",
+      })
+    ).json()) as { id: string; key: string };
+    const second = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Bulk archive two",
+      })
+    ).json()) as { id: string; key: string };
+
+    const hintSpy = vi.spyOn(realtime, "broadcastNativeWorkItemHint");
+    const response = await bulkRequest(app, {
+      workspaceId: creator.workspace.id,
+      workItemKeys: [first.key, second.key],
+      operation: "archive",
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      succeeded: [first.key, second.key],
+      failed: [],
+    });
+
+    const outbox = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "work_item.updated"));
+    expect(outbox).toHaveLength(2);
+    for (const key of [first.key, second.key]) {
+      expect(
+        outbox.some((entry) => {
+          const envelope = entry.payload as {
+            payload?: { key?: string; changes?: Array<{ field?: string }> };
+          };
+          return (
+            envelope.payload?.key === key &&
+            envelope.payload?.changes?.some(
+              (change) => change.field === "archived_at",
+            )
+          );
+        }),
+      ).toBe(true);
+      expect(hintSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: project.id,
+          key,
+          eventType: "work_item.updated",
+          customerVisible: false,
+        }),
+      );
+    }
   });
 });

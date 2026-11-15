@@ -383,9 +383,7 @@ async function runOne(
     return;
   }
   if (op.operation === "archive") {
-    await archiveWorkItem(id, workspaceId, actorId, actorType, {
-      publishEffects: false,
-    });
+    await archiveWorkItem(id, workspaceId, actorId, actorType);
     return;
   }
   await transitionWorkItemByKey(

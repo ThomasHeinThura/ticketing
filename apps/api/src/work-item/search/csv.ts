@@ -1,3 +1,4 @@
+import { csvRow } from "../../report/logic";
 import type { WorkItemSearchQuery } from "./query";
 
 export const DEFAULT_EXPORT_COLUMNS = [
@@ -87,12 +88,16 @@ export function exportColumns(query: WorkItemSearchQuery) {
   return query.columns ?? [...DEFAULT_EXPORT_COLUMNS];
 }
 
-function safeCell(value: unknown): string {
-  let text = value == null ? "" : String(value);
-  // Spreadsheet programs may evaluate cells beginning with a formula marker,
-  // including when whitespace precedes it. Prefix those cells with text data.
-  if (/^[\s\p{Cc}]*[=+\-@]/u.test(text)) text = `'${text}`;
-  return `"${text.replaceAll('"', '""')}"`;
+function toCsvValue(value: unknown): string | number | null | undefined {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "string" ||
+    typeof value === "number"
+  ) {
+    return value;
+  }
+  return String(value);
 }
 
 const HEADINGS: Record<string, string> = {
@@ -123,7 +128,7 @@ export function workItemsCsvHeader(
       ? customFieldColumns.find((field) => field.key === column.slice(3))?.name
       : undefined) ??
     column;
-  return `${columns.map((column) => safeCell(heading(column))).join(",")}\r\n`;
+  return `${csvRow(columns.map(heading))}\r\n`;
 }
 
 function customFieldCellValue(
@@ -192,9 +197,9 @@ export function workItemsCsvRows(
   if (rows.length === 0) return "";
   return `${rows
     .map((row) =>
-      columns
-        .map((column) =>
-          safeCell(
+      csvRow(
+        columns.map((column) =>
+          toCsvValue(
             column.startsWith("cf.")
               ? customFieldCellValue(
                   row,
@@ -204,8 +209,8 @@ export function workItemsCsvRows(
                 )
               : VALUES[column]?.(row),
           ),
-        )
-        .join(","),
+        ),
+      ),
     )
     .join("\r\n")}\r\n`;
 }

@@ -1227,7 +1227,7 @@ export async function lockAttachmentWorkItem(
           : undefined,
       ),
     )
-    .for("share");
+    .for("update");
 }
 
 export async function deletePendingWorkItemAttachment(

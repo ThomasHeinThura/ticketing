@@ -15,6 +15,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { eq } from "drizzle-orm";
+import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -146,6 +147,64 @@ describe("API integration: attachment liveness race (#493)", () => {
       process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
     }
     await rm(root, { recursive: true, force: true });
+  });
+
+  it("serializes simultaneous reservations for the last attachment slot", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key, id } = await createWorkItem(app, project.id, type.id);
+    await db
+      .insert(schema.instanceSettingTable)
+      .values({ id: "singleton", attachmentMaxPerItem: 2 })
+      .onConflictDoUpdate({
+        target: schema.instanceSettingTable.id,
+        set: { attachmentMaxPerItem: 2 },
+      });
+    expect((await presignRequest(app, key)).status).toBe(200);
+    const blocker = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await blocker.connect();
+    let reservations: Promise<Response[]> | undefined;
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query(
+        "SELECT id FROM work_item WHERE id = $1 FOR NO KEY UPDATE",
+        [id],
+      );
+      reservations = Promise.all([
+        presignRequest(app, key),
+        presignRequest(app, key),
+      ]);
+      // Release only after both requests have reached the parent lock with one slot left.
+      await expect
+        .poll(
+          async () => {
+            await blocker.query("SELECT pg_stat_clear_snapshot()");
+            const result = await blocker.query<{ waiting: number }>(
+              `SELECT count(*)::int AS waiting FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%"work_item"%'`,
+            );
+            return result.rows[0]?.waiting;
+          },
+          { timeout: 5_000 },
+        )
+        .toBe(2);
+    } finally {
+      await blocker.query("ROLLBACK");
+      await blocker.end();
+      await reservations;
+    }
+    const responses = await reservations;
+    expect(responses?.map((response) => response.status).sort()).toEqual([
+      200, 400,
+    ]);
+    expect(
+      await db
+        .select()
+        .from(schema.attachmentTable)
+        .where(eq(schema.attachmentTable.workItemId, id)),
+    ).toHaveLength(2);
   });
 
   it("presign-attachment: a concurrent soft-delete cannot slip past the new locked read and insert a pending attachment on a dead item", async () => {

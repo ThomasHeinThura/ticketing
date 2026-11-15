@@ -1,3 +1,4 @@
+import { csvCell } from "../report/logic";
 import type { AuditRowResponse } from "./response";
 
 /** Column order of the CSV export; one stable header, never derived from row content. */
@@ -22,11 +23,7 @@ export const AUDIT_EXPORT_COLUMNS = [
  * prefixed with an apostrophe so a spreadsheet shows it as text (audit values such as
  * entity ids and JSON payloads are user-influenced).
  */
-export function csvField(value: string | null | undefined): string {
-  if (value === null || value === undefined) return "";
-  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
-}
+export const csvField = csvCell;
 
 function cell(
   row: AuditRowResponse,

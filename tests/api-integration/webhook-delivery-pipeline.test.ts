@@ -21,7 +21,11 @@ import {
   enqueueWebhookDeliveries,
   webhookParentConsumer,
 } from "../../apps/api/src/webhook/consumer";
-import { processNextWebhookDelivery } from "../../apps/api/src/webhook/delivery";
+import {
+  drainWebhookDeliveries,
+  processNextWebhookDelivery,
+  WEBHOOK_DRAIN_LIMIT,
+} from "../../apps/api/src/webhook/delivery";
 import { enqueueRedelivery } from "../../apps/api/src/webhook/repository";
 import type { WebhookSendResult } from "../../apps/api/src/webhook/safe-http";
 import { signWebhookBody } from "../../apps/api/src/webhook/signature";
@@ -420,5 +424,169 @@ describe("webhook pipeline", () => {
     expect(
       (await deliveries(webhook.id)).map((row) => row.state).sort(),
     ).toEqual(["delivered", "delivered"]);
+  });
+
+  it("continues draining queued deliveries after a successful send frees its webhook", async () => {
+    const { user, workspace } = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    await grantProjectRole(user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const webhook = await makeWebhook(workspace.id, user.id);
+    for (let i = 0; i < 4; i++) {
+      const { envelope } = await emit(
+        workspace.id,
+        project.id,
+        "work_item.created",
+      );
+      await db.transaction((tx) => enqueueWebhookDeliveries(tx, envelope));
+    }
+    await makeDue(webhook.id);
+    const { sent, deps } = sender();
+    expect(await drainWebhookDeliveries(deps)).toMatchObject({
+      processed: 4,
+      delivered: 4,
+    });
+    expect(sent).toHaveLength(4);
+    expect(
+      (await deliveries(webhook.id)).every((row) => row.state === "delivered"),
+    ).toBe(true);
+  });
+
+  it("skips remaining deliveries of a hung or dead-lettered webhook in the same drain run so another webhook's due deliveries still send (P-10)", async () => {
+    const { user, workspace } = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    await grantProjectRole(user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const hung = await makeWebhook(workspace.id, user.id, {
+      name: "Hung endpoint",
+      url: "https://hung.example.com/in",
+      events: ["work_item.assigned"],
+    });
+    const deadHook = await makeWebhook(workspace.id, user.id, {
+      name: "Exhausted endpoint",
+      url: "https://dead.example.com/in",
+      events: ["work_item.deleted"],
+    });
+    const healthy = await makeWebhook(workspace.id, user.id, {
+      name: "Healthy endpoint",
+      url: "https://healthy.example.com/in",
+      events: ["work_item.created"],
+    });
+
+    // Queue more than WEBHOOK_DRAIN_LIMIT due deliveries for the hung webhook ahead of healthy's.
+    for (let i = 0; i < WEBHOOK_DRAIN_LIMIT + 5; i++) {
+      const { envelope } = await emit(
+        workspace.id,
+        project.id,
+        "work_item.assigned",
+      );
+      await db.transaction((tx) => enqueueWebhookDeliveries(tx, envelope));
+    }
+    // Also queue two due deliveries at attempt=5 (so the next failure dies) on deadHook.
+    for (let i = 0; i < 2; i++) {
+      const { envelope } = await emit(
+        workspace.id,
+        project.id,
+        "work_item.deleted",
+      );
+      await db.transaction((tx) => enqueueWebhookDeliveries(tx, envelope));
+    }
+
+    const { envelope: healthyEnvelope } = await emit(
+      workspace.id,
+      project.id,
+      "work_item.created",
+    );
+    await db.transaction((tx) => enqueueWebhookDeliveries(tx, healthyEnvelope));
+
+    await db
+      .update(webhookDeliveryTable)
+      .set({ nextAttemptAt: sql`now() - interval '10 seconds'` })
+      .where(eq(webhookDeliveryTable.webhookId, hung.id));
+    await db
+      .update(webhookDeliveryTable)
+      .set({
+        attempt: 5,
+        nextAttemptAt: sql`now() - interval '5 seconds'`,
+      })
+      .where(eq(webhookDeliveryTable.webhookId, deadHook.id));
+    await db
+      .update(webhookDeliveryTable)
+      .set({ nextAttemptAt: sql`now() - interval '1 second'` })
+      .where(eq(webhookDeliveryTable.webhookId, healthy.id));
+
+    const sent: Sent[] = [];
+    let releaseHung!: () => void;
+    const pendingHung = new Promise<void>((resolve) => {
+      releaseHung = resolve;
+    });
+    let healthySent!: () => void;
+    const pendingHealthy = new Promise<void>((resolve) => {
+      healthySent = resolve;
+    });
+    const draining = drainWebhookDeliveries({
+      now: () => new Date(),
+      send: (async (input: Sent): Promise<WebhookSendResult> => {
+        sent.push(input);
+        if (input.url === hung.url) await pendingHung;
+        if (input.url === healthy.url) healthySent();
+        const success = input.url === healthy.url;
+        return {
+          statusCode: success ? 200 : null,
+          durationMs: success ? 12 : 10_000,
+          responseBody: success ? "ok" : null,
+          error: success ? null : "timeout",
+          success,
+        };
+      }) as never,
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        pendingHealthy,
+        new Promise((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("healthy webhook blocked by hung send")),
+            2_000,
+          );
+        }),
+      ]);
+      expect(sent.filter((call) => call.url === hung.url)).toHaveLength(1);
+      expect(
+        (await deliveries(hung.id)).some((row) => row.leaseToken !== null),
+      ).toBe(true);
+    } finally {
+      clearTimeout(timer);
+      releaseHung();
+      await draining;
+    }
+    const summary = await draining;
+
+    expect(summary).toEqual({
+      processed: 3,
+      delivered: 1,
+      retried: 1,
+      dead: 1,
+      degraded: true,
+    });
+    expect(await deliveries(healthy.id)).toEqual([
+      expect.objectContaining({ state: "delivered", attempt: 1 }),
+    ]);
+    const hungRows = await deliveries(hung.id);
+    expect(hungRows.filter((row) => row.attempt === 1)).toHaveLength(1);
+    expect(hungRows.filter((row) => row.attempt === 0)).toHaveLength(
+      WEBHOOK_DRAIN_LIMIT + 4,
+    );
+    const deadRows = await deliveries(deadHook.id);
+    expect(deadRows.filter((row) => row.state === "dead")).toHaveLength(1);
+    expect(deadRows.filter((row) => row.state === "pending")).toHaveLength(1);
   });
 });
