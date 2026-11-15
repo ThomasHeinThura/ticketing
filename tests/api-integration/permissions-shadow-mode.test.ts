@@ -1181,58 +1181,6 @@ describe("instance-admin reach does not bypass workspace capability authority", 
     });
     expect(tally.outcome).toBe("agree");
   });
-
-  it("records a controller-level bulk membership denial after earlier gates allowed", {
-    timeout: 60_000,
-  }, async () => {
-    const fresh = await createAppWithShadow("on");
-    const member = await createWorkspaceMember();
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    const [task] = await fresh.db
-      .insert(fresh.schema.taskTable)
-      .values({
-        projectId: project.id,
-        userId: member.user.id,
-        title: "Bulk authorization evidence",
-        description: "",
-        status: "to-do",
-        columnId: columns.todo.id,
-        priority: "medium",
-        number: 1,
-        position: 1,
-      })
-      .returning();
-    if (!task) throw new Error("task fixture insert returned no row");
-
-    const instanceAdmin = {
-      id: "user-instance-admin-bulk-shadow-test",
-      email: "instance-admin-bulk-shadow-test@example.com",
-      name: "Instance Admin",
-      emailVerified: true,
-      role: "admin",
-    };
-    await fresh.db.insert(fresh.schema.userTable).values(instanceAdmin);
-    await backfillPersons();
-    fresh.mockUser(instanceAdmin);
-
-    const response = await fresh.app.request("/api/task/bulk", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ taskIds: [task.id], operation: "delete" }),
-    });
-    expect(response.status).toBe(403);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    const falseAllowEvents = await shadowEventsFor(
-      "PATCH /api/task/bulk",
-      "legacy_allow_policy_deny",
-    );
-    expect(falseAllowEvents).toHaveLength(0);
-    const tallies = await shadowTalliesFor("PATCH /api/task/bulk");
-    expect(tallies.find((row) => row.outcome === "agree")?.count).toBe(1);
-  });
 });
 
 describe("an evaluator exception never affects the response", () => {

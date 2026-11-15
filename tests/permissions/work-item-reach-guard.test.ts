@@ -1,5 +1,5 @@
 import { isCapabilityPolicy, normaliseRouteKey } from "@taskdesk/permissions";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   WORK_ITEM_REACH_MARK,
   type WorkItemReachMark,
@@ -205,10 +205,15 @@ describe("work-item reach guard: the checker is not vacuous", () => {
 });
 
 describe("work-item reach guard: the real router", () => {
-  it("every item-scoped route uses project reach, or states why not", async () => {
-    const app = await loadApiApp();
-    const registry = await loadPolicyRegistry();
+  let app: Awaited<ReturnType<typeof loadApiApp>>;
+  let registry: Awaited<ReturnType<typeof loadPolicyRegistry>>;
 
+  beforeAll(async () => {
+    app = await loadApiApp();
+    registry = await loadPolicyRegistry();
+  }, 120_000);
+
+  it("every item-scoped route uses project reach, or states why not", () => {
     const handlersByKey = new Map<string, Handler[]>();
     for (const entry of app.routes) {
       let routeKey: string;

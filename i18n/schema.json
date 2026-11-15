@@ -28417,6 +28417,291 @@
 						"submit",
 						"jobs"
 					]
+				},
+				"legalHolds": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"activeBadge": {
+							"type": "string"
+						},
+						"activeBadge_zero": {
+							"type": "string"
+						},
+						"activeBadge_one": {
+							"type": "string"
+						},
+						"activeBadge_two": {
+							"type": "string"
+						},
+						"activeBadge_few": {
+							"type": "string"
+						},
+						"activeBadge_many": {
+							"type": "string"
+						},
+						"activeBadge_other": {
+							"type": "string"
+						},
+						"filterLabel": {
+							"type": "string"
+						},
+						"placeAction": {
+							"type": "string"
+						},
+						"liftAction": {
+							"type": "string"
+						},
+						"tableLabel": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"filters": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"all": {
+									"type": "string"
+								},
+								"active": {
+									"type": "string"
+								},
+								"lifted": {
+									"type": "string"
+								}
+							},
+							"required": ["all", "active", "lifted"]
+						},
+						"scopes": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"organisation": {
+									"type": "string"
+								},
+								"person": {
+									"type": "string"
+								}
+							},
+							"required": ["organisation", "person"]
+						},
+						"statuses": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"active": {
+									"type": "string"
+								},
+								"lifted": {
+									"type": "string"
+								}
+							},
+							"required": ["active", "lifted"]
+						},
+						"columns": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"target": {
+									"type": "string"
+								},
+								"scope": {
+									"type": "string"
+								},
+								"reason": {
+									"type": "string"
+								},
+								"placed": {
+									"type": "string"
+								},
+								"status": {
+									"type": "string"
+								},
+								"actions": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"target",
+								"scope",
+								"reason",
+								"placed",
+								"status",
+								"actions"
+							]
+						},
+						"place": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"scopeLabel": {
+									"type": "string"
+								},
+								"pickOrganisation": {
+									"type": "string"
+								},
+								"pickPerson": {
+									"type": "string"
+								},
+								"pickPlaceholder": {
+									"type": "string"
+								},
+								"organisationIdLabel": {
+									"type": "string"
+								},
+								"personIdLabel": {
+									"type": "string"
+								},
+								"organisationIdPlaceholder": {
+									"type": "string"
+								},
+								"personIdPlaceholder": {
+									"type": "string"
+								},
+								"reasonLabel": {
+									"type": "string"
+								},
+								"reasonPlaceholder": {
+									"type": "string"
+								},
+								"cancel": {
+									"type": "string"
+								},
+								"close": {
+									"type": "string"
+								},
+								"submit": {
+									"type": "string"
+								},
+								"errorTitle": {
+									"type": "string"
+								},
+								"errorNotFound": {
+									"type": "string"
+								},
+								"errorConflict": {
+									"type": "string"
+								},
+								"errorGeneric": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"scopeLabel",
+								"pickOrganisation",
+								"pickPerson",
+								"pickPlaceholder",
+								"organisationIdLabel",
+								"personIdLabel",
+								"organisationIdPlaceholder",
+								"personIdPlaceholder",
+								"reasonLabel",
+								"reasonPlaceholder",
+								"cancel",
+								"close",
+								"submit",
+								"errorTitle",
+								"errorNotFound",
+								"errorConflict",
+								"errorGeneric"
+							]
+						},
+						"lift": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"title": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"reasonLabel": {
+									"type": "string"
+								},
+								"reasonPlaceholder": {
+									"type": "string"
+								},
+								"cancel": {
+									"type": "string"
+								},
+								"close": {
+									"type": "string"
+								},
+								"submit": {
+									"type": "string"
+								},
+								"errorTitle": {
+									"type": "string"
+								},
+								"errorAlreadyLifted": {
+									"type": "string"
+								},
+								"errorGeneric": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"title",
+								"description",
+								"reasonLabel",
+								"reasonPlaceholder",
+								"cancel",
+								"close",
+								"submit",
+								"errorTitle",
+								"errorAlreadyLifted",
+								"errorGeneric"
+							]
+						},
+						"unavailableBadge": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"filterLabel",
+						"placeAction",
+						"liftAction",
+						"tableLabel",
+						"emptyTitle",
+						"emptyDescription",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"filters",
+						"scopes",
+						"statuses",
+						"columns",
+						"place",
+						"lift",
+						"unavailableBadge"
+					]
 				}
 			},
 			"required": [
@@ -28432,7 +28717,8 @@
 				"states",
 				"checks",
 				"details",
-				"rotateSecrets"
+				"rotateSecrets",
+				"legalHolds"
 			]
 		},
 		"roles": {
@@ -40100,15 +40386,51 @@
 				"checkedAt": {
 					"type": "string"
 				},
+				"subprocessorsTitle": {
+					"type": "string"
+				},
+				"subprocessorsActiveCount": {
+					"type": "string"
+				},
+				"subprocessorsActiveCount_zero": {
+					"type": "string"
+				},
+				"subprocessorsActiveCount_one": {
+					"type": "string"
+				},
+				"subprocessorsActiveCount_two": {
+					"type": "string"
+				},
+				"subprocessorsActiveCount_few": {
+					"type": "string"
+				},
+				"subprocessorsActiveCount_many": {
+					"type": "string"
+				},
+				"subprocessorsActiveCount_other": {
+					"type": "string"
+				},
+				"subprocessorsDescription": {
+					"type": "string"
+				},
 				"kinds": {
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
 						"notification": {
 							"type": "string"
+						},
+						"storage": {
+							"type": "string"
+						},
+						"identity": {
+							"type": "string"
+						},
+						"observability": {
+							"type": "string"
 						}
 					},
-					"required": ["notification"]
+					"required": ["notification", "storage", "identity", "observability"]
 				},
 				"states": {
 					"type": "object",
@@ -40148,10 +40470,22 @@
 				"source": {
 					"type": "string"
 				},
+				"destination": {
+					"type": "string"
+				},
+				"dataProcessed": {
+					"type": "string"
+				},
 				"credentialConfigured": {
 					"type": "string"
 				},
 				"credentialNotConfigured": {
+					"type": "string"
+				},
+				"subprocessorCredentialConfigured": {
+					"type": "string"
+				},
+				"subprocessorCredentialNotConfigured": {
 					"type": "string"
 				},
 				"healthNotRecorded": {
@@ -40170,12 +40504,18 @@
 				"loadErrorDescription",
 				"retry",
 				"checkedAt",
+				"subprocessorsTitle",
+				"subprocessorsDescription",
 				"kinds",
 				"states",
 				"sources",
 				"source",
+				"destination",
+				"dataProcessed",
 				"credentialConfigured",
 				"credentialNotConfigured",
+				"subprocessorCredentialConfigured",
+				"subprocessorCredentialNotConfigured",
 				"healthNotRecorded",
 				"manageSettings"
 			]

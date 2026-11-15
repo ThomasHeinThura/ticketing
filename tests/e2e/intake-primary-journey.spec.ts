@@ -167,13 +167,7 @@ async function runPrivateCommand(
   const child = await fixture.spawnChild(
     process.execPath,
     [command, ...args],
-    {
-      ...process.env,
-      TASKDESK_DATABASE_URL: fixture.databaseUrl,
-      TASKDESK_MIGRATION_DATABASE_URL: undefined,
-    },
     logPrefix,
-    fixture.fixtureDir,
   );
   await new Promise<void>((resolveClose, rejectClose) => {
     child.once("close", (code) => {

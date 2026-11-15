@@ -1,6 +1,5 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
 import type { Transaction } from "../../database/executor";
 import { publishEvent } from "../../events";
 import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
@@ -17,7 +16,7 @@ import {
 import {
   deleteLabelById,
   deleteLabelsByIds,
-  findLabelById,
+  type findLabelById,
   listTaskLabelCopiesWithTask,
   lockLabelRow,
   lockTaskLabelCopies,
@@ -27,9 +26,9 @@ import {
 type LabelSnapshot = NonNullable<Awaited<ReturnType<typeof findLabelById>>>;
 
 /**
- * The deletion body, run inside a caller-owned transaction (the direct controller below, or the
- * pending-action approval in `../label-deletion-target.ts`). Publishing stays with the caller,
- * after commit, through `publishLabelDeletion`.
+ * The deletion body, run inside a caller-owned transaction (pending-action approval in
+ * `../label-deletion-target.ts`). Publishing stays with the caller, after commit, through
+ * `publishLabelDeletion`.
  */
 export async function deleteLabelInTransaction(
   tx: Transaction,
@@ -185,23 +184,3 @@ export async function publishLabelDeletion(
     });
   }
 }
-
-async function deleteLabel(
-  identity: ResolvedIdentity,
-  id: string,
-  userId: string,
-  apiKeyId?: string | null,
-) {
-  const labelSnapshot = await findLabelById(identity, id);
-  if (!labelSnapshot) {
-    throw new HTTPException(404, { message: "Label not found" });
-  }
-
-  const result = await db.transaction((tx) =>
-    deleteLabelInTransaction(tx, identity, labelSnapshot, userId, apiKeyId),
-  );
-  await publishLabelDeletion(result, userId);
-  return result.deletedLabel;
-}
-
-export default deleteLabel;

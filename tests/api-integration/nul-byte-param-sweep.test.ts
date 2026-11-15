@@ -321,7 +321,7 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
     expect(response.status).toBe(400);
   });
 
-  it("POST /api/task/import/{projectId}: a NUL byte in tasks[].userId is a clean 400, not a 500 (import-tasks.ts)", async () => {
+  it("POST /api/task/import/{projectId}: retired endpoint returns 410 Gone instead of importing", async () => {
     const member = await createWorkspaceMember();
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -344,7 +344,7 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
       }),
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(410);
   });
 
   it("GET /api/task/tasks/{projectId}?assigneeId=: a NUL byte is a clean 400, not a 500 (get-tasks.ts)", async () => {
@@ -364,69 +364,5 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
     );
 
     expect(response.status).toBe(400);
-  });
-
-  it("PATCH /api/task/bulk: a NUL byte in addLabel's value is a per-item 400, not a 500 (bulk-update-tasks.ts)", async () => {
-    const member = await createWorkspaceMember();
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
-    const task = await seedTask(project.id, columns.todo.id);
-    mockAuthenticatedSession(member.user);
-    const { app } = createApp();
-
-    const response = await app.request("/api/task/bulk", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        taskIds: [task.id],
-        operation: "addLabel",
-        value: "\u0000x",
-      }),
-    });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      results: [
-        {
-          taskId: task.id,
-          success: false,
-          error: expect.stringContaining("NUL"),
-        },
-      ],
-    });
-  });
-
-  it("PATCH /api/task/bulk: a NUL byte in removeLabel's value is a per-item 400, not a 500 (bulk-update-tasks.ts)", async () => {
-    const member = await createWorkspaceMember();
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
-    const task = await seedTask(project.id, columns.todo.id);
-    mockAuthenticatedSession(member.user);
-    const { app } = createApp();
-
-    const response = await app.request("/api/task/bulk", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        taskIds: [task.id],
-        operation: "removeLabel",
-        value: "\u0000x",
-      }),
-    });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      results: [
-        {
-          taskId: task.id,
-          success: false,
-          error: expect.stringContaining("NUL"),
-        },
-      ],
-    });
   });
 });

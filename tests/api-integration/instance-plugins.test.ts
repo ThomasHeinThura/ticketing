@@ -122,10 +122,13 @@ describe("instance Plugins HTTP API", () => {
         id: "notify.email",
         name: "Email",
         kind: "notification",
+        category: "outbound_email",
         state: "enabled",
         source: "runtime",
         configVersion: 7,
         credentialConfigured: true,
+        destinationSummary: "Configured SMTP relay",
+        configPath: "/god-mode/notifications",
         settingsForm: expect.objectContaining({
           version: 1,
           available: true,
@@ -150,6 +153,24 @@ describe("instance Plugins HTTP API", () => {
             }),
           ]),
         }),
+      }),
+      expect.objectContaining({
+        id: "storage.s3",
+        kind: "storage",
+        category: "object_storage",
+        configPath: "/god-mode/storage",
+      }),
+      expect.objectContaining({
+        id: "identity.sso",
+        kind: "identity",
+        category: "identity_provider",
+        configPath: "/god-mode/authentication",
+      }),
+      expect.objectContaining({
+        id: "observability.telemetry",
+        kind: "observability",
+        category: "telemetry",
+        configPath: "/god-mode/observability",
       }),
     ]);
     const serialized = JSON.stringify(body);

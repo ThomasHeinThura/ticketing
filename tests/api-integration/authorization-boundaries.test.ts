@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
-import * as eventBus from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
 import { lockTaskAndAssertProjectLive } from "../../apps/api/src/task/assert-task-project-live";
 import { assertAssignableUserAndLockMembership } from "../../apps/api/src/utils/assert-assignable-user";
@@ -362,7 +361,7 @@ describe("every assignee write path is workspace scoped", () => {
     expect(versioned.status).toBe(403);
   });
 
-  it("imports the valid tasks and fails only the one with a bad assignee", async () => {
+  it("P-15: retired POST /api/task/import/{projectId} returns 410 Gone and writes zero tasks", async () => {
     const { user, workspace } = await createWorkspaceMember({ role: "owner" });
     const outsider = await createWorkspaceMember({ role: "owner" });
     const { project } = await createProjectFixture({
@@ -389,43 +388,12 @@ describe("every assignee write path is workspace scoped", () => {
       }),
     });
 
-    expect(response.status).toBe(200);
-
-    const stored = await db
-      .select({ title: schema.taskTable.title })
-      .from(schema.taskTable)
-      .where(eq(schema.taskTable.projectId, project.id));
-
-    expect(stored.map((t) => t.title)).toEqual(["Good"]);
-  });
-
-  it("refuses a non-member through task import", async () => {
-    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
-    const outsider = await createWorkspaceMember({ role: "owner" });
-    const { project } = await createProjectFixture({
-      workspaceId: workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
-
-    mockAuthenticatedSession(user);
-    const { app } = createApp();
-
-    const response = await app.request(`/api/task/import/${project.id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tasks: [
-          {
-            title: "Imported",
-            status: "to-do",
-            priority: "low",
-            userId: outsider.user.id,
-          },
-        ],
-      }),
-    });
-
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(410);
+    expect(response.headers.get("deprecation")).toBe("@1790812800");
+    expect(response.headers.get("sunset")).toBeTruthy();
+    expect(response.headers.get("link")).toContain(
+      '</api/instance/imports>; rel="successor-version"',
+    );
 
     const stored = await db
       .select({ id: schema.taskTable.id })
@@ -433,44 +401,6 @@ describe("every assignee write path is workspace scoped", () => {
       .where(eq(schema.taskTable.projectId, project.id));
 
     expect(stored).toHaveLength(0);
-  });
-
-  it("stores a padded assignee id in its normalised form", async () => {
-    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
-    const { project } = await createProjectFixture({
-      workspaceId: workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
-
-    mockAuthenticatedSession(user);
-    const { app } = createApp();
-
-    const response = await app.request(`/api/task/import/${project.id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tasks: [
-          {
-            title: "Imported",
-            status: "to-do",
-            priority: "low",
-            userId: `  ${user.id}  `,
-          },
-        ],
-      }),
-    });
-
-    expect(response.status).toBe(200);
-
-    const stored = requireRow(
-      await db
-        .select({ userId: schema.taskTable.userId })
-        .from(schema.taskTable)
-        .where(eq(schema.taskTable.projectId, project.id)),
-      "stored",
-    );
-
-    expect(stored.userId).toBe(user.id);
   });
 
   it("treats a whitespace-only assignee as an unassignment", async () => {
@@ -566,55 +496,6 @@ describe("every assignee write path is workspace scoped", () => {
     expect(after.userId).toBe(user.id);
   });
 
-  it("refuses a non-member through the bulk assignee operation", async () => {
-    const { user, workspace } = await createWorkspaceMember({ role: "owner" });
-    const outsider = await createWorkspaceMember({ role: "owner" });
-    const { project, columns } = await createProjectFixture({
-      workspaceId: workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(workspace.id, project.id);
-
-    const task = requireRow(
-      await db
-        .insert(schema.taskTable)
-        .values({
-          projectId: project.id,
-          title: "Seeded",
-          description: "",
-          priority: "low",
-          status: "to-do",
-          columnId: columns.todo.id,
-          number: 1,
-          position: 1,
-        })
-        .returning(),
-      "task",
-    );
-
-    mockAuthenticatedSession(user);
-    const { app } = createApp();
-
-    const response = await app.request("/api/task/bulk", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        taskIds: [task.id],
-        operation: "updateAssignee",
-        value: outsider.user.id,
-      }),
-    });
-
-    expect(response.status).toBe(403);
-    await expect(response.text()).resolves.toBe(
-      "Assignee is not a member of this workspace",
-    );
-
-    const persistedTask = await db.query.taskTable.findFirst({
-      where: eq(schema.taskTable.id, task.id),
-    });
-    expect(persistedTask?.userId).toBeNull();
-  });
-
   it("keeps global admins assignable without workspace membership", async () => {
     const member = await createWorkspaceMember({ role: "owner" });
     const globalAdmin = await createWorkspaceMember({ role: "owner" });
@@ -645,22 +526,15 @@ describe("every assignee write path is workspace scoped", () => {
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
-    const response = await app.request("/api/task/bulk", {
-      method: "PATCH",
+    const response = await app.request(`/api/task/assignee/${task.id}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        taskIds: [task.id],
-        operation: "updateAssignee",
-        value: globalAdmin.user.id,
+        userId: globalAdmin.user.id,
       }),
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      success: true,
-      updatedCount: 1,
-      results: [{ taskId: task.id, success: true }],
-    });
     const persistedTask = await db.query.taskTable.findFirst({
       where: eq(schema.taskTable.id, task.id),
     });
@@ -715,77 +589,6 @@ describe("every assignee write path is workspace scoped", () => {
     });
 
     expect(assignment.status).toBe(200);
-    expect(removal.status).toBe(200);
-    const persistedTask = await db.query.taskTable.findFirst({
-      where: eq(schema.taskTable.id, task.id),
-    });
-    expect(persistedTask?.userId).toBe(assignee.user.id);
-    const membership = await db.query.workspaceUserTable.findFirst({
-      where: and(
-        eq(schema.workspaceUserTable.workspaceId, member.workspace.id),
-        eq(schema.workspaceUserTable.userId, assignee.user.id),
-      ),
-    });
-    expect(membership).toBeUndefined();
-  });
-
-  it("AS-5/AS-8 serializes bulk assignment before membership removal", async () => {
-    const member = await createWorkspaceMember({ role: "owner" });
-    const assignee = await createWorkspaceMember({ role: "owner" });
-    await db.insert(schema.workspaceUserTable).values({
-      workspaceId: member.workspace.id,
-      userId: assignee.user.id,
-      role: "member",
-      joinedAt: new Date(),
-    });
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
-    const task = requireRow(
-      await db
-        .insert(schema.taskTable)
-        .values({
-          projectId: project.id,
-          title: "Bulk assignee membership race",
-          description: "",
-          priority: "low",
-          status: "to-do",
-          columnId: columns.todo.id,
-          number: 1,
-          position: 1,
-        })
-        .returning(),
-      "task",
-    );
-
-    mockAuthenticatedSession(member.user);
-    const { app } = createApp();
-    const [assignment, removal] = await raceAssignmentWithMemberRemoval({
-      taskWriteTrigger: "UPDATE OF assignee_id",
-      assignmentRequest: async () =>
-        app.request("/api/task/bulk", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            taskIds: [task.id],
-            operation: "updateAssignee",
-            value: assignee.user.id,
-          }),
-        }),
-      removalRequest: async () =>
-        app.request(
-          `/api/workspace/${member.workspace.id}/members/${assignee.user.id}`,
-          { method: "DELETE" },
-        ),
-    });
-
-    expect(assignment.status).toBe(200);
-    expect(await assignment.json()).toMatchObject({
-      success: true,
-      updatedCount: 1,
-      results: [{ taskId: task.id, success: true }],
-    });
     expect(removal.status).toBe(200);
     const persistedTask = await db.query.taskTable.findFirst({
       where: eq(schema.taskTable.id, task.id),
@@ -925,7 +728,7 @@ describe("every assignee write path is workspace scoped", () => {
     expect(membership).toBeUndefined();
   });
 
-  it("AS-5/AS-8 serializes imported task assignment before membership removal", async () => {
+  it("P-15: retired POST /api/task/import/{projectId} returns 410 Gone with an assigned-user payload and writes zero tasks", async () => {
     const member = await createWorkspaceMember({ role: "owner" });
     const assignee = await createWorkspaceMember({ role: "owner" });
     await db.insert(schema.workspaceUserTable).values({
@@ -941,46 +744,26 @@ describe("every assignee write path is workspace scoped", () => {
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
-    const [creation, removal] = await raceAssignmentWithMemberRemoval({
-      taskWriteTrigger: "INSERT",
-      assignmentRequest: async () =>
-        app.request(`/api/task/import/${project.id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tasks: [
-              {
-                title: "Imported assignee membership race",
-                status: "to-do",
-                priority: "low",
-                userId: assignee.user.id,
-              },
-            ],
-          }),
-        }),
-      removalRequest: async () =>
-        app.request(
-          `/api/workspace/${member.workspace.id}/members/${assignee.user.id}`,
-          { method: "DELETE" },
-        ),
+    const importResponse = await app.request(`/api/task/import/${project.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tasks: [
+          {
+            title: "Imported assignee membership race",
+            status: "to-do",
+            priority: "low",
+            userId: assignee.user.id,
+          },
+        ],
+      }),
     });
 
-    expect(creation.status).toBe(200);
-    expect(removal.status).toBe(200);
-    expect(await creation.json()).toMatchObject({
-      results: { total: 1, successful: 1, failed: 0 },
-    });
+    expect(importResponse.status).toBe(410);
     const createdTask = await db.query.taskTable.findFirst({
       where: eq(schema.taskTable.projectId, project.id),
     });
-    expect(createdTask?.userId).toBe(assignee.user.id);
-    const membership = await db.query.workspaceUserTable.findFirst({
-      where: and(
-        eq(schema.workspaceUserTable.workspaceId, member.workspace.id),
-        eq(schema.workspaceUserTable.userId, assignee.user.id),
-      ),
-    });
-    expect(membership).toBeUndefined();
+    expect(createdTask).toBeUndefined();
   });
 
   it("fails closed when a member is inserted and removed after the membership check", async () => {
@@ -1096,333 +879,6 @@ describe("every assignee write path is workspace scoped", () => {
       resumeTaskWrite();
       await assignmentOutcome;
       await client.end();
-    }
-  });
-
-  it("publishes one bulk status relation refresh per affected project", async () => {
-    const member = await createWorkspaceMember({ role: "owner" });
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
-    const tasks = await db
-      .insert(schema.taskTable)
-      .values([
-        {
-          projectId: project.id,
-          title: "First status task",
-          description: "",
-          priority: "low",
-          status: "to-do",
-          columnId: columns.todo.id,
-          number: 1,
-          position: 1,
-        },
-        {
-          projectId: project.id,
-          title: "Second status task",
-          description: "",
-          priority: "low",
-          status: "to-do",
-          columnId: columns.todo.id,
-          number: 2,
-          position: 2,
-        },
-      ])
-      .returning();
-
-    mockAuthenticatedSession(member.user);
-    const { app } = createApp();
-    const statusTaskIds: string[] = [];
-    const relationProjectIds: string[] = [];
-    const publishSpy = vi
-      .spyOn(eventBus, "publishEvent")
-      .mockImplementation(async (eventType, data) => {
-        if (typeof data !== "object" || data === null) return;
-        if (
-          eventType === "task.status_changed" &&
-          "taskId" in data &&
-          typeof data.taskId === "string"
-        ) {
-          statusTaskIds.push(data.taskId);
-        }
-        if (
-          eventType === "task-relation.refresh" &&
-          "projectId" in data &&
-          typeof data.projectId === "string"
-        ) {
-          relationProjectIds.push(data.projectId);
-        }
-      });
-
-    try {
-      const response = await app.request("/api/task/bulk", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskIds: tasks.map((task) => task.id),
-          operation: "updateStatus",
-          value: "done",
-        }),
-      });
-
-      expect(response.status).toBe(200);
-      expect(await response.json()).toMatchObject({
-        success: true,
-        updatedCount: 2,
-        results: tasks.map((task) => ({ taskId: task.id, success: true })),
-      });
-      expect(statusTaskIds).toEqual(tasks.map((task) => task.id));
-      expect(relationProjectIds).toEqual([project.id]);
-    } finally {
-      publishSpy.mockRestore();
-    }
-  });
-
-  it("rechecks assignee membership for each item after per-item commits", async () => {
-    const member = await createWorkspaceMember({ role: "owner" });
-    const assignee = await createWorkspaceMember({ role: "owner" });
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
-    await db.insert(schema.workspaceUserTable).values({
-      workspaceId: member.workspace.id,
-      userId: assignee.user.id,
-      role: "member",
-      joinedAt: new Date(),
-    });
-
-    const tasks = await db
-      .insert(schema.taskTable)
-      .values([
-        {
-          projectId: project.id,
-          title: "First bulk task",
-          description: "",
-          priority: "low",
-          status: "to-do",
-          columnId: columns.todo.id,
-          number: 1,
-          position: 1,
-        },
-        {
-          projectId: project.id,
-          title: "Second bulk task",
-          description: "",
-          priority: "low",
-          status: "to-do",
-          columnId: columns.todo.id,
-          number: 2,
-          position: 2,
-        },
-      ])
-      .returning();
-    const firstTask = requireRow([tasks[0]], "first bulk task");
-    const secondTask = requireRow([tasks[1]], "second bulk task");
-
-    mockAuthenticatedSession(member.user);
-    const { app } = createApp();
-    const client = new Client({
-      connectionString: process.env.TASKDESK_DATABASE_URL,
-    });
-    const suffix = randomUUID().replaceAll("-", "");
-    const triggerName = `revoke_bulk_assignee_${suffix}`;
-    const functionName = `${triggerName}_fn`;
-    const publishedTaskIds: string[] = [];
-    const publishSpy = vi
-      .spyOn(eventBus, "publishEvent")
-      .mockImplementation(async (eventType, data) => {
-        if (
-          eventType === "task.assignee_changed" &&
-          typeof data === "object" &&
-          data !== null &&
-          "taskId" in data &&
-          typeof data.taskId === "string"
-        ) {
-          publishedTaskIds.push(data.taskId);
-        }
-      });
-
-    await client.connect();
-    try {
-      await client.query(`
-        CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
-        BEGIN
-          DELETE FROM workspace_member AS membership
-          USING project AS current_project
-          WHERE current_project.id = NEW.project_id
-            AND membership.workspace_id = current_project.workspace_id
-            AND membership.user_id = NEW.assignee_id;
-          RETURN NEW;
-        END;
-        $$
-      `);
-      await client.query(`
-        CREATE TRIGGER ${triggerName}
-        AFTER UPDATE OF assignee_id ON task
-        FOR EACH ROW EXECUTE FUNCTION ${functionName}()
-      `);
-
-      const response = await app.request("/api/task/bulk", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskIds: tasks.map((task) => task.id),
-          operation: "updateAssignee",
-          value: assignee.user.id,
-        }),
-      });
-
-      expect(response.status).toBe(200);
-      expect(await response.json()).toMatchObject({
-        success: true,
-        updatedCount: 1,
-        results: [
-          { taskId: firstTask.id, success: true },
-          {
-            taskId: secondTask.id,
-            success: false,
-            error: "Assignee is not a member of this workspace",
-          },
-        ],
-      });
-
-      const persistedTasks = await db
-        .select({ id: schema.taskTable.id, userId: schema.taskTable.userId })
-        .from(schema.taskTable)
-        .where(eq(schema.taskTable.projectId, project.id))
-        .orderBy(schema.taskTable.number);
-      expect(persistedTasks).toEqual([
-        { id: firstTask.id, userId: assignee.user.id },
-        { id: secondTask.id, userId: null },
-      ]);
-      expect(publishedTaskIds).toEqual([firstTask.id]);
-      expect(
-        await db.query.workspaceUserTable.findFirst({
-          where: and(
-            eq(schema.workspaceUserTable.workspaceId, member.workspace.id),
-            eq(schema.workspaceUserTable.userId, assignee.user.id),
-          ),
-        }),
-      ).toBeUndefined();
-    } finally {
-      await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
-      await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
-      await client.end();
-      publishSpy.mockRestore();
-    }
-  });
-
-  it("publishes item one before a deterministic database failure on item two", async () => {
-    const member = await createWorkspaceMember({ role: "owner" });
-    const assignee = await createWorkspaceMember({ role: "owner" });
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
-    await db.insert(schema.workspaceUserTable).values({
-      workspaceId: member.workspace.id,
-      userId: assignee.user.id,
-      role: "member",
-      joinedAt: new Date(),
-    });
-
-    const tasks = await db
-      .insert(schema.taskTable)
-      .values([
-        {
-          projectId: project.id,
-          title: "First bulk task",
-          description: "",
-          priority: "low",
-          status: "to-do",
-          columnId: columns.todo.id,
-          number: 1,
-          position: 1,
-        },
-        {
-          projectId: project.id,
-          title: "Second bulk task",
-          description: "",
-          priority: "low",
-          status: "to-do",
-          columnId: columns.todo.id,
-          number: 2,
-          position: 2,
-        },
-      ])
-      .returning();
-    const firstTask = requireRow([tasks[0]], "first bulk task");
-    const secondTask = requireRow([tasks[1]], "second bulk task");
-
-    mockAuthenticatedSession(member.user);
-    const { app } = createApp();
-    const client = new Client({
-      connectionString: process.env.TASKDESK_DATABASE_URL,
-    });
-    const suffix = randomUUID().replaceAll("-", "");
-    const triggerName = `fail_second_bulk_task_${suffix}`;
-    const functionName = `${triggerName}_fn`;
-    const publishedTaskIds: string[] = [];
-    const publishSpy = vi
-      .spyOn(eventBus, "publishEvent")
-      .mockImplementation(async (eventType, data) => {
-        if (
-          eventType === "task.assignee_changed" &&
-          typeof data === "object" &&
-          data !== null &&
-          "taskId" in data &&
-          typeof data.taskId === "string"
-        ) {
-          publishedTaskIds.push(data.taskId);
-        }
-      });
-
-    await client.connect();
-    try {
-      await client.query(`
-        CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
-        BEGIN
-          IF NEW.id = '${secondTask.id}' THEN
-            RAISE EXCEPTION 'deterministic second-item failure';
-          END IF;
-          RETURN NEW;
-        END;
-        $$
-      `);
-      await client.query(`
-        CREATE TRIGGER ${triggerName}
-        BEFORE UPDATE OF assignee_id ON task
-        FOR EACH ROW EXECUTE FUNCTION ${functionName}()
-      `);
-
-      const response = await app.request("/api/task/bulk", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskIds: tasks.map((task) => task.id),
-          operation: "updateAssignee",
-          value: assignee.user.id,
-        }),
-      });
-
-      expect(response.status).toBe(500);
-      expect(publishedTaskIds).toEqual([firstTask.id]);
-      const persistedTasks = await db
-        .select({ id: schema.taskTable.id, userId: schema.taskTable.userId })
-        .from(schema.taskTable)
-        .where(eq(schema.taskTable.projectId, project.id))
-        .orderBy(schema.taskTable.number);
-      expect(persistedTasks).toEqual([
-        { id: firstTask.id, userId: assignee.user.id },
-        { id: secondTask.id, userId: null },
-      ]);
-    } finally {
-      await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
-      await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
-      await client.end();
-      publishSpy.mockRestore();
     }
   });
 });

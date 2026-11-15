@@ -182,7 +182,7 @@ describe("TaskDesk API OpenAPI spec", () => {
       "POST /label",
       "GET /project",
       "GET /task/tasks/{projectId}",
-      "PATCH /task/bulk",
+      "POST /work-items/bulk",
       "GET /search",
       "GET /notification",
       "POST /workspace",

@@ -1,7 +1,15 @@
 import { spawn } from "node:child_process";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, open, readFile, rm } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  open,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -112,6 +120,7 @@ export function isDisposableLoopbackBinding(
   return !(
     requestedBindings.length !== 1 ||
     requestedBindings[0]?.HostIp !== "127.0.0.1" ||
+    requestedBindings[0]?.HostPort !== "0" ||
     activeBindings.length !== 1 ||
     active?.HostIp !== "127.0.0.1" ||
     !/^\d+$/u.test(active.HostPort) ||
@@ -120,6 +129,35 @@ export function isDisposableLoopbackBinding(
     Number(active.HostPort) !== mappedPort ||
     !new Set(["127.0.0.1", "localhost"]).has(host)
   );
+}
+
+/** Validate the generated URI against the inspected container before any database write. */
+export function isDisposableDatabaseUrl(
+  value: string,
+  host: string,
+  mappedPort: number,
+  databaseName: string,
+): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      /^mfa_csrf_[0-9a-f]{32}_test$/u.test(databaseName) &&
+      (url.protocol === "postgres:" || url.protocol === "postgresql:") &&
+      url.hostname === host &&
+      (host === "127.0.0.1" || host === "localhost") &&
+      url.port === String(mappedPort) &&
+      mappedPort > 0 &&
+      mappedPort <= 65535 &&
+      mappedPort !== 62870 &&
+      url.pathname === `/${databaseName}` &&
+      url.search === "" &&
+      url.hash === "" &&
+      url.username === "postgres" &&
+      url.password.length > 0
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function assertPostgreSqlLoopbackBinding(
@@ -146,6 +184,76 @@ async function assertPostgreSqlLoopbackBinding(
   }
 }
 
+/** Remove only this fixture's containers and independently verify absence. */
+export async function cleanupDisposableContainers(
+  docker: DockerInspectClient,
+  label: string,
+  createdId: string | undefined,
+  stop: (() => Promise<unknown>) | undefined,
+  record: (id: string) => Promise<void>,
+): Promise<void> {
+  const errors: unknown[] = [];
+  try {
+    await stop?.();
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
+    const matches = await docker.listContainers({
+      all: true,
+      filters: JSON.stringify({
+        label: [`taskdesk.disposable-fixture=${label}`],
+      }),
+    });
+    const ids = new Set(createdId ? [createdId] : []);
+    for (const match of matches) {
+      if (match.Labels["taskdesk.disposable-fixture"] !== label) {
+        errors.push(new Error("Unexpected fixture label"));
+        continue;
+      }
+      ids.add(match.Id);
+      if (match.Id !== createdId) {
+        try {
+          await record(match.Id);
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+    }
+    for (const id of ids) {
+      // The independent listing establishes whether the exact ID still exists.
+      const all = await docker.listContainers({ all: true, filters: "{}" });
+      if (all.some((item) => item.Id === id)) {
+        try {
+          await docker.getContainer(id).remove({ force: true, v: true });
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+    }
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
+    const remaining = await docker.listContainers({ all: true, filters: "{}" });
+    if (
+      remaining.some(
+        (item) =>
+          item.Id === createdId ||
+          item.Labels["taskdesk.disposable-fixture"] === label,
+      )
+    )
+      errors.push(new Error("Fixture container remains after teardown"));
+  } catch (error) {
+    errors.push(error);
+  }
+  if (errors.length)
+    throw new AggregateError(
+      errors,
+      "Fixture container teardown could not be confirmed cleanly.",
+    );
+}
+
 export type MfaCsrfAppFixture = {
   /** Private first-run link; never log or attach it. */
   setupUrl: string;
@@ -157,7 +265,11 @@ export type MfaCsrfAppFixture = {
   /** Private runtime directory; removed after teardown when child output is discarded. */
   fixtureDir: string;
   /** Starts a child that the fixture supervisor will terminate on worker death. */
-  spawnChild: SupervisedProcessManager["spawn"];
+  spawnChild: (
+    command: string,
+    args: string[],
+    logPrefix: string,
+  ) => Promise<SupervisedChild>;
 };
 
 export type MfaCsrfAppFixtureSetup = Pick<
@@ -201,6 +313,34 @@ type SupervisedChildState = {
   >;
 };
 
+const DISPOSABLE_CHILD_ENV = new Set([
+  "PATH",
+  "NODE_ENV",
+  "TASKDESK_AUTH_SECRET",
+  "TASKDESK_ENCRYPTION_KEY",
+  "TASKDESK_ENCRYPTION_KEY_PREVIOUS",
+  "TASKDESK_AGENT_URL",
+  "TASKDESK_PORTAL_URL",
+  "KANEO_API_URL",
+  "TASKDESK_BOOTSTRAP_ADMIN_EMAIL",
+  "TASKDESK_DATABASE_URL",
+  "TASKDESK_MIGRATION_DATABASE_URL",
+  "TASKDESK_ROLE",
+  "TASKDESK_PORT",
+  "TASKDESK_STORAGE_DRIVER",
+  "TASKDESK_STORAGE_FILESYSTEM_ROOT",
+  "DISABLE_REGISTRATION",
+  "DISABLE_PASSWORD_REGISTRATION",
+  "DISABLE_EMAIL_OTP_SIGN_IN",
+  "DISABLE_LOGIN_FORM",
+  "DEMO_MODE",
+]);
+export function disposableChildEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(env).filter(([key]) => DISPOSABLE_CHILD_ENV.has(key)),
+  );
+}
+
 class FixtureProcessSupervisor implements SupervisedProcessManager {
   private readonly child: ReturnType<typeof spawn>;
   private readonly children = new Map<string, SupervisedChildState>();
@@ -209,6 +349,7 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
   private readonly ready: Promise<void>;
   private readonly onLockContention?: () => void;
   private readonly discardChildOutput: boolean;
+  private readonly isolateChildren: boolean;
 
   private constructor(
     ready: Promise<void>,
@@ -217,7 +358,9 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
     pollMs: number,
     onLockContention?: () => void,
     discardChildOutput = false,
+    isolateChildren = false,
   ) {
+    this.isolateChildren = isolateChildren;
     this.discardChildOutput = discardChildOutput;
     this.ready = ready;
     this.onLockContention = onLockContention;
@@ -261,12 +404,14 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
     pollMs = 100,
     onLockContention,
     discardChildOutput = false,
+    isolateChildren = false,
   }: {
     lockPath?: string;
     waitMs?: number;
     pollMs?: number;
     onLockContention?: () => void;
     discardChildOutput?: boolean;
+    isolateChildren?: boolean;
   } = {}) {
     let resolveReady!: () => void;
     let rejectReady!: (error: Error) => void;
@@ -281,6 +426,7 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
       pollMs,
       onLockContention,
       discardChildOutput,
+      isolateChildren,
     );
     supervisor.child.on("message", (raw: unknown) => {
       if (!raw || typeof raw !== "object") return;
@@ -334,8 +480,8 @@ class FixtureProcessSupervisor implements SupervisedProcessManager {
       id,
       command,
       args,
-      cwd: repoRoot,
-      env,
+      cwd: this.isolateChildren ? evidenceDir : repoRoot,
+      env: this.isolateChildren ? disposableChildEnv(env) : env,
       evidenceDir,
       logPrefix,
       discardChildOutput: this.discardChildOutput,
@@ -611,6 +757,7 @@ export async function withMfaCsrfApp<T>(
 
   const supervisor = await FixtureProcessSupervisor.start({
     discardChildOutput: options.discardChildOutput,
+    isolateChildren: true,
   });
   const cleanup: { directory?: string; teardownComplete: boolean } = {
     teardownComplete: false,
@@ -635,6 +782,7 @@ export async function withMfaCsrfApp<T>(
   }
   if (
     supervisorClosed &&
+    primary.status === "fulfilled" &&
     options.discardChildOutput &&
     cleanup.teardownComplete &&
     cleanup.directory
@@ -669,6 +817,7 @@ async function runMfaCsrfApp<T>(
   cleanup: { directory?: string; teardownComplete: boolean },
 ): Promise<T> {
   let container: PostgreSqlContainerInstance | undefined;
+  let createdContainerId: string | undefined;
   const fixtureLabel = randomUUID();
   let apiProcess: SupervisedChild | undefined;
   let evidenceDir: string | undefined;
@@ -677,19 +826,32 @@ async function runMfaCsrfApp<T>(
       evidenceDir = await mkdtemp(resolve(tmpdir(), "td-mfa-csrf-"));
       cleanup.directory = evidenceDir;
       await chmod(evidenceDir, 0o700);
+      // dotenv-mono searches upward from cwd for both files. Empty local files stop
+      // that search before it can load repository or host configuration.
+      await writeFile(resolve(evidenceDir, ".env"), "", { mode: 0o600 });
+      await writeFile(resolve(evidenceDir, ".env.defaults"), "", {
+        mode: 0o600,
+      });
       // The filesystem storage driver defaults to the Docker volume path /app/data/attachments,
       // which does not exist for a host-run API; every attachment PUT would fail with 400
       // "Upload failed." Give this private fixture its own writable root.
       const storageRoot = resolve(evidenceDir, "attachments");
       await mkdir(storageRoot, { recursive: true });
       const databaseName = `mfa_csrf_${randomUUID().replaceAll("-", "")}_test`;
+      const ownership = fixtureOwnershipJournal(
+        resolve(evidenceDir, "container-ownership.jsonl"),
+      );
+      await ownership.onContainerIntent(fixtureLabel);
       const postgres = new LoopbackPostgreSqlContainer(
         "postgres:18-alpine",
         options.discardChildOutput === true,
         async (id) => {
+          createdContainerId = id;
+          await ownership.onContainerCreated(id);
           await options.onContainerCreated?.(id);
         },
       )
+        .withAutoCleanup(false)
         .withLabels({ "taskdesk.disposable-fixture": fixtureLabel })
         .withDatabase(databaseName)
         .withUsername("postgres")
@@ -699,6 +861,19 @@ async function runMfaCsrfApp<T>(
       await assertPostgreSqlLoopbackBinding(container);
 
       const migrationUrl = container.getConnectionUri();
+      if (
+        container.getId() !== createdContainerId ||
+        !isDisposableDatabaseUrl(
+          migrationUrl,
+          container.getHost(),
+          container.getMappedPort(5432),
+          databaseName,
+        )
+      ) {
+        throw new Error(
+          "Disposable PostgreSQL URL does not match the fresh container binding.",
+        );
+      }
       const appUrl = new URL(migrationUrl);
       appUrl.username = "taskdesk_e2e_app";
       appUrl.password = randomPassword();
@@ -712,7 +887,8 @@ async function runMfaCsrfApp<T>(
       const password = randomPassword();
       const secret = randomBytes(48).toString("base64url");
       const bootstrapEnv: NodeJS.ProcessEnv = {
-        ...process.env,
+        // Do not inherit external integration endpoints, credentials, or database overrides.
+        PATH: process.env.PATH,
         NODE_ENV: "test",
         TASKDESK_AUTH_SECRET: secret,
         TASKDESK_ENCRYPTION_KEY: randomBytes(32).toString("hex"),
@@ -732,26 +908,6 @@ async function runMfaCsrfApp<T>(
           : "true",
         DISABLE_LOGIN_FORM: "false",
         DEMO_MODE: "false",
-        SMTP_HOST: "",
-        SMTP_PORT: "",
-        SMTP_SECURE: "",
-        SMTP_USER: "",
-        SMTP_PASSWORD: "",
-        GITHUB_OAUTH_CLIENT_ID: "",
-        GITHUB_OAUTH_CLIENT_SECRET: "",
-        GOOGLE_CLIENT_ID: "",
-        GOOGLE_CLIENT_SECRET: "",
-        DISCORD_CLIENT_ID: "",
-        DISCORD_CLIENT_SECRET: "",
-        CUSTOM_OAUTH_CLIENT_ID: "",
-        CUSTOM_OAUTH_CLIENT_SECRET: "",
-        CUSTOM_OAUTH_AUTHORIZATION_URL: "",
-        CUSTOM_OAUTH_TOKEN_URL: "",
-        CUSTOM_OAUTH_USER_INFO_URL: "",
-        CUSTOM_OAUTH_SCOPES: "",
-        CUSTOM_OAUTH_RESPONSE_TYPE: "",
-        CUSTOM_OAUTH_DISCOVERY_URL: "",
-        CUSTOM_OAUTH_AUTO_LOGIN: "",
       };
 
       await runMigration(
@@ -761,11 +917,28 @@ async function runMfaCsrfApp<T>(
         evidenceDir,
         supervisor,
       );
+      const spawnFixtureChild: MfaCsrfAppFixture["spawnChild"] = (
+        command,
+        args,
+        logPrefix,
+      ) =>
+        supervisor.spawn(
+          command,
+          args,
+          {
+            ...bootstrapEnv,
+            TASKDESK_ROLE: "web",
+            TASKDESK_DATABASE_URL: applicationUrl,
+            TASKDESK_MIGRATION_DATABASE_URL: undefined,
+          },
+          logPrefix,
+          dirname(storageRoot),
+        );
       await options.beforeStart?.({
         databaseUrl: applicationUrl,
         fixtureDir: evidenceDir,
         origin,
-        spawnChild: supervisor.spawn.bind(supervisor),
+        spawnChild: spawnFixtureChild,
       });
       const apiEntrypointUrl = pathToFileURL(apiEntrypoint).href;
       const setupTokenPath = resolve(evidenceDir, "setup-token");
@@ -825,7 +998,7 @@ async function runMfaCsrfApp<T>(
         password,
         databaseUrl: applicationUrl,
         fixtureDir: evidenceDir,
-        spawnChild: supervisor.spawn.bind(supervisor),
+        spawnChild: spawnFixtureChild,
       });
     })(),
   ]);
@@ -836,31 +1009,26 @@ async function runMfaCsrfApp<T>(
     teardownFailed = true;
   }
   try {
-    if (container) {
-      await container.stop();
-    } else {
-      // A start can fail even before containerCreated runs. The random per-run label
-      // identifies only containers created for this fixture; remove each by exact id.
-      const testcontainersRequire = createRequire(
-        apiPackageRequire.resolve("testcontainers"),
-      );
-      const Docker = testcontainersRequire(
-        "dockerode",
-      ) as DockerInspectConstructor;
-      const docker = new Docker();
-      const matches = await docker.listContainers({
-        all: true,
-        filters: JSON.stringify({
-          label: [`taskdesk.disposable-fixture=${fixtureLabel}`],
-        }),
-      });
-      for (const match of matches) {
-        if (match.Labels["taskdesk.disposable-fixture"] !== fixtureLabel)
-          throw new Error("Unexpected fixture label");
-        await options.onContainerCreated?.(match.Id);
-        await docker.getContainer(match.Id).remove({ force: true, v: true });
-      }
-    }
+    const testcontainersRequire = createRequire(
+      apiPackageRequire.resolve("testcontainers"),
+    );
+    const Docker = testcontainersRequire(
+      "dockerode",
+    ) as DockerInspectConstructor;
+    const docker = new Docker();
+    await cleanupDisposableContainers(
+      docker,
+      fixtureLabel,
+      createdContainerId,
+      container ? container.stop.bind(container) : undefined,
+      async (id) => {
+        if (evidenceDir)
+          await fixtureOwnershipJournal(
+            resolve(evidenceDir, "container-ownership.jsonl"),
+          ).onContainerCreated(id);
+        await options.onContainerCreated?.(id);
+      },
+    );
   } catch {
     teardownFailed = true;
   }

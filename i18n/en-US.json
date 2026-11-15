@@ -6923,6 +6923,74 @@
 			"close": "Close",
 			"submit": "Start rotation",
 			"jobs": "View rotation runs"
+		},
+		"legalHolds": {
+			"title": "Legal holds",
+			"description": "Preservation holds block scheduled retention purges, right-to-erasure anonymisation, and hard purges for held organisations and people.",
+			"activeBadge": "Active legal holds: {{count}}",
+			"filterLabel": "Filter legal holds by status",
+			"placeAction": "Place legal hold",
+			"liftAction": "Lift hold",
+			"tableLabel": "Instance legal holds",
+			"emptyTitle": "No legal holds recorded",
+			"emptyDescription": "No active or historical preservation holds match the selected filter.",
+			"loadErrorTitle": "Legal holds could not be loaded",
+			"loadErrorDescription": "Try again to inspect active and historical preservation holds.",
+			"filters": {
+				"all": "All holds",
+				"active": "Active only",
+				"lifted": "Lifted only"
+			},
+			"scopes": {
+				"organisation": "Organisation",
+				"person": "Person"
+			},
+			"statuses": {
+				"active": "Active",
+				"lifted": "Lifted"
+			},
+			"columns": {
+				"target": "Target",
+				"scope": "Scope",
+				"reason": "Reason",
+				"placed": "Placed",
+				"status": "Status",
+				"actions": "Actions"
+			},
+			"place": {
+				"title": "Place legal hold",
+				"description": "Preserve records for an organisation or person. Purges and erasure requests for the held scope are suspended while the hold remains active.",
+				"scopeLabel": "Hold scope",
+				"pickOrganisation": "Select organisation",
+				"pickPerson": "Select person",
+				"pickPlaceholder": "Choose from directory…",
+				"organisationIdLabel": "Organisation ID",
+				"personIdLabel": "Person or user ID",
+				"organisationIdPlaceholder": "Enter organisation ID",
+				"personIdPlaceholder": "Enter person or user ID",
+				"reasonLabel": "Preservation reason",
+				"reasonPlaceholder": "Document the matter, legal reference, or preservation notice…",
+				"cancel": "Cancel",
+				"close": "Close",
+				"submit": "Place hold",
+				"errorTitle": "Could not place legal hold",
+				"errorNotFound": "The specified organisation or person does not exist.",
+				"errorConflict": "An active legal hold already exists for this target.",
+				"errorGeneric": "The legal hold could not be saved. Try again."
+			},
+			"lift": {
+				"title": "Lift legal hold",
+				"description": "Lifting the hold on {{target}} allows normal retention windows and approved purges to resume.",
+				"reasonLabel": "Lift note (optional)",
+				"reasonPlaceholder": "Optional reference or closure note for the audit trail…",
+				"cancel": "Cancel",
+				"close": "Close",
+				"submit": "Lift legal hold",
+				"errorTitle": "Could not lift legal hold",
+				"errorAlreadyLifted": "This legal hold has already been lifted.",
+				"errorGeneric": "The legal hold could not be lifted. Try again."
+			},
+			"unavailableBadge": "Legal hold status unavailable"
 		}
 	},
 	"roles": {
@@ -9757,15 +9825,21 @@
 	},
 	"godModePlugins": {
 		"title": "Plugins",
-		"description": "Review the instance plugins with supported runtime configuration.",
+		"description": "Review optional outbound integrations and subprocessors configured on this instance.",
 		"forbiddenTitle": "Instance administrators only",
 		"forbiddenDescription": "You need instance administration access to view plugin configuration.",
 		"loadErrorTitle": "Plugins could not be loaded",
 		"loadErrorDescription": "Try again. Internal provider details are withheld from this view.",
 		"retry": "Try again",
 		"checkedAt": "Updated {{when}}",
+		"subprocessorsTitle": "Subprocessor & outbound integration register",
+		"subprocessorsActiveCount": "Active outbound integrations: {{count}}",
+		"subprocessorsDescription": "No external subprocessors are active by default. Optional outbound integrations transmit data only when enabled below.",
 		"kinds": {
-			"notification": "Notification"
+			"notification": "Notification",
+			"storage": "Object storage",
+			"identity": "Identity & provisioning",
+			"observability": "Observability & telemetry"
 		},
 		"states": {
 			"unconfigured": "Unconfigured",
@@ -9779,8 +9853,12 @@
 			"unconfigured": "No configuration"
 		},
 		"source": "Source: {{source}}",
+		"destination": "Outbound status: {{value}}",
+		"dataProcessed": "Data processed: {{value}}",
 		"credentialConfigured": "SMTP credential is configured.",
 		"credentialNotConfigured": "No SMTP credential is configured.",
+		"subprocessorCredentialConfigured": "Integration credentials are configured.",
+		"subprocessorCredentialNotConfigured": "No external credentials are configured.",
 		"healthNotRecorded": "Last health-check result is unavailable.",
 		"manageSettings": "Manage settings"
 	},

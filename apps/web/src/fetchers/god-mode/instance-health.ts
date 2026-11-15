@@ -14,6 +14,10 @@ export type InstanceHealth = {
   checkedAt: string;
   state: HealthState;
   checks: HealthCheck[];
+  legalHolds?: {
+    state: "ok" | "unknown";
+    activeCount: number | null;
+  };
 };
 
 export async function getInstanceHealth(): Promise<InstanceHealth> {

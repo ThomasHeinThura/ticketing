@@ -99,6 +99,7 @@ import {
   impersonationMayCallAuthEndpoint,
 } from "./instance/impersonation/guard";
 import instanceJobs from "./instance/jobs";
+import instanceLegalHolds from "./instance/legal-holds";
 import localFactorPolicy from "./instance/local-factor-policy";
 import instanceMcpUsage from "./instance/mcp-usage";
 import observability from "./instance/observability";
@@ -187,7 +188,6 @@ import {
   runNextWithPolicyShadow,
 } from "./permissions/shadow-middleware";
 import { installStrictPolicyRegistration } from "./permissions/strict-route-registration";
-import { initializePlugins } from "./plugins";
 // Importing this constructs and validates the registry at module load, so an invalid policy
 // refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
 // the bundler drops it and the check silently stops running.
@@ -2489,6 +2489,7 @@ export function createApp(
   const accountLinkApi = api.route("/me", accountLinkRouter);
   const instancePluginsApi = api.route("/instance", instancePlugins);
   const instanceHealthApi = api.route("/instance", instanceHealth);
+  const instanceLegalHoldsApi = api.route("/instance", instanceLegalHolds);
   const instanceSettingsApi = api.route("/instance", instanceSettings);
   const organisationCustomerVisibilityApi = api.route(
     "/instance",
@@ -2860,6 +2861,7 @@ export function createApp(
     publicCspReportApi,
     instancePluginsApi,
     instanceHealthApi,
+    instanceLegalHoldsApi,
     instanceSettingsApi,
     organisationCustomerVisibilityApi,
     combinedWorkItemApi,
@@ -3094,7 +3096,6 @@ export async function runApiBootTasks(
   // instance_setting.setup_completed_at is set.
   if (roleOwnsHttp(role)) await ensureSetupToken();
 
-  initializePlugins();
   if (roleOwnsHttp(role)) await purgeExpiredCustomerInvitationEnvelopes();
   initializeScheduler(role);
   // Jobs replicas publish outbox and control-plane messages through this adapter even though
@@ -3416,6 +3417,7 @@ const {
   publicCspReportApi,
   instancePluginsApi,
   instanceHealthApi,
+  instanceLegalHoldsApi,
   instanceSettingsApi,
   organisationCustomerVisibilityApi,
   combinedWorkItemApi,
@@ -3586,6 +3588,7 @@ export type AppType =
   | typeof publicCspReportApi
   | typeof instancePluginsApi
   | typeof instanceHealthApi
+  | typeof instanceLegalHoldsApi
   | typeof instanceSettingsApi
   | typeof organisationCustomerVisibilityApi
   | typeof combinedWorkItemApi

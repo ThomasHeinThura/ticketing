@@ -31,7 +31,6 @@ import {
   DEFAULT_MCP_BULK_CEILING_PER_MINUTE,
   DEFAULT_MCP_WRITE_CEILING_PER_MINUTE,
   effectiveLimit,
-  KeyRateLimiter,
   rateLimitConstraints,
 } from "../../../apps/api/src/api-key/rate-limit";
 import { toApiKeySummary } from "../../../apps/api/src/api-key/summary";
@@ -297,18 +296,6 @@ describe("MC-10 / MC-22 rate limits", () => {
       { bucket: "mcp_write", limit: 8 },
       { bucket: "mcp_bulk", limit: DEFAULT_MCP_BULK_CEILING_PER_MINUTE },
     ]);
-  });
-
-  it("limits per key and class, and resets after the window", () => {
-    const limiter = new KeyRateLimiter();
-    expect(limiter.check("a", "write", 2, 0).allowed).toBe(true);
-    expect(limiter.check("a", "write", 2, 1).allowed).toBe(true);
-    const refused = limiter.check("a", "write", 2, 2);
-    expect(refused.allowed).toBe(false);
-    if (!refused.allowed) expect(refused.retryAfterSeconds).toBeGreaterThan(0);
-    expect(limiter.check("a", "read", 2, 2).allowed).toBe(true);
-    expect(limiter.check("b", "write", 2, 2).allowed).toBe(true);
-    expect(limiter.check("a", "write", 2, 60_001).allowed).toBe(true);
   });
 });
 

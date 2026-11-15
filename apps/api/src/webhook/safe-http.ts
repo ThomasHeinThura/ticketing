@@ -66,35 +66,11 @@ function ipv4Octets(ip: string): [number, number, number, number] | null {
 }
 
 /**
- * The shared private/loopback/link-local/CGNAT guard plus the ranges a webhook must also never
- * reach: multicast and reserved space, 192.0.0.0/24, benchmarking 198.18.0.0/15, the broadcast
- * address, IPv6 multicast, site-local, and the NAT64 prefix (which tunnels to IPv4).
+ * The shared private/loopback/link-local/CGNAT/multicast/reserved/NAT64 SSRF guard
+ * (`utils/assert-public-destination.ts`).
  */
 export function isForbiddenWebhookAddress(address: string): boolean {
-  const bare = address.replace(/^\[|\]$/g, "").toLowerCase();
-  if (isDisallowedAddress(bare)) return true;
-  const version = net.isIP(bare);
-  if (version === 4) {
-    const octets = ipv4Octets(bare);
-    if (!octets) return true;
-    const [a, b, c] = octets;
-    return (
-      a >= 224 ||
-      (a === 192 && b === 0 && c === 0) ||
-      (a === 198 && (b === 18 || b === 19))
-    );
-  }
-  if (version === 6) {
-    return (
-      bare.startsWith("ff") ||
-      bare.startsWith("fec") ||
-      bare.startsWith("fed") ||
-      bare.startsWith("fee") ||
-      bare.startsWith("fef") ||
-      bare.startsWith("64:ff9b:")
-    );
-  }
-  return false;
+  return isDisallowedAddress(address);
 }
 
 /**
