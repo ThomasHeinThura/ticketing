@@ -113,6 +113,7 @@ describe("filesystem storage driver", () => {
       ...context,
       filename: "photo.png",
       contentType: "image/png",
+      size: 64,
     });
 
     const url = new URL(upload.uploadUrl);
@@ -152,6 +153,7 @@ describe("filesystem storage driver", () => {
       ...context,
       filename: "photo.png",
       contentType: "image/png",
+      size: 64,
     });
     const url = new URL(upload.uploadUrl);
     const expires = url.searchParams.get("expires") as string;
@@ -447,6 +449,7 @@ describe("filesystem storage driver", () => {
       ...context,
       filename: "photo.png",
       contentType: "image/png",
+      size: 64,
     });
     expect(
       upload.uploadUrl.startsWith(
@@ -460,6 +463,7 @@ describe("filesystem storage driver", () => {
       ...context,
       filename: "photo.png",
       contentType: "image/png",
+      size: 64,
       apiBaseUrl: "https://ticket.example.com/api",
     });
     expect(
@@ -467,6 +471,37 @@ describe("filesystem storage driver", () => {
         "https://ticket.example.com/api/storage/filesystem-upload?",
       ),
     ).toBe(true);
+  });
+
+  it("enforces the declared size signed into the upload token and rejects tampered size prefixes", async () => {
+    const upload = await createTaskImageUploadUrl({
+      ...context,
+      filename: "small.png",
+      contentType: "image/png",
+      size: 16,
+    });
+    const url = new URL(upload.uploadUrl);
+    const expires = url.searchParams.get("expires") as string;
+    const token = url.searchParams.get("token") as string;
+
+    await expect(
+      writeUploadedObject({
+        key: upload.key,
+        expires,
+        token,
+        body: bodyFrom("0123456789abcdefX"),
+      }),
+    ).rejects.toThrow("Upload exceeds the maximum upload size of 16 bytes.");
+
+    const tamperedToken = `1024.${token.split(".")[1]}`;
+    await expect(
+      writeUploadedObject({
+        key: upload.key,
+        expires,
+        token: tamperedToken,
+        body: bodyFrom("0123456789abcdefX"),
+      }),
+    ).rejects.toThrow("Invalid or missing upload token.");
   });
 
   it("requires TASKDESK_AUTH_SECRET to mint an upload token", async () => {
@@ -477,6 +512,7 @@ describe("filesystem storage driver", () => {
         ...context,
         filename: "photo.png",
         contentType: "image/png",
+        size: 64,
       }),
     ).rejects.toThrow(/TASKDESK_AUTH_SECRET/);
   });

@@ -3,7 +3,6 @@ import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import requestTaskDeletion from "@/fetchers/task/delete-task";
-import useProjectStore from "@/store/project";
 import type Task from "@/types/task";
 import { useDeleteTask } from "./use-delete-task";
 
@@ -73,12 +72,10 @@ beforeEach(() => {
     },
   });
   vi.clearAllMocks();
-  useProjectStore.getState().setProject(undefined);
 });
 
 afterEach(() => {
   queryClient.clear();
-  useProjectStore.getState().setProject(undefined);
 });
 
 describe("useDeleteTask", () => {
@@ -87,7 +84,6 @@ describe("useDeleteTask", () => {
     const task = makeTask("delete-me");
     queryClient.setQueryData(["tasks", project.id], project);
     queryClient.setQueryData(["task", task.id], task);
-    useProjectStore.getState().setProject(project);
     vi.mocked(requestTaskDeletion).mockResolvedValue({
       pendingActionId: "pa-1",
     });
@@ -103,15 +99,13 @@ describe("useDeleteTask", () => {
     expect(requested).toEqual({ pendingActionId: "pa-1" });
     expect(queryClient.getQueryData(["tasks", project.id])).toEqual(project);
     expect(queryClient.getQueryData(["task", task.id])).toEqual(task);
-    expect(useProjectStore.getState().project).toEqual(project);
   });
 
-  it("leaves query and project-store state unchanged when the request fails", async () => {
+  it("leaves query state unchanged when the request fails", async () => {
     const project = makeProject();
     const task = makeTask("delete-me");
     queryClient.setQueryData(["tasks", project.id], project);
     queryClient.setQueryData(["task", task.id], task);
-    useProjectStore.getState().setProject(project);
     vi.mocked(requestTaskDeletion).mockRejectedValue(
       new Error("Delete failed"),
     );
@@ -126,6 +120,5 @@ describe("useDeleteTask", () => {
 
     expect(queryClient.getQueryData(["tasks", project.id])).toEqual(project);
     expect(queryClient.getQueryData(["task", task.id])).toEqual(task);
-    expect(useProjectStore.getState().project).toEqual(project);
   });
 });

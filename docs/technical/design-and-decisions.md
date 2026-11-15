@@ -3781,3 +3781,15 @@ authority. Resolved age comes from transition activity entering the completed ca
 the existing resolved timestamp belongs to SLA effects. No migration or dependency is needed.
 Scheduled candidates share the existing executor and fail-closed permission/loop checks; sweeps
 use durable cursors and skip missed cron windows. Browser and deployed acceptance remain gates.
+
+## Historical 8 Nov 2026 owner decisions
+
+> Historical 8 Nov 2026 review record. Where items conflict with 12 Nov 2026 owner decisions in `docs/plan.md` (`D-A..D-P`, including frozen report-only G11 under `D-I` and `After UAT` deferrals), `docs/plan.md` takes precedence.
+
+| ID | Decision |
+| --- | --- |
+| A8-2 | Archive and unarchive require `project:archive`. Board columns and workflow rules require `project:manage_settings`. Leads lose both until a role grants them. |
+| A8-8 | Additive UAT seed data is approved (second Contoso engagement with only agent2, one cycle, module, saved view, custom field, webhook, announcement and report export). No reseed and no edit of existing records. The live KB article "Reset your password" may be reworded so it no longer mentions a Forgot password control. |
+| A8-9 | Enforce Content-Security-Policy. Order: read the collected reports, enforce on local SIT, browser smoke on both hosts, then <environment> with a rollback ready. |
+| A8-11 | Record `deepmerge` (low, production, unreachable, no fix) as an accepted risk. `glob` and `minimatch` (dev/test only) are fixed through upstream upgrades or `pnpm` overrides of existing packages. No new package is added; #1058 stays open until a new transitive package is separately approved. |
+| A8-12 | Superseded by 12 Nov `D-G` / `C-2`: SES password recovery is in UAT scope; see `docs/plan.md`. |

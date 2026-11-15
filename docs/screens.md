@@ -56,7 +56,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Profile — general | `/dashboard/settings/account/information` | route | P1 | 🟡 |
 | Profile — appearance | `/dashboard/settings/account/preferences` | route | P1 | 🟡 |
 | Profile — notifications | `/dashboard/settings/account/notifications` | route | P4 | 🟡 |
-| Profile — security & sessions | `/dashboard/settings/account/security` | route | P3 | ⬜ |
+| Profile — security & sessions | `/dashboard/settings/account/security` | route | P3 | 🟡 |
 | Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/dashboard/settings/account/pending-actions` | route | P4 | 🟡 |
 | Profile — pending action detail | `/dashboard/settings/account/pending-actions/{id}` | route | P4 | 🟡 |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |

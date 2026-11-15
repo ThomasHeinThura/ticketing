@@ -62,6 +62,13 @@ vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
   >()),
   getOrganisationIdentityConnection: (...args: unknown[]) =>
     mocks.read(...args),
+  getOidcGroupMappings: async () => ({ data: [], configVersion: 7 }),
+  getOidcMappingOptions: async () => ({
+    kind: "customer",
+    target: null,
+    role: null,
+    nextCursor: null,
+  }),
   getScimAdminSettings: () => new Promise(() => {}),
   getIdentityConnectionEvents: () => new Promise(() => {}),
 }));
@@ -165,5 +172,12 @@ describe("Organisation Identity tab (CP-17, IP-5)", () => {
     expect(mocks.read).not.toHaveBeenCalled();
     expect(mocks.visibilityRead).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Connection name")).toBeNull();
+  });
+  it("renders the OIDC groups tab", async () => {
+    mocks.search = { tab: "groups" };
+    renderWithQuery(<Component />);
+    expect(
+      await screen.findByRole("heading", { name: "OIDC group mappings" }),
+    ).toBeInTheDocument();
   });
 });

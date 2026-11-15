@@ -3903,7 +3903,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "表示"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3923,7 +3924,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "サポートチームからの承認リクエストがここに表示されます。"
+			"emptyDescription": "サポートチームからの承認リクエストがここに表示されます。",
+			"state": {
+				"pending": "承認待ち",
+				"approved": "承認済み",
+				"rejected": "却下",
+				"expired": "期限切れ",
+				"withdrawn": "取り下げ済み"
+			}
 		},
 		"unavailable": {
 			"title": "カスタマーポータルは利用できません",
@@ -5364,6 +5372,18 @@
 		"emptySubmissionsDescription": "No submissions match this saved view."
 	},
 	"identityConnections": {
+		"oidcGroups": {
+			"title": "OIDC group mappings",
+			"description": "Map Entra group membership from sign-in to an eligible role and scope.",
+			"externalIdHelp": "Enter the Entra group object UUID.",
+			"evidenceNote": "Changes require fresh verification and are audited. Disabling a mapping retires its grants.",
+			"loading": "Loading OIDC group mappings…",
+			"loadFailed": "OIDC group mappings could not be loaded.",
+			"notSaved": "OIDC group mapping was not saved.",
+			"empty": "No OIDC group mappings are configured.",
+			"invalidExternalId": "Enter a valid Entra group object UUID.",
+			"organisation": "Organisation"
+		},
 		"common": {
 			"reload": "Reload latest settings",
 			"retry": "Retry",

@@ -1207,9 +1207,7 @@ const routes = apiRouter()
       const targetIsValid =
         Boolean(scopeId && roleId) &&
         !(
-          connection.portalScope === "customer" &&
-          !creating &&
-          request.scopeId !== undefined
+          connection.portalScope === "customer" && request.scopeId !== undefined
         ) &&
         (await db.transaction((tx) =>
           validateOidcMappingRole(tx, {
@@ -1796,9 +1794,7 @@ const routes = apiRouter()
       const targetIsValid =
         Boolean(scopeId && roleId) &&
         !(
-          connection.portalScope === "customer" &&
-          !creating &&
-          request.scopeId !== undefined
+          connection.portalScope === "customer" && request.scopeId !== undefined
         ) &&
         (await db.transaction((tx) =>
           validateOidcMappingRole(tx, {

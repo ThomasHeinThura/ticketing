@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { and, count, eq, isNull } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import {
   EXTENSION_MIME_TYPES,
   isMimeTypeAllowedForExtension,
@@ -9,6 +10,7 @@ import {
   findAttachmentWorkspaceOrganisation,
   getAttachmentSettings,
 } from "../../attachment/repository";
+import { assertOrganisationStorageQuota } from "../../attachment/storage-quota";
 import db, { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
 import {
@@ -325,8 +327,11 @@ async function processOne(
       return result;
     }
     return "written";
-  } catch {
+  } catch (error) {
     await dependencies.remove(objectKey).catch(() => {});
+    if (error instanceof HTTPException && error.status === 429) {
+      return loss("attachment_limit_reached");
+    }
     return loss("attachment_storage_unavailable");
   }
 }
@@ -386,6 +391,10 @@ async function insertAttachment(
   });
   if (claim.conflict) return "conflict";
   if (!claim.claimed) return "duplicate";
+  await assertOrganisationStorageQuota(tx, {
+    workspaceId: job.workspaceId,
+    additionalBytes: stored.size,
+  });
   await tx.insert(schema.attachmentTable).values({
     id: stored.attachmentId,
     workspaceId: job.workspaceId,

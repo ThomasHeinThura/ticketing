@@ -16,7 +16,7 @@
  * row), AND the row it would have changed is byte-for-byte unchanged. A 404 alone would
  * also be produced by a route that rejected the request for an unrelated reason.
  */
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { asc, eq } from "drizzle-orm";
@@ -639,6 +639,9 @@ describe("API integration: a soft-deleted project is frozen (#202)", () => {
       if (!payload.key) {
         throw new Error("upload route returned no key");
       }
+      const targetPath = path.join(root, payload.key);
+      await mkdir(path.dirname(targetPath), { recursive: true });
+      await writeFile(targetPath, Buffer.alloc(uploadBody.size, 0x41));
       return payload.key;
     }
 

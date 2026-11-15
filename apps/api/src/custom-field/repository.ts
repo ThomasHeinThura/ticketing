@@ -318,10 +318,10 @@ async function materialize(
 
 export async function listFields(
   workspaceId: string,
-  options: { includeDeleted?: boolean } = {},
+  options: { includeDeleted?: boolean; lock?: "share" | "update" } = {},
   executor: Executor = db,
 ): Promise<MaterializedField[]> {
-  const rows = await executor
+  const query = executor
     .select()
     .from(customFieldTable)
     .where(
@@ -330,7 +330,12 @@ export async function listFields(
         options.includeDeleted ? undefined : isNull(customFieldTable.deletedAt),
       ),
     )
-    .orderBy(asc(customFieldTable.position), asc(customFieldTable.id));
+    .orderBy(
+      options.lock ? asc(customFieldTable.id) : asc(customFieldTable.position),
+      asc(customFieldTable.id),
+    );
+  const rows = options.lock ? await query.for(options.lock) : await query;
+  if (options.lock) rows.sort((a, b) => a.position - b.position);
   return materialize(executor, rows);
 }
 
@@ -487,7 +492,7 @@ export async function createField(input: CreateFieldInput) {
 
       const existing = await listFields(
         input.workspaceId,
-        { includeDeleted: true },
+        { includeDeleted: true, lock: "share" },
         tx,
       );
       let condition: VisibilityCondition | null = null;
@@ -565,6 +570,10 @@ export async function updateField(
   actor: CustomFieldActor,
 ) {
   return db.transaction(async (tx) => {
+    // Condition edits lock definitions in id order to avoid lock-upgrade deadlocks.
+    if (input.visibilityCondition !== undefined) {
+      await listFields(workspaceId, { lock: "update" }, tx);
+    }
     const [locked] = await tx
       .select()
       .from(customFieldTable)
@@ -818,6 +827,7 @@ export async function reorderFields(
           isNull(customFieldTable.deletedAt),
         ),
       )
+      .orderBy(asc(customFieldTable.id))
       .for("update");
     const known = new Set(rows.map((row) => row.id));
     const flat = layout.flatMap((entry) => entry.fieldIds);
@@ -1057,7 +1067,7 @@ export async function applyWorkItemFieldValues(
     changes?: CustomFieldValueChange[];
   },
 ): Promise<Record<string, unknown>> {
-  const fields = await listFields(workItem.workspaceId, {}, tx);
+  const fields = await listFields(workItem.workspaceId, { lock: "share" }, tx);
   const visibility = visibilityMap(fields, workItem.typeId);
   const applicableKeys = new Map(
     fields

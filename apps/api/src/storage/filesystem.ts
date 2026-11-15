@@ -159,6 +159,10 @@ export async function getStorageProbeReadiness(): Promise<
   }
 }
 
+export function getMaxImageUploadBytes(): number {
+  return DEFAULT_MAX_IMAGE_UPLOAD_BYTES;
+}
+
 export function validateTaskAssetUploadInput(
   contentType: string,
   size: number,
@@ -168,7 +172,10 @@ export function validateTaskAssetUploadInput(
 
 export function assertTaskImageKeyMatchesContext(
   key: string,
-  context: Omit<TaskImageUploadContext, "filename" | "contentType">,
+  context: Omit<
+    TaskImageUploadContext,
+    "filename" | "contentType" | "size" | "apiBaseUrl"
+  >,
 ) {
   // The filesystem driver has no equivalent of S3_KEY_PREFIX today — every key is rooted
   // directly under the configured storage root.
@@ -328,10 +335,14 @@ function deriveUploadTokenKey(): Buffer {
   );
 }
 
-function signUploadToken(key: string, expires: number): string {
+function signUploadToken(
+  key: string,
+  expires: number,
+  maxBytes: number,
+): string {
   const hmac = crypto.createHmac("sha256", deriveUploadTokenKey());
-  hmac.update(`${key}\n${expires}`);
-  return hmac.digest("base64url");
+  hmac.update(`${key}\n${maxBytes}\n${expires}`);
+  return `${maxBytes}.${hmac.digest("base64url")}`;
 }
 
 /**
@@ -340,8 +351,38 @@ function signUploadToken(key: string, expires: number): string {
  * (a cryptographically valid token for a traversal key must still be refused). No production
  * route reaches this function; `createTaskImageUploadUrl` is the real entry point.
  */
-export function signUploadTokenForTests(key: string, expires: number): string {
-  return signUploadToken(key, expires);
+export function signUploadTokenForTests(
+  key: string,
+  expires: number,
+  maxBytes = DEFAULT_MAX_IMAGE_UPLOAD_BYTES,
+): string {
+  return signUploadToken(key, expires, maxBytes);
+}
+
+function parseVerifiedUploadTokenMaxBytes(
+  key: string,
+  expires: number,
+  token: string,
+): number | null {
+  const separator = token.indexOf(".");
+  if (separator <= 0) return null;
+  const maxBytesRaw = token.slice(0, separator);
+  if (!/^[1-9]\d*$/.test(maxBytesRaw)) return null;
+  const maxBytes = Number(maxBytesRaw);
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) return null;
+
+  let expected: string;
+  try {
+    expected = signUploadToken(key, expires, maxBytes);
+  } catch {
+    return null;
+  }
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(token, "utf8");
+  if (expectedBuf.length !== providedBuf.length) {
+    return null;
+  }
+  return crypto.timingSafeEqual(expectedBuf, providedBuf) ? maxBytes : null;
 }
 
 export function verifyUploadToken(
@@ -349,18 +390,7 @@ export function verifyUploadToken(
   expires: number,
   token: string,
 ): boolean {
-  let expected: string;
-  try {
-    expected = signUploadToken(key, expires);
-  } catch {
-    return false;
-  }
-  const expectedBuf = Buffer.from(expected, "utf8");
-  const providedBuf = Buffer.from(token, "utf8");
-  if (expectedBuf.length !== providedBuf.length) {
-    return false;
-  }
-  return crypto.timingSafeEqual(expectedBuf, providedBuf);
+  return parseVerifiedUploadTokenMaxBytes(key, expires, token) !== null;
 }
 
 // ---------------------------------------------------------------------------
@@ -371,9 +401,10 @@ export async function createTaskImageUploadUrl(
   context: TaskImageUploadContext,
 ): Promise<TaskImageUploadUrl> {
   const config = await assertStorageConfigured();
+  validateUploadInput(context.contentType, context.size, config.maxUploadBytes);
   const key = buildObjectKey(context);
   const expires = Math.floor(Date.now() / 1000) + config.uploadUrlTtlSeconds;
-  const token = signUploadToken(key, expires);
+  const token = signUploadToken(key, expires, context.size);
 
   // normalizeApiServerUrl trims a trailing slash and ensures exactly one `/api` suffix,
   // regardless of whether context.apiBaseUrl already carries one — idempotent, so it is safe
@@ -419,7 +450,12 @@ export async function writeUploadedObject(params: {
   if (Math.floor(Date.now() / 1000) > expiresNum) {
     throw new StoragePathError("Upload URL has expired.");
   }
-  if (!verifyUploadToken(params.key, expiresNum, params.token)) {
+  const signedMaxBytes = parseVerifiedUploadTokenMaxBytes(
+    params.key,
+    expiresNum,
+    params.token,
+  );
+  if (signedMaxBytes === null) {
     throw new StoragePathError("Invalid or missing upload token.");
   }
   if (!params.body) {
@@ -436,7 +472,11 @@ export async function writeUploadedObject(params: {
   // creation itself walked through something unexpected.
   await assertNoSymlinkEscape(dir, config.root);
 
-  await writeStreamToFile(params.body, candidate, config.maxUploadBytes);
+  await writeStreamToFile(
+    params.body,
+    candidate,
+    Math.min(signedMaxBytes, config.maxUploadBytes),
+  );
 }
 
 /**
@@ -464,13 +504,17 @@ async function writeStreamToFile(
   maxBytes: number,
 ): Promise<void> {
   let total = 0;
+  const limitLabel =
+    maxBytes % (1024 * 1024) === 0
+      ? `${maxBytes / (1024 * 1024)}MB`
+      : `${maxBytes} bytes`;
   const limiter = new Transform({
     transform(chunk: Buffer, _encoding, callback) {
       total += chunk.length;
       if (total > maxBytes) {
         callback(
           new StoragePathError(
-            `Upload exceeds the maximum upload size of ${Math.floor(maxBytes / (1024 * 1024))}MB.`,
+            `Upload exceeds the maximum upload size of ${limitLabel}.`,
           ),
         );
         return;

@@ -26,15 +26,14 @@ import { WorkItemVersionConflictError } from "./update-work-item";
  * has already decided reach and `work_item:update`; this function re-reads the row under
  * `FOR UPDATE` (a concurrent soft-delete or archive between the middleware and here is a 404),
  * enforces `assertedVersion` when supplied, and writes the activity, audit row and realtime
- * event in the same transaction. `publishEffects: false` lets bulk keep its per-item summary
- * behaviour while single-item callers get the board/list hint.
+ * event in the same transaction.
  */
 export async function archiveWorkItem(
   key: string,
   workspaceId: string,
   actorId: string,
   actorType: ActivityActorType,
-  options: { assertedVersion?: number; publishEffects?: boolean } = {},
+  options: { assertedVersion?: number } = {},
 ) {
   const now = new Date();
   const { archived, realtimeEvent } = await db.transaction(async (tx) => {
@@ -112,65 +111,60 @@ export async function archiveWorkItem(
       after: { archivedAt: now.toISOString() },
     });
 
-    const realtimeEvent =
-      options.publishEffects === false
-        ? undefined
-        : await recordWorkItemEvent(tx, {
-            kind: "work_item.updated",
-            workItemId: archived.id,
-            key: archived.key,
-            workspaceId,
-            projectId: archived.projectId,
-            actorId,
-            actorType,
-            customerVisible: false,
-            payload: {
-              key: archived.key,
-              url: `/agent/work-items/${encodeURIComponent(archived.key)}`,
-              changes: [
-                {
-                  field: "archived_at",
-                  from: null,
-                  to: now.toISOString(),
-                  visibility: "internal",
-                },
-              ],
-            },
-          });
-    return { archived, realtimeEvent };
-  });
-
-  if (realtimeEvent) {
-    await publishWorkItemHint(realtimeEvent, {
+    const realtimeEvent = await recordWorkItemEvent(tx, {
       kind: "work_item.updated",
-      key: archived.key,
-      projectId: archived.projectId,
-      customerVisible: false,
-    });
-    await publishEvent("work_item.updated", {
       workItemId: archived.id,
       key: archived.key,
       workspaceId,
       projectId: archived.projectId,
-      changes: [
-        {
-          field: "archived_at",
-          from: null,
-          to: now.toISOString(),
-          visibility: resolveVisibility({
-            workspaceId,
-            workItemId: archived.id,
-            actorId,
-            actorType,
-            verb: "archived",
-            field: "archived_at",
-          }),
-        },
-      ],
       actorId,
       actorType,
+      customerVisible: false,
+      payload: {
+        key: archived.key,
+        url: `/agent/work-items/${encodeURIComponent(archived.key)}`,
+        changes: [
+          {
+            field: "archived_at",
+            from: null,
+            to: now.toISOString(),
+            visibility: "internal",
+          },
+        ],
+      },
     });
-  }
+    return { archived, realtimeEvent };
+  });
+
+  await publishWorkItemHint(realtimeEvent, {
+    kind: "work_item.updated",
+    key: archived.key,
+    projectId: archived.projectId,
+    customerVisible: false,
+  });
+  await publishEvent("work_item.updated", {
+    workItemId: archived.id,
+    key: archived.key,
+    workspaceId,
+    projectId: archived.projectId,
+    changes: [
+      {
+        field: "archived_at",
+        from: null,
+        to: now.toISOString(),
+        visibility: resolveVisibility({
+          workspaceId,
+          workItemId: archived.id,
+          actorId,
+          actorType,
+          verb: "archived",
+          field: "archived_at",
+        }),
+      },
+    ],
+    actorId,
+    actorType,
+  });
   return archived;
 }
 

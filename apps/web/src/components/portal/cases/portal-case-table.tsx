@@ -10,15 +10,19 @@ import {
   TableHeader,
   TableRow,
 } from "@taskdesk/ui";
+import {
+  formatPortalDate,
+  formatPortalDateTime,
+} from "@/components/portal/portal-format";
 import { PortalSlaStatus } from "@/components/portal/portal-sla-status";
 import type { PortalCase } from "@/fetchers/portal/cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { routes } from "@/lib/portal-route-builders";
 
 const STATUS_TONE = {
-  received: "info",
+  received: "secondary",
   need_more_info: "warning",
-  in_progress: "secondary",
+  in_progress: "info",
   resolved: "success",
   closed: "outline",
   declined: "error",
@@ -36,44 +40,44 @@ const PRIORITY_TONE = {
 const CASE_LINK_CLASS =
   "whitespace-nowrap rounded-sm font-medium text-primary tabular-nums outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
 
-/** The optional columns; the dashboard shows the compact set, the request list all of them. */
-export type PortalCaseColumn = "project" | "created";
+/**
+ * The optional columns (CP-2): `project` when the customer can see more than one project,
+ * `created` on the full list, and `people` (Requester, Assigned to) only for All requests,
+ * since under My requests every self-raised row reads "You" and "Your team".
+ */
+export type PortalCaseColumn = "project" | "created" | "people";
 
-function formatDateTime(value: string, locale?: string) {
-  return new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function formatDate(value: string, locale?: string) {
-  return new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-function formatTime(value: string, locale?: string) {
-  return new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
+/** A compact date, with the full date and time in the title (the portal's shared formats). */
+function PortalCaseUpdated({
+  value,
+  locale,
+  className,
+}: {
+  value: string;
+  locale?: string;
+  className?: string;
+}) {
+  return (
+    <time
+      dateTime={value}
+      title={formatPortalDateTime(value, locale)}
+      className={className}
+    >
+      {formatPortalDate(value, locale)}
+    </time>
+  );
 }
 
 /**
- * The customer's cases as Kaneo's framed table (WSO2-style columns): Updated, Details, Severity,
- * Status, Requester and Assigned to, which is always "Your team" (`CP-4`/`CP-5`). The service
- * target (`CP-6`) sits under the status badge, so it shows at every width. Columns follow the
- * width of the frame (container queries), not the viewport, because the portal sidebar takes part
- * of the screen: below 42rem only Details shows, carrying the severity, status, service target
- * and update time; Requester and Assigned to join at 56rem, Project and Created at 64rem. The
- * pages cap the frame at 69rem (`max-w-6xl` less padding), so no column waits on a wider step.
- * Every text column wraps instead of holding a fixed width, so the table's minimum width stays
- * inside the frame at each step with long names.
+ * The customer's cases as Kaneo's framed table (WSO2-style columns): Updated (compact date),
+ * Details, Severity, Status and, when asked for, Requester and Assigned to, which is always
+ * "Your team" (`CP-4`/`CP-5`). The service target (`CP-6`) sits under the status badge, so it
+ * shows at every width. Columns follow the width of the frame (container queries), not the
+ * viewport, because the portal sidebar takes part of the screen: below 42rem only Details shows,
+ * carrying the severity, status, service target and update time; Requester and Assigned to join
+ * at 56rem, Project and Created at 64rem. The pages cap the frame at 69rem (`max-w-6xl` less
+ * padding), so no column waits on a wider step. Every text column wraps instead of holding a
+ * fixed width, so the table's minimum width stays inside the frame at each step with long names.
  */
 export function PortalCaseTable({
   cases,
@@ -108,12 +112,16 @@ export function PortalCaseTable({
             <TableHead className="@2xl:table-cell hidden">
               {t("cases.columns.status")}
             </TableHead>
-            <TableHead className="@4xl:table-cell hidden">
-              {t("cases.columns.requester")}
-            </TableHead>
-            <TableHead className="@4xl:table-cell hidden">
-              {t("cases.columns.assignedTo")}
-            </TableHead>
+            {show("people") ? (
+              <>
+                <TableHead className="@4xl:table-cell hidden">
+                  {t("cases.columns.requester")}
+                </TableHead>
+                <TableHead className="@4xl:table-cell hidden">
+                  {t("cases.columns.assignedTo")}
+                </TableHead>
+              </>
+            ) : null}
             {show("created") ? (
               <TableHead className="@5xl:table-cell hidden">
                 {t("cases.columns.created")}
@@ -124,11 +132,8 @@ export function PortalCaseTable({
         <TableBody>
           {cases.map((item) => (
             <TableRow key={`${item.source}:${item.ref}`}>
-              <TableCell className="@2xl:table-cell hidden text-muted-foreground text-xs tabular-nums">
-                <time dateTime={item.updatedAt} className="flex flex-col gap-1">
-                  <span>{formatDate(item.updatedAt, locale)}</span>
-                  <span>{formatTime(item.updatedAt, locale)}</span>
-                </time>
+              <TableCell className="@2xl:table-cell hidden whitespace-nowrap text-muted-foreground text-xs">
+                <PortalCaseUpdated value={item.updatedAt} locale={locale} />
               </TableCell>
               <TableCell className="@2xl:min-w-48 whitespace-normal">
                 <div className="flex min-w-0 flex-col gap-0.5">
@@ -162,23 +167,35 @@ export function PortalCaseTable({
                       {t("cases.raisedBy")}: {t("cases.supportTeam")}
                     </span>
                   ) : null}
-                  {/* Narrow frames: the hidden columns' key facts, under the title. */}
-                  <span className="@4xl:hidden text-muted-foreground text-xs">
-                    {t("cases.columns.requester")}:{" "}
-                    {item.createdBy.isYou
-                      ? t("request.author.you")
-                      : (item.createdBy.name ?? t("request.author.colleague"))}
-                  </span>
+                  {/* Narrow frames (or rows whose requester differs when People columns are hidden):
+                      surface Requester without repeating "You" on every My Requests row. */}
+                  {show("people") ? (
+                    <span className="@4xl:hidden text-muted-foreground text-xs">
+                      {t("cases.columns.requester")}:{" "}
+                      {item.createdBy.isYou
+                        ? t("request.author.you")
+                        : (item.createdBy.name ??
+                          t("request.author.colleague"))}
+                    </span>
+                  ) : !item.createdBy.isYou ? (
+                    <span className="text-muted-foreground text-xs">
+                      {t("cases.columns.requester")}:{" "}
+                      <span>
+                        {item.createdBy.name ?? t("request.author.colleague")}
+                      </span>
+                    </span>
+                  ) : null}
                   <span className="@2xl:hidden mt-1 flex flex-col gap-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <PortalCaseSeverity priority={item.priority} />
+                      {item.priority ? (
+                        <PortalCaseSeverity priority={item.priority} />
+                      ) : null}
                       <PortalCaseStatus status={item.customerStatus} />
-                      <time
-                        dateTime={item.updatedAt}
-                        className="text-muted-foreground text-xs tabular-nums"
-                      >
-                        {formatDateTime(item.updatedAt, locale)}
-                      </time>
+                      <PortalCaseUpdated
+                        value={item.updatedAt}
+                        locale={locale}
+                        className="text-muted-foreground text-xs"
+                      />
                     </span>
                     <PortalSlaStatus sla={item.sla} />
                   </span>
@@ -191,7 +208,7 @@ export function PortalCaseTable({
                       {item.project.name}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-muted-foreground">{"\u2014"}</span>
                   )}
                 </TableCell>
               ) : null}
@@ -204,27 +221,32 @@ export function PortalCaseTable({
                   <PortalSlaStatus sla={item.sla} />
                 </div>
               </TableCell>
-              <TableCell
-                className={cn(
-                  "@4xl:table-cell hidden max-w-36 whitespace-normal text-sm",
-                  !item.createdBy.isYou &&
-                    !item.createdBy.name &&
-                    "text-muted-foreground",
-                )}
-              >
-                <span className="line-clamp-2 break-words">
-                  {item.createdBy.isYou
-                    ? t("request.author.you")
-                    : (item.createdBy.name ?? t("request.author.colleague"))}
-                </span>
-              </TableCell>
-              <TableCell className="@4xl:table-cell hidden whitespace-normal text-muted-foreground text-sm">
-                {t("cases.yourTeam")}
-              </TableCell>
+              {show("people") ? (
+                <>
+                  <TableCell
+                    className={cn(
+                      "@4xl:table-cell hidden max-w-36 whitespace-normal text-sm",
+                      !item.createdBy.isYou &&
+                        !item.createdBy.name &&
+                        "text-muted-foreground",
+                    )}
+                  >
+                    <span className="line-clamp-2 break-words">
+                      {item.createdBy.isYou
+                        ? t("request.author.you")
+                        : (item.createdBy.name ??
+                          t("request.author.colleague"))}
+                    </span>
+                  </TableCell>
+                  <TableCell className="@4xl:table-cell hidden whitespace-normal text-muted-foreground text-sm">
+                    {t("cases.yourTeam")}
+                  </TableCell>
+                </>
+              ) : null}
               {show("created") ? (
                 <TableCell className="@5xl:table-cell hidden text-muted-foreground text-xs tabular-nums">
                   <time dateTime={item.createdAt}>
-                    {formatDate(item.createdAt, locale)}
+                    {formatPortalDate(item.createdAt, locale)}
                   </time>
                 </TableCell>
               ) : null}
@@ -242,9 +264,13 @@ export function PortalCaseSeverity({
   priority: PortalCase["priority"];
 }) {
   const { t } = usePortalTranslation("portal");
+  // CP-2: an unset severity is a quiet dash, still named for screen readers.
   if (!priority)
     return (
-      <span className="text-muted-foreground text-xs">{t("cases.notSet")}</span>
+      <span className="text-muted-foreground text-xs">
+        <span aria-hidden="true">{"\u2014"}</span>
+        <span className="sr-only">{t("cases.notSet")}</span>
+      </span>
     );
   return (
     <Badge variant={PRIORITY_TONE[priority]}>

@@ -7,7 +7,7 @@
 # Specification: docs/05-operations/backup-and-restore.md § Restore
 #   1. Verify backup checksums and `pg_restore --list` before stopping anything
 #   2. Stop the application (`taskdesk`), leaving PostgreSQL running
-#   3. Restore PostgreSQL (`pg_restore --clean --if-exists --no-owner`)
+#   3. Restore PostgreSQL into a temporary staging DB (`createdb` + `pg_restore`), then swap over live DB
 #   4. Restore the attachment volume (`taskdesk_taskdesk-data`)
 #   5. Start `migrate` and `taskdesk`; probe `/api/public/health/ready`
 
@@ -105,6 +105,9 @@ POSTGRES_USER="${POSTGRES_USER:-taskdesk}"
 POSTGRES_DB="${POSTGRES_DB:-taskdesk}"
 PORT="${TASKDESK_PORT:-5173}"
 
+[[ "$POSTGRES_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]{0,62}$ ]] || { printf 'xx invalid POSTGRES_USER identifier\n' >&2; exit 1; }
+[[ "$POSTGRES_DB" =~ ^[A-Za-z_][A-Za-z0-9_-]{0,62}$ ]] || { printf 'xx invalid POSTGRES_DB identifier\n' >&2; exit 1; }
+
 COMPOSE_FILES=(-f compose.yml)
 case "$MODE" in
   local)
@@ -145,21 +148,42 @@ dc exec -T postgres pg_restore --list < "$DUMP_FILE" >/dev/null
 . "$REPO_ROOT/scripts/lib/compose-data-volume.sh"
 DATA_VOLUME="$(resolve_compose_data_volume)" || exit 1
 
+STAGING_DB="${POSTGRES_DB:0:35}_restore_staging_$$"
+RECOVERY_DB="${POSTGRES_DB:0:35}_restore_recovery_$$"
+STAGING_ACTIVE=0
+cleanup_staging_db() {
+  if [ "$STAGING_ACTIVE" -eq 1 ]; then
+    dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
+      -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$STAGING_DB' AND pid <> pg_backend_pid();" \
+      -c "DROP DATABASE IF EXISTS \"$STAGING_DB\";" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup_staging_db EXIT
+
 printf '==> Step 1: Stopping taskdesk container (leaving PostgreSQL running)\n'
 dc stop taskdesk
 
-printf '==> Step 2: Restoring PostgreSQL database (%s)\n' "$POSTGRES_DB"
+printf '==> Step 2: Restoring PostgreSQL dump into staging database (%s)\n' "$STAGING_DB"
+STAGING_ACTIVE=1
+dc exec -T postgres dropdb --if-exists -U "$POSTGRES_USER" "$STAGING_DB" >/dev/null
+dc exec -T postgres createdb -U "$POSTGRES_USER" -O "$POSTGRES_USER" "$STAGING_DB"
+dc exec -T postgres pg_restore --single-transaction --no-owner --role="$POSTGRES_USER" -U "$POSTGRES_USER" -d "$STAGING_DB" < "$DUMP_FILE"
+
+# Retain the restored copy on any promotion failure. Both renames roll back together.
+STAGING_ACTIVE=0
+printf '==> Promoting staging database (%s -> %s)\n' "$STAGING_DB" "$POSTGRES_DB"
+dc exec -T postgres psql --single-transaction -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
+  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('$POSTGRES_DB', '$STAGING_DB') AND pid <> pg_backend_pid();" \
+  -c "ALTER DATABASE \"$POSTGRES_DB\" RENAME TO \"$RECOVERY_DB\";" \
+  -c "ALTER DATABASE \"$STAGING_DB\" RENAME TO \"$POSTGRES_DB\";" >/dev/null
 dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
-  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$POSTGRES_DB' AND pid <> pg_backend_pid();" \
-  -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\";" \
-  -c "CREATE DATABASE \"$POSTGRES_DB\" OWNER \"$POSTGRES_USER\";" >/dev/null
-dc exec -T postgres pg_restore --single-transaction --no-owner --role="$POSTGRES_USER" -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$DUMP_FILE"
+  -c "DROP DATABASE \"$RECOVERY_DB\";" >/dev/null
 
 printf '==> Step 3: Restoring attachment volume (%s)\n' "$DATA_VOLUME"
 docker run --rm -i \
   -v "$DATA_VOLUME:/data" \
   alpine:3.22 \
-  sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + && tar -C /data -xf - && chown -R 10001:10001 /data' < "$ATTACHMENTS_TAR"
+  sh -c 'stage="/data/.restore-staging-$$"; cleanup() { rm -rf -- "$stage"; }; trap cleanup EXIT; mkdir -p "$stage" && tar -C "$stage" -xf - && find /data -mindepth 1 -maxdepth 1 ! -name ".restore-staging-$$" -exec rm -rf -- {} + && find "$stage" -mindepth 1 -maxdepth 1 -exec mv -- {} /data/ \; && rm -rf -- "$stage" && chown -R 10001:10001 /data' < "$ATTACHMENTS_TAR"
 
 printf '==> Step 4: Running migrations and role grants\n'
 dc run --rm migrate

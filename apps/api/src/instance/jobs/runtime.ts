@@ -594,15 +594,16 @@ export async function dispatchOneManualRun(executeHandler: ExecuteHandler) {
 }
 
 let workerTimer: ReturnType<typeof setInterval> | undefined;
-let activeManualDispatch = false;
+let activeManualDispatch: Promise<void> | undefined;
 let retentionTick = 0;
 
-export function startJobRunWorker(executeHandler: ExecuteHandler): () => void {
+export function startJobRunWorker(
+  executeHandler: ExecuteHandler,
+): () => Promise<void> {
   if (workerTimer) return () => stopJobRunWorker();
   workerTimer = setInterval(() => {
     if (activeManualDispatch) return;
-    activeManualDispatch = true;
-    void (async () => {
+    activeManualDispatch = (async () => {
       try {
         await markExpiredRunsLeaseLost();
         await dispatchOneManualRun(executeHandler);
@@ -614,7 +615,7 @@ export function startJobRunWorker(executeHandler: ExecuteHandler): () => void {
       } catch {
         // The row remains queued/running. A later tick retries only the safe claim operation.
       } finally {
-        activeManualDispatch = false;
+        activeManualDispatch = undefined;
       }
     })();
   }, QUEUE_POLL_MS);
@@ -622,10 +623,10 @@ export function startJobRunWorker(executeHandler: ExecuteHandler): () => void {
   return () => stopJobRunWorker();
 }
 
-export function stopJobRunWorker() {
+export function stopJobRunWorker(): Promise<void> {
   if (workerTimer) clearInterval(workerTimer);
   workerTimer = undefined;
-  activeManualDispatch = false;
+  return activeManualDispatch ?? Promise.resolve();
 }
 
 export async function runScheduledJobWithHistory<T>(

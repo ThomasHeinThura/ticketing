@@ -16,15 +16,15 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SortControl from "@/components/common/sort-control";
-import {
-  type BoardFilters,
-  DUE_DATE_FILTER_VALUES,
-} from "@/hooks/use-task-filters";
 import { getColumnIcon } from "@/lib/column";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel } from "@/lib/i18n/domain";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
+import {
+  type BoardFilters,
+  DUE_DATE_FILTER_VALUES,
+} from "@/lib/project-board-search";
 import type { SortConfig } from "@/lib/sort-tasks";
 import type { ProjectWithTasks } from "@/types/project";
 

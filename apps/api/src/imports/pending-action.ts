@@ -70,6 +70,7 @@ export const requestImportChunkApproval: ImportApprovalRequest = async (
   });
   return {
     pendingActionId: result.pendingActionId,
+    expiresAt: new Date(result.expiresAt),
     auditFailure: result.auditFailure,
   };
 };

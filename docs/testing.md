@@ -9,7 +9,7 @@ GitHub CI is a required gate. All required checks must pass; a failing gate is f
 | Area | CI job / local command |
 | --- | --- |
 | Code | `pnpm lint:ci`, `pnpm typecheck`, `pnpm test` (unit + component), integration on PostgreSQL 18 (4 shards, `vitest.integration.config.ts`), `pnpm test:permissions`, `pnpm check:route-policy`, domain coverage 90% |
-| Contracts and registers | `pnpm test:contract` (OpenAPI drift; breaking changes need Thomas's approval in `scripts/ci/openapi-approved-breaks.json`), env/vocabulary/events/reviews/skips/overrides registers, gate checkers + red probes, CI matches `ci-cd.md` |
+| Contracts and registers | `pnpm test:contract` (OpenAPI drift; breaking changes need Thomas's approval in `scripts/ci/openapi-approved-breaks.json`), env/vocabulary/events/reviews/skips/overrides registers, gate checkers + red probes, CI matches `ci-gates.md` |
 | Features | `pnpm test:e2e` (mock-backed and Testcontainers journeys, `apps/web/e2e/`) |
 | Design | `pnpm check:ui:raw-elements` (raw controls, library `Input` date/time/checkbox/radio types, native `title` tooltips on interactive hosts), `pnpm check:tokens` (contrast), visual regression G8 (`pnpm test:visual` in the pinned `mcr.microsoft.com/playwright:v1.63.0-noble` container; regenerate baselines only for intended changes), accessibility G4 (axe) |
 | Performance | G11 and G13 both run in the single `performance - budgets (G11)` job (`pnpm test:perf`). That job is not a required check on `main` (removed 5 Nov), so neither blocks a merge; read them as report-only and diagnose misses in the app. Bundle budgets are enforced by `pnpm check:bundle-size` in required fast CI. Thresholds never change without Thomas |

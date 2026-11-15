@@ -50,6 +50,7 @@ export type WebhookDrainResult =
   | {
       kind: "delivered" | "retry" | "dead" | "skipped" | "cancelled";
       deliveryId: string;
+      webhookId: string;
     };
 
 export type AttemptOutcome =
@@ -97,9 +98,17 @@ function instanceUrl(): string {
 
 async function claimDelivery(
   onlyId?: string,
+  excludedWebhookIds?: ReadonlySet<string>,
 ): Promise<WebhookDeliveryRow | undefined> {
   const leaseToken = randomUUID();
   const idFilter = onlyId ? sql`AND "id" = ${onlyId}` : sql``;
+  const webhookFilter =
+    excludedWebhookIds && excludedWebhookIds.size > 0
+      ? sql`AND "webhook_id" NOT IN (${sql.join(
+          Array.from(excludedWebhookIds, (id) => sql`${id}`),
+          sql`, `,
+        )})`
+      : sql``;
   const claimed = await db.execute<{ id: string }>(sql`
     UPDATE "webhook_delivery"
     SET "attempt" = "attempt" + 1,
@@ -111,6 +120,7 @@ async function claimDelivery(
         AND "next_attempt_at" <= now()
         AND ("lease_expires_at" IS NULL OR "lease_expires_at" < now())
         ${idFilter}
+        ${webhookFilter}
       ORDER BY "next_attempt_at" ASC, "id" ASC
       LIMIT 1
       FOR UPDATE SKIP LOCKED
@@ -374,18 +384,27 @@ async function emitAutoDisabled(
 export async function processNextWebhookDelivery(
   deps: SendDeps = DEFAULT_DEPS,
   onlyId?: string,
+  excludedWebhookIds?: ReadonlySet<string>,
 ): Promise<WebhookDrainResult> {
-  const delivery = await claimDelivery(onlyId);
+  const delivery = await claimDelivery(onlyId, excludedWebhookIds);
   if (!delivery) return { kind: "idle" };
+  return processClaimedWebhookDelivery(delivery, deps);
+}
+
+async function processClaimedWebhookDelivery(
+  delivery: WebhookDeliveryRow,
+  deps: SendDeps,
+): Promise<WebhookDrainResult> {
+  const webhookId = delivery.webhookId;
 
   const [webhook] = await db
     .select()
     .from(webhookTable)
-    .where(eq(webhookTable.id, delivery.webhookId))
+    .where(eq(webhookTable.id, webhookId))
     .limit(1);
   if (!webhook || !webhook.active || webhook.disabledAt) {
     await finishWithoutSend(delivery, "cancelled", "webhook_inactive");
-    return { kind: "cancelled", deliveryId: delivery.id };
+    return { kind: "cancelled", deliveryId: delivery.id, webhookId };
   }
   // P4R1-H1: a stored body was addressed to the destination and owner it was created for. When
   // either has since changed, it is never replayed to the new one.
@@ -396,7 +415,7 @@ export async function processNextWebhookDelivery(
     delivery.createdAt < webhook.destinationChangedAt
   ) {
     await finishWithoutSend(delivery, "cancelled", "destination_changed");
-    return { kind: "cancelled", deliveryId: delivery.id };
+    return { kind: "cancelled", deliveryId: delivery.id, webhookId };
   }
 
   let requestBody: unknown = delivery.requestBody;
@@ -410,14 +429,14 @@ export async function processNextWebhookDelivery(
       : undefined;
     if (needsEnvelope && !envelope) {
       await finishWithoutSend(delivery, "cancelled", "event_unavailable");
-      return { kind: "cancelled", deliveryId: delivery.id };
+      return { kind: "cancelled", deliveryId: delivery.id, webhookId };
     }
     if (
       delivery.source === "event" &&
       !webhook.events.includes(delivery.eventKind)
     ) {
       await finishWithoutSend(delivery, "cancelled", "event_not_subscribed");
-      return { kind: "cancelled", deliveryId: delivery.id };
+      return { kind: "cancelled", deliveryId: delivery.id, webhookId };
     }
     const projectId = delivery.projectId ?? envelope?.scope.projectId ?? null;
     const decision = await decideOwnerReach(db, webhook.createdBy, {
@@ -431,11 +450,11 @@ export async function processNextWebhookDelivery(
     if (decision.kind === "owner_gone") {
       await pauseWebhook(db, webhook, "owner_left");
       await finishWithoutSend(delivery, "cancelled", "owner_left");
-      return { kind: "cancelled", deliveryId: delivery.id };
+      return { kind: "cancelled", deliveryId: delivery.id, webhookId };
     }
     if (decision.kind === "out_of_reach") {
       await finishWithoutSend(delivery, "skipped_out_of_reach", null);
-      return { kind: "skipped", deliveryId: delivery.id };
+      return { kind: "skipped", deliveryId: delivery.id, webhookId };
     }
     if (envelope && requestBody == null) {
       const projected = await buildBody(
@@ -445,14 +464,14 @@ export async function processNextWebhookDelivery(
       );
       if (projected.kind === "nothing_visible") {
         await finishWithoutSend(delivery, "cancelled", "no_visible_changes");
-        return { kind: "cancelled", deliveryId: delivery.id };
+        return { kind: "cancelled", deliveryId: delivery.id, webhookId };
       }
       requestBody = projected.body;
     }
   }
   if (requestBody === null || requestBody === undefined) {
     await finishWithoutSend(delivery, "cancelled", "no_payload");
-    return { kind: "cancelled", deliveryId: delivery.id };
+    return { kind: "cancelled", deliveryId: delivery.id, webhookId };
   }
 
   const now = deps.now();
@@ -486,7 +505,7 @@ export async function processNextWebhookDelivery(
     requestBody,
     deps.now(),
   );
-  return { kind: state, deliveryId: delivery.id };
+  return { kind: state, deliveryId: delivery.id, webhookId };
 }
 
 /** Delivers one specific queued delivery now (Send test event, manual redelivery). */
@@ -544,36 +563,60 @@ export const WEBHOOK_DRAIN_LIMIT = 25;
 export const WEBHOOK_DRAIN_BUDGET_MS = 8_000;
 
 /** The `outbox-drain` webhook step: bounded by count and wall-clock. */
-export async function drainWebhookDeliveries() {
+export async function drainWebhookDeliveries(deps: SendDeps = DEFAULT_DEPS) {
   let processed = 0;
   let delivered = 0;
   let retried = 0;
   let dead = 0;
   let degraded = false;
+  const failedWebhookIds = new Set<string>();
+  const inFlight = new Map<string, Promise<void>>();
   const started = Date.now();
-  for (
-    ;
-    processed < WEBHOOK_DRAIN_LIMIT &&
-    Date.now() - started < WEBHOOK_DRAIN_BUDGET_MS;
-    processed++
-  ) {
-    try {
-      const result = await processNextWebhookDelivery();
-      if (result.kind === "idle") break;
-      if (result.kind === "delivered") delivered++;
-      if (result.kind === "retry") {
-        retried++;
-        degraded = true;
+  try {
+    while (
+      processed < WEBHOOK_DRAIN_LIMIT &&
+      Date.now() - started < WEBHOOK_DRAIN_BUDGET_MS
+    ) {
+      if (inFlight.size >= 3) {
+        await Promise.race(inFlight.values());
+        continue;
       }
-      if (result.kind === "dead") {
-        dead++;
-        degraded = true;
+      const pendingSends = [...inFlight.values()];
+      // Claim serially so each scheduled send excludes every webhook already in flight.
+      const delivery = await claimDelivery(
+        undefined,
+        new Set([...failedWebhookIds, ...inFlight.keys()]),
+      );
+      if (!delivery) {
+        if (pendingSends.length === 0) break;
+        await Promise.race(pendingSends);
+        continue;
       }
-    } catch {
-      degraded = true;
-      break;
+      processed++;
+      const pending = processClaimedWebhookDelivery(delivery, deps)
+        .then((result) => {
+          if (result.kind === "delivered") delivered++;
+          if (result.kind === "retry" || result.kind === "dead") {
+            if (result.kind === "retry") retried++;
+            else dead++;
+            degraded = true;
+            failedWebhookIds.add(delivery.webhookId);
+          }
+        })
+        .catch(() => {
+          degraded = true;
+          failedWebhookIds.add(delivery.webhookId);
+        })
+        .finally(() => {
+          inFlight.delete(delivery.webhookId);
+        });
+      inFlight.set(delivery.webhookId, pending);
     }
+  } catch {
+    degraded = true;
   }
+  // Already claimed deliveries retain their existing request timeout and lease fencing.
+  await Promise.all(inFlight.values());
   try {
     await purgeExpiredDeliveriesOpportunistically();
   } catch {

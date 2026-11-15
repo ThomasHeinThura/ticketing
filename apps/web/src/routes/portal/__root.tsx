@@ -6,10 +6,8 @@ import {
   useLocation,
   useRouter,
 } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { PageLoading } from "@/components/page-loading";
-import PortalLayout, {
-  preloadPortalChrome,
-} from "@/components/portal/portal-layout";
 import { portalLazyContent } from "@/components/portal/portal-lazy-content";
 import { PortalNotFoundPage as PortalNotFoundState } from "@/components/portal/portal-not-found";
 import { PortalError as PortalErrorState } from "@/components/portal/portal-root-states";
@@ -25,6 +23,19 @@ import {
 } from "@/lib/portal-state";
 
 import queryClient, { portalSessionQueryKey } from "@/query-client";
+
+// Sign-in does not need the sidebar runtime; signed-in navigation preloads it during the session read.
+const PortalLayout = portalLazyContent<{
+  children: ReactNode;
+  user: PortalShellUser;
+}>(
+  () =>
+    import("@/components/portal/portal-layout").then((module) => {
+      module.preloadPortalChrome();
+      return module;
+    }),
+  <PageLoading portal />,
+);
 
 const PortalFeatureOff = portalLazyContent<{ state: PortalStateMarker }>(
   () =>
@@ -152,7 +163,7 @@ export const Route = createRootRoute({
     if (portalState)
       return { portalState, portalUserId: undefined, portalUser: undefined };
     if (isSignIn(location.pathname)) return;
-    preloadPortalChrome();
+    void PortalLayout.preload().catch(() => undefined);
     if (location.pathname === "/")
       void importWithRetry(
         () => import("@/hooks/queries/portal/prefetch-portal-home"),

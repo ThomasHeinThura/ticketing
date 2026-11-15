@@ -140,7 +140,7 @@ describe("POST /api/work-items/export", () => {
     expect(response.headers.get("content-disposition")).toContain(
       "work-items.csv",
     );
-    expect(await response.text()).toBe('"Key","Title"\r\n');
+    expect(await response.text()).toBe("Key,Title\r\n");
     const audits = await db.select().from(schema.auditLogTable);
     expect(audits).toHaveLength(1);
     expect(audits[0]?.action).toBe("work_item.exported");
@@ -166,7 +166,7 @@ describe("POST /api/work-items/export", () => {
       name: "Severity",
       format: "text",
     });
-    const item = await items.makeItem("Export custom field");
+    const item = await items.makeItem(" \t=1+1");
     await setCustomValue(owner.workspace.id, field.id, item, "=1+1");
     mockAuthenticatedSession(owner.user);
     const { app } = createApp();
@@ -177,13 +177,13 @@ describe("POST /api/work-items/export", () => {
         workspaceId: owner.workspace.id,
         query: {
           entity: "work_item",
-          columns: ["key", "cf.severity"],
+          columns: ["key", "title", "cf.severity"],
         },
       }),
     });
     expect(response.status, await response.clone().text()).toBe(200);
     expect(await response.text()).toBe(
-      `"Key","Severity"\r\n"${item.key}","'=1+1"\r\n`,
+      `Key,Title,Severity\r\n${item.key},' \t=1+1,'=1+1\r\n`,
     );
   });
 
@@ -219,9 +219,7 @@ describe("POST /api/work-items/export", () => {
       }),
     });
     expect(response.status, await response.clone().text()).toBe(200);
-    expect(await response.text()).toBe(
-      `"Key","Private note"\r\n"${item.key}",""\r\n`,
-    );
+    expect(await response.text()).toBe(`Key,Private note\r\n${item.key},\r\n`);
   });
 
   it("AU-14: preserves a completed CSV when its audit append fails", async () => {
@@ -244,7 +242,7 @@ describe("POST /api/work-items/export", () => {
       }),
     });
     expect(response.status).toBe(200);
-    expect(await response.text()).toBe('"Key","Title"\r\n');
+    expect(await response.text()).toBe("Key,Title\r\n");
     expect(failureMetric).toHaveBeenCalledWith("mutation");
     expect(notifyAdmins).toHaveBeenCalledWith("mutation");
   });

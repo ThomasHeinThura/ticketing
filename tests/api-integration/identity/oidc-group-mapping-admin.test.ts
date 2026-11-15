@@ -406,6 +406,106 @@ afterEach(() => {
 });
 
 describe("IP-34 OIDC group mapping administration", () => {
+  it("reads OIDC-only options while preserving SCIM missing-child denial", async () => {
+    await setupAdmin();
+    await setupConnection();
+    const app = createMappingApp();
+    const base = `/api/instance/identity-connections/${CONNECTION_ID}`;
+    const targets = await app.request(
+      `${base}/oidc-group-mappings/mapping-options`,
+    );
+    expect(targets.status).toBe(200);
+    expect(targets.headers.get("Cache-Control")).toBe("no-store");
+    expect(await targets.json()).toMatchObject({
+      kind: "agent_targets",
+      data: expect.arrayContaining([
+        { id: WORKSPACE_ID, name: "OIDC Mapping Workspace" },
+      ]),
+    });
+    const roles = await app.request(
+      `${base}/oidc-group-mappings/mapping-options?workspaceId=${WORKSPACE_ID}`,
+    );
+    expect(roles.status).toBe(200);
+    expect(await roles.json()).toMatchObject({
+      kind: "agent_roles",
+      data: expect.arrayContaining([
+        expect.objectContaining({ id: WORKSPACE_ROLE_ID }),
+      ]),
+    });
+    expect((await app.request(`${base}/scim/mapping-options`)).status).toBe(
+      404,
+    );
+    expect(
+      (
+        await app.request(
+          `${base}/oidc-group-mappings/mapping-options?cursor=invalid`,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await app.request(
+          "/api/instance/identity-connections/missing/oidc-group-mappings/mapping-options",
+        )
+      ).status,
+    ).toBe(404);
+    const nonAdmin = await setupAdmin("oidc-options-member", "member");
+    mockAuthenticatedSession(nonAdmin.admin);
+    expect(
+      (await app.request(`${base}/oidc-group-mappings/mapping-options`)).status,
+    ).toBe(403);
+  });
+
+  it("rejects explicit customer scopeId in both step-up endpoints", async () => {
+    const { sessionCookie } = await setupAdmin();
+    await setupCustomerConnection();
+    const app = createMappingApp();
+    const request = {
+      configVersion: 1,
+      externalGroupId: GROUP_A,
+      roleId: CUSTOMER_ROLE_ID,
+      scope: "organisation",
+      scopeId: CUSTOMER_ORGANISATION_ID,
+      enabled: true,
+    };
+    const challenge = await csrfRequest(
+      app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "oidc_group_mapping_create",
+          connectionId: CONNECTION_ID,
+          request,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(challenge.status).toBe(422);
+    const proof = await csrfRequest(
+      app,
+      "/api/me/step-up",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "oidc_group_mapping_create",
+          connectionId: CONNECTION_ID,
+          request,
+          challengeId: "invalid",
+          nonce: "n".repeat(43),
+          method: "password",
+          password: PASSWORD,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(proof.status).toBe(422);
+  });
+
   it("IP-34 rejects persisted customer-role capability corruption on every mapping boundary", async () => {
     const { sessionCookie } = await setupAdmin();
     await setupCustomerConnection();
@@ -803,6 +903,12 @@ describe("IP-34 OIDC group mapping administration", () => {
     );
     expect(apiKeyRead.status).toBe(403);
     expect(await apiKeyRead.text()).toContain("session_required");
+    const apiKeyOptions = await app.request(
+      `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings/mapping-options`,
+      { headers: { "x-api-key": rawKey } },
+    );
+    expect(apiKeyOptions.status).toBe(403);
+    expect(await apiKeyOptions.text()).toContain("session_required");
     const apiKeyWrite = await app.request(
       `/api/instance/identity-connections/${CONNECTION_ID}/oidc-group-mappings`,
       {

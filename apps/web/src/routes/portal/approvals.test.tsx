@@ -53,6 +53,7 @@ const pending = {
   workItemKey: "HELP-1",
   workItemTitle: "Customer approval",
   state: "pending",
+  requester: { id: "requester-1", displayName: "Alex Requester" },
   expiresAt: "2026-10-24T12:00:00Z",
   approverReachLost: false,
 };
@@ -176,4 +177,27 @@ it("never renders customer A's cached approval when the retained client switches
   release({ approvals: [{ ...pending, workItemTitle: "B approval" }] });
   await screen.findAllByText(/B approval/);
   expect(screen.queryByText(/A confidential approval/)).toBeNull();
+});
+
+it("translates approval state, formats expiry dates with the portal formatter, and wraps cleanly on narrow screens (J-06)", async () => {
+  setup();
+  await screen.findByRole("button", { name: "approvals.review" });
+  expect(screen.getAllByText("approvals.state.pending").length).toBeGreaterThan(
+    0,
+  );
+  expect(screen.queryByText(/^pending$/u)).toBeNull();
+  const times = document.querySelectorAll("time");
+  expect(times.length).toBeGreaterThan(0);
+  expect(times[0]).toHaveAttribute("dateTime", "2026-10-24T12:00:00Z");
+  expect(times[0]?.textContent).not.toBe(
+    new Date("2026-10-24T12:00:00Z").toLocaleString(),
+  );
+  const frame = document.querySelector("[data-slot=frame]");
+  expect(frame).toHaveClass("@container");
+});
+
+it("shows the requester supplied by the approval API in the row and review dialog", async () => {
+  setup();
+  await screen.findByRole("button", { name: "approvals.review" });
+  expect(screen.getAllByText(/Alex Requester/)).toHaveLength(2);
 });

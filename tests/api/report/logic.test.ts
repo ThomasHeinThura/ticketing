@@ -235,6 +235,8 @@ describe("CSV (RP-10)", () => {
       expect(csvCell(`${start}1+1`)).toMatch(/^"?'/);
     expect(csvCell("=SUM(A1)")).toBe("'=SUM(A1)");
     expect(csvCell("safe=1")).toBe("safe=1");
+    expect(csvCell(" \t=1+1")).toBe("' \t=1+1");
+    expect(csvCell("\u000b@x")).toBe("'\u000b@x");
     expect(csvRow(["a", "=b", 3])).toBe("a,'=b,3");
   });
 });

@@ -1367,6 +1367,9 @@ export function createApp(
   // already applied; a second check here would only re-assert what booting already
   // guaranteed.
   api.get("/public/health/ready", async (c) => {
+    if (serverShuttingDown) {
+      return c.json({ status: "error" }, 503);
+    }
     try {
       await getDatabase().execute(sql`SELECT 1`);
       return c.json({ status: "ok" });
@@ -3273,10 +3276,17 @@ export function createNodeServer(
   return { server, websocketServer, close };
 }
 
+let serverShuttingDown = false;
+
+export function setServerShuttingDownForTest(value: boolean): void {
+  serverShuttingDown = value;
+}
+
 export async function startServer(
   port = DEFAULT_PORT,
   options: Pick<NodeServerShutdownOptions, "hostname" | "role"> = {},
 ) {
+  serverShuttingDown = false;
   const role = options.role ?? "all";
   try {
     await runApiBootTasks(options);
@@ -3285,14 +3295,13 @@ export async function startServer(
     process.exit(1);
   }
 
-  let shuttingDown = false;
-
   if (!roleOwnsHttp(role)) {
     let stopLiveness: (() => Promise<void>) | undefined;
     try {
       stopLiveness = await startJobLivenessServer();
     } catch {
-      shutdownScheduler();
+      serverShuttingDown = true;
+      await shutdownScheduler();
       await stopObservabilityRuntime();
       customerInvitationDeliveryKeyring.dispose();
       await shutdownWebSocketAdapter().catch(() => logRealtimeFailure());
@@ -3300,9 +3309,9 @@ export async function startServer(
       process.exit(1);
     }
     const gracefulJobsShutdown = async () => {
-      if (shuttingDown) return;
-      shuttingDown = true;
-      shutdownScheduler();
+      if (serverShuttingDown) return;
+      serverShuttingDown = true;
+      await shutdownScheduler();
       await stopObservabilityRuntime();
       customerInvitationDeliveryKeyring.dispose();
       await shutdownWebSocketAdapter().catch(() => logRealtimeFailure());
@@ -3324,6 +3333,7 @@ export async function startServer(
         typeof address === "string" ||
         address.address !== options.hostname)
     ) {
+      serverShuttingDown = true;
       logHttpLifecycleFailure();
       void close().finally(() => process.exit(1));
       return;
@@ -3334,11 +3344,11 @@ export async function startServer(
   });
 
   const gracefulShutdown = async () => {
-    if (shuttingDown) return;
-    shuttingDown = true;
+    if (serverShuttingDown) return;
+    serverShuttingDown = true;
 
     console.log("🛑 Shutting down gracefully...");
-    shutdownScheduler();
+    await shutdownScheduler();
     await stopObservabilityRuntime();
     customerInvitationDeliveryKeyring.dispose();
     const result = await close();

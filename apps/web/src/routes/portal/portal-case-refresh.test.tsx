@@ -120,6 +120,7 @@ beforeEach(() => {
         id: "approval-1",
         workItemKey: "HELP-1",
         workItemTitle: "Customer approval",
+        requester: { id: "staff-1", displayName: "Support requester" },
         state: "pending",
         expiresAt: "2026-10-24T12:00:00Z",
         approverReachLost: false,

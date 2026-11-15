@@ -7,8 +7,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import useProjectStore from "@/store/project";
-import type { ProjectWithTasks } from "@/types/project";
 import { PendingActionApproval } from "./pending-action-approval";
 
 const mocks = vi.hoisted(() => ({
@@ -95,15 +93,6 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" } }),
 }));
 
-const task = (id: string, number: number) => ({ id, number }) as never;
-const project = {
-  id: "project-1",
-  slug: "WLP",
-  columns: [{ id: "to-do", tasks: [task("t-1", 1), task("t-2", 2)] }],
-  plannedTasks: [task("t-3", 3)],
-  archivedTasks: [],
-} as unknown as ProjectWithTasks;
-
 function workItemAction(over: Record<string, unknown>) {
   return {
     id: "pa-1",
@@ -138,33 +127,14 @@ describe("executed work-item deletion", () => {
     mocks.pathname.current =
       "/dashboard/workspace/workspace-1/project/project-1/task/t-1";
     mocks.cachedTask.current = { number: 1 };
-    mocks.cachedProject.current = undefined;
+    mocks.cachedProject.current = { slug: "WLP" };
     mocks.action.current = workItemAction({});
-    useProjectStore.setState({ project });
   });
   afterEach(() => {
     cleanup();
-    useProjectStore.setState({ project: undefined });
   });
 
-  it("leaves the deleted task page for the board and clears its caches and store entry", async () => {
-    await approve();
-    expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
-      params: { workspaceId: "workspace-1", projectId: "project-1" },
-      replace: true,
-    });
-    expect(mocks.remove).toHaveBeenCalledWith({ queryKey: ["task", "t-1"] });
-    expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["tasks"] });
-    expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["work-items"] });
-    const stored = useProjectStore.getState().project;
-    expect(stored?.columns[0]?.tasks.map((entry) => entry.id)).toEqual(["t-2"]);
-    expect(stored?.plannedTasks.map((entry) => entry.id)).toEqual(["t-3"]);
-  });
-
-  it("leaves the legacy page using the project query, without a seeded project store", async () => {
-    useProjectStore.setState({ project: undefined });
-    mocks.cachedProject.current = { slug: "WLP" };
+  it("leaves the deleted task page for the board and clears its caches", async () => {
     await approve();
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/dashboard/workspace/$workspaceId/project/$projectId/board",
@@ -178,7 +148,6 @@ describe("executed work-item deletion", () => {
 
   it("returns from the canonical work-item page to the project board", async () => {
     mocks.pathname.current = "/agent/work-items/WLP-1";
-    useProjectStore.setState({ project: undefined });
     await approve();
     expect(mocks.navigate).toHaveBeenCalledWith({
       href: expect.stringMatching(/^\/agent\/projects\/WLP\/work\?/),
@@ -189,7 +158,7 @@ describe("executed work-item deletion", () => {
     });
   });
 
-  it("handles a bulk deletion the same way and keeps unrelated tasks", async () => {
+  it("handles a bulk deletion the same way", async () => {
     mocks.action.current = workItemAction({
       action: "bulk_delete",
       confirmation: "typed_count",
@@ -208,19 +177,16 @@ describe("executed work-item deletion", () => {
       screen.getByRole("button", { name: "common:actions.delete" }),
     );
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalled());
-    const stored = useProjectStore.getState().project;
-    expect(stored?.columns[0]?.tasks.map((entry) => entry.id)).toEqual(["t-2"]);
-    expect(stored?.plannedTasks).toEqual([]);
+    expect(mocks.remove).toHaveBeenCalledWith({ queryKey: ["task", "t-1"] });
+    expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["tasks"] });
+    expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["work-items"] });
   });
 
   it("stays put when the deleted item is not the open task page", async () => {
     mocks.cachedTask.current = { number: 2 };
     await approve();
     expect(mocks.navigate).not.toHaveBeenCalled();
-    expect(mocks.remove).toHaveBeenCalledWith({ queryKey: ["task", "t-1"] });
-    expect(mocks.remove).not.toHaveBeenCalledWith({
-      queryKey: ["task", "t-2"],
-    });
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
 
   it("does nothing to the task caches when the approval was not executed", async () => {
@@ -228,7 +194,6 @@ describe("executed work-item deletion", () => {
     await approve();
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(mocks.remove).not.toHaveBeenCalled();
-    expect(useProjectStore.getState().project).toBe(project);
   });
 });
 

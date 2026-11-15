@@ -18,7 +18,6 @@ import useGetConfig from "@/hooks/queries/config/use-get-config";
 import { getInitials } from "@/lib/get-initials";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
-import useProjectStore from "@/store/project";
 
 export function UserAvatar() {
   const { t } = useTranslation();
@@ -28,7 +27,6 @@ export function UserAvatar() {
     config?.customOAuthLogoutUrl,
   );
   const queryClient = useQueryClient();
-  const { setProject } = useProjectStore();
   const navigate = useNavigate();
 
   if (!user) {
@@ -39,7 +37,6 @@ export function UserAvatar() {
     try {
       await signOut();
       queryClient.clear();
-      setProject(undefined);
       toast.success(t("navigation:userMenu.signedOutSuccess"));
     } catch (error) {
       toast.error(

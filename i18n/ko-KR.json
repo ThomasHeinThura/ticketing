@@ -3903,7 +3903,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "보기"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3923,7 +3924,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "지원팀의 승인 요청이 여기에 표시됩니다."
+			"emptyDescription": "지원팀의 승인 요청이 여기에 표시됩니다.",
+			"state": {
+				"pending": "대기 중",
+				"approved": "승인됨",
+				"rejected": "반려됨",
+				"expired": "만료됨",
+				"withdrawn": "철회됨"
+			}
 		},
 		"unavailable": {
 			"title": "고객 포털을 사용할 수 없습니다",
@@ -5364,6 +5372,18 @@
 		"emptySubmissionsDescription": "No submissions match this saved view."
 	},
 	"identityConnections": {
+		"oidcGroups": {
+			"title": "OIDC group mappings",
+			"description": "Map Entra group membership from sign-in to an eligible role and scope.",
+			"externalIdHelp": "Enter the Entra group object UUID.",
+			"evidenceNote": "Changes require fresh verification and are audited. Disabling a mapping retires its grants.",
+			"loading": "Loading OIDC group mappings…",
+			"loadFailed": "OIDC group mappings could not be loaded.",
+			"notSaved": "OIDC group mapping was not saved.",
+			"empty": "No OIDC group mappings are configured.",
+			"invalidExternalId": "Enter a valid Entra group object UUID.",
+			"organisation": "Organisation"
+		},
 		"common": {
 			"reload": "Reload latest settings",
 			"retry": "Retry",

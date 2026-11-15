@@ -88,6 +88,7 @@ describe("storage driver selector", () => {
       surface: "description" as const,
       filename: "photo.png",
       contentType: "image/png",
+      size: 512,
     };
 
     process.env.TASKDESK_STORAGE_DRIVER = "filesystem";
@@ -114,6 +115,7 @@ describe("storage driver selector", () => {
       surface: "description" as const,
       filename: "photo.png",
       contentType: "image/png",
+      size: 512,
     };
     const upload = await createTaskImageUploadUrl(context);
 

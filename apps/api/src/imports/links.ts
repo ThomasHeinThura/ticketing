@@ -457,7 +457,10 @@ export async function createImportLinks(
           existingChunk.pendingActionId
         ) {
           const [pending] = await tx
-            .select({ state: schema.pendingActionTable.state })
+            .select({
+              state: schema.pendingActionTable.state,
+              expiresAt: schema.pendingActionTable.expiresAt,
+            })
             .from(schema.pendingActionTable)
             .where(
               and(
@@ -470,6 +473,12 @@ export async function createImportLinks(
             throw new HTTPException(409, {
               message: "Import link chunk is no longer active",
             });
+          if (existingChunk.expiresAt.getTime() < pending.expiresAt.getTime()) {
+            await tx
+              .update(CHUNK)
+              .set({ expiresAt: pending.expiresAt })
+              .where(eq(CHUNK.id, existingChunk.id));
+          }
           return {
             kind: "pending_approval" as const,
             pendingActionId: existingChunk.pendingActionId,
@@ -589,11 +598,16 @@ export async function createImportLinks(
         ip: clientIpForContext(c),
         userAgent: c.req.header("user-agent") ?? null,
       });
+      const nextChunkExpiresAt =
+        chunk.expiresAt.getTime() >= approval.expiresAt.getTime()
+          ? chunk.expiresAt
+          : approval.expiresAt;
       await tx
         .update(CHUNK)
         .set({
           state: "pending_approval",
           pendingActionId: approval.pendingActionId,
+          expiresAt: nextChunkExpiresAt,
         })
         .where(eq(CHUNK.id, chunk.id));
       await tx

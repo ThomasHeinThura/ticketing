@@ -36,6 +36,7 @@ import {
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { scimMappingOptionsRoute as mappingOptionsRoute } from "./mapping-options-route";
 import {
   lockScimGrantClosure,
   retireScimGroupGrants,
@@ -150,63 +151,6 @@ const safeResponseSchema = z.object({
     ),
   }),
   configVersion: versionSchema,
-});
-
-const mappingOptionsLimit = z.coerce.number().int().min(1).max(100).default(50);
-const problemSchema = z.object({
-  type: z.string(),
-  title: z.string(),
-  status: z.number(),
-});
-const mappingOptionsQuery = z
-  .object({
-    workspaceId: z.string().min(1).max(128).optional(),
-    cursor: z.string().min(1).max(512).optional(),
-    limit: mappingOptionsLimit,
-  })
-  .strict();
-const mappingOptionsRoute = createRoute({
-  method: "get",
-  operationId: "getScimMappingOptions",
-  path: "/identity-connections/{id}/scim/mapping-options",
-  tags: ["Instance"],
-  summary: "List eligible SCIM group mapping targets and roles",
-  middleware: [requireSessionOnly()] as const,
-  request: {
-    params: z.object({ id: z.string().min(1) }),
-    query: mappingOptionsQuery,
-  },
-  responses: {
-    200: jsonResponse(
-      "Eligible targets or roles for a SCIM group mapping",
-      z.union([
-        z.object({
-          kind: z.literal("agent_targets"),
-          data: z.array(z.object({ id: z.string(), name: z.string() })),
-          nextCursor: z.string().nullable(),
-        }),
-        z.object({
-          kind: z.literal("agent_roles"),
-          target: z.object({ id: z.string(), name: z.string() }),
-          data: z.array(
-            z.object({ id: z.string(), name: z.string(), rank: z.number() }),
-          ),
-          nextCursor: z.string().nullable(),
-        }),
-        z.object({
-          kind: z.literal("customer"),
-          target: z.object({ id: z.string(), name: z.string() }).nullable(),
-          role: z
-            .object({ id: z.string(), name: z.string(), rank: z.number() })
-            .nullable(),
-          nextCursor: z.null(),
-        }),
-      ]),
-    ),
-    400: jsonResponse("Invalid selector query or cursor", problemSchema),
-    403: jsonResponse("Forbidden", problemSchema),
-    404: jsonResponse("Connection unavailable", problemSchema),
-  },
 });
 
 function error(status: number, message: string) {

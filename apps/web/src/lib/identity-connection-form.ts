@@ -2,6 +2,8 @@ import type {
   IdentityConnection,
   IdentityConnectionConfigureBody,
   IdentityConnectionCreateBody,
+  OidcGroupMappingCreateInput,
+  OidcGroupMappingUpdateInput,
   ScimAdminRequest,
   ScimAdminSettings,
   ScimGroupMapping,
@@ -387,4 +389,20 @@ export function buildMappingRequest(input: {
     request.scopeId = draft.scopeId;
   if (draft.enabled !== existing.enabled) request.enabled = draft.enabled;
   return Object.keys(request).length === 3 ? null : request;
+}
+
+export function buildOidcMappingRequest(
+  input: Parameters<typeof buildMappingRequest>[0],
+): OidcGroupMappingCreateInput | OidcGroupMappingUpdateInput | null {
+  const request = buildMappingRequest(input);
+  if (!request) return null;
+  if (request.kind === "mapping_create") {
+    const { kind: _, ...body } = request;
+    return body;
+  }
+  if (request.kind === "mapping_update") {
+    const { kind: _, mappingId: __, ...body } = request;
+    return body;
+  }
+  return null;
 }

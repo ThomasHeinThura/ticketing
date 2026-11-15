@@ -4260,27 +4260,54 @@ function decodeMappingOptionsCursor(
   }
 }
 
-export async function readScimMappingOptions(input: {
+type MappingOptionsInput = {
   connectionId: string;
   workspaceId?: string;
   cursor?: string;
   limit: number;
-}) {
-  const [connection] = await db
+};
+
+export function readScimMappingOptions(input: MappingOptionsInput) {
+  return readMappingOptions(input, {
+    requireScimChild: true,
+    roleValidator: validateScimMappingRole,
+  });
+}
+
+export function readOidcMappingOptions(input: MappingOptionsInput) {
+  return readMappingOptions(input, {
+    requireScimChild: false,
+    roleValidator: validateOidcMappingRole,
+  });
+}
+
+async function readMappingOptions(
+  input: MappingOptionsInput,
+  options: {
+    requireScimChild: boolean;
+    roleValidator: typeof validateOidcMappingRole;
+  },
+) {
+  const query = db
     .select({
       id: schema.identityConnectionTable.id,
+      providerType: schema.identityConnectionTable.providerType,
       portalScope: schema.identityConnectionTable.portalScope,
       organisationId: schema.identityConnectionTable.organisationId,
       maxRoleRank: schema.identityConnectionTable.maxRoleRank,
     })
     .from(schema.identityConnectionTable)
-    .innerJoin(
-      schema.scimConnectionTable,
-      eq(
-        schema.scimConnectionTable.identityConnectionId,
-        schema.identityConnectionTable.id,
-      ),
-    )
+    .$dynamic();
+  const [connection] = await (options.requireScimChild
+    ? query.innerJoin(
+        schema.scimConnectionTable,
+        eq(
+          schema.scimConnectionTable.identityConnectionId,
+          schema.identityConnectionTable.id,
+        ),
+      )
+    : query
+  )
     .where(eq(schema.identityConnectionTable.id, input.connectionId))
     .limit(1);
   if (!connection) return null;
@@ -4335,12 +4362,13 @@ export async function readScimMappingOptions(input: {
     if (
       !role ||
       !(await db.transaction((tx) =>
-        validateScimMappingRole(tx, {
+        options.roleValidator(tx, {
+          providerType: connection.providerType,
           portalScope: connection.portalScope,
           organisationId: connection.organisationId,
           maxRoleRank: connection.maxRoleRank,
           scope: "organisation",
-          scopeId: connection.organisationId ?? undefined,
+          scopeId: target.id,
           roleId: role.id,
         }),
       ))
@@ -4452,12 +4480,13 @@ export async function readScimMappingOptions(input: {
   for (const role of candidates) {
     if (
       await db.transaction((tx) =>
-        validateScimMappingRole(tx, {
+        options.roleValidator(tx, {
+          providerType: connection.providerType,
           portalScope: connection.portalScope,
           organisationId: connection.organisationId,
           maxRoleRank: connection.maxRoleRank,
           scope: "workspace",
-          scopeId: input.workspaceId,
+          scopeId: target.id,
           roleId: role.id,
         }),
       )

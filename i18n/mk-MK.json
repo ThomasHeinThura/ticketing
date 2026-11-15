@@ -3917,7 +3917,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Прикази"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3937,7 +3938,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Барањата за одобрување од тимот за поддршка се појавуваат тука."
+			"emptyDescription": "Барањата за одобрување од тимот за поддршка се појавуваат тука.",
+			"state": {
+				"pending": "Во тек",
+				"approved": "Одобрено",
+				"rejected": "Одбиено",
+				"expired": "Истечено",
+				"withdrawn": "Повлечено"
+			}
 		},
 		"unavailable": {
 			"title": "Порталот за клиенти не е достапен",
@@ -5385,6 +5393,18 @@
 		"emptySubmissionsDescription": "No submissions match this saved view."
 	},
 	"identityConnections": {
+		"oidcGroups": {
+			"title": "OIDC group mappings",
+			"description": "Map Entra group membership from sign-in to an eligible role and scope.",
+			"externalIdHelp": "Enter the Entra group object UUID.",
+			"evidenceNote": "Changes require fresh verification and are audited. Disabling a mapping retires its grants.",
+			"loading": "Loading OIDC group mappings…",
+			"loadFailed": "OIDC group mappings could not be loaded.",
+			"notSaved": "OIDC group mapping was not saved.",
+			"empty": "No OIDC group mappings are configured.",
+			"invalidExternalId": "Enter a valid Entra group object UUID.",
+			"organisation": "Organisation"
+		},
 		"common": {
 			"reload": "Reload latest settings",
 			"retry": "Retry",

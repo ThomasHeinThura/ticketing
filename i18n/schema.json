@@ -16031,6 +16031,9 @@
 						},
 						"backlogMore": {
 							"type": "string"
+						},
+						"viewLabel": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -16063,7 +16066,8 @@
 						"backlogItem",
 						"reorder",
 						"backlogPagination",
-						"backlogMore"
+						"backlogMore",
+						"viewLabel"
 					]
 				},
 				"approvals": {
@@ -16123,6 +16127,34 @@
 						},
 						"emptyDescription": {
 							"type": "string"
+						},
+						"state": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"pending": {
+									"type": "string"
+								},
+								"approved": {
+									"type": "string"
+								},
+								"rejected": {
+									"type": "string"
+								},
+								"expired": {
+									"type": "string"
+								},
+								"withdrawn": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"pending",
+								"approved",
+								"rejected",
+								"expired",
+								"withdrawn"
+							]
 						}
 					},
 					"required": [
@@ -16143,7 +16175,8 @@
 						"note",
 						"approve",
 						"reject",
-						"emptyDescription"
+						"emptyDescription",
+						"state"
 					]
 				},
 				"unavailable": {
@@ -26263,6 +26296,54 @@
 						"registrationOn",
 						"registrationOff"
 					]
+				},
+				"oidcGroups": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"externalIdHelp": {
+							"type": "string"
+						},
+						"evidenceNote": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadFailed": {
+							"type": "string"
+						},
+						"notSaved": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"invalidExternalId": {
+							"type": "string"
+						},
+						"organisation": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"externalIdHelp",
+						"evidenceNote",
+						"loading",
+						"loadFailed",
+						"notSaved",
+						"empty",
+						"invalidExternalId",
+						"organisation"
+					]
 				}
 			},
 			"required": [
@@ -26275,7 +26356,8 @@
 				"events",
 				"scim",
 				"organisation",
-				"signInMethods"
+				"signInMethods",
+				"oidcGroups"
 			]
 		},
 		"notificationProvider": {

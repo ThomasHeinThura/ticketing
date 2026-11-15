@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getIdentityConnectionEvents,
   getIdentityConnections,
+  getOidcGroupMappings,
+  getOidcMappingOptions,
   getOrganisationIdentityConnection,
   getScimAdminSettings,
   getScimMappingOptions,
@@ -78,13 +80,14 @@ export function useScimAdminSettings(id: string, enabled: boolean) {
 async function readAllTargets(
   id: string,
   workspaceId?: string,
+  fetchOptions = getScimMappingOptions,
 ): Promise<ScimMappingOptions> {
-  let page = await getScimMappingOptions(id, workspaceId);
+  let page = await fetchOptions(id, workspaceId);
   if (page.kind === "customer") return page;
   const seen = new Set<string>();
   while (page.nextCursor && !seen.has(page.nextCursor)) {
     seen.add(page.nextCursor);
-    const next = await getScimMappingOptions(id, workspaceId, page.nextCursor);
+    const next = await fetchOptions(id, workspaceId, page.nextCursor);
     if (next.kind !== page.kind) throw new Error("Unexpected selector result");
     page =
       page.kind === "agent_targets" && next.kind === "agent_targets"
@@ -105,6 +108,30 @@ export function useScimMappingOptions(
   return useQuery({
     queryKey: [...scimAdminKey(id), "options", workspaceId ?? ""],
     queryFn: () => readAllTargets(id, workspaceId),
+    enabled,
+    staleTime: 0,
+    retry: retryTransient,
+  });
+}
+
+export const oidcGroupMappingsKey = (id: string) =>
+  [...identityConnectionsKey, id, "oidc-groups"] as const;
+export function useOidcGroupMappings(id: string) {
+  return useQuery({
+    queryKey: oidcGroupMappingsKey(id),
+    queryFn: () => getOidcGroupMappings(id),
+    ...configurationQuery,
+  });
+}
+
+export function useOidcMappingOptions(
+  id: string,
+  workspaceId: string | undefined,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [...oidcGroupMappingsKey(id), "options", workspaceId ?? ""],
+    queryFn: () => readAllTargets(id, workspaceId, getOidcMappingOptions),
     enabled,
     staleTime: 0,
     retry: retryTransient,

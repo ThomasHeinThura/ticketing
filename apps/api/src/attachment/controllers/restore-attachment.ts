@@ -11,6 +11,7 @@ import {
   lockRecoverableAttachment,
   restoreAttachmentRow,
 } from "../repository";
+import { assertOrganisationStorageQuota } from "../storage-quota";
 
 export type RestoreAttachmentInput = {
   attachmentId: string;
@@ -74,6 +75,11 @@ export async function restoreAttachment(input: RestoreAttachmentInput) {
         message: "Attachment is no longer recoverable",
       });
 
+    await assertOrganisationStorageQuota(tx, {
+      workspaceId: target.item.workspaceId,
+      additionalBytes: storedSize,
+      excludeAttachmentId: attachment.id,
+    });
     const [restored] = await restoreAttachmentRow(tx, { id: attachment.id });
     if (!restored)
       throw new HTTPException(409, {

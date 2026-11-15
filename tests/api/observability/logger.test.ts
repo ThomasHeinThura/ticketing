@@ -47,6 +47,30 @@ describe("allowlisted structured logger", () => {
     expect(sink.lines).toHaveLength(1);
   });
 
+  it("accepts degraded auth.rate_limit_unshared warnings", () => {
+    const sink = capture();
+    const logger = createTaskDeskLogger(
+      defaultLogLevels(),
+      registeredRoutes,
+      sink.stream,
+    );
+    logger.log({
+      module: "auth",
+      message: "auth.rate_limit_unshared",
+      level: "warn",
+      result: "degraded",
+    });
+
+    expect(JSON.parse(sink.lines[0] as string)).toMatchObject({
+      module: "auth",
+      messageKey: "auth.rate_limit_unshared",
+      msg: "auth.rate_limit_unshared",
+      level: 40,
+      result: "degraded",
+    });
+    expect(sink.lines).toHaveLength(1);
+  });
+
   it("emits only closed fields and suppresses messages below module level", () => {
     const sink = capture();
     const logger = createTaskDeskLogger(

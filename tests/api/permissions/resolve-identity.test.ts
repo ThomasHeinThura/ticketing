@@ -1175,3 +1175,37 @@ it("D-E rejects non-system generic workspace grants bearing owner/admin/manager 
     expect(identity?.memberships).toEqual([]);
   }
 });
+
+it("D-E grants workspace see-all reach to system generic workspace grants bearing owner/admin/manager keys even when seesAll is false", () => {
+  for (const roleKey of ["owner", "admin", "manager"] as const) {
+    const identity = resolveIdentityFromFacts(
+      facts({
+        workspaceMemberships: [],
+        scopedRoleMemberships: [
+          {
+            scope: "workspace",
+            scopeId: "ws-1",
+            seesAll: false,
+            inheritedFrom: null,
+            roleId: `system-${roleKey}`,
+            roleKey,
+            roleScope: "workspace",
+            roleWorkspaceId: "ws-1",
+            roleIsSystem: true,
+            scopeWorkspaceId: null,
+            scopeExists: true,
+            rank: 80,
+            capabilities: ["work_item:read"],
+          },
+        ],
+      }),
+    );
+    expect(identity?.memberships).toEqual([
+      { scope: "workspace", scopeId: "ws-1", seesAll: true },
+    ]);
+    expect(identity?.reach).toEqual({
+      kind: "membership_with_workspaces",
+      workspaceIds: ["ws-1"],
+    });
+  }
+});

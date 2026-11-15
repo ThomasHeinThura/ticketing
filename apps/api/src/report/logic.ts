@@ -255,7 +255,8 @@ export function csvCell(value: string | number | null | undefined): string {
   if (typeof value === "number")
     return Number.isFinite(value) ? String(value) : "";
   let text = value;
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  if (/^[\t\r]/u.test(text) || /^[\s\p{Cc}]*[=+\-@]/u.test(text))
+    text = `'${text}`;
   return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 

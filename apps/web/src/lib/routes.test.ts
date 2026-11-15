@@ -1552,3 +1552,49 @@ describe("account security URL state", () => {
       ).toEqual({});
   });
 });
+
+it("preserves OIDC mapping URL state only on the groups tab", () => {
+  expect(
+    parseIdentityConnectionEditorSearch({
+      tab: "groups",
+      oidcMapping: "new",
+      mapping: "scim-id",
+    }),
+  ).toEqual({ tab: "groups", oidcMapping: "new" });
+  expect(
+    parseIdentityConnectionEditorSearch({
+      tab: "groups",
+      oidcMapping: "x".repeat(129),
+    }),
+  ).toEqual({ tab: "groups" });
+  expect(
+    routes.identityConnectionEditor.build(
+      { id: "conn-1" },
+      { tab: "groups", oidcMapping: "map-1" },
+    ),
+  ).toContain("oidcMapping=map-1");
+});
+
+it("strips malformed OIDC mapping URL state and isolates tabs", () => {
+  for (const tab of [undefined, "connection", "scim", "events"]) {
+    expect(
+      parseIdentityConnectionEditorSearch({ tab, oidcMapping: "new" }),
+    ).not.toHaveProperty("oidcMapping");
+  }
+  for (const oidcMapping of ["", ["new"], "bad\nvalue", "bad\u007fvalue"]) {
+    expect(
+      parseIdentityConnectionEditorSearch({ tab: "groups", oidcMapping }),
+    ).toEqual({ tab: "groups" });
+  }
+  const url = routes.organisationIdentity.build(
+    { id: "org-1" },
+    { tab: "groups", oidcMapping: "map-1" },
+  );
+  const params = Object.fromEntries(
+    new URL(url, "https://example.test").searchParams,
+  );
+  expect(parseIdentityConnectionEditorSearch(params)).toEqual({
+    tab: "groups",
+    oidcMapping: "map-1",
+  });
+});

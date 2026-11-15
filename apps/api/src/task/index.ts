@@ -1,6 +1,7 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Context, MiddlewareHandler, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { assertOrganisationStorageQuota } from "../attachment/storage-quota";
 import db from "../database";
 import {
   apiRouter,
@@ -16,6 +17,9 @@ import {
 import {
   assertTaskImageKeyMatchesContext,
   createTaskImageUploadUrl,
+  deleteStorageObject,
+  getMaxImageUploadBytes,
+  getObjectSizeAndHeader,
   isImageContentType,
   validateTaskAssetUploadInput,
 } from "../storage";
@@ -721,6 +725,7 @@ const createTaskImageUploadRoute = createRoute({
     400: errorResponse("Unsupported content type, or the file is too large"),
     403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
+    429: errorResponse("Organisation storage limit reached"),
     503: errorResponse("Image uploads are not configured on this instance"),
   },
 });
@@ -754,6 +759,7 @@ const finalizeTaskImageUploadRoute = createRoute({
     ),
     403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
+    429: errorResponse("Organisation storage limit reached"),
   },
 });
 
@@ -1058,6 +1064,10 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         );
         if (!context)
           throw new HTTPException(404, { message: "Task not found" });
+        await assertOrganisationStorageQuota(tx, {
+          workspaceId: context.workspaceId,
+          additionalBytes: size,
+        });
         return createTaskImageUploadUrl({
           workspaceId: context.workspaceId,
           projectId: task.projectId,
@@ -1065,6 +1075,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
           surface,
           filename,
           contentType,
+          size,
           apiBaseUrl: requirePublicAppOrigin(c.get("appPublicOrigin")),
         });
       });
@@ -1128,18 +1139,60 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
         normalizedKey,
         task.id,
       );
+
+      const { contentLength: storedSize } = await getObjectSizeAndHeader(
+        normalizedKey,
+        0,
+      ).catch(() => {
+        throw new HTTPException(400, {
+          message:
+            "Upload not found in storage -- the presigned URL was never used, or the upload never finished.",
+        });
+      });
+
+      const maxImageBytes = getMaxImageUploadBytes();
+      if (
+        storedSize === undefined ||
+        storedSize <= 0 ||
+        storedSize > maxImageBytes
+      ) {
+        if (!existingAsset) {
+          await deleteStorageObject(normalizedKey).catch(() => {});
+        }
+        throw new HTTPException(400, {
+          message:
+            storedSize !== undefined && storedSize > maxImageBytes
+              ? `Upload exceeds the maximum upload size of ${Math.floor(maxImageBytes / (1024 * 1024))}MB.`
+              : "Uploaded object has an invalid size.",
+        });
+      }
+
+      try {
+        await assertOrganisationStorageQuota(tx, {
+          workspaceId: context.workspaceId,
+          additionalBytes: storedSize,
+          excludeAssetId: existingAsset?.id,
+        });
+      } catch (error) {
+        if (!existingAsset) {
+          await deleteStorageObject(normalizedKey).catch(() => {});
+        }
+        throw error;
+      }
+
       const values = {
         workspaceId: context.workspaceId,
         projectId: task.projectId,
         taskId: task.id,
         filename,
         mimeType: contentType,
-        size,
+        size: storedSize,
         kind: isImageContentType(contentType)
           ? ("image" as const)
           : ("attachment" as const),
         surface,
         createdBy: userId || null,
+        detachedAt: null,
       };
       const asset = existingAsset
         ? await updateAssetById(tx, identity, existingAsset.id, values)

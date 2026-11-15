@@ -258,11 +258,28 @@ export function getScimMappingOptions(
   workspaceId?: string,
   cursor?: string,
 ): Promise<ScimMappingOptions> {
+  return getMappingOptions(id, "scim", workspaceId, cursor);
+}
+
+export function getOidcMappingOptions(
+  id: string,
+  workspaceId?: string,
+  cursor?: string,
+): Promise<ScimMappingOptions> {
+  return getMappingOptions(id, "oidc-group-mappings", workspaceId, cursor);
+}
+
+function getMappingOptions(
+  id: string,
+  kind: "scim" | "oidc-group-mappings",
+  workspaceId?: string,
+  cursor?: string,
+): Promise<ScimMappingOptions> {
   const query = new URLSearchParams({ limit: "100" });
   if (workspaceId) query.set("workspaceId", workspaceId);
   if (cursor) query.set("cursor", cursor);
   return request(
-    `${itemPath(id)}/scim/mapping-options?${query}`,
+    `${itemPath(id)}/${kind}/mapping-options?${query}`,
     "Unable to load mapping options",
   );
 }
@@ -355,5 +372,62 @@ export function revokeScimBearer(input: {
     `${itemPath(input.id)}/scim/revoke-token`,
     "Unable to revoke the SCIM token",
     { method: "POST", token: input.token, body: { version: input.version } },
+  );
+}
+
+// Mirrors oidc-group-mapping-contract.ts and the safe administration DTO.
+export type OidcGroupMappingRow = ScimGroupMapping & {
+  createdAt: string;
+  updatedAt: string;
+};
+export type OidcGroupMappingListResponse = {
+  data: OidcGroupMappingRow[];
+  configVersion: number;
+};
+export type OidcGroupMappingCreateInput = {
+  configVersion: number;
+  externalGroupId: string;
+  externalGroupNameSnapshot: string | null;
+  roleId: string;
+  scope: "organisation" | "workspace";
+  scopeId?: string;
+  enabled: boolean;
+};
+export type OidcGroupMappingUpdateInput = {
+  configVersion: number;
+  externalGroupNameSnapshot?: string | null;
+  roleId?: string;
+  scopeId?: string;
+  enabled?: boolean;
+};
+export function getOidcGroupMappings(
+  connectionId: string,
+): Promise<OidcGroupMappingListResponse> {
+  return request(
+    `${itemPath(connectionId)}/oidc-group-mappings`,
+    "Unable to load OIDC group mappings",
+  );
+}
+export function createOidcGroupMapping(input: {
+  connectionId: string;
+  body: OidcGroupMappingCreateInput;
+  stepUpToken: string;
+}): Promise<{ data: OidcGroupMappingRow; configVersion: number }> {
+  return request(
+    `${itemPath(input.connectionId)}/oidc-group-mappings`,
+    "Unable to create OIDC group mapping",
+    { method: "POST", token: input.stepUpToken, body: input.body },
+  );
+}
+export function updateOidcGroupMapping(input: {
+  connectionId: string;
+  mappingId: string;
+  body: OidcGroupMappingUpdateInput;
+  stepUpToken: string;
+}): Promise<{ data: OidcGroupMappingRow; configVersion: number }> {
+  return request(
+    `${itemPath(input.connectionId)}/oidc-group-mappings/${encodeURIComponent(input.mappingId)}`,
+    "Unable to update OIDC group mapping",
+    { method: "PATCH", token: input.stepUpToken, body: input.body },
   );
 }

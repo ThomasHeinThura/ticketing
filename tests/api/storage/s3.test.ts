@@ -242,11 +242,49 @@ describe("S3 helpers", () => {
       surface: "description",
       filename: "report.png",
       contentType: "image/png",
+      size: 4096,
     });
 
     const searchParams = new URL(upload.uploadUrl).searchParams;
     expect(searchParams.has("x-amz-checksum-crc32")).toBe(false);
     expect(searchParams.has("x-amz-sdk-checksum-algorithm")).toBe(false);
+    const signedHeaders = (searchParams.get("X-Amz-SignedHeaders") ?? "").split(
+      ";",
+    );
+    expect(signedHeaders).toContain("content-length");
+    expect(signedHeaders).toContain("content-type");
+  });
+
+  it("refuses to presign task image URLs when size is invalid or exceeds S3_MAX_IMAGE_UPLOAD_BYTES", async () => {
+    process.env.S3_ENDPOINT = "https://storage.example.test";
+    process.env.S3_BUCKET = "taskdesk";
+    process.env.S3_ACCESS_KEY_ID = "test-access-key";
+    process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
+    process.env.S3_MAX_IMAGE_UPLOAD_BYTES = "1048576";
+
+    await expect(
+      createTaskImageUploadUrl({
+        workspaceId: "workspace-1",
+        projectId: "project-1",
+        taskId: "task-1",
+        surface: "description",
+        filename: "report.png",
+        contentType: "image/png",
+        size: 0,
+      }),
+    ).rejects.toThrow("Upload size must be greater than zero.");
+
+    await expect(
+      createTaskImageUploadUrl({
+        workspaceId: "workspace-1",
+        projectId: "project-1",
+        taskId: "task-1",
+        surface: "description",
+        filename: "report.png",
+        contentType: "image/png",
+        size: 2 * 1024 * 1024,
+      }),
+    ).rejects.toThrow("Upload exceeds the maximum upload size of 1MB.");
   });
 
   it("resolveS3Credentials returns explicit credentials when both keys are set", () => {
@@ -359,6 +397,7 @@ describe("S3 credential provider chain (IAM role)", () => {
       surface: "description",
       filename: "report.png",
       contentType: "image/png",
+      size: 1024,
     });
 
     const searchParams = new URL(upload.uploadUrl).searchParams;

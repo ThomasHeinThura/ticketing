@@ -1,84 +1,107 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render } from "@testing-library/react";
-import type { ReactNode } from "react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PortalNotificationBell from "./portal-notification-bell";
 
+const mocks = vi.hoisted(() => ({
+  get: vi.fn(),
+  navigate: vi.fn(),
+}));
+
 vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mocks.navigate,
 }));
 
 vi.mock("@/fetchers/portal-notifications", () => ({
-  getPortalNotifications: vi.fn().mockResolvedValue({
-    data: [],
-    unreadCount: 0,
-    hasMore: false,
-    nextCursor: null,
-  }),
+  getPortalNotifications: mocks.get,
+}));
+
+vi.mock("@/hooks/use-portal-notification-websocket", () => ({
+  usePortalNotificationWebSocket: () => undefined,
 }));
 
 vi.mock("@/lib/i18n/portal-translation", () => ({
-  usePortalTranslation: () => ({ t: (key: string) => key }),
+  usePortalTranslation: () => ({
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}(${options.count})`,
+  }),
 }));
 
-class MockWebSocket {
-  static OPEN = 1;
-  static instances: MockWebSocket[] = [];
-  readyState = 0;
-  onopen: (() => void) | null = null;
-  onmessage: ((event: MessageEvent) => void) | null = null;
-  onclose: ((event: CloseEvent) => void) | null = null;
-  closeArgs: unknown[][] = [];
-
-  constructor(readonly url: string) {
-    MockWebSocket.instances.push(this);
-  }
-
-  send() {}
-
-  close(...args: unknown[]) {
-    this.closeArgs.push(args);
-    this.readyState = 3;
-    this.onclose?.({
-      code: typeof args[0] === "number" ? args[0] : 1000,
-    } as CloseEvent);
-  }
+function renderBell() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <PortalNotificationBell />
+    </QueryClientProvider>,
+  );
 }
 
-afterEach(() => {
-  cleanup();
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
-  vi.unstubAllEnvs();
-});
-
-describe("PortalNotificationBell realtime lifecycle", () => {
+describe("PortalNotificationBell (C8-3 / W5, DS-09)", () => {
   beforeEach(() => {
-    vi.stubGlobal("WebSocket", MockWebSocket);
-    vi.stubEnv("VITE_API_URL", "");
-    vi.useFakeTimers();
-    MockWebSocket.instances = [];
+    mocks.navigate.mockReset();
+    mocks.get.mockReset().mockResolvedValue({
+      data: [],
+      unreadCount: 3,
+      hasMore: false,
+      nextCursor: null,
+    });
   });
 
-  it("owns one socket per mounted bell and closes it when the authenticated shell unmounts", () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
+  afterEach(() => cleanup());
+
+  it("renders a readable 11px unread badge and keeps menu unread status screen-reader-only instead of visually duplicating the badge count", async () => {
+    renderBell();
+    const trigger = await screen.findByRole("button", {
+      name: "notifications.inbox",
     });
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    await waitFor(() => expect(trigger).toHaveTextContent("3"));
+    const badge = trigger.querySelector("span");
+    expect(badge).toHaveClass("text-xs");
+    expect(badge).not.toHaveClass("text-[9px]");
+
+    fireEvent.click(trigger);
+    const openInbox = await screen.findByRole("menuitem", {
+      name: "notifications.inbox",
+    });
+    expect(openInbox).toBeVisible();
+    const status = screen.getByRole("status");
+    expect(status).toHaveClass("sr-only");
+    expect(status).toHaveTextContent("notifications.unreadCount(3)");
+
+    fireEvent.click(openInbox);
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/notifications" });
+  });
+
+  it("shows a translated error fallback with retry when loading notifications fails", async () => {
+    mocks.get
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockResolvedValueOnce({
+        data: [],
+        unreadCount: 2,
+        hasMore: false,
+        nextCursor: null,
+      });
+
+    renderBell();
+    const trigger = screen.getByRole("button", { name: "notifications.inbox" });
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(trigger);
+    expect(await screen.findByText("notifications.loadFailed")).toBeVisible();
+    expect(screen.queryByRole("status")).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.retry" }),
     );
-    const { unmount } = render(<PortalNotificationBell />, { wrapper });
-
-    expect(MockWebSocket.instances).toHaveLength(1);
-    const socket = MockWebSocket.instances[0];
-    expect(socket?.url).toContain("/api/ws/portal/notification");
-
-    unmount();
-    expect(socket?.closeArgs[0]?.[0]).toBe(1000);
-    vi.advanceTimersByTime(20_000);
-    expect(MockWebSocket.instances).toHaveLength(1);
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(trigger).toHaveTextContent("2"));
   });
 });

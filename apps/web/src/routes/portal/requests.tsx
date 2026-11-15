@@ -1,6 +1,7 @@
 import {
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -26,20 +27,30 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { ArrowDown, ArrowUp, Download } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, Plus } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   type PortalCaseFilterPatch,
   PortalCaseFilters,
 } from "@/components/portal/cases/portal-case-filters";
-import { PortalCaseTable } from "@/components/portal/cases/portal-case-table";
+import {
+  type PortalCaseColumn,
+  PortalCaseTable,
+} from "@/components/portal/cases/portal-case-table";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
   type PortalCaseQuery,
   portalCaseExportUrl,
 } from "@/fetchers/portal/cases";
+import {
+  getPortalProjects,
+  portalProjectKeys,
+} from "@/fetchers/portal/projects";
 import {
   getPortalBacklog,
   type PortalBacklogItem,
@@ -47,6 +58,7 @@ import {
 } from "@/fetchers/portal-backlog";
 import { usePortalCases } from "@/hooks/queries/portal/use-portal-cases";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
+import { portalCapabilities } from "@/lib/portal-capabilities";
 import { routes } from "@/lib/portal-route-builders";
 import {
   type PortalRequestsSearch,
@@ -171,6 +183,22 @@ function PortalRequestsPage() {
     rankMutation.isPending,
   ]);
 
+  // The same cached list as the top-bar project selector.
+  const projects = useQuery({
+    queryKey: portalProjectKeys.list(),
+    queryFn: getPortalProjects,
+    retry: false,
+    staleTime: 60_000,
+    enabled: portalCapabilities.projects && !backlogMode,
+  });
+  // CP-2: Project only when rows can differ by project (more than one, and no project scope;
+  // shown while the count is unknown); Requester / Assigned to only for All requests.
+  const projectCount = projects.data?.data.length;
+  const columns: PortalCaseColumn[] = [
+    ...(search.project || projectCount === 1 ? [] : ["project" as const]),
+    "created",
+    ...(search.scope === "all" ? ["people" as const] : []),
+  ];
   const cases = query.data?.cases ?? [];
   const filtered = Boolean(
     search.status ||
@@ -190,7 +218,7 @@ function PortalRequestsPage() {
     for (const item of backlogItems) {
       const key = JSON.stringify([item.projectId, item.stateId]);
       const group = groups.get(key) ?? {
-        label: `${item.projectName} · ${item.stateName}`,
+        label: `${item.projectName} \u00b7 ${item.stateName}`,
         items: [],
       };
       group.items.push(item);
@@ -230,13 +258,37 @@ function PortalRequestsPage() {
     }
   };
 
+  // The list and the backlog are two views of one page: Kaneo tabs in the toolbar row, beside
+  // My / All (CP-1). Switching keeps only the project scope, as the old links did.
+  const viewTabs = (
+    <Tabs
+      value={backlogMode ? "backlog" : "requests"}
+      onValueChange={(value) =>
+        void navigate({
+          search: (previous: PortalRequestsSearch) => ({
+            project: previous.project,
+            ...(value === "backlog" ? { view: "backlog" as const } : {}),
+          }),
+        })
+      }
+    >
+      <TabsList
+        aria-label={t("requests.viewLabel")}
+        className="w-max max-w-full overflow-x-auto"
+      >
+        <TabsTrigger value="requests">{t("cases.listTitle")}</TabsTrigger>
+        <TabsTrigger value="backlog">{t("requests.backlog")}</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
   return (
     <PageContainer scroll={false} gutter="responsive" width="6xl">
       <PortalPageTitle
         title={backlogMode ? t("requests.backlog") : t("cases.listTitle")}
       />
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
+      <header className="flex items-start justify-between gap-3 border-b border-border pb-4">
+        <div className="min-w-0">
           <h1 className="font-semibold text-xl">
             {backlogMode ? t("requests.backlog") : t("cases.listTitle")}
           </h1>
@@ -246,48 +298,39 @@ function PortalRequestsPage() {
               : t("cases.listDescription")}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant={backlogMode ? "outline" : "secondary"}
-            onClick={() =>
-              void navigate({
-                search: (previous: PortalRequestsSearch) => ({
-                  project: previous.project,
-                }),
-              })
-            }
-          >
-            {t("cases.listTitle")}
-          </Button>
-          <Button
-            variant={backlogMode ? "secondary" : "outline"}
-            onClick={() =>
-              void navigate({
-                search: (previous: PortalRequestsSearch) => ({
-                  project: previous.project,
-                  view: "backlog",
-                }),
-              })
-            }
-          >
-            {t("requests.backlog")}
-          </Button>
+        {/* One primary action; Export is a quiet secondary. Below sm both keep only their icon
+            and their name for assistive technology (P5). */}
+        <div className="flex shrink-0 items-center gap-1.5">
           {backlogMode ? null : (
             <Button
-              variant="outline"
+              variant="ghost"
+              aria-label={t("cases.export")}
+              className="max-sm:size-9 max-sm:px-0"
               render={<a href={portalCaseExportUrl(caseQuery)} download />}
             >
               <Download className="size-4" aria-hidden="true" />
-              {t("cases.export")}
+              <span className="max-sm:sr-only">{t("cases.export")}</span>
             </Button>
           )}
-          <Button render={<Link to={routes.portalCatalogue.path} />}>
-            {t("requests.newRequest")}
+          <Button
+            aria-label={t("requests.newRequest")}
+            className="max-sm:size-9 max-sm:px-0"
+            render={<Link to={routes.portalCatalogue.path} />}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            <span className="max-sm:sr-only">{t("requests.newRequest")}</span>
           </Button>
         </div>
       </header>
-      {backlogMode ? null : (
-        <PortalCaseFilters filters={search} onChange={updateFilters} full />
+      {backlogMode ? (
+        <div data-slot="portal-case-toolbar">{viewTabs}</div>
+      ) : (
+        <PortalCaseFilters
+          filters={search}
+          onChange={updateFilters}
+          full
+          leading={viewTabs}
+        />
       )}
 
       {(backlogMode ? backlogQuery.isError : query.isError) ? (
@@ -501,7 +544,7 @@ function PortalRequestsPage() {
       ) : (
         <PortalCaseTable
           cases={cases}
-          columns={["project", "created"]}
+          columns={columns}
           caption={t("cases.listTitle")}
         />
       )}

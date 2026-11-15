@@ -17,3 +17,12 @@ export function formatPortalDateTime(value: string, locale?: string) {
     minute: "2-digit",
   }).format(new Date(value));
 }
+
+/** A compact date ("Oct 21, 2026"), stable between renders: visual tests cannot freeze the clock. */
+export function formatPortalDate(value: string, locale?: string) {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}

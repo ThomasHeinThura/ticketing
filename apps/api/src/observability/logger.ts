@@ -22,6 +22,7 @@ export const LOG_MESSAGES = [
   "http.lifecycle_failure",
   "http.server_error",
   "auth.failure",
+  "auth.rate_limit_unshared",
   "auth.unknown_key_capability",
   "database.failure",
   "jobs.failure",

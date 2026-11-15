@@ -6,12 +6,19 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import clearNotifications from "../../apps/api/src/notification/controllers/clear-notifications";
 import createNotification from "../../apps/api/src/notification/controllers/create-notification";
+import getNotificationInbox from "../../apps/api/src/notification/controllers/get-notification-inbox";
 import getNotifications from "../../apps/api/src/notification/controllers/get-notifications";
 import markAllNotificationsAsRead from "../../apps/api/src/notification/controllers/mark-all-notifications-as-read";
 import markNotificationAsRead from "../../apps/api/src/notification/controllers/mark-notification-as-read";
 import { userCanReachTask } from "../../apps/api/src/notification/task-reach.repository";
 import { deliverNotification } from "../../apps/api/src/notification-preferences/delivery";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
+import {
+  buildTenant,
+  createApproval,
+  personOf,
+  setApproval,
+} from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -192,6 +199,251 @@ async function revokeProjectReach(userId: string, projectId: string) {
 }
 
 describe("notification task reach (security-model §2; NO edge cases)", () => {
+  async function assertTaskAndApprovalReach(
+    t: Awaited<ReturnType<typeof buildTenant>>,
+    userId: string,
+    visible: boolean,
+  ) {
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: t.project.id,
+          title: "Inherited notification task",
+        })
+        .returning(),
+      "inherited task",
+    );
+    const { id: approvalId } = await createApproval(t);
+    const person = await personOf(userId);
+    await db.insert(schema.watcherTable).values({
+      workItemId: t.workItem.id,
+      personId: person.id,
+      source: "explicit",
+      muted: false,
+    });
+    const taskNotice = await plantTaskNotification({ userId, taskId: task.id });
+    const approvalNotice = requireRow(
+      await db
+        .insert(schema.notificationTable)
+        .values({
+          userId,
+          personId: person.id,
+          type: "approval.decided",
+          kind: "approval.decided",
+          title: "Inherited approval",
+          content: "Approval",
+          resourceType: "approval",
+          resourceId: approvalId,
+        })
+        .returning(),
+      "inherited approval notice",
+    );
+    expect(await userCanReachTask(userId, task.id)).toBe(visible);
+    const ids = [taskNotice.id, approvalNotice.id];
+    const listed = (await getNotifications(userId, true)).map((row) => row.id);
+    const inbox = await getNotificationInbox({
+      userId,
+      credentialCanReadTask: true,
+      filter: "all",
+      limit: 50,
+    });
+    expect(inbox.unreadCount).toBe(visible ? 2 : 0);
+    for (const id of ids) {
+      expect(listed.includes(id)).toBe(visible);
+      if (visible) {
+        await expect(markNotificationAsRead(id, userId)).resolves.toMatchObject(
+          { id, isRead: true },
+        );
+      } else {
+        await expect(markNotificationAsRead(id, userId)).rejects.toMatchObject({
+          status: 404,
+        });
+      }
+    }
+  }
+
+  it.each(["legacy", "scoped"])(
+    "unions other workspace read grants when the %s admin itself cannot read",
+    async (mode) => {
+      const t = await buildTenant("additive-union");
+      const recipient = await createWorkspaceMember();
+      const person = await personOf(recipient.user.id);
+      const admin = requireRow(
+        await db
+          .select()
+          .from(schema.roleTable)
+          .where(
+            and(
+              eq(schema.roleTable.workspaceId, t.workspaceId),
+              eq(schema.roleTable.key, "admin"),
+              eq(schema.roleTable.scope, "workspace"),
+            ),
+          ),
+        "admin role",
+      );
+      await db
+        .update(schema.roleTable)
+        .set({ capabilities: ["project:read"] })
+        .where(eq(schema.roleTable.id, admin.id));
+      const reader = requireRow(
+        await db
+          .insert(schema.roleTable)
+          .values({
+            scope: "workspace",
+            workspaceId: t.workspaceId,
+            key: `reader-${randomUUID()}`,
+            name: "Reader",
+            rank: 20,
+            capabilities: ["work_item:read"],
+            isSystem: false,
+          })
+          .returning(),
+        "workspace reader",
+      );
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: t.workspaceId,
+        userId: recipient.user.id,
+        role: mode === "legacy" ? "admin" : reader.key,
+        joinedAt: new Date(),
+      });
+      await db.insert(schema.membershipTable).values({
+        personId: person.id,
+        scope: "workspace",
+        scopeId: t.workspaceId,
+        roleId: mode === "legacy" ? reader.id : admin.id,
+      });
+      await grantProjectRole(recipient.user.id, t.project.id, ["project:read"]);
+      const identity = await resolveIdentity({
+        userId: recipient.user.id,
+        credential: "session",
+      });
+      expect(
+        identity &&
+          can(identity, "work_item:read", "project", {
+            projectId: t.project.id,
+            workspaceId: t.workspaceId,
+          }),
+      ).toBe(true);
+      await assertTaskAndApprovalReach(t, recipient.user.id, true);
+    },
+  );
+
+  it.each([
+    ["permissive parent", true, false, false, false, false, false, 1],
+    ["restricted child", false, true, false, false, false, false, 1],
+    ["additive restricted child", true, true, true, false, false, false, 1],
+    ["nearer restricted parent", false, false, false, true, false, false, 2],
+    ["nearer permissive parent", true, false, false, false, false, false, 2],
+    ["deleted ancestor", false, false, false, false, true, false, 1],
+    ["cross workspace ancestor", false, false, false, false, false, true, 1],
+    ["beyond depth cap", false, false, false, false, false, false, 4],
+  ] as const)(
+    "matches nearest ancestor selection: %s",
+    async (_label, visible, childGrant, additive, restrictedParent, deleted, crossWorkspace, depth) => {
+      const t = await buildTenant("ancestor-parity");
+      const recipient = await createWorkspaceMember({
+        role: additive ? "admin" : "member",
+      });
+      if (additive)
+        await db.insert(schema.workspaceUserTable).values({
+          workspaceId: t.workspaceId,
+          userId: recipient.user.id,
+          role: "admin",
+          joinedAt: new Date(),
+        });
+      let childId = t.project.id;
+      for (let level = 1; level <= depth; level++) {
+        const { project: parent } = await createProjectFixture({
+          workspaceId: crossWorkspace ? recipient.workspace.id : t.workspaceId,
+        });
+        const setParent = db
+          .update(schema.projectTable)
+          .set({ parentId: parent.id })
+          .where(eq(schema.projectTable.id, childId));
+        if (crossWorkspace) {
+          await expect(setParent).rejects.toMatchObject({
+            cause: { code: "23503" },
+          });
+        } else {
+          await setParent;
+        }
+        if (deleted)
+          await db
+            .update(schema.projectTable)
+            .set({ deletedAt: new Date() })
+            .where(eq(schema.projectTable.id, parent.id));
+        if (level === depth || depth === 2) {
+          const read =
+            depth === 2
+              ? level === 1
+                ? !restrictedParent
+                : restrictedParent
+              : true;
+          await grantProjectRole(
+            recipient.user.id,
+            parent.id,
+            read ? ["work_item:read"] : ["project:read"],
+          );
+        }
+        childId = parent.id;
+      }
+      if (childGrant)
+        await grantProjectRole(recipient.user.id, t.project.id, [
+          "project:read",
+        ]);
+      await assertTaskAndApprovalReach(t, recipient.user.id, visible);
+    },
+  );
+
+  it.each([
+    "banned",
+    "inactive",
+    "customer",
+    "foreign-owner",
+    "foreign-admin",
+    "foreign-manager",
+  ])("denies new reach paths for %s", async (denial) => {
+    const t = await buildTenant("ancestor-denials");
+    const recipient = await createWorkspaceMember({
+      role: denial.startsWith("foreign-") ? denial.slice(8) : "admin",
+    });
+    if (!denial.startsWith("foreign-")) {
+      const { project: parent } = await createProjectFixture({
+        workspaceId: t.workspaceId,
+      });
+      await db
+        .update(schema.projectTable)
+        .set({ parentId: parent.id })
+        .where(eq(schema.projectTable.id, t.project.id));
+      await grantProjectRole(recipient.user.id, parent.id, ["work_item:read"]);
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: t.workspaceId,
+        userId: recipient.user.id,
+        role: "admin",
+        joinedAt: new Date(),
+      });
+    } else {
+      await grantProjectRole(recipient.user.id, t.project.id, ["project:read"]);
+    }
+    if (denial === "banned")
+      await db
+        .update(schema.userTable)
+        .set({ banned: true })
+        .where(eq(schema.userTable.id, recipient.user.id));
+    if (denial === "inactive")
+      await db
+        .update(schema.personTable)
+        .set({ active: false })
+        .where(eq(schema.personTable.userId, recipient.user.id));
+    if (denial === "customer")
+      await db
+        .update(schema.personTable)
+        .set({ side: "customer" })
+        .where(eq(schema.personTable.userId, recipient.user.id));
+    await assertTaskAndApprovalReach(t, recipient.user.id, false);
+  });
+
   it("fails closed for unsupported and unbound historical rows across all inbox paths", async () => {
     const { user } = await fixture();
     const rows = await db
@@ -1084,5 +1336,280 @@ describe("notification task reach (security-model §2; NO edge cases)", () => {
       destinationCheck.assertPublicWebhookDestination,
     ).toHaveBeenCalledTimes(2);
     expect(outbound.sendWebhookRequest).not.toHaveBeenCalled();
+  });
+
+  it("allows a genuine workspace_member manager without project or sees_all rows and preserves additive read across restricted project overrides (#1152)", async () => {
+    const t = await buildTenant("manager-reach");
+    const manager = await createWorkspaceMember({ role: "member" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: t.workspaceId,
+      userId: manager.user.id,
+      role: "manager",
+      joinedAt: new Date(),
+    });
+    const managerPerson = await personOf(manager.user.id);
+    const managerMemberships = await db
+      .select({ id: schema.membershipTable.id })
+      .from(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, managerPerson.id));
+    expect(managerMemberships).toHaveLength(0);
+
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({ projectId: t.project.id, title: "Manager reachable task" })
+        .returning(),
+      "manager reachable task",
+    );
+    expect(await userCanReachTask(manager.user.id, task.id)).toBe(true);
+    const taskNotification = await createNotification({
+      userId: manager.user.id,
+      type: "task_status_changed",
+      resourceId: task.id,
+      resourceType: "task",
+    });
+    expect(taskNotification).not.toBeNull();
+
+    await db.insert(schema.watcherTable).values({
+      workItemId: t.workItem.id,
+      personId: managerPerson.id,
+      source: "explicit",
+      muted: false,
+    });
+    const { id: managerApprovalId } = await createApproval(t);
+    await setApproval(t, managerApprovalId, "approve");
+    const approvalNotification = requireRow(
+      await db
+        .select()
+        .from(schema.notificationTable)
+        .where(
+          and(
+            eq(schema.notificationTable.userId, manager.user.id),
+            eq(schema.notificationTable.resourceType, "approval"),
+          ),
+        ),
+      "manager approval notification",
+    );
+
+    const initialInbox = await getNotifications(manager.user.id, true);
+    expect(initialInbox.map((item) => item.id)).toEqual(
+      expect.arrayContaining([taskNotification?.id, approvalNotification.id]),
+    );
+
+    // Add a restricted project role lacking work_item:read: genuine manager retains
+    // additive workspace authority (#1152) on both legacy tasks and approvals.
+    await grantProjectRole(manager.user.id, t.project.id, ["project:read"]);
+    expect(await userCanReachTask(manager.user.id, task.id)).toBe(true);
+    const overriddenInbox = await getNotifications(manager.user.id, true);
+    expect(overriddenInbox.map((item) => item.id)).toEqual(
+      expect.arrayContaining([taskNotification?.id, approvalNotification.id]),
+    );
+    if (!taskNotification)
+      throw new Error("Expected manager task notification");
+    await expect(
+      markNotificationAsRead(taskNotification.id, manager.user.id),
+    ).resolves.toMatchObject({ id: taskNotification.id, isRead: true });
+    await expect(
+      markNotificationAsRead(approvalNotification.id, manager.user.id),
+    ).resolves.toMatchObject({ id: approvalNotification.id, isRead: true });
+  });
+
+  it("still denies an ordinary member or custom role with sees_all=true when overridden by a restricted project role without work_item:read", async () => {
+    const t = await buildTenant("ordinary-override");
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({ projectId: t.project.id, title: "Restricted override task" })
+        .returning(),
+      "restricted override task",
+    );
+
+    const [memberRole] = await db
+      .select({ id: schema.roleTable.id })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.workspaceId, t.workspaceId),
+          eq(schema.roleTable.scope, "workspace"),
+          eq(schema.roleTable.key, "member"),
+        ),
+      );
+    if (!memberRole) throw new Error("Expected seeded member role");
+
+    const customRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: t.workspaceId,
+          key: `custom-see-all-${randomUUID()}`,
+          name: "Custom see-all operator",
+          rank: 50,
+          capabilities: ["work_item:read", "approval:decide"],
+          isSystem: false,
+        })
+        .returning(),
+      "custom see-all role",
+    );
+
+    const recipients: Array<{
+      userId: string;
+      taskNotificationId: string;
+    }> = [];
+    for (const workspaceRoleId of [memberRole.id, customRole.id]) {
+      const recipient = await createWorkspaceMember({ role: "member" });
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: t.workspaceId,
+        userId: recipient.user.id,
+        role: "member",
+        joinedAt: new Date(),
+      });
+      const recipientPerson = await personOf(recipient.user.id);
+      await db.insert(schema.membershipTable).values({
+        personId: recipientPerson.id,
+        scope: "workspace",
+        scopeId: t.workspaceId,
+        roleId: workspaceRoleId,
+        seesAll: true,
+      });
+      await db.insert(schema.watcherTable).values({
+        workItemId: t.workItem.id,
+        personId: recipientPerson.id,
+        source: "explicit",
+        muted: false,
+      });
+
+      expect(await userCanReachTask(recipient.user.id, task.id)).toBe(true);
+      const taskNotification = await plantTaskNotification({
+        userId: recipient.user.id,
+        taskId: task.id,
+      });
+      recipients.push({
+        userId: recipient.user.id,
+        taskNotificationId: taskNotification.id,
+      });
+    }
+
+    const { id: overrideApprovalId } = await createApproval(t);
+    await setApproval(t, overrideApprovalId, "approve");
+
+    for (const { userId, taskNotificationId } of recipients) {
+      const approvalNotification = requireRow(
+        await db
+          .select()
+          .from(schema.notificationTable)
+          .where(
+            and(
+              eq(schema.notificationTable.userId, userId),
+              eq(schema.notificationTable.resourceType, "approval"),
+            ),
+          ),
+        "recipient approval notification",
+      );
+      expect(
+        (await getNotifications(userId, true)).map((row) => row.id),
+      ).toEqual(
+        expect.arrayContaining([taskNotificationId, approvalNotification.id]),
+      );
+
+      // Narrowing project override without work_item:read must hide both notifications.
+      await grantProjectRole(userId, t.project.id, ["project:read"]);
+      expect(await userCanReachTask(userId, task.id)).toBe(false);
+      expect(await getNotifications(userId, true)).toHaveLength(0);
+      await expect(
+        markNotificationAsRead(taskNotificationId, userId),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        markNotificationAsRead(approvalNotification.id, userId),
+      ).rejects.toMatchObject({ status: 404 });
+    }
+  });
+
+  it("allows owner-team members without sees_all or project membership while workspace membership and effective read hold", async () => {
+    const t = await buildTenant("owner-team-reach");
+    const now = new Date();
+    const ownerTeam = requireRow(
+      await db
+        .insert(schema.teamTable)
+        .values({
+          id: `owner-team-${randomUUID()}`,
+          name: "Project Owner Team",
+          workspaceId: t.workspaceId,
+          isCab: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "owner team",
+    );
+    await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: ownerTeam.id })
+      .where(eq(schema.projectTable.id, t.project.id));
+
+    const teamMember = await createWorkspaceMember({ role: "member" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: t.workspaceId,
+      userId: teamMember.user.id,
+      role: "member",
+      joinedAt: now,
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `owner-tm-${randomUUID()}`,
+      teamId: ownerTeam.id,
+      userId: teamMember.user.id,
+      createdAt: now,
+    });
+    const teamMemberPerson = await personOf(teamMember.user.id);
+    await db.insert(schema.watcherTable).values({
+      workItemId: t.workItem.id,
+      personId: teamMemberPerson.id,
+      source: "explicit",
+      muted: false,
+    });
+
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({ projectId: t.project.id, title: "Owner team task" })
+        .returning(),
+      "owner team task",
+    );
+    expect(await userCanReachTask(teamMember.user.id, task.id)).toBe(true);
+    const taskNotification = await plantTaskNotification({
+      userId: teamMember.user.id,
+      taskId: task.id,
+    });
+    const { id: ownerTeamApprovalId } = await createApproval(t);
+    await setApproval(t, ownerTeamApprovalId, "approve");
+    const approvalNotification = requireRow(
+      await db
+        .select()
+        .from(schema.notificationTable)
+        .where(
+          and(
+            eq(schema.notificationTable.userId, teamMember.user.id),
+            eq(schema.notificationTable.resourceType, "approval"),
+          ),
+        ),
+      "owner team approval notification",
+    );
+    expect(
+      (await getNotifications(teamMember.user.id, true)).map((row) => row.id),
+    ).toEqual(
+      expect.arrayContaining([taskNotification.id, approvalNotification.id]),
+    );
+
+    // Removing workspace_member leaves a stale team_member row that must not retain reach.
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, t.workspaceId),
+          eq(schema.workspaceUserTable.userId, teamMember.user.id),
+        ),
+      );
+    expect(await userCanReachTask(teamMember.user.id, task.id)).toBe(false);
+    expect(await getNotifications(teamMember.user.id, true)).toHaveLength(0);
   });
 });

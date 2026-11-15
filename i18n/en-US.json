@@ -3917,7 +3917,8 @@
 			"backlogItem": "{{term_request_one}}",
 			"reorder": "Reorder",
 			"backlogPagination": "Backlog pagination",
-			"backlogMore": "Load more"
+			"backlogMore": "Load more",
+			"viewLabel": "Views"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3937,7 +3938,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Approval requests from the support team appear here."
+			"emptyDescription": "Approval requests from the support team appear here.",
+			"state": {
+				"pending": "Pending",
+				"approved": "Approved",
+				"rejected": "Rejected",
+				"expired": "Expired",
+				"withdrawn": "Withdrawn"
+			}
 		},
 		"unavailable": {
 			"title": "Customer portal unavailable",
@@ -6355,6 +6363,18 @@
 			"registrationEnvironmentDisabled": "The environment disables staff self-registration.",
 			"registrationOn": "Allow staff self-registration",
 			"registrationOff": "Require invitations for staff registration"
+		},
+		"oidcGroups": {
+			"title": "OIDC group mappings",
+			"description": "Map Entra group membership from sign-in to an eligible role and scope.",
+			"externalIdHelp": "Enter the Entra group object UUID.",
+			"evidenceNote": "Changes require fresh verification and are audited. Disabling a mapping retires its grants.",
+			"loading": "Loading OIDC group mappings…",
+			"loadFailed": "OIDC group mappings could not be loaded.",
+			"notSaved": "OIDC group mapping was not saved.",
+			"empty": "No OIDC group mappings are configured.",
+			"invalidExternalId": "Enter a valid Entra group object UUID.",
+			"organisation": "Organisation"
 		}
 	},
 	"notificationProvider": {

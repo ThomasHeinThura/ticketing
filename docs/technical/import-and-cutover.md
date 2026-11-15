@@ -50,6 +50,13 @@ authenticated API a person would use.
   source id to target id. Re-running maps to the same record rather than creating a second.
 - `IM-2` **Dry-run first.** Every import can be run without writing, producing a full
   report of what would be created, updated, skipped and rejected.
+  For records and link chunks awaiting approval, retain the chunk preview until
+  `max(existing expiry, pending_action.expires_at)`; a records run's `dry_run_expires_at`
+  is extended by the same rule. This preserves the preview through a valid approval
+  window without extending the action itself: PA-6/PA-8's 15-minute pending-action
+  validity and all digest, version and authority checks remain unchanged. Engine
+  previews use `engine_dry_run_digest` / `engine_dry_run_at` and have no age expiry;
+  this retention rule does not add one.
 - `IM-3` **Resumable.** Chunked, each chunk committed. A failure resumes from the last
   committed chunk.
 - `IM-4` **Never partial-silent.** An import that could not map something reports it. It

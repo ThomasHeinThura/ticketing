@@ -1,6 +1,7 @@
 import { type Capability, isCapability } from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { LEGACY_PAIR_CAPABILITY } from "../permissions/legacy-statements";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 
 type PermissionMap = Record<string, readonly string[]>;
@@ -73,7 +74,8 @@ export function apiKeyCapabilitySubset(
  * The one API-key narrowing predicate shared by legacy permissions, canonical
  * capabilities, and routes that explicitly declare an API-key scope. A missing
  * credential means a session request; a present key without a complete valid
- * scope has no grants.
+ * scope has no grants. Non-identity legacy statement gates accept the canonical
+ * capability pair from `LEGACY_PAIR_CAPABILITY` unilaterally (never the reverse).
  */
 export function apiKeyScopeSatisfies(
   apiKey: ApiKeyPermissionScope | undefined,
@@ -93,11 +95,25 @@ export function apiKeyScopeSatisfies(
     }
   }
   return Object.entries(required).every(([resource, actions]) => {
-    const grantedActions = granted[resource];
-    return (
-      grantedActions !== undefined &&
-      actions.every((action) => grantedActions.includes(action))
-    );
+    const grantedActions = Object.hasOwn(granted, resource)
+      ? granted[resource]
+      : undefined;
+    if (actions.length === 0) return grantedActions !== undefined;
+    return actions.every((action) => {
+      if (grantedActions?.includes(action)) return true;
+      const pair = `${resource}:${action}`;
+      if (!Object.hasOwn(LEGACY_PAIR_CAPABILITY, pair)) return false;
+      const mapped = LEGACY_PAIR_CAPABILITY[pair];
+      if (!mapped || mapped === pair) return false;
+      const [mappedResource, mappedAction] = mapped.split(":") as [
+        string,
+        string,
+      ];
+      return Boolean(
+        Object.hasOwn(granted, mappedResource) &&
+          granted[mappedResource]?.includes(mappedAction),
+      );
+    });
   });
 }
 
