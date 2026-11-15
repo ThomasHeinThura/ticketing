@@ -43,13 +43,7 @@ async function runPrivate(fixture: Fixture, args: string[], name: string) {
   const child = await fixture.spawnChild(
     process.execPath,
     [resolve(repoRoot, "apps/api/node_modules/tsx/dist/cli.mjs"), ...args],
-    {
-      ...process.env,
-      TASKDESK_DATABASE_URL: fixture.databaseUrl,
-      TASKDESK_MIGRATION_DATABASE_URL: undefined,
-    },
     name,
-    fixture.fixtureDir,
   );
   await new Promise<void>((resolveClose, reject) => {
     child.once("close", (code) => {
