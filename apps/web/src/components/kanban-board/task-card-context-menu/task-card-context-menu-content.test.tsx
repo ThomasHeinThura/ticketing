@@ -94,14 +94,6 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
   }),
 }));
 
-vi.mock("@/store/project", () => ({
-  default: () => ({
-    project: {
-      columns: [],
-    },
-  }),
-}));
-
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({

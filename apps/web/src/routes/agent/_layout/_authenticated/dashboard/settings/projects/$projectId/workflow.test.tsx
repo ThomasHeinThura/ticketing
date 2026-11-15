@@ -38,13 +38,6 @@ vi.mock("@/components/project/project-states-editor", () => ({
     />
   ),
 }));
-// The old Kaneo board columns and the GitHub automation rules are not part of this page.
-vi.mock("@/components/project/column-editor", () => ({
-  default: () => <div data-testid="column-editor" />,
-}));
-vi.mock("@/components/project/workflow-editor", () => ({
-  default: () => <div data-testid="workflow-editor" />,
-}));
 
 import { Route } from "./workflow";
 
@@ -72,8 +65,6 @@ describe("project Workflow settings", () => {
 
   it("no longer shows the old board Columns or the GitHub Automation sections", () => {
     render(<WorkflowSettings />);
-    expect(screen.queryByTestId("column-editor")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("workflow-editor")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Columns" }),
     ).not.toBeInTheDocument();

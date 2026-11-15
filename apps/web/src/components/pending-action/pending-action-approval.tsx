@@ -46,8 +46,6 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
-import useProjectStore from "@/store/project";
-import type { ProjectWithTasks } from "@/types/project";
 import type Task from "@/types/task";
 import {
   PENDING_ACTION_TARGET_QUERY_PREFIXES,
@@ -95,39 +93,6 @@ const TASK_PAGE_PATH =
 
 /** The canonical work-item page: `/agent/work-items/:key`. */
 const CANONICAL_PAGE_PATH = /^\/agent\/work-items\/([^/]+)\/?$/;
-
-/** The tasks of the active project that an executed work-item deletion removed, by key. */
-function deletedProjectTasks(
-  project: ProjectWithTasks | undefined,
-  keys: ReadonlySet<string>,
-): Task[] {
-  if (!project?.slug) return [];
-  const slug = project.slug;
-  return [
-    ...(project.columns ?? []).flatMap((column) => column.tasks),
-    ...(project.plannedTasks ?? []),
-    ...(project.archivedTasks ?? []),
-  ].filter((task) => task.number != null && keys.has(`${slug}-${task.number}`));
-}
-
-function withoutTasks(
-  project: ProjectWithTasks,
-  removed: ReadonlySet<string>,
-): ProjectWithTasks {
-  return {
-    ...project,
-    columns: (project.columns ?? []).map((column) => ({
-      ...column,
-      tasks: column.tasks.filter((task) => !removed.has(task.id)),
-    })),
-    plannedTasks: (project.plannedTasks ?? []).filter(
-      (task) => !removed.has(task.id),
-    ),
-    archivedTasks: (project.archivedTasks ?? []).filter(
-      (task) => !removed.has(task.id),
-    ),
-  };
-}
 
 function summaryRows(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
@@ -272,7 +237,6 @@ export function PendingActionApproval({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
-  const setProject = useProjectStore((state) => state.setProject);
   const { data: activeWorkspace } = useActiveWorkspace();
   const isDialog = layout === "dialog";
   const [typedName, setTypedName] = useState("");
@@ -747,10 +711,8 @@ export function PendingActionApproval({
       // A deleted workspace or project must not stay the shell's active context. Leave
       // before the cache refetches below, so nothing re-reads the deleted record (404).
       if (executed && action.data?.targetType === "workspace") {
-        setProject(undefined);
         await navigate({ to: "/dashboard" });
       } else if (executed && action.data?.targetType === "project") {
-        setProject(undefined);
         if (activeWorkspace?.id) await navigate({ to: "/agent" });
         else await navigate({ to: "/dashboard" });
       }
@@ -854,15 +816,11 @@ export function PendingActionApproval({
 
   /**
    * An executed work-item (or bulk) deletion: leave the deleted task's page for the project
-   * board (as Kaneo's delete did), then drop its cached task and remove it from the project
-   * store, so nothing re-reads or shows the deleted record.
+   * board (as Kaneo's delete did) and drop its cached task detail, so nothing re-reads or
+   * shows the deleted record.
    */
   async function leaveDeletedWorkItems(targetIds: string[] | undefined) {
     const keys = new Set(targetIds ?? []);
-    const { project } = useProjectStore.getState();
-    const removedIds = new Set(
-      deletedProjectTasks(project, keys).map((task) => task.id),
-    );
     const onPage = TASK_PAGE_PATH.exec(location.pathname);
     if (onPage) {
       const [, workspaceId, projectId, taskId] = onPage;
@@ -870,14 +828,12 @@ export function PendingActionApproval({
         "task",
         taskId,
       ]);
-      // The legacy task page never fills the project store: its project is in react-query.
       const cachedProject = queryClient.getQueryData<{ slug?: string }>([
         "projects",
         workspaceId,
         projectId,
       ]);
-      const slug =
-        cachedProject?.slug ?? (project?.id === projectId ? project.slug : "");
+      const slug = cachedProject?.slug ?? "";
       const deletedHere =
         current?.number != null &&
         !!slug &&
@@ -888,7 +844,7 @@ export function PendingActionApproval({
           params: { workspaceId, projectId },
           replace: true,
         });
-        removedIds.add(taskId);
+        queryClient.removeQueries({ queryKey: ["task", taskId] });
       }
     }
     // The canonical page of a deleted item would refetch into its 404 state: return to the
@@ -906,10 +862,6 @@ export function PendingActionApproval({
         queryKey: ["work-items", "detail", openKey],
       });
     }
-    for (const taskId of removedIds)
-      queryClient.removeQueries({ queryKey: ["task", taskId] });
-    if (project && removedIds.size > 0)
-      setProject(withoutTasks(project, removedIds));
   }
 
   async function cancelAction() {

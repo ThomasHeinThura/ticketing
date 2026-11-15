@@ -10,7 +10,6 @@ import {
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
-import useProjectStore from "@/store/project";
 import { Route } from "./$id";
 
 function fillTypedNameAndPassword() {
@@ -914,7 +913,6 @@ describe("pending action detail intent lifecycle", () => {
     mocks.registered = "workspace";
     mocks.proof.mockResolvedValue("proof");
     mocks.approve.mockResolvedValue({ id: "action-a", state: "executed" });
-    useProjectStore.setState({ project: { id: "p" } as never });
     render(<Harness />);
     fillTypedNameAndPassword();
     fireEvent.click(
@@ -923,14 +921,12 @@ describe("pending action detail intent lifecycle", () => {
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({ to: "/dashboard" }),
     );
-    expect(useProjectStore.getState().project).toBeUndefined();
   });
 
-  it("leaves a deleted project for the projects list and clears the active project", async () => {
+  it("leaves a deleted project for the projects list", async () => {
     mocks.registered = "project";
     mocks.proof.mockResolvedValue("proof");
     mocks.approve.mockResolvedValue({ id: "action-a", state: "executed" });
-    useProjectStore.setState({ project: { id: "p" } as never });
     render(<Harness />);
     fillTypedNameAndPassword();
     fireEvent.click(
@@ -939,14 +935,12 @@ describe("pending action detail intent lifecycle", () => {
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" }),
     );
-    expect(useProjectStore.getState().project).toBeUndefined();
   });
 
   it("stays put when the approval did not reach executed", async () => {
     mocks.registered = "project";
     mocks.proof.mockResolvedValue("proof");
     mocks.approve.mockResolvedValue({ id: "action-a", state: "expired" });
-    useProjectStore.setState({ project: { id: "p" } as never });
     render(<Harness />);
     fillTypedNameAndPassword();
     fireEvent.click(
@@ -955,7 +949,6 @@ describe("pending action detail intent lifecycle", () => {
     await waitFor(() => expect(mocks.approve).toHaveBeenCalled());
     await waitFor(() => expect(mocks.invalidate).toHaveBeenCalled());
     expect(mocks.navigate).not.toHaveBeenCalled();
-    expect(useProjectStore.getState().project).toEqual({ id: "p" });
   });
 
   it.each([

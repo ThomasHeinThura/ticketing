@@ -27,9 +27,6 @@ vi.mock("@/hooks/mutations/use-sign-out", () => ({
 vi.mock("@/hooks/queries/config/use-get-config", () => ({
   default: () => ({ data: undefined }),
 }));
-vi.mock("@/store/project", () => ({
-  default: () => ({ setProject: vi.fn() }),
-}));
 
 afterEach(() => {
   cleanup();
