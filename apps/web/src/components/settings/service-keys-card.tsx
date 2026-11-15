@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Alert,
+  AlertAction,
   AlertDialog,
   AlertDialogClose,
   AlertDialogContent,
@@ -8,6 +10,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -170,13 +173,20 @@ export function ServiceKeysCard() {
   const query = useQuery({
     queryKey: serviceKeysKey(workspaceId),
     enabled: Boolean(workspaceId),
-    queryFn: () => listServiceKeys(workspaceId),
-    retry: (count, error) =>
-      !(error instanceof HttpError && error.status === 403) && count < 2,
+    queryFn: async () => {
+      try {
+        return await listServiceKeys(workspaceId);
+      } catch (error) {
+        // Expected when a caller lacks `api_key:manage`: treat 403 as absent instead of logging a QueryCache error.
+        if (error instanceof HttpError && error.status === 403) return null;
+        throw error;
+      }
+    },
   });
 
   const placeholderVisible = useDelayedPending(query.isLoading, {
-    releaseNow: query.isSuccess && query.data.length === 0,
+    releaseNow:
+      query.isSuccess && (query.data === null || query.data.length === 0),
   });
 
   const revoke = useMutation({
@@ -217,7 +227,10 @@ export function ServiceKeysCard() {
   });
 
   if (!workspaceId) return null;
-  if (query.error instanceof HttpError && query.error.status === 403)
+  if (
+    query.data === null ||
+    (query.error instanceof HttpError && query.error.status === 403)
+  )
     return null;
 
   const keys = query.data ?? [];
@@ -235,7 +248,10 @@ export function ServiceKeysCard() {
               {t("settings:serviceKeys.description")}
             </CardDescription>
             <CardAction>
-              <Button onClick={() => setCreating(true)}>
+              <Button
+                disabled={query.isLoading || query.isError}
+                onClick={() => setCreating(true)}
+              >
                 {t("settings:serviceKeys.create.open")}
               </Button>
             </CardAction>
@@ -260,6 +276,21 @@ export function ServiceKeysCard() {
                   </FramePanel>
                 </Frame>
               </LoadingStatus>
+            ) : query.isError ? (
+              <Alert variant="error" role="alert">
+                <AlertTitle>
+                  {t("settings:instanceApiKeys.loadError")}
+                </AlertTitle>
+                <AlertAction>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void query.refetch()}
+                  >
+                    {t("common:actions.retry")}
+                  </Button>
+                </AlertAction>
+              </Alert>
             ) : keys.length === 0 ? (
               <Frame>
                 <FramePanel className="p-8">

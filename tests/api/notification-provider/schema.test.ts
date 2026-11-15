@@ -170,6 +170,32 @@ describe("email provider settings schema", () => {
       nullable: true,
     });
   });
+
+  it("emits only ES v-mode valid non-email HTML5 patterns in the settings form manifest", () => {
+    const manifest = smtpSettingsFormManifest();
+    if (!manifest.available) throw new Error("manifest unavailable");
+    const fields = Object.fromEntries(
+      manifest.fields.map((field) => [field.key, field]),
+    );
+    const hostPattern = fields["config.host"]?.pattern;
+    expect(hostPattern).toBe("^[a-zA-Z0-9.:\\[\\]\\-]+$");
+    const hostRegex = new RegExp(`^(?:${hostPattern})$`, "v");
+    expect(hostRegex.test("smtp.example.test")).toBe(true);
+    expect(hostRegex.test("[::1]")).toBe(true);
+    expect(hostRegex.test("bad host")).toBe(false);
+    expect(fields["config.port"]?.pattern).toBeUndefined();
+    expect(fields["config.fromAddress"]).toBeDefined();
+    expect(fields["config.fromAddress"]?.pattern).toBeUndefined();
+    expect(fields["config.replyTo"]).toBeDefined();
+    expect(fields["config.replyTo"]?.pattern).toBeUndefined();
+    for (const field of manifest.fields) {
+      if (field.pattern !== undefined) {
+        expect(
+          () => new RegExp(`^(?:${field.pattern as string})$`, "v"),
+        ).not.toThrow();
+      }
+    }
+  });
 });
 
 describe("stored email configuration", () => {
