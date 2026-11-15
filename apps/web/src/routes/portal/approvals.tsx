@@ -188,10 +188,10 @@ function PortalApprovals() {
                         <span className="break-words font-medium">
                           {approval.workItemKey} · {approval.workItemTitle}
                         </span>
-                        {approval.requester.displayName ? (
+                        {approval.requester?.displayName ? (
                           <span className="break-words text-muted-foreground text-xs">
                             {t("cases.columns.requester")}:{" "}
-                            {approval.requester.displayName}
+                            {approval.requester?.displayName}
                           </span>
                         ) : null}
                         <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs @2xl:hidden">
@@ -257,10 +257,10 @@ function PortalApprovals() {
           <DialogPanel>
             {selected ? (
               <div className="mb-3 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-                {selected.requester.displayName ? (
+                {selected.requester?.displayName ? (
                   <span className="w-full break-words">
                     {t("cases.columns.requester")}:{" "}
-                    {selected.requester.displayName}
+                    {selected.requester?.displayName}
                   </span>
                 ) : null}
                 <Badge variant={stateTone(selected.state)}>
