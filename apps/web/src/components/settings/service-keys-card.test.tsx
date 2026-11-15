@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -94,11 +98,14 @@ const key = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-function renderCard() {
+function renderCard(onQueryError?: (error: unknown) => void) {
   return render(
     <QueryClientProvider
       client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        new QueryClient({
+          queryCache: new QueryCache({ onError: onQueryError }),
+          defaultOptions: { queries: { retry: false } },
+        })
       }
     >
       <ServiceKeysCard />
@@ -133,11 +140,44 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ServiceKeysCard", () => {
-  it("renders nothing for a caller without api_key:manage (the list answers 403)", async () => {
+  it("renders nothing for a caller without api_key:manage without triggering QueryCache errors (the list answers 403)", async () => {
+    const onQueryError = vi.fn();
     mocks.list.mockRejectedValue(new HttpError(403, "forbidden"));
-    const { container } = renderCard();
+    const { container } = renderCard(onQueryError);
     await waitFor(() => expect(mocks.list).toHaveBeenCalled());
     await waitFor(() => expect(container).toBeEmptyDOMElement());
+    expect(onQueryError).not.toHaveBeenCalled();
+  });
+
+  it("shows an error alert with retry and disables creation when loading fails with a non-403 error", async () => {
+    const onQueryError = vi.fn();
+    mocks.list
+      .mockRejectedValueOnce(new HttpError(500, "internal error"))
+      .mockResolvedValueOnce([key()]);
+    renderCard(onQueryError);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      translate("settings:instanceApiKeys.loadError"),
+    );
+    expect(onQueryError).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByText(translate("settings:serviceKeys.empty")),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: translate("settings:serviceKeys.create.open"),
+      }),
+    ).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: translate("common:actions.retry") }),
+    );
+    expect(await screen.findByText("Pipeline")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: translate("settings:serviceKeys.create.open"),
+      }),
+    ).toBeEnabled();
   });
 
   it("flags a key created by a former member as owned by the workspace administrators", async () => {

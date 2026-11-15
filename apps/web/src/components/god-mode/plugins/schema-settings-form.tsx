@@ -113,6 +113,20 @@ type Props = {
   presentation?: Partial<Record<string, FieldPresentation>>;
 };
 
+/** Browsers compile HTML5 `pattern` attributes as `^(?:pattern)$` in ES `v` mode; native email and number inputs validate their own syntax. */
+function validHtmlPattern(
+  pattern: string | undefined,
+  control: PluginSettingsFormField["control"],
+): string | undefined {
+  if (!pattern || control === "email" || control === "number") return undefined;
+  try {
+    new RegExp(`^(?:${pattern})$`, "v");
+    return pattern;
+  } catch {
+    return undefined;
+  }
+}
+
 export function SchemaSettingsForm({
   manifest,
   enabled,
@@ -213,7 +227,7 @@ export function SchemaSettingsForm({
                   max={field.maximum}
                   minLength={field.minLength}
                   maxLength={field.maxLength}
-                  pattern={field.pattern}
+                  pattern={validHtmlPattern(field.pattern, field.control)}
                   onChange={(event) => {
                     const next =
                       field.control === "number"

@@ -143,4 +143,72 @@ describe("schema-generated plugin settings form", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("loadFailed");
     expect(screen.queryByLabelText("host")).not.toBeInTheDocument();
   });
+
+  it("applies ES v-mode valid text patterns to inputs and omits email, number, or invalid v-mode patterns", () => {
+    const withPatterns: PluginSettingsFormManifest = {
+      version: 1,
+      available: true,
+      fields: [
+        fields[0],
+        {
+          ...fields[1],
+          pattern: "^[a-zA-Z0-9.:\\[\\]\\-]+$",
+        },
+        {
+          ...fields[2],
+          pattern: "^[0-9]+$",
+        },
+        {
+          key: "config.region",
+          labelKey: "region",
+          control: "text",
+          group: "config",
+          required: false,
+          nullable: true,
+          secret: false,
+          pattern: "^[a-zA-Z0-9.:[\\]-]+$",
+        },
+        {
+          key: "config.fromAddress",
+          labelKey: "fromAddress",
+          control: "email",
+          group: "config",
+          required: true,
+          nullable: false,
+          secret: false,
+          pattern: "^[^@]+@[^@]+$",
+        },
+      ],
+    };
+    render(
+      <SchemaSettingsForm
+        manifest={withPatterns}
+        enabled
+        onEnabledChange={vi.fn()}
+        config={{
+          host: "mailpit",
+          port: 1025,
+          region: "",
+          fromAddress: "noreply@example.test",
+        }}
+        onConfigChange={vi.fn()}
+        requireConfig
+        disabled={false}
+        password=""
+        onPasswordChange={vi.fn()}
+        passwordConfigured={false}
+        passwordPreview={null}
+        clearPassword={false}
+        onClearPasswordChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("host")).toHaveAttribute(
+      "pattern",
+      "^[a-zA-Z0-9.:\\[\\]\\-]+$",
+    );
+    expect(screen.getByLabelText("port")).not.toHaveAttribute("pattern");
+    expect(screen.getByLabelText("region")).not.toHaveAttribute("pattern");
+    expect(screen.getByLabelText("fromAddress")).not.toHaveAttribute("pattern");
+  });
 });

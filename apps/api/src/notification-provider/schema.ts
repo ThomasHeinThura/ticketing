@@ -28,6 +28,9 @@ const header = z
 export const EMAIL_PROVIDER_KINDS = ["smtp", "ses"] as const;
 export type EmailProviderKind = (typeof EMAIL_PROVIDER_KINDS)[number];
 
+const SMTP_HOST_REGEX = /^[a-zA-Z0-9.:[\]-]+$/u;
+const SMTP_HOST_HTML_PATTERN = "^[a-zA-Z0-9.:\\[\\]\\-]+$";
+
 const smtpConfigurationObject = z
   .object({
     captureToMailpit: withFormMetadata(z.boolean().optional(), {
@@ -52,7 +55,7 @@ const smtpConfigurationObject = z
         .string()
         .min(1)
         .max(253)
-        .regex(/^[a-zA-Z0-9.:[\]-]+$/u, "Expected a hostname or IP address"),
+        .regex(SMTP_HOST_REGEX, "Expected a hostname or IP address"),
       { labelKey: "host", control: "text", group: "config" },
     ),
     port: withFormMetadata(z.number().int().min(1).max(65535), {
@@ -405,6 +408,22 @@ function jsonSchemaFor(schema: z.ZodType): JsonSchemaNode | null {
   }
 }
 
+/** HTML5 `pattern` attributes compile as `^(?:pattern)$` in ES `v` mode; native email and number inputs validate their own syntax. */
+function htmlInputPattern(
+  pattern: string | undefined,
+  control: FormControl,
+): string | undefined {
+  if (!pattern || control === "email" || control === "number") return undefined;
+  const candidate =
+    pattern === SMTP_HOST_REGEX.source ? SMTP_HOST_HTML_PATTERN : pattern;
+  try {
+    new RegExp(`^(?:${candidate})$`, "v");
+    return candidate;
+  } catch {
+    return undefined;
+  }
+}
+
 function fieldFromSchema(
   key: string,
   schema: z.ZodType,
@@ -428,6 +447,7 @@ function fieldFromSchema(
         ? types.includes("boolean")
         : types.includes("string");
   if (!validType) return null;
+  const pattern = htmlInputPattern(valueSchema.pattern, metadata.control);
   return {
     key,
     labelKey: metadata.labelKey,
@@ -449,9 +469,7 @@ function fieldFromSchema(
     ...(typeof valueSchema.maxLength === "number"
       ? { maxLength: valueSchema.maxLength }
       : {}),
-    ...(typeof valueSchema.pattern === "string"
-      ? { pattern: valueSchema.pattern }
-      : {}),
+    ...(pattern !== undefined ? { pattern } : {}),
   };
 }
 
