@@ -1,0 +1,654 @@
+import { and, eq, sql } from "drizzle-orm";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import db, { schema } from "../../apps/api/src/database";
+import { createApp } from "../../apps/api/src/index";
+import { notificationPreferenceWriteLockKey } from "../../apps/api/src/notification-preferences/repository";
+import { encryptSecret } from "../../apps/api/src/notification-preferences/secrets";
+import { updateNotificationPreferences } from "../../apps/api/src/notification-preferences/service";
+import * as assertPublicDestinationModule from "../../apps/api/src/utils/assert-public-destination";
+import { mockAuthenticatedSession } from "./helpers/auth";
+import { resetTestDatabase } from "./helpers/database";
+import { createWorkspaceMember } from "./helpers/fixtures";
+
+const preferencePath = "/api/notification-preferences";
+
+async function countGrantedAdvisoryLocks(): Promise<number> {
+  const locks = await db.execute<{ count: number }>(sql`
+    SELECT count(*)::int AS count
+    FROM pg_locks
+    WHERE locktype = 'advisory'
+      AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
+      AND granted = true
+  `);
+  return Number(locks.rows[0]?.count ?? -1);
+}
+
+async function waitForAdvisoryLockWaiter(): Promise<void> {
+  await vi.waitFor(
+    async () => {
+      const blocked = await db.execute(sql`
+        SELECT 1 FROM pg_stat_activity
+        WHERE wait_event_type = 'Lock'
+          AND wait_event = 'advisory'
+          AND pid <> pg_backend_pid()
+      `);
+      expect(blocked.rows.length).toBeGreaterThan(0);
+    },
+    { interval: 20, timeout: 3000 },
+  );
+}
+
+async function withSlowPreferenceWrite<T>(work: () => Promise<T>): Promise<T> {
+  // Force both HTTP requests to reach the old read/modify/write race window.
+  // Under the transaction lock the second request waits before its read instead.
+  await db.execute(sql`
+    CREATE FUNCTION test_slow_notification_preference_write() RETURNS trigger
+    LANGUAGE plpgsql AS $$
+    BEGIN
+      PERFORM pg_sleep(0.2);
+      RETURN NEW;
+    END;
+    $$
+  `);
+  await db.execute(sql`
+    CREATE TRIGGER test_slow_notification_preference_write_trigger
+    BEFORE INSERT OR UPDATE ON user_notification_preference
+    FOR EACH ROW EXECUTE FUNCTION test_slow_notification_preference_write()
+  `);
+  try {
+    return await work();
+  } finally {
+    await db.execute(
+      sql`DROP TRIGGER test_slow_notification_preference_write_trigger ON user_notification_preference`,
+    );
+    await db.execute(
+      sql`DROP FUNCTION test_slow_notification_preference_write()`,
+    );
+  }
+}
+
+describe("notification preference concurrent updates", () => {
+  beforeEach(resetTestDatabase);
+
+  it.each([false, true])(
+    "preserves concurrent partial writes (existing row: %s)",
+    async (rowExists) => {
+      const member = await createWorkspaceMember();
+      mockAuthenticatedSession(member.user);
+      const { app } = createApp();
+      const put = (body: Record<string, boolean>) =>
+        app.request(preferencePath, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+      if (rowExists) {
+        const seeded = await put({ dueDateReminderEnabled: false });
+        expect(seeded.status, await seeded.clone().text()).toBe(200);
+      }
+
+      await withSlowPreferenceWrite(async () => {
+        const [assignment, comments] = await Promise.all([
+          put({ taskAssignmentEnabled: false }),
+          put({ taskCommentEnabled: false }),
+        ]);
+        expect(assignment.status, await assignment.clone().text()).toBe(200);
+        expect(comments.status, await comments.clone().text()).toBe(200);
+      });
+
+      const read = await app.request(preferencePath);
+      expect(read.status).toBe(200);
+      expect(await read.json()).toMatchObject({
+        taskAssignmentEnabled: false,
+        taskCommentEnabled: false,
+        dueDateReminderEnabled: !rowExists,
+      });
+      const rows = await db
+        .select()
+        .from(schema.userNotificationPreferenceTable)
+        .where(
+          eq(schema.userNotificationPreferenceTable.userId, member.user.id),
+        );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        taskAssignmentEnabled: false,
+        taskCommentEnabled: false,
+      });
+    },
+  );
+
+  it("rolls back the preference row if the workspace-rule cascade fails", async () => {
+    const member = await createWorkspaceMember();
+    await updateNotificationPreferences(member.user.id, member.user.email, {
+      emailEnabled: true,
+    });
+    await db.insert(schema.userNotificationWorkspaceRuleTable).values({
+      userId: member.user.id,
+      workspaceId: member.workspace.id,
+      emailEnabled: true,
+    });
+
+    await db.execute(sql`
+      CREATE FUNCTION test_notification_rule_failure() RETURNS trigger
+      LANGUAGE plpgsql AS $$
+      BEGIN
+        RAISE EXCEPTION 'test cascade failure';
+      END;
+      $$
+    `);
+    await db.execute(sql`
+      CREATE TRIGGER test_notification_rule_failure_trigger
+      BEFORE UPDATE ON user_notification_workspace_rule
+      FOR EACH ROW EXECUTE FUNCTION test_notification_rule_failure()
+    `);
+    try {
+      await expect(
+        updateNotificationPreferences(member.user.id, member.user.email, {
+          emailEnabled: false,
+        }),
+      ).rejects.toThrow();
+      const [preference] = await db
+        .select()
+        .from(schema.userNotificationPreferenceTable)
+        .where(
+          eq(schema.userNotificationPreferenceTable.userId, member.user.id),
+        );
+      const [rule] = await db
+        .select()
+        .from(schema.userNotificationWorkspaceRuleTable)
+        .where(
+          eq(schema.userNotificationWorkspaceRuleTable.userId, member.user.id),
+        );
+      expect(preference?.emailEnabled).toBe(true);
+      expect(rule?.emailEnabled).toBe(true);
+    } finally {
+      await db.execute(
+        sql`DROP TRIGGER test_notification_rule_failure_trigger ON user_notification_workspace_rule`,
+      );
+      await db.execute(sql`DROP FUNCTION test_notification_rule_failure()`);
+    }
+  });
+
+  it("does not let a workspace rule re-enable email after a concurrent global disable", async () => {
+    const member = await createWorkspaceMember();
+    await updateNotificationPreferences(member.user.id, member.user.email, {
+      emailEnabled: true,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    await db.execute(sql`
+      CREATE FUNCTION test_slow_notification_rule_insert() RETURNS trigger
+      LANGUAGE plpgsql AS $$
+      BEGIN
+        PERFORM pg_sleep(0.7);
+        RETURN NEW;
+      END;
+      $$
+    `);
+    await db.execute(sql`
+      CREATE TRIGGER test_slow_notification_rule_insert_trigger
+      BEFORE INSERT ON user_notification_workspace_rule
+      FOR EACH ROW EXECUTE FUNCTION test_slow_notification_rule_insert()
+    `);
+    try {
+      const ruleSave = app.request(
+        `${preferencePath}/workspaces/${member.workspace.id}`,
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            isActive: true,
+            emailEnabled: true,
+            ntfyEnabled: false,
+            gotifyEnabled: false,
+            webhookEnabled: false,
+            projectMode: "all",
+          }),
+        },
+      );
+      // Wait until the rule has passed the old global check and reached INSERT.
+      await vi.waitFor(
+        async () => {
+          const activity = await db.execute(sql`
+            SELECT 1 FROM pg_stat_activity
+            WHERE wait_event = 'PgSleep'
+              AND query ILIKE '%user_notification_workspace_rule%'
+              AND pid <> pg_backend_pid()
+          `);
+          expect(activity.rows.length).toBeGreaterThan(0);
+        },
+        { interval: 20, timeout: 3000 },
+      );
+      const globalDisable = app.request(preferencePath, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ emailEnabled: false }),
+      });
+      const [ruleResponse, globalResponse] = await Promise.all([
+        ruleSave,
+        globalDisable,
+      ]);
+      expect(ruleResponse.status, await ruleResponse.clone().text()).toBe(200);
+      expect(globalResponse.status, await globalResponse.clone().text()).toBe(
+        200,
+      );
+      const read = await app.request(preferencePath);
+      expect(read.status).toBe(200);
+      expect(await read.json()).toMatchObject({
+        emailEnabled: false,
+        workspaces: [
+          expect.objectContaining({
+            workspaceId: member.workspace.id,
+            emailEnabled: false,
+          }),
+        ],
+      });
+    } finally {
+      await db.execute(
+        sql`DROP TRIGGER test_slow_notification_rule_insert_trigger ON user_notification_workspace_rule`,
+      );
+      await db.execute(sql`DROP FUNCTION test_slow_notification_rule_insert()`);
+    }
+  });
+
+  it("clears connection URLs and secrets on disconnect, including after reload", async () => {
+    const member = await createWorkspaceMember();
+    await db.insert(schema.userNotificationPreferenceTable).values({
+      userId: member.user.id,
+      ntfyEnabled: true,
+      ntfyServerUrl: "https://example.com/ntfy",
+      ntfyTopic: "ops",
+      ntfyToken: encryptSecret("synthetic-ntfy-token"),
+      gotifyEnabled: true,
+      gotifyServerUrl: "https://example.com/gotify",
+      gotifyToken: encryptSecret("synthetic-gotify-token"),
+      webhookEnabled: true,
+      webhookUrl: "https://example.com/webhook",
+      webhookSecret: encryptSecret("synthetic-webhook-secret"),
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const disconnect = await app.request(preferencePath, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ntfyEnabled: false,
+        ntfyServerUrl: null,
+        ntfyTopic: null,
+        ntfyToken: null,
+        gotifyEnabled: false,
+        gotifyServerUrl: null,
+        gotifyToken: null,
+        webhookEnabled: false,
+        webhookUrl: null,
+        webhookSecret: null,
+      }),
+    });
+    expect(disconnect.status, await disconnect.clone().text()).toBe(200);
+    const read = await app.request(preferencePath);
+    expect(read.status).toBe(200);
+    expect(await read.json()).toMatchObject({
+      ntfyEnabled: false,
+      ntfyServerUrl: null,
+      ntfyTopic: null,
+      ntfyTokenConfigured: false,
+      gotifyEnabled: false,
+      gotifyServerUrl: null,
+      gotifyTokenConfigured: false,
+      webhookEnabled: false,
+      webhookUrl: null,
+      webhookSecretConfigured: false,
+    });
+    const [stored] = await db
+      .select()
+      .from(schema.userNotificationPreferenceTable)
+      .where(eq(schema.userNotificationPreferenceTable.userId, member.user.id));
+    expect(stored).toMatchObject({
+      ntfyServerUrl: null,
+      ntfyTopic: null,
+      ntfyToken: null,
+      gotifyServerUrl: null,
+      gotifyToken: null,
+      webhookUrl: null,
+      webhookSecret: null,
+    });
+  });
+
+  it("serializes workspace rule deletion under the per-user advisory lock", async () => {
+    const member = await createWorkspaceMember();
+    await db.insert(schema.userNotificationWorkspaceRuleTable).values({
+      userId: member.user.id,
+      workspaceId: member.workspace.id,
+      emailEnabled: false,
+      projectMode: "all",
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    let notifyLocked!: () => void;
+    const locked = new Promise<void>((resolve) => {
+      notifyLocked = resolve;
+    });
+    let releaseLock!: () => void;
+    const holdLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    const blockingTx = db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${notificationPreferenceWriteLockKey(member.user.id)}, 0))`,
+      );
+      notifyLocked();
+      await holdLock;
+      await tx
+        .delete(schema.userNotificationWorkspaceRuleTable)
+        .where(
+          and(
+            eq(
+              schema.userNotificationWorkspaceRuleTable.userId,
+              member.user.id,
+            ),
+            eq(
+              schema.userNotificationWorkspaceRuleTable.workspaceId,
+              member.workspace.id,
+            ),
+          ),
+        );
+    });
+
+    let deleteResponsePromise: ReturnType<typeof app.request> | undefined;
+    try {
+      await locked;
+      deleteResponsePromise = app.request(
+        `${preferencePath}/workspaces/${member.workspace.id}`,
+        { method: "DELETE" },
+      );
+
+      await waitForAdvisoryLockWaiter();
+    } finally {
+      releaseLock();
+      await blockingTx;
+    }
+
+    const concurrentDeleteResponse = await deleteResponsePromise;
+    expect(
+      concurrentDeleteResponse?.status,
+      await concurrentDeleteResponse?.clone().text(),
+    ).toBe(404);
+    expect(await concurrentDeleteResponse?.text()).toContain(
+      "Workspace notification rule not found",
+    );
+
+    await db.insert(schema.userNotificationWorkspaceRuleTable).values({
+      userId: member.user.id,
+      workspaceId: member.workspace.id,
+      emailEnabled: false,
+      projectMode: "all",
+    });
+    const deleteExisting = await app.request(
+      `${preferencePath}/workspaces/${member.workspace.id}`,
+      { method: "DELETE" },
+    );
+    expect(deleteExisting.status, await deleteExisting.clone().text()).toBe(
+      200,
+    );
+    const remaining = await db
+      .select()
+      .from(schema.userNotificationWorkspaceRuleTable)
+      .where(
+        and(
+          eq(schema.userNotificationWorkspaceRuleTable.userId, member.user.id),
+          eq(
+            schema.userNotificationWorkspaceRuleTable.workspaceId,
+            member.workspace.id,
+          ),
+        ),
+      );
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("validates public webhook destinations before acquiring any advisory lock", async () => {
+    const member = await createWorkspaceMember();
+    const observedAdvisoryLockCounts: number[] = [];
+    const originalAssert =
+      assertPublicDestinationModule.assertPublicWebhookDestination;
+    const spy = vi
+      .spyOn(assertPublicDestinationModule, "assertPublicWebhookDestination")
+      .mockImplementation(async (url) => {
+        observedAdvisoryLockCounts.push(await countGrantedAdvisoryLocks());
+        return originalAssert(url);
+      });
+
+    try {
+      const updated = await updateNotificationPreferences(
+        member.user.id,
+        member.user.email,
+        {
+          webhookEnabled: true,
+          webhookUrl: "https://93.184.216.34/webhook",
+        },
+      );
+      expect(updated.webhookEnabled).toBe(true);
+      expect(updated.webhookUrl).toBe("https://93.184.216.34/webhook");
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(observedAdvisoryLockCounts).toEqual([0]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it.each<{
+    channel: string;
+    reason: string;
+    body: Record<string, boolean | string>;
+    expectedMessage: string;
+    expectedProbes: number;
+  }>([
+    {
+      channel: "webhook",
+      reason: "loopback",
+      body: { webhookEnabled: true, webhookUrl: "https://127.0.0.1/hook" },
+      expectedMessage:
+        "Generic webhook destination resolves to a non-routable address",
+      expectedProbes: 1,
+    },
+    {
+      channel: "webhook",
+      reason: "http scheme",
+      body: { webhookEnabled: true, webhookUrl: "http://93.184.216.34/hook" },
+      expectedMessage: "Generic webhook URL must use https",
+      expectedProbes: 1,
+    },
+    {
+      channel: "webhook",
+      reason: "credentials",
+      body: {
+        webhookEnabled: true,
+        webhookUrl: "https://user:pass@93.184.216.34/hook",
+      },
+      expectedMessage: "Generic webhook URL must not contain credentials",
+      expectedProbes: 1,
+    },
+    {
+      channel: "webhook",
+      reason: "malformed",
+      body: { webhookEnabled: true, webhookUrl: "not a url" },
+      expectedMessage: "Invalid URL",
+      expectedProbes: 0,
+    },
+    {
+      channel: "webhook",
+      reason: "unresolvable host",
+      body: {
+        webhookEnabled: true,
+        webhookUrl: "https://unresolvable.invalid/hook",
+      },
+      expectedMessage: "Generic webhook destination could not be resolved",
+      expectedProbes: 1,
+    },
+    {
+      channel: "ntfy",
+      reason: "loopback",
+      body: {
+        ntfyEnabled: true,
+        ntfyServerUrl: "https://127.0.0.1/ntfy",
+        ntfyTopic: "ops",
+      },
+      expectedMessage:
+        "Generic webhook destination resolves to a non-routable address",
+      // Seeded enabled webhookUrl is also re-validated alongside the ntfy URL.
+      expectedProbes: 2,
+    },
+    {
+      channel: "gotify",
+      reason: "loopback",
+      body: {
+        gotifyEnabled: true,
+        gotifyServerUrl: "https://127.0.0.1/gotify",
+        gotifyToken: "synthetic-gotify-token",
+      },
+      expectedMessage:
+        "Generic webhook destination resolves to a non-routable address",
+      // Seeded enabled webhookUrl is also re-validated alongside the gotify URL.
+      expectedProbes: 2,
+    },
+  ])(
+    "rejects invalid $channel destination ($reason) outside the advisory lock without mutating stored preferences",
+    async ({ body, expectedMessage, expectedProbes }) => {
+      const member = await createWorkspaceMember();
+      await updateNotificationPreferences(member.user.id, member.user.email, {
+        emailEnabled: true,
+        webhookEnabled: true,
+        webhookUrl: "https://93.184.216.34/existing",
+      });
+      mockAuthenticatedSession(member.user);
+      const { app } = createApp();
+
+      const observedAdvisoryLockCounts: number[] = [];
+      const originalAssert =
+        assertPublicDestinationModule.assertPublicWebhookDestination;
+      const spy = vi
+        .spyOn(assertPublicDestinationModule, "assertPublicWebhookDestination")
+        .mockImplementation(async (url) => {
+          observedAdvisoryLockCounts.push(await countGrantedAdvisoryLocks());
+          if (url === "https://unresolvable.invalid/hook") {
+            throw new Error(
+              "Generic webhook destination could not be resolved",
+            );
+          }
+          return originalAssert(url);
+        });
+
+      try {
+        const response = await app.request(preferencePath, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        expect(response.status, await response.clone().text()).toBe(400);
+        expect(await response.text()).toContain(expectedMessage);
+        expect(spy).toHaveBeenCalledTimes(expectedProbes);
+        expect(observedAdvisoryLockCounts).toEqual(
+          new Array<number>(expectedProbes).fill(0),
+        );
+
+        const [stored] = await db
+          .select()
+          .from(schema.userNotificationPreferenceTable)
+          .where(
+            eq(schema.userNotificationPreferenceTable.userId, member.user.id),
+          );
+        expect(stored).toMatchObject({
+          emailEnabled: true,
+          webhookEnabled: true,
+          webhookUrl: "https://93.184.216.34/existing",
+          ntfyEnabled: false,
+          ntfyServerUrl: null,
+          gotifyEnabled: false,
+          gotifyServerUrl: null,
+        });
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
+
+  it("re-validates on an in-lock cache miss when a concurrent write changes the stored URL", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const observedAdvisoryLockCounts: number[] = [];
+    const originalAssert =
+      assertPublicDestinationModule.assertPublicWebhookDestination;
+    const spy = vi
+      .spyOn(assertPublicDestinationModule, "assertPublicWebhookDestination")
+      .mockImplementation(async (url) => {
+        observedAdvisoryLockCounts.push(await countGrantedAdvisoryLocks());
+        return originalAssert(url);
+      });
+
+    let notifyLocked!: () => void;
+    const locked = new Promise<void>((resolve) => {
+      notifyLocked = resolve;
+    });
+    let releaseLock!: () => void;
+    const holdLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    const blockingTx = db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${notificationPreferenceWriteLockKey(member.user.id)}, 0))`,
+      );
+      notifyLocked();
+      await holdLock;
+      await tx.insert(schema.userNotificationPreferenceTable).values({
+        userId: member.user.id,
+        webhookEnabled: false,
+        webhookUrl: "https://127.0.0.1/concurrent-private",
+      });
+    });
+
+    try {
+      let putPromise: ReturnType<typeof app.request> | undefined;
+      try {
+        await locked;
+        putPromise = app.request(preferencePath, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ webhookEnabled: true }),
+        });
+
+        await waitForAdvisoryLockWaiter();
+      } finally {
+        releaseLock();
+        await blockingTx;
+      }
+
+      const putResponse = await putPromise;
+      expect(putResponse?.status, await putResponse?.clone().text()).toBe(400);
+      expect(await putResponse?.text()).toContain(
+        "Generic webhook destination resolves to a non-routable address",
+      );
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith("https://127.0.0.1/concurrent-private");
+      expect(observedAdvisoryLockCounts).toEqual([1]);
+
+      const [stored] = await db
+        .select()
+        .from(schema.userNotificationPreferenceTable)
+        .where(
+          eq(schema.userNotificationPreferenceTable.userId, member.user.id),
+        );
+      expect(stored).toMatchObject({
+        webhookEnabled: false,
+        webhookUrl: "https://127.0.0.1/concurrent-private",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
