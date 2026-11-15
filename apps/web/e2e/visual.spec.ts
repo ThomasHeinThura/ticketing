@@ -4601,6 +4601,34 @@ const vGmAHealth = {
       },
     },
   ],
+  legalHolds: {
+    state: "ok",
+    activeCount: 1,
+  },
+};
+
+const vGmALegalHolds = {
+  checkedAt: "2026-10-12T09:30:00.000Z",
+  activeCount: 1,
+  holds: [
+    {
+      id: "visual-legal-hold-org",
+      scope: "organisation",
+      scopeId: "visual-organisation",
+      status: "active",
+      targetLabel: "Contoso Ltd",
+      targetSecondaryLabel: "contoso.example.test",
+      reason: "Regulatory preservation notice #2026-10",
+      placedAt: "2026-10-10T14:20:00.000Z",
+      placedBy: {
+        id: "visual-person",
+        name: "Ada Example",
+        email: "ada@example.test",
+      },
+      liftedAt: null,
+      liftedBy: null,
+    },
+  ],
 };
 
 const vGmAWebhookPosture = {
@@ -6026,6 +6054,8 @@ async function installAuthenticatedFixture(page: Page) {
       body = vSetBCabTemplate;
     } else if (path === "/api/instance/health") {
       body = vGmAHealth;
+    } else if (path === "/api/instance/legal-holds") {
+      body = vGmALegalHolds;
     } else if (path === "/api/instance/webhooks/security-posture") {
       body = vGmAWebhookPosture;
     } else if (path === "/api/instance/settings") {

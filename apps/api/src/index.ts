@@ -99,6 +99,7 @@ import {
   impersonationMayCallAuthEndpoint,
 } from "./instance/impersonation/guard";
 import instanceJobs from "./instance/jobs";
+import instanceLegalHolds from "./instance/legal-holds";
 import localFactorPolicy from "./instance/local-factor-policy";
 import instanceMcpUsage from "./instance/mcp-usage";
 import observability from "./instance/observability";
@@ -2488,6 +2489,7 @@ export function createApp(
   const accountLinkApi = api.route("/me", accountLinkRouter);
   const instancePluginsApi = api.route("/instance", instancePlugins);
   const instanceHealthApi = api.route("/instance", instanceHealth);
+  const instanceLegalHoldsApi = api.route("/instance", instanceLegalHolds);
   const instanceSettingsApi = api.route("/instance", instanceSettings);
   const organisationCustomerVisibilityApi = api.route(
     "/instance",
@@ -2859,6 +2861,7 @@ export function createApp(
     publicCspReportApi,
     instancePluginsApi,
     instanceHealthApi,
+    instanceLegalHoldsApi,
     instanceSettingsApi,
     organisationCustomerVisibilityApi,
     combinedWorkItemApi,
@@ -3414,6 +3417,7 @@ const {
   publicCspReportApi,
   instancePluginsApi,
   instanceHealthApi,
+  instanceLegalHoldsApi,
   instanceSettingsApi,
   organisationCustomerVisibilityApi,
   combinedWorkItemApi,
@@ -3584,6 +3588,7 @@ export type AppType =
   | typeof publicCspReportApi
   | typeof instancePluginsApi
   | typeof instanceHealthApi
+  | typeof instanceLegalHoldsApi
   | typeof instanceSettingsApi
   | typeof organisationCustomerVisibilityApi
   | typeof combinedWorkItemApi

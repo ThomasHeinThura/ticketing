@@ -149,7 +149,7 @@ describe("runAuditPurge", () => {
     expect(m.append).not.toHaveBeenCalled();
   });
 
-  it("locks the chain, fences holds, supplies only the cut-off seq to the purge, then audits itself", async () => {
+  it("fences holds, locks the chain, supplies only the cut-off seq to the purge, then audits itself", async () => {
     m.bounds.mockResolvedValue({
       headSeq: 10n,
       firstBlockedSeq: 4n,
@@ -162,7 +162,7 @@ describe("runAuditPurge", () => {
       anchorId: "anchor-1",
       purgedCount: 3,
     });
-    expect(m.calls).toEqual(["lock", "fence", "purge", "audit"]);
+    expect(m.calls).toEqual(["fence", "lock", "purge", "audit"]);
     expect(m.cutoff).toHaveBeenCalledWith(expect.anything(), 4n);
     expect(m.purgePrefix).toHaveBeenCalledWith(expect.anything(), 3n);
     expect(m.append).toHaveBeenCalledWith(

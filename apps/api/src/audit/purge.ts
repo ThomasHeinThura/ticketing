@@ -81,8 +81,9 @@ export async function runAuditPurge(
       };
     }
 
-    await lockAuditChain(tx);
+    // Global lock order: legal_hold fence first, audit-chain advisory lock second.
     await fenceLegalHolds(tx);
+    await lockAuditChain(tx);
 
     const below = planAuditPurge(
       await readAuditPurgeBounds(tx, retention, maxRows),
