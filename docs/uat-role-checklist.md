@@ -1,7 +1,7 @@
-# UAT role checklist (Technexus)
+# UAT role checklist
 
 Agent host: `https://<agent-host>`. Portal host: `https://<portal-host>`.
-Accounts: `~/.taskdesk/uat-credentials-technexus.json`. Sign out between roles. Tick each line; note any failure with the URL and a screenshot.
+Accounts: `<credentials-file>`. Sign out between roles. Tick each line; note any failure with the URL and a screenshot.
 
 ## Every agent role (owner, admin, lead, member, viewer)
 - [ ] Sign in; the Projects list loads with no error banner.

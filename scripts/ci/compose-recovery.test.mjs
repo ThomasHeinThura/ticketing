@@ -27,11 +27,39 @@ function fixture() {
     `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> "$RECOVERY_TEST_LOG"
-if [ "$1" = inspect ]; then printf '%s\\n' "$RECOVERY_TEST_MOUNT"; exit; fi
+if [ "$1" = inspect ]; then
+  if [ -n "\${RECOVERY_TEST_MOUNTS_JSON:-}" ]; then
+    node -e '
+      const fmt = process.argv[1];
+      const mounts = JSON.parse(process.env.RECOVERY_TEST_MOUNTS_JSON);
+      const acceptAppData = fmt.includes("/app/data\\"");
+      const acceptAttachments = fmt.includes("/app/data/attachments\\"");
+      for (const m of mounts) {
+        if ((m.Destination === "/app/data" && acceptAppData) || (m.Destination === "/app/data/attachments" && acceptAttachments)) {
+          process.stdout.write(m.Type + ":" + m.Name + "\\n");
+        }
+      }
+    ' "$3"
+    exit 0
+  fi
+  printf '%s\\n' "$RECOVERY_TEST_MOUNT"
+  exit
+fi
+if [[ "$*" == *'_restore_staging_'* && "$*" == *'RENAME TO "taskdesk"'* ]] && [ "\${RECOVERY_TEST_PROMOTION_FAIL:-0}" = 1 ]; then
+  exit 1
+fi
 case "$*" in
   *'ps -a -q taskdesk'*) printf '%s\\n' "$RECOVERY_TEST_CONTAINER" ;;
   *pg_dump*) printf 'database archive' ;;
-  *pg_restore*) cat >/dev/null; printf '1; archive entry\\n' ;;
+  *'pg_restore --list'*) cat >/dev/null; printf '1; archive entry\\n' ;;
+  *pg_restore*)
+    cat >/dev/null
+    if [ "\${RECOVERY_TEST_PG_RESTORE_FAIL:-0}" = "1" ]; then
+      printf 'pg_restore: simulated archive failure\\n' >&2
+      exit 1
+    fi
+    printf '1; archive entry\\n'
+    ;;
   *'run --rm -i'*) cat >/dev/null ;;
   'run --rm '*) printf 'attachment archive' ;;
 esac
@@ -202,4 +230,115 @@ test("scratch network blocks egress and proxy discovery without publishing ports
   );
   assert.match(overlay, /traefik.enable: "false"/);
   assert.doesNotMatch(overlay, /ports:|external: true|network_mode:/);
+});
+
+test("restore.sh restores into staging DB first and leaves live DB intact when pg_restore fails (DO-2)", () => {
+  const f = fixture();
+  try {
+    const failed = f.run("restore.sh", ["--backup", f.backup, "--confirm"], {
+      RECOVERY_TEST_PG_RESTORE_FAIL: "1",
+    });
+    assert.notEqual(failed.status, 0);
+    assert.match(failed.calls, /createdb .* taskdesk_restore_staging_/);
+    assert.match(failed.calls, /pg_restore .* -d taskdesk_restore_staging_/);
+    assert.doesNotMatch(failed.calls, /DROP DATABASE IF EXISTS "taskdesk"/);
+    assert.doesNotMatch(failed.calls, /RENAME TO "taskdesk"/);
+    assert.match(
+      failed.calls,
+      /DROP DATABASE IF EXISTS "taskdesk_restore_staging_/,
+    );
+  } finally {
+    f.close();
+  }
+});
+
+test("restore.sh swaps staging DB over live DB only after pg_restore exits 0 (DO-2)", () => {
+  const f = fixture();
+  try {
+    const ok = f.run("restore.sh", ["--backup", f.backup, "--confirm"]);
+    assert.equal(ok.status, 0, ok.stderr);
+    const createdbIdx = ok.calls.indexOf("createdb ");
+    const pgRestoreIdx = ok.calls.indexOf(
+      "pg_restore --single-transaction --no-owner",
+    );
+    const recoveryIdx = ok.calls.indexOf(
+      'ALTER DATABASE "taskdesk" RENAME TO "taskdesk_restore_recovery_',
+    );
+    const renameIdx = ok.calls.indexOf('RENAME TO "taskdesk"');
+    const dropRecoveryIdx = ok.calls.indexOf(
+      'DROP DATABASE "taskdesk_restore_recovery_',
+    );
+    assert.ok(createdbIdx > 0);
+    assert.ok(pgRestoreIdx > createdbIdx);
+    assert.ok(recoveryIdx > pgRestoreIdx);
+    assert.ok(renameIdx > recoveryIdx);
+    assert.ok(dropRecoveryIdx > renameIdx);
+    assert.match(
+      ok.calls,
+      /psql --single-transaction .*ALTER DATABASE "taskdesk" RENAME TO .*ALTER DATABASE "taskdesk_restore_staging_/,
+    );
+    assert.doesNotMatch(ok.calls, /DROP DATABASE IF EXISTS "taskdesk"/);
+  } finally {
+    f.close();
+  }
+});
+
+test("resolve_compose_data_volume supports both /app/data and /app/data/attachments and rejects dual mounts (DO-7)", () => {
+  for (const destination of ["/app/data", "/app/data/attachments"]) {
+    const f = fixture();
+    try {
+      const result = f.run("backup.sh", ["--output-dir", f.backup], {
+        RECOVERY_TEST_MOUNTS_JSON: JSON.stringify([
+          {
+            Type: "volume",
+            Name: "sit_attachments_vol",
+            Destination: destination,
+          },
+        ]),
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.calls, /-v sit_attachments_vol:\/data/);
+    } finally {
+      f.close();
+    }
+  }
+
+  const ambiguous = fixture();
+  try {
+    const result = ambiguous.run(
+      "backup.sh",
+      ["--output-dir", ambiguous.backup],
+      {
+        RECOVERY_TEST_MOUNTS_JSON: JSON.stringify([
+          { Type: "volume", Name: "vol_a", Destination: "/app/data" },
+          {
+            Type: "volume",
+            Name: "vol_b",
+            Destination: "/app/data/attachments",
+          },
+        ]),
+      },
+    );
+    assert.notEqual(result.status, 0);
+  } finally {
+    ambiguous.close();
+  }
+});
+
+test("restore promotion failure rolls back both renames and preserves staging", () => {
+  const f = fixture();
+  try {
+    const result = f.run("restore.sh", ["--backup", f.backup, "--confirm"], {
+      RECOVERY_TEST_PROMOTION_FAIL: "1",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.calls,
+      /psql --single-transaction .*ALTER DATABASE "taskdesk" RENAME TO .*ALTER DATABASE "taskdesk_restore_staging_/,
+    );
+    assert.doesNotMatch(result.calls, /DROP DATABASE/);
+    assert.doesNotMatch(result.calls, /run --rm -i|up -d/);
+  } finally {
+    f.close();
+  }
 });

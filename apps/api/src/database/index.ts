@@ -439,10 +439,22 @@ export function getDatabase(): DatabaseInstance {
 let migrationPool: Pool | undefined;
 let migrationDbInstance: DatabaseInstance | undefined;
 
+export const MIGRATION_LOCK_TIMEOUT_MS = 15_000;
+
+export function withMigrationDatabaseSession(connectionString: string): string {
+  const url = new URL(withUtcDatabaseSession(connectionString));
+  const options = url.searchParams.get("options");
+  url.searchParams.set(
+    "options",
+    `${options ? `${options} ` : ""}-c lock_timeout=${MIGRATION_LOCK_TIMEOUT_MS}`,
+  );
+  return url.toString();
+}
+
 export function getMigrationDatabasePool(): Pool {
   if (!migrationPool) {
     migrationPool = new Pool({
-      connectionString: withUtcDatabaseSession(
+      connectionString: withMigrationDatabaseSession(
         resolveMigrationDatabaseConnectionString(),
       ),
       connectionTimeoutMillis: 5_000,

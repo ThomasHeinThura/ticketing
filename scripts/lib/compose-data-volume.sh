@@ -8,9 +8,9 @@ resolve_compose_data_volume() {
     printf 'xx expected one existing taskdesk container in the selected Compose project\n' >&2
     return 1
   fi
-  mount="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/app/data"}}{{.Type}}:{{.Name}}{{end}}{{end}}' "$container")" || return 1
+  mount="$(docker inspect --format '{{range .Mounts}}{{if or (eq .Destination "/app/data") (eq .Destination "/app/data/attachments")}}{{.Type}}:{{.Name}}{{"\n"}}{{end}}{{end}}' "$container")" || return 1
   if [[ ! "$mount" =~ ^volume:[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then
-    printf 'xx selected taskdesk container must mount a named volume at /app/data\n' >&2
+    printf 'xx selected taskdesk container must mount one named volume at /app/data or /app/data/attachments\n' >&2
     return 1
   fi
   printf '%s\n' "${mount#volume:}"

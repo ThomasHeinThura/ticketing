@@ -117,3 +117,41 @@ seed_if_permitted
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("Dockerfile bundles seed-uat.js and never ships seed-sit-users in the runtime image (DB-8)", () => {
+  const dockerfile = readFileSync(path.join(root, "Dockerfile"), "utf8");
+  assert.doesNotMatch(dockerfile, /seed-sit-users/);
+  assert.match(dockerfile, /--outfile=dist\/seed-uat\.js/);
+});
+
+test("deploy.sh rejects --seed on production, upgrade, and rollback before touching .env (DO-1)", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const { mkdtempSync, cpSync, rmSync, statSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const dir = mkdtempSync(path.join(tmpdir(), "deploy-seed-mode-guard-"));
+  try {
+    cpSync(
+      path.join(root, "scripts/deploy.sh"),
+      path.join(dir, "scripts/deploy.sh"),
+      {
+        recursive: true,
+      },
+    );
+    for (const args of [
+      ["production", "--seed"],
+      ["upgrade", "--seed"],
+      ["rollback", `sha256:${"a".repeat(64)}`, "v2.0.0", "--seed"],
+    ]) {
+      const result = spawnSync(
+        "bash",
+        [path.join(dir, "scripts/deploy.sh"), ...args],
+        { cwd: dir, encoding: "utf8" },
+      );
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /--seed is only valid/);
+      assert.throws(() => statSync(path.join(dir, ".env")));
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
