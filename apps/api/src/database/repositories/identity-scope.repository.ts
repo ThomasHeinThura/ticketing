@@ -13,10 +13,13 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { isBuiltInWorkspaceRoleKey } from "../../permissions/resolve-identity";
+import { isServicePrincipalId } from "../../permissions/service-principal";
 import { WORKSPACE_PROJECT_SEE_ALL_ROLES } from "../../permissions/workspace-project-reach";
 import db from "..";
 import type { Executor } from "../executor";
 import {
+  apiKeyExtensionTable,
+  apikeyTable,
   customerProjectAccessTable,
   membershipTable,
   personTable,
@@ -383,6 +386,40 @@ export function currentWorkspaceReachPredicate(
   executor: Executor = db,
 ) {
   if (identity.side !== "staff") return sql`false`;
+  if (isServicePrincipalId(identity.userId)) {
+    const apiKeyId = identity.userId.slice("service-key:".length);
+    const permittedWorkspaceIds = identity.memberships
+      .filter((membership) => membership.scope === "workspace")
+      .map((membership) => membership.scopeId);
+    if (!apiKeyId || permittedWorkspaceIds.length === 0) return sql`false`;
+    return (
+      and(
+        inArray(workspaceId, permittedWorkspaceIds),
+        exists(
+          executor
+            .select({ one: sql`1` })
+            .from(apikeyTable)
+            .innerJoin(
+              apiKeyExtensionTable,
+              eq(apiKeyExtensionTable.apikeyId, apikeyTable.id),
+            )
+            .where(
+              and(
+                eq(apikeyTable.id, apiKeyId),
+                eq(apikeyTable.enabled, true),
+                or(
+                  isNull(apikeyTable.expiresAt),
+                  sql`${apikeyTable.expiresAt} > now()`,
+                ),
+                eq(apiKeyExtensionTable.workspaceId, workspaceId),
+                isNull(apiKeyExtensionTable.personId),
+                isNull(apiKeyExtensionTable.disabledAt),
+              ),
+            ),
+        ),
+      ) ?? sql`false`
+    );
+  }
   const scopedRoleMembership = exists(
     executor
       .select({ one: sql`1` })
