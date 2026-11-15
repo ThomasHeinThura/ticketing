@@ -146,6 +146,14 @@ export function recordAuthReload(
   metrics.recordAuthReload(outcome, configVersion);
 }
 
+export function setAuthRateLimitUnshared(unshared: boolean): void {
+  metrics.setAuthRateLimitUnshared(unshared);
+}
+
+export function renderObservabilityMetrics(): Promise<string> {
+  return metrics.metrics();
+}
+
 export function recordAuditWriteFailure(
   operation: AuditFailureOperation,
   options: { readonly log?: boolean } = {},

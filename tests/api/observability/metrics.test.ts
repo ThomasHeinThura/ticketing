@@ -38,15 +38,28 @@ describe("bounded TaskDesk metrics", () => {
     expect(exposition).toContain('outcome="ok"');
     expect(exposition).toContain('outcome="failed"');
     expect(exposition).toContain("taskdesk_auth_config_version 5");
+    expect(exposition).toContain("taskdesk_auth_rate_limit_unshared 0");
     expect(exposition).not.toContain("private-customer-key");
     expect(exposition).not.toContain("nodejs_");
-    expect(exposition.match(/^# HELP /gm)).toHaveLength(6);
+    expect(exposition.match(/^# HELP /gm)).toHaveLength(7);
     expect(AUDIT_FAILURE_OPERATIONS).toEqual([
       "mutation",
       "pending_action_decision",
       "pending_action_self_read",
       "audit_read",
     ]);
+  });
+
+  it("tracks whether auth rate limiting is unshared per replica or backed by Valkey", async () => {
+    const metrics = createTaskDeskMetrics([]);
+    metrics.setAuthRateLimitUnshared(true);
+    expect(await metrics.metrics()).toContain(
+      "taskdesk_auth_rate_limit_unshared 1",
+    );
+    metrics.setAuthRateLimitUnshared(false);
+    expect(await metrics.metrics()).toContain(
+      "taskdesk_auth_rate_limit_unshared 0",
+    );
   });
 
   it("keeps in-flight scalar balanced when completion is called more than once", async () => {
@@ -75,6 +88,9 @@ describe("bounded TaskDesk metrics", () => {
     ).toThrow("Invalid HTTP metric observation");
     expect(() => metrics.recordAuditWriteFailure("raw-id" as never)).toThrow(
       "Invalid audit metric operation",
+    );
+    expect(() => metrics.setAuthRateLimitUnshared("1" as never)).toThrow(
+      "Invalid auth rate limit unshared observation",
     );
   });
 });

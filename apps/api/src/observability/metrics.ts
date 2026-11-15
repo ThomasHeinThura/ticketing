@@ -65,6 +65,7 @@ export interface TaskDeskMetrics {
   recordHttpRequest(request: HttpRequestMetric): void;
   recordAuditWriteFailure(operation: AuditFailureOperation): void;
   recordAuthReload(outcome: "ok" | "failed", configVersion: number): void;
+  setAuthRateLimitUnshared(unshared: boolean): void;
   metrics(): Promise<string>;
   contentType: string;
 }
@@ -120,6 +121,11 @@ export function createTaskDeskMetrics(
     help: "Auth configuration version currently served by this replica.",
     registers: [registry],
   });
+  const authRateLimitUnshared = new Gauge({
+    name: "taskdesk_auth_rate_limit_unshared",
+    help: "Whether auth rate limiting is per replica without shared Valkey storage (1 unshared, 0 shared).",
+    registers: [registry],
+  });
 
   return {
     registry,
@@ -169,6 +175,12 @@ export function createTaskDeskMetrics(
       }
       authReloads.inc({ outcome });
       if (outcome === "ok") authConfigVersion.set(configVersion);
+    },
+    setAuthRateLimitUnshared(unshared) {
+      if (typeof unshared !== "boolean") {
+        throw new TypeError("Invalid auth rate limit unshared observation");
+      }
+      authRateLimitUnshared.set(unshared ? 1 : 0);
     },
     metrics: () => registry.metrics(),
     contentType: registry.contentType,
