@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { createId } from "@paralleldrive/cuid2";
 import { formatSubmissionReference } from "@taskdesk/domain";
 import {
@@ -37,6 +38,7 @@ import {
   reviewStepEnabled,
   transitionArticle,
 } from "../src/kb/repository";
+import { sanitiseKbBody } from "../src/kb/sanitise";
 import { lockWorkspaceLabelNames } from "../src/label/repository";
 import { enqueueNotificationEvent } from "../src/notification/fanout";
 import { resolveApprovalEventRecipients } from "../src/notification/recipient-resolvers";
@@ -2778,8 +2780,11 @@ async function seedKnowledgeBase(seeded: Seeded) {
     categories.set(name, id);
   }
   for (const article of KB_ARTICLES) {
+    const categoryId = categories.get(article.category) ?? null;
+    const expectedCleaned = sanitiseKbBody(markdownToDoc(article.markdown));
+    const expectedBody = JSON.parse(JSON.stringify(expectedCleaned.doc));
     const [existing] = await db
-      .select({ id: kbArticleTable.id })
+      .select()
       .from(kbArticleTable)
       .where(
         and(
@@ -2788,12 +2793,55 @@ async function seedKnowledgeBase(seeded: Seeded) {
         ),
       )
       .limit(1);
-    if (existing) continue;
+    if (existing) {
+      if (existing.state === "published") continue;
+      const unfinishedSeedArticle =
+        existing.publishedAt === null &&
+        existing.publishedVersion === null &&
+        existing.authorId === personId &&
+        existing.ownerId === personId &&
+        existing.reviewDueAt === null &&
+        existing.projectId === null &&
+        existing.categoryId === categoryId &&
+        existing.customerVisible === article.customerVisible &&
+        existing.bodyText === expectedCleaned.text &&
+        isDeepStrictEqual(existing.body, expectedBody) &&
+        ((existing.state === "draft" && existing.version === 1) ||
+          (existing.state === "in_review" && existing.version === 2));
+      if (!unfinishedSeedArticle)
+        throw new Error(
+          `Seed knowledge base article is not published: ${article.title}`,
+        );
+      let version = existing.version;
+      if (
+        existing.state === "draft" &&
+        (await reviewStepEnabled(UAT_WORKSPACE_ID))
+      ) {
+        const submitted = await transitionArticle({
+          id: existing.id,
+          workspaceId: UAT_WORKSPACE_ID,
+          reachableProjectIds: [],
+          version,
+          action: "submit",
+          actor,
+        });
+        version = submitted?.version ?? version;
+      }
+      await transitionArticle({
+        id: existing.id,
+        workspaceId: UAT_WORKSPACE_ID,
+        reachableProjectIds: [],
+        version,
+        action: "publish",
+        actor,
+      });
+      continue;
+    }
     const created = await createArticle({
       workspaceId: UAT_WORKSPACE_ID,
       title: article.title,
       body: markdownToDoc(article.markdown),
-      categoryId: categories.get(article.category) ?? null,
+      categoryId,
       customerVisible: article.customerVisible,
       actor,
       projectReaches: async () => true,
@@ -2948,7 +2996,10 @@ async function seedCustomerInvitations() {
   }
 }
 
-export async function runUatSeed(argv: readonly string[] = process.argv) {
+export async function runUatSeed(
+  argv: readonly string[] = process.argv,
+  options: { closePool?: boolean } = {},
+) {
   const { credentialsFile } = parseArgs(argv);
   config();
   const database = resolveDatabaseConfig();
@@ -3010,6 +3061,6 @@ export async function runUatSeed(argv: readonly string[] = process.argv) {
         "Warning: no enabled email and password sign-in plugin was found; UAT accounts cannot sign in with a password until an administrator enables it.",
       );
   } finally {
-    await getDatabasePool().end();
+    if (options.closePool !== false) await getDatabasePool().end();
   }
 }

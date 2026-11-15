@@ -355,3 +355,155 @@ describe("P3-R1-05 concurrent group PATCH is serialised on the group row", () =>
     expect(await activeGrants(memberN)).toHaveLength(1);
   });
 });
+
+describe("P-21 GET /scim/v2/Groups honours filter", () => {
+  async function createGroup(
+    externalId: string,
+    displayName: string,
+    token = TOKEN,
+  ): Promise<string> {
+    const response = await app.request("/scim/v2/Groups", {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify({
+        schemas: [GROUP_SCHEMA],
+        externalId,
+        displayName,
+      }),
+    });
+    expect(response.status, await response.clone().text()).toBe(201);
+    return ((await response.json()) as { id: string }).id;
+  }
+
+  it("filters by displayName and externalId within the connection, returns empty list for misses, and 400 invalidFilter for unsupported filters", async () => {
+    const otherToken = "G".repeat(43);
+    await connection("p21-scim-other", otherToken);
+    await createGroup("ext-group-2", "Group Two", otherToken);
+
+    await createGroup("ext-group-1", "Group One");
+    const groupTwoId = await createGroup("ext-group-2", "Group Two");
+
+    const byDisplayName = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('displayName eq "Group Two"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(byDisplayName.status, await byDisplayName.clone().text()).toBe(200);
+    const byDisplayNameBody = (await byDisplayName.json()) as {
+      totalResults: number;
+      itemsPerPage: number;
+      Resources: Array<{ id: string; externalId: string; displayName: string }>;
+    };
+    expect(byDisplayNameBody.totalResults).toBe(1);
+    expect(byDisplayNameBody.itemsPerPage).toBe(1);
+    expect(byDisplayNameBody.Resources).toHaveLength(1);
+    expect(byDisplayNameBody.Resources[0]).toMatchObject({
+      id: groupTwoId,
+      externalId: "ext-group-2",
+      displayName: "Group Two",
+    });
+
+    const byExternalId = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('externalId eq "ext-group-2"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(byExternalId.status, await byExternalId.clone().text()).toBe(200);
+    expect(await byExternalId.json()).toMatchObject({
+      totalResults: 1,
+      itemsPerPage: 1,
+      Resources: [
+        {
+          id: groupTwoId,
+          externalId: "ext-group-2",
+          displayName: "Group Two",
+        },
+      ],
+    });
+
+    const missing = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('displayName eq "Does Not Exist"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(missing.status, await missing.clone().text()).toBe(200);
+    expect(await missing.json()).toMatchObject({
+      totalResults: 0,
+      itemsPerPage: 0,
+      Resources: [],
+    });
+
+    const teamUpperId = await createGroup("TeamA", "Team Upper");
+    const teamLowerId = await createGroup("teama", "Team Lower");
+    const byUpperExt = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('externalId eq "TeamA"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(byUpperExt.status, await byUpperExt.clone().text()).toBe(200);
+    expect(await byUpperExt.json()).toMatchObject({
+      totalResults: 1,
+      itemsPerPage: 1,
+      Resources: [
+        { id: teamUpperId, externalId: "TeamA", displayName: "Team Upper" },
+      ],
+    });
+    const byLowerExt = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('externalId eq "teama"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(byLowerExt.status, await byLowerExt.clone().text()).toBe(200);
+    expect(await byLowerExt.json()).toMatchObject({
+      totalResults: 1,
+      itemsPerPage: 1,
+      Resources: [
+        { id: teamLowerId, externalId: "teama", displayName: "Team Lower" },
+      ],
+    });
+
+    const slashId = await createGroup("ext-slash", "Domain\\Admins");
+    const cafeId = await createGroup("ext-cafe", "Café");
+    const bySlash = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('displayName eq "Domain\\\\Admins"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(bySlash.status, await bySlash.clone().text()).toBe(200);
+    expect(await bySlash.json()).toMatchObject({
+      totalResults: 1,
+      Resources: [
+        { id: slashId, externalId: "ext-slash", displayName: "Domain\\Admins" },
+      ],
+    });
+    const byCafe = await app.request(
+      `/scim/v2/Groups?filter=${encodeURIComponent('displayName eq "Caf\\u00e9"')}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(byCafe.status, await byCafe.clone().text()).toBe(200);
+    expect(await byCafe.json()).toMatchObject({
+      totalResults: 1,
+      Resources: [{ id: cafeId, externalId: "ext-cafe", displayName: "Café" }],
+    });
+
+    for (const invalid of [
+      'id eq "x"',
+      'displayName co "Group"',
+      'displayName eq "Group One" and externalId eq "ext-group-1"',
+      "displayName eq Group",
+      `displayName eq "${"a".repeat(500)}"`,
+    ]) {
+      const invalidResponse = await app.request(
+        `/scim/v2/Groups?filter=${encodeURIComponent(invalid)}`,
+        { headers: headers(TOKEN) },
+      );
+      expect(invalidResponse.status, invalid).toBe(400);
+      expect(await invalidResponse.json()).toMatchObject({
+        scimType: "invalidFilter",
+      });
+    }
+
+    const oversizedUserFilter = await app.request(
+      `/scim/v2/Users?filter=${encodeURIComponent(`userName eq "${"a".repeat(500)}"`)}`,
+      { headers: headers(TOKEN) },
+    );
+    expect(oversizedUserFilter.status).toBe(400);
+    expect(await oversizedUserFilter.json()).toMatchObject({
+      scimType: "invalidFilter",
+    });
+  });
+});

@@ -32,8 +32,10 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   grantProjectManageAccess,
+  grantProjectRole,
   grantWorkItemProjectAccess,
   requireRow,
+  WORK_ITEM_PROJECT_CAPABILITIES,
 } from "./helpers/fixtures";
 import { setTimeFlags } from "./helpers/p5-time";
 
@@ -42,7 +44,10 @@ async function fixture() {
   const { project } = await createProjectFixture({
     workspaceId: member.workspace.id,
   });
-  await grantWorkItemProjectAccess(member.user.id, project.id);
+  await grantProjectRole(member.user.id, project.id, [
+    ...WORK_ITEM_PROJECT_CAPABILITIES,
+    "time_entry:create",
+  ]);
   const recipientId = `legacy-fanout-recipient-${randomUUID()}`;
   const recipient = requireRow(
     await db
@@ -466,7 +471,6 @@ describe("legacy transactional event fanout", () => {
     const entry = await createTimeEntry({
       taskId: task.id,
       identity,
-      credential: { kind: "session" },
       startTime: new Date("2026-10-25T08:00:00.000Z"),
       endTime: new Date("2026-10-25T08:30:00.000Z"),
     });

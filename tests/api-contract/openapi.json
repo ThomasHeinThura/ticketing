@@ -19519,6 +19519,16 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Task not found",
             "content": {
@@ -19573,6 +19583,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "404": {
             "description": "Time entry not found",
@@ -125301,6 +125321,15 @@
         "parameters": [
           {
             "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "filter",
+            "in": "query"
+          },
+          {
+            "schema": {
               "type": "integer",
               "minimum": 1,
               "maximum": 100000
@@ -125323,6 +125352,17 @@
         "responses": {
           "200": {
             "description": "SCIM groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM filter",
             "content": {
               "application/json": {
                 "schema": {

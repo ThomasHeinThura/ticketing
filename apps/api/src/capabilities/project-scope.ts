@@ -105,5 +105,8 @@ export async function scopeWorkCapabilitiesToProject(
       }
     }),
   );
+  scoped.manageLabels =
+    identity.side === "staff" &&
+    hasProjectReadCapability(identity, "label:manage", "project", facts);
   return scoped;
 }

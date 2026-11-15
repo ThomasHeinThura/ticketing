@@ -1,12 +1,16 @@
-import type { ResolvedIdentity } from "@taskdesk/permissions";
+import {
+  type Capability,
+  can,
+  type ResolvedIdentity,
+} from "@taskdesk/permissions";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import db from "../database";
+import type { Executor } from "../database/executor";
 import { projectFeatureEnabled } from "../feature-flag/enforce";
+import { resolveIdentity } from "../permissions/resolve-identity";
 import { resolveRequestIdentity } from "../permissions/resolve-request-identity";
-import {
-  assertCallerHasCapabilityOrOwner,
-  capabilityCredential,
-} from "../utils/require-workspace-capability";
+import { projectAncestryFor } from "../utils/project-ancestry";
 import { findTimeEntryOwnerFacts } from "./repository";
 
 /** A legacy entry belongs to a person; a workspace service key has no person to log time for. */
@@ -45,16 +49,75 @@ export async function legacyEntryOwner(c: Context, next: Next) {
   await next();
 }
 
-/** Same canonical own/any split as the P5 time-entry route, including API-key scope. */
+/**
+ * Project-scoped own/any decision for a legacy entry: the caller's project role overrides the
+ * workspace role, and an API key stays clamped to its stored subset (`keyCapabilities`).
+ * Authority and ancestry are re-read from `executor`, so a call inside the write transaction
+ * sees role changes committed while it waited on the task lock.
+ */
+export async function assertLegacyEntryAuthority(
+  executor: Executor,
+  identity: ResolvedIdentity,
+  facts: { workspaceId: string; projectId: string; workItemId: string },
+  capability: Capability,
+  owner?: {
+    capability: Capability;
+    isOwner: (fresh: ResolvedIdentity) => boolean;
+  },
+): Promise<void> {
+  const fresh = await resolveIdentity(
+    {
+      userId: identity.userId,
+      credential: identity.credential,
+      ...(identity.keyCapabilities !== undefined && {
+        apiKey: {
+          enabled: true,
+          ownerUserId: identity.userId,
+          capabilities: identity.keyCapabilities,
+        },
+      }),
+    },
+    executor,
+  );
+  if (fresh?.side !== "staff" || fresh.portal !== "agent")
+    throw new HTTPException(403, { message: "Insufficient permissions" });
+  const target = {
+    projectId: facts.projectId,
+    workItemProjectId: facts.projectId,
+    workItemId: facts.workItemId,
+    workspaceId: facts.workspaceId,
+    ancestorProjectIds: await projectAncestryFor(
+      executor,
+      fresh,
+      facts.workspaceId,
+      facts.projectId,
+    ),
+  };
+  if (can(fresh, capability, "work_item", target)) return;
+  if (
+    owner?.isOwner(fresh) === true &&
+    can(fresh, owner.capability, "work_item", target)
+  )
+    return;
+  throw new HTTPException(403, { message: "Insufficient permissions" });
+}
+
+/** Same canonical own/any split as the P5 time-entry route, decided at the entry's project. */
 export async function requireLegacyEntryCapability(c: Context, next: Next) {
   const identity = await mutationIdentity(c);
-  await assertCallerHasCapabilityOrOwner(
-    c.get("workspaceId") as string,
-    identity.userId,
+  await assertLegacyEntryAuthority(
+    db,
+    identity,
+    {
+      workspaceId: c.get("workspaceId") as string,
+      projectId: c.get("projectId") as string,
+      workItemId: c.get("workItemId") as string,
+    },
     "time_entry:update_any",
-    "time_entry:update_own",
-    c.get("timeEntryOwnerPersonId") === identity.personId,
-    capabilityCredential(c.get("apiKey")),
+    {
+      capability: "time_entry:update_own",
+      isOwner: (fresh) => c.get("timeEntryOwnerPersonId") === fresh.personId,
+    },
   );
   await next();
 }

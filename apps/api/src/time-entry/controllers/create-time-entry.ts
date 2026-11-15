@@ -11,17 +11,13 @@ import {
 import { projectFeatureEnabled } from "../../feature-flag/enforce";
 import { findProjectWorkspaceId } from "../../notification/inbox.repository";
 import { isServicePrincipalId } from "../../permissions/service-principal";
-import {
-  assertCallerHasCapability,
-  type CapabilityCredential,
-} from "../../utils/require-workspace-capability";
+import { assertLegacyEntryAuthority } from "../authorization";
 import { resolveDuration } from "../duration";
 import { insertTimeEntry, lockTaskAndAssertProjectLive } from "../repository";
 
 async function createTimeEntry({
   taskId,
   identity,
-  credential,
   description,
   startTime,
   endTime,
@@ -29,7 +25,6 @@ async function createTimeEntry({
 }: {
   taskId: string;
   identity: ResolvedIdentity;
-  credential: CapabilityCredential;
   description?: string;
   startTime: Date;
   endTime?: Date;
@@ -41,12 +36,15 @@ async function createTimeEntry({
   const { createdTimeEntry, task, notification } = await db.transaction(
     async (tx) => {
       const task = await lockTaskAndAssertProjectLive(tx, identity, taskId);
-      await assertCallerHasCapability(
-        task.workspaceId,
-        identity.userId,
-        "time_entry:create",
-        credential,
+      await assertLegacyEntryAuthority(
         tx,
+        identity,
+        {
+          workspaceId: task.workspaceId,
+          projectId: task.projectId,
+          workItemId: taskId,
+        },
+        "time_entry:create",
       );
       if (
         !(await projectFeatureEnabled(

@@ -6,6 +6,7 @@ import {
 import { useCallback } from "react";
 import type getProjects from "@/fetchers/project/get-projects";
 import reorderProjects from "@/fetchers/project/reorder-projects";
+import { projectsOptions } from "@/hooks/queries/project/use-get-projects";
 
 type ProjectList = NonNullable<Awaited<ReturnType<typeof getProjects>>>;
 
@@ -26,7 +27,10 @@ function useReorderProjects() {
       ),
     onError: (_error, { workspaceId, previousProjects }) => {
       if (previousProjects) {
-        queryClient.setQueryData(["projects", workspaceId], previousProjects);
+        queryClient.setQueryData(
+          projectsOptions(workspaceId).queryKey,
+          previousProjects,
+        );
       }
     },
     onSettled: (_data, _error, { workspaceId }) => {
@@ -42,7 +46,7 @@ function useReorderProjects() {
       orderedProjects: ProjectList,
       options?: MutateOptions<unknown, Error, ReorderProjectsVariables>,
     ) => {
-      const queryKey = ["projects", workspaceId];
+      const queryKey = projectsOptions(workspaceId).queryKey;
       const previousProjects = queryClient.getQueryData<ProjectList>(queryKey);
 
       queryClient.setQueryData<ProjectList>(

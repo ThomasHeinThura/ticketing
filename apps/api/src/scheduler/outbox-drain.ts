@@ -2,16 +2,17 @@ import { processNextParentEvent } from "../events/outbox-consumer";
 import { immediateNotificationRuntime } from "../notification/immediate-runtime";
 import { processNextNotificationDelivery } from "../notification/outbox-drain";
 import { assertJobExecutionOwned } from "./leader-lock";
+import { drainNotificationDigests } from "./notification-digest";
 import { drainP4Consumers } from "./outbox-drain-p4";
 
 /** Every replica may run: persisted child reservation fences serialize attempts. Parent
  * event consumer state is independent and is never terminalized by one child's result. */
-export async function drainImmediateNotifications() {
+export async function drainImmediateNotifications(budgetMs = 20_000) {
   let processed = 0;
   let degraded = false;
   const runtime = immediateNotificationRuntime();
   const started = Date.now();
-  for (; processed < 100 && Date.now() - started < 20_000; processed++) {
+  for (; processed < 100 && Date.now() - started < budgetMs; processed++) {
     // Each call claims and completes one independently fenced delivery. Do not
     // interrupt the provider/claim completion pair once it has started.
     await assertJobExecutionOwned();
@@ -28,8 +29,7 @@ export async function drainImmediateNotifications() {
   return { processed, degraded };
 }
 
-/** Parent envelopes per run, and the wall-clock budget for them (the run fires every 30 s and
- * the child drain keeps its own 100-item / 20 s budget). */
+/** Parent envelopes per run and their wall-clock budget. */
 export const PARENT_DRAIN_LIMIT = 100;
 export const PARENT_DRAIN_BUDGET_MS = 5_000;
 
@@ -73,22 +73,41 @@ export async function drainParentEvents() {
 }
 
 /**
- * The registered `outbox-drain` body: parents first, then immediate notification children, then
- * the webhook deliveries and automation runs the P4 parent consumers enqueued.
+ * Keep parents, immediate notifications, and P4 consumers ahead of batched digests,
+ * giving digests up to 10 s of remaining tick budget. An in-flight provider call is
+ * allowed to finish after its budget expires.
  */
 export async function drainOutbox() {
   const startedAt = Date.now();
+  await assertJobExecutionOwned();
   const parents = await drainParentEvents();
   await assertJobExecutionOwned();
-  const children = await drainImmediateNotifications();
+  // Reserve 13 s for P4 consumers (8 s webhooks + 5 s automations) plus a 2 s digest floor.
+  const children = await drainImmediateNotifications(
+    Math.max(0, Math.min(20_000, 29_000 - (Date.now() - startedAt) - 15_000)),
+  );
   await assertJobExecutionOwned();
   const consumers = await drainP4Consumers();
-  const degraded = parents.degraded || children.degraded || consumers.degraded;
-  if (parents.processed > 0 || children.processed > 0 || degraded) {
+  await assertJobExecutionOwned();
+  const digests = await drainNotificationDigests({
+    budgetMs: Math.max(0, Math.min(10_000, 29_000 - (Date.now() - startedAt))),
+  });
+  const degraded =
+    digests.degraded ||
+    parents.degraded ||
+    children.degraded ||
+    consumers.degraded;
+  if (
+    digests.processed > 0 ||
+    parents.processed > 0 ||
+    children.processed > 0 ||
+    degraded
+  ) {
     console.log(
       JSON.stringify({
         job: "outbox-drain",
         durationMs: Date.now() - startedAt,
+        digests,
         parents,
         children,
         consumers,
@@ -96,5 +115,5 @@ export async function drainOutbox() {
       }),
     );
   }
-  return { parents, children, consumers, degraded };
+  return { digests, parents, children, consumers, degraded };
 }

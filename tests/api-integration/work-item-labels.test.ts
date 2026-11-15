@@ -32,7 +32,9 @@ async function fixture(roleName = "owner", projectLimited = false) {
   // Project-label deletion is evaluated against the project role's own `label:manage`.
   const role = await grantProjectRole(actor.user.id, project.id, [
     ...WORK_ITEM_PROJECT_CAPABILITIES,
-    "label:manage",
+    ...(roleName === "member" || roleName === "viewer"
+      ? []
+      : (["label:manage"] as const)),
   ]);
   const type = requireRow(
     await db

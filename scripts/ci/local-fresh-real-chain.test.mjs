@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -15,6 +16,7 @@ import {
 import os from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
+import { G1_ACCOUNTS } from "../../apps/api/scripts/uat-seed-plan.ts";
 import { executeFresh } from "../../deploy/local-fresh.mjs";
 import { daemonProjectLockPath } from "../../deploy/local-fresh-lock.mjs";
 import { PROJECT } from "../../deploy/local-fresh-plan.mjs";
@@ -35,10 +37,24 @@ const FAKE_SECRETS = {
   appDbPass: "FAKE_APP_DB_PASS_998877",
   ownerDbPass: "FAKE_OWNER_DB_PASS_112233",
   authSecret: "FAKE_AUTH_SECRET_445566",
-  seedAdminPass: "FAKE_SEED_PASS_776655",
-  seedCustomerPass: "FAKE_SEED_PASS_889900",
+  seedAdminPass: "FAKE_SEED_ADMIN_PASS_77665544",
+  seedCustomerPass: "FAKE_SEED_CUST_PASS_88990011",
   cookieToken: "FAKE_COOKIE_TOKEN_332211",
 };
+
+function makeMockUatCredentials(accounts = G1_ACCOUNTS) {
+  return {
+    accounts: accounts.map((account) => ({
+      email: account.email,
+      password:
+        account.side === "customer"
+          ? FAKE_SECRETS.seedCustomerPass
+          : FAKE_SECRETS.seedAdminPass,
+      role: account.roleLabel,
+      name: account.name,
+    })),
+  };
+}
 
 function writeOctal(buf, offset, length, value) {
   const str = `${value.toString(8).padStart(length - 1, "0")}\0`;
@@ -195,13 +211,26 @@ function createDaemonState({
   privateDir,
 }) {
   let seq = 1;
+  let dbGenSeq = 0;
   const makeId = () =>
     `${idPrefix}${(seq++).toString(16).padStart(64 - idPrefix.length, "0")}`;
 
   const networkId = `${idPrefix}${"f".repeat(64 - idPrefix.length)}`;
   const volumes = new Map();
-  const createVolumeRecord = (key, { rows, files } = {}) => {
+  const createVolumeRecord = (
+    key,
+    {
+      rows,
+      files,
+      setupCompleted = false,
+      adminTotpVerified = false,
+      customerPasswordEnabled = false,
+      generationId,
+    } = {},
+  ) => {
     const name = `${PROJECT}_${key}`;
+    const resolvedGenId =
+      generationId || `700000000000000000${++dbGenSeq}:${16384 + dbGenSeq}`;
     volumes.set(name, {
       Name: name,
       Driver: "local",
@@ -217,6 +246,10 @@ function createDaemonState({
               rows: rows ? { ...rows } : {},
               activeWriters: 0,
               appRoleReady: Boolean(rows && Object.keys(rows).length > 0),
+              setupCompleted,
+              adminTotpVerified,
+              customerPasswordEnabled,
+              generationId: resolvedGenId,
             }
           : undefined,
       files:
@@ -1254,6 +1287,34 @@ function createRealChainWorld(t) {
           return { status: 1, stdout: "" };
         }
       }
+      if (joined.includes("ON_ERROR_STOP=1") && sub.includes("db-gen")) {
+        const sqlText = String(options.input || "");
+        if (
+          !sqlText.includes("pg_control_system") ||
+          !sqlText.includes("pg_database")
+        )
+          return { status: 1, stdout: "" };
+        const pgDb = daemon.volumes.get(`${PROJECT}_postgres-data`)?.db;
+        return writeStdoutOrFd(
+          options,
+          `${pgDb?.generationId || "7000000000000000001:16385"}\n`,
+        );
+      }
+      if (joined.includes("ON_ERROR_STOP=1") && sub.includes("setup-check")) {
+        const sqlText = String(options.input || "");
+        if (
+          !sqlText.includes("instance_setting") ||
+          !sqlText.includes("two_factor") ||
+          !sqlText.includes("instance_plugin_config") ||
+          !sqlText.includes("scope = 'instance'")
+        )
+          return { status: 1, stdout: "" };
+        const pgDb = daemon.volumes.get(`${PROJECT}_postgres-data`)?.db;
+        return writeStdoutOrFd(
+          options,
+          `${pgDb?.setupCompleted ? "1" : "0"}|${pgDb?.adminTotpVerified ? "1" : "0"}|${pgDb?.customerPasswordEnabled ? "1" : "0"}\n`,
+        );
+      }
       if (
         joined.includes("ON_ERROR_STOP=1") &&
         (sub[0] === "psql" || sub.includes("counts"))
@@ -1279,31 +1340,29 @@ function createRealChainWorld(t) {
           stdout: manifestFromFileMap(attVol?.files || new Map()),
         };
       }
-      if (sub.includes("apps/api/dist/seed-sit-users.js")) {
+      if (sub[0] === "sh" && sub[1] === "-c" && sub[3] === "restore-creds") {
+        const dest = sub[4];
+        const body = Buffer.isBuffer(options.input)
+          ? options.input.toString("utf8")
+          : String(options.input || "");
+        c.tmpFiles.set(dest, body);
+        return { status: 0, stdout: "" };
+      }
+      if (sub.includes("apps/api/dist/seed-uat.js")) {
+        if (!sub.includes("--uat")) return { status: 1, stdout: "" };
         const credDest = sub[sub.indexOf("--credentials-file") + 1];
-        c.tmpFiles.set(
-          credDest,
-          JSON.stringify({
-            accounts: [
-              {
-                email: "admin@taskdesk.example",
-                password: FAKE_SECRETS.seedAdminPass,
-                role: "owner",
-                side: "agent",
-              },
-              {
-                email: "requester@acme.example",
-                password: FAKE_SECRETS.seedCustomerPass,
-                role: "customer",
-                side: "customer",
-              },
-            ],
-          }),
-        );
+        if (c.tmpFiles.has(credDest)) {
+          JSON.parse(c.tmpFiles.get(credDest));
+        } else {
+          c.tmpFiles.set(credDest, JSON.stringify(makeMockUatCredentials()));
+        }
         const pgVol = daemon.volumes.get(`${PROJECT}_postgres-data`);
         if (pgVol?.db) {
           pgVol.db.rows["public.users"] = 6;
           pgVol.db.rows["public.workspaces"] = 1;
+          pgVol.db.rows["public.automation_rules"] = 2;
+          pgVol.db.rows["public.pages"] = 1;
+          pgVol.db.rows["public.reports"] = 1;
         }
         return { status: 0, stdout: "" };
       }
@@ -1572,11 +1631,18 @@ test("real chain: refuses missing --confirm-daemon, wrong daemon id, and context
   assert.equal(w.destructiveDaemonCalls(w.otherDaemon).length, 0);
 });
 
-test("real chain: completes full fresh install through real preflight, restore proof (with dbName) and guarded upgrade", (t) => {
+test("real chain: Stage 1 checkpoints empty instance for /setup + portal auth and Stage 2 --resume-seed enforces gates before seeding", (t) => {
   const w = createRealChainWorld(t);
   w.execute();
 
-  assert.ok(w.logs.includes("Fresh install smoke passed."));
+  const stamp = "2026-11-12T12-00-00-000Z";
+  assert.ok(
+    w.logs.some((line) =>
+      line.includes(`Fresh empty install ready (checkpoint ${stamp})`),
+    ),
+    "Expected Stage 1 checkpoint instructions",
+  );
+  assert.equal(w.logs.includes("Fresh install smoke passed."), false);
   assert.ok(
     w.logs.includes(
       "Restore proof matched database counts and attachment hashes.",
@@ -1596,12 +1662,8 @@ test("real chain: completes full fresh install through real preflight, restore p
     assert.equal(running.length, 1, `Expected running fresh ${svc}`);
   }
 
-  // Backup artifacts exist outside removed volumes with valid checksums and 0700/0600 permissions
-  const backupDir = join(
-    w.privateDir,
-    "fresh-backups",
-    "2026-11-12T12-00-00-000Z",
-  );
+  // Backup artifacts exist outside removed volumes with valid checksums and 0700/0600 permissions; seeding has NOT run yet
+  const backupDir = join(w.privateDir, "fresh-backups", stamp);
   assert.equal(statSync(backupDir).mode & 0o777, 0o700);
   for (const artifact of [
     "postgres.dump",
@@ -1610,10 +1672,85 @@ test("real chain: completes full fresh install through real preflight, restore p
     "compose-env.tar",
     "counts.txt",
     "SHA256SUMS",
-    "sit-credentials.json",
+    "fresh-setup-pending.json",
   ]) {
     assert.ok(existsSync(join(backupDir, artifact)), `Missing ${artifact}`);
   }
+  assert.equal(existsSync(join(backupDir, "sit-credentials.json")), false);
+  assert.equal(
+    w.sitDaemon.calls.some(
+      (argv) =>
+        argv[0] === "exec" && argv.includes("apps/api/dist/seed-uat.js"),
+    ),
+    false,
+    "Stage 1 must not seed before interactive /setup with TOTP and portal auth configuration",
+  );
+  const pendingCheckpoint = JSON.parse(
+    readFileSync(join(backupDir, "fresh-setup-pending.json"), "utf8"),
+  );
+  assert.equal(pendingCheckpoint.status, "awaiting_setup");
+  assert.equal(pendingCheckpoint.image, NEXT_IMAGE);
+  assert.match(pendingCheckpoint.dbGeneration, /^\d+:\d+$/);
+  assert.equal(
+    pendingCheckpoint.dbGeneration,
+    w.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db.generationId,
+  );
+  assert.equal(
+    statSync(join(backupDir, "fresh-setup-pending.json")).mode & 0o777,
+    0o600,
+  );
+
+  // Stage 2 refuses until /setup, verified admin TOTP, and customer auth.password are complete
+  const resumeArgs = [
+    "--resume-seed",
+    stamp,
+    "--confirm-daemon",
+    w.sitDaemon.daemonId,
+  ];
+  assert.throws(
+    () => w.execute({ args: resumeArgs }),
+    /Initial instance setup is incomplete/,
+  );
+
+  const freshPg = w.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db;
+  freshPg.setupCompleted = true;
+  assert.throws(
+    () => w.execute({ args: resumeArgs }),
+    /First-admin setup requires a verified TOTP factor/,
+  );
+
+  freshPg.adminTotpVerified = true;
+  assert.throws(
+    () => w.execute({ args: resumeArgs }),
+    /Enable Email\/Password authentication/,
+  );
+
+  // Once all Stage 2 prerequisites hold, Stage 2 seeds once and runs smoke
+  freshPg.customerPasswordEnabled = true;
+  w.execute({ args: resumeArgs });
+  assert.ok(w.logs.includes("Fresh install smoke passed."));
+  assert.ok(existsSync(join(backupDir, "sit-credentials.json")));
+  assert.ok(
+    w.sitDaemon.calls.some(
+      (argv) =>
+        argv[0] === "exec" &&
+        argv.includes("apps/api/dist/seed-uat.js") &&
+        argv.includes("--uat"),
+    ),
+    "Expected Stage 2 to invoke apps/api/dist/seed-uat.js --uat",
+  );
+  assert.ok(
+    !w.sitDaemon.calls.some((argv) =>
+      argv.some((arg) => String(arg).includes("seed-sit-users.js")),
+    ),
+    "Fresh install must never invoke seed-sit-users.js",
+  );
+  const seededCheckpoint = JSON.parse(
+    readFileSync(join(backupDir, "fresh-setup-pending.json"), "utf8"),
+  );
+  assert.equal(seededCheckpoint.status, "seeded");
+  assert.throws(() => w.execute({ args: resumeArgs }), /already seeded/);
+
   const countsContent = readFileSync(join(backupDir, "counts.txt"), "utf8");
   const sumsContent = readFileSync(join(backupDir, "SHA256SUMS"), "utf8");
   w.assertNoSecretsLogged([countsContent]);
@@ -2010,6 +2147,615 @@ test("real chain: concurrent invocation with different env-file and private-dir 
 
   w.execute();
   assert.equal(concurrentChecked, true);
-  assert.ok(w.logs.includes("Fresh install smoke passed."));
+  assert.ok(
+    w.logs.some((line) =>
+      line.includes("Fresh empty install ready (checkpoint"),
+    ),
+  );
+  w.assertNoSecretsLogged();
+});
+
+function completeStage1AndSetup(w) {
+  w.execute();
+  const stamp = "2026-11-12T12-00-00-000Z";
+  const freshPg = w.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db;
+  freshPg.setupCompleted = true;
+  freshPg.adminTotpVerified = true;
+  freshPg.customerPasswordEnabled = true;
+  return {
+    stamp,
+    backupDir: join(w.privateDir, "fresh-backups", stamp),
+    resumeArgs: [
+      "--resume-seed",
+      stamp,
+      "--confirm-daemon",
+      w.sitDaemon.daemonId,
+    ],
+  };
+}
+
+test("real chain: Stage 2 rescues credentials on seed failure, restores and re-runs idempotent seed until exit 0, and retries smoke only once seed exits 0", (t) => {
+  // 1. Pre-commit seed-uat.js failure (writes /tmp/sit-credentials.json before DB rows)
+  // rescues host creds, deletes container /tmp copy, keeps status awaiting_setup, and
+  // restores the identical passwords into /tmp/sit-credentials.json when re-running seed.
+  const preCommit = createRealChainWorld(t);
+  const pc = completeStage1AndSetup(preCommit);
+  let preCommitSeedCalls = 0;
+  let preCommitSecondCallHadCreds = false;
+  const savedPasswords = makeMockUatCredentials();
+  preCommit.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      preCommitSeedCalls += 1;
+      const app = [...preCommit.sitDaemon.containers.values()].find(
+        (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+      );
+      const credPath = argv[argv.indexOf("--credentials-file") + 1];
+      if (preCommitSeedCalls === 1) {
+        app.tmpFiles.set(credPath, JSON.stringify(savedPasswords));
+        return { status: 1, stdout: "" };
+      }
+      preCommitSecondCallHadCreds =
+        app.tmpFiles.get(credPath) === JSON.stringify(savedPasswords);
+    }
+  });
+  assert.throws(
+    () => preCommit.execute({ args: pc.resumeArgs }),
+    /docker exec failed/,
+  );
+  assert.ok(existsSync(join(pc.backupDir, "sit-credentials.json")));
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(pc.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "awaiting_setup",
+  );
+  const pcPg = preCommit.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db;
+  assert.equal(pcPg.rows["public.users"], 0);
+  for (const c of preCommit.sitDaemon.containers.values()) {
+    assert.equal(c.tmpFiles.has("/tmp/sit-credentials.json"), false);
+  }
+  preCommit.execute({ args: pc.resumeArgs });
+  assert.equal(preCommitSeedCalls, 2);
+  assert.equal(preCommitSecondCallHadCreds, true);
+  assert.equal(
+    readFileSync(join(pc.backupDir, "sit-credentials.json"), "utf8"),
+    JSON.stringify(savedPasswords),
+  );
+  assert.equal(pcPg.rows["public.users"], 6);
+  assert.equal(pcPg.rows["public.workspaces"], 1);
+  assert.equal(pcPg.rows["public.automation_rules"], 2);
+  assert.equal(pcPg.rows["public.pages"], 1);
+  assert.equal(pcPg.rows["public.reports"], 1);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(pc.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded",
+  );
+  for (const c of preCommit.sitDaemon.containers.values()) {
+    assert.equal(c.tmpFiles.has("/tmp/sit-credentials.json"), false);
+  }
+
+  // 2. Post-core partial fixture failure (accounts committed, fails before G-1 automations/pages/reports)
+  // keeps awaiting_setup and completes remaining fixtures on resume with preserved passwords.
+  const partialPostCore = createRealChainWorld(t);
+  const ppc = completeStage1AndSetup(partialPostCore);
+  let ppcSeedCalls = 0;
+  let ppcReusedHostCreds = false;
+  partialPostCore.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      ppcSeedCalls += 1;
+      const app = [...partialPostCore.sitDaemon.containers.values()].find(
+        (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+      );
+      const pgDb = partialPostCore.sitDaemon.volumes.get(
+        `${PROJECT}_postgres-data`,
+      ).db;
+      const credPath = argv[argv.indexOf("--credentials-file") + 1];
+      if (ppcSeedCalls === 1) {
+        app.tmpFiles.set(credPath, JSON.stringify(savedPasswords));
+        pgDb.rows["public.users"] = 6;
+        pgDb.rows["public.workspaces"] = 1;
+        return { status: 1, stdout: "" };
+      }
+      ppcReusedHostCreds =
+        app.tmpFiles.get(credPath) === JSON.stringify(savedPasswords);
+    }
+  });
+  assert.throws(
+    () => partialPostCore.execute({ args: ppc.resumeArgs }),
+    /docker exec failed/,
+  );
+  const ppcPg = partialPostCore.sitDaemon.volumes.get(
+    `${PROJECT}_postgres-data`,
+  ).db;
+  assert.equal(ppcPg.rows["public.users"], 6);
+  assert.equal(ppcPg.rows["public.automation_rules"] ?? 0, 0);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(ppc.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "awaiting_setup",
+  );
+  partialPostCore.execute({ args: ppc.resumeArgs });
+  assert.equal(ppcSeedCalls, 2);
+  assert.equal(ppcReusedHostCreds, true);
+  assert.equal(ppcPg.rows["public.automation_rules"], 2);
+  assert.equal(ppcPg.rows["public.pages"], 1);
+  assert.equal(ppcPg.rows["public.reports"], 1);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(ppc.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded",
+  );
+
+  // 3. Host copy failure after seed preserves container creds and keeps awaiting_setup;
+  // retry rescues container copy, restores it into container, re-runs idempotent seed, and finishes cleanly.
+  const copyFail = createRealChainWorld(t);
+  const cf = completeStage1AndSetup(copyFail);
+  let copyFailSeedCalls = 0;
+  let failedCopyOnce = false;
+  copyFail.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      copyFailSeedCalls += 1;
+    }
+    if (
+      !failedCopyOnce &&
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("cat") &&
+      argv.includes("/tmp/sit-credentials.json") &&
+      copyFailSeedCalls === 1
+    ) {
+      failedCopyOnce = true;
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => copyFail.execute({ args: cf.resumeArgs }),
+    /docker exec failed/,
+  );
+  assert.equal(existsSync(join(cf.backupDir, "sit-credentials.json")), false);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(cf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "awaiting_setup",
+  );
+  const cfApp = [...copyFail.sitDaemon.containers.values()].find(
+    (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+  );
+  assert.equal(cfApp.tmpFiles.has("/tmp/sit-credentials.json"), true);
+  copyFail.execute({ args: cf.resumeArgs });
+  assert.equal(copyFailSeedCalls, 2);
+  assert.equal(cfApp.tmpFiles.has("/tmp/sit-credentials.json"), false);
+  assert.ok(existsSync(join(cf.backupDir, "sit-credentials.json")));
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(cf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded",
+  );
+
+  // 4. Container rm -f failure throws loudly and leaves awaiting_setup;
+  // retry restores creds, re-runs idempotent seed, cleans up, and passes smoke.
+  const rmFail = createRealChainWorld(t);
+  const rf = completeStage1AndSetup(rmFail);
+  let rmFailSeedCalls = 0;
+  let failedRmOnce = false;
+  rmFail.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      rmFailSeedCalls += 1;
+    }
+    if (
+      !failedRmOnce &&
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("rm") &&
+      argv.includes("/tmp/sit-credentials.json")
+    ) {
+      failedRmOnce = true;
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => rmFail.execute({ args: rf.resumeArgs }),
+    /Failed to remove temporary sit-credentials\.json from container/,
+  );
+  assert.ok(existsSync(join(rf.backupDir, "sit-credentials.json")));
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(rf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "awaiting_setup",
+  );
+  rmFail.execute({ args: rf.resumeArgs });
+  assert.equal(rmFailSeedCalls, 2);
+  assert.ok(rmFail.logs.includes("Fresh install smoke passed."));
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(rf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded",
+  );
+
+  // 5. Invalid rescued container credential JSON still cleans up container /tmp copy (Opus L2)
+  const badCreds = createRealChainWorld(t);
+  const bc = completeStage1AndSetup(badCreds);
+  badCreds.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      const app = [...badCreds.sitDaemon.containers.values()].find(
+        (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+      );
+      const invalidSet = makeMockUatCredentials();
+      invalidSet.accounts[0] = {
+        ...invalidSet.accounts[0],
+        password: "",
+      };
+      app.tmpFiles.set(
+        argv[argv.indexOf("--credentials-file") + 1],
+        JSON.stringify(invalidSet),
+      );
+      return { status: 0, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => badCreds.execute({ args: bc.resumeArgs }),
+    /missing, duplicate or weak account credentials/,
+  );
+  assert.equal(existsSync(join(bc.backupDir, "sit-credentials.json")), false);
+  for (const c of badCreds.sitDaemon.containers.values()) {
+    assert.equal(c.tmpFiles.has("/tmp/sit-credentials.json"), false);
+  }
+
+  // 6. release-smoke.mjs failure retries from seeded_awaiting_smoke without re-running seed-uat.js
+  const smokeFail = createRealChainWorld(t);
+  const sf = completeStage1AndSetup(smokeFail);
+  let sfSeedCalls = 0;
+  let failedSmokeOnce = false;
+  smokeFail.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      sfSeedCalls += 1;
+      if (sfSeedCalls > 1)
+        throw new Error("seed-uat.js must not re-run during smoke retry");
+    }
+    if (
+      !failedSmokeOnce &&
+      bin === "node" &&
+      argv[0] === "scripts/sit/release-smoke.mjs"
+    ) {
+      failedSmokeOnce = true;
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => smokeFail.execute({ args: sf.resumeArgs }),
+    /node scripts\/sit\/release-smoke\.mjs failed/,
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(sf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded_awaiting_smoke",
+  );
+  smokeFail.execute({ args: sf.resumeArgs });
+  assert.equal(sfSeedCalls, 1);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(sf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "seeded",
+  );
+  smokeFail.assertNoSecretsLogged();
+
+  // 7. Subset credential JSON (1 account with strong 24+ char password) is rejected in seeded_awaiting_smoke (Sol L1),
+  // and simultaneous container rm -f failure surfaces both errors (Sol L2).
+  const subsetCreds = createRealChainWorld(t);
+  const sc = completeStage1AndSetup(subsetCreds);
+  let failSmokeSubsetOnce = true;
+  let failRmOnSubset = false;
+  subsetCreds.setHook((bin, argv) => {
+    if (
+      failSmokeSubsetOnce &&
+      bin === "node" &&
+      argv[0] === "scripts/sit/release-smoke.mjs"
+    ) {
+      failSmokeSubsetOnce = false;
+      return { status: 1, stdout: "" };
+    }
+    if (
+      failRmOnSubset &&
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("rm") &&
+      argv.includes("/tmp/sit-credentials.json")
+    ) {
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => subsetCreds.execute({ args: sc.resumeArgs }),
+    /release-smoke\.mjs failed/,
+  );
+  const subsetPath = join(sc.backupDir, "sit-credentials.json");
+  writeFileSync(
+    subsetPath,
+    JSON.stringify({ accounts: [makeMockUatCredentials().accounts[0]] }),
+  );
+  chmodSync(subsetPath, 0o600);
+  failRmOnSubset = true;
+  assert.throws(
+    () => subsetCreds.execute({ args: sc.resumeArgs }),
+    new RegExp(
+      `must contain exactly the ${G1_ACCOUNTS.length} UAT accounts.*Failed to remove temporary sit-credentials\\.json`,
+    ),
+  );
+  subsetCreds.assertNoSecretsLogged();
+
+  // 8. Interrupted restore-creds + container rm -f failure surfaces both errors (Sol L2)
+  const restoreFail = createRealChainWorld(t);
+  const rst = completeStage1AndSetup(restoreFail);
+  let failRestoreSeedOnce = true;
+  let failRestoreRmCombo = false;
+  restoreFail.setHook((bin, argv) => {
+    if (
+      failRestoreSeedOnce &&
+      bin === "docker" &&
+      argv.includes("apps/api/dist/seed-uat.js")
+    ) {
+      failRestoreSeedOnce = false;
+      const app = [...restoreFail.sitDaemon.containers.values()].find(
+        (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+      );
+      app.tmpFiles.set(
+        argv[argv.indexOf("--credentials-file") + 1],
+        JSON.stringify(makeMockUatCredentials()),
+      );
+      return { status: 1, stdout: "" };
+    }
+    if (
+      failRestoreRmCombo &&
+      bin === "docker" &&
+      argv.includes("restore-creds")
+    ) {
+      return { status: 1, stdout: "" };
+    }
+    if (
+      failRestoreRmCombo &&
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("rm") &&
+      argv.includes("/tmp/sit-credentials.json")
+    ) {
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => restoreFail.execute({ args: rst.resumeArgs }),
+    /docker exec failed/,
+  );
+  failRestoreRmCombo = true;
+  assert.throws(
+    () => restoreFail.execute({ args: rst.resumeArgs }),
+    /docker exec failed.*Failed to remove temporary sit-credentials\.json/,
+  );
+  assert.ok(existsSync(join(rst.backupDir, "sit-credentials.json")));
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(rst.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "awaiting_setup",
+  );
+  restoreFail.assertNoSecretsLogged();
+
+  // 9. Seed failure + container rm -f failure surfaces seed error + cleanup error (Opus L1)
+  const seedRmFail = createRealChainWorld(t);
+  const srf = completeStage1AndSetup(seedRmFail);
+  seedRmFail.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      const app = [...seedRmFail.sitDaemon.containers.values()].find(
+        (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+      );
+      app.tmpFiles.set(
+        argv[argv.indexOf("--credentials-file") + 1],
+        JSON.stringify(makeMockUatCredentials()),
+      );
+      return { status: 1, stdout: "" };
+    }
+    if (
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("rm") &&
+      argv.includes("/tmp/sit-credentials.json")
+    ) {
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => seedRmFail.execute({ args: srf.resumeArgs }),
+    /docker exec failed.*Failed to remove temporary sit-credentials\.json/,
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(srf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "awaiting_setup",
+  );
+  seedRmFail.assertNoSecretsLogged();
+
+  // 10. Missing/mismatched role or contradictory side rejects in both seeded_awaiting_smoke and awaiting_setup (Sol L1)
+  for (const fieldCase of [
+    {
+      name: "missing role",
+      mutate: () => {
+        const next = makeMockUatCredentials();
+        const { role: _omitted, ...withoutRole } = next.accounts[0];
+        next.accounts[0] = withoutRole;
+        return next;
+      },
+    },
+    {
+      name: "wrong customer role",
+      mutate: () => {
+        const next = makeMockUatCredentials();
+        const custIndex = next.accounts.findIndex((a) =>
+          a.role.startsWith("Customer"),
+        );
+        next.accounts[custIndex] = {
+          ...next.accounts[custIndex],
+          role: "Workspace viewer",
+        };
+        return next;
+      },
+    },
+    {
+      name: "contradictory side",
+      mutate: () => {
+        const next = makeMockUatCredentials();
+        const custIndex = next.accounts.findIndex((a) =>
+          a.role.startsWith("Customer"),
+        );
+        next.accounts[custIndex] = {
+          ...next.accounts[custIndex],
+          side: "staff",
+        };
+        return next;
+      },
+    },
+  ]) {
+    const smokeRoleFail = createRealChainWorld(t);
+    const srfMeta = completeStage1AndSetup(smokeRoleFail);
+    let failSmokeOnce = true;
+    let smokeCalls = 0;
+    smokeRoleFail.setHook((bin, argv) => {
+      if (bin === "node" && argv[0] === "scripts/sit/release-smoke.mjs") {
+        smokeCalls += 1;
+        if (failSmokeOnce) {
+          failSmokeOnce = false;
+          return { status: 1, stdout: "" };
+        }
+      }
+    });
+    assert.throws(
+      () => smokeRoleFail.execute({ args: srfMeta.resumeArgs }),
+      /release-smoke\.mjs failed/,
+    );
+    const metaCredPath = join(srfMeta.backupDir, "sit-credentials.json");
+    writeFileSync(metaCredPath, JSON.stringify(fieldCase.mutate()));
+    chmodSync(metaCredPath, 0o600);
+    assert.throws(
+      () => smokeRoleFail.execute({ args: srfMeta.resumeArgs }),
+      /invalid role or side metadata/,
+      `${fieldCase.name} in seeded_awaiting_smoke must fail closed`,
+    );
+    assert.equal(smokeCalls, 1, `${fieldCase.name} must block smoke retry`);
+    smokeRoleFail.assertNoSecretsLogged();
+
+    const setupRoleFail = createRealChainWorld(t);
+    const setMeta = completeStage1AndSetup(setupRoleFail);
+    let setupSeedCalls = 0;
+    setupRoleFail.setHook((bin, argv) => {
+      if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+        setupSeedCalls += 1;
+      }
+    });
+    const setupCredPath = join(setMeta.backupDir, "sit-credentials.json");
+    writeFileSync(setupCredPath, JSON.stringify(fieldCase.mutate()));
+    chmodSync(setupCredPath, 0o600);
+    assert.throws(
+      () => setupRoleFail.execute({ args: setMeta.resumeArgs }),
+      /invalid role or side metadata/,
+      `${fieldCase.name} in awaiting_setup must fail closed`,
+    );
+    assert.equal(setupSeedCalls, 0, `${fieldCase.name} must block seed`);
+    setupRoleFail.assertNoSecretsLogged();
+  }
+});
+
+test("real chain: Stage 2 refuses superseded checkpoint, image mismatch, and PostgreSQL generation mismatch", (t) => {
+  const w = createRealChainWorld(t);
+  w.execute({ clock: () => new Date("2026-11-12T12:00:00.000Z") });
+  const oldStamp = "2026-11-12T12-00-00-000Z";
+  w.execute({ clock: () => new Date("2026-11-12T13:00:00.000Z") });
+  const newStamp = "2026-11-12T13-00-00-000Z";
+
+  const freshPg = w.sitDaemon.volumes.get(`${PROJECT}_postgres-data`).db;
+  freshPg.setupCompleted = true;
+  freshPg.adminTotpVerified = true;
+  freshPg.customerPasswordEnabled = true;
+
+  assert.throws(
+    () =>
+      w.execute({
+        args: [
+          "--resume-seed",
+          oldStamp,
+          "--confirm-daemon",
+          w.sitDaemon.daemonId,
+        ],
+      }),
+    new RegExp(`superseded by newer checkpoint ${newStamp}`),
+  );
+
+  // Unreadable newer sibling checkpoint fails closed rather than treating oldStamp as active (Opus L4)
+  const newCheckpointFile = join(
+    w.privateDir,
+    "fresh-backups",
+    newStamp,
+    "fresh-setup-pending.json",
+  );
+  const origCheckpoint = JSON.parse(readFileSync(newCheckpointFile, "utf8"));
+  writeFileSync(newCheckpointFile, "{corrupt json", { mode: 0o600 });
+  assert.throws(
+    () =>
+      w.execute({
+        args: [
+          "--resume-seed",
+          oldStamp,
+          "--confirm-daemon",
+          w.sitDaemon.daemonId,
+        ],
+      }),
+    new RegExp(`newer checkpoint ${newStamp} is unreadable`),
+  );
+
+  // Image mismatch on current checkpoint refuses before running seeding
+  writeFileSync(
+    newCheckpointFile,
+    `${JSON.stringify({ ...origCheckpoint, image: PREV_IMAGE }, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+  assert.throws(
+    () =>
+      w.execute({
+        args: [
+          "--resume-seed",
+          newStamp,
+          "--confirm-daemon",
+          w.sitDaemon.daemonId,
+        ],
+      }),
+    /does not match target image/,
+  );
+
+  // DB generation mismatch refuses cleanly
+  writeFileSync(
+    newCheckpointFile,
+    `${JSON.stringify({ ...origCheckpoint, dbGeneration: "9999999999999999999:99999" }, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+  assert.throws(
+    () =>
+      w.execute({
+        args: [
+          "--resume-seed",
+          newStamp,
+          "--confirm-daemon",
+          w.sitDaemon.daemonId,
+        ],
+      }),
+    /does not match current PostgreSQL database generation/,
+  );
   w.assertNoSecretsLogged();
 });

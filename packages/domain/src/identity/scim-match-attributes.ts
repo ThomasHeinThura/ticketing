@@ -69,10 +69,39 @@ export function effectiveScimMatchAttributes(
   return parseScimMatchAttributes(input);
 }
 
-export function parseScimUserFilter(
+export const SCIM_GROUP_FILTER_ATTRIBUTES = [
+  "displayName",
+  "externalId",
+] as const;
+
+export type ScimGroupFilterAttribute =
+  (typeof SCIM_GROUP_FILTER_ATTRIBUTES)[number];
+
+export type ScimGroupFilter = {
+  attribute: ScimGroupFilterAttribute;
+  value: string;
+};
+
+const USER_FILTER_ATTRIBUTES = new Map<string, ScimMatchAttribute>([
+  ["externalid", "externalId"],
+  ["username", "userName"],
+  ["displayname", "displayName"],
+  ["name.formatted", "name.formatted"],
+  ["title", "title"],
+  ["preferredlanguage", "preferredLanguage"],
+]);
+
+const GROUP_FILTER_ATTRIBUTES = new Map<string, ScimGroupFilterAttribute>([
+  ["displayname", "displayName"],
+  ["externalid", "externalId"],
+]);
+
+function parseScimEqFilter<T extends string>(
   input: string | undefined,
-): ScimResult<ScimUserFilter | null> {
+  attributes: ReadonlyMap<string, T>,
+): ScimResult<{ attribute: T; value: string } | null> {
   if (input === undefined) return { ok: true, value: null };
+  if (input.length > 512) return { ok: false, reason: "invalid_resource" };
   const match = input.match(
     /^\s*([A-Za-z][A-Za-z0-9.]*)\s+eq\s+"((?:\\.|[^"\\])*)"\s*$/iu,
   );
@@ -81,23 +110,32 @@ export function parseScimUserFilter(
   const rawValue = match[2];
   if (!rawAttribute || rawValue === undefined)
     return { ok: false, reason: "invalid_resource" };
-  const attribute = new Map<string, ScimMatchAttribute>([
-    ["externalid", "externalId"],
-    ["username", "userName"],
-    ["displayname", "displayName"],
-    ["name.formatted", "name.formatted"],
-    ["title", "title"],
-    ["preferredlanguage", "preferredLanguage"],
-  ]).get(rawAttribute);
-  const value = rawValue.replace(/\\(["\\])/gu, "$1");
-  if (
-    !attribute ||
-    value.includes("\\") ||
-    [...value].some((character) => {
-      const code = character.codePointAt(0) ?? 0;
-      return code < 0x20 || code === 0x7f;
-    })
-  )
+  const attribute = attributes.get(rawAttribute);
+  if (!attribute) return { ok: false, reason: "invalid_resource" };
+  let parsedValue: unknown;
+  try {
+    parsedValue = JSON.parse(`"${rawValue}"`);
+  } catch {
     return { ok: false, reason: "invalid_resource" };
-  return { ok: true, value: { attribute, value } };
+  }
+  if (typeof parsedValue !== "string")
+    return { ok: false, reason: "invalid_resource" };
+  for (const character of parsedValue) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code < 0x20 || code === 0x7f || (code >= 0xd800 && code <= 0xdfff))
+      return { ok: false, reason: "invalid_resource" };
+  }
+  return { ok: true, value: { attribute, value: parsedValue } };
+}
+
+export function parseScimUserFilter(
+  input: string | undefined,
+): ScimResult<ScimUserFilter | null> {
+  return parseScimEqFilter(input, USER_FILTER_ATTRIBUTES);
+}
+
+export function parseScimGroupFilter(
+  input: string | undefined,
+): ScimResult<ScimGroupFilter | null> {
+  return parseScimEqFilter(input, GROUP_FILTER_ATTRIBUTES);
 }

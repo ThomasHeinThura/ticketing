@@ -475,6 +475,7 @@ export const PROJECT_MANAGE_CAPABILITIES = [
   "time_entry:create",
   "time_entry:read_any",
   "time_entry:update_any",
+  "time_entry:update_own",
 ] as const;
 
 export function grantProjectManageAccess(userId: string, projectId: string) {

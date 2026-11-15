@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import db from "../database";
 import { dbNowUtc } from "../utils/db-time";
 
-/** Groups sealed per sweep; the next hourly run takes the remainder. */
+/** Groups sealed per sweep; the next drain takes the remainder. */
 const SEAL_BATCH = 500;
 
 /**

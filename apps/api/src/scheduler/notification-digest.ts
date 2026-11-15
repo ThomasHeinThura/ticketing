@@ -15,35 +15,80 @@ export type NotificationDigestRun = {
   degraded: boolean;
 };
 
+export async function drainNotificationDigests({
+  budgetMs = 240_000,
+  maxGroups = 100,
+  send,
+}: {
+  budgetMs?: number;
+  maxGroups?: number;
+  send?: Parameters<typeof processNextNotificationDigest>[0];
+} = {}): Promise<NotificationDigestRun> {
+  const startedAt = Date.now();
+  const outcome: NotificationDigestRun = {
+    sealed: 0,
+    processed: 0,
+    delivered: 0,
+    deferred: 0,
+    retry: 0,
+    degraded: false,
+  };
+  try {
+    outcome.sealed = await sealDueDigestGroups();
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        job: NOTIFICATION_DIGEST_JOB,
+        phase: "seal",
+        error: error instanceof Error ? error.name : "UnknownError",
+        message:
+          error instanceof Error
+            ? error.message.slice(0, 200)
+            : String(error).slice(0, 200),
+      }),
+    );
+    outcome.degraded = true;
+    return outcome;
+  }
+  while (outcome.processed < maxGroups && Date.now() - startedAt < budgetMs) {
+    await assertJobExecutionOwned();
+    try {
+      const result = send
+        ? await processNextNotificationDigest(send)
+        : await processNextNotificationDigest();
+      if (result.kind === "idle") break;
+      outcome.processed++;
+      if (result.outcome === "delivered") outcome.delivered++;
+      if (result.outcome === "deferred") outcome.deferred++;
+      if (result.outcome === "retry") {
+        outcome.retry++;
+        outcome.degraded = true;
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          job: NOTIFICATION_DIGEST_JOB,
+          phase: "deliver",
+          error: error instanceof Error ? error.name : "UnknownError",
+          message:
+            error instanceof Error
+              ? error.message.slice(0, 200)
+              : String(error).slice(0, 200),
+        }),
+      );
+      outcome.degraded = true;
+      break;
+    }
+  }
+  return outcome;
+}
+
 export async function runNotificationDigest(): Promise<NotificationDigestRun> {
   const startedAt = Date.now();
   try {
     const outcome = await withJobLease(
       NOTIFICATION_DIGEST_JOB,
-      async () => {
-        const sealed = await sealDueDigestGroups();
-        let processed = 0;
-        let delivered = 0;
-        let deferred = 0;
-        let retry = 0;
-        let degraded = false;
-        for (
-          ;
-          processed < 5 && Date.now() - startedAt < 240_000;
-          processed += 1
-        ) {
-          await assertJobExecutionOwned();
-          const result = await processNextNotificationDigest();
-          if (result.kind === "idle") break;
-          if (result.outcome === "delivered") delivered += 1;
-          if (result.outcome === "deferred") deferred += 1;
-          if (result.outcome === "retry") {
-            retry += 1;
-            degraded = true;
-          }
-        }
-        return { sealed, processed, delivered, deferred, retry, degraded };
-      },
+      () => drainNotificationDigests(),
       () => ({
         sealed: 0,
         processed: 0,

@@ -791,22 +791,22 @@ export async function findActiveInternalOrganisation(tx: IdentityTransaction) {
     .limit(1);
 }
 
-export async function countScimGroups(connectionId: string) {
+export async function countScimGroups(where: SQL | undefined) {
   return await db
     .select({ totalResults: sql<number>`count(*)::int` })
     .from(schema.scimGroupTable)
-    .where(eq(schema.scimGroupTable.scimConnectionId, connectionId));
+    .where(where);
 }
 
 export async function listScimGroupIds(
-  connectionId: string,
+  where: SQL | undefined,
   pageCount: number,
   offset: number,
 ) {
   return await db
     .select({ id: schema.scimGroupTable.id })
     .from(schema.scimGroupTable)
-    .where(eq(schema.scimGroupTable.scimConnectionId, connectionId))
+    .where(where)
     .orderBy(schema.scimGroupTable.id)
     .limit(pageCount)
     .offset(offset);
