@@ -36,6 +36,15 @@ Owner: Thomas. Coordinator: Claude, running the agent fleet in Orca. This plan r
 | D-O | A team that owns a project gives its members access to it. Nobody can add themselves to a team. | B-5. |
 | D-P | Delete what is safe and completely finished. | Done 12 Nov: 21 clean worktrees and their merged branches removed (17 GB). Everything with unsaved work, private settings or an open PR was kept. |
 
+**Added by Thomas on 15 Nov:**
+
+| # | Decision | Effect |
+| --- | --- | --- |
+| D-Q | Build legal-hold and subprocessor administration before UAT (`F-FEAT-4`, `C8-4/F1`). | H-1. |
+| D-R | Build OIDC group-mapping God Mode UI before UAT (`C8-4/F3`); the API already exists. | H-2. |
+| D-S | Follow the API-key engineering recommendation only after proving replacement coverage. | H-3 keeps the two active canonical permissions; H-5 closes the separate key-format gap. Permission changes or data rewrites still need Thomas's approval. |
+| D-T | Move old `docs/report/*` reports into `docs/archive/reports/`. | H-4, owned by the separate archive worker. |
+
 Each decision is written into `docs/technical/design-and-decisions.md`, with what it reverses, in the PR that implements it.
 
 ## 3. How the work runs
@@ -186,6 +195,16 @@ No new dependency: Base UI, framer-motion and CSS already cover it.
 | P-30 | Seed and fresh-install gaps found in the plan check (blocks G-4) | G-1: the "resolved items close after 3 days" automation is actually created (`seedG1Automations` passes the schedule option); G-2: `deploy/local-fresh.mjs` runs the G-1 UAT seed, not the old SIT seeder | S |
 | P-31 | Retro review of high-risk PRs merged without recorded review | One Sol high review of the merged diffs of #1131, #1132, #1136, #1142, #1143, #1146, #1152, #1153 (auth origin), #1155 and #1168, whose PR bodies say independent review was not run or not verified; record Thomas's acknowledgement of the TC-2 contract change in #1159 | M |
 | P-32 | Stale status lines | `status.md` drops C-5 from open items (done on `main` in #1132); `status.md`, `handover.md` and roadmap L-09 record the `deepmerge` #909 decision instead of "#1058 awaits approval" | S |
+
+### Stream H — Pre-UAT additions (Thomas, 15 Nov)
+
+| ID | Item | Done when | Effort |
+| --- | --- | --- | --- |
+| H-1 | Legal-hold and subprocessor admin UI (`F-FEAT-4`, `C8-4/F1`) (H) | God Mode uses persisted APIs to list, place and lift holds and manage subprocessors; changes are audited. Tests prove non-admin denial and held-data purge refusal; save, reload, failure and keyboard journeys pass in both themes at all three widths. | L |
+| H-2 | OIDC group-mapping God Mode UI (`C8-4/F3`) (H) | An instance admin can list, create and edit mappings through the existing API, including disabling a mapping; reload preserves changes. Tests cover step-up, non-admin denial, stale edits and refusal of instance-admin grants; browser journeys pass in both themes at all three widths. | M |
+| H-3 | Keep `project:archive` and `project:manage_settings` (`C8-15(c)`) (H) | Correct the legacy-debt classification: these remain distinct canonical permissions, with no replacement names or data migration. A route matrix proves personal/MCP/service-key behavior for archive/restore and settings, including required literal `project:update`, owner-role intersection, reach and negative cases; no broader update-only grant substitutes for either permission. | S–M |
+| H-4 | Archive old reports (separate worker) | Old `docs/report/*` files are under `docs/archive/reports/`; maintained links resolve and no report is lost. | S |
+| H-5 | Canonical API keys at legacy statement gates (medium, new audit) (H) | A newly created personal key with `label:manage` can create, update and delete labels through the real API; read-only and out-of-workspace keys cannot. Inventory all non-identity statement mappings and test their public key paths; old granular keys never gain broader rights. Any compatibility semantics or stored-key rewrite has Thomas's approval before implementation. | M |
 
 ### After UAT
 
