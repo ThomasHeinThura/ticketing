@@ -63,13 +63,7 @@ function runPrivateSeeder(
       inputPath,
       ...(outputPath ? [outputPath] : []),
     ],
-    {
-      ...process.env,
-      TASKDESK_DATABASE_URL: fixture.databaseUrl,
-      TASKDESK_MIGRATION_DATABASE_URL: undefined,
-    },
     outputName,
-    fixture.fixtureDir,
   );
   return child.then(
     (started) =>

@@ -42,13 +42,7 @@ async function runCustomerSeeder(fixture: MfaCsrfAppFixtureSetup) {
       resolve(repoRoot, "tests/e2e/scripts/seed-instance-users-customer.ts"),
       outputPath,
     ],
-    {
-      ...process.env,
-      TASKDESK_DATABASE_URL: fixture.databaseUrl,
-      TASKDESK_MIGRATION_DATABASE_URL: undefined,
-    },
     "users-primary-customer-seed",
-    fixture.fixtureDir,
   );
   await new Promise<void>((resolveChild, reject) => {
     child.once("close", (code) => {
@@ -68,13 +62,7 @@ async function seedCustomerPasswordProvider(fixture: MfaCsrfAppFixtureSetup) {
       resolve(repoRoot, "apps/api/tsconfig.tests.json"),
       resolve(repoRoot, "tests/e2e/scripts/seed-approval-auth-provider.ts"),
     ],
-    {
-      ...process.env,
-      TASKDESK_DATABASE_URL: fixture.databaseUrl,
-      TASKDESK_MIGRATION_DATABASE_URL: undefined,
-    },
     "users-primary-auth-provider-seed",
-    fixture.fixtureDir,
   );
   await new Promise<void>((resolveChild, reject) => {
     child.once("close", (code) => {

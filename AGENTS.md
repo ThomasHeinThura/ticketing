@@ -30,7 +30,7 @@ Codex fixes bugs, adjusts implementation, corrects stale docs and chooses design
 
 | Tier | Models | Use for |
 | --- | --- | --- |
-| Middle | Terra (`gpt-6-terra`), Claude Sonnet, Gemini 3.8 Flash | Implementation, tests, routine checks, low-risk reviews, search |
+| Middle | Terra (`gpt-6-terra`), Claude Sonnet, Gemini 4 Hydrogen | Implementation, tests, routine checks, low-risk reviews, search |
 | High | Sol (`gpt-6-sol`, `reasoning_effort: "high"`), Claude Opus, Gemini Argon | Planning, audits, architecture, risky changes, independent review |
 
 Use the tier, not a vendor: any high-tier model may review work written by any other model, never its own.
