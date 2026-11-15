@@ -1500,7 +1500,7 @@ describe("SCIM administration API", () => {
   it("filters only configured, representable attributes within the authenticated SCIM connection", async () => {
     const { app, token, connectionId } = await createScimProtocolFixture();
     const ownUser = await createScimProtocolUser(app, token, {
-      externalId: "configured-user",
+      externalId: "EXT-CASE-1",
       userName: "configured@example.test",
       displayName: "Configured User",
       email: "configured@example.test",
@@ -1542,7 +1542,7 @@ describe("SCIM administration API", () => {
       'title eq "Support Engineer"',
       'preferredLanguage eq "EN-gb"',
       'userName eq "CONFIGURED@EXAMPLE.TEST"',
-      'externalId eq "CONFIGURED-USER"',
+      'externalId eq "EXT-CASE-1"',
     ]) {
       const response = await filter(expression);
       expect(response.status).toBe(200);
@@ -1551,6 +1551,13 @@ describe("SCIM administration API", () => {
         Resources: [{ id: ownUser.id }],
       });
     }
+
+    const mismatchedExternalIdCase = await filter('externalId eq "ext-case-1"');
+    expect(mismatchedExternalIdCase.status).toBe(200);
+    expect(await mismatchedExternalIdCase.json()).toMatchObject({
+      totalResults: 0,
+      Resources: [],
+    });
 
     for (const expression of [
       'emails.value eq "configured@example.test"',

@@ -1103,6 +1103,39 @@ function currentOwnerPredicate(
   );
 }
 
+function currentOwnerRowsGuard(
+  rows: readonly NotificationCandidate[],
+  identity: ResolvedIdentity,
+  executor: InboxExecutor,
+  credentialCanReadTask = true,
+) {
+  const taskRows = rows.filter((row) => row.resourceType === "task");
+  const otherRows = rows.filter((row) => row.resourceType !== "task");
+  const clauses = otherRows.map((row) =>
+    and(
+      bindSameRow(row),
+      currentOwnerPredicate(row, identity, executor, credentialCanReadTask),
+    ),
+  );
+  const firstTaskRow = taskRows[0];
+  if (firstTaskRow) {
+    // Task reach is row-invariant on `notification.*`, so share one predicate across all task rows
+    // to stay well below PostgreSQL's 65,535 bind-parameter wire limit on large candidate pages.
+    clauses.push(
+      and(
+        or(...taskRows.map(bindSameRow)),
+        currentOwnerPredicate(
+          firstTaskRow,
+          identity,
+          executor,
+          credentialCanReadTask,
+        ),
+      ),
+    );
+  }
+  return or(...clauses);
+}
+
 async function fetchAllowedRows(
   tx: InboxExecutor,
   rows: readonly NotificationCandidate[],
@@ -1179,16 +1212,7 @@ async function fetchAllowedRows(
         eq(requestTypeTable.workspaceId, workspaceTable.id),
       ),
     )
-    .where(
-      or(
-        ...rows.map((row) =>
-          and(
-            bindSameRow(row),
-            currentOwnerPredicate(row, identity, tx, credentialCanReadTask),
-          ),
-        ),
-      ),
-    )
+    .where(currentOwnerRowsGuard(rows, identity, tx, credentialCanReadTask))
     .orderBy(desc(createdAtMs), desc(notificationTable.id));
 }
 
@@ -1211,11 +1235,7 @@ async function bulkMutation(userId: string, mode: "read" | "delete") {
       const rows = page.map(({ notification }) => notification);
       const allowed = await readableNativeRows(tx, rows, identity);
       if (allowed.length > 0) {
-        const rowGuard = or(
-          ...allowed.map((row) =>
-            and(bindSameRow(row), currentOwnerPredicate(row, identity, tx)),
-          ),
-        );
+        const rowGuard = currentOwnerRowsGuard(allowed, identity, tx);
         if (mode === "read") {
           await tx
             .update(notificationTable)

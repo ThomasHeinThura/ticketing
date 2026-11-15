@@ -103,7 +103,7 @@ function wellFormedRoleRow(roleRank: SQLWrapper, capabilities: SQLWrapper) {
  * keyed exactly as resolveIdentity's loader keys it (scope, workspace, key), so a malformed
  * canonical row still blocks the legacy fallback.
  */
-function legacyWorkspaceKeyAdmitted(
+export function legacyWorkspaceKeyAdmitted(
   roleKey: string,
   workspaceId: SQLWrapper,
   executor: Executor,
@@ -277,7 +277,10 @@ export function currentProjectReachPredicate(
           eq(membershipTable.personId, identity.personId),
           eq(membershipTable.scope, "workspace"),
           eq(membershipTable.scopeId, projectWorkspaceId),
-          eq(membershipTable.seesAll, true),
+          or(
+            eq(membershipTable.seesAll, true),
+            inArray(roleTable.key, [...WORKSPACE_PROJECT_SEE_ALL_ROLES]),
+          ),
           canonicalScopedRoleMembership(
             membershipTable.scope,
             roleTable.id,

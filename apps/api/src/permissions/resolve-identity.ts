@@ -611,7 +611,9 @@ export function resolveIdentityFromFacts(
     memberships.push({
       scope,
       scopeId: row.scopeId,
-      seesAll: row.seesAll,
+      seesAll:
+        row.seesAll ||
+        (scope === "workspace" && workspaceRoleSeesAllProjects(row.roleKey)),
       ...(row.inheritedFrom === null
         ? {}
         : { inheritedFrom: row.inheritedFrom }),

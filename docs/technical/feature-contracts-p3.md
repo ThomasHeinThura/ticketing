@@ -895,7 +895,9 @@ hand-written protocol code; only the credential check reuses the platform.
 - **User filter contract (v1):** `filter` accepts one case-insensitive attribute name,
   the `eq` operator, and one quoted string value; compound filters and other operators
   return SCIM `400 invalidFilter`. String equality follows the core SCIM `caseExact`
-  characteristic; all supported v1 User attributes are case-insensitive. Attribute names
+  characteristic: `externalId` is case-exact (`RFC 7643 §3.1`, `caseExact: true`), matching
+  `/Groups` and write paths, while `userName` (`RFC 7643 §4.1.1`, `caseExact: false`) and
+  the other supported v1 User attributes are case-insensitive. Attribute names
   and the `eq` operator are case-insensitive. `scim_connection.match_attributes` is a closed,
   connection-configured list with canonical default `externalId`, `userName`; those two
   are mandatory in every valid stored list. The only additional v1
