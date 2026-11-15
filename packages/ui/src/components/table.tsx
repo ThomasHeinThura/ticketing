@@ -33,7 +33,7 @@ function Table({
   if (scrollLabel) {
     return (
       <ScrollArea
-        className="relative h-auto w-full"
+        className="relative h-auto w-full min-w-0"
         data-slot="table-container"
         role="region"
         aria-label={scrollLabel}

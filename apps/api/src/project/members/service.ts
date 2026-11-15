@@ -47,6 +47,8 @@ export type RosterActor = {
    * administrator, whose authority is not a capability list and who may grant any project role.
    */
   held: ReadonlySet<string> | null;
+  /** Whether the caller holds `project:manage_members` on this project (including inherited grants). */
+  canManageMembers: boolean;
 };
 
 type Scope = { workspaceId: string; projectId: string };
@@ -82,7 +84,11 @@ async function loadRoster(
 }
 
 /** `GET /api/projects/{projectId}/members` */
-export async function listProjectMembers(scope: Scope, callerRank: number) {
+export async function listProjectMembers(
+  scope: Scope,
+  callerRank: number,
+  canManageMembers = false,
+) {
   await requireProject(db, scope);
   const [members, existing] = await Promise.all([
     loadRoster(db, scope),
@@ -113,7 +119,7 @@ export async function listProjectMembers(scope: Scope, callerRank: number) {
   ].sort(
     (a, b) => a.roleRank - b.roleRank || a.roleKey.localeCompare(b.roleKey),
   );
-  return { members, roles, callerRank };
+  return { members, roles, callerRank, canManageMembers };
 }
 
 function builtInRank(key: (typeof ROSTER_ROLE_KEYS)[number]): number {

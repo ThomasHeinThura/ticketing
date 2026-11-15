@@ -93,6 +93,10 @@ export const projectMembersResponseSchema = z.object({
     description:
       "The caller's rank in this project (the ceiling the roster writes enforce: only roles at or below it can be granted, changed or removed).",
   }),
+  canManageMembers: z.boolean().optional().openapi({
+    description:
+      "Whether the caller holds project:manage_members on this project (including inherited ancestor grants and API-key capability clamping).",
+  }),
 });
 
 export const projectMemberCandidateSchema = z.object({

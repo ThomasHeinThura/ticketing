@@ -1997,7 +1997,11 @@ export const projectStates = apiRouter<
     const workspaceId = c.get("workspaceId");
     const actor = await resolveRosterActor(c, { workspaceId, projectId });
     return c.json(
-      await listProjectMembers({ projectId, workspaceId }, actor.rank),
+      await listProjectMembers(
+        { projectId, workspaceId },
+        actor.rank,
+        actor.canManageMembers,
+      ),
       200,
     );
   })

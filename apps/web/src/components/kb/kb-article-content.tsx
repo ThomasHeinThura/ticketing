@@ -117,8 +117,9 @@ function renderNode(
     case "paragraph":
       return <p key={key}>{children()}</p>;
     case "heading": {
-      const level = Math.min(Math.max(Number(node.attrs?.level ?? 2), 1), 6);
-      const Tag = `h${level}` as "h1";
+      const raw = Number(node.attrs?.level);
+      const level = Number.isInteger(raw) ? Math.min(Math.max(raw, 2), 6) : 2;
+      const Tag = `h${level}` as "h2";
       return (
         <Tag key={key} id={headings.next()}>
           {children()}

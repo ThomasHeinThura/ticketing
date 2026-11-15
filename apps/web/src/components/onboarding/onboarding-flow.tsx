@@ -218,6 +218,17 @@ export function OnboardingFlow() {
                 ? t("auth:onboarding.creating")
                 : t("auth:onboarding.createWorkspace")}
             </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                void navigate({ to: routes.godModeHealth.path });
+              }}
+            >
+              {t("navigation:sidebar.godMode")}
+            </Button>
           </form>
         </Form>
       </div>

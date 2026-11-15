@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { resolveRosterActorAuthority } from "../../../apps/api/src/project/members/actor";
 import {
   buildRoster,
   callerRankInProject,
@@ -276,5 +277,153 @@ describe("roster response carries callerRank", () => {
       { scope: "workspace", scopeId: "w1", rank: 80 },
     ];
     expect(callerRankInProject(grants, "p1", "w1")).toBe(50);
+  });
+
+  it("accepts optional boolean canManageMembers", () => {
+    const base = { members: [], roles: [], callerRank: 30 };
+    expect(projectMembersResponseSchema.safeParse(base).success).toBe(true);
+    expect(
+      projectMembersResponseSchema.safeParse({
+        ...base,
+        canManageMembers: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      projectMembersResponseSchema.safeParse({
+        ...base,
+        canManageMembers: "yes",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("resolveRosterActorAuthority (PR-2 ancestor inheritance, RL-3, instance admin)", () => {
+  it("inherits an ancestor project-lead grant when the child project has no direct grant", () => {
+    const authority = resolveRosterActorAuthority(
+      {
+        side: "staff",
+        credential: "session",
+        authority: [
+          {
+            roleKey: "member",
+            scope: "workspace",
+            scopeId: "w1",
+            rank: 40,
+            capabilities: ["project:read"],
+          },
+          {
+            roleKey: "project-lead",
+            scope: "project",
+            scopeId: "p-parent",
+            rank: 50,
+            capabilities: ["project:read", "project:manage_members"],
+          },
+        ],
+      },
+      {
+        workspaceId: "w1",
+        projectId: "p-child",
+        ancestorProjectIds: ["p-parent"],
+        isInstanceAdmin: false,
+      },
+    );
+    expect(authority.rank).toBe(50);
+    expect(authority.canManageMembers).toBe(true);
+    expect(authority.held?.has("project:manage_members")).toBe(true);
+  });
+
+  it("respects RL-3 decoupling: rank 30 with project:manage_members can manage, rank 60 without cannot", () => {
+    const lowRankManager = resolveRosterActorAuthority(
+      {
+        side: "staff",
+        credential: "session",
+        authority: [
+          {
+            roleKey: "custom-roster-admin",
+            scope: "project",
+            scopeId: "p1",
+            rank: 30,
+            capabilities: ["project:manage_members"],
+          },
+        ],
+      },
+      {
+        workspaceId: "w1",
+        projectId: "p1",
+        ancestorProjectIds: [],
+        isInstanceAdmin: false,
+      },
+    );
+    expect(lowRankManager.rank).toBe(30);
+    expect(lowRankManager.canManageMembers).toBe(true);
+
+    const highRankReader = resolveRosterActorAuthority(
+      {
+        side: "staff",
+        credential: "session",
+        authority: [
+          {
+            roleKey: "custom-executive",
+            scope: "project",
+            scopeId: "p1",
+            rank: 60,
+            capabilities: ["project:read"],
+          },
+        ],
+      },
+      {
+        workspaceId: "w1",
+        projectId: "p1",
+        ancestorProjectIds: [],
+        isInstanceAdmin: false,
+      },
+    );
+    expect(highRankReader.rank).toBe(60);
+    expect(highRankReader.canManageMembers).toBe(false);
+  });
+
+  it("grants un-keyed instance admins full rank and capability, while clamping keyed admins", () => {
+    const instanceAuthority = [
+      {
+        roleKey: "instance-admin",
+        scope: "instance" as const,
+        scopeId: null,
+        rank: 100,
+        capabilities: ["instance:admin"],
+      },
+    ];
+    const unkeyed = resolveRosterActorAuthority(
+      {
+        side: "staff",
+        credential: "session",
+        authority: instanceAuthority,
+      },
+      {
+        workspaceId: "w1",
+        projectId: "p1",
+        ancestorProjectIds: [],
+        isInstanceAdmin: true,
+      },
+    );
+    expect(unkeyed.held).toBeNull();
+    expect(unkeyed.rank).toBe(100);
+    expect(unkeyed.canManageMembers).toBe(true);
+
+    const keyed = resolveRosterActorAuthority(
+      {
+        side: "staff",
+        credential: "api_key",
+        keyCapabilities: ["project:read"],
+        authority: instanceAuthority,
+      },
+      {
+        workspaceId: "w1",
+        projectId: "p1",
+        ancestorProjectIds: [],
+        isInstanceAdmin: true,
+      },
+    );
+    expect(keyed.held?.has("project:manage_members")).toBe(false);
+    expect(keyed.canManageMembers).toBe(false);
   });
 });

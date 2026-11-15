@@ -495,7 +495,7 @@ export function LegalHoldsPanel() {
             </EmptyHeader>
           </Empty>
         ) : (
-          <Frame>
+          <Frame className="min-w-0 overflow-x-auto">
             <Table scrollLabel={t("legalHolds.tableLabel")} scrollFade>
               <TableHeader>
                 <TableRow>

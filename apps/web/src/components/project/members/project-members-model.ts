@@ -38,9 +38,8 @@ export function isAuthorityReplacingWorkspaceRole(workspaceRole: string) {
 
 /**
  * Roles the caller may grant: rank at or below their own (`role_exceeds_caller_authority`).
- * The roster response does not carry the caller's rank yet; without it every role is offered
- * and the server stays the authority. A role already held stays listed so the Select can
- * display it.
+ * When `callerRank` is omitted (for example in a test fixture), every role is offered and the
+ * server stays the authority. A role already held stays listed so the Select can display it.
  */
 export function assignableRoles(
   roles: readonly RosterRoleView[],

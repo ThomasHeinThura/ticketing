@@ -3,6 +3,7 @@ import {
   can,
   expandCapabilities,
   isKeyCredential,
+  type ResolvedIdentity,
   selectedGrantsFor,
 } from "@taskdesk/permissions";
 import type { Context } from "hono";
@@ -19,6 +20,69 @@ import {
 } from "../hierarchy.repository";
 import type { RosterActor } from "./service";
 
+/**
+ * Pure authority and rank derivation for project roster reads and writes.
+ *
+ * Keeps project-scoped `held` (including inherited ancestor grants, session-only instance-admin
+ * bypass, and API/MCP key capability clamping) separate from `rank` so RL-3 custom roles whose
+ * rank differs from their capability set are handled accurately.
+ */
+export function resolveRosterActorAuthority(
+  identity: Pick<
+    ResolvedIdentity,
+    "authority" | "credential" | "keyCapabilities"
+  > & {
+    readonly side?: ResolvedIdentity["side"];
+  },
+  input: {
+    workspaceId: string;
+    projectId: string;
+    organisationId?: string | null;
+    ancestorProjectIds: readonly string[];
+    isInstanceAdmin?: boolean;
+  },
+): {
+  held: ReadonlySet<string> | null;
+  rank: number;
+  canManageMembers: boolean;
+} {
+  const instanceAdmin =
+    input.isInstanceAdmin ??
+    can(identity as ResolvedIdentity, "instance:admin", "instance", {
+      instance: true,
+    });
+  // P4R1-M1: what the caller holds at this project, the same selection the evaluator makes,
+  // clamped to the frozen subset of the API key when the request carries one (`can()` does the
+  // same; a key credential without a subset holds nothing).
+  const keyed = isKeyCredential(identity.credential);
+  const resolved =
+    instanceAdmin && !keyed
+      ? null
+      : authorityFor(identity, "project", {
+          projectId: input.projectId,
+          workspaceId: input.workspaceId,
+          organisationId: input.organisationId ?? undefined,
+          ancestorProjectIds: input.ancestorProjectIds,
+        });
+  let held: ReadonlySet<string> | null = resolved;
+  if (resolved !== null && (keyed || identity.keyCapabilities !== undefined)) {
+    const keyHeld = expandCapabilities(identity.keyCapabilities ?? []);
+    held = new Set([...resolved].filter((name) => keyHeld.has(name)));
+  }
+  const grantedRank = Math.max(
+    0,
+    ...selectedGrantsFor(identity, "project", {
+      workspaceId: input.workspaceId,
+      projectId: input.projectId,
+      ancestorProjectIds: input.ancestorProjectIds,
+    }).map((grant) => grant.rank),
+  );
+  const rank =
+    instanceAdmin && !keyed ? Math.max(100, grantedRank) : grantedRank;
+  const canManageMembers = held === null || held.has("project:manage_members");
+  return { held, rank, canManageMembers };
+}
+
 /** The acting person and their rank in the project, for the authority-minting roster writes. */
 export async function resolveRosterActor(
   c: Context,
@@ -32,40 +96,28 @@ export async function resolveRosterActor(
   const isInstanceAdmin = can(identity, "instance:admin", "instance", {
     instance: true,
   });
-  // P4R1-M1: what the caller holds at this project, the same selection the evaluator makes,
-  // clamped to the frozen subset of the API key when the request carries one (`can()` does the
-  // same; a key credential without a subset holds nothing).
   const keyed = isKeyCredential(identity.credential);
-  const resolved =
+  const ancestorProjectIds =
     isInstanceAdmin && !keyed
-      ? null
-      : authorityFor(identity, "project", {
-          projectId: scope.projectId,
-          workspaceId: scope.workspaceId,
-          organisationId: project.organisationId ?? undefined,
-          ancestorProjectIds: await loadProjectAncestorIds(
-            db,
-            scope.workspaceId,
-            scope.projectId,
-          ),
-        });
-  let held: ReadonlySet<string> | null = resolved;
-  if (resolved !== null && (keyed || identity.keyCapabilities !== undefined)) {
-    const keyHeld = expandCapabilities(identity.keyCapabilities ?? []);
-    held = new Set([...resolved].filter((name) => keyHeld.has(name)));
-  }
+      ? []
+      : await loadProjectAncestorIds(db, scope.workspaceId, scope.projectId);
+  const { held, rank, canManageMembers } = resolveRosterActorAuthority(
+    identity,
+    {
+      workspaceId: scope.workspaceId,
+      projectId: scope.projectId,
+      organisationId: project.organisationId,
+      ancestorProjectIds,
+      isInstanceAdmin,
+    },
+  );
   return {
     personId: identity.personId,
-    rank: Math.max(
-      0,
-      ...selectedGrantsFor(identity, "project", {
-        workspaceId: scope.workspaceId,
-        projectId: scope.projectId,
-      }).map((grant) => grant.rank),
-    ),
+    rank,
     actorId: userId,
     actorType: c.get("apiKey") ? "api_key" : "person",
     held,
+    canManageMembers,
   };
 }
 
