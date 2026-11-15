@@ -4,7 +4,7 @@ import { quietHoursSchema } from "./quiet-hours";
 
 export const workspaceIdParam = z.object({ workspaceId: z.string() });
 
-// Secrets are write-only: a value sets it, null clears it, omitting leaves it.
+// Nullable channel fields and write-only secrets: a value sets it, null clears it, omitting leaves it.
 export const updatePreferencesBody = z.object({
   canonicalPreference: canonicalPreferenceWriteSchema.optional(),
   quietHours: quietHoursSchema.nullable().optional().openapi({

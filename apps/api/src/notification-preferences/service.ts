@@ -379,6 +379,7 @@ async function prevalidateCandidateUrls(
   return cache;
 }
 
+// A cache miss happens only on a rare concurrent self-update of a stored URL between the pre-lock and in-lock reads; probing in-lock then is intentional.
 async function validatePublicDestinationWithCache(
   url: string,
   fallbackMessage: string,
@@ -618,6 +619,7 @@ export async function upsertWorkspaceRule(
   emailAddress: string | null,
   input: UpsertWorkspaceRuleInput,
 ): Promise<NotificationPreferenceResponse> {
+  // Fast-fail before acquiring the lock; the in-transaction tx checks below are authoritative.
   await assertWorkspaceMembership(userId, workspaceId);
 
   if (input.projectMode === "selected") {
@@ -728,6 +730,7 @@ export async function deleteWorkspaceRule(
   workspaceId: string,
   emailAddress: string | null,
 ): Promise<NotificationPreferenceResponse> {
+  // Fast-fail before acquiring the lock; the in-transaction tx checks below are authoritative.
   await assertWorkspaceMembership(userId, workspaceId);
 
   await db.transaction(async (tx) => {

@@ -48,7 +48,7 @@ const updatePreferencesRoute = createRoute({
   tags: ["Notification Preferences"],
   summary: "Update notification preferences",
   description:
-    "Update the global delivery settings. Omitted fields are left unchanged; a secret sent as null is cleared.",
+    "Update the global delivery settings. Omitted fields are left unchanged; a nullable field sent as null is cleared.",
   middleware: [requireSessionOnly()] as const,
   request: {
     body: {

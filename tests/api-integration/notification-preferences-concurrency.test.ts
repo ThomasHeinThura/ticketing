@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { notificationPreferenceWriteLockKey } from "../../apps/api/src/notification-preferences/repository";
 import { encryptSecret } from "../../apps/api/src/notification-preferences/secrets";
 import { updateNotificationPreferences } from "../../apps/api/src/notification-preferences/service";
 import * as assertPublicDestinationModule from "../../apps/api/src/utils/assert-public-destination";
@@ -10,6 +11,32 @@ import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
 
 const preferencePath = "/api/notification-preferences";
+
+async function countGrantedAdvisoryLocks(): Promise<number> {
+  const locks = await db.execute<{ count: number }>(sql`
+    SELECT count(*)::int AS count
+    FROM pg_locks
+    WHERE locktype = 'advisory'
+      AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
+      AND granted = true
+  `);
+  return Number(locks.rows[0]?.count ?? -1);
+}
+
+async function waitForAdvisoryLockWaiter(): Promise<void> {
+  await vi.waitFor(
+    async () => {
+      const blocked = await db.execute(sql`
+        SELECT 1 FROM pg_stat_activity
+        WHERE wait_event_type = 'Lock'
+          AND wait_event = 'advisory'
+          AND pid <> pg_backend_pid()
+      `);
+      expect(blocked.rows.length).toBeGreaterThan(0);
+    },
+    { interval: 20, timeout: 3000 },
+  );
+}
 
 async function withSlowPreferenceWrite<T>(work: () => Promise<T>): Promise<T> {
   // Force both HTTP requests to reach the old read/modify/write race window.
@@ -311,7 +338,7 @@ describe("notification preference concurrent updates", () => {
 
     const blockingTx = db.transaction(async (tx) => {
       await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`notification-preferences:${member.user.id}`}, 0))`,
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${notificationPreferenceWriteLockKey(member.user.id)}, 0))`,
       );
       notifyLocked();
       await holdLock;
@@ -339,18 +366,7 @@ describe("notification preference concurrent updates", () => {
         { method: "DELETE" },
       );
 
-      await vi.waitFor(
-        async () => {
-          const blocked = await db.execute(sql`
-            SELECT 1 FROM pg_stat_activity
-            WHERE wait_event_type = 'Lock'
-              AND wait_event = 'advisory'
-              AND pid <> pg_backend_pid()
-          `);
-          expect(blocked.rows.length).toBeGreaterThan(0);
-        },
-        { interval: 20, timeout: 3000 },
-      );
+      await waitForAdvisoryLockWaiter();
     } finally {
       releaseLock();
       await blockingTx;
@@ -401,14 +417,7 @@ describe("notification preference concurrent updates", () => {
     const spy = vi
       .spyOn(assertPublicDestinationModule, "assertPublicWebhookDestination")
       .mockImplementation(async (url) => {
-        const locks = await db.execute<{ count: number }>(sql`
-          SELECT count(*)::int AS count
-          FROM pg_locks
-          WHERE locktype = 'advisory'
-            AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
-            AND granted = true
-        `);
-        observedAdvisoryLockCounts.push(Number(locks.rows[0]?.count ?? -1));
+        observedAdvisoryLockCounts.push(await countGrantedAdvisoryLocks());
         return originalAssert(url);
       });
 
@@ -425,6 +434,219 @@ describe("notification preference concurrent updates", () => {
       expect(updated.webhookUrl).toBe("https://93.184.216.34/webhook");
       expect(spy).toHaveBeenCalledTimes(1);
       expect(observedAdvisoryLockCounts).toEqual([0]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it.each<{
+    channel: string;
+    reason: string;
+    body: Record<string, boolean | string>;
+    expectedMessage: string;
+    expectedProbes: number;
+  }>([
+    {
+      channel: "webhook",
+      reason: "loopback",
+      body: { webhookEnabled: true, webhookUrl: "https://127.0.0.1/hook" },
+      expectedMessage:
+        "Generic webhook destination resolves to a non-routable address",
+      expectedProbes: 1,
+    },
+    {
+      channel: "webhook",
+      reason: "http scheme",
+      body: { webhookEnabled: true, webhookUrl: "http://93.184.216.34/hook" },
+      expectedMessage: "Generic webhook URL must use https",
+      expectedProbes: 1,
+    },
+    {
+      channel: "webhook",
+      reason: "credentials",
+      body: {
+        webhookEnabled: true,
+        webhookUrl: "https://user:pass@93.184.216.34/hook",
+      },
+      expectedMessage: "Generic webhook URL must not contain credentials",
+      expectedProbes: 1,
+    },
+    {
+      channel: "webhook",
+      reason: "malformed",
+      body: { webhookEnabled: true, webhookUrl: "not a url" },
+      expectedMessage: "Invalid URL",
+      expectedProbes: 0,
+    },
+    {
+      channel: "webhook",
+      reason: "unresolvable host",
+      body: {
+        webhookEnabled: true,
+        webhookUrl: "https://unresolvable.invalid/hook",
+      },
+      expectedMessage: "Generic webhook destination could not be resolved",
+      expectedProbes: 1,
+    },
+    {
+      channel: "ntfy",
+      reason: "loopback",
+      body: {
+        ntfyEnabled: true,
+        ntfyServerUrl: "https://127.0.0.1/ntfy",
+        ntfyTopic: "ops",
+      },
+      expectedMessage:
+        "Generic webhook destination resolves to a non-routable address",
+      // Seeded enabled webhookUrl is also re-validated alongside the ntfy URL.
+      expectedProbes: 2,
+    },
+    {
+      channel: "gotify",
+      reason: "loopback",
+      body: {
+        gotifyEnabled: true,
+        gotifyServerUrl: "https://127.0.0.1/gotify",
+        gotifyToken: "synthetic-gotify-token",
+      },
+      expectedMessage:
+        "Generic webhook destination resolves to a non-routable address",
+      // Seeded enabled webhookUrl is also re-validated alongside the gotify URL.
+      expectedProbes: 2,
+    },
+  ])(
+    "rejects invalid $channel destination ($reason) outside the advisory lock without mutating stored preferences",
+    async ({ body, expectedMessage, expectedProbes }) => {
+      const member = await createWorkspaceMember();
+      await updateNotificationPreferences(member.user.id, member.user.email, {
+        emailEnabled: true,
+        webhookEnabled: true,
+        webhookUrl: "https://93.184.216.34/existing",
+      });
+      mockAuthenticatedSession(member.user);
+      const { app } = createApp();
+
+      const observedAdvisoryLockCounts: number[] = [];
+      const originalAssert =
+        assertPublicDestinationModule.assertPublicWebhookDestination;
+      const spy = vi
+        .spyOn(assertPublicDestinationModule, "assertPublicWebhookDestination")
+        .mockImplementation(async (url) => {
+          observedAdvisoryLockCounts.push(await countGrantedAdvisoryLocks());
+          if (url === "https://unresolvable.invalid/hook") {
+            throw new Error(
+              "Generic webhook destination could not be resolved",
+            );
+          }
+          return originalAssert(url);
+        });
+
+      try {
+        const response = await app.request(preferencePath, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        expect(response.status, await response.clone().text()).toBe(400);
+        expect(await response.text()).toContain(expectedMessage);
+        expect(spy).toHaveBeenCalledTimes(expectedProbes);
+        expect(observedAdvisoryLockCounts).toEqual(
+          new Array<number>(expectedProbes).fill(0),
+        );
+
+        const [stored] = await db
+          .select()
+          .from(schema.userNotificationPreferenceTable)
+          .where(
+            eq(schema.userNotificationPreferenceTable.userId, member.user.id),
+          );
+        expect(stored).toMatchObject({
+          emailEnabled: true,
+          webhookEnabled: true,
+          webhookUrl: "https://93.184.216.34/existing",
+          ntfyEnabled: false,
+          ntfyServerUrl: null,
+          gotifyEnabled: false,
+          gotifyServerUrl: null,
+        });
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
+
+  it("re-validates on an in-lock cache miss when a concurrent write changes the stored URL", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const observedAdvisoryLockCounts: number[] = [];
+    const originalAssert =
+      assertPublicDestinationModule.assertPublicWebhookDestination;
+    const spy = vi
+      .spyOn(assertPublicDestinationModule, "assertPublicWebhookDestination")
+      .mockImplementation(async (url) => {
+        observedAdvisoryLockCounts.push(await countGrantedAdvisoryLocks());
+        return originalAssert(url);
+      });
+
+    let notifyLocked!: () => void;
+    const locked = new Promise<void>((resolve) => {
+      notifyLocked = resolve;
+    });
+    let releaseLock!: () => void;
+    const holdLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    const blockingTx = db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${notificationPreferenceWriteLockKey(member.user.id)}, 0))`,
+      );
+      notifyLocked();
+      await holdLock;
+      await tx.insert(schema.userNotificationPreferenceTable).values({
+        userId: member.user.id,
+        webhookEnabled: false,
+        webhookUrl: "https://127.0.0.1/concurrent-private",
+      });
+    });
+
+    try {
+      let putPromise: ReturnType<typeof app.request> | undefined;
+      try {
+        await locked;
+        putPromise = app.request(preferencePath, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ webhookEnabled: true }),
+        });
+
+        await waitForAdvisoryLockWaiter();
+      } finally {
+        releaseLock();
+        await blockingTx;
+      }
+
+      const putResponse = await putPromise;
+      expect(putResponse?.status, await putResponse?.clone().text()).toBe(400);
+      expect(await putResponse?.text()).toContain(
+        "Generic webhook destination resolves to a non-routable address",
+      );
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith("https://127.0.0.1/concurrent-private");
+      expect(observedAdvisoryLockCounts).toEqual([1]);
+
+      const [stored] = await db
+        .select()
+        .from(schema.userNotificationPreferenceTable)
+        .where(
+          eq(schema.userNotificationPreferenceTable.userId, member.user.id),
+        );
+      expect(stored).toMatchObject({
+        webhookEnabled: false,
+        webhookUrl: "https://127.0.0.1/concurrent-private",
+      });
     } finally {
       spy.mockRestore();
     }

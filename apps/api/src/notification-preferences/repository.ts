@@ -45,12 +45,16 @@ export async function listSelectedProjects(
     );
 }
 
+export function notificationPreferenceWriteLockKey(userId: string): string {
+  return `taskdesk:notification-preferences:${userId}`;
+}
+
 export async function lockNotificationPreferenceWrite(
   executor: Executor,
   userId: string,
 ) {
   await executor.execute(
-    sql`SELECT pg_advisory_xact_lock(hashtextextended(${`notification-preferences:${userId}`}, 0))`,
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${notificationPreferenceWriteLockKey(userId)}, 0))`,
   );
 }
 
