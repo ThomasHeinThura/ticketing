@@ -129,20 +129,6 @@ export const boardSchema = z
   })
   .openapi("BoardResponse");
 
-export const bulkResultSchema = z
-  .object({
-    success: z.boolean(),
-    updatedCount: z.number(),
-    results: z.array(
-      z.object({
-        taskId: z.string().optional(),
-        success: z.boolean(),
-        error: z.string().optional(),
-      }),
-    ),
-  })
-  .openapi("BulkTaskResult");
-
 export const moveTaskResultSchema = z
   .object({
     task: taskSchema,
@@ -150,57 +136,6 @@ export const moveTaskResultSchema = z
     destinationProjectId: z.string(),
   })
   .openapi("MoveTaskResult");
-
-export const taskExportSchema = z
-  .object({
-    project: z
-      .object({
-        name: z.string(),
-        slug: z.string(),
-        description: z.string().nullable(),
-        exportedAt: z.string().openapi({ format: "date-time" }),
-      })
-      .openapi("TaskExportProject"),
-    tasks: z.array(
-      z
-        .object({
-          version: z.number().int().min(1),
-          title: z.string(),
-          description: z.string(),
-          status: z.string(),
-          priority: z.string(),
-          dueDate: z.string().nullable().openapi({ format: "date-time" }),
-          startDate: z.string().nullable().openapi({ format: "date-time" }),
-          userId: z.string().nullable(),
-          labels: z
-            .array(
-              z
-                .object({ name: z.string(), color: z.string() })
-                .openapi("ExportedTaskLabel"),
-            )
-            .openapi({
-              description: "Label names and colors, without their ids.",
-            }),
-        })
-        .openapi("ExportedTask"),
-    ),
-  })
-  .openapi("TaskExport");
-
-export const taskImportResultSchema = z
-  .object({
-    results: z
-      .object({
-        total: z.number(),
-        successful: z.number(),
-        failed: z.number(),
-        tasks: z.array(z.unknown()).openapi({
-          description: "Per-task outcome, each carrying a success flag.",
-        }),
-      })
-      .openapi("TaskImportSummary"),
-  })
-  .openapi("TaskImportResult");
 
 export const imageUploadSchema = z
   .object({

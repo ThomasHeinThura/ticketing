@@ -564,7 +564,9 @@ describe("native project read reach", () => {
       }
       for (const target of targets) {
         const response = await app.request(target);
-        expect(response.status, target).toBe(200);
+        expect(response.status, target).toBe(
+          target.startsWith("/api/task/export/") ? 410 : 200,
+        );
       }
       for (const target of resourceReads) {
         const response = await app.request(target);

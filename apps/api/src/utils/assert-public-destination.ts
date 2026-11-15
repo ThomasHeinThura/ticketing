@@ -110,7 +110,7 @@ export function isDisallowedAddress(address: string): boolean {
   // those, which would let http://[::1] slip past the checks below.
   const bare = address.replace(/^\[|\]$/g, "");
 
-  if (bare === "localhost") {
+  if (bare.toLowerCase() === "localhost") {
     return true;
   }
 

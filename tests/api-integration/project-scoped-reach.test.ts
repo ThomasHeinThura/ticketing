@@ -462,6 +462,7 @@ const WRITES: Case[] = [
   },
   {
     matrixKey: "POST /api/task/import/{projectId}",
+    successStatus: 410,
     call: (app, _w, i) =>
       json(app, "POST", `/api/task/import/${i.projectId}`, {
         tasks: [{ title: "Injected imported task", status: "to-do" }],
@@ -651,6 +652,7 @@ const READS: Case[] = [
   },
   {
     matrixKey: "GET /api/task/export/{projectId}",
+    successStatus: 410,
     call: (a, _w, i) => json(a, "GET", `/api/task/export/${i.projectId}`),
   },
   {

@@ -3793,3 +3793,7 @@ use durable cursors and skip missed cron windows. Browser and deployed acceptanc
 | A8-9 | Enforce Content-Security-Policy. Order: read the collected reports, enforce on local SIT, browser smoke on both hosts, then <environment> with a rollback ready. |
 | A8-11 | Record `deepmerge` (low, production, unreachable, no fix) as an accepted risk. `glob` and `minimatch` (dev/test only) are fixed through upstream upgrades or `pnpm` overrides of existing packages. No new package is added; #1058 stays open until a new transitive package is separately approved. |
 | A8-12 | Superseded by 12 Nov `D-G` / `C-2`: SES password recovery is in UAT scope; see `docs/plan.md`. |
+
+### 14 Nov 2026 — Thomas, Decision 20 (P-19, P-15): remove legacy `PATCH /api/task/bulk` and retire `/api/task/export` & `/api/task/import` to 410
+
+Under the whole-repo Ponytail audit approval (Decision 20, rows `P-19` and `P-15`), the unreferenced legacy `PATCH /api/task/bulk` endpoint, its `bulkUpdateTasks` controller, and its `BulkTaskResult` OpenAPI schema are removed, and legacy `GET /api/task/export/{projectId}` and `POST /api/task/import/{projectId}` answer `410 Gone` (after the same reach, permission, and live-project checks) with `Deprecation`/`Sunset`/`Link` headers, removing their controllers and payload/response schemas. Canonical bulk mutations run through `POST /api/work-items/bulk`, CSV exports through `GET /api/work-items/export`, and imports through `POST /api/instance/imports`.

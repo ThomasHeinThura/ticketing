@@ -50,9 +50,6 @@ const listColumnSlugs = scopedExecutor(
 const listLabelsForTasks = scoped(taskRepository.listLabelsForTasks);
 const listProjectColumns = scoped(taskRepository.listProjectColumns);
 const listProjectTasks = scoped(taskRepository.listProjectTasks);
-const listProjectTasksForExport = scoped(
-  taskRepository.listProjectTasksForExport,
-);
 const listTaskRelations = scopedExecutor(taskRepository.listTaskRelations);
 const lockLiveProjectRow = scopedExecutor(
   taskRepository.lockLiveProjectRowForIdentity,
@@ -108,7 +105,7 @@ describe("legacy task repository (#580 b9a)", () => {
     await resetTestDatabase();
   });
 
-  it("task listing, count and export are scoped to the project and apply every filter", async () => {
+  it("task listing and count are scoped to the project and apply every filter", async () => {
     const { a, p1, p2 } = await seed();
     const high = await seedTask(a.user.id, p1.id, 1, {
       priority: "high",
@@ -125,10 +122,6 @@ describe("legacy task repository (#580 b9a)", () => {
     const all = await listProjectTasks(p1.id, {}, {});
     expect(all.map((t) => t.id)).toEqual([high.id, low.id]);
     expect(all.every((t) => t.projectId === p1.id)).toBe(true);
-    expect((await listProjectTasksForExport(p1.id)).map((t) => t.id)).toEqual([
-      high.id,
-      low.id,
-    ]);
 
     const ids = async (filters: Parameters<typeof listProjectTasks>[1]) =>
       (await listProjectTasks(p1.id, filters, {})).map((t) => t.id);

@@ -90,11 +90,11 @@ export const PROJECT_READ_ROUTE_KEYS = [
 ] as const;
 
 /**
- * Routes whose policy stays workspace-scoped (or reach-exempt: a list of ids) but which ACT ON
- * A SPECIFIC TASK, or on an asset's own project, and so carry project reach through their own
- * middleware (`task-target-reach.ts`, `requireBulkTaskReach`, `requireAssetProjectReach`).
- * Decision 720-A (`rbac.md` § Reach). The four time-entry routes and `GET /api/label/task/...`
- * are declared on the `work_item` scope and are covered by the work-item guard instead.
+ * Routes whose policy stays workspace-scoped but which ACT ON A SPECIFIC TASK, or on an asset's
+ * own project, and so carry project reach through their own middleware (`task-target-reach.ts`,
+ * `requireAssetProjectReach`). Decision 720-A (`rbac.md` § Reach). The four time-entry routes
+ * and `GET /api/label/task/...` are declared on the `work_item` scope and are covered by the
+ * work-item guard instead.
  */
 export const TASK_TARGET_ROUTE_KEYS = [
   "POST /api/label",
@@ -104,7 +104,6 @@ export const TASK_TARGET_ROUTE_KEYS = [
   "PUT /api/label/{id}/task",
   "DELETE /api/label/{id}/task",
   "GET /api/asset/{id}",
-  "PATCH /api/task/bulk",
 ] as const;
 
 /** The work-item-scoped routes #720 added to the existing work-item guard set. */

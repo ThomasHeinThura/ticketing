@@ -4,7 +4,7 @@ import { and, asc, eq, exists, isNull, sql } from "drizzle-orm";
 import db from "../database";
 import { type Executor, executorOrDefault } from "../database/executor";
 import { currentProjectReachPredicate } from "../database/repositories/identity-scope.repository";
-import { columnTable, projectTable, taskTable } from "../database/schema";
+import { columnTable, projectTable } from "../database/schema";
 
 export type ColumnRow = typeof columnTable.$inferSelect;
 export type NewColumn = Pick<
@@ -154,37 +154,6 @@ export async function insertColumn(
     )
     .returning();
   return created;
-}
-
-export async function countTasksInColumn(
-  identity: ResolvedIdentity,
-  columnId: string,
-) {
-  const [taskCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(taskTable)
-    .where(
-      and(
-        eq(taskTable.columnId, columnId),
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(columnTable)
-            .where(
-              and(eq(columnTable.id, columnId), reachableColumn(identity)),
-            ),
-        ),
-      ),
-    );
-  return taskCount;
-}
-
-export async function deleteColumnById(identity: ResolvedIdentity, id: string) {
-  const [deleted] = await db
-    .delete(columnTable)
-    .where(and(eq(columnTable.id, id), reachableColumn(identity)))
-    .returning();
-  return deleted;
 }
 
 export async function listProjectColumnsByPosition(

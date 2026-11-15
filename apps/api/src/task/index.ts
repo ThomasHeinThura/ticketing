@@ -1,5 +1,5 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import type { Context, MiddlewareHandler, Next } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { assertOrganisationStorageQuota } from "../attachment/storage-quota";
 import db from "../database";
@@ -11,10 +11,6 @@ import {
   jsonResponse,
 } from "../openapi";
 import {
-  markShadowLegacyAuthorizationUnknown,
-  setShadowLegacyAuthorization,
-} from "../permissions/shadow-context";
-import {
   assertTaskImageKeyMatchesContext,
   createTaskImageUploadUrl,
   deleteStorageObject,
@@ -23,35 +19,21 @@ import {
   isImageContentType,
   validateTaskAssetUploadInput,
 } from "../storage";
-import { callerReach } from "../utils/caller-reach";
 import { resolveCallerIdentity } from "../utils/has-project-reach";
-import {
-  applyLegacyDeletionGoneHeaders,
-  legacyDeletionGoneResponseHeaders,
-} from "../utils/legacy-deletion-gone";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
-import { markReach } from "../utils/reach-mark";
 import { requirePublicAppOrigin } from "../utils/request-origin";
-import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
-import { lockTaskAndAssertProjectLiveForIdentity } from "./assert-task-project-live";
-import bulkUpdateTasks, {
-  BULK_TASK_DELETION_GONE_MESSAGE,
-  type BulkCallerReach,
-} from "./controllers/bulk-update-tasks";
+import {
+  lockProjectAndAssertLiveForTaskNumberForIdentity,
+  lockTaskAndAssertProjectLiveForIdentity,
+} from "./assert-task-project-live";
 import createTask from "./controllers/create-task";
 import { LEGACY_TASK_DELETION_GONE_MESSAGE } from "./controllers/delete-task";
-import exportTasks from "./controllers/export-tasks";
 import getTask from "./controllers/get-task";
 import getTasks from "./controllers/get-tasks";
-import importTasks from "./controllers/import-tasks";
 import moveTask from "./controllers/move-task";
-import {
-  requireBulkTaskEntitlement,
-  requireBulkTaskPermission,
-  requireTaskAssigneePermission,
-} from "./controllers/require-task-permission";
+import { requireTaskAssigneePermission } from "./controllers/require-task-permission";
 import updateTask, {
   TaskVersionConflictError,
 } from "./controllers/update-task";
@@ -63,28 +45,24 @@ import updateTaskStatus from "./controllers/update-task-status";
 import updateTaskTitle from "./controllers/update-task-title";
 import {
   findAssetIdByObjectKey,
+  findLiveProject,
   findProjectWorkspaceContext,
   insertAsset,
   updateAssetById,
 } from "./repository";
 import {
   boardSchema,
-  bulkResultSchema,
   finalizedAssetSchema,
   imageUploadSchema,
   moveTaskResultSchema,
-  taskExportSchema,
-  taskImportResultSchema,
   taskSchema,
   taskVersionConflictSchema,
   taskWithAssigneeSchema,
 } from "./response";
 import {
-  bulkUpdateBody,
   createTaskBody,
   finalizeImageUploadBody,
   imageUploadBody,
-  importTasksBody,
   listTasksQuery,
   moveTaskBody,
   optionalTaskIfMatchHeader,
@@ -99,23 +77,6 @@ import {
   updateTaskBody,
   updateTitleBody,
 } from "./schema";
-
-/**
- * `PATCH /api/task/bulk` names many tasks, so it cannot use a single-row reach middleware.
- * This resolves the caller's reach decision source once (`utils/caller-reach.ts`, the same
- * one `POST /api/work-items/bulk` uses); `bulkUpdateTasks` then answers PROJECT reach and the
- * operation's project-level capability for every task it touches. Marked so the structural
- * guard (`tests/permissions/project-reach-guard.test.ts`) can see the route carries it.
- */
-const requireBulkTaskReach = markReach(
-  async (c: Context, next: Next) => {
-    const userId = c.get("userId");
-    if (!userId) throw new HTTPException(401, { message: "Unauthorized" });
-    c.set("bulkTaskReach", await callerReach(c, userId));
-    return next();
-  },
-  { projectReach: true },
-);
 
 const listTasksRoute = createRoute({
   method: "get",
@@ -133,53 +94,6 @@ const listTasksRoute = createRoute({
     200: jsonResponse("The project board", boardSchema),
     400: errorResponse("Malformed project ID (including a NUL byte)"),
     404: errorResponse("Project not found or out of reach"),
-  },
-});
-
-const BULK_TASK_DELETION_SUCCESSOR = "/api/work-items/bulk";
-
-const bulkUpdateTasksRoute = createRoute({
-  method: "patch",
-  operationId: "bulkUpdateTasks",
-  path: "/bulk",
-  tags: ["Tasks"],
-  summary: "Bulk update tasks",
-  description:
-    "Apply one operation to many tasks at once. Every task must be in the same workspace. " +
-    "Operation `delete` is removed: it used to hard-delete tasks with no approval and now answers 410 Gone (after the same reach and permission checks). Request deletion through POST /api/work-items/bulk, which records a pending action.",
-  middleware: [
-    workspaceAccess.fromTasks("taskIds", { requireProjectReach: true }),
-    requireWorkspaceMembership,
-    requireBulkTaskReach,
-    requireBulkTaskPermission,
-    requireBulkTaskEntitlement,
-  ] as const,
-  request: {
-    body: {
-      required: true,
-      content: { "application/json": { schema: bulkUpdateBody } },
-    },
-  },
-  responses: {
-    200: jsonResponse("Bulk operation result", bulkResultSchema),
-    400: errorResponse(
-      "Invalid body, or the tasks span more than one workspace",
-    ),
-    // Retain the established membership-specific denial for a caller who can reach a task
-    // workspace but is not a member; global instance reach does not confer workspace roles.
-    403: errorResponse(
-      "Missing the permission the operation needs, or no access to this workspace",
-    ),
-    // #290: an id set that resolves to no reachable task now answers this same 404
-    // whether the ids don't exist at all or exist in a workspace the caller can't
-    // reach (`workspaceAccess.fromTasks()`), never a distinguishing 403.
-    404: errorResponse("No tasks found"),
-    410: {
-      ...errorResponse(
-        "Removed: operation `delete`; use POST /api/work-items/bulk (pending action)",
-      ),
-      headers: legacyDeletionGoneResponseHeaders(BULK_TASK_DELETION_SUCCESSOR),
-    },
   },
 });
 
@@ -297,27 +211,63 @@ const legacyTaskResponseHeaders = {
   },
 } as const;
 
-// DELETE has no `/api/v2/task/{id}` successor, so it carries its own Link to the work-item route.
-const legacyTaskDeletionDeprecationHeaders: MiddlewareHandler<{
-  Variables: BaseVariables & { workspaceId: string };
-}> = async (c, next) => {
-  c.header("Deprecation", "@1790812800");
-  c.header("Sunset", "Thu, 01 Apr 2027 00:00:00 GMT");
-  c.header("Link", '</api/work-items/{key}>; rel="successor-version"');
-  await next();
-};
+const LEGACY_TASK_EXPORT_GONE_MESSAGE =
+  "task_export_gone: GET /api/task/export/{projectId} was removed. Export work items through GET /api/work-items/export.";
+const LEGACY_TASK_IMPORT_GONE_MESSAGE =
+  "task_import_gone: POST /api/task/import/{projectId} was removed. Import work items through POST /api/instance/imports.";
 
-const legacyTaskDeletionResponseHeaders = {
-  Deprecation: legacyTaskResponseHeaders.Deprecation,
-  Sunset: legacyTaskResponseHeaders.Sunset,
-  Link: {
-    description: "Successor operation (a work-item key, not this task id).",
-    schema: {
-      type: "string",
-      example: '</api/work-items/{key}>; rel="successor-version"',
+function legacyTaskGoneDeprecationHeaders(
+  successor: string,
+): MiddlewareHandler<{
+  Variables: BaseVariables & { workspaceId: string };
+}> {
+  return async (c, next) => {
+    c.header("Deprecation", "@1790812800");
+    c.header("Sunset", "Thu, 01 Apr 2027 00:00:00 GMT");
+    c.header("Link", `<${successor}>; rel="successor-version"`);
+    await next();
+  };
+}
+
+function legacyTaskGoneResponseHeaders(successor: string, description: string) {
+  return {
+    Deprecation: legacyTaskResponseHeaders.Deprecation,
+    Sunset: legacyTaskResponseHeaders.Sunset,
+    Link: {
+      description,
+      schema: {
+        type: "string",
+        example: `<${successor}>; rel="successor-version"`,
+      },
     },
-  },
-} as const;
+  } as const;
+}
+
+// DELETE has no `/api/v2/task/{id}` successor, so it carries its own Link to the work-item route.
+const legacyTaskDeletionDeprecationHeaders = legacyTaskGoneDeprecationHeaders(
+  "/api/work-items/{key}",
+);
+
+const legacyTaskDeletionResponseHeaders = legacyTaskGoneResponseHeaders(
+  "/api/work-items/{key}",
+  "Successor operation (a work-item key, not this task id).",
+);
+
+const legacyTaskExportDeprecationHeaders = legacyTaskGoneDeprecationHeaders(
+  "/api/work-items/export",
+);
+const legacyTaskExportResponseHeaders = legacyTaskGoneResponseHeaders(
+  "/api/work-items/export",
+  "Successor operation for structured work-item export.",
+);
+
+const legacyTaskImportDeprecationHeaders = legacyTaskGoneDeprecationHeaders(
+  "/api/instance/imports",
+);
+const legacyTaskImportResponseHeaders = legacyTaskGoneResponseHeaders(
+  "/api/instance/imports",
+  "Successor operation for work-item imports.",
+);
 
 async function runFullTaskUpdate(input: {
   identity: ResolvedIdentity;
@@ -463,17 +413,34 @@ const exportTasksRoute = createRoute({
   operationId: "exportTasks",
   path: "/export/{projectId}",
   tags: ["Tasks"],
-  summary: "Export tasks",
+  deprecated: true,
+  summary: "Export tasks (removed; 410)",
   description:
-    "Export a project's tasks, with their labels, as a JSON document.",
+    "Removed. Legacy project JSON task export now answers 410 Gone (after the same reach, " +
+    "capability, and live-project checks) under the compatibility Deprecation/Sunset headers. " +
+    "Use GET /api/work-items/export instead.",
   middleware: [
+    legacyTaskExportDeprecationHeaders,
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
   ] as const,
   request: { params: projectIdParam },
   responses: {
-    200: jsonResponse("The exported project and tasks", taskExportSchema),
-    400: errorResponse("Malformed project ID (including a NUL byte)"),
-    404: errorResponse("Project not found or out of reach"),
+    400: {
+      ...errorResponse("Malformed project ID (including a NUL byte)"),
+      headers: legacyTaskExportResponseHeaders,
+    },
+    403: {
+      ...errorResponse("Missing work_item:read permission"),
+      headers: legacyTaskExportResponseHeaders,
+    },
+    404: {
+      ...errorResponse("Project not found or out of reach"),
+      headers: legacyTaskExportResponseHeaders,
+    },
+    410: {
+      ...errorResponse("Removed: use GET /api/work-items/export"),
+      headers: legacyTaskExportResponseHeaders,
+    },
   },
 });
 
@@ -482,28 +449,38 @@ const importTasksRoute = createRoute({
   operationId: "importTasks",
   path: "/import/{projectId}",
   tags: ["Tasks"],
-  summary: "Import tasks",
+  deprecated: true,
+  summary: "Import tasks (removed; 410)",
   description:
-    "Import tasks into a project. Each task is reported individually, so a partial import still returns 200.",
+    "Removed. Legacy JSON task import now answers 410 Gone (after the same reach, " +
+    "permission, and live-project checks) under the compatibility Deprecation/Sunset headers. " +
+    "Use POST /api/instance/imports instead.",
   middleware: [
+    legacyTaskImportDeprecationHeaders,
     workspaceAccess.fromProject("projectId", {
       requireProjectReach: true,
       deferApiKeyCapability: true,
     }),
     requireWorkspacePermission({ work_item: ["create"] }),
   ] as const,
-  request: {
-    params: projectIdParam,
-    body: {
-      required: true,
-      content: { "application/json": { schema: importTasksBody } },
-    },
-  },
+  request: { params: projectIdParam },
   responses: {
-    200: jsonResponse("Per-task import outcome", taskImportResultSchema),
-    400: errorResponse("Invalid body"),
-    403: errorResponse("Missing work_item:create permission"),
-    404: errorResponse("Project not found"),
+    400: {
+      ...errorResponse("Malformed project ID (including a NUL byte)"),
+      headers: legacyTaskImportResponseHeaders,
+    },
+    403: {
+      ...errorResponse("Missing work_item:create permission"),
+      headers: legacyTaskImportResponseHeaders,
+    },
+    404: {
+      ...errorResponse("Project not found"),
+      headers: legacyTaskImportResponseHeaders,
+    },
+    410: {
+      ...errorResponse("Removed: use POST /api/instance/imports"),
+      headers: legacyTaskImportResponseHeaders,
+    },
   },
 });
 
@@ -812,46 +789,6 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     return c.json(tasks, 200);
   })
-  .openapi(bulkUpdateTasksRoute, async (c) => {
-    const { taskIds, operation, value } = c.req.valid("json");
-    const userId = c.get("userId");
-
-    if (!userId) {
-      throw new HTTPException(401, { message: "Unauthorized" });
-    }
-    // PA-1: reach/permission middleware has already run, so an unauthorised caller still gets
-    // 403/404; an authorised one is told to use the pending-action route. Nothing is deleted.
-    if (operation === "delete") {
-      applyLegacyDeletionGoneHeaders(c, BULK_TASK_DELETION_SUCCESSOR);
-      return c.text(BULK_TASK_DELETION_GONE_MESSAGE, 410);
-    }
-
-    markShadowLegacyAuthorizationUnknown(c);
-    const identity = await requireTaskIdentity(c);
-    let result: Awaited<ReturnType<typeof bulkUpdateTasks>>;
-    try {
-      result = await bulkUpdateTasks({
-        taskIds,
-        operation,
-        value,
-        identity,
-        apiKeyId: c.get("apiKey")?.id,
-        userId,
-        workspaceId: c.get("workspaceId"),
-        reach: (c as unknown as Context).get(
-          "bulkTaskReach",
-        ) as BulkCallerReach,
-      });
-    } catch (error) {
-      if (error instanceof HTTPException && error.status === 403) {
-        setShadowLegacyAuthorization(c, "denied");
-      }
-      throw error;
-    }
-    setShadowLegacyAuthorization(c, "allowed");
-
-    return c.json(result, 200);
-  })
   .openapi(createTaskRoute, async (c) => {
     const { projectId } = c.req.param();
     const { title, description, startDate, dueDate, priority, status, userId } =
@@ -934,28 +871,27 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(exportTasksRoute, async (c) => {
     const { projectId } = c.req.valid("param");
-
-    const exportData = await exportTasks(
+    const project = await findLiveProject(
       await requireTaskIdentity(c),
       projectId,
     );
-
-    return c.json(exportData, 200);
+    if (!project) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
+    return c.text(LEGACY_TASK_EXPORT_GONE_MESSAGE, 410);
   })
   .openapi(importTasksRoute, async (c) => {
     const { projectId } = c.req.valid("param");
-    const { tasks } = c.req.valid("json");
-    const currentUserId = c.get("userId");
-
-    const result = await importTasks(
-      await requireTaskIdentity(c),
-      projectId,
-      tasks,
-      currentUserId,
-      c.get("apiKey")?.id,
-    );
-
-    return c.json(result, 200);
+    const identity = await requireTaskIdentity(c);
+    await db.transaction(async (tx) => {
+      await lockProjectAndAssertLiveForTaskNumberForIdentity(
+        tx,
+        projectId,
+        identity,
+        "Project not found",
+      );
+    });
+    return c.text(LEGACY_TASK_IMPORT_GONE_MESSAGE, 410);
   })
   .openapi(deleteTaskRoute, (c) =>
     c.text(LEGACY_TASK_DELETION_GONE_MESSAGE, 410),

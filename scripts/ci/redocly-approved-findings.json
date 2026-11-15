@@ -54,5 +54,21 @@
 		"reason": "Redirect-only by design, like every attachment download (AT-5): after the own_request check the handler answers 302 to a five-minute presigned URL and writes the attachment.downloaded audit row (AT-6). No 200 response exists or is intended.",
 		"decision": "docs/technical/feature-contracts-p1.md AT-5 and AT-6; docs/technical/feature-contracts-p3.md CP-16",
 		"pr": 0
+	},
+	{
+		"operation": "GET /task/export/{projectId}",
+		"rule": "operation-2xx-response",
+		"pointer": "#/paths/~1task~1export~1{projectId}/get/responses",
+		"reason": "Legacy JSON task export retired under Decision 20 (P-15): after reach, work_item:read capability, and live-project checks, the handler always answers 410 Gone with Deprecation/Sunset/Link headers pointing to GET /api/work-items/export. No 2XX response exists.",
+		"decision": "docs/plan.md section 4 P-15 (14 Nov 2026); docs/technical/design-and-decisions.md Decision 20",
+		"pr": 0
+	},
+	{
+		"operation": "POST /task/import/{projectId}",
+		"rule": "operation-2xx-response",
+		"pointer": "#/paths/~1task~1import~1{projectId}/post/responses",
+		"reason": "Legacy JSON task import retired under Decision 20 (P-15): after reach, work_item:create capability, and live-project checks, the handler always answers 410 Gone with Deprecation/Sunset/Link headers pointing to POST /api/instance/imports. No 2XX response exists.",
+		"decision": "docs/plan.md section 4 P-15 (14 Nov 2026); docs/technical/design-and-decisions.md Decision 20",
+		"pr": 0
 	}
 ]
