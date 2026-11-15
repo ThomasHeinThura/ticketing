@@ -3797,3 +3797,12 @@ use durable cursors and skip missed cron windows. Browser and deployed acceptanc
 ### 14 Nov 2026 — Thomas, Decision 20 (P-19, P-15): remove legacy `PATCH /api/task/bulk` and retire `/api/task/export` & `/api/task/import` to 410
 
 Under the whole-repo Ponytail audit approval (Decision 20, rows `P-19` and `P-15`), the unreferenced legacy `PATCH /api/task/bulk` endpoint, its `bulkUpdateTasks` controller, and its `BulkTaskResult` OpenAPI schema are removed, and legacy `GET /api/task/export/{projectId}` and `POST /api/task/import/{projectId}` answer `410 Gone` (after the same reach, permission, and live-project checks) with `Deprecation`/`Sunset`/`Link` headers, removing their controllers and payload/response schemas. Canonical bulk mutations run through `POST /api/work-items/bulk`, CSV exports through `GET /api/work-items/export`, and imports through `POST /api/instance/imports`.
+
+### 15 Nov 2026 — Thomas, Decisions D-Q..D-T (Stream H pre-UAT scope)
+
+Recorded in [docs/plan.md](../plan.md) (`D-Q`..`D-T`) and implemented across Batch 1 (`#1183`, `#1184` in `#1187`) and Batch 2 (`#1186` in `train/2026-11-15-c`):
+
+- **D-Q (`H-1`, `#1186`):** Build legal-hold and subprocessor administration in God Mode (`F-FEAT-4`, `C8-4/F1`) before UAT rather than deferring to post-UAT. Reverses post-UAT deferral of those God Mode administrative surfaces; purge/retention fencing refuses deletion of held data while preserving existing retention and audit semantics.
+- **D-R (`H-2`, `#1183`):** Build OIDC group-mapping God Mode UI (`C8-4/F3`) over the existing persisted API (list, create, edit, disable) before UAT with step-up, non-admin denial, stale-edit conflict checks, and refusal of instance-admin grants.
+- **D-S (`H-3`, `H-5`, `#1184`):** Keep `project:archive` and `project:manage_settings` (`C8-15(c)`) as distinct canonical permissions rather than collapsing them into `project:update` or running a stored-key data rewrite; enforce required `project:update`, owner-role intersection, reach, and negative paths via route matrices (`H-3`). Close the canonical API-key gap at legacy statement gates (`H-5`, e.g. `label:manage` and mapped public paths) while ensuring legacy granular keys never gain broader rights. Permission changes or stored-key rewrites continue to require Thomas's explicit approval.
+- **D-T (`H-4`, `#1181` parked):** Move legacy `docs/report/*` files into `docs/archive/reports/` with maintained links resolved and zero report loss (`#1181` currently parked on external GitGuardian incident `40106262`).
