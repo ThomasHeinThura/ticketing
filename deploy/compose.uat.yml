@@ -1,17 +1,17 @@
 # ===========================================================================
 #  APPLIED AND LIVE. Issue #6 (inherited kaneo auth defaults — anonymous
 #  sign-in among them) closed before this overlay was first brought up, and
-#  is CLOSED as of this comment. `ticket-v2-uat.bimats.com` and
-#  `portal-v2-uat.bimats.com` are both running this overlay in production
+#  is CLOSED as of this comment. `<agent-host>` and
+#  `<portal-host>` are both running this overlay in production
 #  right now, on this host.
 #
-#  Nothing in scripts/deploy.sh loads this file — bringing it up (or updating
-#  the running stack, e.g. `docker compose --env-file .env -f compose.yml
-#  -f deploy/compose.uat.yml up -d --wait`) is still a deliberate manual act,
-#  same as it always was; it is just no longer a BLOCKED one.
+#  `scripts/deploy.sh` loads this overlay only when explicitly selected via
+#  `uat`, `--target uat`, or `--overlay deploy/compose.uat.yml` — bringing it
+#  up or updating the running stack remains a deliberate operator act, same as
+#  it always was; it is just no longer a BLOCKED one.
 # ===========================================================================
 #
-# Overlay — UAT on the bimats.com host. As production, different hostnames, and
+# Overlay — UAT on the example.com host. As production, different hostnames, and
 # one material difference in topology: TLS terminates at CloudFront, not at
 # Traefik.
 #
@@ -23,7 +23,7 @@
 # v1 UAT stays running and untouched. v2 deploys BESIDE it with its own Compose
 # project, containers, network, volumes and database. Never reuse a v1 volume;
 # never `docker compose down -v` against v1. v1's project is `taskdesk-uat`,
-# serving ticket-uat.bimats.com and customerportal-uat.bimats.com.
+# serving `ticket-uat.example.com` and `customerportal-uat.example.com`.
 
 # Its own project, so every container, volume and network is distinct from v1's.
 name: taskdesk-v2-uat
@@ -83,7 +83,7 @@ services:
       # had been silently working by accident of provider processing order since
       # this file was written; recreating the v2 `taskdesk` container (a routine
       # redeploy, not a config change) flipped which side's router survived,
-      # taking `ticket-v2-uat.bimats.com`/`portal-v2-uat.bimats.com` down with a
+      # taking `<agent-host>`/`<portal-host>` down with a
       # 404 from Traefik itself. `taskdesk-v2-uat` is unique against both v1's
       # `taskdesk-uat` and this file's own `name: taskdesk-v2-uat` Compose
       # project, so it cannot collide with anything sharing this Traefik again.
@@ -96,7 +96,7 @@ services:
       # here would never be matched, and an ACME challenge would never be
       # answered, because port 443 on this host is not what the browser talks
       # to. Measured: entryPointName "web", RequestScheme "http", in the
-      # Traefik access log for a real request to ticket-uat.bimats.com.
+      # Traefik access log for a real request to `ticket-uat.example.com`.
       - traefik.http.routers.taskdesk-v2-uat-agent.rule=Host(`ticket-v2-uat.${DOMAIN:?DOMAIN is required}`)
       - traefik.http.routers.taskdesk-v2-uat-agent.entrypoints=web
       - traefik.http.routers.taskdesk-v2-uat-agent.service=taskdesk-v2-uat

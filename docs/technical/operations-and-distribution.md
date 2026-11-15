@@ -113,7 +113,7 @@ Order matters.
 
 ```
 1. Stop the application (leave Postgres running)
-2. Restore Postgres
+2. Restore Postgres into a staging database, then promote it
 3. Restore object storage forward-only to the same point
 4. Restore .env if the encryption key was lost
 5. Start the application; migrations apply
@@ -127,6 +127,15 @@ whose objects are missing, which is not.
 ```bash
 scripts/restore.sh --backup 2026-09-05T10-00 --confirm
 ```
+
+The restore script verifies checksums and the dump listing before stopping the app,
+then restores the dump into a staging database. Only after restore succeeds does a
+single transaction rename the original database to a recovery name and staging to the
+live name. A failed rename or interrupted transaction rolls both renames back; staging
+is retained for inspection. The recovery copy is dropped only after promotion commits.
+If commit acknowledgement is lost, inspect the live, staging and recovery names before
+retrying; retain both copies until the result is established. Attachment restoration and
+readiness checks follow database promotion.
 
 <a id="backup-and-restore-verify-a-restore"></a>
 ### Verify a restore
@@ -471,7 +480,7 @@ production guidance below; those modes have separate requirements.
 | `compose.yml` | Base — at the repository root. Services, images, volumes, networks. **Publishes no application port** |
 | `deploy/compose.local.yml` | Legacy local development overlay; not used for canonical local SIT |
 | `deploy/compose.prod.yml` | Overlay — Traefik labels, resource limits, external proxy network |
-| `deploy/compose.uat.yml` | Overlay — as production, different hostnames, and the bimats.com host's real topology: CloudFront terminates TLS, so the routers use the plain `web` entrypoint with no certificate resolver ([proxy topology evidence](#proxy-topology-evidence)) |
+| `deploy/compose.uat.yml` | Overlay — as production, different hostnames, and the UAT host's real topology: CloudFront terminates TLS, so the routers use the plain `web` entrypoint with no certificate resolver ([proxy topology evidence](#proxy-topology-evidence)) |
 | `deploy/compose.traefik.yml` | Local Traefik, so production labels can be tested locally |
 | `deploy/compose.keycloak.yml` | Optional Keycloak |
 | `deploy/compose.observability.yml` | Optional Prometheus, Grafana, Loki |
@@ -602,16 +611,26 @@ validates in P7.
 scripts/deploy.sh upgrade            # verify the cosign signature → pull → up -d --wait
 ```
 
-For a signed Technexus SIT/UAT deployment using the SIT overlay, use
-`scripts/deploy.sh upgrade --target sit` and, if needed,
-`scripts/deploy.sh rollback <previous-digest> <release-tag> --target sit`.
-Canonical local SIT uses `scripts/deploy.sh local` with `deploy/compose.testing.yml`.
-The default release target remains production. SIT release commands require signature
-verification and the post-deploy readiness probe; `--no-verify` and `--no-probe` are rejected. They
-also require `deploy/compose.sit.yml` in the deployment directory. Installer-created
-production directories omit this overlay, so supply the matching release's overlay before
-using the SIT target. Technexus deployment still requires Thomas's approval and the
+The default release target is production. Use `upgrade --target sit` or
+`upgrade --target uat` to select the matching deployment overlay; use the same
+`--target` on `rollback <previous-digest> <release-tag>`. Initial deployments use
+`scripts/deploy.sh sit`, `uat` or `production`. All three modes, upgrade and rollback
+accept `--overlay <path>` instead of their default overlay; do not combine `--overlay`
+and `--target`. The selected overlay must exist in the deployment directory (or at the
+explicit path); installer-created directories may need the matching release's SIT/UAT
+overlay supplied separately. Signed SIT/UAT upgrades and rollbacks reject `--no-verify`
+and `--no-probe`.
+
+`upgrade <tag-or-digest>` selects the new image explicitly; upgrading a tag clears a
+previous rollback digest pin. Canonical local SIT uses `scripts/deploy.sh local` with
+`deploy/compose.testing.yml`. Remote deployment requires Thomas's approval and the
 backup and verification steps in the release procedure.
+
+On shutdown, readiness returns 503 immediately. Scheduler polling and cron registrations
+stop synchronously; scheduled runs and an active manual dispatch share a maximum
+10-second drain before database/process teardown. Manual draining includes history,
+heartbeat and lease finalisation. Runs still active after the bound may be interrupted;
+check their lease/history state before retrying.
 
 **The signature check is the point.** The stack table promises the image is verified against
 its cosign signature before start, and [ci-cd.md](ci-gates.md) signs it
@@ -714,7 +733,7 @@ For a **fresh installation after first-administrator setup and verified TOTP**, 
 demo is `scripts/seed-uat.mjs --uat --credentials-file <private-file-outside-checkout>`
 (run through `pnpm --filter @taskdesk/api exec tsx ../../scripts/seed-uat.mjs ...` from
 source, or `node apps/api/dist/seed-uat.js ...` inside the shipping image).
-It supersedes the old SIT account-reset demo. `scripts/deploy.sh local|sit --seed` opts in;
+It supersedes the old SIT account-reset demo. `scripts/deploy.sh sit|uat --seed` opts in;
 without `--seed` deployment does not seed. Complete setup before opting in. The deploy
 wrapper keeps `~/.taskdesk/demo-credentials.json` private and reuses it on later runs;
 direct callers must reuse their original credentials file. Never use either seed to
@@ -1793,8 +1812,10 @@ approval's work item, and replaces the single-column work-item foreign key with 
 
 **Lock.** The `DROP CONSTRAINT` and the `ADD` of the composite foreign key take an
 `ACCESS EXCLUSIVE` lock on `work_item`, and the lock is held until the whole migrator batch
-commits. Run the upgrade in a maintenance window, or set `lock_timeout` on the migrator session so
-the upgrade fails fast instead of queueing behind traffic.
+commits. Migration connections enforce a fixed `lock_timeout` of 15,000 ms alongside
+UTC session time. A blocked lock acquisition fails instead of waiting indefinitely;
+this is not a limit on the whole migration runtime. Run the upgrade in a maintenance
+window and investigate long transactions before retrying a lock-timeout failure.
 
 **Orphan preflight.** If a restored database holds an approval whose work item is missing, the
 upgrade fails at `SET NOT NULL` and aborts atomically (same mechanics as 0093 above). Run

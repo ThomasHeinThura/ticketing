@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * Release smoke for a deployed TaskDesk stack (local SIT or Technexus).
+ * Release smoke for a deployed TaskDesk stack (local SIT or <environment>).
  *
- *   pnpm sit:smoke                                   local SIT, ~/.taskdesk/sit-credentials.json
+ *   pnpm sit:smoke                                   local SIT, <credentials-file>
  *   pnpm sit:smoke -- --agent https://… --portal https://… --credentials <file> --out <dir>
  *
  * Read-only: it signs in with each account in the credentials file and reads, never writes.
  * For every account it checks the API (session, workspaces, projects, work items, KB, portal
  * catalogue and requests) and opens the main screens in Chromium, failing on an HTTP error,
  * an uncaught page error, a console error or an error boundary. Screenshots go to --out
- * (default ~/.taskdesk/smoke-<timestamp>, 0700). Output names accounts by their local part
+ * (default <credentials-file><timestamp>, 0700). Output names accounts by their local part
  * only and never prints cookies or passwords.
  *
  * The local SIT certificate is self-signed: Node trusts it through NODE_EXTRA_CA_CERTS=
@@ -44,13 +44,44 @@ const { values: opts } = parseArgs({
     // Every account signs in from one IP. Local Traefik limits each IP to a 1000-request burst
     // and better-auth to 100 auth requests per 10 s, so accounts are spaced apart.
     pause: { type: "string", default: "12" },
+    // UI review captures: viewport, theme, account filter and extra routes.
+    width: { type: "string", default: "1440" },
+    height: { type: "string", default: "900" },
+    scheme: { type: "string", default: "dark" },
+    accounts: { type: "string" },
+    extra: { type: "string", default: "" },
+    "extra-portal": { type: "string", default: "" },
   },
 });
 
 const require = createRequire(
   new URL("../../apps/web/package.json", import.meta.url),
 );
-const accounts = JSON.parse(fs.readFileSync(opts.credentials, "utf8")).accounts;
+const onlyAccounts = (opts.accounts ?? "")
+  .split(",")
+  .map((name) => name.trim())
+  .filter(Boolean);
+const configuredAccounts = JSON.parse(
+  fs.readFileSync(opts.credentials, "utf8"),
+).accounts;
+const unknownAccounts = onlyAccounts.some(
+  (name) =>
+    !configuredAccounts.some((account) => account.email.split("@")[0] === name),
+);
+const accounts = configuredAccounts.filter(
+  (account) =>
+    onlyAccounts.length === 0 ||
+    onlyAccounts.includes(account.email.split("@")[0]),
+);
+if (
+  unknownAccounts ||
+  accounts.length === 0 ||
+  (opts.accounts !== undefined && onlyAccounts.length === 0)
+) {
+  throw new Error(
+    "Invalid account filter: choose configured account names or omit --accounts",
+  );
+}
 fs.mkdirSync(opts.out, { recursive: true, mode: 0o700 });
 
 const results = [];
@@ -157,7 +188,7 @@ async function apiChecks(account, base, cookies) {
     const items = await getJson(
       base,
       cookies,
-      `/api/task/tasks/${encodeURIComponent(project.id)}`,
+      `/api/projects/${encodeURIComponent(project.id)}/work-items`,
     );
     check(`${name}: work items`, items.status === 200, String(items.status));
     pages.push(
@@ -170,10 +201,23 @@ async function apiChecks(account, base, cookies) {
     cookies,
     `/api/kb/articles?workspaceId=${encodeURIComponent(workspaceId)}&limit=5&offset=0`,
   );
-  // 404 is the documented answer while the knowledge-base feature is off.
+  const features = await getJson(
+    base,
+    cookies,
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/features/resolved`,
+  );
+  const kbEnabled = features.body?.features?.find(
+    (feature) => feature.key === "feature.knowledge_base",
+  )?.enabled;
+  check(
+    `${name}: resolved features`,
+    features.status === 200 && typeof kbEnabled === "boolean",
+    String(features.status),
+  );
+  // Only an explicitly disabled KB may return 404.
   check(
     `${name}: kb`,
-    kb.status === 200 || kb.status === 404,
+    kb.status === 200 || (kbEnabled === false && kb.status === 404),
     String(kb.status),
   );
   if (kb.status === 200) pages.push("/agent/kb");
@@ -186,7 +230,11 @@ async function browserChecks(browser, account, base, cookies, pages) {
   // Local SIT uses a self-signed certificate that Chromium cannot be told to trust; only
   // *.localhost stacks skip the certificate check.
   const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
+    viewport: {
+      width: Number(opts.width),
+      height: Number(opts.height),
+    },
+    colorScheme: opts.scheme === "light" ? "light" : "dark",
     ignoreHTTPSErrors: host.endsWith(".localhost"),
   });
   await context.addCookies(
@@ -221,7 +269,11 @@ async function browserChecks(browser, account, base, cookies, pages) {
     });
     page.on("response", (response) => {
       const code = response.status();
-      if (code >= 500 || code === 429)
+      if (
+        code >= 500 ||
+        code === 429 ||
+        (route.startsWith("/agent/kb") && code === 404)
+      )
         errors.push(`${code} ${new URL(response.url()).pathname}`);
     });
     let status = 0;
@@ -289,6 +341,18 @@ try {
     );
     if (signedIn.status !== 200) continue;
     const pages = await apiChecks(account, base, signedIn.cookies);
+    // Optional broad capture for UI review: --extra (staff) and
+    // --extra-portal (customers) are comma-separated routes; {key} is
+    // replaced with the first project's key.
+    const key =
+      pages.join(" ").match(/\/agent\/projects\/([^/]+)\//)?.[1] ?? "";
+    const extra = (
+      (isCustomer(account) ? opts["extra-portal"] : opts.extra) ?? ""
+    )
+      .split(",")
+      .map((route) => route.trim().replaceAll("{key}", key))
+      .filter(Boolean);
+    pages.push(...extra);
     if (browser)
       await browserChecks(browser, account, base, signedIn.cookies, pages);
   }

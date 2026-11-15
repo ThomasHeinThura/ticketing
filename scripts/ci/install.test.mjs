@@ -1259,7 +1259,13 @@ test("real Compose merges the SIT overlay into the release configuration", async
     merged.services.taskdesk.labels[
       "traefik.http.routers.taskdesk-sit-agent.rule"
     ],
-    /tickting\.technexus\.info/,
+    /Host\(`ticket\.example\.test`\)/,
+  );
+  assert.match(
+    merged.services.taskdesk.labels[
+      "traefik.http.routers.taskdesk-sit-portal.rule"
+    ],
+    /Host\(`portal\.example\.test`\)/,
   );
   assert.ok(!merged.services.taskdesk.ports?.length);
 });
@@ -1276,4 +1282,122 @@ test("SIT release requires its overlay before persistent effects", async (t) => 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /SIT overlay .* is required/);
   assert.equal(await stat(path.join(f.path, ".env")).catch(() => null), null);
+});
+
+test("--overlay and --target=uat select UAT overlay across upgrade and rollback (DO-3)", async (t) => {
+  const { f } = await productionRun(t);
+  await copyFile(
+    path.join(root, "deploy", "compose.uat.yml"),
+    path.join(f.path, "deploy", "compose.uat.yml"),
+  );
+  for (const [modeArgs, overlayArgs] of [
+    [["upgrade"], ["--overlay", "deploy/compose.uat.yml"]],
+    [
+      ["rollback", `sha256:${"d".repeat(64)}`, "v1.2.2"],
+      ["--overlay=deploy/compose.uat.yml"],
+    ],
+    [["upgrade"], ["--target", "uat"]],
+  ]) {
+    await rm(path.join(f.temp, "docker.log"), { force: true });
+    await rm(path.join(f.temp, "docker.log.started"), { force: true });
+    const result = spawnSync(
+      "bash",
+      [path.join(f.path, "scripts/deploy.sh"), ...modeArgs, ...overlayArgs],
+      {
+        cwd: f.path,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${f.bin}:${process.env.PATH}`,
+          HOME: f.temp,
+          COSIGN_LOG: path.join(f.temp, "cosign.log"),
+          FAKE_DOCKER_FULL: "1",
+          FAKE_RAW: RAW_MANIFEST,
+          FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+        },
+      },
+    );
+    assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+    const log = await readFile(path.join(f.temp, "docker.log"), "utf8");
+    const compose = log
+      .split("\n")
+      .filter((line) => line.includes("args=compose -f"));
+    assert.ok(compose.length > 0);
+    for (const line of compose) {
+      assert.match(line, /deploy\/compose\.uat\.yml/);
+    }
+  }
+
+  // Missing --overlay fails closed before creating .env
+  const fresh = await fixture(t, { realDeployment: true });
+  fresh.path = path.join(fresh.temp, "source", "taskdesk-v1.2.3");
+  const missing = spawnSync(
+    "bash",
+    [
+      path.join(fresh.path, "scripts/deploy.sh"),
+      "upgrade",
+      "--overlay",
+      "deploy/does-not-exist.yml",
+    ],
+    { cwd: fresh.path, encoding: "utf8" },
+  );
+  assert.notEqual(missing.status, 0);
+  assert.equal(
+    await stat(path.join(fresh.path, ".env")).catch(() => null),
+    null,
+  );
+});
+
+test("upgrade clears TASKDESK_IMAGE_DIGEST pinned by a prior rollback (DO-4)", async (t) => {
+  const { f } = await productionRun(t);
+  const rolledBackDigest = `sha256:${"d".repeat(64)}`;
+  const env = {
+    ...process.env,
+    PATH: `${f.bin}:${process.env.PATH}`,
+    HOME: f.temp,
+    COSIGN_LOG: path.join(f.temp, "cosign.log"),
+    FAKE_DOCKER_FULL: "1",
+    FAKE_RAW: RAW_MANIFEST,
+    FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+  };
+
+  const rb = spawnSync(
+    "bash",
+    [
+      path.join(f.path, "scripts/deploy.sh"),
+      "rollback",
+      rolledBackDigest,
+      "v1.2.2",
+    ],
+    { cwd: f.path, encoding: "utf8", env },
+  );
+  assert.equal(rb.status, 0, `${rb.stdout}${rb.stderr}`);
+  assert.match(
+    await readFile(path.join(f.path, ".env"), "utf8"),
+    new RegExp(`^TASKDESK_IMAGE_DIGEST=${rolledBackDigest}$`, "m"),
+  );
+
+  await rm(path.join(f.temp, "cosign.log"), { force: true });
+  await rm(path.join(f.temp, "docker.log"), { force: true });
+  await rm(path.join(f.temp, "docker.log.started"), { force: true });
+
+  const up = spawnSync(
+    "bash",
+    [path.join(f.path, "scripts/deploy.sh"), "upgrade", "v1.2.3"],
+    { cwd: f.path, encoding: "utf8", env },
+  );
+  assert.equal(up.status, 0, `${up.stdout}${up.stderr}`);
+  const updatedEnv = await readFile(path.join(f.path, ".env"), "utf8");
+  assert.match(updatedEnv, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
+  assert.match(
+    updatedEnv,
+    new RegExp(`^TASKDESK_IMAGE_DIGEST=${RAW_DIGEST}$`, "m"),
+  );
+  assert.doesNotMatch(updatedEnv, new RegExp(rolledBackDigest));
+});
+
+test("deploy.sh removes unreachable dead local mode branches after exec delegation (DO-10)", async () => {
+  const source = await readFile(path.join(root, "scripts/deploy.sh"), "utf8");
+  assert.doesNotMatch(source, /assert_local_ports_free/);
+  assert.doesNotMatch(source, /^\s*local\)\s*$/m);
 });

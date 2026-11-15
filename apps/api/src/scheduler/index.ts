@@ -12,6 +12,7 @@ import {
   runScheduledJobWithHistory,
   startJobRunWorker,
 } from "../instance/jobs/runtime";
+import { logTaskDesk } from "../instance/observability/runtime";
 import type { ServingRole } from "../runtime-role";
 import {
   cleanupPendingAttachments,
@@ -68,32 +69,63 @@ let registeredDefinitions: readonly RegisteredJobDefinition[] = [];
 const runtimeConfigurationSignature = new Map<string, string>();
 const runtimeJobEnabled = new Map<string, boolean>();
 let configurationPoll: ReturnType<typeof setInterval> | undefined;
-let stopManualWorker: (() => void) | undefined;
+let stopManualWorker: (() => Promise<void>) | undefined;
 let schedulerRole: ServingRole = "all";
+let schedulerGeneration = 0;
+
+const inFlightRuns = new Set<Promise<unknown>>();
+export const DEFAULT_SCHEDULER_SHUTDOWN_TIMEOUT_MS = 10_000;
+let shutdownTimeoutMs = DEFAULT_SCHEDULER_SHUTDOWN_TIMEOUT_MS;
+
+export function setSchedulerShutdownTimeoutForTest(timeoutMs: number): void {
+  shutdownTimeoutMs = timeoutMs;
+}
 
 type JobOutcome = { degraded?: boolean };
+
+function safeJobTraceId(name: string): string | undefined {
+  return /^[A-Za-z0-9._:-]{1,128}$/.test(name) ? name : undefined;
+}
 
 // Cron jobs swallow their operational failures (per-item try/catch) so they
 // can keep processing the rest of the batch, which means the thrown-rejection
 // channel alone would report "ok" for a partially failed run. The returned
 // outcome is inspected instead, so a handled failure is still visible.
-//
-// kaneo reported this to Sentry as a check-in. TaskDesk has no phone-home, so
-// it goes to the log. When observability lands (Pino + Prometheus per
-// observability.md) this is the seam that emits a job metric.
 function withCheckIn<T>(name: string, fn: () => Promise<T>) {
-  return async (): Promise<void> => {
-    try {
-      const result = await runScheduledJobWithHistory(name, fn);
-      const degraded = Boolean(
-        (result as JobOutcome | null | undefined)?.degraded,
-      );
-      if (degraded) {
-        console.warn(`Cron job ${name} completed with handled failures`);
+  return (): Promise<void> => {
+    const traceId = safeJobTraceId(name);
+    const run = (async () => {
+      try {
+        const result = await runScheduledJobWithHistory(name, fn);
+        const degraded = Boolean(
+          (result as JobOutcome | null | undefined)?.degraded,
+        );
+        if (degraded) {
+          logTaskDesk({
+            module: "jobs",
+            message: "jobs.failure",
+            level: "warn",
+            result: "degraded",
+            ...(traceId ? { traceId } : {}),
+          });
+          console.warn(`Cron job ${name} completed with handled failures`);
+        }
+      } catch (error) {
+        logTaskDesk({
+          module: "jobs",
+          message: "jobs.failure",
+          level: "error",
+          result: "failed",
+          ...(traceId ? { traceId } : {}),
+        });
+        console.error(`Cron job ${name} failed`, error);
       }
-    } catch (error) {
-      console.error(`Cron job ${name} failed`, error);
-    }
+    })();
+    inFlightRuns.add(run);
+    void run.finally(() => {
+      inFlightRuns.delete(run);
+    });
+    return run;
   };
 }
 
@@ -264,6 +296,7 @@ function createOnDemandJobDefinitions(): ReadonlyArray<RegisteredJobDefinition> 
 
 export function initializeScheduler(role: ServingRole = "all"): void {
   if (jobs.length > 0) return;
+  schedulerGeneration += 1;
   schedulerRole = role;
   const definitions = createRegisteredJobDefinitions();
   const webPollerDefinitions = createWebPollerDefinitions();
@@ -323,7 +356,8 @@ export function initializeScheduler(role: ServingRole = "all"): void {
   }
 }
 
-async function refreshRegisteredJobConfiguration(): Promise<void> {
+export async function refreshRegisteredJobConfiguration(): Promise<void> {
+  const generation = schedulerGeneration;
   const configurable = registeredDefinitions.filter(
     (definition) => definition.onDemand !== true,
   );
@@ -332,6 +366,12 @@ async function refreshRegisteredJobConfiguration(): Promise<void> {
     const configurations = await readJobConfigurations(
       configurable.map((definition) => definition.name),
     );
+    if (
+      generation !== schedulerGeneration ||
+      registeredDefinitions.length === 0
+    ) {
+      return;
+    }
     for (const definition of configurable) {
       const config = configurations.get(definition.name);
       const pattern = config?.pattern ?? definition.pattern;
@@ -355,7 +395,16 @@ async function refreshRegisteredJobConfiguration(): Promise<void> {
           { timezone: definition.timezone, paused: !enabled },
           withCheckIn(definition.name, definition.handler),
         );
-      } catch {
+      } catch (error) {
+        const traceId = safeJobTraceId(definition.name);
+        logTaskDesk({
+          module: "jobs",
+          message: "jobs.failure",
+          level: "warn",
+          result: "degraded",
+          errorClass: error instanceof Error ? "Error" : "Other",
+          ...(traceId ? { traceId } : {}),
+        });
         // A malformed persisted override cannot replace the current valid scheduler entry.
         continue;
       }
@@ -369,7 +418,15 @@ async function refreshRegisteredJobConfiguration(): Promise<void> {
       jobs.push(replacement);
       registeredByName.set(definition.name, replacement);
     }
-  } catch {
+  } catch (error) {
+    if (generation !== schedulerGeneration) return;
+    logTaskDesk({
+      module: "jobs",
+      message: "jobs.failure",
+      level: "error",
+      result: "degraded",
+      errorClass: error instanceof Error ? "Error" : "Other",
+    });
     // Keep the last known scheduler configuration on database/configuration failure.
   }
 }
@@ -463,10 +520,11 @@ export function registeredJobByName(name: string): Cron | undefined {
   return registeredByName.get(name);
 }
 
-export function shutdownScheduler(): void {
+export function shutdownScheduler(): Promise<void> {
+  schedulerGeneration += 1;
   if (configurationPoll) clearInterval(configurationPoll);
   configurationPoll = undefined;
-  stopManualWorker?.();
+  const manualDrain = stopManualWorker?.();
   stopManualWorker = undefined;
   for (const job of jobs) {
     job.stop();
@@ -477,4 +535,24 @@ export function shutdownScheduler(): void {
   runtimeConfigurationSignature.clear();
   runtimeJobEnabled.clear();
   schedulerRole = "all";
+
+  if (inFlightRuns.size === 0 && !manualDrain) {
+    return Promise.resolve();
+  }
+
+  const pending = [...inFlightRuns];
+  if (manualDrain) pending.push(manualDrain);
+  const timeoutMs = shutdownTimeoutMs;
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const safetyTimeout = new Promise<void>((resolve) => {
+    timeoutHandle = setTimeout(resolve, timeoutMs);
+    timeoutHandle.unref?.();
+  });
+
+  return Promise.race([
+    Promise.allSettled(pending).then(() => undefined),
+    safetyTimeout,
+  ]).finally(() => {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  });
 }

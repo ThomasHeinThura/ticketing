@@ -1,11 +1,10 @@
-# Overlay — SIT on proxy VM (technexus.info).
+# Overlay — SIT behind external Traefik.
 #
 #   docker compose -f compose.yml -f deploy/compose.sit.yml up -d --wait
 #
-# Target host: proxy (4.194.153.78)
 # Origins:
-#   Agent:  https://tickting.technexus.info
-#   Portal: https://portal.technexus.info
+#   Agent:  https://<agent-host>
+#   Portal: https://<portal-host>
 # Reverse proxy: host-managed Traefik on external network `web` with resolver `le`.
 # In front: Cloudflare proxy enabled (2 trusted hops).
 
@@ -19,27 +18,27 @@ services:
       - traefik.docker.network=web
       - traefik.http.services.taskdesk-sit.loadbalancer.server.port=${TASKDESK_PORT:-5173}
       - traefik.http.services.taskdesk-sit.loadbalancer.healthcheck.path=/api/public/health/ready
-      # agent (preserve tickting spelling)
-      - traefik.http.routers.taskdesk-sit-agent.rule=Host(`tickting.technexus.info`)
+      # agent
+      - traefik.http.routers.taskdesk-sit-agent.rule=Host(`${TASKDESK_AGENT_HOST:-ticket.${DOMAIN:?DOMAIN is required}}`)
       - traefik.http.routers.taskdesk-sit-agent.entrypoints=websecure
       - traefik.http.routers.taskdesk-sit-agent.tls=true
       - traefik.http.routers.taskdesk-sit-agent.tls.certresolver=le
       - traefik.http.routers.taskdesk-sit-agent.service=taskdesk-sit
       - traefik.http.routers.taskdesk-sit-agent.middlewares=taskdesk-sit-headers@docker
-      - traefik.http.routers.taskdesk-sit-agent-pdf-preview.rule=Host(`tickting.technexus.info`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-sit-agent-pdf-preview.rule=Host(`${TASKDESK_AGENT_HOST:-ticket.${DOMAIN:?DOMAIN is required}}`) && Path(`/pdf-preview.html`)
       - traefik.http.routers.taskdesk-sit-agent-pdf-preview.entrypoints=websecure
       - traefik.http.routers.taskdesk-sit-agent-pdf-preview.tls=true
       - traefik.http.routers.taskdesk-sit-agent-pdf-preview.tls.certresolver=le
       - traefik.http.routers.taskdesk-sit-agent-pdf-preview.service=taskdesk-sit
       - traefik.http.routers.taskdesk-sit-agent-pdf-preview.middlewares=taskdesk-sit-pdf-headers@docker
       # portal
-      - traefik.http.routers.taskdesk-sit-portal.rule=Host(`portal.technexus.info`)
+      - traefik.http.routers.taskdesk-sit-portal.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:?DOMAIN is required}}`)
       - traefik.http.routers.taskdesk-sit-portal.entrypoints=websecure
       - traefik.http.routers.taskdesk-sit-portal.tls=true
       - traefik.http.routers.taskdesk-sit-portal.tls.certresolver=le
       - traefik.http.routers.taskdesk-sit-portal.service=taskdesk-sit
       - traefik.http.routers.taskdesk-sit-portal.middlewares=taskdesk-sit-headers@docker
-      - traefik.http.routers.taskdesk-sit-portal-pdf-preview.rule=Host(`portal.technexus.info`) && Path(`/pdf-preview.html`)
+      - traefik.http.routers.taskdesk-sit-portal-pdf-preview.rule=Host(`${TASKDESK_PORTAL_HOST:-portal.${DOMAIN:?DOMAIN is required}}`) && Path(`/pdf-preview.html`)
       - traefik.http.routers.taskdesk-sit-portal-pdf-preview.entrypoints=websecure
       - traefik.http.routers.taskdesk-sit-portal-pdf-preview.tls=true
       - traefik.http.routers.taskdesk-sit-portal-pdf-preview.tls.certresolver=le

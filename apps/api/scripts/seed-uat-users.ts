@@ -1542,6 +1542,12 @@ export async function seedCore(tx: Tx, now: Date): Promise<Seeded> {
     throw new Error(
       "Complete first-administrator setup with verified TOTP before running the clean-install seed.",
     );
+  if (setup.cspMode !== "enforce") {
+    await tx
+      .update(schema.instanceSettingTable)
+      .set({ cspMode: "enforce" })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+  }
   const date = (days: number) => new Date(now.getTime() + days * 86_400_000);
   const internalOrg = await ensureInternalOrganisation(tx);
   const [administrator] = await tx

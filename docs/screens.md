@@ -35,7 +35,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Calendar (opens the Kaneo calendar, `feature.calendar`; the old `/dashboard/workspace/{id}/project/{id}/calendar` link redirects here) | `/agent/projects/{key}/calendar` | route | P5 | 🟡 |
 | Work item — full page | `/agent/work-items/{key}` | route | P1 | 🟡 |
 | Intake queue and submission detail | `/agent/triage?state=new&ref={ref}` | route | P2 | 🟡 |
-| Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | ⬜ |
+| Approvals inbox | `/agent/my-work?lens=approvals` | route | P2 | 🟡 |
 | Service catalogue — services list (D8: named "Service catalogue"; URL unchanged) | `/agent/service-management/services` | route | P5 | 🟡 |
 | Service catalogue — service detail | `/agent/service-management/services/{id}` | route | P5 | 🟡 |
 | Service catalogue — change calendar | `/agent/service-management/changes` | route | P5 | 🟡 |
@@ -56,7 +56,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Profile — general | `/dashboard/settings/account/information` | route | P1 | 🟡 |
 | Profile — appearance | `/dashboard/settings/account/preferences` | route | P1 | 🟡 |
 | Profile — notifications | `/dashboard/settings/account/notifications` | route | P4 | 🟡 |
-| Profile — security & sessions | `/dashboard/settings/account/security` | route | P3 | ⬜ |
+| Profile — security & sessions | `/dashboard/settings/account/security` | route | P3 | 🟡 |
 | Profile — pending actions (API/MCP-originated deletions awaiting my approval) | `/dashboard/settings/account/pending-actions` | route | P4 | 🟡 |
 | Profile — pending action detail | `/dashboard/settings/account/pending-actions/{id}` | route | P4 | 🟡 |
 | Profile — API keys | `/agent/settings/profile/api-keys` | route | P4 | ⬜ |

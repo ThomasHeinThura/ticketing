@@ -2,20 +2,20 @@
 #
 # TaskDesk deployment script.
 #
-#   scripts/deploy.sh local                  bring the stack up for development
-#   scripts/deploy.sh sit                    bring the stack up for SIT rehearsal
-#   scripts/deploy.sh production             bring the stack up behind Traefik
-#   scripts/deploy.sh upgrade                verify signature -> pull -> up -d --wait
-#   scripts/deploy.sh rollback <digest> <tag> go back to a known-good release
+#   scripts/deploy.sh local                     bring the stack up for development
+#   scripts/deploy.sh sit                       bring the stack up for SIT rehearsal
+#   scripts/deploy.sh uat                       bring the stack up for UAT
+#   scripts/deploy.sh production                bring the stack up behind Traefik
+#   scripts/deploy.sh upgrade [tag-or-digest]   verify signature -> pull -> up -d --wait
+#   scripts/deploy.sh rollback <digest> <tag>   go back to a known-good release
 #
 # Flags:
-#   --target production|sit  select release overlay (upgrade/rollback; default production)
-#                       SIT requires deploy/compose.sit.yml in the deployment directory;
-#                       installer-created production directories may omit this file.
+#   --target production|sit|uat  select release overlay (upgrade/rollback; default production)
+#   --overlay <path>    use an explicit Compose overlay path (deploy/upgrade/rollback)
 #   --profile s3        also run the opt-in SeaweedFS object store
 #   --no-verify         skip the cosign signature check (loud, deliberate)
 #   --no-probe          skip the post-deploy API probe (CI only; never routine)
-#   --seed              run the clean-install demo seed (local and sit only). Requires verified setup;
+#   --seed              run the clean-install demo seed (sit, uat only). Requires verified setup;
 #                       seed credentials stay private and existing accounts stay unchanged.
 #
 # It is idempotent. It generates any missing secret and never regenerates one
@@ -23,20 +23,20 @@
 #
 # Specification: docs/05-operations/deployment.md § First run
 #   1. generate any missing secrets
-#   2. generate a self-signed certificate (local only)
-#   3. start Postgres and Valkey (and SeaweedFS + bucket create with --profile
+#   2. start Postgres and Valkey (and SeaweedFS + bucket create with --profile
 #      s3) and wait for health
-#   4. start the application, which applies migrations under an advisory lock
-#   5. print the one-time setup URL
-#   6. seed demo data, if permitted
-#   7. probe the API — and fail loudly if it cannot
-#   8. print the URLs
+#   3. start the application, which applies migrations under an advisory lock
+#   4. print the one-time setup URL
+#   5. seed demo data, if permitted
+#   6. probe the API — and fail loudly if it cannot
+#   7. print the URLs
 #
-# Step 7 is not optional. v1's script did this and it caught the "container
+# Step 6 is not optional. v1's script did this and it caught the "container
 # started, nothing actually works" class of failure that `docker ps` misses.
 
 set -Eeuo pipefail
 
+CALLER_PWD="$(pwd)"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -53,9 +53,12 @@ fi
 
 ENV_FILE="$REPO_ROOT/.env"
 ENV_EXAMPLE="$REPO_ROOT/deploy/.env.example"
-CERT_DIR="$REPO_ROOT/deploy/local/certs"
-TLS_DYNAMIC="$REPO_ROOT/deploy/traefik/dynamic/tls-local.yml"
 S3_CONFIG="$REPO_ROOT/deploy/seaweedfs/s3.json"
+
+CALLER_IMAGE_TAG_SET="${TASKDESK_IMAGE_TAG+1}"
+CALLER_IMAGE_TAG="${TASKDESK_IMAGE_TAG:-}"
+CALLER_IMAGE_DIGEST_SET="${TASKDESK_IMAGE_DIGEST+1}"
+CALLER_IMAGE_DIGEST="${TASKDESK_IMAGE_DIGEST:-}"
 
 # The signature is verified against the EXACT workflow identity — repository,
 # workflow file and ref — not just the OIDC issuer (docs/04-engineering/ci-cd.md).
@@ -77,17 +80,43 @@ PROFILE_S3=0
 VERIFY=1
 PROBE=1
 SEED=0
+UPGRADE_REF=""
 ROLLBACK_DIGEST=""
 ROLLBACK_TAG=""
 TARGET="production"
 TARGET_SET=0
+OVERLAY=""
+OVERLAY_SET=0
 
-usage() { sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-1}"; }
+usage() { sed -n '3,21p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-1}"; }
 
 [ $# -ge 1 ] || usage
 MODE="$1"; shift
 case "$MODE" in
-  local|production|upgrade|sit) ;;
+  production|sit|uat) ;;
+  upgrade)
+    if [ $# -ge 1 ] && [[ "${1:-}" != -* ]]; then
+      UPGRADE_REF="$1"; shift
+      case "$UPGRADE_REF" in
+        sha256:*)
+          [[ "$UPGRADE_REF" =~ ^sha256:[0-9a-f]{64}$ ]] \
+            || die "upgrade digest must be a full lowercase sha256 digest (got '$UPGRADE_REF')"
+          ;;
+        *@sha256:*)
+          UPGRADE_TAG_PART="${UPGRADE_REF%@*}"
+          UPGRADE_DIGEST_PART="${UPGRADE_REF#*@}"
+          [[ "$UPGRADE_TAG_PART" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] \
+            || die "upgrade tag must be a valid container tag (got '$UPGRADE_TAG_PART')"
+          [[ "$UPGRADE_DIGEST_PART" =~ ^sha256:[0-9a-f]{64}$ ]] \
+            || die "upgrade digest must be a full lowercase sha256 digest (got '$UPGRADE_DIGEST_PART')"
+          ;;
+        *)
+          [[ "$UPGRADE_REF" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] \
+            || die "upgrade target must be a valid container tag or sha256 digest (got '$UPGRADE_REF')"
+          ;;
+      esac
+    fi
+    ;;
   rollback)
     [ $# -ge 2 ] || die "rollback needs a digest and its signed release tag: scripts/deploy.sh rollback sha256:… v2.0.0"
     ROLLBACK_DIGEST="$1"; shift
@@ -100,13 +129,15 @@ case "$MODE" in
       || die "release tag must be a valid container tag (got '$ROLLBACK_TAG')"
     ;;
   -h|--help|help) usage 0 ;;
-  *) die "unknown mode '$MODE'. One of: local, production, upgrade, rollback" ;;
+  *) die "unknown mode '$MODE'. One of: local, sit, uat, production, upgrade, rollback" ;;
 esac
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --target) [ $# -ge 2 ] || die "--target needs production or sit"; TARGET="$2"; TARGET_SET=1; shift 2 ;;
+    --target) [ $# -ge 2 ] || die "--target needs production, sit, or uat"; TARGET="$2"; TARGET_SET=1; shift 2 ;;
     --target=*) TARGET="${1#*=}"; TARGET_SET=1; shift ;;
+    --overlay) [ $# -ge 2 ] && [ -n "$2" ] || die "--overlay needs a Compose overlay path"; OVERLAY="$2"; OVERLAY_SET=1; shift 2 ;;
+    --overlay=*) OVERLAY="${1#*=}"; [ -n "$OVERLAY" ] || die "--overlay needs a Compose overlay path"; OVERLAY_SET=1; shift ;;
     --profile) [ "${2:-}" = "s3" ] || die "--profile takes 's3'"; PROFILE_S3=1; shift 2 ;;
     --profile=s3) PROFILE_S3=1; shift ;;
     --no-verify) VERIFY=0; shift ;;
@@ -116,31 +147,65 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+if [ "$SEED" -eq 1 ] && [[ "$MODE" != "sit" && "$MODE" != "uat" ]]; then
+  die "--seed is only valid for clean-install sit or uat deployments"
+fi
+
 if [ "$TARGET_SET" -eq 1 ]; then
   [[ "$MODE" = upgrade || "$MODE" = rollback ]] || die "--target is only valid for upgrade and rollback"
 fi
-[[ "$TARGET" = production || "$TARGET" = sit ]] || die "--target must be production or sit"
-if [[ "$TARGET" = sit && ( "$MODE" = upgrade || "$MODE" = rollback ) ]]; then
-  [ "$VERIFY" -eq 1 ] || die "--no-verify is not allowed for signed SIT releases"
-  [ "$PROBE" -eq 1 ] || die "--no-probe is not allowed for signed SIT releases"
-  [ -f "$REPO_ROOT/deploy/compose.sit.yml" ] || die "SIT overlay deploy/compose.sit.yml is required for signed SIT releases"
+if [ "$OVERLAY_SET" -eq 1 ] && [ "$TARGET_SET" -eq 1 ]; then
+  die "pass either --overlay or --target, not both"
+fi
+[[ "$TARGET" = production || "$TARGET" = sit || "$TARGET" = uat ]] || die "--target must be production, sit, or uat"
+
+SELECTED_OVERLAY=""
+if [ "$OVERLAY_SET" -eq 1 ]; then
+  if [ -f "$OVERLAY" ]; then
+    SELECTED_OVERLAY="$OVERLAY"
+  elif [ -f "$CALLER_PWD/$OVERLAY" ]; then
+    SELECTED_OVERLAY="$CALLER_PWD/$OVERLAY"
+  else
+    die "Compose overlay '$OVERLAY' does not exist"
+  fi
+  if [[ ( "$SELECTED_OVERLAY" = *compose.sit.yml || "$SELECTED_OVERLAY" = *compose.uat.yml ) && ( "$MODE" = upgrade || "$MODE" = rollback ) ]]; then
+    [ "$VERIFY" -eq 1 ] || die "--no-verify is not allowed for signed SIT/UAT releases"
+    [ "$PROBE" -eq 1 ] || die "--no-probe is not allowed for signed SIT/UAT releases"
+  fi
+else
+  EFFECTIVE_ENV="$MODE"
+  if [[ "$MODE" = upgrade || "$MODE" = rollback ]]; then
+    EFFECTIVE_ENV="$TARGET"
+  fi
+  case "$EFFECTIVE_ENV" in
+    sit)
+      if [[ "$MODE" = upgrade || "$MODE" = rollback ]]; then
+        [ "$VERIFY" -eq 1 ] || die "--no-verify is not allowed for signed SIT releases"
+        [ "$PROBE" -eq 1 ] || die "--no-probe is not allowed for signed SIT releases"
+      fi
+      [ -f "$REPO_ROOT/deploy/compose.sit.yml" ] || die "SIT overlay deploy/compose.sit.yml is required for signed SIT releases"
+      SELECTED_OVERLAY="deploy/compose.sit.yml"
+      ;;
+    uat)
+      if [[ "$MODE" = upgrade || "$MODE" = rollback ]]; then
+        [ "$VERIFY" -eq 1 ] || die "--no-verify is not allowed for signed UAT releases"
+        [ "$PROBE" -eq 1 ] || die "--no-probe is not allowed for signed UAT releases"
+      fi
+      [ -f "$REPO_ROOT/deploy/compose.uat.yml" ] || die "UAT overlay deploy/compose.uat.yml is required for signed UAT releases"
+      SELECTED_OVERLAY="deploy/compose.uat.yml"
+      ;;
+    production)
+      [ -f "$REPO_ROOT/deploy/compose.prod.yml" ] || die "Production overlay deploy/compose.prod.yml is required"
+      SELECTED_OVERLAY="deploy/compose.prod.yml"
+      ;;
+  esac
 fi
 
 # ---------------------------------------------------------------------------
 # Compose file selection. No file publishes the application port: the base and
 # production overlay never did, and the local overlay stopped in #752.
 # ---------------------------------------------------------------------------
-COMPOSE_FILES=(-f compose.yml)
-case "$MODE" in
-  local)
-    COMPOSE_FILES+=(-f deploy/compose.local.yml -f deploy/compose.traefik.yml) ;;
-  sit)
-    COMPOSE_FILES+=(-f deploy/compose.sit.yml) ;;
-  production)
-    COMPOSE_FILES+=(-f deploy/compose.prod.yml) ;;
-  upgrade|rollback)
-    if [ "$TARGET" = sit ]; then COMPOSE_FILES+=(-f deploy/compose.sit.yml); else COMPOSE_FILES+=(-f deploy/compose.prod.yml); fi ;;
-esac
+COMPOSE_FILES=(-f compose.yml -f "$SELECTED_OVERLAY")
 [ "$PROFILE_S3" -eq 1 ] && COMPOSE_FILES+=(--profile s3)
 
 dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
@@ -198,6 +263,8 @@ generate_if_empty TASKDESK_APP_DB_PASSWORD
 
 # shellcheck disable=SC1090
 set -a; . "$ENV_FILE"; set +a
+[ -z "$CALLER_IMAGE_TAG_SET" ] || { TASKDESK_IMAGE_TAG="$CALLER_IMAGE_TAG"; export TASKDESK_IMAGE_TAG; }
+[ -z "$CALLER_IMAGE_DIGEST_SET" ] || { TASKDESK_IMAGE_DIGEST="$CALLER_IMAGE_DIGEST"; export TASKDESK_IMAGE_DIGEST; }
 
 # Compose has no boolean. Any non-empty TASKDESK_HSTS_PRELOAD — `0` included —
 # selects the preload middleware, which commits the whole apex domain. Fail
@@ -207,89 +274,6 @@ case "${TASKDESK_HSTS_PRELOAD:-}" in
   *) die "TASKDESK_HSTS_PRELOAD must be empty (off) or 1 (on); got '${TASKDESK_HSTS_PRELOAD}'.
      It is not a boolean to Compose: any non-empty value would turn preload on." ;;
 esac
-
-# ---------------------------------------------------------------------------
-# The bundled local Traefik must not collide with a proxy the host already
-# runs (Dokploy, nginx, another app…) — Compose fails the whole `up` if a
-# published port is already bound, and the raw Docker error ("address already
-# in use") does not say what to do about it. Checked before anything starts so
-# a conflict never leaves a half-started stack behind.
-#
-# Best-effort, not exhaustive (docs/05-operations/traefik-and-domains.md §
-# Local development has the full list of what this does not catch): it only
-# probes 127.0.0.1, and it does not detect a second checkout of THIS repo —
-# `compose.yml` pins `name: taskdesk`, so a second checkout's already-running
-# local Traefik shares that project name, `dc port traefik` succeeds against
-# it, and it reads as this stack's own rather than a conflict.
-# ---------------------------------------------------------------------------
-assert_local_port_free() {
-  local var_name="$1" container_port="$2" host_port="$3"
-  [[ "$host_port" =~ ^[0-9]{1,5}$ ]] && (( 10#$host_port >= 1 && 10#$host_port <= 65535 )) \
-    || die "$var_name must be a TCP port number, 1-65535 (got '${host_port}')."
-  # Our OWN already-running local Traefik owning this port is fine — the
-  # script is documented as idempotent and safe to re-run against its own
-  # prior run (e.g. adding --profile s3 later). Only a port bound by
-  # something else is a real conflict.
-  # Judged from the engine's container configuration, not `compose port`'s exit
-  # code: Compose prints `:0` with exit 0 for ports that are not published.
-  local traefik_ids traefik_id
-  traefik_ids="$(dc ps -q traefik 2>/dev/null || true)"
-  for traefik_id in $traefik_ids; do
-    container_binds_host_port "$traefik_id" "$container_port" "$host_port" && return 0
-  done
-  # fd 3 is opened and closed inside the subshell above; nothing to close here.
-  if (exec 3<>"/dev/tcp/127.0.0.1/${host_port}") 2>/dev/null; then
-    die "port ${host_port} is already bound on this host — the bundled local Traefik can't publish it.
-     This host likely runs something else already bound there (Dokploy, nginx,
-     another app…). Set TASKDESK_LOCAL_HTTP_PORT and/or TASKDESK_LOCAL_HTTPS_PORT
-     in .env to free ports (e.g. 8080 / 8443), update TASKDESK_AGENT_URL /
-     TASKDESK_PORTAL_URL to include that port, and re-run.
-     docs/05-operations/traefik-and-domains.md § Local development"
-  fi
-}
-
-assert_local_ports_free() {
-  local http_port="${TASKDESK_LOCAL_HTTP_PORT:-80}" https_port="${TASKDESK_LOCAL_HTTPS_PORT:-443}"
-  assert_local_port_free TASKDESK_LOCAL_HTTP_PORT  80  "$http_port"
-  assert_local_port_free TASKDESK_LOCAL_HTTPS_PORT 443 "$https_port"
-  # Both individually free is not enough: Compose still fails trying to publish
-  # the same host port for two different container ports (80 and 443) if a
-  # copy-paste set them equal — reproducing the exact bare bind error this
-  # preflight exists to replace, just from a config typo instead of a real
-  # external collision.
-  [ "$http_port" != "$https_port" ] \
-    || die "TASKDESK_LOCAL_HTTP_PORT and TASKDESK_LOCAL_HTTPS_PORT are both '${http_port}' — they must be different ports."
-}
-
-# ---------------------------------------------------------------------------
-# 2 · Self-signed certificate — local only
-# ---------------------------------------------------------------------------
-if [ "$MODE" = "local" ]; then
-  assert_local_ports_free
-  DOMAIN="${DOMAIN:-localhost}"
-  # shellcheck source=scripts/lib/local-certificate.sh
-  . "$REPO_ROOT/scripts/lib/local-certificate.sh"
-  agent_host="${TASKDESK_AGENT_HOST:-ticket.${DOMAIN}}"
-  portal_host="${TASKDESK_PORTAL_HOST:-portal.${DOMAIN}}"
-  files_host="${TASKDESK_FILES_HOST:-files.${DOMAIN}}"
-  if ! local_certificate_covers_routes "$CERT_DIR/local.crt" "$CERT_DIR/local.key" "$DOMAIN" "$agent_host" "$portal_host" "$files_host"; then
-    say "generating a self-signed certificate for *.${DOMAIN}"
-  fi
-  prepare_local_certificate "$CERT_DIR" "$DOMAIN" "$agent_host" "$portal_host" "$files_host"
-  cat > "$TLS_DYNAMIC" <<'EOF'
-# Generated by scripts/deploy.sh local. Not version-controlled.
-tls:
-  stores:
-    default:
-      defaultCertificate:
-        certFile: /etc/traefik/certs/local.crt
-        keyFile: /etc/traefik/certs/local.key
-  certificates:
-    - certFile: /etc/traefik/certs/local.crt
-      keyFile: /etc/traefik/certs/local.key
-EOF
-  ok "certificate in deploy/local/certs — trust local.crt to stop browser warnings"
-fi
 
 # ---------------------------------------------------------------------------
 # SeaweedFS credentials — only for --profile s3, written 0600
@@ -459,7 +443,7 @@ print_setup_token() {
 }
 
 seed_if_permitted() (
-  [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || return 0
+  [ "$MODE" = "local" ] || [ "$MODE" = "sit" ] || [ "$MODE" = "uat" ] || return 0
   if [ "$SEED" -ne 1 ]; then
     say "not seeding demo data (pass --seed after first-administrator setup)"
     return 0
@@ -515,47 +499,35 @@ print_urls() {
   local domain="${DOMAIN:-localhost}"
   local agent_host="${TASKDESK_AGENT_HOST:-ticket.${domain}}"
   local portal_host="${TASKDESK_PORTAL_HOST:-portal.${domain}}"
-  local files_host="${TASKDESK_FILES_HOST:-files.${domain}}"
   echo
   ok "TaskDesk is up"
   printf '    agent   %s\n' "${TASKDESK_AGENT_URL:-https://${agent_host}}"
   printf '    portal  %s\n' "${TASKDESK_PORTAL_URL:-https://${portal_host}}"
-  if [ "$MODE" = "local" ]; then
-    local https_port="${TASKDESK_LOCAL_HTTPS_PORT:-443}"
-    local port_suffix=""
-    [ "$https_port" = "443" ] || port_suffix=":${https_port}"
-    printf '    mail    https://mail.%s%s\n' "$domain" "$port_suffix"
-    [ "$PROFILE_S3" -eq 1 ] && printf '    files   https://%s%s\n' "$files_host" "$port_suffix"
-    echo
-    printf '    *.localhost resolves to 127.0.0.1 in most browsers. Where it does not, add:\n'
-    printf '      127.0.0.1  %s %s mail.%s\n' "$agent_host" "$portal_host" "$domain"
-    [ "$PROFILE_S3" -eq 1 ] && printf '      127.0.0.1  %s\n' "$files_host"
-    if [ -n "$port_suffix" ]; then
-      printf '    local Traefik is on a non-default port (TASKDESK_LOCAL_HTTPS_PORT=%s) —\n' "$https_port"
-      printf '      the URLs above need %s appended, and so does TASKDESK_AGENT_URL /\n' "$port_suffix"
-      printf '      TASKDESK_PORTAL_URL in .env if they do not already include it.\n'
-    fi
-  fi
   echo
   printf '    Everything else — storage, mail, identity providers, branding — is\n'
   printf '    configured in God Mode, not in a file.\n'
+}
+
+persist_image_selection() {
+  local tag="$1" digest="$2"
+  if grep -q '^TASKDESK_IMAGE_TAG=' "$ENV_FILE"; then
+    sed -i.bak "s|^TASKDESK_IMAGE_TAG=.*|TASKDESK_IMAGE_TAG=${tag}|" "$ENV_FILE" && rm -f "$ENV_FILE.bak"
+  else
+    printf 'TASKDESK_IMAGE_TAG=%s\n' "$tag" >> "$ENV_FILE"
+  fi
+  if grep -q '^TASKDESK_IMAGE_DIGEST=' "$ENV_FILE"; then
+    sed -i.bak "s|^TASKDESK_IMAGE_DIGEST=.*|TASKDESK_IMAGE_DIGEST=${digest}|" "$ENV_FILE" && rm -f "$ENV_FILE.bak"
+  else
+    printf 'TASKDESK_IMAGE_DIGEST=%s\n' "$digest" >> "$ENV_FILE"
+  fi
+  # shellcheck disable=SC1090
+  set -a; . "$ENV_FILE"; set +a
 }
 
 # ---------------------------------------------------------------------------
 # Modes
 # ---------------------------------------------------------------------------
 case "$MODE" in
-
-  local)
-    wait_for_deps
-    create_bucket
-    say "starting the application (migrations run at boot, under an advisory lock)"
-    dc up -d --wait
-    probe_api
-    print_setup_token
-    seed_if_permitted
-    print_urls
-    ;;
 
   sit)
     wait_for_deps
@@ -568,6 +540,27 @@ case "$MODE" in
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api
+    seed_if_permitted
+    print_urls
+    ;;
+
+  uat)
+    [ -n "${DOMAIN:-}" ] || die "DOMAIN is not set in .env — every Traefik router rule needs it"
+    resolve_and_verify_image
+    say "pulling"
+    dc pull
+    wait_for_deps
+    create_bucket
+    say "running migrations under the advisory lock"
+    dc run --rm migrate
+    say "creating the application containers (not started) to check their port configuration"
+    dc up --no-start
+    assert_port_unpublished
+    say "starting the application"
+    dc up -d --wait taskdesk
+    assert_port_unpublished
+    probe_api
+    print_setup_token
     seed_if_permitted
     print_urls
     ;;
@@ -602,7 +595,30 @@ case "$MODE" in
     elif [ -n "$CURRENT" ]; then
       printf '    current: %s (could not read the configured signed tag)\n' "$CURRENT"
     fi
+    if [ -n "$UPGRADE_REF" ]; then
+      case "$UPGRADE_REF" in
+        sha256:*)
+          TASKDESK_IMAGE_DIGEST="$UPGRADE_REF"
+          ;;
+        *@sha256:*)
+          TASKDESK_IMAGE_TAG="${UPGRADE_REF%@*}"
+          TASKDESK_IMAGE_DIGEST="${UPGRADE_REF#*@}"
+          ;;
+        *)
+          TASKDESK_IMAGE_TAG="$UPGRADE_REF"
+          TASKDESK_IMAGE_DIGEST=""
+          ;;
+      esac
+    elif [ -n "$CALLER_IMAGE_DIGEST_SET" ] && [ -n "$CALLER_IMAGE_DIGEST" ]; then
+      TASKDESK_IMAGE_DIGEST="$CALLER_IMAGE_DIGEST"
+    else
+      # Clear any digest pinned in .env by an earlier rollback so upgrade resolves
+      # the target tag fresh instead of redeploying the rolled-back digest.
+      TASKDESK_IMAGE_DIGEST=""
+    fi
+    export TASKDESK_IMAGE_TAG TASKDESK_IMAGE_DIGEST
     resolve_and_verify_image
+    persist_image_selection "${TASKDESK_IMAGE_TAG:-v2.0.0}" "$TASKDESK_IMAGE_DIGEST"
     say "pulling"
     dc pull migrate taskdesk
     # issue #296: `migrate` and `taskdesk` share an image tag, but a completed
@@ -635,9 +651,11 @@ case "$MODE" in
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api
+    ROLLBACK_OVERLAY_FLAG="--target ${TARGET}"
+    [ "$OVERLAY_SET" -eq 0 ] || ROLLBACK_OVERLAY_FLAG="--overlay ${OVERLAY}"
     if [ -n "$CURRENT" ] && [[ "$CURRENT_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
       CURRENT_DIGEST="${CURRENT##*@}"
-      ok "upgraded. Roll back with: scripts/deploy.sh rollback ${CURRENT_DIGEST} ${CURRENT_TAG} --target ${TARGET}"
+      ok "upgraded. Roll back with: scripts/deploy.sh rollback ${CURRENT_DIGEST} ${CURRENT_TAG} ${ROLLBACK_OVERLAY_FLAG}"
     else
       ok "upgraded. Previous image digest was ${CURRENT:-unavailable}; confirm its signed image tag before rollback."
     fi
@@ -650,17 +668,7 @@ case "$MODE" in
     TASKDESK_IMAGE_DIGEST="$ROLLBACK_DIGEST"
     export TASKDESK_IMAGE_DIGEST
     resolve_and_verify_image
-    if grep -q '^TASKDESK_IMAGE_TAG=' "$ENV_FILE"; then
-      sed -i.bak "s|^TASKDESK_IMAGE_TAG=.*|TASKDESK_IMAGE_TAG=${ROLLBACK_TAG}|" "$ENV_FILE" && rm -f "$ENV_FILE.bak"
-    else
-      printf 'TASKDESK_IMAGE_TAG=%s\n' "$ROLLBACK_TAG" >> "$ENV_FILE"
-    fi
-    if grep -q '^TASKDESK_IMAGE_DIGEST=' "$ENV_FILE"; then
-      sed -i.bak "s|^TASKDESK_IMAGE_DIGEST=.*|TASKDESK_IMAGE_DIGEST=${ROLLBACK_DIGEST}|" "$ENV_FILE" && rm -f "$ENV_FILE.bak"
-    else
-      printf 'TASKDESK_IMAGE_DIGEST=%s\n' "$ROLLBACK_DIGEST" >> "$ENV_FILE"
-    fi
-    set -a; . "$ENV_FILE"; set +a
+    persist_image_selection "$ROLLBACK_TAG" "$ROLLBACK_DIGEST"
     dc pull migrate taskdesk
     # issue #296: re-running `migrate` against the rollback image is a no-op for
     # already-applied migrations and the idempotent role/grant step — safe, and
