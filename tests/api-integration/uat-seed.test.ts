@@ -1,6 +1,14 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { can, reaches } from "@taskdesk/permissions";
@@ -8,6 +16,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertUatSeedDatabase,
+  runUatSeed,
   UAT_ACCOUNTS,
 } from "../../apps/api/scripts/seed-uat-users";
 import {
@@ -27,9 +36,14 @@ import {
   reloadAuthConfiguration,
 } from "../../apps/api/src/auth";
 import { finalizeVerifiedFirstUserSetup } from "../../apps/api/src/auth/repository";
+import * as automationRepo from "../../apps/api/src/automation/repository";
 import { validateRuleDefinition } from "../../apps/api/src/automation/validation";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { automationTable } from "../../apps/api/src/database/schema";
+import { kbArticleTable } from "../../apps/api/src/database/schema-p5-kb";
+import { projectPageTable } from "../../apps/api/src/database/schema-p5-pages";
+import { reportExportTable } from "../../apps/api/src/database/schema-p5-reports";
+import * as kbRepo from "../../apps/api/src/kb/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { registeredJobCatalog } from "../../apps/api/src/scheduler";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
@@ -676,4 +690,224 @@ describe("clean-install seed on a disposable migrated database", () => {
       expect(response.status, account.email).toBe(200);
     }
   });
+});
+
+describe("partial-failure recovery on a disposable migrated database", () => {
+  it("resumes unfinished seed automations and KB articles from pre-written credentials while still refusing deliberately disabled or unpublished rows", async () => {
+    await resetTestDatabase({ defaultOffFeatures: false });
+    const recoveryDir = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-g1-recovery-"),
+    );
+    const prevStorageRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    try {
+      await mkdir(path.join(recoveryDir, "storage"), { mode: 0o700 });
+      process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = path.join(
+        recoveryDir,
+        "storage",
+      );
+      await db.transaction(async (tx) => {
+        const org = await ensureInternalOrganisation(tx);
+        await tx.insert(schema.userTable).values({
+          id: "g1-recovery-admin",
+          name: "First administrator",
+          email: "first-recovery-admin@example.test",
+          role: "admin",
+          emailVerified: true,
+          twoFactorEnabled: true,
+        });
+        await tx.insert(schema.personTable).values({
+          id: "g1-recovery-admin-person",
+          userId: "g1-recovery-admin",
+          organisationId: org.id,
+          side: "staff",
+        });
+        await tx.insert(schema.twoFactorTable).values({
+          id: "g1-recovery-admin-factor",
+          userId: "g1-recovery-admin",
+          secret: randomBytes(32).toString("hex"),
+          backupCodes: randomBytes(32).toString("hex"),
+          verified: true,
+        });
+        await finalizeVerifiedFirstUserSetup(tx, "g1-recovery-admin");
+        await tx.insert(schema.instancePluginConfigTable).values({
+          id: "g1-recovery-password-plugin",
+          pluginId: "auth.password",
+          instanceKey: "default",
+          displayName: "Password",
+          enabled: true,
+          config: {},
+          scope: "instance",
+          portalScope: "both",
+          configVersion: 1,
+        });
+      });
+
+      const recoveryCredsPath = path.join(
+        recoveryDir,
+        "prewritten-credentials.json",
+      );
+      const generatedAccounts = UAT_ACCOUNTS.map((account) => ({
+        email: account.email,
+        password: randomBytes(24).toString("base64url"),
+        role: account.roleLabel,
+        name: account.name,
+      }));
+      await writeFile(
+        recoveryCredsPath,
+        `${JSON.stringify({ accounts: generatedAccounts }, null, 2)}\n`,
+        { mode: 0o600 },
+      );
+
+      const argv = [
+        "node",
+        "seed-uat",
+        "--uat",
+        "--credentials-file",
+        recoveryCredsPath,
+      ];
+
+      // 1. Failure after createAutomation and before setAutomationEnabled commits disabled v1 row.
+      const enableSpy = vi
+        .spyOn(automationRepo, "setAutomationEnabled")
+        .mockRejectedValueOnce(new Error("simulated enable failure"));
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        "simulated enable failure",
+      );
+      enableSpy.mockRestore();
+
+      const rulesAfterEnableFail = await db
+        .select()
+        .from(automationTable)
+        .where(eq(automationTable.workspaceId, "uat-ws"));
+      expect(rulesAfterEnableFail).toHaveLength(1);
+      expect(rulesAfterEnableFail[0]?.enabled).toBe(false);
+      expect(rulesAfterEnableFail[0]?.version).toBe(1);
+
+      // 2. Resume completes automations, then fails during KB publish leaving an unpublished article.
+      const originalTransition = kbRepo.transitionArticle;
+      let injectedPublishFail = false;
+      const transitionSpy = vi
+        .spyOn(kbRepo, "transitionArticle")
+        .mockImplementation(async (input) => {
+          if (!injectedPublishFail && input.action === "publish") {
+            injectedPublishFail = true;
+            throw new Error("simulated publish failure");
+          }
+          return originalTransition(input);
+        });
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        "simulated publish failure",
+      );
+      transitionSpy.mockRestore();
+
+      const rulesAfterSecondRun = await db
+        .select()
+        .from(automationTable)
+        .where(eq(automationTable.workspaceId, "uat-ws"));
+      expect(rulesAfterSecondRun).toHaveLength(G1_AUTOMATIONS.length);
+      for (const rule of rulesAfterSecondRun) {
+        expect(rule.enabled).toBe(true);
+        expect(rule.version).toBe(2);
+      }
+      const articlesAfterPublishFail = await db
+        .select()
+        .from(kbArticleTable)
+        .where(eq(kbArticleTable.workspaceId, "uat-ws"));
+      expect(
+        articlesAfterPublishFail.some((row) => row.publishedVersion === null),
+      ).toBe(true);
+
+      // 3. Third run completes KB publishing, Pages, and G-1 report cleanly with zero password leaks.
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      await runUatSeed(argv, { closePool: false });
+      const loggedOutput = logSpy.mock.calls.flat().join("\n");
+      logSpy.mockRestore();
+      for (const account of generatedAccounts) {
+        expect(loggedOutput).not.toContain(account.password);
+      }
+
+      const finalRules = await db
+        .select()
+        .from(automationTable)
+        .where(eq(automationTable.workspaceId, "uat-ws"));
+      expect(finalRules).toHaveLength(G1_AUTOMATIONS.length);
+      for (const rule of finalRules) expect(rule.enabled).toBe(true);
+
+      const finalArticles = await db
+        .select()
+        .from(kbArticleTable)
+        .where(eq(kbArticleTable.workspaceId, "uat-ws"));
+      expect(finalArticles.length).toBeGreaterThan(0);
+      for (const article of finalArticles) {
+        expect(article.state).toBe("published");
+        expect(article.publishedVersion).toBe(1);
+      }
+
+      const pages = await db
+        .select({ id: projectPageTable.id })
+        .from(projectPageTable)
+        .where(eq(projectPageTable.workspaceId, "uat-ws"));
+      expect(pages.length).toBeGreaterThan(0);
+
+      const reports = await db
+        .select({ id: reportExportTable.id })
+        .from(reportExportTable)
+        .where(eq(reportExportTable.id, "uat-report-export"));
+      expect(reports).toHaveLength(1);
+
+      // 4. Deliberately disabled automation or unpublished article must still refuse.
+      const ownerActor = {
+        userId: "uat-user-owner",
+        personId: "uat-person-owner",
+        actorType: "person" as const,
+        apiKeyId: null,
+      };
+      const adminActor = {
+        userId: "uat-user-admin",
+        personId: "uat-person-admin",
+        actorType: "person" as const,
+        apiKeyId: null,
+      };
+      const targetRule = finalRules[0];
+      if (!targetRule) throw new Error("Missing final rule");
+      const disabledRule = await automationRepo.setAutomationEnabled(
+        targetRule.id,
+        false,
+        ownerActor,
+        targetRule.version,
+      );
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        /Seed automation is disabled/,
+      );
+
+      await automationRepo.setAutomationEnabled(
+        targetRule.id,
+        true,
+        ownerActor,
+        disabledRule?.version ?? targetRule.version + 1,
+      );
+
+      const targetArticle = finalArticles[0];
+      if (!targetArticle) throw new Error("Missing final article");
+      await kbRepo.transitionArticle({
+        id: targetArticle.id,
+        workspaceId: "uat-ws",
+        reachableProjectIds: [],
+        version: targetArticle.version,
+        action: "unpublish",
+        actor: adminActor,
+      });
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        /Seed knowledge base article is not published/,
+      );
+    } finally {
+      vi.restoreAllMocks();
+      if (prevStorageRoot === undefined) {
+        delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+      } else {
+        process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = prevStorageRoot;
+      }
+      await rm(recoveryDir, { recursive: true, force: true });
+    }
+  }, 120_000);
 });

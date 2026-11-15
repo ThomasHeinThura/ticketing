@@ -5,6 +5,7 @@ import {
   closeSync,
   existsSync,
   fsyncSync,
+  lstatSync,
   mkdirSync,
   openSync,
   readdirSync,
@@ -15,6 +16,7 @@ import {
 } from "node:fs";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { G1_ACCOUNTS } from "../apps/api/scripts/uat-seed-plan.ts";
 import { assertBackupLocation } from "./local-fresh-location.mjs";
 import {
   acquireDaemonProjectLock,
@@ -253,6 +255,12 @@ function verifyPublicReady(cmd) {
 }
 
 function readValidatedCredentials(credentialsFile) {
+  const info = lstatSync(credentialsFile);
+  if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o077) !== 0) {
+    throw new Error(
+      `Fresh credential artifact ${basename(credentialsFile)} must be a private regular file (mode 0600).`,
+    );
+  }
   const raw = readFileSync(credentialsFile, "utf8");
   let parsed;
   try {
@@ -262,24 +270,27 @@ function readValidatedCredentials(credentialsFile) {
       `Fresh credential artifact ${basename(credentialsFile)} is not valid JSON.`,
     );
   }
-  if (!Array.isArray(parsed?.accounts) || parsed.accounts.length === 0) {
-    throw new Error(
-      `Fresh credential artifact ${basename(credentialsFile)} is missing seeded accounts.`,
-    );
-  }
   if (
-    parsed.accounts.some(
-      (account) =>
-        !account ||
-        typeof account.email !== "string" ||
-        account.email.length === 0 ||
-        typeof account.password !== "string" ||
-        account.password.length === 0,
-    )
+    !Array.isArray(parsed?.accounts) ||
+    parsed.accounts.length !== G1_ACCOUNTS.length
   ) {
     throw new Error(
-      `Fresh credential artifact ${basename(credentialsFile)} has invalid account entries.`,
+      `Fresh credential artifact ${basename(credentialsFile)} must contain exactly the ${G1_ACCOUNTS.length} UAT accounts.`,
     );
+  }
+  for (const expected of G1_ACCOUNTS) {
+    const matching = parsed.accounts.filter(
+      (row) => row && typeof row === "object" && row.email === expected.email,
+    );
+    if (
+      matching.length !== 1 ||
+      typeof matching[0].password !== "string" ||
+      matching[0].password.length < 24
+    ) {
+      throw new Error(
+        `Fresh credential artifact ${basename(credentialsFile)} has missing, duplicate or weak account credentials.`,
+      );
+    }
   }
   return parsed;
 }
@@ -300,6 +311,20 @@ function removeContainerCredentials({ cmd, containerId }) {
   }
 }
 
+function cleanContainerCredentialsAfterError(
+  { cmd, containerId },
+  primaryError,
+) {
+  try {
+    removeContainerCredentials({ cmd, containerId });
+  } catch (cleanupError) {
+    throw new Error(`${primaryError.message} (${cleanupError.message})`, {
+      cause: primaryError,
+    });
+  }
+  throw primaryError;
+}
+
 function restoreContainerCredentials({ cmd, containerId, credentials }) {
   try {
     cmd(
@@ -317,10 +342,7 @@ function restoreContainerCredentials({ cmd, containerId, credentials }) {
       { input: readFileSync(credentials) },
     );
   } catch (error) {
-    try {
-      removeContainerCredentials({ cmd, containerId });
-    } catch {}
-    throw error;
+    cleanContainerCredentialsAfterError({ cmd, containerId }, error);
   }
 }
 
@@ -353,53 +375,41 @@ function ensureHostCredentials({
         `Fresh checkpoint ${checkpoint.stamp} is missing ${basename(credentials)}.`,
       );
     }
-    let valid = false;
     try {
       readValidatedCredentials(credentials);
-      valid = true;
-    } finally {
-      if (!valid) {
-        try {
-          removeContainerCredentials({ cmd, containerId });
-        } catch {}
-      } else {
-        removeContainerCredentials({ cmd, containerId });
-      }
+    } catch (validationError) {
+      cleanContainerCredentialsAfterError(
+        { cmd, containerId },
+        validationError,
+      );
     }
+    removeContainerCredentials({ cmd, containerId });
     return checkpoint;
   }
 
   // Restore any preserved or container-resident credentials before re-running
   // the idempotent UAT seed so passwords never drift on recovery.
   if (existsSync(credentials)) {
-    let valid = false;
     try {
       readValidatedCredentials(credentials);
-      valid = true;
-    } finally {
-      if (!valid) {
-        try {
-          removeContainerCredentials({ cmd, containerId });
-        } catch {}
-      }
+    } catch (validationError) {
+      cleanContainerCredentialsAfterError(
+        { cmd, containerId },
+        validationError,
+      );
     }
     restoreContainerCredentials({ cmd, containerId, credentials });
   } else if (tryRescueContainerCredentials({ cmd, containerId, credentials })) {
-    let valid = false;
     try {
       readValidatedCredentials(credentials);
-      valid = true;
     } catch (validationError) {
       try {
         unlinkSync(credentials);
       } catch {}
-      throw validationError;
-    } finally {
-      if (!valid) {
-        try {
-          removeContainerCredentials({ cmd, containerId });
-        } catch {}
-      }
+      cleanContainerCredentialsAfterError(
+        { cmd, containerId },
+        validationError,
+      );
     }
     restoreContainerCredentials({ cmd, containerId, credentials });
   }
@@ -431,30 +441,40 @@ function ensureHostCredentials({
       copiedThisAttempt = true;
     } catch (copyError) {
       // Leave /tmp/sit-credentials.json intact if host copy did not finish.
-      if (seedError) throw seedError;
+      if (seedError) {
+        throw new Error(`${seedError.message} (${copyError.message})`, {
+          cause: seedError,
+        });
+      }
       throw copyError;
     }
   }
 
-  let validated = false;
   try {
     readValidatedCredentials(credentials);
-    validated = true;
   } catch (validationError) {
     if (copiedThisAttempt) {
       try {
         unlinkSync(credentials);
       } catch {}
     }
-    throw validationError;
-  } finally {
-    if (!validated) {
-      try {
-        removeContainerCredentials({ cmd, containerId });
-      } catch {}
-    } else {
-      removeContainerCredentials({ cmd, containerId });
+    const baseError = seedError
+      ? new Error(`${seedError.message} (${validationError.message})`, {
+          cause: seedError,
+        })
+      : validationError;
+    cleanContainerCredentialsAfterError({ cmd, containerId }, baseError);
+  }
+
+  try {
+    removeContainerCredentials({ cmd, containerId });
+  } catch (cleanupError) {
+    if (seedError) {
+      throw new Error(`${seedError.message} (${cleanupError.message})`, {
+        cause: seedError,
+      });
     }
+    throw cleanupError;
   }
 
   const credentialsSavedAt = clock().toISOString();

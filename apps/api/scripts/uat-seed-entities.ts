@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { and, eq } from "drizzle-orm";
 import { appendAuditLog } from "../src/audit/audit-writer";
 import {
@@ -427,6 +428,16 @@ export async function seedG1Automations() {
   const scheduleAvailable = registeredJobCatalog().some(
     (job) => job.name === "automation-schedule" && job.enabled,
   );
+  const [role] = await db
+    .select()
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.workspaceId, workspaceId),
+        eq(schema.roleTable.key, "owner"),
+      ),
+    );
+  if (!role) throw new Error("Missing automation effective role");
   for (const target of G1_AUTOMATIONS) {
     const validated = validateRuleDefinition(target.definition, {
       scheduleAvailable,
@@ -436,6 +447,14 @@ export async function seedG1Automations() {
         `Invalid seed automation: ${target.name}: ${validated.problems.map((p) => `${p.path}: ${p.message}`).join(", ")}`,
       );
     }
+    const expectedConditions = JSON.parse(
+      JSON.stringify(validated.value.conditions),
+    );
+    const expectedActions = JSON.parse(JSON.stringify(validated.value.actions));
+    const expectedProjectFilter =
+      validated.value.projectFilter === null
+        ? null
+        : JSON.parse(JSON.stringify(validated.value.projectFilter));
     const [existing] = await db
       .select()
       .from(automationTable)
@@ -446,20 +465,37 @@ export async function seedG1Automations() {
         ),
       );
     if (existing) {
-      if (!existing.enabled)
-        throw new Error(`Seed automation is disabled: ${target.name}`);
-      continue;
+      if (
+        existing.projectId !== "uat-proj-support" ||
+        existing.effectiveRoleId !== role.id ||
+        existing.stopProcessing !== false ||
+        existing.trigger !== validated.value.trigger ||
+        (existing.scheduleCron ?? null) !==
+          (validated.value.scheduleCron ?? null) ||
+        !isDeepStrictEqual(
+          existing.projectFilter ?? null,
+          expectedProjectFilter,
+        ) ||
+        !isDeepStrictEqual(existing.conditions, expectedConditions) ||
+        !isDeepStrictEqual(existing.actions, expectedActions)
+      ) {
+        throw new Error(
+          `Seed automation conflicts with existing rule: ${target.name}`,
+        );
+      }
+      if (existing.enabled) continue;
+      if (
+        existing.version === 1 &&
+        existing.flaggedReason === null &&
+        existing.fireCount === 0 &&
+        existing.lastRunAt === null &&
+        existing.createdBy === actor.personId
+      ) {
+        await setAutomationEnabled(existing.id, true, actor, existing.version);
+        continue;
+      }
+      throw new Error(`Seed automation is disabled: ${target.name}`);
     }
-    const [role] = await db
-      .select()
-      .from(schema.roleTable)
-      .where(
-        and(
-          eq(schema.roleTable.workspaceId, workspaceId),
-          eq(schema.roleTable.key, "owner"),
-        ),
-      );
-    if (!role) throw new Error("Missing automation effective role");
     const row = await createAutomation({
       workspaceId,
       projectId: "uat-proj-support",

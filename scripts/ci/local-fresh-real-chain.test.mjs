@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -15,6 +16,7 @@ import {
 import os from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
+import { G1_ACCOUNTS } from "../../apps/api/scripts/uat-seed-plan.ts";
 import { executeFresh } from "../../deploy/local-fresh.mjs";
 import { daemonProjectLockPath } from "../../deploy/local-fresh-lock.mjs";
 import { PROJECT } from "../../deploy/local-fresh-plan.mjs";
@@ -35,10 +37,24 @@ const FAKE_SECRETS = {
   appDbPass: "FAKE_APP_DB_PASS_998877",
   ownerDbPass: "FAKE_OWNER_DB_PASS_112233",
   authSecret: "FAKE_AUTH_SECRET_445566",
-  seedAdminPass: "FAKE_SEED_PASS_776655",
-  seedCustomerPass: "FAKE_SEED_PASS_889900",
+  seedAdminPass: "FAKE_SEED_ADMIN_PASS_77665544",
+  seedCustomerPass: "FAKE_SEED_CUST_PASS_88990011",
   cookieToken: "FAKE_COOKIE_TOKEN_332211",
 };
+
+function makeMockUatCredentials(accounts = G1_ACCOUNTS) {
+  return {
+    accounts: accounts.map((account) => ({
+      email: account.email,
+      password:
+        account.side === "customer"
+          ? FAKE_SECRETS.seedCustomerPass
+          : FAKE_SECRETS.seedAdminPass,
+      role: account.roleLabel,
+      name: account.name,
+    })),
+  };
+}
 
 function writeOctal(buf, offset, length, value) {
   const str = `${value.toString(8).padStart(length - 1, "0")}\0`;
@@ -1338,25 +1354,7 @@ function createRealChainWorld(t) {
         if (c.tmpFiles.has(credDest)) {
           JSON.parse(c.tmpFiles.get(credDest));
         } else {
-          c.tmpFiles.set(
-            credDest,
-            JSON.stringify({
-              accounts: [
-                {
-                  email: "admin@taskdesk.example",
-                  password: FAKE_SECRETS.seedAdminPass,
-                  role: "owner",
-                  side: "agent",
-                },
-                {
-                  email: "requester@acme.example",
-                  password: FAKE_SECRETS.seedCustomerPass,
-                  role: "customer",
-                  side: "customer",
-                },
-              ],
-            }),
-          );
+          c.tmpFiles.set(credDest, JSON.stringify(makeMockUatCredentials()));
         }
         const pgVol = daemon.volumes.get(`${PROJECT}_postgres-data`);
         if (pgVol?.db) {
@@ -2184,22 +2182,7 @@ test("real chain: Stage 2 rescues credentials on seed failure, restores and re-r
   const pc = completeStage1AndSetup(preCommit);
   let preCommitSeedCalls = 0;
   let preCommitSecondCallHadCreds = false;
-  const savedPasswords = {
-    accounts: [
-      {
-        email: "admin@taskdesk.example",
-        password: FAKE_SECRETS.seedAdminPass,
-        role: "owner",
-        side: "agent",
-      },
-      {
-        email: "requester@acme.example",
-        password: FAKE_SECRETS.seedCustomerPass,
-        role: "customer",
-        side: "customer",
-      },
-    ],
-  };
+  const savedPasswords = makeMockUatCredentials();
   preCommit.setHook((bin, argv) => {
     if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
       preCommitSeedCalls += 1;
@@ -2405,18 +2388,21 @@ test("real chain: Stage 2 rescues credentials on seed failure, restores and re-r
       const app = [...badCreds.sitDaemon.containers.values()].find(
         (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
       );
+      const invalidSet = makeMockUatCredentials();
+      invalidSet.accounts[0] = {
+        ...invalidSet.accounts[0],
+        password: "",
+      };
       app.tmpFiles.set(
         argv[argv.indexOf("--credentials-file") + 1],
-        JSON.stringify({
-          accounts: [{ email: "only@email.invalid", password: "" }],
-        }),
+        JSON.stringify(invalidSet),
       );
       return { status: 0, stdout: "" };
     }
   });
   assert.throws(
     () => badCreds.execute({ args: bc.resumeArgs }),
-    /invalid account entries/,
+    /missing, duplicate or weak account credentials/,
   );
   assert.equal(existsSync(join(bc.backupDir, "sit-credentials.json")), false);
   for (const c of badCreds.sitDaemon.containers.values()) {
@@ -2462,6 +2448,141 @@ test("real chain: Stage 2 rescues credentials on seed failure, restores and re-r
     "seeded",
   );
   smokeFail.assertNoSecretsLogged();
+
+  // 7. Subset credential JSON (1 account with strong 24+ char password) is rejected in seeded_awaiting_smoke (Sol L1),
+  // and simultaneous container rm -f failure surfaces both errors (Sol L2).
+  const subsetCreds = createRealChainWorld(t);
+  const sc = completeStage1AndSetup(subsetCreds);
+  let failSmokeSubsetOnce = true;
+  let failRmOnSubset = false;
+  subsetCreds.setHook((bin, argv) => {
+    if (
+      failSmokeSubsetOnce &&
+      bin === "node" &&
+      argv[0] === "scripts/sit/release-smoke.mjs"
+    ) {
+      failSmokeSubsetOnce = false;
+      return { status: 1, stdout: "" };
+    }
+    if (
+      failRmOnSubset &&
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("rm") &&
+      argv.includes("/tmp/sit-credentials.json")
+    ) {
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => subsetCreds.execute({ args: sc.resumeArgs }),
+    /release-smoke\.mjs failed/,
+  );
+  const subsetPath = join(sc.backupDir, "sit-credentials.json");
+  writeFileSync(
+    subsetPath,
+    JSON.stringify({ accounts: [makeMockUatCredentials().accounts[0]] }),
+  );
+  chmodSync(subsetPath, 0o600);
+  failRmOnSubset = true;
+  assert.throws(
+    () => subsetCreds.execute({ args: sc.resumeArgs }),
+    new RegExp(
+      `must contain exactly the ${G1_ACCOUNTS.length} UAT accounts.*Failed to remove temporary sit-credentials\\.json`,
+    ),
+  );
+  subsetCreds.assertNoSecretsLogged();
+
+  // 8. Interrupted restore-creds + container rm -f failure surfaces both errors (Sol L2)
+  const restoreFail = createRealChainWorld(t);
+  const rst = completeStage1AndSetup(restoreFail);
+  let failRestoreSeedOnce = true;
+  let failRestoreRmCombo = false;
+  restoreFail.setHook((bin, argv) => {
+    if (
+      failRestoreSeedOnce &&
+      bin === "docker" &&
+      argv.includes("apps/api/dist/seed-uat.js")
+    ) {
+      failRestoreSeedOnce = false;
+      const app = [...restoreFail.sitDaemon.containers.values()].find(
+        (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+      );
+      app.tmpFiles.set(
+        argv[argv.indexOf("--credentials-file") + 1],
+        JSON.stringify(makeMockUatCredentials()),
+      );
+      return { status: 1, stdout: "" };
+    }
+    if (
+      failRestoreRmCombo &&
+      bin === "docker" &&
+      argv.includes("restore-creds")
+    ) {
+      return { status: 1, stdout: "" };
+    }
+    if (
+      failRestoreRmCombo &&
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("rm") &&
+      argv.includes("/tmp/sit-credentials.json")
+    ) {
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => restoreFail.execute({ args: rst.resumeArgs }),
+    /docker exec failed/,
+  );
+  failRestoreRmCombo = true;
+  assert.throws(
+    () => restoreFail.execute({ args: rst.resumeArgs }),
+    /docker exec failed.*Failed to remove temporary sit-credentials\.json/,
+  );
+  assert.ok(existsSync(join(rst.backupDir, "sit-credentials.json")));
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(rst.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "awaiting_setup",
+  );
+  restoreFail.assertNoSecretsLogged();
+
+  // 9. Seed failure + container rm -f failure surfaces seed error + cleanup error (Opus L1)
+  const seedRmFail = createRealChainWorld(t);
+  const srf = completeStage1AndSetup(seedRmFail);
+  seedRmFail.setHook((bin, argv) => {
+    if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+      const app = [...seedRmFail.sitDaemon.containers.values()].find(
+        (c) => c.Config?.Labels?.["com.docker.compose.service"] === "taskdesk",
+      );
+      app.tmpFiles.set(
+        argv[argv.indexOf("--credentials-file") + 1],
+        JSON.stringify(makeMockUatCredentials()),
+      );
+      return { status: 1, stdout: "" };
+    }
+    if (
+      bin === "docker" &&
+      argv[0] === "exec" &&
+      argv.includes("rm") &&
+      argv.includes("/tmp/sit-credentials.json")
+    ) {
+      return { status: 1, stdout: "" };
+    }
+  });
+  assert.throws(
+    () => seedRmFail.execute({ args: srf.resumeArgs }),
+    /docker exec failed.*Failed to remove temporary sit-credentials\.json/,
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(srf.backupDir, "fresh-setup-pending.json"), "utf8"),
+    ).status,
+    "awaiting_setup",
+  );
+  seedRmFail.assertNoSecretsLogged();
 });
 
 test("real chain: Stage 2 refuses superseded checkpoint, image mismatch, and PostgreSQL generation mismatch", (t) => {
