@@ -94,6 +94,20 @@ describe("AgentNotFound (UX-8)", () => {
     );
   });
 
+  it("offers God Mode home when the unknown address is under /god-mode", async () => {
+    renderUnknownPath("/god-mode/workspaces");
+    expect(
+      await screen.findByRole("link", {
+        name: translate("navigation:sidebar.godMode"),
+      }),
+    ).toHaveAttribute("href", "/god-mode");
+    expect(
+      screen.queryByRole("link", {
+        name: translate("navigation:sidebar.projects"),
+      }),
+    ).toBeNull();
+  });
+
   it("never echoes the requested address", async () => {
     renderUnknownPath("/agent/acme-secret/ref-42");
     await screen.findByTestId("agent-not-found");

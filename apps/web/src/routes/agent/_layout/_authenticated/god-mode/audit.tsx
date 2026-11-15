@@ -186,7 +186,7 @@ function GodModeAuditRoute() {
             </CardContent>
           </Card>
         ) : (
-          <div className="min-w-0 rounded-md border border-border">
+          <div className="min-w-0 overflow-hidden rounded-md border border-border">
             <Table
               scrollLabel={t("common:navigation.auditLog", {
                 defaultValue: "Audit log",
@@ -207,7 +207,7 @@ function GodModeAuditRoute() {
                     <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                       {new Date(row.createdAt).toLocaleString()}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">
+                    <TableCell className="whitespace-nowrap font-mono text-xs">
                       <Badge variant="outline">{row.action}</Badge>
                     </TableCell>
                     <TableCell>

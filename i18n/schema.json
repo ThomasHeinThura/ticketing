@@ -21197,7 +21197,22 @@
 						"create": {
 							"type": "string"
 						},
-						"eventCount": {
+						"eventCount_one": {
+							"type": "string"
+						},
+						"eventCount_zero": {
+							"type": "string"
+						},
+						"eventCount_two": {
+							"type": "string"
+						},
+						"eventCount_few": {
+							"type": "string"
+						},
+						"eventCount_many": {
+							"type": "string"
+						},
+						"eventCount_other": {
 							"type": "string"
 						},
 						"lastDelivery": {
@@ -21226,7 +21241,6 @@
 						"emptyTitle",
 						"emptyDescription",
 						"create",
-						"eventCount",
 						"lastDelivery",
 						"noResponse",
 						"neverDelivered",

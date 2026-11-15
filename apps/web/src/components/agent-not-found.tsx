@@ -1,4 +1,4 @@
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useLocation, useRouter } from "@tanstack/react-router";
 import {
   Button,
   Empty,
@@ -12,6 +12,7 @@ import { Compass } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import { isGodModePath } from "@/lib/god-mode-paths";
 import { routes } from "@/lib/routes";
 
 /**
@@ -23,8 +24,10 @@ import { routes } from "@/lib/routes";
  */
 export function AgentNotFound() {
   const { t } = useTranslation();
+  const location = useLocation();
   const router = useRouter();
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const inGodMode = isGodModePath(location.pathname);
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
@@ -43,8 +46,16 @@ export function AgentNotFound() {
         <EmptyDescription>{t("portal:notFound.description")}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent className="flex-row flex-wrap justify-center">
-        <Button render={<Link to={routes.agentHome.path} />}>
-          {t("navigation:sidebar.projects")}
+        <Button
+          render={
+            <Link
+              to={inGodMode ? routes.godModeHealth.path : routes.agentHome.path}
+            />
+          }
+        >
+          {inGodMode
+            ? t("navigation:sidebar.godMode")
+            : t("navigation:sidebar.projects")}
         </Button>
         <Button variant="outline" onClick={() => router.history.back()}>
           {t("common:states.back")}
