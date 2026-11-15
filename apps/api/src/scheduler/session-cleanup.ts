@@ -2,7 +2,10 @@ import { sql } from "drizzle-orm";
 import db from "../database";
 import { purgeExpiredToolReports } from "../mcp-telemetry/repository";
 import { deleteExpiredPreferenceHandoffs } from "../notification/preference-handoff.repository";
-import { purgeReadNotifications } from "../notification/retention";
+import {
+  purgeNotificationAndOutboxRetention,
+  purgeReadNotifications,
+} from "../notification/retention";
 import { withJobLease } from "./leader-lock";
 import {
   purgeExpiredOutboxReservations,
@@ -21,10 +24,13 @@ import {
  * their window — **the soft-delete purge skips any row whose organisation or person is
  * under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts."
  *
- * Expired sessions, notification reservations, preference handoffs, idempotency keys and soft-deleted work
- * items/projects past their 30-day window (`soft-delete-purge.ts`, hold-aware through the
- * workspace/project organisation and the attached people) are purged here. Still absent, each
- * for a concrete reason:
+ * Expired sessions, notification reservations, preference handoffs, idempotency keys, read
+ * notifications (`NO-17`), 30-day terminal `notification_delivery` rows, empty terminal
+ * `notification_digest` groups, unreferenced terminal `outbox` envelopes (`P-20`, #198, batched
+ * in child-before-parent order and legal-hold aware), and soft-deleted work items/projects past
+ * their 30-day window (`soft-delete-purge.ts`, hold-aware through the workspace/project
+ * organisation and the attached people) are purged here. Still absent, each for a concrete
+ * reason:
  *
  * - **Soft-deleted organisations** — an organisation purge cascades through every workspace and
  *   is not specified beyond `organisation.purge_after`; it is not attempted.
@@ -32,16 +38,11 @@ import {
  *   that was already accepted is not a candidate), so it wants its own reading of
  *   `IP-*` rather than a guess here.
  * - **Idempotency keys** — purged here once past `expires_at` (`deleteExpiredIdempotencyKeys`).
- * - **Notification/event-envelope retention** — read notifications are purged here (`NO-17`,
- *   `notification/retention.ts`); terminal children, digest groups and terminal parent
- *   envelopes are not purged by this job yet.
  * - **Soft-deleted comments** — not purged by this job yet (review-p0 F20 gap).
  *
- * None of this is a silent omission: it is tracked on issue #198, and the exclusion
- * helper below is written so that adding the remaining halves is a matter of giving each one
- * a scope, not of re-deriving the hold rule. Expired reservations are deliberately exempt
- * from holds: they contain only short-lived coordination identifiers, and lease takeover is
- * governed by the lease timestamp before this daily physical cleanup runs.
+ * Expired reservations are deliberately exempt from holds: they contain only short-lived
+ * coordination identifiers, and lease takeover is governed by the lease timestamp before this
+ * daily physical cleanup runs.
  */
 
 // background-jobs.md's table: `session-cleanup`, cadence daily 03:15, lease TTL 5 minutes.
@@ -151,6 +152,9 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
   let idempotencyKeysDeleted = 0;
   let requestRateCountersDeleted = 0;
   let mcpToolReportsDeleted = 0;
+  let notificationDeliveriesPurged = 0;
+  let notificationDigestsPurged = 0;
+  let outboxEventsPurged = 0;
 
   try {
     const outcome = await withJobLease(
@@ -173,6 +177,15 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
         }
         try {
           readNotificationsPurged = await purgeReadNotifications();
+        } catch {
+          retentionFailed = true;
+        }
+        try {
+          const operational = await purgeNotificationAndOutboxRetention();
+          notificationDeliveriesPurged =
+            operational.notificationDeliveriesPurged;
+          notificationDigestsPurged = operational.notificationDigestsPurged;
+          outboxEventsPurged = operational.outboxEventsPurged;
         } catch {
           retentionFailed = true;
         }
@@ -209,6 +222,9 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
         outcome.notificationReservationsDeleted +
         outcome.notificationPreferenceHandoffsDeleted +
         (outcome.readNotificationsPurged ?? 0) +
+        notificationDeliveriesPurged +
+        notificationDigestsPurged +
+        outboxEventsPurged +
         idempotencyKeysDeleted +
         requestRateCountersDeleted +
         mcpToolReportsDeleted +

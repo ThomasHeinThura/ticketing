@@ -50,6 +50,10 @@ import {
 } from "./auth/portal-sign-in-refusal";
 import { AUTH_RATE_LIMIT } from "./auth/rate-limit-rules";
 import {
+  createAuthRateLimitStorage,
+  initializeAuthRateLimitMode,
+} from "./auth/rate-limit-storage";
+import {
   countAuthUsers,
   countAuthUsersForExecutor,
   finalizeVerifiedFirstUserSetup,
@@ -841,6 +845,7 @@ function createAuth(
       // primitive. Identity first, then the limit.
       ...AUTH_RATE_LIMIT,
       customRules: { ...AUTH_RATE_LIMIT.customRules },
+      customStorage: createAuthRateLimitStorage(portal),
     },
     databaseHooks: {
       session: {
@@ -1843,6 +1848,7 @@ export async function reloadAuthConfiguration(): Promise<boolean> {
 
 /** Initial load and documented 10-second database fallback for replicas. */
 export async function startAuthConfigRuntime(): Promise<void> {
+  initializeAuthRateLimitMode();
   await reloadAuthConfiguration();
   if (authConfigPoller) return;
   authConfigPoller = setInterval(() => {
