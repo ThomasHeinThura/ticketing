@@ -3931,7 +3931,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Viste"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3951,7 +3952,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Le richieste di approvazione del team di supporto vengono visualizzate qui."
+			"emptyDescription": "Le richieste di approvazione del team di supporto vengono visualizzate qui.",
+			"state": {
+				"pending": "In attesa",
+				"approved": "Approvata",
+				"rejected": "Rifiutata",
+				"expired": "Scaduta",
+				"withdrawn": "Ritirata"
+			}
 		},
 		"unavailable": {
 			"title": "Portale clienti non disponibile",

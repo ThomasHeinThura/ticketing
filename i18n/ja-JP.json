@@ -3903,7 +3903,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "表示"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3923,7 +3924,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "サポートチームからの承認リクエストがここに表示されます。"
+			"emptyDescription": "サポートチームからの承認リクエストがここに表示されます。",
+			"state": {
+				"pending": "承認待ち",
+				"approved": "承認済み",
+				"rejected": "却下",
+				"expired": "期限切れ",
+				"withdrawn": "取り下げ済み"
+			}
 		},
 		"unavailable": {
 			"title": "カスタマーポータルは利用できません",

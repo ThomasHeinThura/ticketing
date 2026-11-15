@@ -3903,7 +3903,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Chế độ xem"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3923,7 +3924,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Các yêu cầu phê duyệt từ nhóm hỗ trợ sẽ xuất hiện tại đây."
+			"emptyDescription": "Các yêu cầu phê duyệt từ nhóm hỗ trợ sẽ xuất hiện tại đây.",
+			"state": {
+				"pending": "Đang chờ",
+				"approved": "Đã phê duyệt",
+				"rejected": "Đã từ chối",
+				"expired": "Đã hết hạn",
+				"withdrawn": "Đã rút lại"
+			}
 		},
 		"unavailable": {
 			"title": "Cổng thông tin khách hàng không khả dụng",

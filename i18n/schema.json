@@ -16031,6 +16031,9 @@
 						},
 						"backlogMore": {
 							"type": "string"
+						},
+						"viewLabel": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -16063,7 +16066,8 @@
 						"backlogItem",
 						"reorder",
 						"backlogPagination",
-						"backlogMore"
+						"backlogMore",
+						"viewLabel"
 					]
 				},
 				"approvals": {
@@ -16123,6 +16127,34 @@
 						},
 						"emptyDescription": {
 							"type": "string"
+						},
+						"state": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"pending": {
+									"type": "string"
+								},
+								"approved": {
+									"type": "string"
+								},
+								"rejected": {
+									"type": "string"
+								},
+								"expired": {
+									"type": "string"
+								},
+								"withdrawn": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"pending",
+								"approved",
+								"rejected",
+								"expired",
+								"withdrawn"
+							]
 						}
 					},
 					"required": [
@@ -16143,7 +16175,8 @@
 						"note",
 						"approve",
 						"reject",
-						"emptyDescription"
+						"emptyDescription",
+						"state"
 					]
 				},
 				"unavailable": {

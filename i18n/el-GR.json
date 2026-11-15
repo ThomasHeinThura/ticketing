@@ -3917,7 +3917,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Προβολές"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3937,7 +3938,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Τα αιτήματα έγκρισης από την ομάδα υποστήριξης εμφανίζονται εδώ."
+			"emptyDescription": "Τα αιτήματα έγκρισης από την ομάδα υποστήριξης εμφανίζονται εδώ.",
+			"state": {
+				"pending": "Σε εκκρεμότητα",
+				"approved": "Εγκρίθηκε",
+				"rejected": "Απορρίφθηκε",
+				"expired": "Έληξε",
+				"withdrawn": "Αποσύρθηκε"
+			}
 		},
 		"unavailable": {
 			"title": "Η πύλη πελατών δεν είναι διαθέσιμη",

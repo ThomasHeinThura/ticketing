@@ -60,7 +60,7 @@ describe("PortalCaseTable", () => {
     render(
       <PortalCaseTable
         caption="Outstanding requests"
-        columns={["project", "created"]}
+        columns={["project", "created", "people"]}
         cases={[
           base,
           {
@@ -78,6 +78,7 @@ describe("PortalCaseTable", () => {
           {
             ...base,
             ref: "SUB-9",
+            customerStatus: "received",
             createdBy: { name: null, isYou: false },
             isRequester: false,
           },
@@ -105,7 +106,13 @@ describe("PortalCaseTable", () => {
     // Severity and status render in their columns and again under the title for narrow frames,
     // where CSS shows exactly one of the two (jsdom applies no container queries).
     expect(screen.getAllByText("Urgent")).toHaveLength(4);
-    expect(screen.getAllByText("We need more from you")).toHaveLength(4);
+    expect(screen.getAllByText("We need more from you")).toHaveLength(2);
+    // CP-2 / DS-04: In progress uses an active non-grey tone, distinct from Received.
+    const inProgressBadge = screen.getAllByText("In progress")[0];
+    const receivedBadge = screen.getAllByText("Received")[0];
+    expect(inProgressBadge.className).toContain("bg-info/8");
+    expect(inProgressBadge.className).not.toContain("bg-secondary");
+    expect(receivedBadge.className).not.toBe(inProgressBadge.className);
     expect(screen.getByText("You")).toBeVisible();
     expect(screen.getByText("Bob Colleague")).toBeVisible();
     expect(screen.getByText("A colleague")).toBeVisible();
@@ -116,7 +123,10 @@ describe("PortalCaseTable", () => {
       "/requests/ACME-3",
     );
     expect(screen.getAllByText("Incident")).toHaveLength(2);
-    expect(screen.getAllByText("Not set")).toHaveLength(2);
+    // CP-2: an unset severity is a muted dash in its column (named for screen readers) and
+    // nothing at all in the narrow details.
+    expect(screen.getAllByText("Not set")).toHaveLength(1);
+    expect(screen.getByText("Not set")).toHaveClass("sr-only");
     expect(screen.getAllByText("Acme Support")).toHaveLength(2);
     expect(table.textContent?.toLowerCase()).not.toContain("assignee");
   });
@@ -125,7 +135,7 @@ describe("PortalCaseTable", () => {
     render(
       <PortalCaseTable
         caption="Outstanding requests"
-        columns={["project", "created"]}
+        columns={["project", "created", "people"]}
         cases={[base]}
       />,
     );
@@ -170,6 +180,39 @@ describe("PortalCaseTable", () => {
       .closest("span.flex");
     expect(narrowFacts?.closest(".\\@2xl\\:hidden")).not.toBeNull();
     expect(within(details).getByText("We need more from you")).toBeVisible();
+  });
+
+  it("leaves out Project, Requester and Assigned to unless the caller asks for them (CP-2)", () => {
+    render(<PortalCaseTable caption="My requests" cases={[base]} />);
+    const table = screen.getByRole("table", { name: "My requests" });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual(["Updated", "Details", "Severity", "Status"]);
+    expect(screen.queryByText("Your team")).toBeNull();
+    expect(screen.queryByText("You")).toBeNull();
+    expect(screen.queryByText("Acme Support")).toBeNull();
+  });
+
+  it("shows Updated as a compact date with the full time in the title (CP-2)", () => {
+    render(<PortalCaseTable caption="Requests" cases={[base]} />);
+    const times = screen.getAllByText("Oct 21, 2026");
+    // Once in the Updated column, once in the narrow details.
+    expect(times).toHaveLength(2);
+    for (const time of times) {
+      expect(time.closest("time")).toHaveAttribute("dateTime", base.updatedAt);
+      expect(time.closest("time")).toHaveAttribute(
+        "title",
+        new Intl.DateTimeFormat("en-US", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(base.updatedAt)),
+      );
+    }
   });
 
   it("shows the service target under the status and in the narrow details (CP-6)", () => {

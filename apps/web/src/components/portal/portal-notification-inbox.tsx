@@ -9,19 +9,21 @@ import {
   AlertDescription,
   Button,
   Card,
-  CardAction,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  cn,
   Empty,
   EmptyDescription,
   EmptyHeader,
+  LoadingStatus,
+  PageContainer,
+  Skeleton,
   Tabs,
   TabsList,
   TabsTrigger,
   useDelayedPending,
 } from "@taskdesk/ui";
+import { Check, CircleDot } from "lucide-react";
 import { useState } from "react";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 import { formatPortalDateTime } from "@/components/portal/portal-format";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
 import {
@@ -48,8 +50,12 @@ const eventTranslation: Record<PortalNotificationKind, string> = {
   "approval.withdrawn": "notifications.events.approvalWithdrawn",
 };
 
+/**
+ * The row's link: its `after` overlay covers the whole row, so the row is the click target while
+ * the read toggle sits above it (`relative z-10`). The link and read toggle keep their own visible keyboard focus.
+ */
 const linkClassName =
-  "hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring";
+  "min-w-0 break-words after:absolute after:inset-0 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring";
 
 export function PortalNotificationInbox({
   filter: controlledFilter,
@@ -104,109 +110,134 @@ export function PortalNotificationInbox({
   const unreadCount = inbox.data?.pages[0]?.unreadCount ?? 0;
 
   return (
-    <section
-      aria-labelledby="portal-notifications-title"
-      className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-4 p-4 sm:p-6"
-    >
-      <PortalPageTitle title={t("notifications.title")} />
-      <header className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1
-            id="portal-notifications-title"
-            className="text-2xl font-semibold"
-          >
-            {t("notifications.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground" aria-live="polite">
-            {t("notifications.unreadCount", { count: unreadCount })}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          disabled={unreadCount === 0 || updateAll.isPending}
-          onClick={() => updateAll.mutate()}
-        >
-          {t("notifications.markAllRead")}
-        </Button>
-      </header>
-
-      <Tabs
-        value={filter}
-        onValueChange={(value) => setFilter(value as PortalNotificationFilter)}
+    <PageContainer scroll={false} gutter="responsive" width="4xl">
+      <section
+        aria-labelledby="portal-notifications-title"
+        className="flex min-w-0 flex-col gap-4"
       >
-        <TabsList className="bg-sidebar w-max max-w-full gap-2 overflow-x-auto">
-          <TabsTrigger value="all">{t("notifications.filterAll")}</TabsTrigger>
-          <TabsTrigger value="unread">
-            {t("notifications.filterUnread")}
-          </TabsTrigger>
-          <TabsTrigger value="mentions">
-            {t("notifications.filterMentions")}
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+        <PortalPageTitle title={t("notifications.title")} />
+        <header className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1
+              id="portal-notifications-title"
+              className="text-2xl font-semibold"
+            >
+              {t("notifications.title")}
+            </h1>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {t("notifications.unreadCount", { count: unreadCount })}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            disabled={unreadCount === 0 || updateAll.isPending}
+            onClick={() => updateAll.mutate()}
+          >
+            {t("notifications.markAllRead")}
+          </Button>
+        </header>
 
-      {updateOne.isError || updateAll.isError ? (
-        <Alert variant="error">
-          <AlertDescription>{t("notifications.actionFailed")}</AlertDescription>
-        </Alert>
-      ) : null}
-      {inbox.isError ? (
-        <Alert variant="error">
-          <AlertDescription>{t("notifications.loadFailed")}</AlertDescription>
-        </Alert>
-      ) : null}
-      {loadingView && placeholderVisible ? (
-        <p
-          role="status"
-          className="text-sm text-muted-foreground"
-          style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
+        <Tabs
+          value={filter}
+          onValueChange={(value) =>
+            setFilter(value as PortalNotificationFilter)
+          }
         >
-          {t("common:empty.loading")}
-        </p>
-      ) : null}
-      {!loadingView && !inbox.isError && rows.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyDescription>{t("notifications.empty")}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : null}
+          <TabsList className="bg-sidebar w-max max-w-full gap-2 overflow-x-auto">
+            <TabsTrigger value="all">
+              {t("notifications.filterAll")}
+            </TabsTrigger>
+            <TabsTrigger value="unread">
+              {t("notifications.filterUnread")}
+            </TabsTrigger>
+            <TabsTrigger value="mentions">
+              {t("notifications.filterMentions")}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-      <ol className="flex min-w-0 flex-col gap-3">
-        {!loadingView &&
-          rows.map((notification) => (
-            <PortalNotificationCard
-              key={notification.id}
-              notification={notification}
-              pending={
-                updateOne.isPending &&
-                updateOne.variables?.id === notification.id
-              }
-              onToggleRead={(id) =>
-                updateOne.mutate({ id, unread: notification.isRead })
-              }
-              onOpen={(id) => {
-                if (!notification.isRead) markOpened.mutate(id);
-              }}
-            />
-          ))}
-      </ol>
+        {updateOne.isError || updateAll.isError ? (
+          <Alert variant="error">
+            <AlertDescription>
+              {t("notifications.actionFailed")}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {inbox.isError ? (
+          <Alert variant="error">
+            <AlertDescription>{t("notifications.loadFailed")}</AlertDescription>
+          </Alert>
+        ) : null}
+        {loadingView ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Card className="overflow-hidden">
+              <div className="flex flex-col divide-y divide-border">
+                <div className="p-4">
+                  <Skeleton className="h-9 w-full" />
+                </div>
+                <div className="p-4">
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              </div>
+            </Card>
+          </LoadingStatus>
+        ) : null}
+        {!loadingView && !inbox.isError && rows.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyDescription>{t("notifications.empty")}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : null}
 
-      {inbox.hasNextPage ? (
-        <Button
-          variant="outline"
-          className="self-start"
-          disabled={inbox.isFetchingNextPage}
-          onClick={() => void inbox.fetchNextPage()}
-        >
-          {t("notifications.loadMore")}
-        </Button>
-      ) : null}
-    </section>
+        {!loadingView && rows.length > 0 ? (
+          <Card className="overflow-hidden">
+            <ol className="flex min-w-0 flex-col divide-y divide-border">
+              {rows.map((notification) => (
+                <PortalNotificationRow
+                  key={notification.id}
+                  notification={notification}
+                  pending={
+                    updateOne.isPending &&
+                    updateOne.variables?.id === notification.id
+                  }
+                  onToggleRead={(id) =>
+                    updateOne.mutate({ id, unread: notification.isRead })
+                  }
+                  onOpen={(id) => {
+                    if (!notification.isRead) markOpened.mutate(id);
+                  }}
+                />
+              ))}
+            </ol>
+          </Card>
+        ) : null}
+
+        {inbox.hasNextPage ? (
+          <Button
+            variant="outline"
+            className="self-start"
+            disabled={inbox.isFetchingNextPage}
+            onClick={() => void inbox.fetchNextPage()}
+          >
+            {t("notifications.loadMore")}
+          </Button>
+        ) : null}
+      </section>
+    </PageContainer>
   );
 }
 
-function PortalNotificationCard({
+/**
+ * One compact inbox row (CP-8, P7): an unread dot, the event as the row's link (bold while
+ * unread), the request reference and time on one muted line, and the read toggle as a named
+ * icon button. The API carries no request title (it withholds staff-written text), so the
+ * reference identifies the request.
+ */
+function PortalNotificationRow({
   notification,
   pending,
   onToggleRead,
@@ -219,71 +250,85 @@ function PortalNotificationCard({
 }) {
   const { t, i18n } = usePortalTranslation("portal");
   const locale = i18n?.resolvedLanguage || i18n?.language || undefined;
+  const unread = !notification.isRead;
+  const linkClass = cn(linkClassName, unread ? "font-semibold" : "font-normal");
+  const toggleLabel = notification.isRead
+    ? t("notifications.markUnread")
+    : t("notifications.markRead");
   return (
-    <li>
-      <Card
-        className={notification.isRead ? "opacity-85" : "border-primary/40"}
-      >
-        <CardHeader>
-          <div className="min-w-0">
-            <CardTitle className="text-base">
-              {notification.requestRef ? (
-                <Link
-                  to={
-                    notification.targetKind === "request"
-                      ? routes.portalRequest.path
-                      : routes.portalSubmission.path
-                  }
-                  params={{ ref: notification.requestRef }}
-                  hash={
-                    notification.commentId
-                      ? `comment-${notification.commentId}`
-                      : undefined
-                  }
-                  className={linkClassName}
-                  onClick={() => onOpen(notification.id)}
-                >
-                  {t(eventTranslation[notification.kind])}
-                </Link>
-              ) : (
-                // AP-21: an approval event opens the Approvals screen (AP-19).
-                <Link
-                  to="/approvals"
-                  className={linkClassName}
-                  onClick={() => onOpen(notification.id)}
-                >
-                  {t(eventTranslation[notification.kind])}
-                </Link>
-              )}
-            </CardTitle>
-            <CardDescription>
-              {notification.requestRef ? (
-                <>
-                  {t("notifications.requestReference", {
-                    ref: notification.requestRef,
-                  })}
-                  {" · "}
-                </>
-              ) : null}
-              <time dateTime={notification.createdAt}>
-                {formatPortalDateTime(notification.createdAt, locale)}
-              </time>
-            </CardDescription>
-          </div>
-          <CardAction>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={pending}
-              onClick={() => onToggleRead(notification.id)}
+    <li className="relative flex min-w-0 items-center gap-3 px-4 py-3 transition-colors hover:bg-accent">
+      <span
+        aria-hidden="true"
+        data-slot="portal-notification-dot"
+        className={cn(
+          "size-2 shrink-0 rounded-full",
+          unread ? "bg-primary" : "bg-transparent",
+        )}
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-sm">
+          {notification.requestRef ? (
+            <Link
+              to={
+                notification.targetKind === "request"
+                  ? routes.portalRequest.path
+                  : routes.portalSubmission.path
+              }
+              params={{ ref: notification.requestRef }}
+              hash={
+                notification.commentId
+                  ? `comment-${notification.commentId}`
+                  : undefined
+              }
+              className={linkClass}
+              onClick={() => onOpen(notification.id)}
             >
-              {notification.isRead
-                ? t("notifications.markUnread")
-                : t("notifications.markRead")}
-            </Button>
-          </CardAction>
-        </CardHeader>
-      </Card>
+              {t(eventTranslation[notification.kind])}
+            </Link>
+          ) : (
+            // AP-21: an approval event opens the Approvals screen (AP-19).
+            <Link
+              to="/approvals"
+              className={linkClass}
+              onClick={() => onOpen(notification.id)}
+            >
+              {t(eventTranslation[notification.kind])}
+            </Link>
+          )}
+        </span>
+        <span
+          data-slot="portal-notification-meta"
+          className="truncate text-muted-foreground text-xs"
+        >
+          {notification.requestRef ? (
+            <>
+              {t("notifications.requestReference", {
+                ref: notification.requestRef,
+              })}
+              {" · "}
+            </>
+          ) : null}
+          <time dateTime={notification.createdAt}>
+            {formatPortalDateTime(notification.createdAt, locale)}
+          </time>
+        </span>
+      </div>
+      <ActionTooltip label={toggleLabel}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="relative z-10 shrink-0"
+          aria-label={toggleLabel}
+          disabled={pending}
+          onClick={() => onToggleRead(notification.id)}
+        >
+          {notification.isRead ? (
+            <CircleDot aria-hidden="true" />
+          ) : (
+            <Check aria-hidden="true" />
+          )}
+        </Button>
+      </ActionTooltip>
     </li>
   );
 }

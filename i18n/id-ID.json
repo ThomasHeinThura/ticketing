@@ -3903,7 +3903,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Tampilan"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3923,7 +3924,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Permintaan persetujuan dari tim dukungan muncul di sini."
+			"emptyDescription": "Permintaan persetujuan dari tim dukungan muncul di sini.",
+			"state": {
+				"pending": "Menunggu",
+				"approved": "Disetujui",
+				"rejected": "Ditolak",
+				"expired": "Kedaluwarsa",
+				"withdrawn": "Ditarik"
+			}
 		},
 		"unavailable": {
 			"title": "Portal pelanggan tidak tersedia",

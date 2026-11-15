@@ -4001,7 +4001,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Представления"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -4021,7 +4022,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Здесь отображаются запросы на утверждение от службы поддержки."
+			"emptyDescription": "Здесь отображаются запросы на утверждение от службы поддержки.",
+			"state": {
+				"pending": "Ожидает решения",
+				"approved": "Одобрено",
+				"rejected": "Отклонено",
+				"expired": "Истекло",
+				"withdrawn": "Отозвано"
+			}
 		},
 		"unavailable": {
 			"title": "Портал клиентов недоступен",

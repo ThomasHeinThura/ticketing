@@ -12,6 +12,7 @@ import { createInstance } from "i18next";
 import type { ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 import PortalLayout from "./portal-layout";
 import { portalLazyContent } from "./portal-lazy-content";
 
@@ -321,6 +322,42 @@ describe("portal shell", () => {
       within(menu).getByRole("menuitem", { name: "navigation.settings" }),
     );
     expect(navigate).toHaveBeenCalledWith({ to: "/account" });
+  });
+
+  it("keeps Get help a quiet secondary beside the page's primary action (CP-9)", async () => {
+    renderShell();
+    const help = await screen.findByRole("link", { name: "shell.getHelp" });
+    expect(help.className).not.toMatch(/(^|\s)bg-primary(\s|$)/);
+    expect(help.className).toMatch(/(^|\s)border-input(\s|$)/);
+    // From sm up the theme switch stays in the top bar and the avatar menu has no theme item.
+    expect(
+      screen.getByRole("switch", { name: "shell.theme" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "shell.userMenu.label Ada Customer" }),
+    );
+    await screen.findByRole("menu");
+    expect(screen.queryByRole("menuitem", { name: "shell.theme" })).toBeNull();
+  });
+
+  it("moves the theme switch into the avatar menu on a phone and names the help icon (P6)", async () => {
+    setViewport(390);
+    useUserPreferencesStore.getState().setTheme("dark");
+    renderShell();
+    const help = await screen.findByRole("link", { name: "shell.getHelp" });
+    expect(within(help).getByText("shell.getHelp")).toHaveClass(
+      "max-sm:sr-only",
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("switch", { name: "shell.theme" })).toBeNull(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "shell.userMenu.label Ada Customer" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "shell.theme" }),
+    );
+    expect(useUserPreferencesStore.getState().theme).toBe("light");
   });
 
   it("signs out from the avatar menu and keeps the failure visible", async () => {

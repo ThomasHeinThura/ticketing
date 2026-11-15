@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Alert,
+  AlertDescription,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +39,7 @@ export default function PortalNotificationBell() {
         >
           <Bell className="size-4" aria-hidden="true" />
           {unreadCount > 0 ? (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive-strong px-1 text-[9px] font-semibold leading-none text-destructive-strong-foreground ring-2 ring-card">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive-strong px-1 text-xs font-semibold leading-none text-destructive-strong-foreground ring-2 ring-card">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           ) : null}
@@ -49,12 +51,26 @@ export default function PortalNotificationBell() {
         >
           {t("notifications.inbox")}
         </DropdownMenuItem>
-        <div
-          className="px-2 py-1.5 text-xs text-muted-foreground"
-          aria-live="polite"
-        >
-          {t("notifications.unreadCount", { count: unreadCount })}
-        </div>
+        {inbox.isError ? (
+          <div className="p-1.5">
+            <Alert variant="error">
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span>{t("notifications.loadFailed")}</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void inbox.refetch()}
+                >
+                  {t("common:actions.retry")}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : (
+          <span role="status" aria-live="polite" className="sr-only">
+            {t("notifications.unreadCount", { count: unreadCount })}
+          </span>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

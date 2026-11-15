@@ -3917,7 +3917,8 @@
 			"backlogLoadFailed": "Unable to load backlog {{term_request_other}}. Try again.",
 			"backlogMore": "Load more",
 			"backlogPagination": "Backlog pagination",
-			"reorder": "Reorder"
+			"reorder": "Reorder",
+			"viewLabel": "Weergaven"
 		},
 		"approvals": {
 			"title": "Approvals",
@@ -3937,7 +3938,14 @@
 			"note": "Decision note (required when rejecting)",
 			"approve": "Approve",
 			"reject": "Reject",
-			"emptyDescription": "Goedkeuringsverzoeken van het ondersteuningsteam verschijnen hier."
+			"emptyDescription": "Goedkeuringsverzoeken van het ondersteuningsteam verschijnen hier.",
+			"state": {
+				"pending": "In afwachting",
+				"approved": "Goedgekeurd",
+				"rejected": "Afgewezen",
+				"expired": "Verlopen",
+				"withdrawn": "Ingetrokken"
+			}
 		},
 		"unavailable": {
 			"title": "Klantenportaal niet beschikbaar",

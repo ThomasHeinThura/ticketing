@@ -6287,6 +6287,10 @@ async function installAuthenticatedFixture(page: Page) {
             workItemTitle: "Approve workspace access",
             state: "pending",
             expiresAt: "2026-10-24T12:00:00.000Z",
+            requester: {
+              id: "visual-requester",
+              displayName: "Alex Requester",
+            },
             approverReachLost: false,
           },
         ],
