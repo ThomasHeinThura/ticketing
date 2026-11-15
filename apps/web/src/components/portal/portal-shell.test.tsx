@@ -255,9 +255,14 @@ describe("portal shell", () => {
       "href",
       "/catalogue",
     );
-    expect(
-      screen.getByRole("switch", { name: "shell.theme" }),
-    ).toBeInTheDocument();
+    const themeSwitch = screen.getByRole("switch", { name: "shell.theme" });
+    expect(themeSwitch).toBeInTheDocument();
+    expect(themeSwitch).toHaveAttribute(
+      "aria-description",
+      useUserPreferencesStore.getState().theme === "light"
+        ? "commandPalette.lightTheme"
+        : "commandPalette.darkTheme",
+    );
     fireEvent.change(search, { target: { value: "  vpn access " } });
     fireEvent.submit(search.closest("form") as HTMLFormElement);
     // Not the request-type filter alone: articles, request types and the customer's requests.
@@ -330,9 +335,14 @@ describe("portal shell", () => {
     expect(help.className).not.toMatch(/(^|\s)bg-primary(\s|$)/);
     expect(help.className).toMatch(/(^|\s)border-input(\s|$)/);
     // From sm up the theme switch stays in the top bar and the avatar menu has no theme item.
-    expect(
-      screen.getByRole("switch", { name: "shell.theme" }),
-    ).toBeInTheDocument();
+    const themeSwitch = screen.getByRole("switch", { name: "shell.theme" });
+    expect(themeSwitch).toBeInTheDocument();
+    expect(themeSwitch).toHaveAttribute(
+      "aria-description",
+      useUserPreferencesStore.getState().theme === "light"
+        ? "commandPalette.lightTheme"
+        : "commandPalette.darkTheme",
+    );
     fireEvent.click(
       screen.getByRole("button", { name: "shell.userMenu.label Ada Customer" }),
     );

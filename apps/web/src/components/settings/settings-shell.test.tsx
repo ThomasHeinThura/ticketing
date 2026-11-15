@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   pathname: "/dashboard/settings/account/information",
   projects: [] as Array<{ id: string; slug: string }>,
   useIsMobile: vi.fn((_breakpoint?: number) => true),
+  workspace: { id: "workspace-1" } as { id: string } | undefined,
+  workspaceLoading: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -24,6 +26,8 @@ vi.mock("react-i18next", () => ({
         "navigation:page.settingsWorkspaceTab": "Workspace",
         "navigation:projectList.projectSettings": "Project settings",
         "navigation:sidebar.godMode": "God Mode",
+        "auth:onboarding.noWorkspace.title":
+          "You are not a member of any workspace yet.",
       })[key] ?? key,
   }),
 }));
@@ -32,7 +36,7 @@ vi.mock("@taskdesk/ui", async (importOriginal) => {
   return { ...actual, useIsMobile: mocks.useIsMobile };
 });
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "workspace-1" } }),
+  default: () => ({ data: mocks.workspace, isLoading: mocks.workspaceLoading }),
 }));
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: (
@@ -46,6 +50,8 @@ import { type SettingsScope, SettingsShell } from "./settings-shell";
 
 beforeEach(() => {
   mocks.navigate.mockReset();
+  mocks.workspace = { id: "workspace-1" };
+  mocks.workspaceLoading = false;
   // The skip link's SidebarProvider reads the viewport through matchMedia (absent in jsdom).
   vi.stubGlobal(
     "matchMedia",
@@ -126,6 +132,32 @@ describe("SettingsShell back link (L-03)", () => {
     renderSettings("/dashboard/settings/workspace/general");
     fireEvent.click(screen.getByRole("button", { name: "Back to Workspace" }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/agent" });
+  });
+
+  it("disables Back to Workspace with an explanatory tooltip wrapper when no workspace exists", () => {
+    mocks.workspace = undefined;
+    renderSettings("/god-mode", "instance");
+    const button = screen.getByRole("button", { name: "Back to Workspace" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute(
+      "aria-description",
+      "You are not a member of any workspace yet.",
+    );
+    expect(
+      button.closest(
+        'span.hidden.lg\\:inline-flex[data-slot="tooltip-trigger"]',
+      ),
+    ).not.toBeNull();
+  });
+
+  it("omits the no-workspace tooltip while active workspace membership is still loading", () => {
+    mocks.workspace = undefined;
+    mocks.workspaceLoading = true;
+    renderSettings("/god-mode", "instance");
+    const button = screen.getByRole("button", { name: "Back to Workspace" });
+    expect(button).toBeDisabled();
+    expect(button).not.toHaveAttribute("aria-description");
+    expect(button.closest('[data-slot="tooltip-trigger"]')).toBeNull();
   });
 });
 

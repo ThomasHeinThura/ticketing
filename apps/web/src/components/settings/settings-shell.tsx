@@ -1,11 +1,14 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation } from "@tanstack/react-router";
 import { Button, SkipToMainLink, useIsMobile } from "@taskdesk/ui";
 import { ChevronLeft, PanelLeftIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import PageTitle from "@/components/page-title";
-import { SettingsSidebarProvider } from "@/components/SettingsSidebar";
+import {
+  SettingsBackButton,
+  SettingsSidebarProvider,
+} from "@/components/SettingsSidebar";
 import { SETTINGS_CONTENT_ID } from "@/components/settings/settings-content-id";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -41,12 +44,12 @@ export function SettingsShell({
   scope?: SettingsScope;
 }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const location = useLocation();
   // Matches SettingsSidebar: below lg the settings menu is a sheet, not a column (UX-10).
   const isMobile = useIsMobile(SETTINGS_MENU_SHEET_BREAKPOINT);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
-  const { data: workspace } = useActiveWorkspace();
+  const { data: workspace, isLoading: isWorkspaceLoading } =
+    useActiveWorkspace();
   const resolvedScope = scope ?? settingsScopeFromPath(location.pathname);
   const title = t(scopeTitleKeys[resolvedScope]);
   // Project settings go back to that project's board; the other scopes go back to the workspace.
@@ -112,22 +115,13 @@ export function SettingsShell({
                 <p className="text-lg font-semibold">{title}</p>
               </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={!workspace?.id}
+              <SettingsBackButton
+                workspaceId={workspace?.id}
+                workspaceLoading={Boolean(isWorkspaceLoading)}
+                backToProject={backToProject}
                 className="hidden lg:inline-flex"
-                onClick={() => {
-                  if (!workspace?.id) return;
-                  if (backToProject) navigate({ href: backToProject });
-                  else navigate({ to: "/agent" });
-                }}
-              >
-                <ChevronLeft />
-                {backToProject
-                  ? t("navigation:page.backToProject")
-                  : t("navigation:page.backToWorkspace")}
-              </Button>
+                wrapperClassName="hidden lg:inline-flex"
+              />
             </div>
 
             {/* The settings area's name, not the page's heading: each settings page renders its
@@ -142,6 +136,8 @@ export function SettingsShell({
           <main id="main-content" className="min-h-0 flex-1 overflow-y-auto">
             <SettingsSidebarProvider
               workspaceId={workspace?.id}
+              workspaceLoading={Boolean(isWorkspaceLoading)}
+              backToProject={backToProject}
               menuOpen={settingsMenuOpen}
               setMenuOpen={setSettingsMenuOpen}
             >

@@ -16,15 +16,20 @@ import {
   useMemo,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionTooltip } from "@/components/common/action-tooltip";
 
 type SettingsSidebarContextValue = {
   workspaceId?: string;
+  workspaceLoading?: boolean;
+  backToProject?: string;
   menuOpen: boolean;
   setMenuOpen: (open: boolean) => void;
 };
 
 const SettingsSidebarContext = createContext<SettingsSidebarContextValue>({
   workspaceId: undefined,
+  workspaceLoading: false,
+  backToProject: undefined,
   menuOpen: false,
   setMenuOpen: () => {},
 });
@@ -32,17 +37,27 @@ const SettingsSidebarContext = createContext<SettingsSidebarContextValue>({
 export function SettingsSidebarProvider({
   children,
   workspaceId,
+  workspaceLoading = false,
+  backToProject,
   menuOpen,
   setMenuOpen,
 }: {
   children: ReactNode;
   workspaceId?: string;
+  workspaceLoading?: boolean;
+  backToProject?: string;
   menuOpen: boolean;
   setMenuOpen: (open: boolean) => void;
 }): ReactElement {
   const value = useMemo(
-    () => ({ workspaceId, menuOpen, setMenuOpen }),
-    [workspaceId, menuOpen, setMenuOpen],
+    () => ({
+      workspaceId,
+      workspaceLoading,
+      backToProject,
+      menuOpen,
+      setMenuOpen,
+    }),
+    [workspaceId, workspaceLoading, backToProject, menuOpen, setMenuOpen],
   );
 
   return (
@@ -52,16 +67,73 @@ export function SettingsSidebarProvider({
   );
 }
 
+/**
+ * Returns from settings to the active workspace or project board, or explains via tooltip why the
+ * button is disabled when a zero-workspace instance admin visits God Mode.
+ */
+export function SettingsBackButton({
+  workspaceId,
+  workspaceLoading = false,
+  backToProject,
+  className,
+  wrapperClassName,
+  iconClassName,
+}: {
+  workspaceId?: string;
+  workspaceLoading?: boolean;
+  backToProject?: string;
+  className?: string;
+  wrapperClassName: string;
+  iconClassName?: string;
+}): ReactElement {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  // Avoid flashing the zero-workspace tooltip while active workspace membership is still loading.
+  const disabledReason =
+    workspaceId || workspaceLoading
+      ? undefined
+      : t("auth:onboarding.noWorkspace.title");
+  const button = (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={!workspaceId}
+      aria-description={disabledReason}
+      className={className}
+      onClick={() => {
+        if (!workspaceId) return;
+        if (backToProject) navigate({ href: backToProject });
+        else navigate({ to: "/agent" });
+      }}
+    >
+      <ChevronLeft aria-hidden="true" className={iconClassName} />
+      {backToProject
+        ? t("navigation:page.backToProject")
+        : t("navigation:page.backToWorkspace")}
+    </Button>
+  );
+  if (!disabledReason) return button;
+  // A disabled Button ignores pointer events, so the reason tooltip sits on a wrapper.
+  return (
+    <ActionTooltip label={disabledReason}>
+      <span className={wrapperClassName}>{button}</span>
+    </ActionTooltip>
+  );
+}
+
 export default function SettingsSidebar({
   children,
 }: {
   children: ReactNode;
 }): ReactElement {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { workspaceId, menuOpen, setMenuOpen } = useContext(
-    SettingsSidebarContext,
-  );
+  const {
+    workspaceId,
+    workspaceLoading,
+    backToProject,
+    menuOpen,
+    setMenuOpen,
+  } = useContext(SettingsSidebarContext);
 
   return (
     <>
@@ -81,20 +153,14 @@ export default function SettingsSidebar({
             </SheetDescription>
           </SheetHeader>
           <div className="border-b border-sidebar-border p-2 pr-14">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!workspaceId}
+            <SettingsBackButton
+              workspaceId={workspaceId}
+              workspaceLoading={workspaceLoading}
+              backToProject={backToProject}
               className="w-full justify-start text-sm font-normal"
-              onClick={() => {
-                if (!workspaceId) return;
-
-                navigate({ to: "/agent" });
-              }}
-            >
-              <ChevronLeft aria-hidden="true" className="size-4" />
-              {t("navigation:page.backToWorkspace")}
-            </Button>
+              wrapperClassName="block w-full"
+              iconClassName="size-4"
+            />
           </div>
           {children}
         </SheetPopup>

@@ -32,6 +32,13 @@ import { formatRelativeTime } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { healthVariant } from "./webhook-model";
 
+export function formatWebhookEventCount(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  total: number,
+): string {
+  return t("list.eventCount", { count: total, total });
+}
+
 function WebhookCard({ webhook }: { webhook: Webhook }) {
   const { t } = useTranslation("webhooks");
   return (
@@ -52,7 +59,7 @@ function WebhookCard({ webhook }: { webhook: Webhook }) {
         <CardDescription className="break-all">{webhook.url}</CardDescription>
         <CardAction className="shrink-0 flex-col items-end gap-1 text-right">
           <div className="text-sm font-medium tabular-nums">
-            {t("list.eventCount", { total: webhook.events.length })}
+            {formatWebhookEventCount(t, webhook.events.length)}
           </div>
           <p className="text-xs text-muted-foreground">
             {webhook.lastDeliveryAt

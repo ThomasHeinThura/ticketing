@@ -1,6 +1,7 @@
 import { Label, Switch } from "@taskdesk/ui";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useId, useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
@@ -21,6 +22,7 @@ export function ThemeToggleDropdown({
   /** Accessible name of the switch; callers pass their own translated text. */
   label?: string;
 }) {
+  const { t } = useTranslation("navigation");
   const { theme, setTheme } = useUserPreferencesStore();
   const prefersDark = useSyncExternalStore(
     subscribeToSystemTheme,
@@ -39,6 +41,11 @@ export function ThemeToggleDropdown({
     <div>
       <div className="relative inline-grid h-7 grid-cols-[1fr_1fr] items-center font-medium text-sm">
         <Switch
+          aria-description={
+            checked
+              ? t("commandPalette.lightTheme")
+              : t("commandPalette.darkTheme")
+          }
           checked={checked}
           className="peer absolute inset-0 h-[inherit] w-auto rounded-full bg-input/50 data-checked:bg-input/50 data-unchecked:bg-input/50 [&_[data-slot=switch-thumb]]:h-full [&_[data-slot=switch-thumb]]:w-1/2 [&_[data-slot=switch-thumb]]:rounded-full [&_[data-slot=switch-thumb]]:transition-transform [&_[data-slot=switch-thumb]]:duration-slow [&_[data-slot=switch-thumb]]:ease-out [&_[data-slot=switch-thumb]]:data-checked:translate-x-full [&_[data-slot=switch-thumb]]:rtl:data-checked:-translate-x-full"
           id={id}
