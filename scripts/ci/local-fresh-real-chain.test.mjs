@@ -2583,6 +2583,94 @@ test("real chain: Stage 2 rescues credentials on seed failure, restores and re-r
     "awaiting_setup",
   );
   seedRmFail.assertNoSecretsLogged();
+
+  // 10. Missing/mismatched role or contradictory side rejects in both seeded_awaiting_smoke and awaiting_setup (Sol L1)
+  for (const fieldCase of [
+    {
+      name: "missing role",
+      mutate: () => {
+        const next = makeMockUatCredentials();
+        const { role: _omitted, ...withoutRole } = next.accounts[0];
+        next.accounts[0] = withoutRole;
+        return next;
+      },
+    },
+    {
+      name: "wrong customer role",
+      mutate: () => {
+        const next = makeMockUatCredentials();
+        const custIndex = next.accounts.findIndex((a) =>
+          a.role.startsWith("Customer"),
+        );
+        next.accounts[custIndex] = {
+          ...next.accounts[custIndex],
+          role: "Workspace viewer",
+        };
+        return next;
+      },
+    },
+    {
+      name: "contradictory side",
+      mutate: () => {
+        const next = makeMockUatCredentials();
+        const custIndex = next.accounts.findIndex((a) =>
+          a.role.startsWith("Customer"),
+        );
+        next.accounts[custIndex] = {
+          ...next.accounts[custIndex],
+          side: "staff",
+        };
+        return next;
+      },
+    },
+  ]) {
+    const smokeRoleFail = createRealChainWorld(t);
+    const srfMeta = completeStage1AndSetup(smokeRoleFail);
+    let failSmokeOnce = true;
+    let smokeCalls = 0;
+    smokeRoleFail.setHook((bin, argv) => {
+      if (bin === "node" && argv[0] === "scripts/sit/release-smoke.mjs") {
+        smokeCalls += 1;
+        if (failSmokeOnce) {
+          failSmokeOnce = false;
+          return { status: 1, stdout: "" };
+        }
+      }
+    });
+    assert.throws(
+      () => smokeRoleFail.execute({ args: srfMeta.resumeArgs }),
+      /release-smoke\.mjs failed/,
+    );
+    const metaCredPath = join(srfMeta.backupDir, "sit-credentials.json");
+    writeFileSync(metaCredPath, JSON.stringify(fieldCase.mutate()));
+    chmodSync(metaCredPath, 0o600);
+    assert.throws(
+      () => smokeRoleFail.execute({ args: srfMeta.resumeArgs }),
+      /invalid role or side metadata/,
+      `${fieldCase.name} in seeded_awaiting_smoke must fail closed`,
+    );
+    assert.equal(smokeCalls, 1, `${fieldCase.name} must block smoke retry`);
+    smokeRoleFail.assertNoSecretsLogged();
+
+    const setupRoleFail = createRealChainWorld(t);
+    const setMeta = completeStage1AndSetup(setupRoleFail);
+    let setupSeedCalls = 0;
+    setupRoleFail.setHook((bin, argv) => {
+      if (bin === "docker" && argv.includes("apps/api/dist/seed-uat.js")) {
+        setupSeedCalls += 1;
+      }
+    });
+    const setupCredPath = join(setMeta.backupDir, "sit-credentials.json");
+    writeFileSync(setupCredPath, JSON.stringify(fieldCase.mutate()));
+    chmodSync(setupCredPath, 0o600);
+    assert.throws(
+      () => setupRoleFail.execute({ args: setMeta.resumeArgs }),
+      /invalid role or side metadata/,
+      `${fieldCase.name} in awaiting_setup must fail closed`,
+    );
+    assert.equal(setupSeedCalls, 0, `${fieldCase.name} must block seed`);
+    setupRoleFail.assertNoSecretsLogged();
+  }
 });
 
 test("real chain: Stage 2 refuses superseded checkpoint, image mismatch, and PostgreSQL generation mismatch", (t) => {

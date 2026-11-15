@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { createId } from "@paralleldrive/cuid2";
 import { formatSubmissionReference } from "@taskdesk/domain";
 import {
@@ -37,6 +38,7 @@ import {
   reviewStepEnabled,
   transitionArticle,
 } from "../src/kb/repository";
+import { sanitiseKbBody } from "../src/kb/sanitise";
 import { lockWorkspaceLabelNames } from "../src/label/repository";
 import { enqueueNotificationEvent } from "../src/notification/fanout";
 import { resolveApprovalEventRecipients } from "../src/notification/recipient-resolvers";
@@ -2779,6 +2781,8 @@ async function seedKnowledgeBase(seeded: Seeded) {
   }
   for (const article of KB_ARTICLES) {
     const categoryId = categories.get(article.category) ?? null;
+    const expectedCleaned = sanitiseKbBody(markdownToDoc(article.markdown));
+    const expectedBody = JSON.parse(JSON.stringify(expectedCleaned.doc));
     const [existing] = await db
       .select()
       .from(kbArticleTable)
@@ -2795,9 +2799,13 @@ async function seedKnowledgeBase(seeded: Seeded) {
         existing.publishedAt === null &&
         existing.publishedVersion === null &&
         existing.authorId === personId &&
+        existing.ownerId === personId &&
+        existing.reviewDueAt === null &&
         existing.projectId === null &&
         existing.categoryId === categoryId &&
         existing.customerVisible === article.customerVisible &&
+        existing.bodyText === expectedCleaned.text &&
+        isDeepStrictEqual(existing.body, expectedBody) &&
         ((existing.state === "draft" && existing.version === 1) ||
           (existing.state === "in_review" && existing.version === 2));
       if (!unfinishedSeedArticle)

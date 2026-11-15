@@ -910,4 +910,234 @@ describe("partial-failure recovery on a disposable migrated database", () => {
       await rm(recoveryDir, { recursive: true, force: true });
     }
   }, 120_000);
+
+  it("resumes in_review v2 articles with review step on while refusing custom draft/in_review KB content and conflicting automations", async () => {
+    await resetTestDatabase({ defaultOffFeatures: false });
+    const recoveryDir = await mkdtemp(
+      path.join(os.tmpdir(), "taskdesk-g1-kb-review-"),
+    );
+    const prevStorageRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    try {
+      await mkdir(path.join(recoveryDir, "storage"), { mode: 0o700 });
+      process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = path.join(
+        recoveryDir,
+        "storage",
+      );
+      await db.transaction(async (tx) => {
+        const org = await ensureInternalOrganisation(tx);
+        await tx.insert(schema.userTable).values({
+          id: "g1-kb-recovery-admin",
+          name: "First administrator",
+          email: "first-kb-admin@example.test",
+          role: "admin",
+          emailVerified: true,
+          twoFactorEnabled: true,
+        });
+        await tx.insert(schema.personTable).values({
+          id: "g1-kb-recovery-admin-person",
+          userId: "g1-kb-recovery-admin",
+          organisationId: org.id,
+          side: "staff",
+        });
+        await tx.insert(schema.twoFactorTable).values({
+          id: "g1-kb-recovery-admin-factor",
+          userId: "g1-kb-recovery-admin",
+          secret: randomBytes(32).toString("hex"),
+          backupCodes: randomBytes(32).toString("hex"),
+          verified: true,
+        });
+        await finalizeVerifiedFirstUserSetup(tx, "g1-kb-recovery-admin");
+        await tx.insert(schema.instancePluginConfigTable).values({
+          id: "g1-kb-recovery-password-plugin",
+          pluginId: "auth.password",
+          instanceKey: "default",
+          displayName: "Password",
+          enabled: true,
+          config: {},
+          scope: "instance",
+          portalScope: "both",
+          configVersion: 1,
+        });
+      });
+
+      const recoveryCredsPath = path.join(
+        recoveryDir,
+        "prewritten-credentials.json",
+      );
+      const generatedAccounts = UAT_ACCOUNTS.map((account) => ({
+        email: account.email,
+        password: randomBytes(24).toString("base64url"),
+        role: account.roleLabel,
+        name: account.name,
+      }));
+      await writeFile(
+        recoveryCredsPath,
+        `${JSON.stringify({ accounts: generatedAccounts }, null, 2)}\n`,
+        { mode: 0o600 },
+      );
+
+      const argv = [
+        "node",
+        "seed-uat",
+        "--uat",
+        "--credentials-file",
+        recoveryCredsPath,
+      ];
+
+      // 1. Stop right after core workspace creation by failing automation enable,
+      // then enable KB review step before KB seeding runs.
+      const enableSpy = vi
+        .spyOn(automationRepo, "setAutomationEnabled")
+        .mockRejectedValueOnce(new Error("simulated enable pause"));
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        "simulated enable pause",
+      );
+      enableSpy.mockRestore();
+
+      await db
+        .update(schema.workspaceTable)
+        .set({ kbReviewStepEnabled: true })
+        .where(eq(schema.workspaceTable.id, "uat-ws"));
+
+      // 2. Fail once on KB publish after submit moved the article to in_review v2.
+      const originalTransition = kbRepo.transitionArticle;
+      let injectedPublishFail = false;
+      const transitionSpy = vi
+        .spyOn(kbRepo, "transitionArticle")
+        .mockImplementation(async (input) => {
+          if (!injectedPublishFail && input.action === "publish") {
+            injectedPublishFail = true;
+            throw new Error("simulated publish failure after submit");
+          }
+          return originalTransition(input);
+        });
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        "simulated publish failure after submit",
+      );
+      transitionSpy.mockRestore();
+
+      const articlesInReview = await db
+        .select()
+        .from(kbArticleTable)
+        .where(eq(kbArticleTable.workspaceId, "uat-ws"));
+      const stalledInReview = articlesInReview.find(
+        (row) => row.state === "in_review",
+      );
+      expect(stalledInReview).toBeDefined();
+      expect(stalledInReview?.version).toBe(2);
+      expect(stalledInReview?.publishedVersion).toBeNull();
+
+      // 3. Resume publishes the stalled in_review v2 article cleanly.
+      await runUatSeed(argv, { closePool: false });
+      const publishedArticles = await db
+        .select()
+        .from(kbArticleTable)
+        .where(eq(kbArticleTable.workspaceId, "uat-ws"));
+      for (const article of publishedArticles) {
+        expect(article.state).toBe("published");
+        expect(article.publishedVersion).toBe(1);
+      }
+
+      // 4. Conflicting automation definition refuses resume instead of auto-enabling.
+      const [firstRule] = await db
+        .select()
+        .from(automationTable)
+        .where(eq(automationTable.workspaceId, "uat-ws"));
+      if (!firstRule) throw new Error("Missing seeded rule");
+      await db
+        .update(automationTable)
+        .set({ enabled: false, stopProcessing: true, version: 1 })
+        .where(eq(automationTable.id, firstRule.id));
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        /Seed automation conflicts with existing rule/,
+      );
+      await db
+        .update(automationTable)
+        .set({
+          enabled: true,
+          stopProcessing: false,
+          version: firstRule.version,
+        })
+        .where(eq(automationTable.id, firstRule.id));
+
+      // 5. Same-title custom draft v1 and custom in_review v2 with matching metadata
+      // must both refuse and keep their content/state untouched (Sol M1).
+      const resetPwRow = publishedArticles.find(
+        (row) => row.title === "Reset your password",
+      );
+      if (!resetPwRow) throw new Error("Missing Reset your password article");
+      await db
+        .delete(kbArticleTable)
+        .where(eq(kbArticleTable.id, resetPwRow.id));
+
+      const adminActor = {
+        userId: "uat-user-admin",
+        personId: "uat-person-admin",
+        actorType: "person" as const,
+        apiKeyId: null,
+      };
+      const customDraft = await kbRepo.createArticle({
+        workspaceId: "uat-ws",
+        title: "Reset your password",
+        body: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "CUSTOM UNREVIEWED CONTENT" }],
+            },
+          ],
+        },
+        categoryId: resetPwRow.categoryId,
+        customerVisible: true,
+        actor: adminActor,
+        projectReaches: async () => true,
+      });
+      expect(customDraft.state).toBe("draft");
+      expect(customDraft.version).toBe(1);
+
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        /Seed knowledge base article is not published: Reset your password/,
+      );
+      const [afterDraftAttempt] = await db
+        .select()
+        .from(kbArticleTable)
+        .where(eq(kbArticleTable.id, customDraft.id));
+      expect(afterDraftAttempt?.state).toBe("draft");
+      expect(afterDraftAttempt?.version).toBe(1);
+      expect(afterDraftAttempt?.publishedVersion).toBeNull();
+      expect(afterDraftAttempt?.bodyText).toBe("CUSTOM UNREVIEWED CONTENT");
+
+      const customInReview = await kbRepo.transitionArticle({
+        id: customDraft.id,
+        workspaceId: "uat-ws",
+        reachableProjectIds: [],
+        version: 1,
+        action: "submit",
+        actor: adminActor,
+      });
+      expect(customInReview?.state).toBe("in_review");
+      expect(customInReview?.version).toBe(2);
+
+      await expect(runUatSeed(argv, { closePool: false })).rejects.toThrow(
+        /Seed knowledge base article is not published: Reset your password/,
+      );
+      const [afterReviewAttempt] = await db
+        .select()
+        .from(kbArticleTable)
+        .where(eq(kbArticleTable.id, customDraft.id));
+      expect(afterReviewAttempt?.state).toBe("in_review");
+      expect(afterReviewAttempt?.version).toBe(2);
+      expect(afterReviewAttempt?.publishedVersion).toBeNull();
+      expect(afterReviewAttempt?.bodyText).toBe("CUSTOM UNREVIEWED CONTENT");
+    } finally {
+      vi.restoreAllMocks();
+      if (prevStorageRoot === undefined) {
+        delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+      } else {
+        process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = prevStorageRoot;
+      }
+      await rm(recoveryDir, { recursive: true, force: true });
+    }
+  }, 120_000);
 });

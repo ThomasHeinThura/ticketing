@@ -291,6 +291,14 @@ function readValidatedCredentials(credentialsFile) {
         `Fresh credential artifact ${basename(credentialsFile)} has missing, duplicate or weak account credentials.`,
       );
     }
+    if (
+      matching[0].role !== expected.roleLabel ||
+      (matching[0].side !== undefined && matching[0].side !== expected.side)
+    ) {
+      throw new Error(
+        `Fresh credential artifact ${basename(credentialsFile)} has invalid role or side metadata.`,
+      );
+    }
   }
   return parsed;
 }
