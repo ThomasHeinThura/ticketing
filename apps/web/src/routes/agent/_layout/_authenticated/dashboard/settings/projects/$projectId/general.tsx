@@ -54,7 +54,6 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
-import useProjectStore from "@/store/project.ts";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/projects/$projectId/general",
@@ -329,17 +328,6 @@ function RouteComponent() {
       });
       lastSavedRef.current = next;
       projectForm.reset(next, { keepDirty: false });
-      // The store is fed by the legacy board query, not by this page. If it holds this
-      // project, update it now so nothing keeps using the old key until that query refetches.
-      const { project: boardProject, setProject } = useProjectStore.getState();
-      if (boardProject?.id === project.id)
-        setProject({
-          ...boardProject,
-          name: next.name,
-          slug: next.slug,
-          description: next.description,
-          icon: next.icon,
-        });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["tasks", project.id] }),
         queryClient.invalidateQueries({ queryKey: ["projects"] }),

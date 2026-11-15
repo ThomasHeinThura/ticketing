@@ -14,7 +14,6 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { generateLink } from "@/lib/generate-link";
 import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
-import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
 import TaskContextMenuPresentation from "./task-context-menu-presentation";
@@ -37,22 +36,13 @@ export default function TaskCardContextMenuContent({
 }: TaskCardContextMenuContentProps) {
   const { t } = useTranslation();
   const weekStartsOn = useUserPreferencesStore((state) => state.weekStartsOn);
-  const { project } = useProjectStore();
   const { data: columnsData = [] } = useGetColumns(taskCardContext.projectId);
-  const columns =
-    project?.columns && project.columns.length > 0
-      ? project.columns.map((col) => ({
-          slug: col.id,
-          name: col.name,
-          icon: col.icon,
-          isFinal: col.isFinal,
-        }))
-      : columnsData.map((col) => ({
-          slug: col.slug,
-          name: col.name,
-          icon: col.icon,
-          isFinal: col.isFinal,
-        }));
+  const columns = columnsData.map((col) => ({
+    slug: col.slug,
+    name: col.name,
+    icon: col.icon,
+    isFinal: col.isFinal,
+  }));
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     taskCardContext.worskpaceId,
   );

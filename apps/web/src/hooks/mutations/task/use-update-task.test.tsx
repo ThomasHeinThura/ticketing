@@ -9,10 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import updateTask from "@/fetchers/task/update-task";
 import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
-import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
 import type Task from "@/types/task";
-import { restoreTaskUpdate } from "./restore-task-update";
 import { useUpdateTask } from "./use-update-task";
 
 vi.mock("@/fetchers/task/update-task", () => ({ default: vi.fn() }));
@@ -92,16 +90,14 @@ beforeEach(() => {
     },
   });
   vi.clearAllMocks();
-  useProjectStore.getState().setProject(undefined);
 });
 
 afterEach(() => {
   queryClient.clear();
-  useProjectStore.getState().setProject(undefined);
 });
 
 describe("useUpdateTask conflict recovery", () => {
-  it("reports a 409 once and restores the board from the active query's current data", async () => {
+  it("reports a 409 once and refreshes the active query's current data", async () => {
     const staleTask = task("task-1");
     const currentTask = task("task-1", {
       status: "in-progress",
@@ -111,7 +107,6 @@ describe("useUpdateTask conflict recovery", () => {
     const staleProject = project([staleTask]);
     const currentProject = project([], [currentTask]);
     queryClient.setQueryData(["tasks", staleProject.id], staleProject);
-    useProjectStore.getState().setProject(staleProject);
     vi.mocked(updateTask).mockRejectedValue(
       new TaskUpdateError(409, "Failed to update task"),
     );
@@ -136,86 +131,20 @@ describe("useUpdateTask conflict recovery", () => {
     });
 
     await waitFor(() => {
-      const storedTask = useProjectStore
-        .getState()
-        .project?.columns.flatMap(({ tasks }) => tasks)
-        .find(({ id }) => id === currentTask.id);
-      expect(storedTask).toMatchObject({
-        status: "in-progress",
-        version: 6,
-      });
+      expect(queryClient.getQueryData(["tasks", staleProject.id])).toEqual(
+        currentProject,
+      );
     });
 
     expect(toast.error).toHaveBeenCalledWith("tasks:update.conflict");
     expect(updateTask).toHaveBeenCalledTimes(1);
-    expect(queryClient.getQueryData(["tasks", staleProject.id])).toEqual(
-      currentProject,
-    );
   });
 
-  it("restores only the failed task and preserves later optimistic edits to other rows", () => {
-    const attemptedTask = task("task-1", { status: "to-do" });
-    const laterLocalTask = task("task-2", { title: "Later local edit" });
-    const currentLocalProject = project([attemptedTask, laterLocalTask]);
-    const authoritativeProject = project(
-      [task("task-2")],
-      [task("task-1", { status: "in-progress", version: 6 })],
-    );
-
-    const restored = restoreTaskUpdate(
-      currentLocalProject,
-      authoritativeProject,
-      attemptedTask.id,
-      attemptedTask,
-    );
-
-    expect(restored.columns[1]?.tasks[0]).toMatchObject({
-      id: "task-1",
-      status: "in-progress",
-      version: 6,
-    });
-    expect(restored.columns[0]?.tasks[0]).toMatchObject({
-      id: "task-2",
-      title: "Later local edit",
-    });
-
-    const newerTaskEdit = task("task-1", {
-      title: "A newer local edit",
-      status: "to-do",
-    });
-    const newerLocalProject = project([newerTaskEdit, laterLocalTask]);
-    expect(
-      restoreTaskUpdate(
-        newerLocalProject,
-        authoritativeProject,
-        newerTaskEdit.id,
-        attemptedTask,
-      ),
-    ).toBe(newerLocalProject);
-  });
-
-  it("removes a failed optimistic row missing from the refreshed project", () => {
-    const attemptedTask = task("task-1");
-    const laterLocalTask = task("task-2", { title: "Later local edit" });
-    const localProject = project([attemptedTask, laterLocalTask]);
-    const restored = restoreTaskUpdate(
-      localProject,
-      project([]),
-      attemptedTask.id,
-      attemptedTask,
-    );
-
-    expect(restored).not.toBe(localProject);
-    expect(restored.columns.flatMap(({ tasks }) => tasks)).toEqual([
-      laterLocalTask,
-    ]);
-  });
-
-  it("shows one hook-owned toast for transport failures and removes absent rows", async () => {
+  it("shows one hook-owned toast for transport failures and refreshes the active query", async () => {
     const staleTask = task("task-1");
     const staleProject = project([staleTask]);
+    const emptyProject = project([]);
     queryClient.setQueryData(["tasks", staleProject.id], staleProject);
-    useProjectStore.getState().setProject(staleProject);
     vi.mocked(updateTask).mockRejectedValue(
       new TaskUpdateError(0, "Failed to update task", {
         cause: new TypeError("Network request failed"),
@@ -226,7 +155,7 @@ describe("useUpdateTask conflict recovery", () => {
       () => {
         useQuery({
           queryKey: ["tasks", staleProject.id],
-          queryFn: async () => project([]),
+          queryFn: async () => emptyProject,
         });
         return useUpdateTask();
       },
@@ -240,11 +169,9 @@ describe("useUpdateTask conflict recovery", () => {
     });
 
     await waitFor(() => {
-      expect(
-        useProjectStore
-          .getState()
-          .project?.columns.flatMap(({ tasks }) => tasks),
-      ).toEqual([]);
+      expect(queryClient.getQueryData(["tasks", staleProject.id])).toEqual(
+        emptyProject,
+      );
     });
     expect(toast.error).toHaveBeenCalledTimes(1);
     expect(toast.error).toHaveBeenCalledWith("tasks:update.error");

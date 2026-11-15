@@ -15819,7 +15819,6 @@
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-destructive#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
@@ -15856,17 +15855,6 @@
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/Button[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::hover:text-destructive#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -16161,7 +16149,6 @@
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[0]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-destructive#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
@@ -16198,17 +16185,6 @@
 				"id": "apps/web/src/components/account/notification-preferences-settings.tsx::ReportExportEmailPreference::div[0]/p[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/account/notification-preferences-settings.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/Button[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::hover:text-destructive#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -19770,8 +19746,6 @@
 			"apps/web/src/components/board/board-toolbar.tsx::ActiveFilterChip::div[0]/span[2]::text-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::ActiveFilterChip::div[0]/span[4]::text-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
@@ -20008,28 +19982,6 @@
 				"id": "apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "apps/web/src/components/board/board-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]>bg-background"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]>bg-background"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -22671,8 +22623,6 @@
 			"apps/web/src/components/board/board-toolbar.tsx::ActiveFilterChip::div[0]/span[2]::text-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::ActiveFilterChip::div[0]/span[4]::text-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/calendar/calendar-task-bar.tsx::CalendarTaskBar::ActionTooltip[0]/Button[0]::text-foreground#0",
@@ -22910,28 +22860,6 @@
 				"id": "apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "apps/web/src/components/board/board-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]>bg-background"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[0]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]>bg-background"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -26041,8 +25969,6 @@
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/div[1]/h1[0]::text-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/CheckCircle2[0]::text-foreground#0",
-			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
-			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-actions.tsx::WorkItemActions::div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
@@ -26302,28 +26228,6 @@
 				"id": "apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/CheckCircle2[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/overview/prerequisites-page.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/archive-tasks-modal.tsx:ArchiveTasksModal",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]>bg-card"
-				],
-				"id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/archive-tasks-modal.tsx:ArchiveTasksModal",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]>bg-card"
-				],
-				"id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -26509,8 +26413,6 @@
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/div[1]/h1[0]::text-foreground#0",
 			"apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/h1[0]::text-foreground#0",
 			"apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/CheckCircle2[0]::text-foreground#0",
-			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
-			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/legend[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-actions.tsx::WorkItemActions::div[0]/Button[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-light-list.tsx::LightRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
@@ -26770,28 +26672,6 @@
 				"id": "apps/web/src/components/project/overview/prerequisites-page.tsx::PrerequisitesPage::div[0]/Card[0]/div[0]/CheckCircle2[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/project/overview/prerequisites-page.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/archive-tasks-modal.tsx:ArchiveTasksModal",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]>bg-card"
-				],
-				"id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]/span[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/archive-tasks-modal.tsx:ArchiveTasksModal",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]>bg-card"
-				],
-				"id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -28551,7 +28431,6 @@
 			"apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/CommentCardPresentation[0]/HoverCard[0]/HoverCardContent[0]/a[0]::hover:text-foreground#0",
 			"apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/CommentCardPresentation[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/activity/index.tsx::UserHoverName::HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/p[0]::text-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Button[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbOptionsPresentation::DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]/span[0]::text-foreground#0",
@@ -28680,18 +28559,6 @@
 				"id": "apps/web/src/components/activity/index.tsx::UserHoverName::HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/p[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/activity/index.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -29251,7 +29118,6 @@
 			"apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/CommentCardPresentation[0]/HoverCard[0]/HoverCardContent[0]/a[0]::hover:text-foreground#0",
 			"apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/CommentCardPresentation[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/activity/index.tsx::UserHoverName::HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/p[0]::text-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Button[0]/span[0]::text-foreground#0",
 			"apps/web/src/components/common/header/task-crumb-presentation.tsx::TaskCrumbOptionsPresentation::DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]/span[0]::text-foreground#0",
@@ -29380,18 +29246,6 @@
 				"id": "apps/web/src/components/activity/index.tsx::UserHoverName::HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/p[0]::text-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/activity/index.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -36703,7 +36557,6 @@
 			"apps/web/src/components/agile/module-forecast.tsx::ModuleForecastText::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/module-forecast.tsx::ModuleForecastText::span[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/automation/automation-rules-panel.tsx::AutomationRulesPanel::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
@@ -37581,17 +37434,6 @@
 				"id": "apps/web/src/components/automation/automation-rules-panel.tsx::AutomationRulesPanel::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/automation/automation-rules-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]>bg-background"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -48868,7 +48710,6 @@
 			"apps/web/src/components/agile/module-forecast.tsx::ModuleForecastText::span[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/module-forecast.tsx::ModuleForecastText::span[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/automation/automation-rules-panel.tsx::AutomationRulesPanel::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
@@ -49747,17 +49588,6 @@
 				"id": "apps/web/src/components/automation/automation-rules-panel.tsx::AutomationRulesPanel::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/automation/automation-rules-panel.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]>bg-background"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -62003,7 +61833,6 @@
 			"apps/web/src/components/settings/teams/team-detail.tsx::TeamSettingsCard::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/team-detail.tsx::TeamSettingsCard::Card[0]/CardContent[0]/form[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/terminology-editor.tsx::TerminologyEditor::Card[0]/CardContent[0]/Card[0]/CardContent[0]/div[0]/div[2]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/Field[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/Field[3]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-muted-foreground#0",
@@ -65450,17 +65279,6 @@
 				"id": "apps/web/src/components/settings/terminology-editor.tsx::TerminologyEditor::Card[0]/CardContent[0]/Card[0]/CardContent[0]/div[0]/div[2]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/terminology-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/archive-tasks-modal.tsx:ArchiveTasksModal",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]>bg-card"
-				],
-				"id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -67800,7 +67618,6 @@
 			"apps/web/src/components/settings/teams/team-detail.tsx::TeamSettingsCard::Card[0]/CardContent[0]/form[0]/div[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/teams/team-detail.tsx::TeamSettingsCard::Card[0]/CardContent[0]/form[0]/div[2]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/terminology-editor.tsx::TerminologyEditor::Card[0]/CardContent[0]/Card[0]/CardContent[0]/div[0]/div[2]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/Field[1]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/Field[3]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/sla-policy/sla-policy-editor.tsx::SlaPolicyEditor::div[0]/form[0]/Card[0]/CardContent[0]/fieldset[0]/p[0]::text-muted-foreground#0",
@@ -71247,17 +71064,6 @@
 				"id": "apps/web/src/components/settings/terminology-editor.tsx::TerminologyEditor::Card[0]/CardContent[0]/Card[0]/CardContent[0]/div[0]/div[2]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/terminology-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/shared/modals/archive-tasks-modal.tsx:ArchiveTasksModal",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]>bg-card"
-				],
-				"id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogDescription[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -92290,7 +92096,6 @@
 			"apps/web/src/components/automation/automation-runs-dialog.tsx::RunRow::li[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[4]/DropdownMenuSubContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Button[0]/span[1]::text-muted-foreground#0",
@@ -92939,18 +92744,6 @@
 				"id": "apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[4]/DropdownMenuSubContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/board/board-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -97887,7 +97680,6 @@
 			"apps/web/src/components/automation/automation-runs-dialog.tsx::RunRow::li[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
 			"apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[4]/DropdownMenuSubContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
-			"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/bulk-selection/bulk-toolbar-presentation.tsx::BulkToolbarPresentation::div[0]/Toolbar[0]/ToolbarGroup[0]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Button[0]/span[1]::text-muted-foreground#0",
@@ -98536,18 +98328,6 @@
 				"id": "apps/web/src/components/board/board-toolbar.tsx::BoardToolbar::div[0]/div[0]/div[0]/div[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuSub[4]/DropdownMenuSubContent[0]/DropdownMenuItem[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/board/board-toolbar.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx:BacklogBulkToolbar",
-					"jsx:div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]",
-					"PopoverContent->packages/ui/src/components/popover.tsx:PopoverPopup>bg-popover"
-				],
-				"id": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx::BacklogBulkToolbar::div[0]/Toolbar[0]/ToolbarGroup[1]/Popover[0]/PopoverContent[0]/div[0]/Button[0]::text-muted-foreground#0",
-				"surfaceContext": "imported-opaque-wrapper",
-				"usage": "apps/web/src/components/bulk-selection/backlog-bulk-toolbar.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -103679,12 +103459,6 @@
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/CheckCircle2[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/Circle[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/GripVertical[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/default-comment-visibility-setting.tsx::DefaultCommentVisibilitySetting::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
@@ -104100,72 +103874,6 @@
 				"id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-muted-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/list-view/task-row.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/Button[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/div[0]/CheckCircle2[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/CheckCircle2[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/div[0]/Circle[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/Circle[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/div[0]/span[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/div[0]/span[1]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/GripVertical[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/GripVertical[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -104890,12 +104598,6 @@
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/Fieldset[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/CheckCircle2[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/Circle[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/GripVertical[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/default-comment-visibility-setting.tsx::DefaultCommentVisibilitySetting::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::ProjectMembersSettings::section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]::text-muted-foreground#0",
@@ -105311,72 +105013,6 @@
 				"id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-muted-foreground#0",
 				"surfaceContext": "function-return-property",
 				"usage": "apps/web/src/components/list-view/task-row.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/Button[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/Button[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/div[0]/CheckCircle2[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/CheckCircle2[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/div[0]/Circle[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/Circle[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/div[0]/span[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/div[0]/div[0]/span[1]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/GripVertical[0]>bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/GripVertical[0]::text-muted-foreground#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -112313,37 +111949,6 @@
 		"bg": "--color-primary",
 		"category": "non-text",
 		"minRatio": 3,
-		"themes": ["dark"],
-		"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-primary",
-		"backgroundClass": {
-			"dark": "bg-primary/10"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/div[0]/Archive[0]::text-primary#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/archive-tasks-modal.tsx:ArchiveTasksModal",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/div[0]/Archive[0]>bg-primary/10"
-				],
-				"id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/div[0]/Archive[0]::text-primary#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx"
-			}
-		],
-		"backdropLayers": ["bg-card"]
-	},
-	{
-		"fg": "--color-primary",
-		"bg": "--color-primary",
-		"category": "non-text",
-		"minRatio": 3,
 		"themes": ["light"],
 		"usage": "apps/web/src/components/profile-setup/profile-setup-flow.tsx",
 		"backdrop": "--color-background",
@@ -112396,37 +112001,6 @@
 			}
 		],
 		"backdropLayers": ["bg-background"]
-	},
-	{
-		"fg": "--color-primary",
-		"bg": "--color-primary",
-		"category": "non-text",
-		"minRatio": 3,
-		"themes": ["light"],
-		"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx",
-		"backdrop": "--color-card",
-		"foregroundClass": "text-primary",
-		"backgroundClass": {
-			"light": "bg-primary/10"
-		},
-		"surfaceContext": "nearest-opaque-ancestor",
-		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/div[0]/Archive[0]::text-primary#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-card"],
-				"category": "non-text",
-				"chain": [
-					"apps/web/src/components/shared/modals/archive-tasks-modal.tsx:ArchiveTasksModal",
-					"jsx:Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/div[0]/Archive[0]>bg-primary/10"
-				],
-				"id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/div[0]/Archive[0]::text-primary#0",
-				"surfaceContext": "nearest-opaque-ancestor",
-				"usage": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx"
-			}
-		],
-		"backdropLayers": ["bg-card"]
 	},
 	{
 		"fg": "--color-primary",
@@ -112959,7 +112533,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/column-editor.tsx",
+		"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "text-sidebar-accent-foreground",
 		"backgroundClass": {
@@ -112967,42 +112541,10 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
 			{
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
@@ -113176,7 +112718,7 @@
 		"category": "body",
 		"minRatio": 4.5,
 		"themes": ["light"],
-		"usage": "apps/web/src/components/project/column-editor.tsx",
+		"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx",
 		"backdrop": "--color-popover",
 		"foregroundClass": "text-sidebar-accent-foreground",
 		"backgroundClass": {
@@ -113184,42 +112726,10 @@
 		},
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
-			{
-				"backdropLayers": ["bg-popover"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
-					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
-					"opaque-backdrop:bg-popover"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			},
 			{
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
@@ -113466,72 +112976,6 @@
 	},
 	{
 		"fg": "--color-sidebar-accent-foreground",
-		"bg": "--color-sidebar-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["dark"],
-		"usage": "apps/web/src/components/project/column-editor.tsx",
-		"backdrop": "--color-sidebar",
-		"foregroundClass": "text-sidebar-accent-foreground",
-		"backgroundClass": {
-			"dark": "hover:bg-sidebar-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-sidebar"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
-					"state-backdrop:hover:bg-sidebar-accent/50",
-					"opaque-backdrop:bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			}
-		],
-		"backdropLayers": ["bg-sidebar"]
-	},
-	{
-		"fg": "--color-sidebar-accent-foreground",
-		"bg": "--color-sidebar-accent",
-		"category": "body",
-		"minRatio": 4.5,
-		"themes": ["light"],
-		"usage": "apps/web/src/components/project/column-editor.tsx",
-		"backdrop": "--color-sidebar",
-		"foregroundClass": "text-sidebar-accent-foreground",
-		"backgroundClass": {
-			"light": "hover:bg-sidebar-accent/50"
-		},
-		"surfaceContext": "caller-chain",
-		"occurrenceIds": [
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
-		],
-		"occurrences": [
-			{
-				"backdropLayers": ["bg-sidebar"],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
-					"state-backdrop:hover:bg-sidebar-accent/50",
-					"opaque-backdrop:bg-sidebar"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
-			}
-		],
-		"backdropLayers": ["bg-sidebar"]
-	},
-	{
-		"fg": "--color-sidebar-accent-foreground",
 		"bg": "--color-sidebar",
 		"category": "body",
 		"minRatio": 4.5,
@@ -113545,7 +112989,6 @@
 		"surfaceContext": "same-element",
 		"occurrenceIds": [
 			"apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
@@ -113559,17 +113002,6 @@
 				"id": "apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "apps/web/src/components/nav-projects-sortable.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -113599,7 +113031,6 @@
 		"surfaceContext": "same-element",
 		"occurrenceIds": [
 			"apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
@@ -113613,17 +113044,6 @@
 				"id": "apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "same-element",
 				"usage": "apps/web/src/components/nav-projects-sortable.tsx"
-			},
-			{
-				"backdropLayers": [],
-				"category": "body",
-				"chain": [
-					"apps/web/src/components/project/column-editor.tsx:ColumnEditor",
-					"jsx:div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]"
-				],
-				"id": "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/ul[0]/li[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "apps/web/src/components/project/column-editor.tsx"
 			},
 			{
 				"backdropLayers": [],
