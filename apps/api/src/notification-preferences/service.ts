@@ -1,5 +1,7 @@
 import { HTTPException } from "hono/http-exception";
-import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
+import db from "../database";
+import type { Executor, Transaction } from "../database/executor";
+import * as publicDestination from "../utils/assert-public-destination";
 import {
   deleteWorkspaceProjectsForRule,
   deleteWorkspaceRuleById,
@@ -12,6 +14,7 @@ import {
   insertWorkspaceRule,
   insertWorkspaceRuleProjects,
   listSelectedProjects,
+  lockNotificationPreferenceWrite,
   updateActiveWorkspaceRules,
   updateNotificationPreference,
   updateWorkspaceRule,
@@ -123,8 +126,16 @@ function normalizeSecretInput(
   return normalizeOptionalString(inputValue);
 }
 
-async function assertWorkspaceMembership(userId: string, workspaceId: string) {
-  const membership = await findWorkspaceMembership(userId, workspaceId);
+async function assertWorkspaceMembership(
+  userId: string,
+  workspaceId: string,
+  executor?: Executor,
+) {
+  const membership = await findWorkspaceMembership(
+    userId,
+    workspaceId,
+    executor,
+  );
 
   if (!membership) {
     throw new HTTPException(403, {
@@ -136,6 +147,7 @@ async function assertWorkspaceMembership(userId: string, workspaceId: string) {
 export async function validateProjectSelection(
   workspaceId: string,
   selectedProjectIds: string[],
+  executor?: Executor,
 ) {
   if (selectedProjectIds.length === 0) {
     throw new HTTPException(400, {
@@ -143,7 +155,11 @@ export async function validateProjectSelection(
     });
   }
 
-  const projects = await listSelectedProjects(workspaceId, selectedProjectIds);
+  const projects = await listSelectedProjects(
+    workspaceId,
+    selectedProjectIds,
+    executor,
+  );
 
   if (projects.length !== selectedProjectIds.length) {
     throw new HTTPException(400, {
@@ -224,13 +240,14 @@ export async function getNotificationPreferences(
   };
 }
 
-export async function updateNotificationPreferences(
-  userId: string,
-  emailAddress: string | null,
-  input: UpdateNotificationPreferenceInput,
-): Promise<NotificationPreferenceResponse> {
-  const existing = await findNotificationPreference(userId);
+type ExistingPreferenceRow = Awaited<
+  ReturnType<typeof findNotificationPreference>
+>;
 
+function resolveCandidatePreferenceState(
+  existing: ExistingPreferenceRow,
+  input: UpdateNotificationPreferenceInput,
+) {
   const decryptedExisting = existing
     ? {
         ...existing,
@@ -241,24 +258,32 @@ export async function updateNotificationPreferences(
     : null;
 
   const ntfyServerUrl = normalizeOptionalString(
-    input.ntfyServerUrl ?? decryptedExisting?.ntfyServerUrl,
+    input.ntfyServerUrl === undefined
+      ? decryptedExisting?.ntfyServerUrl
+      : input.ntfyServerUrl,
   );
   const ntfyTopic = normalizeOptionalString(
-    input.ntfyTopic ?? decryptedExisting?.ntfyTopic,
+    input.ntfyTopic === undefined
+      ? decryptedExisting?.ntfyTopic
+      : input.ntfyTopic,
   );
   const ntfyToken = normalizeSecretInput(
     input.ntfyToken,
     decryptedExisting?.ntfyToken,
   );
   const gotifyServerUrl = normalizeOptionalString(
-    input.gotifyServerUrl ?? decryptedExisting?.gotifyServerUrl,
+    input.gotifyServerUrl === undefined
+      ? decryptedExisting?.gotifyServerUrl
+      : input.gotifyServerUrl,
   );
   const gotifyToken = normalizeSecretInput(
     input.gotifyToken,
     decryptedExisting?.gotifyToken,
   );
   const webhookUrl = normalizeOptionalString(
-    input.webhookUrl ?? decryptedExisting?.webhookUrl,
+    input.webhookUrl === undefined
+      ? decryptedExisting?.webhookUrl
+      : input.webhookUrl,
   );
   const webhookSecret = normalizeSecretInput(
     input.webhookSecret,
@@ -274,28 +299,160 @@ export async function updateNotificationPreferences(
   const webhookEnabled =
     input.webhookEnabled ?? decryptedExisting?.webhookEnabled ?? false;
 
+  const shouldValidateNtfy =
+    ntfyEnabled ||
+    input.ntfyServerUrl != null ||
+    input.ntfyTopic != null ||
+    input.ntfyToken != null;
+
+  const shouldValidateGotify =
+    gotifyEnabled || input.gotifyServerUrl != null || input.gotifyToken != null;
+
+  const shouldValidateWebhook =
+    webhookEnabled || input.webhookUrl != null || input.webhookSecret != null;
+
+  return {
+    decryptedExisting,
+    ntfyServerUrl,
+    ntfyTopic,
+    ntfyToken,
+    gotifyServerUrl,
+    gotifyToken,
+    webhookUrl,
+    webhookSecret,
+    emailEnabled,
+    ntfyEnabled,
+    gotifyEnabled,
+    webhookEnabled,
+    shouldValidateNtfy,
+    shouldValidateGotify,
+    shouldValidateWebhook,
+  };
+}
+
+async function probePublicDestinationError(url: string): Promise<Error | null> {
+  try {
+    new URL(url);
+    await publicDestination.assertPublicWebhookDestination(url);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error : new Error("");
+  }
+}
+
+// Run DNS/SSRF validation before taking the transaction advisory lock so slow
+// lookups never pin a connection, while caching pass/fail per URL so the
+// locked transaction still decides against up-to-date committed state.
+async function prevalidateCandidateUrls(
+  existing: ExistingPreferenceRow,
+  emailAddress: string | null,
+  input: UpdateNotificationPreferenceInput,
+): Promise<Map<string, Error | null>> {
+  const resolved = resolveCandidatePreferenceState(existing, input);
+  const cache = new Map<string, Error | null>();
+  if (resolved.emailEnabled && !emailAddress) {
+    return cache;
+  }
+
+  const urlsToCheck = new Set<string>();
+  if (
+    resolved.shouldValidateNtfy &&
+    resolved.ntfyServerUrl &&
+    resolved.ntfyTopic
+  ) {
+    urlsToCheck.add(resolved.ntfyServerUrl);
+  }
+  if (
+    resolved.shouldValidateGotify &&
+    resolved.gotifyServerUrl &&
+    resolved.gotifyToken
+  ) {
+    urlsToCheck.add(resolved.gotifyServerUrl);
+  }
+  if (resolved.shouldValidateWebhook && resolved.webhookUrl) {
+    urlsToCheck.add(resolved.webhookUrl);
+  }
+
+  for (const url of urlsToCheck) {
+    cache.set(url, await probePublicDestinationError(url));
+  }
+  return cache;
+}
+
+async function validatePublicDestinationWithCache(
+  url: string,
+  fallbackMessage: string,
+  urlValidationCache: Map<string, Error | null>,
+): Promise<void> {
+  if (!urlValidationCache.has(url)) {
+    urlValidationCache.set(url, await probePublicDestinationError(url));
+  }
+  const error = urlValidationCache.get(url);
+  if (error) {
+    throw new HTTPException(400, {
+      message: error.message || fallbackMessage,
+    });
+  }
+}
+
+export async function updateNotificationPreferences(
+  userId: string,
+  emailAddress: string | null,
+  input: UpdateNotificationPreferenceInput,
+): Promise<NotificationPreferenceResponse> {
+  const preExisting = await findNotificationPreference(userId);
+  const urlValidationCache = await prevalidateCandidateUrls(
+    preExisting,
+    emailAddress,
+    input,
+  );
+
+  await db.transaction(async (tx) => {
+    // The lock also covers a person's first write, when no row exists to lock.
+    await lockNotificationPreferenceWrite(tx, userId);
+    await saveNotificationPreferencesWithinTransaction(
+      tx,
+      userId,
+      emailAddress,
+      input,
+      urlValidationCache,
+    );
+  });
+  return getNotificationPreferences(userId, emailAddress);
+}
+
+async function saveNotificationPreferencesWithinTransaction(
+  tx: Transaction,
+  userId: string,
+  emailAddress: string | null,
+  input: UpdateNotificationPreferenceInput,
+  urlValidationCache: Map<string, Error | null>,
+): Promise<void> {
+  const existing = await findNotificationPreference(userId, tx);
+  const {
+    decryptedExisting,
+    ntfyServerUrl,
+    ntfyTopic,
+    ntfyToken,
+    gotifyServerUrl,
+    gotifyToken,
+    webhookUrl,
+    webhookSecret,
+    emailEnabled,
+    ntfyEnabled,
+    gotifyEnabled,
+    webhookEnabled,
+    shouldValidateNtfy,
+    shouldValidateGotify,
+    shouldValidateWebhook,
+  } = resolveCandidatePreferenceState(existing, input);
+
   const enabledRuleCascade: WorkspaceRuleChannelState = {
     emailEnabled: false,
     ntfyEnabled: false,
     gotifyEnabled: false,
     webhookEnabled: false,
   };
-
-  const shouldValidateNtfy =
-    ntfyEnabled ||
-    input.ntfyServerUrl !== undefined ||
-    input.ntfyTopic !== undefined ||
-    input.ntfyToken !== undefined;
-
-  const shouldValidateGotify =
-    gotifyEnabled ||
-    input.gotifyServerUrl !== undefined ||
-    input.gotifyToken !== undefined;
-
-  const shouldValidateWebhook =
-    webhookEnabled ||
-    input.webhookUrl !== undefined ||
-    input.webhookSecret !== undefined;
 
   if (emailEnabled && !emailAddress) {
     throw new HTTPException(400, {
@@ -310,15 +467,11 @@ export async function updateNotificationPreferences(
       });
     }
 
-    try {
-      new URL(ntfyServerUrl);
-      await assertPublicWebhookDestination(ntfyServerUrl);
-    } catch (error) {
-      throw new HTTPException(400, {
-        message:
-          error instanceof Error ? error.message : "Invalid ntfy server URL",
-      });
-    }
+    await validatePublicDestinationWithCache(
+      ntfyServerUrl,
+      "Invalid ntfy server URL",
+      urlValidationCache,
+    );
   }
 
   if (shouldValidateGotify) {
@@ -328,15 +481,11 @@ export async function updateNotificationPreferences(
       });
     }
 
-    try {
-      new URL(gotifyServerUrl);
-      await assertPublicWebhookDestination(gotifyServerUrl);
-    } catch (error) {
-      throw new HTTPException(400, {
-        message:
-          error instanceof Error ? error.message : "Invalid Gotify server URL",
-      });
-    }
+    await validatePublicDestinationWithCache(
+      gotifyServerUrl,
+      "Invalid Gotify server URL",
+      urlValidationCache,
+    );
   }
 
   if (shouldValidateWebhook) {
@@ -346,14 +495,11 @@ export async function updateNotificationPreferences(
       });
     }
 
-    try {
-      new URL(webhookUrl);
-      await assertPublicWebhookDestination(webhookUrl);
-    } catch (error) {
-      throw new HTTPException(400, {
-        message: error instanceof Error ? error.message : "Invalid webhook URL",
-      });
-    }
+    await validatePublicDestinationWithCache(
+      webhookUrl,
+      "Invalid webhook URL",
+      urlValidationCache,
+    );
   }
 
   const data = {
@@ -395,9 +541,9 @@ export async function updateNotificationPreferences(
   };
 
   if (existing) {
-    await updateNotificationPreference(userId, data, new Date());
+    await updateNotificationPreference(userId, data, new Date(), tx);
   } else {
-    await insertNotificationPreference(data);
+    await insertNotificationPreference(data, tx);
   }
 
   const ruleCascade: {
@@ -461,10 +607,9 @@ export async function updateNotificationPreferences(
       userId,
       { ...ruleEnableCascade, ...ruleCascade },
       new Date(),
+      tx,
     );
   }
-
-  return getNotificationPreferences(userId, emailAddress);
 }
 
 export async function upsertWorkspaceRule(
@@ -479,7 +624,37 @@ export async function upsertWorkspaceRule(
     await validateProjectSelection(workspaceId, input.selectedProjectIds ?? []);
   }
 
-  const preference = await findNotificationPreference(userId);
+  await db.transaction(async (tx) => {
+    await lockNotificationPreferenceWrite(tx, userId);
+    await saveWorkspaceRuleWithinTransaction(
+      tx,
+      userId,
+      workspaceId,
+      emailAddress,
+      input,
+    );
+  });
+  return getNotificationPreferences(userId, emailAddress);
+}
+
+async function saveWorkspaceRuleWithinTransaction(
+  tx: Transaction,
+  userId: string,
+  workspaceId: string,
+  emailAddress: string | null,
+  input: UpsertWorkspaceRuleInput,
+): Promise<void> {
+  await assertWorkspaceMembership(userId, workspaceId, tx);
+
+  if (input.projectMode === "selected") {
+    await validateProjectSelection(
+      workspaceId,
+      input.selectedProjectIds ?? [],
+      tx,
+    );
+  }
+
+  const preference = await findNotificationPreference(userId, tx);
 
   if (input.emailEnabled && (!preference?.emailEnabled || !emailAddress)) {
     throw new HTTPException(400, {
@@ -518,14 +693,14 @@ export async function upsertWorkspaceRule(
     });
   }
 
-  const existing = await findWorkspaceRule(userId, workspaceId);
+  const existing = await findWorkspaceRule(userId, workspaceId, tx);
 
   let ruleId = existing?.id;
 
   if (existing) {
-    await updateWorkspaceRule(existing.id, input, new Date());
+    await updateWorkspaceRule(existing.id, input, new Date(), tx);
   } else {
-    ruleId = await insertWorkspaceRule(userId, workspaceId, input);
+    ruleId = await insertWorkspaceRule(userId, workspaceId, input, tx);
   }
 
   if (!ruleId) {
@@ -536,17 +711,16 @@ export async function upsertWorkspaceRule(
 
   const workspaceRuleId = ruleId;
 
-  await deleteWorkspaceProjectsForRule(workspaceRuleId);
+  await deleteWorkspaceProjectsForRule(workspaceRuleId, tx);
 
   if (input.projectMode === "selected") {
     await insertWorkspaceRuleProjects(
       workspaceId,
       workspaceRuleId,
       input.selectedProjectIds ?? [],
+      tx,
     );
   }
-
-  return getNotificationPreferences(userId, emailAddress);
 }
 
 export async function deleteWorkspaceRule(
@@ -556,15 +730,20 @@ export async function deleteWorkspaceRule(
 ): Promise<NotificationPreferenceResponse> {
   await assertWorkspaceMembership(userId, workspaceId);
 
-  const existing = await findWorkspaceRule(userId, workspaceId);
+  await db.transaction(async (tx) => {
+    await lockNotificationPreferenceWrite(tx, userId);
+    await assertWorkspaceMembership(userId, workspaceId, tx);
 
-  if (!existing) {
-    throw new HTTPException(404, {
-      message: "Workspace notification rule not found",
-    });
-  }
+    const existing = await findWorkspaceRule(userId, workspaceId, tx);
 
-  await deleteWorkspaceRuleById(existing.id);
+    if (!existing) {
+      throw new HTTPException(404, {
+        message: "Workspace notification rule not found",
+      });
+    }
+
+    await deleteWorkspaceRuleById(existing.id, tx);
+  });
 
   return getNotificationPreferences(userId, emailAddress);
 }
