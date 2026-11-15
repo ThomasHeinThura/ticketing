@@ -12,7 +12,6 @@ import {
 } from "./rate-limit-store";
 import {
   loadApiKeyBurstThreshold,
-  loadApiKeyKind,
   loadMcpWriteCeilingPerMinute,
   recordApiKeyUse,
 } from "./repository";
@@ -82,9 +81,9 @@ export type EnforceApiKeyRequestOptions = {
 export async function enforceApiKeyRequest(
   c: Context,
   keyId: string,
+  key: ApiKeyKind,
   options: EnforceApiKeyRequestOptions,
 ): Promise<ApiKeyKind> {
-  const key = await loadApiKeyKind(keyId);
   const clientIp = clientIpForContext(c);
   const decision = evaluateKeyRequest({
     key,

@@ -1,9 +1,7 @@
 /**
  * AK-4 / MC-10 / MC-14 / MC-22: per-key request limits.
  *
- * Pure limit calculations are shared by the PostgreSQL-backed production store and unit tests.
- * `KeyRateLimiter` is a deterministic test helper only; production enforcement cannot use a
- * process-local map because the API may run on multiple replicas.
+ * Pure limit calculations shared by the PostgreSQL-backed production store and unit tests.
  */
 
 export const DEFAULT_KEY_RATE_LIMIT_PER_MINUTE = 100;
@@ -16,9 +14,6 @@ export const DEFAULT_API_KEY_BURST_THRESHOLD = 300;
 export const MIN_API_KEY_BURST_THRESHOLD = 1;
 export const MAX_API_KEY_BURST_THRESHOLD = 100_000;
 
-const WINDOW_MS = 60_000;
-const MAX_TRACKED_BUCKETS = 10_000;
-
 export type RateLimitClass = "read" | "write" | "bulk";
 export type RateLimitBucket = "total" | "mcp_write" | "mcp_bulk" | "mcp_burst";
 
@@ -26,10 +21,6 @@ export type RateLimitConstraint = {
   bucket: RateLimitBucket;
   limit: number;
 };
-
-export type RateLimitDecision =
-  | { allowed: true; limit: number; remaining: number }
-  | { allowed: false; limit: number; retryAfterSeconds: number };
 
 export type KeyRateLimitConfig = {
   isMcp: boolean;
@@ -85,45 +76,6 @@ export function rateLimitConstraints(
       });
   }
   return constraints;
-}
-
-type Bucket = { count: number; windowStart: number };
-
-export class KeyRateLimiter {
-  private readonly buckets = new Map<string, Bucket>();
-
-  check(
-    keyId: string,
-    requestClass: RateLimitClass,
-    limit: number,
-    now = Date.now(),
-  ): RateLimitDecision {
-    if (this.buckets.size > MAX_TRACKED_BUCKETS) this.prune(now);
-    const id = `${keyId}:${requestClass}`;
-    const bucket = this.buckets.get(id);
-    if (!bucket || now - bucket.windowStart >= WINDOW_MS) {
-      this.buckets.set(id, { count: 1, windowStart: now });
-      return { allowed: true, limit, remaining: Math.max(0, limit - 1) };
-    }
-    if (bucket.count >= limit) {
-      return {
-        allowed: false,
-        limit,
-        retryAfterSeconds: Math.max(
-          1,
-          Math.ceil((bucket.windowStart + WINDOW_MS - now) / 1000),
-        ),
-      };
-    }
-    bucket.count += 1;
-    return { allowed: true, limit, remaining: limit - bucket.count };
-  }
-
-  private prune(now: number): void {
-    for (const [id, bucket] of this.buckets) {
-      if (now - bucket.windowStart >= WINDOW_MS) this.buckets.delete(id);
-    }
-  }
 }
 
 /**

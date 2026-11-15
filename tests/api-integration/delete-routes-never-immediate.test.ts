@@ -20,9 +20,8 @@ import { loadRouterRoutes } from "../permissions/api-app";
  * Deletions the OpenAPI document cannot see are covered separately: the better-auth POST/GET
  * routes (`/api/auth/*`) are enumerated live from `auth.api` and must each appear in
  * AUTH_DESTRUCTIVE_ROUTES with a reason (M1: delete-user erases workspaces and was invisible to
- * this guard). The PATCH /api/task/bulk `delete` operation (410, task row survives) has its
- * runtime assertion in task-target-reach.test.ts ("operation delete answers 410 ... leaves the
- * task row in place"); the contract-level check below only proves the 410 is declared.
+ * this guard). The POST /api/work-items/bulk `delete` operation (202 pending action) has its
+ * runtime assertion in pending-action-bulk-work-item-deletion.test.ts.
  */
 
 const normalise = (key: string) =>
@@ -281,9 +280,9 @@ describe("API integration: no DELETE route deletes immediately", () => {
 
   it("every non-DELETE operation that accepts a delete operation declares 202 or 410, unless allow-listed with a reason", () => {
     // A deletion reachable through POST/PATCH/PUT (PA-1 names "bulk action") is judged like a
-    // DELETE route; PATCH /api/task/bulk used to hard-delete tasks this way.
+    // DELETE route; POST /api/work-items/bulk queues bulk deletions as pending actions.
     expect(deleteOperationRoutes.map((route) => route.key)).toContain(
-      "PATCH /api/task/bulk",
+      "POST /api/work-items/bulk",
     );
     const violations: string[] = [];
     for (const { key, statuses } of deleteOperationRoutes) {

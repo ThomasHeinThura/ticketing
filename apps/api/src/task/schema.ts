@@ -30,23 +30,6 @@ export const listTasksQuery = z.object({
   dueAfter: z.string().optional(),
 });
 
-export const bulkUpdateBody = z.object({
-  taskIds: z.array(z.string()).min(1),
-  operation: z.enum([
-    "updateStatus",
-    "updatePriority",
-    "updateAssignee",
-    "delete",
-    "addLabel",
-    "removeLabel",
-    "updateDueDate",
-  ]),
-  value: z.string().nullable().optional().openapi({
-    description:
-      "The new value for the chosen operation; null clears an assignee or due date. `delete` is retired and answers 410 Gone (use POST /api/work-items/bulk).",
-  }),
-});
-
 export const createTaskBody = z.object({
   title: z.string(),
   description: z.string(),
@@ -93,20 +76,6 @@ export const moveTaskBody = z.object({
   destinationStatus: z.string().optional().openapi({
     description: "Defaults to the destination project's first column.",
   }),
-});
-
-export const importTasksBody = z.object({
-  tasks: z.array(
-    z.object({
-      title: z.string(),
-      description: z.string().optional(),
-      status: z.string(),
-      priority: z.string().optional(),
-      startDate: z.string().nullable().optional(),
-      dueDate: z.string().nullable().optional(),
-      userId: z.string().nullable().optional(),
-    }),
-  ),
 });
 
 export const updateStatusBody = z.object({ status: z.string() });

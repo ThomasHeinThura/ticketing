@@ -75,7 +75,11 @@ vi.mock("../../../apps/api/src/events/outbox", () => ({
   enqueueOutboxEvent: (...args: unknown[]) => mockEnqueueOutbox(...args),
 }));
 
-import deleteLabel from "../../../apps/api/src/label/controllers/delete-label";
+import type { Transaction } from "../../../apps/api/src/database/executor";
+import {
+  deleteLabelInTransaction,
+  publishLabelDeletion,
+} from "../../../apps/api/src/label/controllers/delete-label";
 
 const WORKSPACE_LABEL = {
   id: "label-ws-1",
@@ -164,7 +168,7 @@ function makeDeleteMock(deletedRows: unknown[]) {
   return chain;
 }
 
-describe("deleteLabel", () => {
+describe("deleteLabelInTransaction + publishLabelDeletion", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     txSelectRows.length = 0;
@@ -221,7 +225,13 @@ describe("deleteLabel", () => {
           makeDeleteMock([{ taskId: "task-1" }, { taskId: "task-2" }]),
         );
 
-      await deleteLabel(IDENTITY, "label-ws-1", "user-1");
+      const result = await deleteLabelInTransaction(
+        createMockTxContext() as unknown as Transaction,
+        IDENTITY,
+        WORKSPACE_LABEL,
+        "user-1",
+      );
+      await publishLabelDeletion(result, "user-1");
 
       expectLabelFamilyLocks();
       expect(mockPublishEvent).toHaveBeenCalledTimes(2);
@@ -253,7 +263,13 @@ describe("deleteLabel", () => {
       queueTxSelectRows([WORKSPACE_LABEL], []);
       mockDelete.mockReturnValue(makeDeleteMock([DELETED_WORKSPACE_LABEL]));
 
-      await deleteLabel(IDENTITY, "label-ws-1", "user-1");
+      const result = await deleteLabelInTransaction(
+        createMockTxContext() as unknown as Transaction,
+        IDENTITY,
+        WORKSPACE_LABEL,
+        "user-1",
+      );
+      await publishLabelDeletion(result, "user-1");
 
       expectLabelFamilyLocks();
       expect(mockPublishEvent).not.toHaveBeenCalled();

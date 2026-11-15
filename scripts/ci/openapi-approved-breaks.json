@@ -590,5 +590,37 @@
 		"pr": 1131,
 		"reason": "The second-factor challenge for saving local sign-in settings is bound to the staff sign-up switch value, so a proof cannot be reused for a different switch state.",
 		"decision": "Thomas, owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
+	},
+	{
+		"operation": "PATCH /task/bulk",
+		"rule": "api-path-removed-without-deprecation",
+		"fingerprint": "199f2d290bf5",
+		"pr": 0,
+		"reason": "Retired legacy bulk task endpoint PATCH /api/task/bulk had zero live web, MCP, or integration callers after canonical POST /api/work-items/bulk shipped (including pending-action bulk deletion). Removed together with its dead web fetchers/hooks/toolbars and contract update.",
+		"decision": "Thomas, docs/plan.md section 4 P-19 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: remove dead PATCH /api/task/bulk alongside its retained-constraints.md contract update."
+	},
+	{
+		"operation": "GET /task/export/{projectId}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "bb7c3298488e",
+		"pr": 0,
+		"reason": "Retired legacy JSON task export GET /api/task/export/{projectId} in favour of GET /api/work-items/export; deprecated route now returns 410 Gone with Deprecation/Sunset/Link successor headers after reach, work_item:read capability, and live-project checks.",
+		"decision": "Thomas, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task export to 410 Gone alongside retained-constraints.md update."
+	},
+	{
+		"operation": "POST /task/import/{projectId}",
+		"rule": "request-body-removed",
+		"fingerprint": "cf9a743f446a",
+		"pr": 0,
+		"reason": "Retired legacy JSON task import POST /api/task/import/{projectId} no longer accepts an import body after retirement to 410 Gone in favour of POST /api/instance/imports.",
+		"decision": "Thomas, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task import to 410 Gone alongside retained-constraints.md update."
+	},
+	{
+		"operation": "POST /task/import/{projectId}",
+		"rule": "response-success-status-removed",
+		"fingerprint": "545f3da7ac2f",
+		"pr": 0,
+		"reason": "Retired legacy JSON task import POST /api/task/import/{projectId} in favour of POST /api/instance/imports; deprecated route now returns 410 Gone with Deprecation/Sunset/Link successor headers after reach, work_item:create capability, and live-project checks.",
+		"decision": "Thomas, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task import to 410 Gone alongside retained-constraints.md update."
 	}
 ]

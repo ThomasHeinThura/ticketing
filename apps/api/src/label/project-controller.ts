@@ -4,11 +4,6 @@ import db from "../database";
 import { isUniqueViolation } from "../utils/is-unique-violation";
 import { assertProjectStillLive } from "../work-item/assert-work-item-live";
 import {
-  clearCatalogueLabel,
-  publishCatalogueLabelChanges,
-} from "../work-item/clear-catalogue-label";
-import {
-  deleteProjectLabel,
   findLabelProject,
   insertProjectLabel,
   listProjectLabels,
@@ -83,31 +78,4 @@ export async function editProjectCatalogueLabel(
       });
     throw error;
   }
-}
-
-export async function removeProjectCatalogueLabel(
-  identity: ResolvedIdentity,
-  projectId: string,
-  id: string,
-  actorId: string,
-) {
-  const project = await requireProject(identity, projectId);
-  const result = await db.transaction(async (tx) => {
-    await lockWorkspaceLabelNames(tx, project.workspaceId, []);
-    await assertProjectStillLive(tx, projectId, "Project not found");
-    const label = await lockProjectLabel(identity, projectId, id, tx);
-    if (!label) throw new HTTPException(404, { message: "Label not found" });
-    const changes = await clearCatalogueLabel(
-      tx,
-      project.workspaceId,
-      id,
-      actorId,
-      identity,
-    );
-    const deleted = await deleteProjectLabel(identity, projectId, id, tx);
-    if (!deleted) throw new HTTPException(404, { message: "Label not found" });
-    return { deleted, changes };
-  });
-  await publishCatalogueLabelChanges(result.changes);
-  return result.deleted;
 }

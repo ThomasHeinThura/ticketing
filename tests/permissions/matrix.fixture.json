@@ -14300,40 +14300,6 @@
 				"outOfReach": "404 not_found"
 			}
 		},
-		"PATCH /api/task/bulk": {
-			"instance_admin": {
-				"inReach": "403 forbidden",
-				"outOfReach": "403 forbidden"
-			},
-			"owner": {
-				"inReach": "allow",
-				"outOfReach": "allow"
-			},
-			"admin": {
-				"inReach": "allow",
-				"outOfReach": "allow"
-			},
-			"manager": {
-				"inReach": "allow",
-				"outOfReach": "allow"
-			},
-			"lead": {
-				"inReach": "allow",
-				"outOfReach": "allow"
-			},
-			"member": {
-				"inReach": "allow",
-				"outOfReach": "allow"
-			},
-			"viewer": {
-				"inReach": "allow",
-				"outOfReach": "allow"
-			},
-			"customer": {
-				"inReach": "403 forbidden",
-				"outOfReach": "403 forbidden"
-			}
-		},
 		"PATCH /api/teams/{id}": {
 			"instance_admin": {
 				"inReach": "403 forbidden",

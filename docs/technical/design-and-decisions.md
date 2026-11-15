@@ -3781,3 +3781,7 @@ authority. Resolved age comes from transition activity entering the completed ca
 the existing resolved timestamp belongs to SLA effects. No migration or dependency is needed.
 Scheduled candidates share the existing executor and fail-closed permission/loop checks; sweeps
 use durable cursors and skip missed cron windows. Browser and deployed acceptance remain gates.
+
+### 14 Nov 2026 — Thomas, Decision 20 (P-19, P-15): remove legacy `PATCH /api/task/bulk` and retire `/api/task/export` & `/api/task/import` to 410
+
+Under the whole-repo Ponytail audit approval (Decision 20, rows `P-19` and `P-15`), the unreferenced legacy `PATCH /api/task/bulk` endpoint, its `bulkUpdateTasks` controller, and its `BulkTaskResult` OpenAPI schema are removed, and legacy `GET /api/task/export/{projectId}` and `POST /api/task/import/{projectId}` answer `410 Gone` (after the same reach, permission, and live-project checks) with `Deprecation`/`Sunset`/`Link` headers, removing their controllers and payload/response schemas. Canonical bulk mutations run through `POST /api/work-items/bulk`, CSV exports through `GET /api/work-items/export`, and imports through `POST /api/instance/imports`.

@@ -115,8 +115,7 @@ function literalBody(text) {
 
 /**
  * Resolve a local `const NAME = <expr>;` to the string literal(s) it can hold. Supports a
- * bare literal and a ternary between two literals — the only non-literal shape this
- * codebase's `publishEvent(...)` call sites use (`bulk-update-tasks.ts`'s
+ * bare literal and a ternary between two literals (e.g.
  * `const eventType = assigneeId ? "task.assignee_changed" : "task.unassigned"`). Returns
  * `null` when unresolvable, so the caller can fail closed rather than guess.
  *

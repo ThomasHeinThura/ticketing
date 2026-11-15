@@ -234,23 +234,6 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         () => request(`/task/import/${project.id}`, "post", { tasks: [] }),
       ],
       [
-        "bulk update",
-        () =>
-          request("/task/bulk", "patch", {
-            taskIds: [task.id],
-            operation: "updatePriority",
-            value: "high",
-          }),
-      ],
-      [
-        "bulk update with missing value",
-        () =>
-          request("/task/bulk", "patch", {
-            taskIds: [task.id],
-            operation: "updatePriority",
-          }),
-      ],
-      [
         "full task update",
         () =>
           request(`/task/${task.id}`, "put", {
@@ -613,28 +596,16 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       .set({ deletedAt: null })
       .where(eq(schema.projectTable.id, project.id));
     const liveEmptyResponse = await importEmpty();
-    expect(liveEmptyResponse.status).toBe(200);
-    expect(await liveEmptyResponse.json()).toMatchObject({
-      results: { total: 0, successful: 0, failed: 0, tasks: [] },
-    });
+    expect(liveEmptyResponse.status).toBe(410);
+    expect(liveEmptyResponse.headers.get("deprecation")).toBe("@1790812800");
+    expect(liveEmptyResponse.headers.get("link")).toContain(
+      '</api/instance/imports>; rel="successor-version"',
+    );
     const liveAssigneeResponse = await importOneWithAssignee();
-    expect(liveAssigneeResponse.status).toBe(200);
-    expect(await liveAssigneeResponse.json()).toMatchObject({
-      results: {
-        total: 1,
-        successful: 0,
-        failed: 1,
-        tasks: [
-          {
-            success: false,
-            error: "Assignee is not a member of this workspace",
-          },
-        ],
-      },
-    });
+    expect(liveAssigneeResponse.status).toBe(410);
   });
 
-  it("PR-15: returns per-task import outcomes when archive commits between rows", async () => {
+  it("P-15: returns 410 Gone and writes zero tasks when importing into a live project", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -643,51 +614,21 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
     mockAuthenticatedSession(member.user);
 
-    let archived = false;
-    const eventSpy = vi
-      .spyOn(eventBus, "publishEvent")
-      .mockImplementation(async (eventType) => {
-        if (eventType === "task.created" && !archived) {
-          archived = true;
-          await db
-            .update(schema.projectTable)
-            .set({ archivedAt: new Date() })
-            .where(eq(schema.projectTable.id, project.id));
-        }
-      });
-
-    try {
-      const response = await request(`/task/import/${project.id}`, "post", {
-        tasks: [
-          { title: "Imported before archive", status: "to-do" },
-          { title: "Rejected after archive", status: "to-do" },
-        ],
-      });
-      expect(response.status).toBe(200);
-      expect(await response.json()).toMatchObject({
-        results: {
-          total: 2,
-          successful: 1,
-          failed: 1,
-          tasks: [
-            { success: true, task: { title: "Imported before archive" } },
-            {
-              success: false,
-              error: "Project is no longer available",
-              task: { title: "Rejected after archive" },
-            },
-          ],
-        },
-      });
-      expect(
-        await db
-          .select({ title: schema.taskTable.title })
-          .from(schema.taskTable)
-          .where(eq(schema.taskTable.projectId, project.id)),
-      ).toMatchObject([{ title: "Imported before archive" }]);
-    } finally {
-      eventSpy.mockRestore();
-    }
+    const response = await request(`/task/import/${project.id}`, "post", {
+      tasks: [{ title: "Must not import", status: "to-do" }],
+    });
+    expect(response.status).toBe(410);
+    expect(response.headers.get("deprecation")).toBe("@1790812800");
+    expect(response.headers.get("sunset")).toBeTruthy();
+    expect(response.headers.get("link")).toContain(
+      '</api/instance/imports>; rel="successor-version"',
+    );
+    expect(
+      await db
+        .select({ id: schema.taskTable.id })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.projectId, project.id)),
+    ).toHaveLength(0);
   });
 
   it("checks source freeze before reporting a missing relation target", async () => {
@@ -1178,103 +1119,6 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     expect(afterProject?.deletedAt).not.toBeNull();
   });
 
-  it("WI-25: reports bulk status failures per task and commits valid items", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
-    const invalidFixture = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(
-      member.workspace.id,
-      invalidFixture.project.id,
-    );
-    const validFixture = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectAccessToWorkspaceMembers(
-      member.workspace.id,
-      validFixture.project.id,
-    );
-    const invalidTask = await createLegacyTask(
-      invalidFixture.project.id,
-      invalidFixture.columns.todo.id,
-      1,
-    );
-    const validTask = await createLegacyTask(
-      validFixture.project.id,
-      validFixture.columns.todo.id,
-      1,
-    );
-    await db
-      .update(schema.columnTable)
-      .set({ slug: "backlog" })
-      .where(eq(schema.columnTable.id, invalidFixture.columns.todo.id));
-    await db
-      .update(schema.taskTable)
-      .set({ status: "planned", columnId: null })
-      .where(eq(schema.taskTable.id, validTask.id));
-    mockAuthenticatedSession(member.user);
-
-    const response = await request("/task/bulk", "patch", {
-      taskIds: [invalidTask.id, validTask.id],
-      operation: "updateStatus",
-      value: "to-do",
-    });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      success: true,
-      updatedCount: 1,
-      results: [
-        {
-          taskId: invalidTask.id,
-          success: false,
-          error: expect.stringContaining('Invalid status "to-do"'),
-        },
-        { taskId: validTask.id, success: true },
-      ],
-    });
-    const [unchangedInvalidTask] = await db
-      .select()
-      .from(schema.taskTable)
-      .where(eq(schema.taskTable.id, invalidTask.id));
-    const [updatedValidTask] = await db
-      .select()
-      .from(schema.taskTable)
-      .where(eq(schema.taskTable.id, validTask.id));
-    expect(unchangedInvalidTask?.status).toBe("to-do");
-    expect(updatedValidTask?.status).toBe("to-do");
-    expect(updatedValidTask?.columnId).toBe(validFixture.columns.todo.id);
-  });
-
-  it("WI-25: reports a missing bulk value as an item failure for a live task", async () => {
-    const member = await createWorkspaceMember({ role: "admin" });
-    const { project, columns } = await createProjectFixture({
-      workspaceId: member.workspace.id,
-    });
-    await grantProjectManageAccess(member.user.id, project.id);
-    await grantProjectAccessToWorkspaceMembers(member.workspace.id, project.id);
-    const task = await createLegacyTask(project.id, columns.todo.id, 1);
-    mockAuthenticatedSession(member.user);
-
-    const response = await request("/task/bulk", "patch", {
-      taskIds: [task.id],
-      operation: "updatePriority",
-    });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      success: true,
-      updatedCount: 0,
-      results: [
-        {
-          taskId: task.id,
-          success: false,
-          error: "Value is required for this operation",
-        },
-      ],
-    });
-  });
-
   it("checks task liveness before invalid time-entry interval validation", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
@@ -1719,7 +1563,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     }
   });
 
-  it("serializes concurrent creates and imports before claiming project task numbers", async () => {
+  it("serializes concurrent task creations before claiming project task numbers", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -1760,29 +1604,11 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           priority: "medium",
           status: "to-do",
         }),
-        request(`/task/import/${project.id}`, "post", {
-          tasks: [
-            {
-              title: "Concurrent import one",
-              status: "to-do",
-              priority: "medium",
-            },
-          ],
-        }),
         request(`/task/${project.id}`, "post", {
           title: "Concurrent create two",
           description: "",
           priority: "medium",
           status: "to-do",
-        }),
-        request(`/task/import/${project.id}`, "post", {
-          tasks: [
-            {
-              title: "Concurrent import two",
-              status: "to-do",
-              priority: "medium",
-            },
-          ],
         }),
       );
 
@@ -1822,24 +1648,13 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       }
       expect(
         blockedCount,
-        "a create/import transaction reached the shared project-row barrier",
+        "a task-creation transaction reached the shared project-row barrier",
       ).toBeGreaterThan(0);
 
       await client.query("COMMIT");
       transactionOpen = false;
       const responses = await Promise.all(operations);
-      expect(responses.map((response) => response.status)).toEqual([
-        200, 200, 200, 200,
-      ]);
-      const bodies = await Promise.all(
-        responses.map((response) => response.json()),
-      );
-      expect(bodies[1]).toMatchObject({
-        results: { successful: 1, failed: 0 },
-      });
-      expect(bodies[3]).toMatchObject({
-        results: { successful: 1, failed: 0 },
-      });
+      expect(responses.map((response) => response.status)).toEqual([200, 200]);
 
       const taskRows = await db
         .select({ number: schema.taskTable.number })
@@ -1862,7 +1677,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     }
   });
 
-  it("uses exclusive liveness locks for simultaneous create and import number claims", async () => {
+  it("uses exclusive liveness locks for simultaneous helper-level task-number claims", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -1920,7 +1735,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
 
       const createDb = drizzle(createClient, { schema });
       const importDb = drizzle(importClient, { schema });
-      // These mirror create-task and one imported row's transaction body, each
+      // These mirror two concurrent task-number allocation transactions, each
       // on an independent PostgreSQL session. The held share lock forces both
       // exclusive liveness checks to queue before either number can be claimed.
       const claimAndInsert = (

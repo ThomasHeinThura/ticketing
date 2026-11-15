@@ -105,13 +105,10 @@ export const taskPolicies = {
     reach: "required",
   },
 
-  // Export a project's tasks, with their labels, as a JSON document
-  // (`controllers/export-tasks.ts`). Runtime checks project-row reach and the declared
-  // `work_item:read` capability. `work_item:export` (rbac.md) is
-  // deliberately NOT used here: the legacy `work_item` statement this route is actually gated
-  // by has no `export` action at all (`create`/`read`/`update`/`delete`/`assign` only), so
-  // nothing in the runtime distinguishes this from a plain read, and declaring
-  // `work_item:export` would claim a check that is not there.
+  // Retired (`410 Gone` under Decision 20 / P-15). Runtime checks project-row reach and
+  // `work_item:read` capability (returning 400/403/404 as before) and then returns 410 Gone
+  // for live projects under the compatibility Deprecation/Sunset/Link headers. Successor:
+  // `GET /api/work-items/export`.
   "GET /api/task/export/{projectId}": {
     capability: "work_item:read",
     scope: "project",
@@ -138,9 +135,10 @@ export const taskPolicies = {
     reach: "required",
   },
 
-  // Import tasks into a project, one outcome per task (`controllers/import-tasks.ts`). Same
-  // shape as create above: addresses the existing project by path id, runtime gate is
-  // `requireWorkspacePermission({ work_item: ["create"] })`.
+  // Retired (`410 Gone` under Decision 20 / P-15). Addresses the project by path id; runtime
+  // checks reach and `requireWorkspacePermission({ work_item: ["create"] })` (returning
+  // 400/403/404 as before) and then returns 410 Gone for live projects under the compatibility
+  // Deprecation/Sunset/Link headers. Successor: `POST /api/instance/imports`.
   "POST /api/task/import/{projectId}": {
     capability: "work_item:create",
     scope: "project",
@@ -286,60 +284,5 @@ export const taskPolicies = {
     scope: "work_item",
     scopeSource: "row",
     reach: "required",
-  },
-
-  // Apply one operation (updateStatus/updatePriority/updateAssignee/delete/addLabel/
-  // removeLabel/updateDueDate) to many tasks in one workspace at once
-  // (`controllers/bulk-update-tasks.ts`). Addressed by a caller-supplied `taskIds` array, not
-  // one project or one task — `workspaceAccess.fromTasks()` resolves the workspace from the
-  // loaded task ROWS themselves (400s if they span more than one workspace), so `scope:
-  // "workspace"` / `scopeSource: "row"` is the only combination both authority-resolvable
-  // (no per-task-list role scope exists) and honestly sourced from persisted data; `reach`
-  // is exempt as `no_single_resource` for the same reason — there is no single addressed row.
-  //
-  // **Per-task project reach (#720).** `fromTasks("taskIds", { requireProjectReach: true })` drops
-  // every named task whose project the caller cannot reach before any gate runs (so it is
-  // indistinguishable from a missing id), and `bulkUpdateTasks` then decides the operation's
-  // project-level capability per task (`work_item:update` / `assign` / `delete` / `label:manage`)
-  // from the same source as `POST /api/work-items/bulk` (`utils/caller-reach.ts`). The `reach`
-  // exemption below stays accurate: there is still no SINGLE addressed resource.
-  //
-  // **The genuinely hard one in this file — flagged for extra scrutiny, not a guess.** The
-  // real runtime gate, `requireBulkTaskPermission`
-  // (`controllers/require-task-permission.ts`), is DYNAMIC: it reads `operation` from the
-  // body and requires a DIFFERENT capability depending on its value —
-  // `delete` → `work_item:delete`, `updateAssignee` → `work_item:assign`, `addLabel`/`removeLabel` →
-  // `label:update`, everything else (`updateStatus`/`updatePriority`/`updateDueDate`) →
-  // `work_item:update`. `CapabilityPolicy` has exactly one `capability` field; there is no policy
-  // shape in `packages/permissions/src/policy.ts` for "one of N capabilities, selected by a
-  // request-body field" (`orOwner`/`orSelfTarget` are alternate-path OR branches on the SAME
-  // primary capability, not a capability-selector).
-  //
-  // This is declared as `work_item:read` — NOT a guess, but the same convention
-  // `docs/03-features/work-items.md` (line ~183) already writes down for the analogous
-  // FUTURE endpoint, `POST /api/work-items/bulk`: `work_item:read (workspace) — then each
-  // item is re-checked against its own capability; failures reported per WI-25`. That is
-  // exactly this route's shape — a floor-level policy declaration, with the real,
-  // operation-specific authority enforced as additional logic beyond what one `Policy` field
-  // can express. Read together with `requireBulkTaskPermission`, nothing is under-enforced:
-  // a `viewer` (read-only) passes this declared floor and is then correctly refused by the
-  // dynamic check for every real operation. But the declared floor UNDERSTATES what the
-  // generated permission matrix will show for this route — the matrix will read `viewer →
-  // allow` off this single field, which is only true in the sense that a viewer may issue
-  // the request and be told 403 by the second gate, not that a viewer may bulk-mutate
-  // anything. Flagged explicitly for the Opus security review: confirm this floor-declaration
-  // convention (established in work-items.md for the target route) is actually the intended
-  // reading for a `CapabilityPolicy`'s single `capability` field before this is wired into
-  // `policy-registry.ts`, rather than treating the declaration as the complete authority
-  // story the way every other route in this file is.
-  "PATCH /api/task/bulk": {
-    capability: "work_item:read",
-    scope: "workspace",
-    scopeSource: "row",
-    reach: {
-      exempt: "no_single_resource",
-      reason:
-        "addresses a caller-supplied list of task ids (taskIds), not one persisted row or one container resolved from the request path; workspaceAccess.fromTasks() additionally requires every named task to share one workspace, but there is still no single addressed resource for a reach check to run against",
-    },
   },
 } as const satisfies PolicyMap;

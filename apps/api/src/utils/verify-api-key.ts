@@ -217,6 +217,7 @@ export async function verifyApiKey(
 
   return {
     valid: true,
+    kind,
     key: {
       id: apiKey.id,
       kind: kind.kind,

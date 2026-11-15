@@ -8,7 +8,6 @@
  * a project member succeeds; an API key owned by an outsider gets the same 404.
  */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -266,21 +265,6 @@ const CASES: Case[] = [
     call: (app, _w, i) => json(app, "GET", `/api/asset/${i.assetId}`),
     missing: (app) => json(app, "GET", `/api/asset/missing-${randomUUID()}`),
   },
-  {
-    matrixKey: "PATCH /api/task/bulk",
-    call: (app, _w, i) =>
-      json(app, "PATCH", "/api/task/bulk", {
-        taskIds: [i.taskId],
-        operation: "updatePriority",
-        value: "urgent",
-      }),
-    missing: (app) =>
-      json(app, "PATCH", "/api/task/bulk", {
-        taskIds: [`missing-${randomUUID()}`],
-        operation: "updatePriority",
-        value: "urgent",
-      }),
-  },
 ];
 
 describe("API integration: project reach on task-targeting routes (#720)", () => {
@@ -536,150 +520,6 @@ describe("API integration: project reach on task-targeting routes (#720)", () =>
         (await removed.json()) as PendingDeletionBody,
       );
       expect(approved.status, await approved.clone().text()).toBe(200);
-    });
-  });
-
-  describe("PATCH /api/task/bulk: per-item reach and capability", () => {
-    it("operation delete answers 410 for a session and a fully scoped key and leaves the task row in place (PA-1)", async () => {
-      const { world, app, ids } = await arrange();
-      const before = await projectSnapshot();
-      for (const credential of ["session", "key"] as const) {
-        if (credential === "session") {
-          mockAuthenticatedSession(world.projectAdmin.user);
-        } else {
-          mockAnonymousSession();
-          setAmbientHeaders({
-            "x-api-key": await makeApiKey(
-              world.projectAdmin.user.id,
-              PROJECT_KEY_SCOPE,
-            ),
-          });
-        }
-        const response = await json(app, "PATCH", "/api/task/bulk", {
-          taskIds: [ids.taskId],
-          operation: "delete",
-        });
-        setAmbientHeaders({});
-        expect(
-          response.status,
-          `${credential}: ${await response.clone().text()}`,
-        ).toBe(410);
-        expect(response.headers.get("Deprecation")).not.toBeNull();
-        expect(response.headers.get("Link")).toContain("/api/work-items/bulk");
-        const [row] = await db
-          .select({ id: schema.taskTable.id })
-          .from(schema.taskTable)
-          .where(eq(schema.taskTable.id, ids.taskId));
-        expect(row?.id).toBe(ids.taskId);
-        expect(await projectSnapshot()).toBe(before);
-      }
-    });
-
-    it("operation delete is refused for a caller without reach or permission before the 410", async () => {
-      const { world, app, ids } = await arrange();
-      mockAuthenticatedSession(world.outsiderAdmin.user);
-      const response = await json(app, "PATCH", "/api/task/bulk", {
-        taskIds: [ids.taskId],
-        operation: "delete",
-      });
-      expect(response.status).not.toBe(410);
-      expect(response.status).not.toBe(200);
-      const [row] = await db
-        .select({ id: schema.taskTable.id })
-        .from(schema.taskTable)
-        .where(eq(schema.taskTable.id, ids.taskId));
-      expect(row?.id).toBe(ids.taskId);
-    });
-
-    it("an unreachable task is reported like a missing id; nothing changes", async () => {
-      const { world, app, ids } = await arrange();
-      const before = await projectSnapshot();
-      mockAuthenticatedSession(world.outsiderAdmin.user);
-      const response = await json(app, "PATCH", "/api/task/bulk", {
-        taskIds: [ids.taskId, "missing-task"],
-        operation: "updatePriority",
-        value: "urgent",
-      });
-      expect(response.status).toBe(404);
-      expect(await response.text()).toBe("No tasks found");
-      expect(await projectSnapshot()).toBe(before);
-    });
-
-    it("a mixed batch changes only the tasks the caller reaches and reports the rest anonymously", async () => {
-      const { world, app, ids } = await arrange();
-      // A second project the member cannot reach, holding a second task.
-      const hidden = requireRow(
-        await db
-          .insert(schema.taskTable)
-          .values({
-            projectId: world.otherProject.id,
-            title: "Hidden task",
-            description: "d",
-            priority: "low",
-            status: "to-do",
-            number: 1,
-            position: 1,
-          })
-          .returning(),
-        "hidden task",
-      );
-      mockAuthenticatedSession(world.projectAdmin.user);
-      const response = await json(app, "PATCH", "/api/task/bulk", {
-        taskIds: [ids.taskId, hidden.id, "missing-task"],
-        operation: "updatePriority",
-        value: "urgent",
-      });
-      const body = (await response.json()) as {
-        updatedCount: number;
-        results: { taskId?: string; success: boolean; error?: string }[];
-      };
-      expect(response.status).toBe(200);
-      expect(body.updatedCount).toBe(1);
-      expect(body.results).toEqual([
-        { taskId: ids.taskId, success: true },
-        { success: false, error: "Task not found" },
-        { success: false, error: "Task not found" },
-      ]);
-      const [reached] = await db
-        .select({ priority: schema.taskTable.priority })
-        .from(schema.taskTable)
-        .where(eq(schema.taskTable.id, ids.taskId));
-      expect(reached?.priority).toBe("urgent");
-      const [untouched] = await db
-        .select({ priority: schema.taskTable.priority })
-        .from(schema.taskTable)
-        .where(eq(schema.taskTable.id, hidden.id));
-      expect(untouched?.priority).toBe("low");
-    });
-
-    it("a reachable task the caller's project role does not permit is refused per item", async () => {
-      const { world, app, ids } = await arrange();
-      const before = await projectSnapshot();
-      // A workspace admin whose PROJECT role carries read only: the legacy workspace gate
-      // passes and the task is in reach, so only the per-item project capability refuses.
-      mockAuthenticatedSession(world.readerAdmin.user);
-      for (const body of [
-        { operation: "updatePriority", value: "urgent" },
-        { operation: "updateAssignee", value: world.projectAdmin.user.id },
-        { operation: "addLabel", value: ids.workspaceLabelId },
-      ]) {
-        const response = await json(app, "PATCH", "/api/task/bulk", {
-          taskIds: [ids.taskId],
-          ...body,
-        });
-        expect(response.status, await response.clone().text()).toBe(200);
-        expect(await response.json()).toMatchObject({
-          updatedCount: 0,
-          results: [
-            {
-              taskId: ids.taskId,
-              success: false,
-              error: "Insufficient permissions",
-            },
-          ],
-        });
-        expect(await projectSnapshot()).toBe(before);
-      }
     });
   });
 });

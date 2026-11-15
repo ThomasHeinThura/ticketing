@@ -3,7 +3,6 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ApiKeyKind } from "../api-key/credential";
 import { clientIpForContext, enforceApiKeyRequest } from "../api-key/enforce";
-import { loadApiKeyKind } from "../api-key/repository";
 import { authForHost, hasCustomerPortalIdentity, portalForHost } from "../auth";
 import { mcpFeatureEnabled } from "./mcp-feature-enabled";
 import { auditMcpRequest } from "./mcp-request-audit";
@@ -88,19 +87,23 @@ export function hasInvalidExplicitCredential(
  * the key's kind, from which the request context carries `is_mcp` and, for a workspace service
  * key (AK-7), the workspace and stored subset its principal is built from.
  */
-async function enforceKeyRules(c: Context, keyId: string): Promise<ApiKeyKind> {
-  return enforceApiKeyRequest(c, keyId, { mcpFeatureEnabled });
+async function enforceKeyRules(
+  c: Context,
+  keyId: string,
+  kind: ApiKeyKind,
+): Promise<ApiKeyKind> {
+  return enforceApiKeyRequest(c, keyId, kind, { mcpFeatureEnabled });
 }
 
 /** Audit only after the bearer was verified and its stored kind was loaded. */
 async function enforceVerifiedApiKey(
   c: Context,
   key: { id: string; userId: string },
+  kind: ApiKeyKind,
 ): Promise<ApiKeyKind> {
-  const kind = await loadApiKeyKind(key.id);
   if (kind.isMcp)
     await auditMcpRequest({ apiKeyId: key.id, ownerUserId: key.userId });
-  return enforceKeyRules(c, key.id);
+  return enforceKeyRules(c, key.id, kind);
 }
 
 function setApiKeyContext(
@@ -160,7 +163,11 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
     const key = apiKeyResult.key;
-    setApiKeyContext(c, key, await enforceVerifiedApiKey(c, key));
+    setApiKeyContext(
+      c,
+      key,
+      await enforceVerifiedApiKey(c, key, apiKeyResult.kind),
+    );
     return;
   }
 
@@ -170,7 +177,11 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
     });
     if (apiKeyResult?.valid && apiKeyResult.key) {
       const key = apiKeyResult.key;
-      setApiKeyContext(c, key, await enforceVerifiedApiKey(c, key));
+      setApiKeyContext(
+        c,
+        key,
+        await enforceVerifiedApiKey(c, key, apiKeyResult.kind),
+      );
       return;
     }
     // The pinned Better Auth stack does not accept bearer session tokens here.
@@ -211,7 +222,7 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
       clientIp: clientIpForContext(c),
     });
     if (apiKeyResult?.valid && apiKeyResult.key) {
-      await enforceVerifiedApiKey(c, apiKeyResult.key);
+      await enforceVerifiedApiKey(c, apiKeyResult.key, apiKeyResult.kind);
       return {
         userId: apiKeyResult.key.userId,
         apiKeyId: apiKeyResult.key.id,
@@ -225,7 +236,7 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
       clientIp: clientIpForContext(c),
     });
     if (apiKeyResult?.valid && apiKeyResult.key) {
-      await enforceVerifiedApiKey(c, apiKeyResult.key);
+      await enforceVerifiedApiKey(c, apiKeyResult.key, apiKeyResult.kind);
       return {
         userId: apiKeyResult.key.userId,
         apiKeyId: apiKeyResult.key.id,
