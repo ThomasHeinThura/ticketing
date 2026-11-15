@@ -153,15 +153,6 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     });
   }
 
-  const [countRow] = await countWorkItemAttachments(db, workItemId);
-  const existingCount = countRow?.value ?? 0;
-
-  if (existingCount >= maxPerItem) {
-    throw new HTTPException(400, {
-      message: `This work item already has the maximum of ${maxPerItem} attachments.`,
-    });
-  }
-
   // Best-effort actor-to-person resolution (`legal_hold.placed_by`'s own comment: no
   // reliable session->person resolver exists in apps/api yet). Null is a valid,
   // nullable value for `uploaded_by` when no match is found.
@@ -184,17 +175,20 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     ].join("/"),
   );
 
-  // Issue #493: this route had NO in-transaction liveness re-check at all --
-  // `requireWorkItemReach()` checks `deletedAt`/`archivedAt` before this request reaches
-  // here, but a soft-delete/archive landing in the window between that check and this
-  // insert would otherwise still leave a `pending` attachment on a dead item. `.for("share")`
-  // locks the row so a concurrent soft-delete blocks until this transaction finishes,
-  // closing the same reach-check-to-write race #276 closed for `update-work-item.ts` --
-  // read-only here (nothing about the work item row is written), so a shared lock suffices.
+  // Serialize reservations on the parent before checking the remaining attachment slots.
   const inserted = await db.transaction(async (tx) => {
     const [locked] = await lockAttachmentWorkItem(tx, { workItemId });
     assertWorkItemStillLive(locked);
     await assertProjectStillLive(tx, locked.projectId);
+
+    const [countRow] = await countWorkItemAttachments(tx, workItemId);
+    const existingCount = countRow?.value ?? 0;
+
+    if (existingCount >= maxPerItem) {
+      throw new HTTPException(400, {
+        message: `This work item already has the maximum of ${maxPerItem} attachments.`,
+      });
+    }
 
     await assertOrganisationStorageQuota(tx, {
       workspaceId,

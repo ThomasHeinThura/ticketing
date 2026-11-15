@@ -648,6 +648,31 @@ describe("portal cases (S4b)", () => {
     expect(refs(byType)).toEqual([s.aliceFormula.ref]);
     const wildcard = await list(s.contoso, s.alice, "q=%25");
     expect(wildcard.meta.total).toBe(0);
+    const underscoreNone = await list(s.contoso, s.alice, "q=_");
+    expect(underscoreNone.meta.total).toBe(0);
+
+    const literalPercent = await submission(s.support, {
+      organisationId: s.alice.orgId,
+      requesterId: s.alice.person.id,
+      summary: "CPU 100% spike",
+      createdAt: new Date(Date.now() - 40 * 86_400_000),
+    });
+    const literalUnderscore = await submission(s.support, {
+      organisationId: s.alice.orgId,
+      requesterId: s.alice.person.id,
+      summary: "env_var missing",
+      createdAt: new Date(Date.now() - 41 * 86_400_000),
+    });
+    const matchedPercent = await list(s.contoso, s.alice, "q=%25");
+    expect(refs(matchedPercent)).toEqual([literalPercent.ref]);
+    const matchedUnderscore = await list(s.contoso, s.alice, "q=_");
+    expect(refs(matchedUnderscore)).toEqual([literalUnderscore.ref]);
+    await db
+      .delete(schema.submissionTable)
+      .where(eq(schema.submissionTable.id, literalPercent.id));
+    await db
+      .delete(schema.submissionTable)
+      .where(eq(schema.submissionTable.id, literalUnderscore.id));
 
     const day = (offset: number) =>
       new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);

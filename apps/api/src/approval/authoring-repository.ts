@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import db, { schema } from "../database";
+import { escapeLikePattern } from "../search/like-pattern";
 import type { ApprovalTarget } from "./repository";
 
 const sourceTemplate = alias(
@@ -142,7 +143,7 @@ export async function scanApprovalCandidatePeople(input: {
   after?: string;
   limit: number;
 }) {
-  const literal = input.q.replace(/[\\%_]/gu, "\\$&");
+  const literal = escapeLikePattern(input.q);
   return db
     .select({
       id: schema.personTable.id,

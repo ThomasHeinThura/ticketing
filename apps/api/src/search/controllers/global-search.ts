@@ -11,6 +11,7 @@ import {
   searchSavedViews,
   searchWorkspacePeople,
 } from "../canonical-repository";
+import { escapeLikePattern } from "../like-pattern";
 import {
   findTasksByShortId,
   listUserWorkspaceIds,
@@ -185,7 +186,7 @@ async function globalSearch(params: SearchParams): Promise<{
   }
 
   const results: SearchResult[] = [];
-  const searchPattern = `%${query.toLowerCase()}%`;
+  const searchPattern = `%${escapeLikePattern(query.toLowerCase())}%`;
 
   // #187: every result below (short-id tasks, the general task/comment/activity
   // search, and project search itself) joins through `projectTable` and reuses this

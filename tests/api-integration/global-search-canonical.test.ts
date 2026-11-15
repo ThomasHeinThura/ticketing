@@ -832,4 +832,98 @@ describe("API integration: canonical global search", () => {
       true,
     );
   });
+
+  it("matches % and _ literally across projects, workspaces, tasks and work items in global search (P-12)", async () => {
+    const { member, project, app, create, search } = await seedWorld();
+    const { project: percentProject } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "Deploy 100% Gate",
+    });
+    const { project: underscoreProject } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "Deploy env_key Gate",
+    });
+    const { project: plainProject } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "Deploy 100X envXkey Gate",
+    });
+    for (const target of [percentProject, underscoreProject, plainProject]) {
+      await grantProjectRole(member.user.id, target.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+    }
+
+    const percentItem = await create("Quota 100% alert");
+    const underscoreItem = await create("Missing env_key config");
+    const plainItem = await create("Quota 100X and envXkey config");
+
+    const [percentTask, underscoreTask, plainTask] = await db
+      .insert(schema.taskTable)
+      .values([
+        {
+          projectId: project.id,
+          title: "Legacy 100% task",
+          number: 1,
+          status: "to-do",
+          userId: member.user.id,
+        },
+        {
+          projectId: project.id,
+          title: "Legacy env_key task",
+          number: 2,
+          status: "to-do",
+          userId: member.user.id,
+        },
+        {
+          projectId: project.id,
+          title: "Legacy 100X envXkey task",
+          number: 3,
+          status: "to-do",
+          userId: member.user.id,
+        },
+      ])
+      .returning();
+    if (!percentTask || !underscoreTask || !plainTask)
+      throw new Error("task fixture failed");
+
+    await db
+      .update(schema.workspaceTable)
+      .set({ name: "Workspace 100X envXkey" })
+      .where(eq(schema.workspaceTable.id, member.workspace.id));
+
+    mockAuthenticatedSession(member.user);
+
+    const byPercent = await search("100%");
+    expect(byPercent.map((r) => r.id)).toContain(percentProject.id);
+    expect(byPercent.map((r) => r.id)).toContain(percentItem.id);
+    expect(byPercent.map((r) => r.id)).not.toContain(plainProject.id);
+    expect(byPercent.map((r) => r.id)).not.toContain(plainItem.id);
+    expect(byPercent.map((r) => r.id)).not.toContain(member.workspace.id);
+
+    const byUnderscore = await search("env_key");
+    expect(byUnderscore.map((r) => r.id)).toContain(underscoreProject.id);
+    expect(byUnderscore.map((r) => r.id)).toContain(underscoreItem.id);
+    expect(byUnderscore.map((r) => r.id)).not.toContain(plainProject.id);
+    expect(byUnderscore.map((r) => r.id)).not.toContain(plainItem.id);
+    expect(byUnderscore.map((r) => r.id)).not.toContain(member.workspace.id);
+
+    const tasksPercent = await (
+      await app.request(
+        `/api/search?q=${encodeURIComponent("100%")}&workspaceId=${member.workspace.id}&type=tasks`,
+      )
+    ).json();
+    expect(
+      (tasksPercent as { results: Result[] }).results.map((r) => r.id),
+    ).toEqual([percentTask.id]);
+
+    const tasksUnderscore = await (
+      await app.request(
+        `/api/search?q=${encodeURIComponent("env_key")}&workspaceId=${member.workspace.id}&type=tasks`,
+      )
+    ).json();
+    expect(
+      (tasksUnderscore as { results: Result[] }).results.map((r) => r.id),
+    ).toEqual([underscoreTask.id]);
+  });
 });

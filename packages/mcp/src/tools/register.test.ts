@@ -896,14 +896,43 @@ describe("write tools call the canonical route", () => {
       key: "A-1",
       labelId: "l2",
     });
+    expect(calls.map((c) => [c.path, c.init?.method])).toEqual([
+      ["/api/work-items/A-1", "GET"],
+      ["/api/work-items/A-1/labels", "GET"],
+      ["/api/work-items/A-1", "PATCH"],
+    ]);
     const patch = calls.find((c) => c.init?.method === "PATCH");
+    expect(headerOf(patch?.init, "If-Match")).toBe('"3"');
     expect(JSON.parse(String(patch?.init?.body))).toEqual({
       labelIds: ["l1", "l2"],
     });
   });
 
+  it("add_label uses an explicit expectedVersion without an extra GET", async () => {
+    const { calls, call } = harness(() => [
+      { id: "l1", assigned: true },
+      { id: "l2", assigned: false },
+    ]);
+    await call("add_label", {
+      idempotencyKey: FIXTURE_ID,
+      key: "A-1",
+      labelId: "l2",
+      expectedVersion: 9,
+    });
+    expect(calls.map((c) => [c.path, c.init?.method])).toEqual([
+      ["/api/work-items/A-1/labels", "GET"],
+      ["/api/work-items/A-1", "PATCH"],
+    ]);
+    const patch = calls.find((c) => c.init?.method === "PATCH");
+    expect(headerOf(patch?.init, "If-Match")).toBe('"9"');
+  });
+
   it("add_label refuses a label the item cannot use", async () => {
-    const { calls, call } = harness(() => [{ id: "l1", assigned: false }]);
+    const { calls, call } = harness((path) =>
+      path.endsWith("/labels")
+        ? [{ id: "l1", assigned: false }]
+        : { version: 3 },
+    );
     const result = await call("add_label", {
       idempotencyKey: FIXTURE_ID,
       key: "A-1",

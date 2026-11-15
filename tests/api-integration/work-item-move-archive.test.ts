@@ -4,9 +4,10 @@
  * Needs the integration database (run by the coordinator).
  */
 import { and, eq, inArray } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import * as realtime from "../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -388,10 +389,12 @@ describe("API integration: archive work item (WI-20)", () => {
     world = await setupWorld();
     app = createApp().app;
   });
+  afterEach(() => vi.restoreAllMocks());
 
-  it("archives with the version check, hides it from the default list and refuses a second archive", async () => {
+  it("archives with the version check, records the outbox and realtime event, hides it from the default list and refuses a second archive", async () => {
     const item = await createItem(app, world, "Archive me");
     mockAuthenticatedSession(world.projectMember.user);
+    const hintSpy = vi.spyOn(realtime, "broadcastNativeWorkItemHint");
 
     const stale = await json(
       app,
@@ -401,6 +404,13 @@ describe("API integration: archive work item (WI-20)", () => {
       { "if-match": '"7"' },
     );
     expect(stale.status).toBe(409);
+    expect(hintSpy).not.toHaveBeenCalled();
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "work_item.updated")),
+    ).toHaveLength(0);
 
     const archived = await json(
       app,
@@ -414,6 +424,32 @@ describe("API integration: archive work item (WI-20)", () => {
     expect(stored.archivedAt).not.toBeNull();
     expect(stored.deletedAt).toBeNull();
     expect(stored.version).toBe(2);
+
+    const outbox = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "work_item.updated"));
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]?.payload).toMatchObject({
+      payload: {
+        key: item.key,
+        changes: [
+          expect.objectContaining({
+            field: "archived_at",
+            from: null,
+            visibility: "internal",
+          }),
+        ],
+      },
+    });
+    expect(hintSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: world.project.id,
+        key: item.key,
+        eventType: "work_item.updated",
+        customerVisible: false,
+      }),
+    );
 
     const list = await app.request(
       `/api/projects/${world.project.id}/work-items`,

@@ -38,6 +38,8 @@ describe("audit export documents (AU-13)", () => {
     expect(csvField("a,b")).toBe('"a,b"');
     expect(csvField('say "hi"')).toBe('"say ""hi"""');
     expect(csvField("=HYPERLINK(1)")).toBe("'=HYPERLINK(1)");
+    expect(csvField(" \t=HYPERLINK(1)")).toBe("' \t=HYPERLINK(1)");
+    expect(csvField("\u000b@x")).toBe("'\u000b@x");
     expect(csvField("+1")).toBe("'+1");
     expect(csvField("@x")).toBe("'@x");
     expect(csvField(null)).toBe("");
