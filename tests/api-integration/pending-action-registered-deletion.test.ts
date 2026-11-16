@@ -5,6 +5,10 @@ import db, { schema } from "../../apps/api/src/database";
 import { automationTable } from "../../apps/api/src/database/schema";
 import { createApp } from "../../apps/api/src/index";
 import { approveRegisteredDeletion } from "../../apps/api/src/pending-action/deletion-targets";
+import {
+  hashPendingActionPayload,
+  type PendingActionPayload,
+} from "../../apps/api/src/pending-action/payload";
 import { decideOwnPendingAction } from "../../apps/api/src/pending-action/service";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -90,6 +94,23 @@ async function fixture() {
     approve,
     approval,
   };
+}
+
+async function makeTeam(workspaceId: string, name: string) {
+  const now = new Date();
+  return requireRow(
+    await db
+      .insert(schema.teamTable)
+      .values({
+        id: `team-${randomUUID()}`,
+        name,
+        workspaceId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning(),
+    "team",
+  );
 }
 
 async function pending(id: string) {
@@ -297,32 +318,135 @@ describe("registered legacy click deletions", () => {
     await f.approve(action.pendingActionId);
     expect(await rows()).toHaveLength(0);
   });
-  it("team: 202 keeps the team; approval deletes it (TM-7 contract entry)", async () => {
+  it("team deletion requires the exact name and leaves the team on refused approvals", async () => {
     const f = await fixture();
-    const now = new Date();
-    const team = requireRow(
-      await db
-        .insert(schema.teamTable)
-        .values({
-          id: `team-${randomUUID()}`,
-          name: "Service desk",
-          workspaceId: f.member.workspace.id,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning(),
-      "team",
-    );
+    const team = await makeTeam(f.member.workspace.id, "Service desk");
     const action = await f.request(`/api/teams/${team.id}`);
-    expect(action.confirmation).toBe("click");
+    expect(action.confirmation).toBe("typed_name");
+    expect(action.summary.name).toBe(team.name);
     const rows = () =>
       db
         .select()
         .from(schema.teamTable)
         .where(eq(schema.teamTable.id, team.id));
-    expect(await rows()).toHaveLength(1);
-    await f.approve(action.pendingActionId);
+    const approve = (body: object) =>
+      f.app.request(
+        `/api/me/pending-actions/${action.pendingActionId}/approve`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+    for (const body of [
+      {},
+      { click: true },
+      { typedName: "service desk" },
+      { typedName: "Service desk " },
+    ]) {
+      expect((await approve(body)).status).toBe(400);
+      expect(await rows()).toHaveLength(1);
+      expect((await pending(action.pendingActionId)).state).toBe("pending");
+    }
+    expect((await approve({ typedName: team.name })).status).toBe(200);
     expect(await rows()).toHaveLength(0);
+    expect(
+      (await pending(action.pendingActionId)).confirmationSupplied,
+    ).toEqual({ typedNameMatched: true });
+    expect((await approve({ typedName: team.name })).status).toBe(409);
+  });
+
+  it("rejects an existing click-confirmed team action without deleting the team", async () => {
+    const f = await fixture();
+    const team = await makeTeam(f.member.workspace.id, "Legacy team");
+    const action = await f.request(`/api/teams/${team.id}`);
+    const row = await pending(action.pendingActionId);
+    const payload = {
+      ...(row.payload as PendingActionPayload),
+      confirmation_required: "click" as const,
+    };
+    await db
+      .update(schema.pendingActionTable)
+      .set({
+        confirmationRequired: "click",
+        payload,
+        payloadHash: hashPendingActionPayload(payload),
+      })
+      .where(eq(schema.pendingActionTable.id, row.id));
+    await expect(
+      approveRegisteredDeletion({
+        ...f.approval(row.id),
+        typedName: team.name,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(
+      await db
+        .select()
+        .from(schema.teamTable)
+        .where(eq(schema.teamTable.id, team.id)),
+    ).toHaveLength(1);
+  });
+
+  it("invalidates approval when the team is renamed after the request", async () => {
+    const f = await fixture();
+    const team = await makeTeam(f.member.workspace.id, "Original team");
+    const action = await f.request(`/api/teams/${team.id}`);
+    await db
+      .update(schema.teamTable)
+      .set({ name: "Renamed team" })
+      .where(eq(schema.teamTable.id, team.id));
+    await expect(
+      approveRegisteredDeletion({
+        ...f.approval(action.pendingActionId),
+        typedName: team.name,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect((await pending(action.pendingActionId)).invalidationReason).toBe(
+      "version_changed",
+    );
+    expect(
+      await db
+        .select()
+        .from(schema.teamTable)
+        .where(eq(schema.teamTable.id, team.id)),
+    ).toHaveLength(1);
+  });
+
+  it("rechecks team ownership blockers at request and approval", async () => {
+    const f = await fixture();
+    const team = await makeTeam(f.member.workspace.id, "Blocked team");
+    await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: team.id })
+      .where(eq(schema.projectTable.id, f.project.id));
+    expect(
+      (await f.app.request(`/api/teams/${team.id}`, { method: "DELETE" }))
+        .status,
+    ).toBe(409);
+    await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: null })
+      .where(eq(schema.projectTable.id, f.project.id));
+    const action = await f.request(`/api/teams/${team.id}`);
+    await db
+      .update(schema.projectTable)
+      .set({ ownerTeamId: team.id })
+      .where(eq(schema.projectTable.id, f.project.id));
+    const response = await f.app.request(
+      `/api/me/pending-actions/${action.pendingActionId}/approve`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ typedName: team.name }),
+      },
+    );
+    expect(response.status).toBe(409);
+    expect(
+      await db
+        .select()
+        .from(schema.teamTable)
+        .where(eq(schema.teamTable.id, team.id)),
+    ).toHaveLength(1);
   });
 
   it("automation: 202 keeps the rule and its history; approval deletes both and audits", async () => {

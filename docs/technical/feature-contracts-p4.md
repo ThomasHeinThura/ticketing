@@ -338,7 +338,9 @@ Board. Team membership and ownership participate in the existing [reach contract
 - `TM-6` Removing a person from the CAB team leaves their past decisions intact and makes
   their pending CAB approvals undecidable by them; the approval stays open for the rest.
 - `TM-7` Deleting a team is refused while it owns a project, owns a shared view, or is the
-  CAB. Reassign first.
+  CAB. Reassign first. The requester must type the exact current team name in the pending
+  action confirmation (`typed_name`, without an additional step-up), approved by Thomas on
+  16 November 2026 (#901). Renaming the team invalidates an earlier request.
 - `TM-8` A deactivated person is removed from every team's *active* roster but stays in
   history. Shared-view ownership transfer is held for a later release; current owner and
   workspace-manager access rules remain in force.

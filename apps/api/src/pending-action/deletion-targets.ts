@@ -1242,6 +1242,17 @@ export const registeredDeletionRequestSchema = z.object({
   approveUrl: z.string(),
 });
 
+type RegisteredDeletionRequestResponse<Target extends string> = Omit<
+  z.infer<typeof registeredDeletionRequestSchema>,
+  "confirmation"
+> & {
+  confirmation: Target extends "team"
+    ? "typed_name"
+    : string extends Target
+      ? "click" | "typed_name" | "typed_name_step_up"
+      : "click" | "typed_name_step_up";
+};
+
 export function findRegisteredDeletionTarget(input: {
   action: string;
   targetType: string;
@@ -1666,7 +1677,7 @@ export async function approveRegisteredDeletion(
       routeKey: target.routeKey,
       confirmation: [target.confirmation],
       retryGrantClosure: target.targetType === "identity_connection",
-      ...(target.confirmation === "typed_name_step_up"
+      ...(target.confirmation !== "click"
         ? {
             confirm: async (tx, row) => {
               const summary = row.payloadSummary as Record<string, unknown>;
@@ -1678,6 +1689,8 @@ export async function approveRegisteredDeletion(
                 throw new HTTPException(400, {
                   message: "confirmation_mismatch",
                 });
+              if (target.confirmation === "typed_name")
+                return { supplied: { typedNameMatched: true } };
               const proof = await consumePendingActionProof(tx, {
                 token: input.stepUpToken ?? "",
                 personId: input.requesterPersonId,
@@ -1820,16 +1833,16 @@ export function isRegisteredStepUpDeletion(action: {
  * its 202 body. Scope assertions (`workspaceId`/`projectId`) come from the route's own
  * middleware/path; the persisted scope always comes from the locked target row.
  */
-export async function requestRegisteredDeletion(
+export async function requestRegisteredDeletion<Target extends string>(
   c: Context,
   input: {
     routeKey: CreatePendingActionInput["routeKey"];
-    targetType: string;
+    targetType: Target;
     id: string;
     workspaceId?: string;
     projectId?: string | null;
   },
-) {
+): Promise<RegisteredDeletionRequestResponse<Target>> {
   const userId = c.get("userId") as string;
   const apiKey = c.get("apiKey") as ApiKey | undefined;
   const session = c.get("session") as { id?: string } | null;
@@ -1857,7 +1870,13 @@ export async function requestRegisteredDeletion(
       userAgent: c.req.header("user-agent") ?? null,
     });
   const created = await create();
-  return registeredDeletionRequestSchema.parse(created);
+  const response =
+    input.targetType === "team"
+      ? registeredDeletionRequestSchema
+          .extend({ confirmation: z.literal("typed_name") })
+          .parse(created)
+      : registeredDeletionRequestSchema.parse(created);
+  return response as RegisteredDeletionRequestResponse<Target>;
 }
 
 /** Every pending deletion whose approval needs a PA-15 step-up proof: bulk typed-count, typed-name. */

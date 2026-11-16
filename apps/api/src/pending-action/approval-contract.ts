@@ -221,7 +221,7 @@ export const pendingActionApprovalContracts = [
   {
     action: "delete",
     targetType: "team",
-    confirmationRequired: "click",
+    confirmationRequired: "typed_name",
     routeKey: "DELETE /api/teams/{id}",
     executor: "registered_deletion",
   },
