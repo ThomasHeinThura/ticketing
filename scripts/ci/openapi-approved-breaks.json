@@ -678,5 +678,125 @@
 		"pr": 1196,
 		"reason": "Team deletion now returns typed_name instead of click and requires the exact team name before execution. Other deletion response contracts are unchanged.",
 		"decision": "Thomas explicitly approved 16 Nov 2026: Require the team name and update the deletion contract (#901). Recorded in docs/technical/design-and-decisions.md and the team confirmation row in docs/technical/safety-and-runtime.md."
+	},
+	{
+		"operation": "GET /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "64f61061211d",
+		"pr": 1197,
+		"reason": "added the new `approval.expiring` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "GET /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "49ab66939ed9",
+		"pr": 1197,
+		"reason": "added the new `approval.requested` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "GET /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "1f8d99dd0a2f",
+		"pr": 1197,
+		"reason": "added the new `approval.withdrawn` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "GET /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "5939eefe9e92",
+		"pr": 1197,
+		"reason": "added the new `submission.accepted` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "GET /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "a0a7203f7fb6",
+		"pr": 1197,
+		"reason": "added the new `submission.declined` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "GET /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "78ad8f04382c",
+		"pr": 1197,
+		"reason": "added the new `submission.replied` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "GET /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "c5e7f516e7d2",
+		"pr": 1197,
+		"reason": "added the new `work_item.transitioned` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "PUT /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "f1eb0e6afc6d",
+		"pr": 1197,
+		"reason": "added the new `approval.expiring` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "PUT /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "2a4f5261c9e2",
+		"pr": 1197,
+		"reason": "added the new `approval.requested` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "PUT /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "c27ef87b8b19",
+		"pr": 1197,
+		"reason": "added the new `approval.withdrawn` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "PUT /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "3a524d152925",
+		"pr": 1197,
+		"reason": "added the new `submission.accepted` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "PUT /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "aff6b04bcec3",
+		"pr": 1197,
+		"reason": "added the new `submission.declined` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "PUT /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "a9ee03e2beb0",
+		"pr": 1197,
+		"reason": "added the new `submission.replied` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "PUT /portal/notification-preferences/canonical",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "1988a1806e71",
+		"pr": 1197,
+		"reason": "added the new `work_item.transitioned` enum value to the `items/eventKind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "GET /portal/notification/inbox",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "1b14560506a6",
+		"pr": 1197,
+		"reason": "added the new `submission.accepted` enum value to the `data/items/kind` response property for the response status `200`",
+		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	}
 ]

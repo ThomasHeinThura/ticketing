@@ -34,7 +34,18 @@
 @source not "./components/saved-view";
 @source not "./components/search";
 @source not "./components/search-command-menu";
-@source not "./components/service-calendar";
+/* The portal's quiet-hours form shares time-field.tsx; keep it in the scan. */
+@source not "./components/service-calendar/calendar-details-card.tsx";
+@source not "./components/service-calendar/calendar-summary-card.tsx";
+@source not "./components/service-calendar/calendar-usage-card.tsx";
+@source not "./components/service-calendar/coverage-preview-card.tsx";
+@source not "./components/service-calendar/holiday-fields.tsx";
+@source not "./components/service-calendar/holiday-import-panel.tsx";
+@source not "./components/service-calendar/holiday-list-card.tsx";
+@source not "./components/service-calendar/holiday-preset-panel.tsx";
+@source not "./components/service-calendar/service-calendar-editor-view.tsx";
+@source not "./components/service-calendar/weekly-cover-card.tsx";
+@source not "./components/service-calendar/window-fields.tsx";
 @source not "./components/settings";
 @source not "./components/shared";
 @source not "./components/sla-policy";

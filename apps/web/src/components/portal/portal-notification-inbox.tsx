@@ -45,6 +45,7 @@ const eventTranslation: Record<PortalNotificationKind, string> = {
   "work_item.transitioned": "notifications.events.transition",
   "submission.replied": "notifications.events.requestReply",
   "submission.declined": "notifications.events.requestDeclined",
+  "submission.accepted": "notifications.events.requestAccepted",
   "approval.requested": "notifications.events.approvalRequested",
   "approval.expiring": "notifications.events.approvalExpiring",
   "approval.withdrawn": "notifications.events.approvalWithdrawn",

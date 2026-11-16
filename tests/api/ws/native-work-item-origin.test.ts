@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ outbox: vi.fn(), broadcast: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  outbox: vi.fn(),
+  broadcast: vi.fn(),
+  fanout: vi.fn(),
+}));
 vi.mock("../../../apps/api/src/events/outbox", () => ({
   enqueueOutboxEvent: mocks.outbox,
 }));
 vi.mock("../../../apps/api/src/notification/fanout", () => ({
-  enqueueNotificationEvent: vi.fn(),
+  enqueueNotificationEvent: mocks.fanout,
 }));
 vi.mock("../../../apps/api/src/ws", () => ({
   broadcastNativeWorkItemHint: mocks.broadcast,
@@ -33,6 +37,40 @@ const input = {
 
 describe("native hint origin", () => {
   beforeEach(() => vi.clearAllMocks());
+  it("binds a notification event to the authoritative project organisation and refuses a mismatched explicit scope", async () => {
+    const limit = vi
+      .fn()
+      .mockResolvedValue([{ organisationId: "org-current" }]);
+    const tx = {
+      select: vi.fn(() => ({ from: () => ({ where: () => ({ limit }) }) })),
+    };
+    const notify = { resolveRecipients: vi.fn() };
+    await recordWorkItemEvent(tx as never, { ...input, notify });
+    expect(mocks.fanout).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        scope: {
+          workspaceId: "workspace-1",
+          projectId: "project-1",
+          organisationId: "org-current",
+        },
+      }),
+      notify,
+    );
+    await expect(
+      recordWorkItemEvent(tx as never, {
+        ...input,
+        organisationId: "org-foreign",
+        notify,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+    limit.mockResolvedValueOnce([]);
+    await expect(
+      recordWorkItemEvent(tx as never, { ...input, notify }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(mocks.fanout).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps relation creation origin private and leaves approval hints unattributed", async () => {
     const endpoints = [
       {

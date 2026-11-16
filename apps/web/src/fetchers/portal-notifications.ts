@@ -9,6 +9,7 @@ export type PortalNotificationKind =
   | "work_item.transitioned"
   | "submission.replied"
   | "submission.declined"
+  | "submission.accepted"
   | "approval.requested"
   | "approval.expiring"
   | "approval.withdrawn";

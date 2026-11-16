@@ -14,13 +14,19 @@ import { evaluateCurrentNotificationReachAndPreference } from "../../apps/api/sr
 import { processNextNotificationDigest } from "../../apps/api/src/notification/digest-delivery";
 import { sealDueDigestGroups } from "../../apps/api/src/notification/digest-seal";
 import { enqueueNotificationEvent } from "../../apps/api/src/notification/fanout";
+import { immediateNotificationRuntime } from "../../apps/api/src/notification/immediate-runtime";
 import { listVisibleNotificationInbox } from "../../apps/api/src/notification/inbox.repository";
+import { processNextNotificationDelivery } from "../../apps/api/src/notification/outbox-drain";
 import { verifyNotificationPreferenceLink } from "../../apps/api/src/notification/preference-link";
 import { resolveWorkItemEventRecipients } from "../../apps/api/src/notification/work-item-recipients";
 import { updateEmailProvider } from "../../apps/api/src/notification-provider/service";
 import { drainNotificationDigests } from "../../apps/api/src/scheduler/notification-digest";
 import { createComment } from "../../apps/api/src/work-item/controllers/create-comment";
-import { grantCustomerOrganisationMembership } from "./helpers/approval-fixtures";
+import {
+  addCustomer,
+  buildTenant,
+  grantCustomerOrganisationMembership,
+} from "./helpers/approval-fixtures";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
@@ -606,6 +612,150 @@ async function customerTransitionDigestFixture() {
   await sealDueDigestGroups();
   return { actor, customerUser, customerPerson, item, eventId, delivery };
 }
+
+describe("direct request transition notification", () => {
+  it.each(["unchanged", "organisation changed"] as const)(
+    "handles a direct request transition when scope is %s",
+    async (scope) => {
+      const tenant = await buildTenant("direct-transition", {
+        executable: true,
+      });
+      const customer = await addCustomer(tenant);
+      const other = await addCustomer(tenant);
+      await db.insert(notificationPreferenceTable).values({
+        personId: customer.person.id,
+        scope: "global",
+        scopeId: null,
+        channel: "notify.email",
+        eventKind: "work_item.transitioned",
+        enabled: true,
+        digest: "off",
+      });
+      await updateEmailProvider(
+        {
+          version: 0,
+          enabled: true,
+          config: {
+            host: "smtp.synthetic.example",
+            port: 587,
+            secure: false,
+            requireTLS: false,
+            username: null,
+            fromAddress: "sender@example.test",
+            replyTo: null,
+          },
+        },
+        {
+          userId: tenant.requester.user.id,
+          personId: tenant.requesterPerson.id,
+        },
+        async () => undefined,
+      );
+      mockAuthenticatedSession(tenant.requester.user);
+      const created = await tenant.app.request(
+        `/api/projects/${tenant.project.id}/work-items`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            typeId: tenant.type.id,
+            title: "Direct customer request",
+            requesterId: customer.person.id,
+          }),
+        },
+      );
+      expect(created.status, await created.clone().text()).toBe(200);
+      const item = (await created.json()) as { id: string; key: string };
+      expect(
+        await db
+          .select()
+          .from(schema.watcherTable)
+          .where(
+            and(
+              eq(schema.watcherTable.workItemId, item.id),
+              eq(schema.watcherTable.personId, customer.person.id),
+            ),
+          ),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(schema.submissionTable)
+          .where(eq(schema.submissionTable.workItemId, item.id)),
+      ).toHaveLength(0);
+      const transitioned = await tenant.app.request(
+        `/api/work-items/${item.key}/transition`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ toStateTemplateId: tenant.wip.id }),
+        },
+      );
+      expect(transitioned.status, await transitioned.clone().text()).toBe(200);
+      const customerInbox = await listVisibleNotificationInbox({
+        userId: customer.user.id,
+        credentialCanReadTask: false,
+        filter: "all",
+        limit: 50,
+      });
+      const own = customerInbox.rows
+        .map(({ notification }) => notification)
+        .filter(
+          (row) =>
+            row.kind === "work_item.transitioned" && row.resourceId === item.id,
+        );
+      expect(own).toHaveLength(1);
+      const otherInbox = await listVisibleNotificationInbox({
+        userId: other.user.id,
+        credentialCanReadTask: false,
+        filter: "all",
+        limit: 50,
+      });
+      expect(
+        otherInbox.rows.some(
+          ({ notification }) => notification.resourceId === item.id,
+        ),
+      ).toBe(false);
+      if (scope === "organisation changed") {
+        const organisation = requireRow(
+          await db
+            .insert(schema.organisationTable)
+            .values({
+              key: `changed-${randomUUID()}`,
+              name: "Changed organisation",
+            })
+            .returning(),
+          "changed organisation",
+        );
+        await db
+          .update(schema.projectTable)
+          .set({ organisationId: organisation.id })
+          .where(eq(schema.projectTable.id, tenant.project.id));
+      }
+      const send = vi.fn(async (_to, _subject, _data, options) => {
+        expect(await options.authorize?.()).toBe(true);
+        return { success: true as const };
+      });
+      const delivery = await processNextNotificationDelivery(
+        immediateNotificationRuntime(send),
+      );
+      if (scope === "organisation changed") {
+        expect(delivery).toEqual({
+          kind: "suppressed",
+          reason: "resource_scope_changed",
+        });
+        expect(send).not.toHaveBeenCalled();
+        return;
+      }
+      expect(delivery).toEqual({ kind: "delivered" });
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(send.mock.calls[0]?.[0]).toBe(customer.user.email);
+      expect(String(send.mock.calls[0]?.[2].message)).not.toContain(
+        "Direct customer request",
+      );
+    },
+  );
+});
 
 describe("persisted notification digest delivery", () => {
   it("suppresses a queued termized customer digest when organisation reach is revoked", async () => {

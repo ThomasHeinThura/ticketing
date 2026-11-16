@@ -121,6 +121,19 @@ describe("portal notification inbox", () => {
     }
   });
 
+  it("labels accepted requests and links to their submission", async () => {
+    mocks.get.mockResolvedValue({
+      ...page,
+      data: [{ ...page.data[0], kind: "submission.accepted", commentId: null }],
+    });
+    renderInbox();
+    expect(
+      await screen.findByRole("link", {
+        name: "notifications.events.requestAccepted",
+      }),
+    ).toHaveAttribute("href", "/submissions/SUB-7");
+  });
+
   it("P2R1-04: links a customer approver's approval event to the Approvals screen", async () => {
     mocks.get.mockReset().mockResolvedValue({
       ...page,

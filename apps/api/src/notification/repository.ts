@@ -414,7 +414,8 @@ export async function findCurrentNotificationResource(
     const ref = formatSubmissionReference(submission.number);
     return {
       workspaceId: submission.workspaceId,
-      projectId: null,
+      projectId:
+        input.eventKind === "submission.accepted" ? submission.projectId : null,
       organisationId: submission.organisationId,
       visibleToPersonIds: [submission.requesterId],
       customerVisible: true,
@@ -791,11 +792,16 @@ export async function findSubmissionNotificationResource(
       organisationId: schema.submissionTable.organisationId,
       requesterId: schema.submissionTable.requesterId,
       workspaceId: schema.requestTypeTable.workspaceId,
+      projectId: schema.workItemTable.projectId,
     })
     .from(schema.submissionTable)
     .innerJoin(
       schema.requestTypeTable,
       eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+    )
+    .leftJoin(
+      schema.workItemTable,
+      eq(schema.workItemTable.id, schema.submissionTable.workItemId),
     )
     .where(eq(schema.submissionTable.id, submissionId))
     .limit(1);

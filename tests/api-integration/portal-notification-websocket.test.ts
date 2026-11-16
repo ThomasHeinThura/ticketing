@@ -5,17 +5,26 @@ import type { AddressInfo } from "node:net";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { portalAuth } from "../../apps/api/src/auth";
-import db, { schema } from "../../apps/api/src/database";
+import db, { getDatabasePool, schema } from "../../apps/api/src/database";
+import { invalidateFeatureFlagCache } from "../../apps/api/src/feature-flag/enforce";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
 import {
   broadcastNativeWorkItemHint,
   broadcastToUser,
+  deliverLocalNotificationInvalidation,
   initializeWebSocketAdapter,
   shutdownWebSocketAdapter,
 } from "../../apps/api/src/ws";
+import { createInboxPostgresRealtime } from "../../apps/api/src/ws/inbox-postgres-realtime";
+import { addCustomer } from "./helpers/approval-fixtures";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { seedIntake, submitAs } from "./helpers/intake-http";
+import {
+  mockSessionsByHeader,
+  seedIntake,
+  staffAs,
+  submitAs,
+} from "./helpers/intake-http";
 
 interface TestSocket {
   once(
@@ -236,5 +245,95 @@ describe("portal notification websocket boundary", () => {
     vi.spyOn(portalAuth.api, "getSession").mockResolvedValue(null as never);
     broadcastToUser(seed.customer.user.id, { type: "NOTIFICATION_CREATED" });
     await expect(closed).resolves.toBe(1008);
+  });
+  it("pushes the committed acceptance only to its customer and suppresses a portal-off project", async () => {
+    const seed = await seedIntake(`accepted-portal-ws-${randomUUID()}`);
+    const other = await addCustomer(seed.t);
+    const firstRef = await submitAs(seed, seed.customer);
+    const secondRef = await submitAs(seed, seed.customer);
+    mockSessionsByHeader([
+      { user: seed.customer.user, portal: "customer" },
+      { user: other.user, portal: "customer" },
+      { user: seed.t.requester.user },
+    ]);
+    const node = createNodeServer(createApp().app, 0, {
+      hostname: "127.0.0.1",
+    });
+    closeServer = node.close;
+    await new Promise<void>((resolve, reject) => {
+      node.server.once("listening", resolve);
+      node.server.once("error", reject);
+    });
+    const url = websocketUrl((node.server.address() as AddressInfo).port);
+    const headers = (userId: string) => ({
+      host: portalHost,
+      origin: portalOrigin,
+      cookie: "__Host-tdk_portal_session=integration-session",
+      "x-test-user": userId,
+    });
+    const ownerSocket = await openSocket(url, headers(seed.customer.user.id));
+    const otherSocket = await openSocket(url, headers(other.user.id));
+    let ready!: () => void;
+    const listening = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const listener = createInboxPostgresRealtime({
+      pool: getDatabasePool(),
+      deliverLocalInvalidation: deliverLocalNotificationInvalidation,
+      onReady: ready,
+    });
+    listener.start();
+    try {
+      await listening;
+      const notice = nextMessage(ownerSocket);
+      const accepted = await staffAs(
+        seed.t,
+        seed.t.requester.user,
+        `/api/submissions/${firstRef}/accept`,
+        {
+          method: "POST",
+          body: {
+            projectId: seed.t.project.id,
+            workItemTypeId: seed.t.type.id,
+          },
+        },
+      );
+      expect(accepted.status, await accepted.clone().text()).toBe(200);
+      await expect(notice).resolves.toEqual({ type: "NOTIFICATION_CREATED" });
+      await expectNoMessage(otherSocket);
+      await db
+        .insert(schema.projectFeatureFlagTable)
+        .values({
+          projectId: seed.t.project.id,
+          featureKey: "feature.customer_portal",
+          enabled: false,
+        })
+        .onConflictDoUpdate({
+          target: [
+            schema.projectFeatureFlagTable.projectId,
+            schema.projectFeatureFlagTable.featureKey,
+          ],
+          set: { enabled: false },
+        });
+      invalidateFeatureFlagCache();
+      const hidden = await staffAs(
+        seed.t,
+        seed.t.requester.user,
+        `/api/submissions/${secondRef}/accept`,
+        {
+          method: "POST",
+          body: {
+            projectId: seed.t.project.id,
+            workItemTypeId: seed.t.type.id,
+          },
+        },
+      );
+      expect(hidden.status, await hidden.clone().text()).toBe(200);
+      await expectNoMessage(ownerSocket);
+    } finally {
+      ownerSocket.close();
+      otherSocket.close();
+      await listener.stop();
+    }
   });
 });

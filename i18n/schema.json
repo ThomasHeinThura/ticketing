@@ -16921,6 +16921,130 @@
 								},
 								"requestsLink": {
 									"type": "string"
+								},
+								"inAppAlways": {
+									"type": "string"
+								},
+								"quietHoursDescription": {
+									"type": "string"
+								},
+								"quietHoursNote": {
+									"type": "string"
+								},
+								"transition": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"enabled": {
+											"type": "string"
+										}
+									},
+									"required": ["title", "description", "enabled"]
+								},
+								"requestReply": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"enabled": {
+											"type": "string"
+										}
+									},
+									"required": ["title", "description", "enabled"]
+								},
+								"requestDeclined": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"enabled": {
+											"type": "string"
+										}
+									},
+									"required": ["title", "description", "enabled"]
+								},
+								"requestAccepted": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"enabled": {
+											"type": "string"
+										}
+									},
+									"required": ["title", "description", "enabled"]
+								},
+								"approvalRequested": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"enabled": {
+											"type": "string"
+										}
+									},
+									"required": ["title", "description", "enabled"]
+								},
+								"approvalExpiring": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"enabled": {
+											"type": "string"
+										},
+										"urgent": {
+											"type": "string"
+										}
+									},
+									"required": ["title", "description", "enabled", "urgent"]
+								},
+								"approvalWithdrawn": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"title": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"enabled": {
+											"type": "string"
+										}
+									},
+									"required": ["title", "description", "enabled"]
 								}
 							},
 							"required": [
@@ -16936,7 +17060,17 @@
 								"unsupported",
 								"invalidLink",
 								"providerRequired",
-								"requestsLink"
+								"requestsLink",
+								"inAppAlways",
+								"quietHoursDescription",
+								"quietHoursNote",
+								"transition",
+								"requestReply",
+								"requestDeclined",
+								"requestAccepted",
+								"approvalRequested",
+								"approvalExpiring",
+								"approvalWithdrawn"
 							]
 						}
 					},
@@ -17084,6 +17218,9 @@
 								},
 								"approvalWithdrawn": {
 									"type": "string"
+								},
+								"requestAccepted": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -17094,7 +17231,8 @@
 								"requestDeclined",
 								"approvalRequested",
 								"approvalExpiring",
-								"approvalWithdrawn"
+								"approvalWithdrawn",
+								"requestAccepted"
 							]
 						},
 						"requestReference": {

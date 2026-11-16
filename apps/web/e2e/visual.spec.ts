@@ -5767,6 +5767,69 @@ const vPorAccountPreferences = [
     digest: "daily",
     source: "global",
   },
+  {
+    eventKind: "work_item.transitioned",
+    channel: "notify.email",
+    scope: "global",
+    scopeId: null,
+    enabled: false,
+    digest: "off",
+    source: "default",
+  },
+  {
+    eventKind: "submission.replied",
+    channel: "notify.email",
+    scope: "global",
+    scopeId: null,
+    enabled: false,
+    digest: "off",
+    source: "default",
+  },
+  {
+    eventKind: "submission.declined",
+    channel: "notify.email",
+    scope: "global",
+    scopeId: null,
+    enabled: false,
+    digest: "off",
+    source: "default",
+  },
+  {
+    eventKind: "submission.accepted",
+    channel: "notify.email",
+    scope: "global",
+    scopeId: null,
+    enabled: false,
+    digest: "off",
+    source: "default",
+  },
+  {
+    eventKind: "approval.requested",
+    channel: "notify.email",
+    scope: "global",
+    scopeId: null,
+    enabled: true,
+    digest: "off",
+    source: "default",
+  },
+  {
+    eventKind: "approval.expiring",
+    channel: "notify.email",
+    scope: "global",
+    scopeId: null,
+    enabled: true,
+    digest: "off",
+    source: "default",
+  },
+  {
+    eventKind: "approval.withdrawn",
+    channel: "notify.email",
+    scope: "global",
+    scopeId: null,
+    enabled: true,
+    digest: "off",
+    source: "default",
+  },
 ];
 
 const vPorAuthMethods = { password: true, magicLink: false, emailOtp: true };
@@ -6114,6 +6177,15 @@ async function installAuthenticatedFixture(page: Page) {
       body = url.search === "?limit=1" ? vPorInboxBell : vPorInboxUnread;
     } else if (path === "/api/portal/notification-preferences/canonical") {
       body = vPorAccountPreferences;
+    } else if (
+      path === "/api/portal/notification-preferences/canonical/quiet-hours"
+    ) {
+      body = null;
+    } else if (
+      path === "/api/portal/notification-preferences/email-link-handoff"
+    ) {
+      status = 404;
+      body = { message: "Not found" };
     } else if (path === "/api/portal/auth-methods") {
       body = vPorAuthMethods;
     } else if (
@@ -9609,7 +9681,42 @@ test("portal account preferences screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Direct mentions", { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByText("Request comments", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Status changes", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Replies to your requests", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Declined requests", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Accepted requests", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Approval requests", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Expiring approvals", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Withdrawn approvals", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Daily digest", { exact: true })).toBeVisible();
+  await expect(page.getByText("Quiet hours", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      "Direct mentions arrive immediately and cannot be included in a digest.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Approval expiry emails arrive immediately and cannot be included in a digest.",
+      { exact: true },
+    ),
+  ).toBeVisible();
   // The portal sidebar is lazy; wait for it so the screenshot never races it.
   // The lazy shell is ready: navigation and the top bar have both painted.
   await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
