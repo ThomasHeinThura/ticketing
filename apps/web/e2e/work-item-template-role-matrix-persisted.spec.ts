@@ -586,6 +586,17 @@ test("template defaults, overrides and clears persist across role, device and th
                   await expect(
                     page.getByTestId("work-item-list-populated"),
                   ).toBeVisible();
+                  if (view.width >= 1024)
+                    await expect(
+                      page.locator('[data-project-view="overview"]'),
+                    ).toBeVisible();
+                  else
+                    await expect(
+                      page.getByRole("button", {
+                        name: "Project navigation",
+                        exact: true,
+                      }),
+                    ).toBeVisible();
                   const read = await requestJson(page, createPath);
                   expect(read.status).toBe(200);
                   const denied = await requestJson(page, createPath, {

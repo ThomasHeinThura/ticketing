@@ -1,6 +1,6 @@
 # UAT completion plan — 12 to 23 November 2026
 
-Owner: Thomas. Coordinator: Claude, running the agent fleet in Orca. This plan replaces the 30 Oct UAT week plan and the 8 Nov A8 order in the [roadmap](roadmap.md). Background: [audit of 12 Nov](archive/reports/project-audit-2026-11-12.md). Rules: [AGENTS.md](../AGENTS.md). Current state: [handover](handover.md). An independent Opus review of this plan was folded in on 12 Nov.
+Owner: Thomas. Coordinator: Codex, running Codex workers through existing Orca Run `run_fcfd513c447f`. This plan replaces the 30 Oct UAT week plan and the 8 Nov A8 order in the [roadmap](roadmap.md). Background: [audit of 12 Nov](archive/reports/project-audit-2026-11-12.md). Rules: [AGENTS.md](../AGENTS.md). Current state: [handover](handover.md). An independent Opus review of this plan was folded in on 12 Nov.
 
 **16 Nov continuation:** Stage 2 Batch 4 is merged in #1194. The 93-issue ledger has 30 closed and 63 open; Stage 3A is active. #1195 (#910) and #1197 (#903) are draft candidates; #1196 (#901) is merged and deployed as signed `08575e865`, with canonical seven-role deletion acceptance passed (42/42 cells) and #901 closed. #899/#900 cover persisted settings only; browser-only appearance is exempt. G11 remains frozen and report-only, and Technexus remains deferred while Azure is unavailable. See [current status](status.md) for exact checks and acceptance boundaries.
 
@@ -51,7 +51,7 @@ Each decision is written into `docs/technical/design-and-decisions.md`, with wha
 
 ## 3. How the work runs
 
-- **Fleet.** Claude coordinates in Orca. Workers run in the Orca worktrees that already exist, each with a fixed list of paths. **No new worktrees are created, and a worktree is closed once its work is merged (Thomas, 12 Nov).** Implementers are Claude Sonnet, or Codex (Terra, Luna) and Gemini when their limits allow. Every PR gets an independent high-tier review (Claude Opus or Codex Sol) by a model that did not write the code. No Fable subagents.
+- **Fleet (Thomas, 16 Nov).** Codex coordinates the existing Orca Run. Codex Terra implements routine work; independent Codex Sol High reviews risky changes. Claude, Gemini and Antigravity are unavailable and are not dispatched. Workers run in the Orca worktrees that already exist, each with a fixed list of paths. **No new worktrees are created, and a worktree is closed once its work is merged (Thomas, 12 Nov).** Implementers use the verified Codex model catalog. Every PR gets an independent review appropriate to risk; risky changes require Sol High, by a model that did not write the code. No Fable subagents.
 - **Status.** Thomas gets a report in chat every hour, starting "Hey Thomas", with failures first. A failure is also reported as soon as it is seen.
 - **Who commits.** Workers edit and test only. The coordinator commits, pushes, opens PRs, merges and deploys.
 - **One owner per file.** `packages/permissions/src/evaluator.ts` has one owner at a time (stream B2, then B3). Only the coordinator edits `docs/status.md`, `docs/roadmap.md`, `docs/handover.md` and this plan. Generated files (`i18n/schema.json`, `pairs.json`, `openapi.json`) are regenerated when a branch is brought up to date, never merged by hand.
