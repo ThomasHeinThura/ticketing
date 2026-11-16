@@ -49,9 +49,9 @@ export async function loadTemplateForCreate(
  * The create-transaction hook. Re-locks the template `FOR SHARE` (an archive or edit that landed
  * after `loadTemplateForCreate` is a 409, never a half-applied older version), then copies what
  * `WI-5` lists and nothing else: labels (only when the request sent none, and only labels that
- * still exist in the workspace catalogue) and the linked checklist template's items.
- * Never assignee, dates or state. Custom field values are stored on the template but the
- * work item has no custom-field storage yet, so they are not applied.
+ * still exist in the workspace catalogue), the linked checklist template's items, and returns the
+ * stored `customFieldValues` so creation applies valid, visible values omitted by the caller.
+ * Never assignee, dates or state.
  *
  * Labels are attached directly (the template is the configuration; the creator needs only
  * `work_item:create`), and each applied change writes an internal activity row (`WI-6`).
@@ -65,7 +65,7 @@ export async function applyTemplateInTransaction(
     actorId: string;
     actorType: ActivityActorType;
   },
-) {
+): Promise<Record<string, unknown>> {
   const current = await getWorkItemTemplate(
     tx,
     item.workspaceId,
@@ -149,4 +149,5 @@ export async function applyTemplateInTransaction(
     }
   }
   await recordWorkItemActivity(tx, rows);
+  return current.customFieldValues;
 }

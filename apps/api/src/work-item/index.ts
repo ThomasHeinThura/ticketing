@@ -1692,16 +1692,18 @@ const workItem = apiRouter<
       assigneeId,
       ...(requesterId !== undefined ? { requesterId } : {}),
       afterInsert: async (tx, inserted) => {
-        if (template)
-          await applyTemplateInTransaction(tx, template, inserted, {
-            applyLabels: labelIds === undefined,
-            actorId,
-            actorType,
-          });
-        // CF-4/CF-5: required fields block creation; defaults fill what was left out.
+        const templateDefaults = template
+          ? await applyTemplateInTransaction(tx, template, inserted, {
+              applyLabels: labelIds === undefined,
+              actorId,
+              actorType,
+            })
+          : undefined;
+        // CF-4/CF-5: required fields block creation; template values fill what the request left out ahead of defaults.
         await applyWorkItemFieldValues(tx, inserted, customFields, {
           create: true,
           enforceRequired: true,
+          templateDefaults,
         });
       },
       authorization: {
