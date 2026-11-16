@@ -42,6 +42,7 @@ import {
   replaceRequestTypeGroupOrder,
 } from "@/fetchers/intake-group-order";
 import { useCustomFields } from "@/hooks/queries/custom-field/use-custom-fields";
+import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
@@ -168,6 +169,10 @@ function RequestTypesEditor() {
   const workItemTypes = useGetWorkItemTypes({
     workspaceId: workspace.data?.id,
   });
+  const projects = useGetProjects(
+    { workspaceId: workspace.data?.id ?? "" },
+    Boolean(workspace.data?.id),
+  );
   // CF-11: a form field may be mapped to a customer-visible custom field (`cf.<key>`).
   const customFields = useCustomFields(workspace.data?.id ?? "");
   const collectableFields = (customFields.data?.data ?? []).filter(
@@ -315,7 +320,10 @@ function RequestTypesEditor() {
     });
   };
   const loading =
-    types.isLoading || groupOrder.isLoading || workItemTypes.isLoading;
+    types.isLoading ||
+    groupOrder.isLoading ||
+    workItemTypes.isLoading ||
+    projects.isLoading;
   const placeholderVisible = useDelayedPending(loading, {
     releaseNow:
       !loading &&
@@ -644,16 +652,53 @@ function RequestTypesEditor() {
                 htmlFor="request-type-project"
               >
                 {t("projectId")}
-                <Input
-                  id="request-type-project"
-                  value={draft.defaultProjectId ?? ""}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      defaultProjectId: e.target.value || null,
-                    })
-                  }
-                />
+                {(() => {
+                  const chooseProjectLabel = t("choose", {
+                    defaultValue: "Choose…",
+                  });
+                  const projectOptions = [
+                    { value: "__none__", label: chooseProjectLabel },
+                    ...(projects.data ?? []).map((project) => ({
+                      value: project.id,
+                      label: `${project.name} (${project.slug})`,
+                    })),
+                    ...(draft.defaultProjectId &&
+                    !(projects.data ?? []).some(
+                      (project) => project.id === draft.defaultProjectId,
+                    )
+                      ? [
+                          {
+                            value: draft.defaultProjectId,
+                            label: draft.defaultProjectId,
+                          },
+                        ]
+                      : []),
+                  ];
+                  return (
+                    <Select
+                      items={projectOptions}
+                      value={draft.defaultProjectId ?? "__none__"}
+                      onValueChange={(value) =>
+                        setDraft({
+                          ...draft,
+                          defaultProjectId:
+                            value && value !== "__none__" ? value : null,
+                        })
+                      }
+                    >
+                      <SelectTrigger id="request-type-project">
+                        <SelectValue placeholder={chooseProjectLabel} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projectOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </label>
               <label
                 className="flex flex-col gap-1"

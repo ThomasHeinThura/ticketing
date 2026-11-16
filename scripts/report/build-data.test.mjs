@@ -229,7 +229,10 @@ test("CLI writes deterministically and leaves the report intact on invalid input
     const indexPath = join(dir, "docs/requirements-index.json");
     const reportPath = join(dir, "docs/report/data.json");
     writeFileSync(indexPath, JSON.stringify(index));
-    writeFileSync(reportPath, JSON.stringify(previous));
+    mkdirSync(join(dir, "docs/archive/reports"), { recursive: true });
+    const archivedPath = join(dir, "docs/archive/reports/data.json");
+    const archived = JSON.stringify(previous);
+    writeFileSync(archivedPath, archived);
     const run = (...args) =>
       spawnSync(
         process.execPath,
@@ -237,6 +240,7 @@ test("CLI writes deterministically and leaves the report intact on invalid input
         { cwd: dir, encoding: "utf8" },
       );
     assert.equal(run().status, 0);
+    assert.equal(readFileSync(archivedPath, "utf8"), archived);
     const first = readFileSync(reportPath, "utf8");
     assert.match(first, /^\{\n\t"generated":/);
     assert.equal(run().status, 0);
@@ -277,7 +281,7 @@ test("current index totals match explicit per-ID classifications without assumin
     readFileSync("docs/requirements-index.json", "utf8"),
   );
   const currentReport = JSON.parse(
-    readFileSync("docs/report/data.json", "utf8"),
+    readFileSync("docs/archive/reports/data.json", "utf8"),
   );
   const rebuilt = buildData(currentIndex, currentReport);
   assert.equal(currentIndex.requirements.length, 673);

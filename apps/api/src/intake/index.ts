@@ -158,6 +158,8 @@ const submissionResponseSchema = z.object({
   version: requestTypeVersionSchema,
   messages: z.array(submissionMessageSchema),
   ref: z.string(),
+  /** #681: reached converted work item metadata so reloaded triage renders `KEY · title`. */
+  workItem: z.object({ key: z.string(), title: z.string() }).nullable(),
   /** CP-9: the requester's rating of the resolution, for staff; null until rated. */
   satisfaction: z
     .object({
@@ -1462,6 +1464,7 @@ const intakeSubmissionRouter = apiRouter<IntakeVariables>()
         requestType: toStaffRequestTypeRef(detail.requestType),
         version: toRequestTypeVersion(detail.version),
         messages: detail.messages.map(toSubmissionMessage),
+        workItem: detail.workItem ?? null,
         // `workItemId` is already null when the caller cannot reach the linked work item.
         satisfaction: await findSubmissionSatisfaction(
           detail.submission.workItemId,

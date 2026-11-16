@@ -1,6 +1,7 @@
 // Rebuild counts from the current per-ID index, preserving maintained evidence.
 // Usage: node scripts/report/build-data.mjs [legacy-audit-dir]
 import {
+  existsSync,
   readFileSync,
   renameSync,
   statSync,
@@ -196,7 +197,12 @@ function main() {
     readFileSync("docs/requirements-index.json", "utf8"),
   );
   const out = "docs/report/data.json";
-  const previous = JSON.parse(readFileSync(out, "utf8"));
+  const previous = JSON.parse(
+    readFileSync(
+      existsSync(out) ? out : "docs/archive/reports/data.json",
+      "utf8",
+    ),
+  );
   const result = `${JSON.stringify(buildData(index, previous), null, "\t")}\n`;
   const temporary = `${out}.${process.pid}.tmp`;
   let created = false;

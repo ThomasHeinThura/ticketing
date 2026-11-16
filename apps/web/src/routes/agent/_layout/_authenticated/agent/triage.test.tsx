@@ -798,6 +798,28 @@ describe("intake triage route", () => {
     );
   });
 
+  it("renders converted work item key and title on reload from staff submission detail (#681)", async () => {
+    mocks.getSubmissions.mockReset().mockResolvedValue({
+      submissions: [],
+      page: { hasMore: false, nextCursor: null },
+    });
+    mocks.search = { state: "accepted", ref: "SUB-7" };
+    mocks.getSubmission.mockReset().mockResolvedValue({
+      ...detail("accepted", null, "raw-work-item-id"),
+      workItem: { key: "WI-12", title: "Need account access" },
+    });
+    mocks.getSubmissionAttachments.mockResolvedValue([]);
+    mocks.getDuplicateSuggestions.mockResolvedValue({ suggestions: [] });
+    renderTriage();
+
+    expect(
+      await screen.findByText(
+        "Converted Work item: WI-12 · Need account access",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/raw-work-item-id/u)).not.toBeInTheDocument();
+  });
+
   it("announces the declined state in the status region and moves focus there after Decline", async () => {
     mocks.getSubmissions.mockReset().mockResolvedValue({
       submissions: [],

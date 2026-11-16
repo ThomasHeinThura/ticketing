@@ -2,6 +2,21 @@
 	"writeRequests": [
 		{
 			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"key": "PERF-7972",
+			"operation": "rank",
+			"bodyKeys": ["afterId", "beforeId"],
+			"body": {
+				"beforeId": "a03fohihmsd74wy8dcaiifa8",
+				"afterId": "a07nduomdh0ox0zm921an8bh"
+			},
+			"beforeId": "a03fohihmsd74wy8dcaiifa8",
+			"afterId": "a07nduomdh0ox0zm921an8bh",
+			"beforeKey": "PERF-1863",
+			"afterKey": "PERF-6219"
+		},
+		{
+			"method": "POST",
 			"path": "/api/work-items/PERF-1863/rank",
 			"key": "PERF-1863",
 			"operation": "rank",
@@ -34,6 +49,12 @@
 	"writeResponses": [
 		{
 			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"status": 200,
+			"contentType": "application/json"
+		},
+		{
+			"method": "POST",
 			"path": "/api/work-items/PERF-1863/rank",
 			"status": 200,
 			"contentType": "application/json"
@@ -46,6 +67,17 @@
 		}
 	],
 	"wireRankRequests": [
+		{
+			"method": "POST",
+			"path": "/api/work-items/PERF-7972/rank",
+			"key": "PERF-7972",
+			"body": {
+				"beforeId": "a03fohihmsd74wy8dcaiifa8",
+				"afterId": "a07nduomdh0ox0zm921an8bh"
+			},
+			"beforeKey": "PERF-1863",
+			"afterKey": "PERF-6219"
+		},
 		{
 			"method": "POST",
 			"path": "/api/work-items/PERF-1863/rank",
@@ -71,29 +103,14 @@
 	],
 	"bundleHashes": [
 		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
 			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
 		},
 		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
 			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
-		},
-		{
-			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
-			"status": 200,
-			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
-		},
-		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
-			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
-		},
-		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
-			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
 		},
 		{
 			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
@@ -101,29 +118,14 @@
 			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
 		},
 		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
 			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
 		},
 		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
 			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
-		},
-		{
-			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
-			"status": 200,
-			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
-		},
-		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
-			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
-		},
-		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
-			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
 		},
 		{
 			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
@@ -131,29 +133,14 @@
 			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
 		},
 		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
 			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
 		},
 		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
 			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
-		},
-		{
-			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
-			"status": 200,
-			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
-		},
-		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
-			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
-		},
-		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
-			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
 		},
 		{
 			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
@@ -161,34 +148,14 @@
 			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
 		},
 		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
 			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
 		},
 		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
 			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
-		},
-		{
-			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
-			"status": 200,
-			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
-		},
-		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
-			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
-		},
-		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
-			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
-		},
-		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
-			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
 		},
 		{
 			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
@@ -196,14 +163,14 @@
 			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
 		},
 		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
 			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
 		},
 		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
 			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
 		},
 		{
 			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
@@ -211,14 +178,84 @@
 			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
 		},
 		{
-			"path": "/assets/work-item-board-view-CZeABoBK.js",
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
 			"status": 200,
-			"sha256": "3048e219a34e314e655e881b925bb9287f6a600bcba7ead799d3475aa48b97da"
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
 		},
 		{
-			"path": "/assets/work-item-sla-badge-CraAJJOy.js",
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
 			"status": 200,
-			"sha256": "7bd3383831aa6a4f9528b958689cfc63aa09dafcf5e63cca670300f4a64f80be"
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
+			"status": 200,
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
+			"status": 200,
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
+			"status": 200,
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
+			"status": 200,
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
+		},
+		{
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
+			"status": 200,
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
+			"status": 200,
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
+			"status": 200,
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
+			"status": 200,
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
+		},
+		{
+			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
+			"status": 200,
+			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
+		},
+		{
+			"path": "/assets/work-item-board-view-DbK5BEWO.js",
+			"status": 200,
+			"sha256": "0bde788138f9e487dbe8b0cce5ffa9e67ccede762f7be3732e21818bbe630e0b"
+		},
+		{
+			"path": "/assets/work-item-sla-badge-B8cD_8uQ.js",
+			"status": 200,
+			"sha256": "f83f26c0a612f751a09cc8971ee54a21defaa50bd2c277f66cd11b8cebf0d35e"
 		},
 		{
 			"path": "/assets/virtualized-sortable-list-BgEQyQwr.js",
@@ -226,7 +263,7 @@
 			"sha256": "031853b2484e2c29dd6e11c15be1054fbe860ee4fc3c94ab4082f0ac3b1f4757"
 		}
 	],
-	"artifact": "codex-20261025-keyboard-sensor-retest-final",
+	"artifact": "codex-20261025-keyboard-final-acceptance",
 	"fixtureBaselineOrder": ["PERF-7972", "PERF-1863", "PERF-6219"],
 	"target": {
 		"origin": "https://ticketing.localhost:1443",
@@ -243,30 +280,117 @@
 			"name": "strict-TLS fixture owner and live API ID/key map",
 			"pass": true,
 			"rowsMapped": 200,
-			"initialRankOrder": ["PERF-1863", "PERF-7972", "PERF-6219"],
+			"initialRankOrder": ["PERF-7972", "PERF-1863", "PERF-6219"],
 			"fixtureBaselineOrder": ["PERF-7972", "PERF-1863", "PERF-6219"]
 		},
 		{
 			"name": "board Escape cancellation and idle Enter",
 			"pass": true,
-			"fixtureKey": "PERF-1863",
+			"fixtureKey": "PERF-7972",
 			"escapeWrites": 0,
 			"idleEnterOpenedDetail": true
 		},
 		{
 			"name": "board paced persisted keyboard rank",
-			"pass": false,
-			"error": "board fresh GET did not match rank response position/version"
+			"pass": true,
+			"movement": {
+				"fixtureKey": "PERF-7972",
+				"beforeIndex": 0,
+				"afterReloadIndex": 1,
+				"beforeNeighbor": "PERF-1863",
+				"afterNeighbor": "PERF-6219",
+				"beforeNeighborId": "a03fohihmsd74wy8dcaiifa8",
+				"afterNeighborId": "a07nduomdh0ox0zm921an8bh",
+				"write": {
+					"method": "POST",
+					"path": "/api/work-items/PERF-7972/rank",
+					"body": {
+						"beforeId": "a03fohihmsd74wy8dcaiifa8",
+						"afterId": "a07nduomdh0ox0zm921an8bh"
+					},
+					"beforeKey": "PERF-1863",
+					"afterKey": "PERF-6219"
+				},
+				"response": {
+					"contentType": "application/json",
+					"key": "PERF-7972",
+					"position": "2.9990234375",
+					"version": 11
+				},
+				"freshGet": {
+					"position": "2.9990234375",
+					"version": 11
+				},
+				"status": 200
+			}
 		},
 		{
 			"name": "board fast persisted keyboard rank",
-			"pass": false,
-			"error": "board fresh GET did not match rank response position/version"
+			"pass": true,
+			"movement": {
+				"fixtureKey": "PERF-1863",
+				"beforeIndex": 0,
+				"afterReloadIndex": 1,
+				"beforeNeighbor": "PERF-7972",
+				"afterNeighbor": "PERF-6219",
+				"beforeNeighborId": "a03oizj1k8xx8cnnaxa09dva",
+				"afterNeighborId": "a07nduomdh0ox0zm921an8bh",
+				"write": {
+					"method": "POST",
+					"path": "/api/work-items/PERF-1863/rank",
+					"body": {
+						"beforeId": "a03oizj1k8xx8cnnaxa09dva",
+						"afterId": "a07nduomdh0ox0zm921an8bh"
+					},
+					"beforeKey": "PERF-7972",
+					"afterKey": "PERF-6219"
+				},
+				"response": {
+					"contentType": "application/json",
+					"key": "PERF-1863",
+					"position": "2.9995117188",
+					"version": 8
+				},
+				"freshGet": {
+					"position": "2.9995117188",
+					"version": 8
+				},
+				"status": 200
+			}
 		},
 		{
 			"name": "list fast persisted keyboard rank",
-			"pass": false,
-			"error": "list fast attempt emitted 0 rank writes"
+			"pass": true,
+			"movement": {
+				"fixtureKey": "PERF-7972",
+				"beforeIndex": 0,
+				"afterReloadIndex": 1,
+				"beforeNeighbor": "PERF-1863",
+				"afterNeighbor": "PERF-6219",
+				"beforeNeighborId": "a03fohihmsd74wy8dcaiifa8",
+				"afterNeighborId": "a07nduomdh0ox0zm921an8bh",
+				"write": {
+					"method": "POST",
+					"path": "/api/work-items/PERF-7972/rank",
+					"body": {
+						"beforeId": "a03fohihmsd74wy8dcaiifa8",
+						"afterId": "a07nduomdh0ox0zm921an8bh"
+					},
+					"beforeKey": "PERF-1863",
+					"afterKey": "PERF-6219"
+				},
+				"response": {
+					"contentType": "application/json",
+					"key": "PERF-7972",
+					"position": "2.9997558594",
+					"version": 12
+				},
+				"freshGet": {
+					"position": "2.9997558594",
+					"version": 12
+				},
+				"status": 200
+			}
 		},
 		{
 			"name": "grouped priority keyboard field change and UI restoration",
@@ -289,7 +413,7 @@
 			"layout": "board",
 			"attempt": "paced",
 			"pacing": "paced",
-			"fixtureKey": "PERF-1863",
+			"fixtureKey": "PERF-7972",
 			"trace": [
 				{
 					"step": "before-pickup",
@@ -303,7 +427,22 @@
 				{
 					"step": "picked-up",
 					"dragging": true,
-					"activeKey": "PERF-1863",
+					"activeKey": "PERF-7972",
+					"activeSortable": {
+						"index": 0,
+						"itemCount": 200,
+						"containerId": "Sortable-2"
+					},
+					"overKey": "PERF-7972",
+					"liveAnnouncements": [
+						"Picked up TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-7972"
+				},
+				{
+					"step": "after-ArrowDown-1",
+					"dragging": true,
+					"activeKey": "PERF-7972",
 					"activeSortable": {
 						"index": 0,
 						"itemCount": 200,
@@ -311,29 +450,14 @@
 					},
 					"overKey": "PERF-1863",
 					"liveAnnouncements": [
-						"Picked up TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
+						"TaskDeskPerf10k-20261025 #07972 — 性能測試項目 is over TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
 					],
-					"focusedKey": "PERF-1863"
-				},
-				{
-					"step": "after-ArrowDown-1",
-					"dragging": true,
-					"activeKey": "PERF-1863",
-					"activeSortable": {
-						"index": 0,
-						"itemCount": 200,
-						"containerId": "Sortable-2"
-					},
-					"overKey": "PERF-7972",
-					"liveAnnouncements": [
-						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
-					],
-					"focusedKey": "PERF-1863"
+					"focusedKey": "PERF-7972"
 				},
 				{
 					"step": "after-ArrowDown-2",
 					"dragging": true,
-					"activeKey": "PERF-1863",
+					"activeKey": "PERF-7972",
 					"activeSortable": {
 						"index": 0,
 						"itemCount": 200,
@@ -341,62 +465,24 @@
 					},
 					"overKey": "PERF-6219",
 					"liveAnnouncements": [
-						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #06219 — 性能測試項目."
+						"TaskDeskPerf10k-20261025 #07972 — 性能測試項目 is over TaskDeskPerf10k-20261025 #06219 — 性能測試項目."
 					],
-					"focusedKey": "PERF-1863"
+					"focusedKey": "PERF-7972"
 				},
 				{
 					"step": "after-ArrowUp-3",
 					"dragging": true,
-					"activeKey": "PERF-1863",
+					"activeKey": "PERF-7972",
 					"activeSortable": {
 						"index": 0,
 						"itemCount": 200,
 						"containerId": "Sortable-2"
 					},
-					"overKey": "PERF-7972",
+					"overKey": "PERF-1863",
 					"liveAnnouncements": [
-						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 is over TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+						"TaskDeskPerf10k-20261025 #07972 — 性能測試項目 is over TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
 					],
-					"focusedKey": "PERF-1863"
-				},
-				{
-					"step": "after-drop",
-					"dragging": false,
-					"activeKey": null,
-					"activeSortable": null,
-					"overKey": null,
-					"liveAnnouncements": [
-						"PERF-1863 moved to position 2 of 200 in To Do.",
-						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped on TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
-					],
-					"focusedKey": "PERF-1863"
-				},
-				{
-					"step": "finally",
-					"dragging": false,
-					"activeKey": null,
-					"activeSortable": null,
-					"overKey": null,
-					"liveAnnouncements": [],
-					"focusedKey": null
-				}
-			]
-		},
-		{
-			"layout": "board",
-			"attempt": "fast",
-			"pacing": "fast-no-delays",
-			"fixtureKey": "PERF-7972",
-			"trace": [
-				{
-					"step": "before-pickup",
-					"dragging": false,
-					"activeKey": null,
-					"activeSortable": null,
-					"overKey": null,
-					"liveAnnouncements": [],
-					"focusedKey": null
+					"focusedKey": "PERF-7972"
 				},
 				{
 					"step": "after-drop",
@@ -422,7 +508,7 @@
 			]
 		},
 		{
-			"layout": "list",
+			"layout": "board",
 			"attempt": "fast",
 			"pacing": "fast-no-delays",
 			"fixtureKey": "PERF-1863",
@@ -443,7 +529,46 @@
 					"activeSortable": null,
 					"overKey": null,
 					"liveAnnouncements": [
-						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped."
+						"PERF-1863 moved to position 2 of 200 in To Do.",
+						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped on TaskDeskPerf10k-20261025 #07972 — 性能測試項目."
+					],
+					"focusedKey": "PERF-1863"
+				},
+				{
+					"step": "finally",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				}
+			]
+		},
+		{
+			"layout": "list",
+			"attempt": "fast",
+			"pacing": "fast-no-delays",
+			"fixtureKey": "PERF-7972",
+			"trace": [
+				{
+					"step": "before-pickup",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [],
+					"focusedKey": null
+				},
+				{
+					"step": "after-drop",
+					"dragging": false,
+					"activeKey": null,
+					"activeSortable": null,
+					"overKey": null,
+					"liveAnnouncements": [
+						"PERF-7972 moved to position 2 of 50 in To Do.",
+						"TaskDeskPerf10k-20261025 #07972 — 性能測試項目 was dropped on TaskDeskPerf10k-20261025 #01863 — 性能測試項目."
 					],
 					"focusedKey": null
 				},
@@ -453,9 +578,7 @@
 					"activeKey": null,
 					"activeSortable": null,
 					"overKey": null,
-					"liveAnnouncements": [
-						"TaskDeskPerf10k-20261025 #01863 — 性能測試項目 was dropped."
-					],
+					"liveAnnouncements": [],
 					"focusedKey": null
 				}
 			]
@@ -494,15 +617,15 @@
 	],
 	"errors": [],
 	"screenshots": [
-		"codex-20261025-keyboard-sensor-final-board-paced-paced.png",
-		"codex-20261025-keyboard-sensor-final-board-fast-fast.png",
-		"codex-20261025-keyboard-sensor-final-list-fast-fast.png",
-		"codex-20261025-keyboard-sensor-final-grouped-priority-change.png"
+		"codex-20261025-keyboard-final-acceptance-board-paced-paced.png",
+		"codex-20261025-keyboard-final-acceptance-board-fast-fast.png",
+		"codex-20261025-keyboard-final-acceptance-list-fast-fast.png",
+		"codex-20261025-keyboard-final-acceptance-grouped-priority-change.png"
 	],
-	"initialRankOrder": ["PERF-1863", "PERF-7972", "PERF-6219"],
+	"initialRankOrder": ["PERF-7972", "PERF-1863", "PERF-6219"],
 	"idKeyMap": {
-		"a03fohihmsd74wy8dcaiifa8": "PERF-1863",
 		"a03oizj1k8xx8cnnaxa09dva": "PERF-7972",
+		"a03fohihmsd74wy8dcaiifa8": "PERF-1863",
 		"a07nduomdh0ox0zm921an8bh": "PERF-6219",
 		"a0c03v0fq6mug1plfjy029hk": "PERF-6083",
 		"a0crrhqz1ldohhc3opcbb5cq": "PERF-8204",
@@ -526,7 +649,7 @@
 		"a1s2lknjayt5ao3jqf9qssna": "PERF-9054",
 		"a1uofb5bll6xvilx85579o8w": "PERF-6856",
 		"a21niodp2oc585dthtszwo9d": "PERF-6791",
-		"a25gas4tvi5n72j0ax0jppwd": "PERF-1235",
+		"a25gas4tvi5n72j0ax0jppwx": "PERF-1235",
 		"a27hau6j326rixk65o9c3739": "PERF-6031",
 		"a2agy3wk684yo5ae21obikxz": "PERF-1900",
 		"a2bws3tcey037lsncco4gt05": "PERF-921",
