@@ -2937,11 +2937,16 @@ cannot lower it. The dialog always shows the **exact target** and the **action**
 | **Bulk deletion above 50 items** | As above, plus the full blast radius of the filter | **Typed count + step-up** (`typed_count_step_up`) |
 | Project | Affected work items, members, attachments, integrations; recovery and purge behaviour | **Typed project key or exact name + step-up** |
 | Workspace, organisation | Full operational and security impact | **Typed exact name + step-up** |
+| Team | Exact current team name and its dependants; deletion blockers | **Typed exact name** (`typed_name`) |
 | API key, webhook, identity connection / provider | Who and what depends on it; what stops working | **Typed exact name + step-up** |
 | Hard purge (`PA-13`) | What will be irrecoverably removed; legal-hold and retention check result | **Typed exact name + step-up**, `instance:admin` |
 | God Mode person deactivation | Exact current account email and IP-15 lifecycle impact | **Typed current email + step-up** (`typed_name_step_up`) |
 | MCP destructive that is not a deletion (`PA-14`: `decide_approval`, bulk > 50 items) | The decision or the batch, and the work items it touches | Explicit click |
-| **Any other single deletable record** — role (with its holders reassigned, `RL-8`), custom field (`CF-8`), team, service calendar, automation rule, time entry, shared or team saved view, label, relation | Exact target and its dependants | Explicit click |
+| **Any other single deletable record** — role (with its holders reassigned, `RL-8`), custom field (`CF-8`), service calendar, automation rule, time entry, shared or team saved view, label, relation | Exact target and its dependants | Explicit click |
+
+Thomas approved the team change on 16 November 2026 (#901): team deletion requires its
+exact current name, without an additional step-up. Existing click-confirmed team actions
+are not upgraded in place: cancel them and request a new typed-name action.
 
 Each row states **one** required confirmation, never a choice between two: the column is the
 `confirmation_required` enum value, and "A or B" is not something the enum can hold or a test

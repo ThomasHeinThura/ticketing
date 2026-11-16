@@ -249,7 +249,6 @@ describe("in-place deletion approval", () => {
     "service",
     "time_entry",
     "cost_entry",
-    "team",
     "automation",
     "webhook",
     "kb_category",
@@ -273,6 +272,81 @@ describe("in-place deletion approval", () => {
       expect(mocks.approve).toHaveBeenCalledWith({ id: "pa-1" }),
     );
   });
+
+  it("requires an exact team name and approves without step-up", async () => {
+    mocks.pathname = "/dashboard/settings/workspace/teams/team-1";
+    mocks.action.current = {
+      id: "pa-team",
+      action: "delete",
+      targetType: "team",
+      targetIds: ["team-1"],
+      summary: { name: "Support" },
+      approvalSupported: true,
+      confirmation: "typed_name",
+      state: "pending",
+      origin: "web",
+      expiresAt: "2026-11-16T00:00:00.000Z",
+    };
+    usePendingActionDialogStore.setState({ pendingActionId: "pa-team" });
+    render(<PendingActionApprovalDialog />);
+    const input = await screen.findByLabelText(
+      "pendingActions:registered.confirmName",
+    );
+    const approveButton = screen.getByRole("button", {
+      name: "common:actions.delete",
+    });
+    expect(approveButton).toBeDisabled();
+    for (const value of ["support", "Support ", " Support"]) {
+      fireEvent.change(input, { target: { value } });
+      expect(approveButton).toBeDisabled();
+      fireEvent.click(approveButton);
+    }
+    expect(mocks.approve).not.toHaveBeenCalled();
+    expect(
+      screen.queryByLabelText("pendingActions:dynamic.accountPassword"),
+    ).toBeNull();
+    fireEvent.change(input, { target: { value: "Support" } });
+    expect(approveButton).toBeEnabled();
+    fireEvent.click(approveButton);
+    await waitFor(() =>
+      expect(mocks.approve).toHaveBeenCalledWith({
+        id: "pa-team",
+        typedName: "Support",
+      }),
+    );
+    expect(mocks.proof).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        href: "/dashboard/settings/workspace/teams",
+      }),
+    );
+  });
+
+  it.each(["typed_count", "typed_count_step_up", "unknown"])(
+    "refuses an unsupported registered team confirmation %s",
+    async (confirmation) => {
+      mocks.action.current = {
+        id: "pa-team-invalid",
+        action: "delete",
+        targetType: "team",
+        targetIds: ["team-1"],
+        summary: { name: "Support" },
+        approvalSupported: true,
+        confirmation,
+        state: "pending",
+      };
+      usePendingActionDialogStore.setState({
+        pendingActionId: "pa-team-invalid",
+      });
+      render(<PendingActionApprovalDialog />);
+      await screen.findByRole("dialog");
+      expect(
+        screen.queryByRole("button", { name: "common:actions.delete" }),
+      ).toBeNull();
+      expect(mocks.approve).not.toHaveBeenCalled();
+      expect(mocks.proof).not.toHaveBeenCalled();
+    },
+  );
 
   it("titles a saved-view deletion with its translated action and refreshes the views", async () => {
     mocks.targetType = "saved_view";

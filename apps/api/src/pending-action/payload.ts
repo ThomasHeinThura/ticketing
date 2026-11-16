@@ -159,6 +159,8 @@ export function requiredConfirmation(input: {
     return input.targetCount > 50 ? "typed_count_step_up" : "typed_count";
   }
   if (input.action === "mcp_destructive") return "click";
+  if (input.action === "delete" && input.targetType === "team")
+    return "typed_name";
   if (
     input.targetType === "project" ||
     input.targetType === "workspace" ||

@@ -7,6 +7,7 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import {
   registeredDeletionRequestSchema,
@@ -228,13 +229,15 @@ const deleteRoute = createRoute({
   tags: ["Teams"],
   summary: "Delete a team",
   description:
-    "Request deletion (202 pending action, click approval). Refused while the team is the CAB or has saved views shared with it (TM-7).",
+    "Request deletion (202 pending action, exact team-name approval). Refused while the team owns a project, is the CAB or has saved views shared with it (TM-7).",
   middleware: [teamReach, ...manageSettings] as const,
   request: { params: teamIdParam },
   responses: {
     202: jsonResponse(
       "Deletion awaiting approval",
-      registeredDeletionRequestSchema,
+      registeredDeletionRequestSchema.extend({
+        confirmation: z.literal("typed_name"),
+      }),
     ),
     403: errorResponse("Missing workspace:manage_settings permission"),
     404: errorResponse("Team not found"),
@@ -362,7 +365,11 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
       id,
       workspaceId: c.get("workspaceId"),
     });
-    return c.json(pending, 202);
+    if (pending.confirmation !== "typed_name")
+      throw new HTTPException(500, {
+        message: "Unexpected team deletion confirmation",
+      });
+    return c.json({ ...pending, confirmation: pending.confirmation }, 202);
   })
   .openapi(addMemberRoute, async (c) => {
     const added = await addMember(

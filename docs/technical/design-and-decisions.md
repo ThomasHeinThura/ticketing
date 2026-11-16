@@ -8,6 +8,15 @@ Product decisions and their rationale, original Kaneo design/token/motion contra
 - [Licensing/source boundary](#licensing-and-attribution) · [Risks and owner decisions](#risks)
 - [Precedence and source conflicts](#decision-provenance)
 
+## Team deletion confirmation — 16 November 2026
+
+Thomas chose: “Require the team name and update the deletion contract” (#901).
+Team deletion uses `typed_name`: the exact current name is checked server-side in the
+pending action approval, without adding step-up. This supersedes the team's previous
+click-confirmation entry in the confirmation table and aligns it with ST-8. TM-7 blockers,
+permissions, target-change checks and audit history remain. Existing click requests must
+be cancelled and re-requested; stored pending actions are not rewritten.
+
 <a id="0001-kaneo-as-foundation"></a>
 ## 0001 — kaneo as the foundation, taken once, not forked
 

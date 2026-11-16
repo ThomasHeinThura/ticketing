@@ -55,8 +55,7 @@ import { registeredDeletionTarget } from "./registered-deletion-targets";
 
 /**
  * Deletions that moved behind the pending-action flow (registered targets). Their summary
- * carries the target `name`; project and workspace additionally require that exact name
- * to be typed together with a fresh step-up.
+ * carries the target `name`; the server selects click, typed name, or typed name with step-up.
  */
 /** Registered-target cache prefixes that an approved deletion makes stale. */
 const REGISTERED_DELETION_QUERY_KEYS = [
@@ -75,6 +74,7 @@ const REGISTERED_DELETION_QUERY_KEYS = [
   "api-keys",
   "custom-fields",
   "teams",
+  "team",
   "service-management",
   "time-tracking",
   "webhooks",
@@ -527,7 +527,8 @@ export function PendingActionApproval({
   const registeredRedacted = registeredTarget !== null && !registeredName;
   const isRegisteredTypedName =
     registeredTarget !== null &&
-    action.data.confirmation === "typed_name_step_up";
+    (action.data.confirmation === "typed_name" ||
+      action.data.confirmation === "typed_name_step_up");
   const isRegisteredClick =
     registeredTarget !== null && action.data.confirmation === "click";
   const isClickContract =
@@ -703,7 +704,11 @@ export function PendingActionApproval({
       } else {
         approved = await approve.mutateAsync({
           id,
-          ...(isBulkDeletion ? { typedCount } : {}),
+          ...(isRegisteredTypedName
+            ? { typedName }
+            : isBulkDeletion
+              ? { typedCount }
+              : {}),
         });
       }
       const executed =
@@ -719,6 +724,17 @@ export function PendingActionApproval({
       // The role's page no longer exists: return to the roles list.
       if (executed && action.data?.targetType === "workspace_role") {
         await navigate({ to: "/dashboard/settings/workspace/roles" });
+      }
+      if (
+        executed &&
+        action.data?.targetType === "team" &&
+        action.data.targetIds.some(
+          (targetId) =>
+            location.pathname ===
+            routes.workspaceTeamDetail.build({ id: targetId }),
+        )
+      ) {
+        await navigate({ href: routes.workspaceTeams.build() });
       }
       // The deleted calendar's editor would refetch into its 404: return to the list.
       if (

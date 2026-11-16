@@ -670,5 +670,13 @@
 		"pr": 1186,
 		"reason": "Expanded GET /instance/plugins inventory to expose storage.s3 sub-processor entries for W12 H-1.",
 		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+	},
+	{
+		"operation": "DELETE /teams/{id}",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "db2d7eb4a62c",
+		"pr": 1196,
+		"reason": "Team deletion now returns typed_name instead of click and requires the exact team name before execution. Other deletion response contracts are unchanged.",
+		"decision": "Thomas explicitly approved 16 Nov 2026: Require the team name and update the deletion contract (#901). Recorded in docs/technical/design-and-decisions.md and the team confirmation row in docs/technical/safety-and-runtime.md."
 	}
 ]

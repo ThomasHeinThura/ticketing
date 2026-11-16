@@ -31,7 +31,7 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -384,15 +384,21 @@ function RosterCard({
 
 function DeleteCard({ team }: { team: TeamDetail }) {
   const { t } = useTranslation();
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const openPendingAction = useOpenPendingAction();
   const request = useMutation({
     mutationFn: () => requestTeamDeletion(team.id),
-    onSuccess: (pending) => openPendingAction(pending),
+    onSuccess: (pending) =>
+      openPendingAction({
+        ...pending,
+        finalFocus: () =>
+          triggerRef.current?.isConnected ? triggerRef.current : false,
+      }),
     onError: (error) => toast.error(error.message),
   });
   if (!team.canManageTeam) return null;
   return (
-    <Card>
+    <Card className="border-destructive/32">
       <CardHeader>
         <CardTitle>{t("teams:delete.title")}</CardTitle>
         <CardDescription>{t("teams:delete.description")}</CardDescription>
@@ -411,6 +417,7 @@ function DeleteCard({ team }: { team: TeamDetail }) {
           </Alert>
         ) : null}
         <Button
+          ref={triggerRef}
           variant="destructive"
           disabled={team.deletionBlockers.length > 0 || request.isPending}
           onClick={() => request.mutate()}

@@ -11,7 +11,7 @@ import { deleteTeamRow, deletionBlockers } from "./repository";
 export const TEAM_DELETION_ROUTE = "DELETE /api/teams/{id}" as const;
 
 /**
- * TM-7: deleting a team is a click-level pending action, refused while the team is the CAB or
+ * TM-7: deleting a team requires its exact name in a pending action, refused while the team is the CAB or
  * has saved views shared with it or owns a project (`project.owner_team_id`). The refusal is raised at request time and again at approval.
  *
  * Registered in `registeredDeletionTargets()` (pending-action/deletion-targets.ts) by the
@@ -20,7 +20,7 @@ export const TEAM_DELETION_ROUTE = "DELETE /api/teams/{id}" as const;
 export const teamDeletionTarget: RegisteredDeletionTarget = {
   targetType: "team",
   routeKey: TEAM_DELETION_ROUTE,
-  confirmation: "click",
+  confirmation: "typed_name",
   sessionOnly: false,
   notFound: "Team not found",
   load: async (tx, id) => {
