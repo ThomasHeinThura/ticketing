@@ -46,3 +46,10 @@ All eight owned temporary containers were removed by exact ID and confirmed abse
 ## Remaining acceptance
 
 Merged #1196 is integrated and generated files regenerated. Final local code, type, contrast, bundle, contract and cleanup-browser checks pass after upstream sync. Required CI, including pinned G4/G8, remains pending. Verify the signed release on canonical Local SIT before closing #903. The protected native database and Technexus were not touched.
+
+
+## G8 fixture and pinned baseline follow-up
+
+Hosted G8 at `4b156bfa3` exposed the old visual fixture returning only two preference rows; the real nine-event API browser journey had already passed. The fixture now returns all nine kinds, retains the existing saved daily-comment preference and its assertion, and supplies null quiet hours plus the normal missing-handoff response. Literal readiness checks cover every card and both urgent explanations; the screenshot comparison remains zero-difference.
+
+Only `portal-account-linux.png` changed. It was regenerated and then verified (1/1) under the Linux amd64 child manifest `sha256:bc6ab0d6d44ff4826e4cb8c1e6d801e185bfc42bb0753f8e2a30efc70db054c7` of CI's pinned Playwright index `sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27`. The coordinator visually inspected the full nine-card image. The source-scope checker passed with 121 screenshot cases. Owned container `714a8e4ec38c635f2169310844b48371e319052a951daa471a9dcb313b32f376` was removed by exact ID and confirmed absent. Hosted G8 and all required final-head CI checks still need a fresh run.
