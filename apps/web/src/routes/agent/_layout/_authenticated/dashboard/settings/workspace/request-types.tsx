@@ -1064,6 +1064,14 @@ function RequestTypesEditor() {
                       {fields.find((f) => f.key === field.showIf?.field_key)
                         ?.type === "checkbox" ? (
                         <Select
+                          items={{
+                            true: t("common:boolean.true", {
+                              defaultValue: "True",
+                            }),
+                            false: t("common:boolean.false", {
+                              defaultValue: "False",
+                            }),
+                          }}
                           value={String(
                             field.showIf.value === true ||
                               field.showIf.value === "true",
@@ -1208,6 +1216,10 @@ function RequestTypesEditor() {
                         />
                       ) : field.type === "select" ? (
                         <Select
+                          items={(field.options ?? []).map((option) => ({
+                            value: option,
+                            label: option,
+                          }))}
                           value={String(previewValues[field.key] ?? "") || null}
                           onValueChange={(value) =>
                             setPreviewValues({

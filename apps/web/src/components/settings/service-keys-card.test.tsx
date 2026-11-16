@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   requestDeletion: vi.fn(),
   navigate: vi.fn(),
   stepRun: vi.fn(),
+  canManageApiKeys: vi.fn(() => true),
+  isCheckingPermissions: { value: false },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -40,6 +42,12 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1" } }),
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canManageApiKeys: () => mocks.canManageApiKeys(),
+    isCheckingPermissions: mocks.isCheckingPermissions.value,
+  }),
 }));
 vi.mock("@/lib/toast", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -136,10 +144,28 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ pendingActionId: "pa-1" });
   mocks.navigate.mockReset();
+  mocks.canManageApiKeys.mockReset().mockReturnValue(true);
+  mocks.isCheckingPermissions.value = false;
 });
 afterEach(cleanup);
 
 describe("ServiceKeysCard", () => {
+  it("does not request or render service keys when the caller lacks api_key:manage", async () => {
+    mocks.canManageApiKeys.mockReturnValue(false);
+    const { container } = renderCard();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(mocks.list).not.toHaveBeenCalled();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("waits until permissions finish loading before requesting service keys", async () => {
+    mocks.isCheckingPermissions.value = true;
+    const { container } = renderCard();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(mocks.list).not.toHaveBeenCalled();
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("renders nothing for a caller without api_key:manage without triggering QueryCache errors (the list answers 403)", async () => {
     const onQueryError = vi.fn();
     mocks.list.mockRejectedValue(new HttpError(403, "forbidden"));

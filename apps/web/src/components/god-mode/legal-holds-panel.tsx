@@ -140,6 +140,10 @@ function PlaceLegalHoldDialog({ onClose }: { onClose: () => void }) {
               {t("legalHolds.place.scopeLabel")}
             </Label>
             <Select
+              items={{
+                organisation: t("legalHolds.scopes.organisation"),
+                person: t("legalHolds.scopes.person"),
+              }}
               value={scope}
               onValueChange={(value) => {
                 if (value === "organisation" || value === "person") {
@@ -169,6 +173,10 @@ function PlaceLegalHoldDialog({ onClose }: { onClose: () => void }) {
                 {t("legalHolds.place.pickOrganisation")}
               </Label>
               <Select
+                items={organisationOptions.map((org) => ({
+                  value: org.id,
+                  label: `${org.name} (${org.key})`,
+                }))}
                 value={scopeId}
                 onValueChange={(value) => {
                   if (typeof value === "string") {
@@ -199,6 +207,10 @@ function PlaceLegalHoldDialog({ onClose }: { onClose: () => void }) {
                 {t("legalHolds.place.pickPerson")}
               </Label>
               <Select
+                items={userOptions.map((user) => ({
+                  value: user.person?.id ?? user.id,
+                  label: `${user.name || user.email} (${user.email})`,
+                }))}
                 value={scopeId}
                 onValueChange={(value) => {
                   if (typeof value === "string") {
@@ -455,6 +467,11 @@ export function LegalHoldsPanel() {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Select
+            items={{
+              all: t("legalHolds.filters.all"),
+              active: t("legalHolds.filters.active"),
+              lifted: t("legalHolds.filters.lifted"),
+            }}
             value={statusFilter}
             onValueChange={(value) => {
               if (value === "all" || value === "active" || value === "lifted") {

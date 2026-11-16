@@ -178,43 +178,85 @@ function nativeControlTag(node) {
   return undefined;
 }
 
+function hasJsxAttribute(node, name) {
+  return (node.attributes?.properties ?? []).some(
+    (attribute) =>
+      attribute.kind === ts.SyntaxKind.JsxAttribute &&
+      attribute.name?.text === name,
+  );
+}
+
+function hasMeaningfulJsxChildren(jsxElement) {
+  return jsxElement.children.some((child) => {
+    if (child.kind === ts.SyntaxKind.JsxText) {
+      return child.getText().trim().length > 0;
+    }
+    if (child.kind === ts.SyntaxKind.JsxExpression) {
+      return child.expression !== undefined;
+    }
+    return true;
+  });
+}
+
 /**
- * Return native form/dialog elements, library inputs that render a native picker, and native
- * `title` tooltips on interactive hosts in a parsed TSX source file. The only exemption is
- * a single immediately preceding `// ui-exempt: <reason>` line; consuming the comment once
- * prevents one marker from excusing multiple raw elements.
+ * Return native form/dialog elements, library inputs that render a native picker, native `title`
+ * tooltips on interactive hosts, and bare `<SelectValue />` elements without `<Select items={...}>`
+ * or formatted children in a parsed TSX source file. The only exemption is a single immediately
+ * preceding `// ui-exempt: <reason>` line; consuming the comment once prevents one marker from
+ * excusing multiple findings.
  */
 function rawElementsInSourceFile(sourceFile) {
   const found = [];
   const consumedExemptionLines = new Set();
   const text = sourceFile.text;
 
-  function visit(node) {
+  function recordIfUnexempt(node, tag) {
+    const start = node.getStart(sourceFile);
+    const line = sourceFile.getLineAndCharacterOfPosition(start).line;
+    const lineStart = text.lastIndexOf("\n", start - 1) + 1;
+    const previousLineEnd = Math.max(0, lineStart - 1);
+    const previousLineStart = text.lastIndexOf("\n", previousLineEnd - 1) + 1;
+    const previousLine = text.slice(previousLineStart, previousLineEnd);
+    const exemption = /^\s*\/\/\s*ui-exempt:\s*\S.*$/.exec(previousLine);
+    if (exemption && !consumedExemptionLines.has(line - 1)) {
+      consumedExemptionLines.add(line - 1);
+    } else {
+      found.push({
+        tag,
+        line: line + 1,
+      });
+    }
+  }
+
+  function visit(node, selectHasItems = false) {
+    let nextSelectHasItems = selectHasItems;
+    if (
+      node.kind === ts.SyntaxKind.JsxElement &&
+      node.openingElement.tagName?.kind === ts.SyntaxKind.Identifier &&
+      node.openingElement.tagName.text === "Select"
+    ) {
+      nextSelectHasItems = hasJsxAttribute(node.openingElement, "items");
+    }
+
     if (
       node.kind === ts.SyntaxKind.JsxOpeningElement ||
       node.kind === ts.SyntaxKind.JsxSelfClosingElement
     ) {
       const nativeTag = nativeControlTag(node);
       if (nativeTag) {
-        const start = node.getStart(sourceFile);
-        const line = sourceFile.getLineAndCharacterOfPosition(start).line;
-        const lineStart = text.lastIndexOf("\n", start - 1) + 1;
-        const previousLineEnd = Math.max(0, lineStart - 1);
-        const previousLineStart =
-          text.lastIndexOf("\n", previousLineEnd - 1) + 1;
-        const previousLine = text.slice(previousLineStart, previousLineEnd);
-        const exemption = /^\s*\/\/\s*ui-exempt:\s*\S.*$/.exec(previousLine);
-        if (exemption && !consumedExemptionLines.has(line - 1)) {
-          consumedExemptionLines.add(line - 1);
-        } else {
-          found.push({
-            tag: nativeTag,
-            line: line + 1,
-          });
-        }
+        recordIfUnexempt(node, nativeTag);
+      } else if (
+        node.tagName?.kind === ts.SyntaxKind.Identifier &&
+        node.tagName.text === "SelectValue" &&
+        !selectHasItems &&
+        !hasJsxAttribute(node, "children") &&
+        (node.kind === ts.SyntaxKind.JsxSelfClosingElement ||
+          !hasMeaningfulJsxChildren(node.parent))
+      ) {
+        recordIfUnexempt(node, "SelectValue");
       }
     }
-    node.forEachChild(visit);
+    node.forEachChild((child) => visit(child, nextSelectHasItems));
   }
 
   visit(sourceFile);
@@ -603,9 +645,11 @@ async function main() {
             failures.push(
               violation(
                 relative,
-                tag.endsWith(" title")
-                  ? `line ${line} gives <${tag.slice(0, -6)}> a native title tooltip. Wrap it in ActionTooltip (apps/web/src/components/common/action-tooltip.tsx) and give icon-only controls an aria-label.`
-                  : `line ${line} uses raw <${tag}>. Use the shared @taskdesk/ui primitive (DateField, Checkbox, RadioGroup for picker inputs); an exceptional native element needs an immediately preceding // ui-exempt: <reason> comment.`,
+                tag === "SelectValue"
+                  ? `line ${line} uses bare <SelectValue /> without children or <Select items={...}>, which renders raw option values. Pass formatted label children to <SelectValue> or an items map to <Select>.`
+                  : tag.endsWith(" title")
+                    ? `line ${line} gives <${tag.slice(0, -6)}> a native title tooltip. Wrap it in ActionTooltip (apps/web/src/components/common/action-tooltip.tsx) and give icon-only controls an aria-label.`
+                    : `line ${line} uses raw <${tag}>. Use the shared @taskdesk/ui primitive (DateField, Checkbox, RadioGroup for picker inputs); an exceptional native element needs an immediately preceding // ui-exempt: <reason> comment.`,
               ),
             );
           }

@@ -487,6 +487,7 @@ const visualOwnerCapabilities = {
   archiveProjects: true,
   manageRoles: true,
   manageWebhooks: true,
+  manageApiKeys: true,
   manageCustomFields: true,
   manageLabels: true,
   manageRates: true,

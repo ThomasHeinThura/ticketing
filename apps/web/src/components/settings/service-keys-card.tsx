@@ -57,6 +57,7 @@ import {
 } from "@/fetchers/service-keys";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError, localizedAdminErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
@@ -152,10 +153,10 @@ function ReattestServiceKeyDialog({
 }
 
 /**
- * AK-1 / AK-7 / AK-11: the active workspace's service keys. The card renders only for someone
- * holding `api_key:manage`: the list route answers 403 to everyone else, and that answer, not a
- * client-side guess, hides it. Revocation is immediate; deletion is a typed-name + step-up
- * pending action approved on the pending actions screen.
+ * AK-1 / AK-7 / AK-11: the active workspace's service keys. Gated upfront on `api_key:manage`
+ * (`canManageApiKeys`) so viewers/members never issue `GET /service-keys` (or log 403s); the
+ * 403 error path below remains defense-in-depth alongside server enforcement. Revocation is
+ * immediate; deletion is a typed-name + step-up pending action on the pending actions screen.
  */
 export function ServiceKeysCard() {
   const { t } = useTranslation();
@@ -163,6 +164,8 @@ export function ServiceKeysCard() {
   const queryClient = useQueryClient();
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
+  const { canManageApiKeys, isCheckingPermissions } = useWorkspacePermission();
+  const canManage = canManageApiKeys();
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<{ key: string; name: string } | null>(
     null,
@@ -172,7 +175,7 @@ export function ServiceKeysCard() {
 
   const query = useQuery({
     queryKey: serviceKeysKey(workspaceId),
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId && !isCheckingPermissions && canManage),
     queryFn: async () => {
       try {
         return await listServiceKeys(workspaceId);
@@ -226,7 +229,7 @@ export function ServiceKeysCard() {
       ),
   });
 
-  if (!workspaceId) return null;
+  if (!workspaceId || isCheckingPermissions || !canManage) return null;
   if (
     query.data === null ||
     (query.error instanceof HttpError && query.error.status === 403)

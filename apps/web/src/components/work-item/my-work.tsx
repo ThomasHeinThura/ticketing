@@ -169,7 +169,7 @@ function MyApprovals() {
     );
   }
   return (
-    <Table>
+    <Table scrollLabel={t("navigation:myWork.approvals")}>
       <TableHeader>
         <TableRow>
           <TableHead>{t("navigation:myWork.columnItem")}</TableHead>

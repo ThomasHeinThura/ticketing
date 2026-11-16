@@ -221,8 +221,14 @@ describe("work item list column resizing (VW-21)", () => {
     expect(Number.parseFloat(table.style.minWidth)).toBeCloseTo(
       widths.reduce((total, width) => total + width, 0),
     );
-    expect(table.parentElement).toHaveAttribute("data-slot", "table-container");
-    expect(table.parentElement).toHaveClass("overflow-x-auto");
+    const region = screen.getByRole("region", {
+      name: "workItems:list.heading",
+    });
+    expect(region).toHaveAttribute("data-slot", "table-container");
+    expect(table.parentElement).toHaveAttribute(
+      "data-slot",
+      "scroll-area-viewport",
+    );
   });
 
   it("keeps intentionally narrow saved columns readable through truncation and header tooltips", async () => {
@@ -331,7 +337,15 @@ describe("work item list column resizing (VW-21)", () => {
         "true",
       ),
     );
+    const region = screen.getByRole("region", {
+      name: "workItems:list.heading",
+    });
+    expect(region).toHaveAttribute("data-slot", "table-container");
     const table = screen.getByRole("table");
+    expect(table.parentElement).toHaveAttribute(
+      "data-slot",
+      "scroll-area-viewport",
+    );
     const titleHeader = table.querySelector(
       'th[data-virtual-column-index="1"]',
     );
@@ -362,5 +376,36 @@ describe("work item list column resizing (VW-21)", () => {
         measureCalls,
       ),
     );
+  });
+
+  it("keeps mobile key and title minimum widths within 358px so row edit icons stay unclipped", () => {
+    mocks.preferenceValue = {};
+    const origClientWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "clientWidth",
+    );
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get: () => 358,
+    });
+    try {
+      mount();
+      const table = screen.getByRole("table");
+      const widths = Array.from(table.querySelectorAll("colgroup col")).map(
+        (column) =>
+          Number.parseFloat((column as HTMLTableColElement).style.width),
+      );
+      expect((widths[0] ?? 0) + (widths[1] ?? 0)).toBeLessThanOrEqual(358);
+    } finally {
+      if (origClientWidth) {
+        Object.defineProperty(
+          HTMLElement.prototype,
+          "clientWidth",
+          origClientWidth,
+        );
+      } else {
+        delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+      }
+    }
   });
 });

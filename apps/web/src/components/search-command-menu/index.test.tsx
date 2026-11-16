@@ -307,4 +307,32 @@ describe("SearchCommandMenu focus return (A-25)", () => {
     expect(mocks.finalFocus.current?.()).toBe(origin);
     origin.remove();
   });
+
+  it("restores focus to a CommandPalette-launched trigger button mounted open", () => {
+    const origin = document.createElement("button");
+    document.body.append(origin);
+    const { rerender, unmount } = render(
+      <KeyboardShortcutsProvider>
+        <SearchCommandMenu
+          open
+          setOpen={vi.fn()}
+          returnFocusRef={{ current: origin }}
+        />
+      </KeyboardShortcutsProvider>,
+    );
+    expect(mocks.finalFocus.current?.()).toBe(origin);
+    rerender(
+      <KeyboardShortcutsProvider>
+        <SearchCommandMenu
+          open={false}
+          setOpen={vi.fn()}
+          returnFocusRef={{ current: origin }}
+        />
+      </KeyboardShortcutsProvider>,
+    );
+    expect(mocks.finalFocus.current?.()).toBe(origin);
+    origin.remove();
+    expect(mocks.finalFocus.current?.()).toBe(true);
+    expect(() => unmount()).not.toThrow();
+  });
 });

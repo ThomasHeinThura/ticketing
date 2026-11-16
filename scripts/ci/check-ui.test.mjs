@@ -285,6 +285,30 @@ describe("check:ui — G1a rawElementsIn", () => {
       ["input"],
     );
   });
+
+  it("rejects bare <SelectValue /> without children or <Select items={...}> and allows labelled ones", () => {
+    const bare = [
+      "export const Fixture = () => (<>",
+      '  <Select value="all"><SelectTrigger><SelectValue /></SelectTrigger></Select>',
+      '  <Select value="all"><SelectTrigger><SelectValue placeholder="Pick" /></SelectTrigger></Select>',
+      '  <Select value="all"><SelectTrigger><SelectValue>   </SelectValue></SelectTrigger></Select>',
+      '  <Select value="all"><SelectTrigger><SelectValue>{/* empty */}</SelectValue></SelectTrigger></Select>',
+      "</>);",
+    ].join("\n");
+    assert.deepEqual(
+      rawElementsIn(bare).map(({ tag }) => tag),
+      ["SelectValue", "SelectValue", "SelectValue", "SelectValue"],
+    );
+
+    const labelled = [
+      "export const Fixture = ({ items, label }) => (<>",
+      '  <Select items={items} value="all"><SelectTrigger><SelectValue /></SelectTrigger></Select>',
+      '  <Select value="all"><SelectTrigger><SelectValue>{label}</SelectValue></SelectTrigger></Select>',
+      '  <Select value="all"><SelectTrigger><SelectValue children={label} /></SelectTrigger></Select>',
+      "</>);",
+    ].join("\n");
+    assert.deepEqual(rawElementsIn(labelled), []);
+  });
 });
 
 describe("check:ui — G1b Base UI package boundary", () => {

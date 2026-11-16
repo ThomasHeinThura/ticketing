@@ -49,6 +49,10 @@ const mocks = vi.hoisted(() => ({
   // What the mocked shared create dialog was last given.
   createClose: undefined as undefined | (() => void),
   createFinalFocus: undefined as undefined | (() => HTMLElement | false),
+  searchReturnFocusRef: undefined as
+    | undefined
+    | { current: HTMLElement | null },
+  searchReturnFocusElement: null as HTMLElement | null,
 }));
 
 /**
@@ -120,7 +124,16 @@ vi.mock("@/store/user-preferences", () => ({
   useUserPreferencesStore: () => ({ setTheme: vi.fn() }),
 }));
 
-vi.mock("@/components/search-command-menu", () => ({ default: () => null }));
+vi.mock("@/components/search-command-menu", () => ({
+  default: (props: {
+    open?: boolean;
+    returnFocusRef?: { current: HTMLElement | null };
+  }) => {
+    mocks.searchReturnFocusRef = props.returnFocusRef;
+    mocks.searchReturnFocusElement = props.returnFocusRef?.current ?? null;
+    return props.open ? <div data-testid="search-command-menu-host" /> : null;
+  },
+}));
 vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
   default: (projectKey: string, enabled?: boolean) => {
     mocks.projectByKey(projectKey, enabled);
@@ -280,6 +293,8 @@ beforeEach(() => {
   mocks.checkingPermissions = false;
   mocks.createClose = undefined;
   mocks.createFinalFocus = undefined;
+  mocks.searchReturnFocusRef = undefined;
+  mocks.searchReturnFocusElement = null;
 });
 
 afterEach(() => {
@@ -770,6 +785,44 @@ describe("CommandPalette create work item (D-6)", () => {
 
     await screen.findByTestId("create-work-item-dialog-host");
     expect(mocks.createFinalFocus?.()).toBe(origin);
+  });
+
+  it("passes returnFocusRef to SearchCommandMenu when launched via / shortcut", async () => {
+    const { Button } =
+      await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
+    renderLauncher(<Button>Search trigger</Button>);
+    const origin = screen.getByRole("button", { name: "Search trigger" });
+    origin.focus();
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: "/" });
+      await vi.dynamicImportSettled();
+    });
+
+    await screen.findByTestId("search-command-menu-host");
+    expect(mocks.searchReturnFocusRef?.current).toBe(origin);
+    expect(mocks.searchReturnFocusElement).toBe(origin);
+  });
+
+  it("passes pre-palette returnFocusRef to SearchCommandMenu when launched via Cmd+K", async () => {
+    const { Button } =
+      await vi.importActual<typeof import("@taskdesk/ui")>("@taskdesk/ui");
+    renderLauncher(<Button>Palette search trigger</Button>);
+    const origin = screen.getByRole("button", {
+      name: "Palette search trigger",
+    });
+    origin.focus();
+    await openPalette();
+
+    screen.getByLabelText("palette search query").focus();
+    await act(async () => {
+      fireEvent.click(screen.getByText("navigation:commandPalette.search"));
+      await vi.dynamicImportSettled();
+    });
+
+    await screen.findByTestId("search-command-menu-host");
+    expect(mocks.searchReturnFocusRef?.current).toBe(origin);
+    expect(mocks.searchReturnFocusElement).toBe(origin);
   });
 });
 

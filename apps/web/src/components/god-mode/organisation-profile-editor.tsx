@@ -753,6 +753,10 @@ export function OrganisationProfileEditor({
                 </Label>
                 <Select
                   disabled={busy || initialContactWorkspaces.length === 0}
+                  items={initialContactWorkspaces.map((workspace) => ({
+                    value: workspace.workspaceId,
+                    label: workspace.workspaceName,
+                  }))}
                   onValueChange={(value) => {
                     if (value !== null)
                       setValue("initialContactWorkspaceId", value);

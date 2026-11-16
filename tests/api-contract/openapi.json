@@ -243,6 +243,10 @@
             "type": "boolean",
             "description": "Strict webhook:manage; gates the Webhooks settings entry. Absent means denied."
           },
+          "manageApiKeys": {
+            "type": "boolean",
+            "description": "Strict api_key:manage; gates the Workspace Service API Keys card. Absent means denied."
+          },
           "manageCustomFields": {
             "type": "boolean",
             "description": "Strict custom_field:manage; gates the Custom fields settings entry. Absent means denied."

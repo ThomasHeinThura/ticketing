@@ -654,7 +654,11 @@ export function CommandPalette({
 
       <Suspense fallback={null}>
         {isSearchOpen ? (
-          <SearchCommandMenu open setOpen={setIsSearchOpen} />
+          <SearchCommandMenu
+            open
+            setOpen={setIsSearchOpen}
+            returnFocusRef={focusOriginRef}
+          />
         ) : null}
         {isCreateTaskOpen && createProject ? (
           <WorkItemCreateDialogHost

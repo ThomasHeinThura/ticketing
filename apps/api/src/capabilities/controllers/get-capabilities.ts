@@ -33,6 +33,7 @@ export type CapabilityMap = Record<CapabilityName, boolean> & {
   // pages follow the server instead of the broader `workspace:manage_settings`.
   manageRoles: boolean;
   manageWebhooks: boolean;
+  manageApiKeys: boolean;
   manageCustomFields: boolean;
   // P5: time_entry:manage_rates (Rates), workflow:manage (Workflows, CAB template) and
   // budget:read (project Budget), exactly what those APIs enforce.
@@ -76,6 +77,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     createAttachments,
     manageRoles,
     manageWebhooks,
+    manageApiKeys,
     manageCustomFields,
     manageRates,
     manageWorkflows,
@@ -124,6 +126,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     hasCanonicalCapability(c, "attachment:create"),
     hasCanonicalCapability(c, "workspace:manage_roles"),
     hasCanonicalCapability(c, "webhook:manage"),
+    hasCanonicalCapability(c, "api_key:manage"),
     hasCanonicalCapability(c, "custom_field:manage"),
     hasCanonicalCapability(c, "time_entry:manage_rates"),
     hasCanonicalCapability(c, "workflow:manage"),
@@ -158,6 +161,7 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
     archiveProjects,
     manageRoles,
     manageWebhooks,
+    manageApiKeys,
     manageCustomFields,
     manageRates,
     manageWorkflows,
@@ -192,6 +196,7 @@ async function hasCanonicalCapability(
     | "attachment:create"
     | "workspace:manage_roles"
     | "webhook:manage"
+    | "api_key:manage"
     | "custom_field:manage"
     | "time_entry:manage_rates"
     | "workflow:manage"
