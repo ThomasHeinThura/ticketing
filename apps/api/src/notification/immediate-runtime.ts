@@ -35,7 +35,12 @@ async function emailDestination(tx: DbTransaction, personId: string) {
  */
 const IMMEDIATE_EMAIL_EVENTS: Record<string, readonly string[] | undefined> = {
   comment: ["work_item.mentioned", "work_item.commented"],
-  submission: ["submission.replied", "submission.declined"],
+  work_item: ["work_item.mentioned", "work_item.transitioned"],
+  submission: [
+    "submission.replied",
+    "submission.accepted",
+    "submission.declined",
+  ],
   approval: [
     "approval.requested",
     "approval.expiring",

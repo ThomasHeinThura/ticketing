@@ -4231,7 +4231,46 @@
 				"saveFailed": "Unable to save preferences. Try again.",
 				"title": "Notification preferences",
 				"unavailable": "Notification preferences are unavailable.",
-				"unsupported": "This preference cannot be edited on this page."
+				"unsupported": "This preference cannot be edited on this page.",
+				"inAppAlways": "In-app notifications stay on. These email preferences apply only to your account across all your requests.",
+				"quietHoursDescription": "Pause your request emails during these hours. In-app notifications still arrive.",
+				"quietHoursNote": "Approval expiry emails are not paused by quiet hours. An end time earlier than the start crosses midnight.",
+				"transition": {
+					"title": "Status changes",
+					"description": "Emails when the status of a request you can read changes.",
+					"enabled": "Email me about request status changes"
+				},
+				"requestReply": {
+					"title": "Replies to your requests",
+					"description": "Emails when your team replies to a request you submitted.",
+					"enabled": "Email me about replies to my requests"
+				},
+				"requestDeclined": {
+					"title": "Declined requests",
+					"description": "Emails when a request you submitted is declined.",
+					"enabled": "Email me when my request is declined"
+				},
+				"requestAccepted": {
+					"title": "Accepted requests",
+					"description": "Emails when a request you submitted is accepted.",
+					"enabled": "Email me when my request is accepted"
+				},
+				"approvalRequested": {
+					"title": "Approval requests",
+					"description": "Emails when an approval needs your decision.",
+					"enabled": "Email me about approvals waiting for me"
+				},
+				"approvalExpiring": {
+					"title": "Expiring approvals",
+					"description": "Emails when an approval waiting for your decision is about to expire.",
+					"enabled": "Email me about expiring approvals",
+					"urgent": "Approval expiry emails arrive immediately and cannot be included in a digest."
+				},
+				"approvalWithdrawn": {
+					"title": "Withdrawn approvals",
+					"description": "Emails when an approval request waiting for you is withdrawn.",
+					"enabled": "Email me about withdrawn approvals"
+				}
 			}
 		},
 		"releases": {
@@ -4271,7 +4310,8 @@
 				"requestDeclined": "Your {{term_request_one}} was declined",
 				"approvalExpiring": "An approval waiting for you expires soon",
 				"approvalRequested": "An approval is waiting for your decision",
-				"approvalWithdrawn": "An approval request was withdrawn"
+				"approvalWithdrawn": "An approval request was withdrawn",
+				"requestAccepted": "Your {{term_request_one}} was accepted"
 			},
 			"unreadCount_few": "{{count}} unread notifications",
 			"unreadCount_many": "{{count}} unread notifications",

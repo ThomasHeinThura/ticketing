@@ -36,6 +36,8 @@ export async function resolveSubmissionRepliedRecipients(
   tx: DbTransaction,
   event: DomainEventEnvelope<Record<string, unknown>>,
 ): Promise<readonly NotificationRecipientCandidate[]> {
+  if (event.kind === "submission.accepted")
+    return resolveSubmissionAcceptedRecipients(tx, event);
   if (event.kind === "submission.declined")
     return resolveSubmissionDeclinedRecipients(tx, event);
   if (event.kind !== "submission.replied") return [];
@@ -127,6 +129,63 @@ export async function resolveSubmissionRepliedRecipients(
   ];
 }
 
+async function resolveSubmissionAcceptedRecipients(
+  tx: DbTransaction,
+  event: DomainEventEnvelope<Record<string, unknown>>,
+): Promise<readonly NotificationRecipientCandidate[]> {
+  const ref = event.payload.ref;
+  if (typeof ref !== "string") return [];
+  const number = parseSubmissionReference(ref);
+  if (
+    number === null ||
+    !("workspaceId" in event.scope) ||
+    !event.scope.workspaceId
+  )
+    return [];
+  const submission = await findSubmissionNotificationContext(tx, number);
+  if (!submission || submission.workspaceId !== event.scope.workspaceId)
+    return [];
+  const person = await findNotificationPerson(tx, submission.requesterId);
+  if (!person?.active || !person.userId) return [];
+  const identity = await resolveIdentity(
+    { userId: person.userId, credential: "session" },
+    tx,
+  );
+  if (
+    !identity ||
+    identity.personId !== submission.requesterId ||
+    identity.side !== "customer" ||
+    !(await hasPortalSubmissionProjectAccess(
+      submission.id,
+      { personId: identity.personId, organisationId: identity.organisationId },
+      tx,
+    ))
+  )
+    return [];
+  return [
+    {
+      personId: submission.requesterId,
+      resourceType: "submission",
+      resourceId: submission.id,
+      title: "Request accepted",
+      body: `Your request ${ref} was accepted.`,
+      systemCopy: {
+        version: 1,
+        title: [
+          { kind: "term", termKey: "request", count: 1 },
+          { kind: "text", text: " accepted" },
+        ],
+        body: [
+          { kind: "text", text: "Your " },
+          { kind: "term", termKey: "request", count: 1 },
+          { kind: "text", text: ` ${ref} was accepted.` },
+        ],
+      },
+      channels: await configuredMentionChannels(tx),
+    },
+  ];
+}
+
 /**
  * `submission.declined` -> the requester, "with the reason verbatim" (NO-21, IQ-16; the same
  * path carries IQ-15's auto-decline message). The reason is the customer-facing text the
@@ -202,7 +261,7 @@ async function resolveSubmissionDeclinedRecipients(
 export async function isCurrentSubmissionNotificationRecipient(
   tx: DbTransaction,
   identity: ResolvedIdentity,
-  input: { submissionId: string; workspaceId: string },
+  input: { submissionId: string; workspaceId: string; eventKind?: string },
 ): Promise<boolean> {
   const [row] = await tx
     .select({
@@ -232,6 +291,7 @@ export async function isCurrentSubmissionNotificationRecipient(
     );
   }
   return (
+    input.eventKind !== "submission.accepted" &&
     identity.side === "staff" &&
     identity.personId === (await findSubmissionLastHandlerId(tx, row)) &&
     can(identity, "intake:triage", "workspace", {

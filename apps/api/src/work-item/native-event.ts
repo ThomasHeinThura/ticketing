@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
+import { projectTable } from "../database/schema";
 import { eventContext } from "../events";
 import {
   type DbTransaction,
@@ -39,6 +42,26 @@ export async function recordWorkItemEvent(
   input: WorkItemEventInput,
 ) {
   const occurredAt = input.occurredAt ?? new Date();
+  let organisationId = input.organisationId;
+  if (input.notify) {
+    const [project] = await tx
+      .select({ organisationId: projectTable.organisationId })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.id, input.projectId),
+          eq(projectTable.workspaceId, input.workspaceId),
+        ),
+      )
+      .limit(1);
+    if (
+      !project ||
+      (organisationId !== undefined &&
+        organisationId !== project.organisationId)
+    )
+      throw new HTTPException(409, { message: "notification_scope_changed" });
+    organisationId = project.organisationId ?? undefined;
+  }
   const id = `evt_${randomUUID()}`;
   const envelope: DomainEventEnvelope<Record<string, unknown>> = {
     id,
@@ -53,7 +76,7 @@ export async function recordWorkItemEvent(
     },
     scope: {
       workspaceId: input.workspaceId,
-      ...(input.organisationId ? { organisationId: input.organisationId } : {}),
+      ...(organisationId ? { organisationId } : {}),
       projectId: input.projectId,
     },
     payload: input.payload,

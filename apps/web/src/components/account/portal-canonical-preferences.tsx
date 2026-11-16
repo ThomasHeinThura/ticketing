@@ -13,6 +13,7 @@ import {
   Label,
   LoadingStatus,
   PageContainer,
+  SAVE_FEEDBACK_HOLD_MS,
   SaveButton,
   Select,
   SelectContent,
@@ -27,12 +28,28 @@ import { useEffect, useRef, useState } from "react";
 import {
   getPortalCanonicalPreferences,
   getPortalEmailLinkHandoff,
+  getPortalQuietHours,
   type PortalCanonicalPreference,
   savePortalCanonicalPreference,
+  savePortalQuietHours,
 } from "@/fetchers/notification-preferences/portal-canonical-preference";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { consumeNotificationPreferenceHandoffAttempted } from "@/lib/notification-preference-handoff";
 import { routes } from "@/lib/routes";
+
+import { QuietHoursForm } from "./quiet-hours-preference";
+
+const PREFERENCE_CARDS = [
+  { eventKind: "work_item.mentioned", kind: "mention", urgent: true },
+  { eventKind: "work_item.commented", kind: "comment", urgent: false },
+  { eventKind: "work_item.transitioned", kind: "transition", urgent: false },
+  { eventKind: "submission.replied", kind: "requestReply", urgent: false },
+  { eventKind: "submission.declined", kind: "requestDeclined", urgent: false },
+  { eventKind: "submission.accepted", kind: "requestAccepted", urgent: false },
+  { eventKind: "approval.requested", kind: "approvalRequested", urgent: false },
+  { eventKind: "approval.expiring", kind: "approvalExpiring", urgent: true },
+  { eventKind: "approval.withdrawn", kind: "approvalWithdrawn", urgent: false },
+] as const;
 
 export function PortalCanonicalPreferencesPage({
   portalUserId,
@@ -57,31 +74,34 @@ export function PortalCanonicalPreferencesPage({
   const selector = handoff.data;
   const supported = Boolean(
     selector &&
-      (selector.eventKind === "work_item.mentioned" ||
-        selector.eventKind === "work_item.commented") &&
+      PREFERENCE_CARDS.some((card) => card.eventKind === selector.eventKind) &&
       selector.channel === "notify.email" &&
       selector.scope === "global" &&
       selector.scopeId === null,
   );
-  const mentionTarget = useRef<HTMLDivElement>(null);
-  const commentTarget = useRef<HTMLDivElement>(null);
+  const targets = useRef<Record<string, HTMLDivElement | null>>({});
+  const complete = PREFERENCE_CARDS.every((card) =>
+    preferences.data?.some((row) => row.eventKind === card.eventKind),
+  );
   useEffect(() => {
-    if (supported && !preferences.isLoading) {
-      const target =
-        selector?.eventKind === "work_item.commented"
-          ? commentTarget.current
-          : mentionTarget.current;
+    if (
+      supported &&
+      complete &&
+      !preferences.isLoading &&
+      !placeholderVisible &&
+      selector
+    ) {
+      const target = targets.current[selector.eventKind];
       target?.focus({ preventScroll: true });
       target?.scrollIntoView?.({ block: "center" });
     }
-  }, [supported, preferences.isLoading, selector?.eventKind]);
-
-  const mention = preferences.data?.find(
-    (value) => value.eventKind === "work_item.mentioned",
-  );
-  const comment = preferences.data?.find(
-    (value) => value.eventKind === "work_item.commented",
-  );
+  }, [
+    supported,
+    complete,
+    preferences.isLoading,
+    placeholderVisible,
+    selector,
+  ]);
   return (
     <PageContainer scroll={false} gutter="default" width="4xl">
       <header className="border-b border-border pb-4">
@@ -90,6 +110,9 @@ export function PortalCanonicalPreferencesPage({
         </h1>
         <p className="text-sm text-muted-foreground">
           {t("portal:account.notifications.description")}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {t("portal:account.notifications.inAppAlways")}
         </p>
       </header>
       <p className="text-sm text-muted-foreground">
@@ -100,7 +123,7 @@ export function PortalCanonicalPreferencesPage({
           {t("portal:account.notifications.requestsLink")}
         </Link>
       </p>
-      {preferences.isError ? (
+      {preferences.isError || (!preferences.isLoading && !complete) ? (
         <Alert variant="error">
           <AlertTitle>
             {t("portal:account.notifications.unavailable")}
@@ -116,15 +139,9 @@ export function PortalCanonicalPreferencesPage({
             </Button>
           </AlertDescription>
         </Alert>
-      ) : preferences.isLoading ||
-        !mention ||
-        !comment ||
-        placeholderVisible ? (
+      ) : preferences.isLoading || placeholderVisible ? (
         <LoadingStatus
-          visible={
-            placeholderVisible ||
-            (!preferences.isLoading && (!mention || !comment))
-          }
+          visible={placeholderVisible}
           label={t("common:empty.loading")}
         >
           <Card>
@@ -150,49 +167,117 @@ export function PortalCanonicalPreferencesPage({
               </AlertDescription>
             </Alert>
           ) : null}
-          <div
-            ref={mentionTarget}
-            tabIndex={-1}
-            className={
-              supported && selector?.eventKind === "work_item.mentioned"
-                ? "rounded-lg ring-2 ring-ring"
-                : undefined
-            }
-          >
-            <PreferenceCard
-              preference={mention}
-              kind="mention"
-              portalUserId={portalUserId}
-            />
-          </div>
-          <div
-            ref={commentTarget}
-            tabIndex={-1}
-            className={
-              supported && selector?.eventKind === "work_item.commented"
-                ? "rounded-lg ring-2 ring-ring"
-                : undefined
-            }
-          >
-            <PreferenceCard
-              preference={comment}
-              kind="comment"
-              portalUserId={portalUserId}
-            />
-          </div>
+          {PREFERENCE_CARDS.map((definition) => {
+            const preference = preferences.data?.find(
+              (row) => row.eventKind === definition.eventKind,
+            );
+            if (!preference) return null;
+            return (
+              <div
+                key={`${portalUserId}:${definition.eventKind}`}
+                data-event-kind={definition.eventKind}
+                ref={(node) => {
+                  targets.current[definition.eventKind] = node;
+                }}
+                tabIndex={-1}
+                className={
+                  supported && selector?.eventKind === definition.eventKind
+                    ? "rounded-lg ring-2 ring-ring"
+                    : undefined
+                }
+              >
+                <PreferenceCard
+                  preference={preference}
+                  kind={definition.kind}
+                  urgent={definition.urgent}
+                  portalUserId={portalUserId}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
+      <PortalQuietHoursPreference portalUserId={portalUserId} />
     </PageContainer>
+  );
+}
+
+function PortalQuietHoursPreference({
+  portalUserId,
+}: {
+  portalUserId: string;
+}) {
+  const { t } = usePortalTranslation([
+    "portal",
+    "notificationProvider",
+    "common",
+  ]);
+  const cacheKey = ["portal", portalUserId, "canonical-quiet-hours"] as const;
+  const preferences = useQuery({
+    queryKey: cacheKey,
+    queryFn: getPortalQuietHours,
+  });
+  const placeholderVisible = useDelayedPending(preferences.isLoading);
+  const [completed, setCompleted] = useState(false);
+  useEffect(() => {
+    if (!completed) return;
+    const timer = setTimeout(() => setCompleted(false), SAVE_FEEDBACK_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [completed]);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("notificationProvider:quietHours.title")}</CardTitle>
+        <CardDescription>
+          {t("portal:account.notifications.quietHoursDescription")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {preferences.isError ? (
+          <Alert variant="error">
+            <AlertDescription>
+              {t("notificationProvider:quietHours.unavailable")}
+            </AlertDescription>
+            <Button
+              variant="outline"
+              onClick={() => void preferences.refetch()}
+            >
+              {t("common:actions.tryAgain")}
+            </Button>
+          </Alert>
+        ) : preferences.isLoading || placeholderVisible ? (
+          <LoadingStatus
+            visible={placeholderVisible}
+            label={t("common:empty.loading")}
+          >
+            <Skeleton className="h-12 w-full" />
+          </LoadingStatus>
+        ) : (
+          <QuietHoursForm
+            key={`${portalUserId}:${JSON.stringify(preferences.data)}`}
+            saved={preferences.data ?? null}
+            completed={completed}
+            onStart={() => setCompleted(false)}
+            onSaved={() => setCompleted(true)}
+            save={savePortalQuietHours}
+            cacheKey={cacheKey}
+            note={t("portal:account.notifications.quietHoursNote")}
+          />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 function PreferenceCard({
   preference,
   kind,
+  urgent,
   portalUserId,
 }: {
   preference: PortalCanonicalPreference;
-  kind: "mention" | "comment";
+  kind: (typeof PREFERENCE_CARDS)[number]["kind"];
+  urgent: boolean;
   portalUserId: string;
 }) {
   const { t } = usePortalTranslation(["portal", "common"]);
@@ -225,9 +310,9 @@ function PreferenceCard({
             {t(`portal:account.notifications.${kind}.enabled`)}
           </Label>
         </div>
-        {kind === "comment" ? (
+        {!urgent ? (
           <div className="space-y-2">
-            <Label htmlFor="portal-comment-email-digest">
+            <Label htmlFor={`portal-${kind}-email-digest`}>
               {t("portal:account.notifications.comment.digest")}
             </Label>
             <Select
@@ -244,7 +329,7 @@ function PreferenceCard({
               }}
               disabled={mutation.isPending || !enabled}
             >
-              <SelectTrigger id="portal-comment-email-digest">
+              <SelectTrigger id={`portal-${kind}-email-digest`}>
                 <SelectValue>
                   {t(
                     `portal:account.notifications.comment.digestCadence.${digest}`,
@@ -270,7 +355,7 @@ function PreferenceCard({
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {t("portal:account.notifications.mention.urgent")}
+            {t(`portal:account.notifications.${kind}.urgent`)}
           </p>
         )}
         <p className="text-sm text-muted-foreground">
@@ -287,7 +372,7 @@ function PreferenceCard({
         <SaveButton
           type="button"
           pending={mutation.isPending}
-          success={mutation.isSuccess}
+          success={saved}
           savedLabel={t("common:actions.saved")}
           workingLabel={t("common:actions.saving")}
           announceSuccess={false}

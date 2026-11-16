@@ -94,12 +94,18 @@ export function QuietHoursPreference() {
   );
 }
 
-function QuietHoursForm({
+export function QuietHoursForm({
   saved,
   completed,
   onStart,
   onSaved,
+  save = saveQuietHours,
+  cacheKey = ["notification-preferences"],
+  note,
 }: {
+  save?: (value: QuietHours | null) => Promise<unknown>;
+  cacheKey?: readonly unknown[];
+  note?: string;
   saved: QuietHours | null;
   completed: boolean;
   onStart: () => void;
@@ -115,12 +121,12 @@ function QuietHoursForm({
   const [noticeIsSave, setNoticeIsSave] = useState(false);
   const zones = useMemo(() => timeZones(timezone), [timezone]);
   const mutation = useMutation({
-    mutationFn: saveQuietHours,
+    mutationFn: save,
     onSuccess: async (_data, variables) => {
       setNoticeIsSave(Boolean(variables));
       setNotice(variables ? t("quietHours.saved") : t("quietHours.cleared"));
       await queryClient.invalidateQueries({
-        queryKey: ["notification-preferences"],
+        queryKey: cacheKey,
       });
       if (variables) onSaved();
     },
@@ -199,7 +205,9 @@ function QuietHoursForm({
           </Select>
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">{t("quietHours.note")}</p>
+      <p className="text-sm text-muted-foreground">
+        {note ?? t("quietHours.note")}
+      </p>
       {!valid && (
         <p role="alert" className="text-sm text-destructive">
           {t("quietHours.invalid")}

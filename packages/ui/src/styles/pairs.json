@@ -13423,10 +13423,32 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/account/quiet-hours-preference.tsx::QuietHoursForm::form[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/quiet-hours-preference.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/account/quiet-hours-preference.tsx:QuietHoursPreference",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/account/quiet-hours-preference.tsx::QuietHoursForm::form[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/quiet-hours-preference.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/account/quiet-hours-preference.tsx::QuietHoursForm::form[0]/p[0]::text-destructive#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/quiet-hours-preference.tsx"
 			},
@@ -14098,10 +14120,32 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/account/quiet-hours-preference.tsx::QuietHoursForm::form[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/quiet-hours-preference.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/account/quiet-hours-preference.tsx:QuietHoursPreference",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "apps/web/src/components/account/quiet-hours-preference.tsx::QuietHoursForm::form[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/quiet-hours-preference.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/account/quiet-hours-preference.tsx::QuietHoursForm::form[0]/p[0]::text-destructive#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/quiet-hours-preference.tsx"
 			},
@@ -37739,6 +37783,7 @@
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/activity/comment-card-presentation.tsx::ActivityEventPresentation::TimelineItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/p[0]::text-muted-foreground#0",
@@ -38274,6 +38319,17 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/account.tsx:/account",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -50174,6 +50230,7 @@
 		"occurrenceIds": [
 			"apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/activity/comment-card-presentation.tsx::ActivityEventPresentation::TimelineItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/agile/burndown-chart.tsx::BurndownChart::div[0]/p[0]::text-muted-foreground#0",
@@ -50710,6 +50767,17 @@
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
 				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/account.tsx:/account",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PortalCanonicalPreferencesPage::PageContainer[0]/header[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
 			},
@@ -63770,6 +63838,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/account/quiet-hours-preference.tsx::QuietHoursForm::form[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/quiet-hours-preference.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/account/quiet-hours-preference.tsx:QuietHoursPreference",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
@@ -69673,6 +69752,17 @@
 				"id": "apps/web/src/components/account/portal-canonical-preferences.tsx::PreferenceCard::Card[0]/CardContent[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/account/portal-canonical-preferences.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/account/quiet-hours-preference.tsx::QuietHoursForm::form[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/account/quiet-hours-preference.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -79473,6 +79563,19 @@
 				"backdropLayers": ["bg-card"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/account/quiet-hours-preference.tsx:QuietHoursPreference",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/account/quiet-hours-preference.tsx:QuietHoursPreference",
@@ -84949,6 +85052,19 @@
 					"apps/web/src/components/account/canonical-mention-preference.tsx:CanonicalMentionPreference",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/account/canonical-mention-preference.tsx:CanonicalMentionPreference",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-card"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/account/portal-canonical-preferences.tsx:PortalQuietHoursPreference",
 					"Card->packages/ui/src/components/card.tsx:Card"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",

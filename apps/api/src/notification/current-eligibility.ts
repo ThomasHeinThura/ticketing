@@ -292,6 +292,7 @@ export async function evaluateCurrentNotificationReachAndPreference(
       !(await isCurrentSubmissionNotificationRecipient(tx, identity, {
         submissionId: delivery.resourceId,
         workspaceId: delivery.workspaceId,
+        eventKind: delivery.eventKind,
       }))
     )
       return { kind: "suppress", reason: "reach_lost" };

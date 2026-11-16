@@ -8461,6 +8461,35 @@
           "pinnedViewIds"
         ]
       },
+      "QuietHours": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "start": {
+            "type": "string",
+            "description": "Local start time, HH:MM (24-hour).",
+            "example": "22:00"
+          },
+          "end": {
+            "type": "string",
+            "description": "Local end time, HH:MM (24-hour). An end earlier than the start crosses midnight.",
+            "example": "07:00"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "IANA time zone the two times are read in.",
+            "example": "Europe/Berlin"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "timezone"
+        ],
+        "additionalProperties": false
+      },
       "LocalAuthMethodSet": {
         "type": "object",
         "properties": {
@@ -55026,6 +55055,7 @@
                               "work_item.mentioned",
                               "work_item.transitioned",
                               "submission.replied",
+                              "submission.accepted",
                               "submission.declined",
                               "approval.requested",
                               "approval.expiring",
@@ -66225,6 +66255,362 @@
         }
       }
     },
+    "/portal/notification-preferences": {
+      "get": {
+        "operationId": "getPortalNotificationPreferences",
+        "tags": [
+          "Notification Preferences"
+        ],
+        "summary": "Get portal email preferences",
+        "responses": {
+          "200": {
+            "description": "Current customer's canonical email preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "eventKind": {
+                        "type": "string",
+                        "enum": [
+                          "work_item.mentioned",
+                          "work_item.commented",
+                          "work_item.transitioned",
+                          "approval.requested",
+                          "approval.expiring",
+                          "approval.withdrawn",
+                          "submission.replied",
+                          "submission.accepted",
+                          "submission.declined"
+                        ]
+                      },
+                      "channel": {
+                        "type": "string",
+                        "enum": [
+                          "notify.email"
+                        ]
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "global"
+                        ]
+                      },
+                      "scopeId": {
+                        "type": "null"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "digest": {
+                        "type": "string",
+                        "enum": [
+                          "off",
+                          "hourly",
+                          "daily"
+                        ]
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "default",
+                          "global"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "eventKind",
+                      "channel",
+                      "scope",
+                      "scopeId",
+                      "enabled",
+                      "digest",
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updatePortalNotificationPreference",
+        "tags": [
+          "Notification Preferences"
+        ],
+        "summary": "Update a portal email preference",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "eventKind": {
+                    "type": "string",
+                    "enum": [
+                      "work_item.mentioned",
+                      "work_item.commented",
+                      "work_item.transitioned",
+                      "approval.requested",
+                      "approval.expiring",
+                      "approval.withdrawn",
+                      "submission.replied",
+                      "submission.accepted",
+                      "submission.declined"
+                    ]
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "notify.email"
+                    ]
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "global"
+                    ]
+                  },
+                  "scopeId": {
+                    "type": "null"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "digest": {
+                    "type": "string",
+                    "enum": [
+                      "off",
+                      "hourly",
+                      "daily"
+                    ]
+                  }
+                },
+                "required": [
+                  "eventKind",
+                  "channel",
+                  "scope",
+                  "scopeId",
+                  "enabled",
+                  "digest"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated customer email preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "eventKind": {
+                        "type": "string",
+                        "enum": [
+                          "work_item.mentioned",
+                          "work_item.commented",
+                          "work_item.transitioned",
+                          "approval.requested",
+                          "approval.expiring",
+                          "approval.withdrawn",
+                          "submission.replied",
+                          "submission.accepted",
+                          "submission.declined"
+                        ]
+                      },
+                      "channel": {
+                        "type": "string",
+                        "enum": [
+                          "notify.email"
+                        ]
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "global"
+                        ]
+                      },
+                      "scopeId": {
+                        "type": "null"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "digest": {
+                        "type": "string",
+                        "enum": [
+                          "off",
+                          "hourly",
+                          "daily"
+                        ]
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "default",
+                          "global"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "eventKind",
+                      "channel",
+                      "scope",
+                      "scopeId",
+                      "enabled",
+                      "digest",
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/notification-preferences/canonical/quiet-hours": {
+      "get": {
+        "operationId": "getPortalNotificationQuietHours",
+        "tags": [
+          "Notification Preferences"
+        ],
+        "summary": "Get portal quiet hours",
+        "responses": {
+          "200": {
+            "description": "Current customer quiet hours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuietHours"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updatePortalNotificationQuietHours",
+        "tags": [
+          "Notification Preferences"
+        ],
+        "summary": "Update portal quiet hours",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quietHours": {
+                    "$ref": "#/components/schemas/QuietHours"
+                  }
+                },
+                "required": [
+                  "quietHours"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated customer quiet hours",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuietHours"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid quiet hours",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/portal/notification-preferences/canonical": {
       "get": {
         "operationId": "getPortalCanonicalNotificationPreferences",
@@ -66246,7 +66632,14 @@
                         "type": "string",
                         "enum": [
                           "work_item.mentioned",
-                          "work_item.commented"
+                          "work_item.commented",
+                          "work_item.transitioned",
+                          "approval.requested",
+                          "approval.expiring",
+                          "approval.withdrawn",
+                          "submission.replied",
+                          "submission.accepted",
+                          "submission.declined"
                         ]
                       },
                       "channel": {
@@ -66330,7 +66723,14 @@
                     "type": "string",
                     "enum": [
                       "work_item.mentioned",
-                      "work_item.commented"
+                      "work_item.commented",
+                      "work_item.transitioned",
+                      "approval.requested",
+                      "approval.expiring",
+                      "approval.withdrawn",
+                      "submission.replied",
+                      "submission.accepted",
+                      "submission.declined"
                     ]
                   },
                   "channel": {
@@ -66387,7 +66787,14 @@
                         "type": "string",
                         "enum": [
                           "work_item.mentioned",
-                          "work_item.commented"
+                          "work_item.commented",
+                          "work_item.transitioned",
+                          "approval.requested",
+                          "approval.expiring",
+                          "approval.withdrawn",
+                          "submission.replied",
+                          "submission.accepted",
+                          "submission.declined"
                         ]
                       },
                       "channel": {

@@ -189,19 +189,21 @@ export async function resolveWorkItemEventRecipients(
   const kind = event.kind;
 
   const watchers = await listWorkItemWatchers(tx, workItemId);
+  const currentAssignee =
+    kind === "work_item.escalated" || kind === "work_item.transitioned"
+      ? await findWorkItemAssigneeId(tx, workItemId)
+      : null;
   const planned = planWorkItemRecipients({
     kind,
     // An escalation payload carries priorities only; the audience is the stored assignee.
     assigneeId:
-      kind === "work_item.escalated"
-        ? await findWorkItemAssigneeId(tx, workItemId)
+      kind === "work_item.escalated" || kind === "work_item.transitioned"
+        ? currentAssignee
         : nullableString(event.payload.assigneeId),
     previousAssigneeId: nullableString(event.payload.previousAssigneeId),
     watchers,
     actorPersonId: null,
   });
-  if (planned.length === 0) return [];
-
   const resource = await findCurrentNotificationResource(tx, {
     resourceType: "work_item",
     resourceId: workItemId,
@@ -209,6 +211,16 @@ export async function resolveWorkItemEventRecipients(
     canonicalWorkItem: { id: workItemId, key },
   });
   if (!resource) return [];
+  if (kind === "work_item.transitioned") {
+    const direct = [
+      currentAssignee,
+      ...(resource.customerRequestOwnerPersonIds ?? []),
+    ];
+    for (const personId of direct) {
+      if (personId && !planned.some((entry) => entry.personId === personId))
+        planned.push({ personId, role: "watcher" });
+    }
+  }
   const channels = await configuredMentionChannels(tx);
 
   const candidates: NotificationRecipientCandidate[] = [];

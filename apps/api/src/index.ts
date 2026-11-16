@@ -150,7 +150,9 @@ import { idempotencyKeyMiddleware } from "./middleware/idempotency";
 import { createPostgresIdempotencyStore } from "./middleware/idempotency.repository";
 import { migrateColumns } from "./migrations/column-migration";
 import notification from "./notification";
-import portalCanonicalPreferences from "./notification/portal-canonical-preferences";
+import portalCanonicalPreferences, {
+  portalNotificationPreferences,
+} from "./notification/portal-canonical-preferences";
 import portalNotificationRouter from "./notification/portal-inbox";
 import { portalNotificationPolicies } from "./notification/portal-inbox-policy";
 import { createPortalNotificationWebSocket } from "./notification/portal-inbox-websocket";
@@ -470,6 +472,10 @@ const PORTAL_HOME_REALM_ENDPOINTS = new Set([
   "GET /api/portal/sign-in/home-realm/start",
 ]);
 const PORTAL_CANONICAL_PREFERENCE_ENDPOINTS = new Set([
+  "GET /api/portal/notification-preferences",
+  "PUT /api/portal/notification-preferences",
+  "GET /api/portal/notification-preferences/canonical/quiet-hours",
+  "PUT /api/portal/notification-preferences/canonical/quiet-hours",
   "GET /api/portal/notification-preferences/canonical",
   "PUT /api/portal/notification-preferences/canonical",
 ]);
@@ -2444,6 +2450,7 @@ export function createApp(
     "/portal/notification-preferences",
     authenticatedPreferenceHandoff("customer"),
   );
+  api.route("/portal/notification-preferences", portalNotificationPreferences);
   api.route(
     "/portal/notification-preferences/canonical",
     portalCanonicalPreferences,

@@ -27,6 +27,7 @@ const customerEventSchema = z.enum([
   "work_item.mentioned",
   "work_item.transitioned",
   "submission.replied",
+  "submission.accepted",
   "submission.declined",
   // AP-21 / AP-13 (`P2R1-04`): a customer approver's approval events.
   "approval.requested",
@@ -41,6 +42,7 @@ function isCustomerEventKind(kind: string | null): kind is CustomerEventKind {
     kind === "work_item.mentioned" ||
     kind === "work_item.transitioned" ||
     kind === "submission.replied" ||
+    kind === "submission.accepted" ||
     kind === "submission.declined" ||
     kind === "approval.requested" ||
     kind === "approval.expiring" ||

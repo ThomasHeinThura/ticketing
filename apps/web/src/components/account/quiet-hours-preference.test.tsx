@@ -51,7 +51,7 @@ vi.mock("@tanstack/react-query", () => ({
   }),
 }));
 
-import { QuietHoursPreference } from "./quiet-hours-preference";
+import { QuietHoursForm, QuietHoursPreference } from "./quiet-hours-preference";
 
 async function chooseTime(label: "From" | "Until", value: string) {
   fireEvent.click(screen.getByRole("button", { name: label }));
@@ -225,5 +225,45 @@ describe("quiet hours preference", () => {
     if (!form) throw new Error("Quiet hours form missing");
     fireEvent.submit(form);
     expect(mocks.save).not.toHaveBeenCalled();
+  });
+});
+
+describe("shared quiet-hours form adapters", () => {
+  it("keeps the staff save endpoint and cache by default", async () => {
+    render(
+      <QuietHoursForm
+        saved={null}
+        completed={false}
+        onStart={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    expect(mocks.invalidate).toHaveBeenCalledWith({
+      queryKey: ["notification-preferences"],
+    });
+  });
+
+  it("uses the portal adapter and caller-only cache without calling the staff writer", async () => {
+    const save = vi.fn().mockResolvedValue(null);
+    render(
+      <QuietHoursForm
+        saved={null}
+        completed={false}
+        onStart={vi.fn()}
+        onSaved={vi.fn()}
+        save={save}
+        cacheKey={["portal", "customer-1", "canonical-quiet-hours"]}
+        note="Customer quiet-hours note"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.invalidate).toHaveBeenCalledWith({
+      queryKey: ["portal", "customer-1", "canonical-quiet-hours"],
+    });
+    expect(screen.getByText("Customer quiet-hours note")).toBeVisible();
   });
 });

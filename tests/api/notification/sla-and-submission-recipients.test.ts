@@ -58,7 +58,11 @@ describe("submission inbox reach (IQ-12, IQ-15)", () => {
   const otherCustomer = { side: "customer", personId: "other" } as never;
 
   it("serves a reply or decline to the owning customer only", () => {
-    for (const kind of ["submission.replied", "submission.declined"]) {
+    for (const kind of [
+      "submission.replied",
+      "submission.accepted",
+      "submission.declined",
+    ]) {
       expect(
         canReadSubmissionNotification(
           customer,
@@ -87,7 +91,7 @@ describe("submission inbox reach (IQ-12, IQ-15)", () => {
     expect(
       canReadSubmissionNotification(
         customer,
-        { personId: "cust", kind: "submission.accepted" },
+        { personId: "cust", kind: "submission.unknown" },
         submission,
       ),
     ).toBe(false);
@@ -102,7 +106,7 @@ describe("submission inbox reach (IQ-12, IQ-15)", () => {
     ).toBe(true);
     expect(
       isSupportedNotificationResourceEvent("submission", "submission.accepted"),
-    ).toBe(false);
+    ).toBe(true);
   });
 });
 
