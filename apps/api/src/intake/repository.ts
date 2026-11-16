@@ -1516,24 +1516,28 @@ async function convertSubmissionInTransaction(
         : {}),
     },
   });
-  await enqueueOutboxEvent(tx, {
-    id: `evt_${createId()}`,
-    kind: "submission.accepted",
-    occurredAt: now.toISOString(),
-    actor: { type: actor.type, id: actorId, name: actorName },
-    scope: eventScope({
-      workspaceId,
-      organisationId: submission.organisationId,
-      projectId,
-    }),
-    payload: {
-      ref: formatSubmissionReference(submission.number),
-      workItemKey: item.key,
+  await enqueueNotificationEvent(
+    tx,
+    {
+      id: `evt_${createId()}`,
+      kind: "submission.accepted",
+      occurredAt: now.toISOString(),
+      actor: { type: actor.type, id: actorId, name: actorName },
+      scope: eventScope({
+        workspaceId,
+        organisationId: submission.organisationId,
+        projectId,
+      }),
+      payload: {
+        ref: formatSubmissionReference(submission.number),
+        workItemKey: item.key,
+      },
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
     },
-    causationId: null,
-    depth: 0,
-    originAutomationId: null,
-  });
+    { resolveRecipients: resolveSubmissionRepliedRecipients },
+  );
   return item;
 }
 

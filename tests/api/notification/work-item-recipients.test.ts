@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   findNotificationPerson: vi.fn(),
   findCurrentNotificationResource: vi.fn(),
   listWorkItemWatchers: vi.fn(),
+  findWorkItemAssigneeId: vi.fn(),
 }));
 
 vi.mock("../../../apps/api/src/permissions/resolve-identity", () => ({
@@ -15,6 +16,7 @@ vi.mock("../../../apps/api/src/notification/repository", () => ({
   findNotificationPerson: mocks.findNotificationPerson,
   findCurrentNotificationResource: mocks.findCurrentNotificationResource,
   listWorkItemWatchers: mocks.listWorkItemWatchers,
+  findWorkItemAssigneeId: mocks.findWorkItemAssigneeId,
 }));
 
 import type { ResolvedIdentity } from "@taskdesk/permissions";
@@ -244,6 +246,7 @@ describe("resolveWorkItemEventRecipients", () => {
     vi.resetAllMocks();
     mocks.execute.mockResolvedValue({ rows: [] });
     mocks.listWorkItemWatchers.mockResolvedValue([]);
+    mocks.findWorkItemAssigneeId.mockResolvedValue(null);
     mocks.findCurrentNotificationResource.mockResolvedValue({
       workItemId: "item-1",
       workspaceId: "workspace-1",
@@ -389,6 +392,41 @@ describe("resolveWorkItemEventRecipients", () => {
     expect(candidates.map((c) => [c.personId, c.title])).toEqual([
       ["new", "Assigned to you"],
       ["old", "Reassigned"],
+    ]);
+  });
+
+  it("includes current request owner and assignee for transitions without watcher rows", async () => {
+    mocks.findWorkItemAssigneeId.mockResolvedValue("assignee");
+    mocks.findCurrentNotificationResource.mockResolvedValue({
+      workItemId: "item-1",
+      workspaceId: "workspace-1",
+      projectId: "project-1",
+      organisationId: "organisation-1",
+      visibleToPersonIds: null,
+      customerVisible: true,
+      customerRequestOwnerPersonIds: ["owner"],
+      staffUrl: null,
+    });
+    mocks.findNotificationPerson.mockImplementation(
+      async (_tx, id: string) => ({
+        userId: `user-${id}`,
+        side: id === "owner" ? "customer" : "staff",
+        active: true,
+      }),
+    );
+    mocks.resolveIdentity.mockImplementation(
+      async ({ userId }: { userId: string }) =>
+        userId === "user-owner"
+          ? customerIdentity("owner", userId)
+          : staffIdentity("assignee", userId),
+    );
+    const candidates = await resolveWorkItemEventRecipients(
+      tx,
+      event("work_item.transitioned", {}),
+    );
+    expect(candidates.map((candidate) => candidate.personId)).toEqual([
+      "assignee",
+      "owner",
     ]);
   });
 

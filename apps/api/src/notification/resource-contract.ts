@@ -27,7 +27,11 @@ const RESOURCE_EVENT_KINDS = {
   project: ["budget.threshold_reached"],
   // IQ-12 / IQ-15: a clarification reply reaches the customer who owns the request (or the
   // triager who last handled it); a decline reaches the requester with its reason. Read access is the dedicated submission branch in `inbox.repository.ts`.
-  submission: ["submission.replied", "submission.declined"],
+  submission: [
+    "submission.replied",
+    "submission.accepted",
+    "submission.declined",
+  ],
 } as const satisfies Record<string, readonly string[]>;
 
 export function isSupportedNotificationResourceEvent(

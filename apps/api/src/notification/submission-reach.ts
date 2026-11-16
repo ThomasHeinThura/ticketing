@@ -3,6 +3,7 @@ import { can, type ResolvedIdentity } from "@taskdesk/permissions";
 /** The submission notification kinds the inbox may serve (resource-contract.ts). */
 export const SUBMISSION_NOTIFICATION_KINDS = [
   "submission.replied",
+  "submission.accepted",
   "submission.declined",
 ] as const;
 
@@ -24,7 +25,7 @@ export function canReadSubmissionNotification(
   submission: { requesterId: string; workspaceId: string },
 ): boolean {
   if (row.personId !== identity.personId) return false;
-  if (row.kind === "submission.declined")
+  if (row.kind === "submission.declined" || row.kind === "submission.accepted")
     return (
       identity.side === "customer" &&
       submission.requesterId === identity.personId

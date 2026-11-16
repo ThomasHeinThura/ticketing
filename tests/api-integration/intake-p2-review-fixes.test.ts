@@ -504,3 +504,104 @@ describe("P2R1-04: customer approvers are notified (AP-21, AP-13)", () => {
     expect(kinds.map((row) => row.kind)).toContain("approval.expiring");
   });
 });
+
+describe("NO-21 accepted submission notifications", () => {
+  it("notifies only the requester and sends enabled email for the accepted submission", async () => {
+    const s = await seedIntake("accept-customer-notify");
+    await enableEmail(s);
+    await preferEmail(s.customer.person.id, "submission.accepted");
+    const ref = await submitAs(s, s.customer);
+    const response = await staffRequest(
+      s.t,
+      s.t.requester,
+      `/api/submissions/${ref}/accept`,
+      acceptBody(s),
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const inbox = await portalRequest(
+      s.t,
+      s.customer,
+      "/api/portal/notification/inbox",
+    );
+    expect(inbox.status).toBe(200);
+    expect(
+      (
+        (await inbox.json()) as {
+          data: Array<{ kind: string; requestRef: string }>;
+        }
+      ).data,
+    ).toContainEqual(
+      expect.objectContaining({ kind: "submission.accepted", requestRef: ref }),
+    );
+    const other = await addCustomer(s.t);
+    const otherInbox = await portalRequest(
+      s.t,
+      other,
+      "/api/portal/notification/inbox",
+    );
+    expect(((await otherInbox.json()) as { data: unknown[] }).data).toEqual([]);
+    const send = vi.fn(async (_to, _subject, _data, options) => {
+      expect(await options.authorize?.()).toBe(true);
+      return { success: true as const };
+    });
+    await expect(
+      processNextNotificationDelivery(immediateNotificationRuntime(send)),
+    ).resolves.toEqual({ kind: "delivered" });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0]).toBe(s.customer.user.email);
+  });
+  it("suppresses a queued acceptance after the customer disables email", async () => {
+    const s = await seedIntake("accept-email-disabled");
+    await enableEmail(s);
+    await preferEmail(s.customer.person.id, "submission.accepted");
+    const ref = await submitAs(s, s.customer);
+    expect(
+      (
+        await staffRequest(
+          s.t,
+          s.t.requester,
+          `/api/submissions/${ref}/accept`,
+          acceptBody(s),
+        )
+      ).status,
+    ).toBe(200);
+    await db
+      .update(notificationPreferenceTable)
+      .set({ enabled: false })
+      .where(eq(notificationPreferenceTable.personId, s.customer.person.id));
+    const send = vi.fn(async () => ({ success: true as const }));
+    await expect(
+      processNextNotificationDelivery(immediateNotificationRuntime(send)),
+    ).resolves.toMatchObject({ kind: "suppressed" });
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("does not create an email delivery when acceptance email is disabled", async () => {
+    const s = await seedIntake("accept-email-off");
+    await enableEmail(s);
+    const ref = await submitAs(s, s.customer);
+    expect(
+      (
+        await staffRequest(
+          s.t,
+          s.t.requester,
+          `/api/submissions/${ref}/accept`,
+          acceptBody(s),
+        )
+      ).status,
+    ).toBe(200);
+    const rows = await db.execute(
+      sql`SELECT d.id FROM notification_delivery d JOIN outbox o ON o.event_id = d.event_id WHERE o.kind = 'submission.accepted' AND d.recipient_person_id = ${s.customer.person.id}`,
+    );
+    expect(rows.rows).toEqual([]);
+    const inbox = await portalRequest(
+      s.t,
+      s.customer,
+      "/api/portal/notification/inbox",
+    );
+    expect(
+      ((await inbox.json()) as { data: Array<{ kind: string }> }).data.some(
+        (row) => row.kind === "submission.accepted",
+      ),
+    ).toBe(true);
+  });
+});

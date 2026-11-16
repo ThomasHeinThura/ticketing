@@ -3806,3 +3806,8 @@ Recorded in [docs/plan.md](../plan.md) (`D-Q`..`D-T`) and implemented across Bat
 - **D-R (`H-2`, `#1183`):** Build OIDC group-mapping God Mode UI (`C8-4/F3`) over the existing persisted API (list, create, edit, disable) before UAT with step-up, non-admin denial, stale-edit conflict checks, and refusal of instance-admin grants.
 - **D-S (`H-3`, `H-5`, `#1184`):** Keep `project:archive` and `project:manage_settings` (`C8-15(c)`) as distinct canonical permissions rather than collapsing them into `project:update` or running a stored-key data rewrite; enforce required `project:update`, owner-role intersection, reach, and negative paths via route matrices (`H-3`). Close the canonical API-key gap at legacy statement gates (`H-5`, e.g. `label:manage` and mapped public paths) while ensuring legacy granular keys never gain broader rights. Permission changes or stored-key rewrites continue to require Thomas's explicit approval.
 - **D-T (`H-4`, `#1181` parked):** Move legacy `docs/report/*` files into `docs/archive/reports/` with maintained links resolved and zero report loss (`#1181` currently parked on external GitGuardian incident `40106262`).
+
+
+### 16 Nov 2026 — Thomas: customer notification API enum additions (#903)
+
+Thomas approved exactly 15 additive response-enum changes needed for NO-21: seven customer event kinds added to canonical portal preference GET, the same seven added to PUT, and `submission.accepted` added to the portal inbox. Existing kinds remain supported. Record each actual oasdiff fingerprint against the implementation PR in `scripts/ci/openapi-approved-breaks.json`; all other contract gates and thresholds stay unchanged. This approval does not change recipient reach, customer isolation, in-app delivery or permission semantics.

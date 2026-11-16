@@ -28,7 +28,9 @@ export function isCustomerEligibleNotificationEvent(
   // (`P2R1-05`); the send-time check confirms the customer is still its requester.
   if (resourceType === "submission")
     return (
-      eventKind === "submission.replied" || eventKind === "submission.declined"
+      eventKind === "submission.replied" ||
+      eventKind === "submission.accepted" ||
+      eventKind === "submission.declined"
     );
   // A direct description mention has no comment resource. A state transition is public
   // activity under CA-7 and is a default requester notification under notifications.md.
