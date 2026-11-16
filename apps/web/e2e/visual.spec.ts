@@ -7633,6 +7633,8 @@ test("project timeline screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "Open feature settings" }),
   ).toBeVisible();
+  // Page content can settle before the independently lazy project header.
+  await expect(page.locator('[data-project-view="overview"]')).toBeVisible();
   await expect(page).toHaveScreenshot("project-timeline.png", {
     animations: "disabled",
     caret: "hide",
@@ -8308,6 +8310,8 @@ test("project page detail screen @visual", async ({ page }) => {
   await expect(
     page.getByText("All changes saved", { exact: true }),
   ).toBeVisible();
+  // Page content can settle before the independently lazy project header.
+  await expect(page.locator('[data-project-view="overview"]')).toBeVisible();
   await expect(page).toHaveScreenshot("project-page-detail.png", {
     animations: "disabled",
     caret: "hide",
