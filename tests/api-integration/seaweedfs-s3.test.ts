@@ -11,6 +11,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -37,6 +38,8 @@ let containerId: string | undefined;
 let networkId: string | undefined;
 let client: InstanceType<typeof S3Client> | undefined;
 let endpoint = "";
+const setupAbort = new AbortController();
+let setupPromise: Promise<void> | undefined;
 const bucket = `taskdesk-${randomUUID()}`;
 const pending = `scratch/${randomUUID()}/pending`;
 const finalKey = `scratch/${randomUUID()}/final`;
@@ -77,28 +80,40 @@ async function safe<T>(
 }
 
 describe("real SeaweedFS S3 compatibility", () => {
-  beforeAll(async () => {
-    directory = mkdtempSync(join(tmpdir(), "taskdesk-seaweedfs-"));
-    const accessKeyId = randomBytes(16).toString("hex");
-    const secretAccessKey = randomBytes(32).toString("hex");
-    const config = join(directory, "s3.json");
-    writeFileSync(
-      config,
-      JSON.stringify({
-        identities: [
-          {
-            name: "test",
-            credentials: [
-              { accessKey: accessKeyId, secretKey: secretAccessKey },
-            ],
-            actions: ["Read", "Write", "List", "Tagging", "Admin"],
-          },
-        ],
-      }),
-      { mode: 0o600 },
-    );
-    let stage = "network creation";
+  beforeAll(() => {
+    setupPromise = setup();
+    return setupPromise;
+  }, 60_000);
+
+  async function setup() {
+    const started = Date.now();
+    let stage = "configuration";
+    const mark = (next: string) => {
+      stage = next;
+      console.info(`SeaweedFS setup: ${stage} (${Date.now() - started}ms)`);
+    };
     try {
+      mark(stage);
+      directory = mkdtempSync(join(tmpdir(), "taskdesk-seaweedfs-"));
+      const accessKeyId = randomBytes(16).toString("hex");
+      const secretAccessKey = randomBytes(32).toString("hex");
+      const config = join(directory, "s3.json");
+      writeFileSync(
+        config,
+        JSON.stringify({
+          identities: [
+            {
+              name: "test",
+              credentials: [
+                { accessKey: accessKeyId, secretKey: secretAccessKey },
+              ],
+              actions: ["Read", "Write", "List", "Tagging", "Admin"],
+            },
+          ],
+        }),
+        { mode: 0o600 },
+      );
+      mark("network creation");
       // Docker Desktop does not publish host ports on an internal-only network.
       // Use a private per-test bridge with only the S3 port bound to loopback.
       networkId = docker(
@@ -108,7 +123,7 @@ describe("real SeaweedFS S3 compatibility", () => {
       );
       if (!/^[a-f0-9]{64}$/u.test(networkId))
         throw new Error("Invalid network ID");
-      stage = "container creation";
+      mark("container creation");
       containerId = docker(
         "create",
         "--log-driver",
@@ -130,9 +145,9 @@ describe("real SeaweedFS S3 compatibility", () => {
       if (!/^[a-f0-9]{64}$/u.test(containerId))
         throw new Error("Invalid container ID");
       console.info("SeaweedFS fixture container:", containerId);
-      stage = "container start";
+      mark("container start");
       docker("start", containerId);
-      stage = "loopback binding";
+      mark("loopback binding");
       const binding = docker("port", containerId, "8333/tcp");
       if (!binding) throw new Error("empty binding");
       const port = /^127\.0\.0\.1:(\d+)$/u.exec(binding)?.[1];
@@ -157,19 +172,23 @@ describe("real SeaweedFS S3 compatibility", () => {
         requestChecksumCalculation: "WHEN_REQUIRED",
         maxAttempts: 1,
       });
-      stage = "bucket creation";
+      mark("bucket creation");
       let ready = false;
       for (let attempt = 0; attempt < 50; attempt++) {
         try {
-          await client.send(new CreateBucketCommand({ Bucket: bucket }));
+          await client.send(new CreateBucketCommand({ Bucket: bucket }), {
+            abortSignal: setupAbort.signal,
+          });
           ready = true;
           break;
         } catch {
-          await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
+          setupAbort.signal.throwIfAborted();
+          await delay(500, undefined, { signal: setupAbort.signal });
         }
       }
+      setupAbort.signal.throwIfAborted();
       if (!ready) throw new Error("SeaweedFS failed to become ready");
-      stage = "bucket CORS configuration";
+      mark("bucket CORS configuration");
       await client.send(
         new PutBucketCorsCommand({
           Bucket: bucket,
@@ -183,15 +202,19 @@ describe("real SeaweedFS S3 compatibility", () => {
             ],
           },
         }),
+        { abortSignal: setupAbort.signal },
       );
+      mark("complete");
     } catch {
       throw new Error(
         `SeaweedFS compatibility setup failed at ${stage}; sensitive diagnostics suppressed`,
       );
     }
-  }, 60_000);
+  }
 
-  afterAll(() => {
+  afterAll(async () => {
+    setupAbort.abort();
+    await setupPromise?.catch(() => {});
     client?.destroy();
     restoreS3Env();
     try {
