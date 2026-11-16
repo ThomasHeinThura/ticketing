@@ -7,6 +7,33 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { exerciseCallerRace } from "./project-write-race.test-helper";
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    getSession: async () => ({
+      data: { session: { id: "session-1" } },
+      error: null,
+    }),
+  },
+}));
+vi.mock("@/fetchers/project/get-project", async () => ({
+  default: async () => ({
+    ...(await import("./project-write-race.test-helper")).race.server,
+  }),
+}));
+vi.mock("@taskdesk/libs", async () => ({
+  client: {
+    project: {
+      ":id": {
+        $put: (...args: unknown[]) =>
+          import("./project-write-race.test-helper").then(({ race }) =>
+            race.writes(...args),
+          ),
+      },
+    },
+  },
+}));
 
 const { mocks } = vi.hoisted(() => ({
   mocks: {
@@ -146,10 +173,6 @@ describe("DefaultCommentVisibilitySetting (CA-2)", () => {
     await waitFor(() =>
       expect(mocks.updateProject).toHaveBeenCalledWith({
         id: "project-1",
-        name: "Service desk",
-        slug: "SD",
-        description: "",
-        icon: "Folder",
         defaultCommentVisibility: "public",
       }),
     );
@@ -194,4 +217,20 @@ describe("DefaultCommentVisibilitySetting (CA-2)", () => {
 
     expect(screen.getByRole("combobox")).toBeDisabled();
   });
+  it.each(["sibling first", "rename first"])(
+    "preserves the key when visibility saves %s",
+    async (order) => {
+      renderSetting();
+      await exerciseCallerRace(
+        order,
+        "project-1",
+        () =>
+          fireEvent.change(screen.getByRole("combobox"), {
+            target: { value: "public" },
+          }),
+        mocks.updateProject,
+        { defaultCommentVisibility: "public" },
+      );
+    },
+  );
 });

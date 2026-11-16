@@ -20,17 +20,24 @@ const empty = {
 };
 
 describe("project key (PR-13)", () => {
-  it.each(["AB", "ALPHA", "ABCDEFGH"])("accepts %s", (key) => {
-    expect(projectKeyError(key)).toBeNull();
-  });
-  it.each(["A", "ABCDEFGHI", "alpha", "AB1", "AB-C"])("rejects %s", (key) => {
-    expect(projectKeyError(key)).toBe("format");
-  });
+  it.each(["AB", "ABCDEFGH", "ABCDEFGHIJ", "ABCDEFGHIJKLMNO"])(
+    "accepts %s",
+    (key) => {
+      expect(projectKeyError(key)).toBeNull();
+    },
+  );
+  it.each(["A", "ABCDEFGHIJKLMNOP", "alpha", "AB1", "AB-C"])(
+    "rejects %s",
+    (key) => {
+      expect(projectKeyError(key)).toBe("format");
+    },
+  );
   it("requires a key", () => {
     expect(projectKeyError("  ")).toBe("required");
   });
   it("keeps an unchanged legacy key valid but not a changed invalid one", () => {
     expect(projectKeyError("legacy-key", "legacy-key")).toBeNull();
+    expect(projectKeyError("ABCDEFGHIJKLMNOP", "ABCDEFGHIJKLMNOP")).toBeNull();
     expect(projectKeyError("other-key", "legacy-key")).toBe("format");
   });
 });

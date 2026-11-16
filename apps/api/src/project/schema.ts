@@ -266,14 +266,14 @@ export const updateDocumentLinkBody = z
 
 export const workspaceIdQuery = z.object({ workspaceId: z.string() });
 
-// PR-13: a project key (stored as `project.slug`, the prefix of every work item key) is 2-8
+// PR-13: a project key (stored as `project.slug`, the prefix of every work item key) is 2-15
 // uppercase letters. Create always enforces it. Update enforces it only when the key CHANGES
 // (`update-project.ts`): projects created before this rule may hold a legacy key, and the
 // general-settings form re-sends the stored key on every save, so a blanket check would
 // make those projects uneditable.
-export const PROJECT_KEY_PATTERN = /^[A-Z]{2,8}$/;
+export const PROJECT_KEY_PATTERN = /^[A-Z]{2,15}$/;
 export const PROJECT_KEY_MESSAGE =
-  "PR-13: a project key is 2-8 uppercase letters (A-Z)";
+  "PR-13: a project key is 2-15 uppercase letters (A-Z)";
 export const projectKey = z
   .string()
   .regex(PROJECT_KEY_PATTERN, PROJECT_KEY_MESSAGE);
@@ -337,7 +337,7 @@ export const updateProjectBody = z.object({
   icon: z.string(),
   slug: z.string().openapi({
     description:
-      "PR-13: when it differs from the stored key it must be 2-8 uppercase letters. " +
+      "PR-13: when it differs from the stored key it must be 2-15 uppercase letters. " +
       "Existing work items keep the old prefix (PR-14).",
   }),
   description: z.string(),

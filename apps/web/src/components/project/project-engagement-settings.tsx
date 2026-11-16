@@ -220,10 +220,6 @@ function ProjectEngagementSettings({
     try {
       await updateProject({
         id: project.id,
-        name: project.name,
-        slug: project.slug,
-        description: project.description ?? "",
-        icon: project.icon ?? "Layout",
         ...buildEngagementPayload(values),
       });
       await invalidateProject();

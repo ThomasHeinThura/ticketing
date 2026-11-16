@@ -153,6 +153,82 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
     await resetTestDatabase();
   });
 
+  it("keeps a 15-letter old work-item key after project rename and claims both prefixes", async () => {
+    const actor = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(actor.user);
+    const { app } = createApp();
+    const original = "ABCDEFGHIJKLMNO";
+    const renamed = "PQRSTUVWXYZABCD";
+    const created = await createProjectRequest(app, {
+      workspaceId: actor.workspace.id,
+      name: "Long key",
+      icon: "Folder",
+      slug: original,
+    });
+    expect(created.status).toBe(200);
+    const project = (await created.json()) as { id: string };
+    await grantProjectManageAccess(actor.user.id, project.id);
+    const type = await makeWorkItemType(actor.workspace.id);
+    await makeDefaultState(actor.workspace.id, project.id);
+    await ensureCreationWorkflow({
+      workspaceId: actor.workspace.id,
+      projectId: project.id,
+      typeId: type.id,
+    });
+    const first = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Before rename",
+    });
+    expect(first.status).toBe(200);
+    expect(((await first.json()) as { key: string }).key).toBe(`${original}-1`);
+    expect(
+      (
+        await updateProjectRequest(app, project.id, {
+          name: "Long key",
+          icon: "Folder",
+          slug: renamed,
+          description: "",
+        })
+      ).status,
+    ).toBe(200);
+    const second = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "After rename",
+    });
+    expect(second.status).toBe(200);
+    expect(((await second.json()) as { key: string }).key).toBe(`${renamed}-2`);
+    expect((await app.request(`/api/work-items/${original}-1`)).status).toBe(
+      200,
+    );
+    expect((await app.request(`/api/work-items/${renamed}-2`)).status).toBe(
+      200,
+    );
+    expect(
+      (
+        await db.query.projectSlugClaimTable.findFirst({
+          where: eq(schema.projectSlugClaimTable.slug, original),
+        })
+      )?.projectId,
+    ).toBe(project.id);
+    expect(
+      (
+        await db.query.projectSlugClaimTable.findFirst({
+          where: eq(schema.projectSlugClaimTable.slug, renamed),
+        })
+      )?.projectId,
+    ).toBe(project.id);
+    expect(
+      (
+        await createProjectRequest(app, {
+          workspaceId: actor.workspace.id,
+          name: "Duplicate",
+          icon: "Folder",
+          slug: original,
+        })
+      ).status,
+    ).toBe(409);
+  });
+
   it("blocks reclaiming a slug freed by RENAMING the project that held it (409 at project creation)", async () => {
     // Attacker claims "ACME" and burns one work-item key under it. `admin`, not the
     // default `member` -- the legacy `project` statement set only grants `member`

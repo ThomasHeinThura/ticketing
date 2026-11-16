@@ -95,7 +95,10 @@ vi.mock("@/lib/toast", () => ({
 }));
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) =>
+      key === "common:modals.createProject.keyLabel" ? "Key:" : key,
+  }),
   initReactI18next: { type: "3rdParty", init: vi.fn() },
 }));
 
@@ -335,6 +338,14 @@ describe("CreateProjectModal customer organisation selector", () => {
 });
 
 describe("CreateProjectModal project key validation (PR-13)", () => {
+  it("associates the key label with the editable key", () => {
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    expect(screen.getByRole("textbox", { name: /^Key:?$/i })).toHaveAttribute(
+      "id",
+      "project-key",
+    );
+  });
+
   function typeName(value: string) {
     fireEvent.change(
       screen.getByPlaceholderText("common:modals.createProject.projectName"),
@@ -342,10 +353,13 @@ describe("CreateProjectModal project key validation (PR-13)", () => {
     );
   }
 
-  it("explains an invalid key and blocks creation until it is 2-8 uppercase letters", async () => {
+  it("explains an invalid key and blocks creation until it is 2-15 uppercase letters", async () => {
     render(<CreateProjectModal open onClose={vi.fn()} />);
-    // "2024" derives the key "2024", which the API would refuse.
     typeName("2024");
+    expect(screen.getByPlaceholderText("PRO")).toHaveValue("");
+    fireEvent.change(screen.getByPlaceholderText("PRO"), {
+      target: { value: "2024" },
+    });
     expect(screen.getByTestId("project-key-error").textContent).toBe(
       "common:modals.createProject.keyInvalid",
     );
@@ -362,6 +376,89 @@ describe("CreateProjectModal project key validation (PR-13)", () => {
     });
     expect(screen.queryByTestId("project-key-error")).toBeNull();
     expect(create.disabled).toBe(false);
+  });
+
+  it("keeps a manually edited key when the name changes and resets on close", () => {
+    const view = render(<CreateProjectModal open onClose={vi.fn()} />);
+    typeName("Customer Support");
+    expect(screen.getByPlaceholderText("PRO")).toHaveValue("CUSTOMERSUPPORT");
+    fireEvent.change(screen.getByPlaceholderText("PRO"), {
+      target: { value: "WWWWWWWWWWWWWWW" },
+    });
+    typeName("Different name");
+    expect(screen.getByPlaceholderText("PRO")).toHaveValue("WWWWWWWWWWWWWWW");
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.cancel" }),
+    );
+    view.rerender(<CreateProjectModal open onClose={vi.fn()} />);
+    typeName("Service Desk");
+    expect(screen.getByPlaceholderText("PRO")).toHaveValue("SERVICEDESK");
+  });
+
+  it("resets a manual key when the parent closes and reopens the dialog", () => {
+    const view = render(<CreateProjectModal open onClose={vi.fn()} />);
+    typeName("Original name");
+    fireEvent.change(screen.getByPlaceholderText("PRO"), {
+      target: { value: "MANUAL" },
+    });
+    view.rerender(<CreateProjectModal open={false} onClose={vi.fn()} />);
+    view.rerender(<CreateProjectModal open onClose={vi.fn()} />);
+    expect(screen.getByPlaceholderText("PRO")).toHaveValue("");
+    typeName("New service");
+    expect(screen.getByPlaceholderText("PRO")).toHaveValue("NEWSERVICE");
+  });
+
+  it("preserves a deliberately cleared key when the name changes", () => {
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    typeName("Service Desk");
+    fireEvent.change(screen.getByPlaceholderText("PRO"), {
+      target: { value: "" },
+    });
+    typeName("Different name");
+    expect(screen.getByPlaceholderText("PRO")).toHaveValue("");
+    expect(
+      screen.getByRole("button", {
+        name: "common:modals.createProject.createButton",
+      }),
+    ).toBeDisabled();
+  });
+
+  it.each(["AB", "ABCDEFGH", "ABCDEFGHIJ", "ABCDEFGHIJKLMNO"])(
+    "accepts a %s key",
+    (key) => {
+      render(<CreateProjectModal open onClose={vi.fn()} />);
+      typeName("Project name");
+      fireEvent.change(screen.getByPlaceholderText("PRO"), {
+        target: { value: key },
+      });
+      expect(screen.getByPlaceholderText("PRO")).toHaveValue(key);
+      expect(
+        screen.getByRole("button", {
+          name: "common:modals.createProject.createButton",
+        }),
+      ).toBeEnabled();
+    },
+  );
+
+  it("submits the complete 15-letter key and refuses an overlong value", async () => {
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    typeName("Project name");
+    const key = screen.getByPlaceholderText("PRO");
+    expect(key).toHaveAttribute("maxLength", "15");
+    fireEvent.change(key, { target: { value: "ABCDEFGHIJKLMNOP" } });
+    expect(
+      screen.getByRole("button", {
+        name: "common:modals.createProject.createButton",
+      }),
+    ).toBeDisabled();
+    fireEvent.change(key, { target: { value: "ABCDEFGHIJKLMNO" } });
+    expect(lastCreateArgs()).toMatchObject({ slug: "ABCDEFGHIJKLMNO" });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "common:modals.createProject.createButton",
+      }),
+    );
+    await waitFor(() => expect(mocks.createProject).toHaveBeenCalledOnce());
   });
 
   it("flags a single-letter key as too short", () => {

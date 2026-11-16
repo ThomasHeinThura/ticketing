@@ -854,9 +854,13 @@ attachments as entries are a follow-up (the `attachment` single-parent rule must
 <a id="projects-and-engagements-behaviour"></a>
 ### Behaviour
 
-- `PR-13` A project key is 2–8 uppercase characters, unique per instance (enforced by
+- `PR-13` A project key is 2–15 uppercase ASCII letters, unique per instance (enforced by
   `create unique index on project (key)` — [data model](data-model.md)),
   and becomes the prefix of every work item key.
+  Thomas requested the 15-letter maximum in #1199 on 16 November 2026; implementation
+  and acceptance are pending. Existing shorter and unchanged legacy keys remain valid;
+  no automatic rename or work-item key rewrite. Creation suggests a more descriptive,
+  editable name-based key instead of only three initials and preserves manual edits.
 - `PR-14` Renaming a key is allowed but discouraged; existing work items keep the old
   prefix and a warning explains this before confirming.
 - `PR-15` Archiving (`project.archived_at`) hides a project from navigation and makes its

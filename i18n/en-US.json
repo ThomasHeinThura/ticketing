@@ -154,7 +154,7 @@
 				"projectName": "{{term_project_one}} name",
 				"keyLabel": "Key:",
 				"keyHint": "Used for ticket IDs (e.g., {{example}}-123)",
-				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
+				"keyInvalid": "Use 2 to 15 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
 				"createButton": "Create {{term_project_one}}",
 				"successToast": "{{term_project_one}} created successfully",
 				"errorToast": "Failed to create {{term_project_one}}",
@@ -1095,9 +1095,9 @@
 			"validation": {
 				"nameRequired": "{{term_project_one}} name is required",
 				"keyRequired": "Key is required",
-				"keyMax": "Key must be at most 8 characters",
+				"keyMax": "Key must be at most 15 characters",
 				"iconRequired": "Icon is required",
-				"keyFormat": "Key must be 2-8 uppercase letters (A-Z)"
+				"keyFormat": "Key must be 2-15 uppercase letters (A-Z)"
 			},
 			"engagement": {
 				"title": "Engagement and service",
@@ -1177,7 +1177,7 @@
 					"notFound": "This {{term_project_one}} could not be found.",
 					"personNotEligible": "The manager and the default assignee must be active members of the {{term_project_one}}.",
 					"datesOrdered": "The end date cannot be before the start date.",
-					"keyFormat": "Key must be 2-8 uppercase letters (A-Z)",
+					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
 					"keyTaken": "That key is already taken.",
 					"generic": "Could not save the planning settings."
 				},

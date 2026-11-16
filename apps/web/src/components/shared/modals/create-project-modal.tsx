@@ -48,8 +48,8 @@ import {
   useManagedServiceOptions,
 } from "./project-kind-fields";
 
-/** PR-13: a project key is 2-8 uppercase ASCII letters (the API refuses anything else). */
-const PROJECT_KEY_PATTERN = /^[A-Z]{2,8}$/;
+/** PR-13: a project key is 2-15 uppercase ASCII letters (the API refuses anything else). */
+const PROJECT_KEY_PATTERN = /^[A-Z]{2,15}$/;
 
 /** The "no customer organisation" choice: the project stays internal (null on the API). */
 const INTERNAL_PROJECT = "__internal__";
@@ -74,6 +74,7 @@ function CreateProjectModal({
   const { data: session } = authClient.useSession();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [keyEdited, setKeyEdited] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState("Layout");
   const [iconPopoverOpen, setIconPopoverOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
@@ -84,6 +85,11 @@ function CreateProjectModal({
   // Each opening starts from the caller's preset (the modal may stay mounted while closed).
   useEffect(() => {
     if (open) setKindValues(initialKindValues(defaultKind));
+    else {
+      setName("");
+      setSlug("");
+      setKeyEdited(false);
+    }
   }, [open, defaultKind]);
   const queryClient = useQueryClient();
   const { data: workspace } = useActiveWorkspace();
@@ -149,6 +155,7 @@ function CreateProjectModal({
   const handleClose = () => {
     setName("");
     setSlug("");
+    setKeyEdited(false);
     setSelectedIcon("Layout");
     setIconPopoverOpen(false);
     setIconSearch("");
@@ -191,7 +198,7 @@ function CreateProjectModal({
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setName(newName);
-    setSlug(generateProjectSlug(newName));
+    if (!keyEdited) setSlug(generateProjectSlug(newName));
   };
 
   return (
@@ -299,26 +306,32 @@ function CreateProjectModal({
             </div>
 
             <div className="space-y-3 px-3">
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
+                <div className="flex max-w-full flex-wrap items-center gap-2">
+                  <Label
+                    htmlFor="project-key"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
                     {t("common:modals.createProject.keyLabel")}
-                  </span>
+                  </Label>
                   <Input
                     id="project-key"
                     value={slug}
-                    onChange={(e) => setSlug(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      setKeyEdited(true);
+                      setSlug(e.target.value.toUpperCase());
+                    }}
                     aria-invalid={keyInvalid}
                     aria-describedby={
                       keyInvalid ? "project-key-error" : undefined
                     }
                     placeholder="PRO"
-                    maxLength={8}
-                    className="w-20 h-8 text-center font-semibold text-sm bg-background border-border rounded-lg transition-colors duration-fast"
+                    maxLength={15}
+                    className="w-60 max-w-full h-8 text-center font-semibold text-sm bg-background border-border rounded-lg transition-colors duration-fast"
                     required
                   />
                 </div>
-                <div className="flex-1 text-xs text-muted-foreground opacity-80">
+                <div className="min-w-0 flex-1 basis-full break-words text-xs text-muted-foreground opacity-80 sm:basis-auto">
                   {t("common:modals.createProject.keyHint", {
                     example: slug || "ABC",
                   })}

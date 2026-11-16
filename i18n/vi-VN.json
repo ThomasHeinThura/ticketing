@@ -145,7 +145,7 @@
 				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Không có ({{term_project_other}} nội bộ)",
 				"organisationHint": "Tùy chọn. Được chọn ngay bây giờ và không thể thay đổi sau khi {{term_project_other}} được tạo.",
-				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
+				"keyInvalid": "Use 2 to 15 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
 				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
 				"calendarInherit": "Default calendar",
 				"calendarInheritNamed": "Default calendar ({{name}})",
@@ -1094,9 +1094,9 @@
 			"validation": {
 				"nameRequired": "Cần có tên {{term_project_other}}",
 				"keyRequired": "Cần có mã",
-				"keyMax": "Mã tối đa 8 ký tự",
+				"keyMax": "Mã tối đa 15 ký tự",
 				"iconRequired": "Cần có biểu tượng",
-				"keyFormat": "Key must be 2-8 uppercase letters (A-Z)"
+				"keyFormat": "Key must be 2-15 uppercase letters (A-Z)"
 			},
 			"importExportTasks": "Nhập/Xuất",
 			"importExportTasksDescription": "Nhập và xuất công việc.",
@@ -1155,7 +1155,7 @@
 					"datesOrdered": "The end date cannot be before the start date.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
-					"keyFormat": "Key must be 2-8 uppercase letters (A-Z)",
+					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
 					"keyTaken": "That key is already taken.",
 					"notFound": "This {{term_project_one}} could not be found.",
 					"personNotEligible": "The manager and the default assignee must be active members of the {{term_project_one}}."

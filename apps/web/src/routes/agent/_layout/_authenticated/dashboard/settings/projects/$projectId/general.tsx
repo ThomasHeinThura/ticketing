@@ -22,7 +22,14 @@ import {
   Separator,
   Skeleton,
 } from "@taskdesk/ui";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -96,6 +103,12 @@ function isNotFoundError(error: unknown) {
 }
 
 function RouteComponent() {
+  const { projectId } = useParams({ strict: false });
+  const { data: workspace } = useActiveWorkspace();
+  return <ProjectGeneral key={`${workspace?.id ?? ""}:${projectId ?? ""}`} />;
+}
+
+function ProjectGeneral() {
   const { t } = useTranslation();
   const { projectId: rawProjectId } = useParams({ strict: false });
   const projectId = rawProjectId ?? "";
@@ -124,7 +137,7 @@ function RouteComponent() {
     projectData.workspaceId === workspace?.id
       ? projectData
       : undefined;
-  // PR-13: a key is 2-8 uppercase letters. The project's own stored key stays valid while
+  // PR-13: a key is 2-15 uppercase letters. The project's own stored key stays valid while
   // unchanged (legacy keys predate the rule); the server applies the same exemption.
   const storedKey = project?.slug ?? null;
   const projectSchema = useMemo(
@@ -158,10 +171,13 @@ function RouteComponent() {
 
   const queryClient = useQueryClient();
   const openPendingAction = useOpenPendingAction();
+  const activeRef = useRef(true);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef(false);
+  const writeTailRef = useRef<Promise<void>>(Promise.resolve());
   const queuedSaveRef = useRef<ProjectFormValues | null>(null);
   const lastSavedRef = useRef<NormalizedProjectValues | null>(null);
+  const confirmedSlugRef = useRef<string | null>(null);
   const [iconPopoverOpen, setIconPopoverOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
   const [renameKeyOpen, setRenameKeyOpen] = useState(false);
@@ -195,75 +211,103 @@ function RouteComponent() {
     },
   });
 
+  const { getValues, reset } = projectForm;
   useEffect(() => {
     if (!project) {
       lastSavedRef.current = null;
       return;
     }
 
+    if (confirmedSlugRef.current === project.slug)
+      confirmedSlugRef.current = null;
     const nextValues = {
       name: project.name || "",
-      slug: project.slug || "",
+      slug: confirmedSlugRef.current ?? project.slug ?? "",
       description: project.description || "",
       icon: project.icon || "Layout",
     };
+    const current = normalizeProjectValues(getValues());
+    const previous = lastSavedRef.current;
+    if (
+      !previous ||
+      (current.name === previous.name &&
+        current.slug === previous.slug &&
+        current.description === previous.description &&
+        current.icon === previous.icon)
+    ) {
+      reset(nextValues, {
+        keepDirty: false,
+        keepTouched: false,
+        keepIsValid: true,
+      });
+    }
     lastSavedRef.current = normalizeProjectValues(nextValues);
+  }, [project, getValues, reset]);
 
-    if (projectForm.formState.isDirty) return;
-
-    projectForm.reset(nextValues, {
-      keepDirty: false,
-      keepTouched: false,
-      keepIsValid: true,
-    });
-  }, [project, projectForm]);
+  const serializeWrite = useCallback(
+    <T,>(write: () => Promise<T>): Promise<T> => {
+      const result = writeTailRef.current.then(write);
+      writeTailRef.current = result.then(
+        () => {},
+        () => {},
+      );
+      return result;
+    },
+    [],
+  );
 
   // PR-14: renaming the key is allowed but discouraged (existing work items keep the old
   // prefix), so it is NEVER part of the debounced autosave or the navigate-away flush: it
   // goes through `confirmRenameKey` below after an explicit confirmation. Everything else
   // autosaves as before, always sending the key the project already has.
   const saveProject = useCallback(
-    async (data: ProjectFormValues) => {
-      if (!project?.id) return;
-
-      const normalizedData = normalizeProjectValues(data);
-      const nameChanged = lastSavedRef.current?.name !== normalizedData.name;
-      const descriptionChanged =
-        lastSavedRef.current?.description !== normalizedData.description;
-      const iconChanged = lastSavedRef.current?.icon !== normalizedData.icon;
-      const hasChanges = nameChanged || descriptionChanged || iconChanged;
-
-      if (!hasChanges) return;
+    async (data: ProjectFormValues, flush = false) => {
+      if ((!activeRef.current && !flush) || !project?.id) return;
 
       if (isSavingRef.current) {
         queuedSaveRef.current = data;
         return;
       }
 
+      const normalizedData = normalizeProjectValues(data);
+
       isSavingRef.current = true;
 
       try {
-        const updatePayload = {
-          id: project.id,
-          name: nameChanged ? normalizedData.name : project.name,
-          // The last persisted key, never the store's possibly stale one, so an autosave
-          // cannot undo a rename that was just confirmed.
-          slug: lastSavedRef.current?.slug ?? project.slug,
-          description: descriptionChanged
-            ? normalizedData.description
-            : (project.description ?? ""),
-          icon: iconChanged ? normalizedData.icon : (project.icon ?? "Layout"),
-        };
+        const saved = await serializeWrite(async () => {
+          const baseline = lastSavedRef.current;
+          const nameChanged = baseline?.name !== normalizedData.name;
+          const descriptionChanged =
+            baseline?.description !== normalizedData.description;
+          const iconChanged = baseline?.icon !== normalizedData.icon;
+          if (!nameChanged && !descriptionChanged && !iconChanged) return false;
+          await updateProject({
+            id: project.id,
+            ...(nameChanged ? { name: normalizedData.name } : {}),
+            ...(descriptionChanged
+              ? { description: normalizedData.description }
+              : {}),
+            ...(iconChanged ? { icon: normalizedData.icon } : {}),
+          });
+          lastSavedRef.current = {
+            ...normalizedData,
+            slug: baseline?.slug ?? project.slug,
+          };
+          return true;
+        });
+        if (!saved) return;
 
-        await updateProject(updatePayload);
-
-        // Keep the typed (unconfirmed) key in the form; only the other fields are saved.
-        projectForm.reset(normalizedData, { keepDirty: false });
-        lastSavedRef.current = {
-          ...normalizedData,
-          slug: lastSavedRef.current?.slug ?? project.slug,
-        };
-        queuedSaveRef.current = null;
+        // Keep a newer draft, including an unconfirmed key, while this save completes.
+        const current = normalizeProjectValues(projectForm.getValues());
+        if (
+          activeRef.current &&
+          current.name === normalizedData.name &&
+          current.slug === normalizedData.slug &&
+          current.description === normalizedData.description &&
+          current.icon === normalizedData.icon
+        ) {
+          projectForm.reset(normalizedData, { keepDirty: false });
+        }
 
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["projects"] }),
@@ -274,8 +318,10 @@ function RouteComponent() {
             queryKey: ["projects", workspace?.id, project.id],
           }),
         ]);
-        toast.success(t("settings:projectGeneral.toastUpdated"));
+        if (activeRef.current)
+          toast.success(t("settings:projectGeneral.toastUpdated"));
       } catch (error) {
+        if (!activeRef.current) return;
         toast.error(
           error instanceof Error
             ? error.message
@@ -287,17 +333,15 @@ function RouteComponent() {
         if (queuedSaveRef.current) {
           const queuedData = queuedSaveRef.current;
           queuedSaveRef.current = null;
-          await saveProject(queuedData);
+          await saveProject(queuedData, true);
         }
       }
     },
     [
       project?.id,
-      project?.name,
       project?.slug,
-      project?.description,
-      project?.icon,
       updateProject,
+      serializeWrite,
       queryClient,
       workspace?.id,
       projectForm,
@@ -317,17 +361,35 @@ function RouteComponent() {
       projectForm.getValues() as ProjectFormValues,
     );
     if (projectKeyError(next.slug, persistedKey) !== null) return;
+    if (queuedSaveRef.current) queuedSaveRef.current = next;
     setIsRenamingKey(true);
     try {
-      await updateProject({
-        id: project.id,
-        name: next.name,
-        slug: next.slug,
-        description: next.description,
-        icon: next.icon,
+      await serializeWrite(async () => {
+        await updateProject({
+          id: project.id,
+          slug: next.slug,
+          ...(next.name !== lastSavedRef.current?.name
+            ? { name: next.name }
+            : {}),
+          ...(next.description !== lastSavedRef.current?.description
+            ? { description: next.description }
+            : {}),
+          ...(next.icon !== lastSavedRef.current?.icon
+            ? { icon: next.icon }
+            : {}),
+        });
+        lastSavedRef.current = next;
+        confirmedSlugRef.current = next.slug;
       });
-      lastSavedRef.current = next;
-      projectForm.reset(next, { keepDirty: false });
+      if (!activeRef.current) return;
+      const current = normalizeProjectValues(projectForm.getValues());
+      if (
+        current.name === next.name &&
+        current.slug === next.slug &&
+        current.description === next.description &&
+        current.icon === next.icon
+      )
+        projectForm.reset(next, { keepDirty: false });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["tasks", project.id] }),
         queryClient.invalidateQueries({ queryKey: ["projects"] }),
@@ -341,6 +403,7 @@ function RouteComponent() {
       setRenameKeyOpen(false);
       toast.success(t("settings:projectGeneral.keyRenamed"));
     } catch (error) {
+      if (!activeRef.current) return;
       const failure =
         error instanceof HttpError
           ? classifyPlanningFailure(error.status, error.message)
@@ -354,13 +417,14 @@ function RouteComponent() {
             : t("settings:projectGeneral.toastUpdateError"),
       );
     } finally {
-      setIsRenamingKey(false);
+      if (activeRef.current) setIsRenamingKey(false);
     }
   }, [
     project,
     persistedKey,
     projectForm,
     updateProject,
+    serializeWrite,
     queryClient,
     workspace?.id,
     t,
@@ -384,7 +448,7 @@ function RouteComponent() {
         "description",
         "icon",
       ]);
-      if (isValid) {
+      if (isValid && activeRef.current) {
         // Always save latest values to avoid staleness while typing
         const latest = projectForm.getValues();
         saveProject(latest as ProjectFormValues);
@@ -403,8 +467,10 @@ function RouteComponent() {
     return () => subscription.unsubscribe();
   }, [projectForm, debouncedSave, canEdit]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    activeRef.current = true;
     return () => {
+      activeRef.current = false;
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
         debounceTimeoutRef.current = null;
@@ -428,7 +494,7 @@ function RouteComponent() {
           "icon",
         ]);
         if (isValid) {
-          await saveProjectRef.current(latest);
+          await saveProjectRef.current(latest, true);
         }
       })();
     };

@@ -340,7 +340,10 @@ describe("API integration: project settings fields (PR-6, PR-10, PR-13, AS-11, P
       });
     expect((await create("lower")).status).toBe(400);
     expect((await create("A")).status).toBe(400);
-    expect((await create("TOOLONGKEY")).status).toBe(400);
+    expect((await create("ABCDEFGHIJKLMNOP")).status).toBe(400);
+    for (const slug of ["AB", "ABCDEFGH", "ABCDEFGHIJ", "ABCDEFGHIJKLMNO"]) {
+      expect((await create(slug)).status).toBe(200);
+    }
     expect((await create("OKAY")).status).toBe(200);
 
     // A legacy lowercase key (inserted directly) stays editable while unchanged...
@@ -358,6 +361,39 @@ describe("API integration: project settings fields (PR-6, PR-10, PR-13, AS-11, P
         })
       ).status,
     ).toBe(200);
+    // A changed key follows the same new boundary while old legacy keys stay readable.
+    expect(
+      (
+        await jsonRequest("PUT", `/api/project/${project.id}`, {
+          ...common,
+          slug: "A",
+        })
+      ).status,
+    ).toBe(400);
+    for (const slug of [
+      "XY",
+      "NEWKEY",
+      "NEWKEYAB",
+      "NEWKEYABCD",
+      "NEWKEYABCDEFGHI",
+    ]) {
+      expect(
+        (
+          await jsonRequest("PUT", `/api/project/${project.id}`, {
+            ...common,
+            slug,
+          })
+        ).status,
+      ).toBe(200);
+    }
+    expect(
+      (
+        await jsonRequest("PUT", `/api/project/${project.id}`, {
+          ...common,
+          slug: "ABCDEFGHIJKLMNOP",
+        })
+      ).status,
+    ).toBe(400);
     // ...but cannot be renamed to another invalid key.
     expect(
       (

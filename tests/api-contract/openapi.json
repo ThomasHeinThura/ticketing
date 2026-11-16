@@ -10562,7 +10562,7 @@
                   },
                   "slug": {
                     "type": "string",
-                    "pattern": "^[A-Z]{2,8}$"
+                    "pattern": "^[A-Z]{2,15}$"
                   },
                   "kind": {
                     "type": "string",
@@ -10753,7 +10753,7 @@
                   },
                   "slug": {
                     "type": "string",
-                    "description": "PR-13: when it differs from the stored key it must be 2-8 uppercase letters. Existing work items keep the old prefix (PR-14)."
+                    "description": "PR-13: when it differs from the stored key it must be 2-15 uppercase letters. Existing work items keep the old prefix (PR-14)."
                   },
                   "description": {
                     "type": "string"

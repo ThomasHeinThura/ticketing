@@ -1,11 +1,50 @@
 import { client } from "@taskdesk/libs";
 import type { InferRequestType } from "hono/client";
+import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
+import getProject from "./get-project";
 
-export type UpdateProjectRequest = InferRequestType<
+type ProjectBody = InferRequestType<
   (typeof client)["project"][":id"]["$put"]
->["json"] &
-  InferRequestType<(typeof client)["project"][":id"]["$put"]>["param"];
+>["json"];
+export type UpdateProjectRequest = { id: string } & Partial<ProjectBody>;
+
+const writeTails = new Map<string, Promise<void>>();
+
+export function updateProjectForSession(
+  request: UpdateProjectRequest,
+  sessionId: string,
+) {
+  const previous = writeTails.get(request.id) ?? Promise.resolve();
+  const result = previous.then(async () => {
+    const currentSession = async () => {
+      const { data, error } = await authClient.getSession({
+        query: { disableCookieCache: true },
+      });
+      if (error || !data?.session?.id || data.session.id !== sessionId)
+        throw new Error("Project save cancelled: session changed");
+    };
+    await currentSession();
+    const project = await getProject({ id: request.id, workspaceId: "" });
+    await currentSession();
+    return updateProject({
+      ...request,
+      name: request.name ?? project.name,
+      icon: request.icon ?? project.icon ?? "Layout",
+      slug: request.slug ?? project.slug,
+      description: request.description ?? project.description ?? "",
+    });
+  });
+  const tail = result.then(
+    () => {},
+    () => {},
+  );
+  writeTails.set(request.id, tail);
+  void tail.then(() => {
+    if (writeTails.get(request.id) === tail) writeTails.delete(request.id);
+  });
+  return result;
+}
 
 async function updateProject({
   id,
@@ -21,7 +60,7 @@ async function updateProject({
   startDate,
   endDate,
   defaultAssigneeId,
-}: UpdateProjectRequest) {
+}: { id: string } & ProjectBody) {
   const response = await client.project[":id"].$put({
     param: { id },
     // The field is sent only when the caller sets it: the server asks for the strict
@@ -58,5 +97,3 @@ async function updateProject({
 
   return data;
 }
-
-export default updateProject;

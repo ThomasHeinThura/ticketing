@@ -302,10 +302,6 @@ function ProjectPlanningSettings({
     try {
       await updateProject({
         id: project.id,
-        name: project.name,
-        slug: project.slug,
-        description: project.description ?? "",
-        icon: project.icon ?? "Layout",
         ...buildPlanningPayload(saved, next),
       });
       await invalidateProject();

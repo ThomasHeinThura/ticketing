@@ -58,10 +58,6 @@ function DefaultCommentVisibilitySetting({
     try {
       await updateProject({
         id: project.id,
-        name: project.name,
-        slug: project.slug,
-        description: project.description ?? "",
-        icon: project.icon ?? "Layout",
         defaultCommentVisibility: value,
       });
       await Promise.all([
