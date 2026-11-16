@@ -27,6 +27,26 @@ describe("pending-action approval contracts", () => {
     ).toBeUndefined();
   });
 
+  it("dispatches team typed-name approval and rejects legacy click approval", () => {
+    const team = {
+      action: "delete",
+      targetType: "team",
+      routeKey: "DELETE /api/teams/{id}",
+    };
+    expect(
+      resolvePendingActionApprovalContract({
+        ...team,
+        confirmationRequired: "typed_name",
+      }),
+    ).toMatchObject({ executor: "registered_deletion" });
+    expect(
+      resolvePendingActionApprovalContract({
+        ...team,
+        confirmationRequired: "click",
+      }),
+    ).toBeUndefined();
+  });
+
   it("rejects the legacy user_deactivation/person storage shape", () => {
     expect(
       resolvePendingActionApprovalContract({

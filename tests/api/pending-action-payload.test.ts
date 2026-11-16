@@ -24,6 +24,16 @@ describe("pending-action canonical payload", () => {
     );
   });
 
+  it("requires the exact team name without step-up", () => {
+    expect(
+      requiredConfirmation({
+        action: "delete",
+        targetType: "team",
+        targetCount: 1,
+      }),
+    ).toBe("typed_name");
+  });
+
   it("selects exactly one confirmation from action and target blast radius", () => {
     expect(
       requiredConfirmation({

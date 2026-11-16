@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { lstat, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
@@ -57,29 +57,40 @@ async function handoffTokens(
     }
     await main().catch(() => { process.exitCode = 1; });
   `;
-  // Match the fixture's file-based seeders; tsx's eval parser mishandles a preceding tsconfig.
-  await writeFile(scriptPath, script, { mode: 0o600 });
-  const child = await fixture.spawnChild(
-    process.execPath,
-    [
-      resolve(root, "apps/api/node_modules/tsx/dist/cli.mjs"),
-      "--tsconfig",
-      resolve(root, "apps/api/tsconfig.tests.json"),
-      scriptPath,
-    ],
-    "portal-preference-links",
-  );
-  await new Promise<void>((done, reject) =>
-    child.once("close", (code) =>
-      code === 0
-        ? done()
-        : reject(new Error("Private preference signing failed")),
-    ),
-  );
-  return JSON.parse(await readFile(output, "utf8")) as Record<
-    (typeof events)[number],
-    string
-  >;
+  try {
+    // Match the fixture's file-based seeders; tsx's eval parser mishandles a preceding tsconfig.
+    await writeFile(scriptPath, script, { mode: 0o600 });
+    const child = await fixture.spawnChild(
+      process.execPath,
+      [
+        resolve(root, "apps/api/node_modules/tsx/dist/cli.mjs"),
+        "--tsconfig",
+        resolve(root, "apps/api/tsconfig.tests.json"),
+        scriptPath,
+      ],
+      "portal-preference-links",
+    );
+    await new Promise<void>((done, reject) =>
+      child.once("close", (code) =>
+        code === 0
+          ? done()
+          : reject(new Error("Private preference signing failed")),
+      ),
+    );
+    return JSON.parse(await readFile(output, "utf8")) as Record<
+      (typeof events)[number],
+      string
+    >;
+  } finally {
+    await Promise.allSettled([
+      rm(output, { force: true }),
+      rm(scriptPath, { force: true }),
+    ]).then((results) => {
+      for (const result of results) {
+        if (result.status === "rejected") throw result.reason;
+      }
+    });
+  }
 }
 
 async function chooseTime(page: Page, label: "From" | "Until", value: string) {
@@ -115,6 +126,14 @@ test("customer persists all nine email preferences and quiet hours, retries fail
         console.info(`Portal preference fixture container: ${entry.id}`);
     }
     const tokens = await handoffTokens(app, fixture.tenant.customer.id);
+    for (const name of [
+      "portal-preference-links.json",
+      "portal-preference-links.mts",
+    ]) {
+      await expect(lstat(resolve(app.fixtureDir, name))).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    }
     const context = await browser.newContext({
       storageState: fixture.storageStates.customer,
       viewport: { width: 1440, height: 1000 },

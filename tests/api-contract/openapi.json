@@ -114942,7 +114942,7 @@
           "Teams"
         ],
         "summary": "Delete a team",
-        "description": "Request deletion (202 pending action, click approval). Refused while the team is the CAB or has saved views shared with it (TM-7).",
+        "description": "Request deletion (202 pending action, exact team-name approval). Refused while the team owns a project, is the CAB or has saved views shared with it (TM-7).",
         "parameters": [
           {
             "schema": {
@@ -114978,8 +114978,7 @@
                     "confirmation": {
                       "type": "string",
                       "enum": [
-                        "click",
-                        "typed_name_step_up"
+                        "typed_name"
                       ]
                     },
                     "expiresAt": {

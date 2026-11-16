@@ -9,7 +9,12 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TeamDetail } from "@/fetchers/team";
 
-const mocks = vi.hoisted(() => ({ updateTeam: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  updateTeam: vi.fn(),
+  requestTeamDeletion: vi.fn(),
+  openPendingAction: vi.fn(),
+  team: null as TeamDetail | null,
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: React.ReactNode }) => (
@@ -22,18 +27,23 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("@/hooks/use-open-pending-action", () => ({
-  useOpenPendingAction: () => vi.fn(),
+  useOpenPendingAction: () => mocks.openPendingAction,
+}));
+vi.mock("@/hooks/queries/team/use-teams", () => ({
+  teamsKey: (workspaceId: string) => ["teams", workspaceId],
+  useTeam: () => ({ data: mocks.team, isLoading: false, isError: false }),
 }));
 vi.mock("@/fetchers/team", () => ({
   addTeamMember: vi.fn(),
   removeTeamMember: vi.fn(),
-  requestTeamDeletion: vi.fn(),
+  requestTeamDeletion: (...args: unknown[]) =>
+    mocks.requestTeamDeletion(...args),
   updateTeam: (...args: unknown[]) => mocks.updateTeam(...args),
   updateTeamMember: vi.fn(),
 }));
 vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-import { TeamSettingsCard } from "./team-detail";
+import { TeamDetailView, TeamSettingsCard } from "./team-detail";
 
 const team = {
   id: "t1",
@@ -42,6 +52,10 @@ const team = {
   capacityDaysPerWeek: null,
   isCab: false,
   canManageTeam: true,
+  canEditRoster: true,
+  members: [],
+  candidates: [],
+  deletionBlockers: [],
 } as unknown as TeamDetail;
 
 afterEach(cleanup);
@@ -94,5 +108,57 @@ describe("TeamSettingsCard", () => {
     await waitFor(() =>
       expect(screen.queryByText("A CAB needs a member")).toBeNull(),
     );
+  });
+});
+
+describe("TeamDetailView deletion", () => {
+  it("uses the existing danger card and opens the shared pending action", async () => {
+    mocks.team = team;
+    mocks.requestTeamDeletion.mockReset().mockResolvedValue({
+      pendingActionId: "pa-team",
+    });
+    mocks.openPendingAction.mockReset();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TeamDetailView teamId={team.id} showInactive={false} />
+      </QueryClientProvider>,
+    );
+    const button = screen.getByRole("button", { name: "teams:delete.action" });
+    expect(button.closest('[data-slot="card"]')).toHaveClass(
+      "border-destructive/32",
+    );
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(mocks.openPendingAction).toHaveBeenCalledWith({
+        pendingActionId: "pa-team",
+        finalFocus: expect.any(Function),
+      }),
+    );
+    expect(mocks.openPendingAction.mock.calls[0]?.[0].finalFocus()).toBe(
+      button,
+    );
+    expect(mocks.requestTeamDeletion).toHaveBeenCalledWith(team.id);
+  });
+
+  it("retains deletion blockers and hides deletion without management permission", () => {
+    mocks.team = { ...team, deletionBlockers: ["This team owns a project"] };
+    const view = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TeamDetailView teamId={team.id} showInactive={false} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText("This team owns a project")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "teams:delete.action" }),
+    ).toBeDisabled();
+    mocks.team = { ...team, canManageTeam: false };
+    view.rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <TeamDetailView teamId={team.id} showInactive={false} />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: "teams:delete.action" }),
+    ).toBeNull();
   });
 });
