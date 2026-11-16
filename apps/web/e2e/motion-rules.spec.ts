@@ -887,6 +887,11 @@ test("rule 9: reduced-motion disables spatial movement animations and smooth scr
     checkboxIndicator,
   );
 
+  await expect(page.getByRole("navigation", { name: "Sidebar" })).toBeVisible();
+  await expect(page.locator('[data-project-view="overview"]')).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Work item number", exact: true }),
+  ).toBeVisible();
   const columnAddButton = page
     .getByTestId("work-item-board-column-create")
     .first();
