@@ -57,6 +57,7 @@ type Props<Row, Column extends string, RowControl = undefined> = {
    */
   bodyCellClassName?: string;
   testId?: string;
+  scrollLabel?: string;
   onMouseOver?: ComponentProps<typeof Table>["onMouseOver"];
   onFocusCapture?: ComponentProps<typeof Table>["onFocusCapture"];
   onClickCapture?: ComponentProps<typeof Table>["onClickCapture"];
@@ -67,7 +68,8 @@ const FOCUSABLE =
 const MIN_COLUMN_WIDTH = 96;
 
 function findVerticalScrollParent(element: HTMLElement | null) {
-  let current = element?.parentElement ?? null;
+  const horizontalViewport = element?.parentElement ?? null;
+  let current = horizontalViewport?.parentElement ?? null;
   while (current) {
     const overflow = getComputedStyle(current).overflowY;
     if (
@@ -78,7 +80,7 @@ function findVerticalScrollParent(element: HTMLElement | null) {
     }
     current = current.parentElement;
   }
-  return element?.parentElement ?? null;
+  return horizontalViewport;
 }
 
 function focusTargets(row: HTMLElement) {
@@ -116,6 +118,7 @@ export default function WorkItemTable<
   className,
   bodyCellClassName,
   testId,
+  scrollLabel,
   onMouseOver,
   onFocusCapture,
   onClickCapture,
@@ -336,6 +339,7 @@ export default function WorkItemTable<
         data-testid={testId}
         data-virtualized-table="true"
         data-primary-content-ready="true"
+        scrollLabel={scrollLabel}
         // Rows are windowed: the row count and each row's position are stated for assistive
         // technology (and the G11 table metric) instead of being implied by mounted rows.
         aria-rowcount={rows.length + 1}

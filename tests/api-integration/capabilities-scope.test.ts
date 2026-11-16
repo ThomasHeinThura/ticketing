@@ -567,21 +567,24 @@ describe("GET /api/capabilities", () => {
     expect([
       owner.manageRoles,
       owner.manageWebhooks,
+      owner.manageApiKeys,
       owner.manageCustomFields,
-    ]).toEqual([true, true, true]);
-    // A manager manages webhooks and custom fields, but not role definitions.
+    ]).toEqual([true, true, true, true]);
+    // A manager manages webhooks and custom fields, but not role definitions or service API keys.
     const manager = await read("manager");
     expect([
       manager.manageRoles,
       manager.manageWebhooks,
+      manager.manageApiKeys,
       manager.manageCustomFields,
-    ]).toEqual([false, true, true]);
+    ]).toEqual([false, true, false, true]);
     const viewer = await read("viewer");
     expect([
       viewer.manageRoles,
       viewer.manageWebhooks,
+      viewer.manageApiKeys,
       viewer.manageCustomFields,
-    ]).toEqual([false, false, false]);
+    ]).toEqual([false, false, false, false]);
     // P5 entries follow their own API capability: manage_rates (finance/admin), workflow:manage
     // and budget:read (a viewer reads budgets, but never manages rates or workflows).
     expect([

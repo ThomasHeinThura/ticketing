@@ -639,6 +639,33 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canShareSavedViews()).toBe(false);
     expect(result.current.canTriageIntake()).toBe(false);
     expect(result.current.canManageWorkspaceSettings()).toBe(false);
+    expect(result.current.canManageApiKeys()).toBe(false);
+  });
+
+  it("exposes api_key:manage from manageApiKeys and fails closed when omitted", async () => {
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () => fullCapabilityMap({ manageApiKeys: true }),
+    });
+    const allowed = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(allowed.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(allowed.result.current.canManageApiKeys()).toBe(true);
+
+    capabilitiesGet.mockResolvedValueOnce({
+      ok: true,
+      json: async () => fullCapabilityMap(),
+    });
+    const denied = renderHook(() => useWorkspacePermission(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() =>
+      expect(denied.result.current.isCheckingPermissions).toBe(false),
+    );
+    expect(denied.result.current.canManageApiKeys()).toBe(false);
   });
 });
 

@@ -40,6 +40,7 @@ type CapabilityMap = Record<keyof typeof EMPTY_CAPABILITIES, boolean> & {
   manageRequestTypes?: boolean;
   manageRoles?: boolean;
   manageWebhooks?: boolean;
+  manageApiKeys?: boolean;
   manageCustomFields?: boolean;
   manageLabels?: boolean;
   // Strict time_entry:manage_rates, workflow:manage and budget:read: what the Rates, Workflows
@@ -222,6 +223,7 @@ export function useWorkspacePermission(
       canManageRequestTypes: () => can.manageRequestTypes === true,
       canManageRoles: () => can.manageRoles === true,
       canManageWebhooks: () => can.manageWebhooks === true,
+      canManageApiKeys: () => can.manageApiKeys === true,
       canManageCustomFields: () => can.manageCustomFields === true,
       canManageRates: () => can.manageRates === true,
       canManageWorkflows: () => can.manageWorkflows === true,

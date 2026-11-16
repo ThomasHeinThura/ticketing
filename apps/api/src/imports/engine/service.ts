@@ -9,6 +9,7 @@ import { and, asc, eq, gt, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { clientIpForContext } from "../../api-key/enforce";
+import { requestAuditActor } from "../../audit/controllers/audit-read-common";
 import db, { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
 import {
@@ -26,7 +27,7 @@ import {
   requireImportProjectCapability,
   requireImportWorkspaceRead,
 } from "../access";
-import { reportImportAuditWriteFailure } from "../service";
+import { appendImportAudit, reportImportAuditWriteFailure } from "../service";
 import { getImportAdapter } from "./adapter";
 import { ImportConnectError } from "./connect-error";
 import type { DryRunReport } from "./dry-run";
@@ -136,11 +137,15 @@ export async function createSourceConnection(
   },
 ) {
   const actor = importActor(c);
-  // Verify the source before keeping it: a file that is too large, a bad credential or an
-  // unreachable host is reported now, with a reason, and nothing is stored. A plugin with no
-  // registered adapter is stored as before (discovery says so).
+  const auditContext = requestAuditActor(c);
+  // Authorize before probing any external adapter (and re-check inside the serialized write
+  // transaction) so an unauthorized caller can never trigger outbound probes via adapter.connect.
   const adapter = getImportAdapter(input.pluginId);
   if (adapter) {
+    await db.transaction(async (tx) => {
+      await requireImportInstanceAdmin(tx, actor, "POST /api/import-sources");
+      await requireImportWorkspaceRead(tx, actor, input.workspaceId);
+    });
     const connected = await adapter
       .connect({
         pluginId: input.pluginId,
@@ -151,8 +156,17 @@ export async function createSourceConnection(
       .catch(() => ({ ok: false as const, reason: undefined }));
     if (!connected.ok) throw new ImportConnectError(connected.reason);
   }
+  const config = input.config ?? {};
+  const changedKeys = [
+    "pluginId",
+    "name",
+    ...Object.keys(config)
+      .sort()
+      .map((key) => `config.${key}`),
+    ...(input.credential ? ["credential"] : []),
+  ];
   try {
-    return await db.transaction(async (tx) => {
+    const outcome = await db.transaction(async (tx) => {
       await lockInstanceAdminSerialization(tx);
       await requireImportInstanceAdmin(tx, actor, "POST /api/import-sources");
       await requireImportWorkspaceRead(tx, actor, input.workspaceId);
@@ -163,7 +177,7 @@ export async function createSourceConnection(
           workspaceId: input.workspaceId,
           pluginId: input.pluginId,
           name: input.name,
-          config: input.config ?? {},
+          config,
           credentialCiphertext: input.credential
             ? (encryptSecret(input.credential) ?? null)
             : null,
@@ -174,8 +188,34 @@ export async function createSourceConnection(
         throw new HTTPException(500, {
           message: "Source could not be created",
         });
-      return sourceDto(row);
+      const origin = await importOrigin(tx, actor);
+      const auditFailure = await appendImportAudit(tx, {
+        actorId: actor.userId,
+        actorType: actor.actorType,
+        apiKeyId: actor.apiKeyId,
+        impersonatorId: actor.impersonatedBy,
+        actorIp: auditContext.actorIp,
+        userAgent: auditContext.userAgent,
+        traceId: auditContext.traceId,
+        workspaceId: row.workspaceId,
+        action: "plugin.changed",
+        entityType: "import_source_connection",
+        entityId: row.id,
+        before: null,
+        after: {
+          operation: "source_created",
+          section: "imports",
+          sourceId: row.id,
+          pluginId: row.pluginId,
+          name: row.name,
+          changedKeys,
+          ...(origin ? { origin } : {}),
+        },
+      });
+      return { row, auditFailure };
     });
+    await reportImportAuditWriteFailure(outcome.auditFailure);
+    return sourceDto(outcome.row);
   } catch (error) {
     if (isUniqueViolation(error, "import_source_connection_name_key"))
       throw conflict("A source with this name already exists");

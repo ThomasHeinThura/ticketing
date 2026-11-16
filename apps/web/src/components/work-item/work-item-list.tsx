@@ -316,7 +316,7 @@ const CUSTOM_COLUMN_WIDTH_FACTOR = 0.16;
 /** Narrowest width that keeps a header label and its sort icon readable. */
 const COLUMN_MIN_WIDTHS: Record<NativeWorkItemSearchColumn, number> = {
   key: 104,
-  title: 280,
+  title: 240,
   priority: 120,
   dueDate: 128,
   state: 132,
@@ -1117,6 +1117,7 @@ function WorkItemListPresentation({
       <Table
         data-testid="work-item-list-populated"
         data-primary-content-ready="true"
+        scrollLabel={t("workItems:list.heading")}
         className="table-fixed bg-background"
         style={{ minWidth: fullTableMinWidth }}
         onMouseOver={handleListMouseOver}
@@ -1228,6 +1229,7 @@ function WorkItemListPresentation({
           >
             rows={workItems}
             columns={columns}
+            scrollLabel={t("workItems:list.heading")}
             getRowId={(item) => item.id}
             columnWidthFactors={columnWidthFactors}
             columnMinWidths={columns.map(columnMinWidth)}

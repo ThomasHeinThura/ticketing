@@ -204,6 +204,9 @@ describe("LegalHoldsPanel", () => {
     renderPanel();
 
     expect(await screen.findByText("Acme Holdings")).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "legalHolds.filterLabel" }),
+    ).toHaveTextContent("legalHolds.filters.all");
     expect(screen.getByText("legalHolds.activeBadge:1")).toBeInTheDocument();
     expect(screen.getByText("Jane Subject")).toBeInTheDocument();
     expect(

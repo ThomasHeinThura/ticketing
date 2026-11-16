@@ -629,6 +629,10 @@ function PortalCatalogueContent() {
                       />
                     ) : field.type === "select" || field.type === "combobox" ? (
                       <Select
+                        items={(field.options ?? []).map((option) => ({
+                          value: option,
+                          label: option,
+                        }))}
                         value={String(answers[field.key] ?? "") || null}
                         onValueChange={(value) => {
                           updateAnswer(field.key, value ?? "");
