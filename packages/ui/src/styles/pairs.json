@@ -16350,8 +16350,8 @@
 			"apps/web/src/components/project/project-states-editor.tsx::ProjectStatesEditor::div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/Button[0]::text-destructive#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -16384,7 +16384,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
@@ -16395,7 +16395,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
@@ -16406,7 +16406,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
@@ -16417,7 +16417,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
@@ -16461,10 +16461,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[0]/div[1]/div[0]/Button[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -16472,10 +16472,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[0]/div[1]/div[0]/Button[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -16527,7 +16527,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/FormLabel[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -16538,7 +16538,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/FormLabel[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -16549,7 +16549,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/FormLabel[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -16604,7 +16604,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/FormMessage[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
@@ -16615,7 +16615,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/FormMessage[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
@@ -16626,7 +16626,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/FormMessage[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
@@ -16680,8 +16680,8 @@
 			"apps/web/src/components/project/project-states-editor.tsx::ProjectStatesEditor::div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/Button[0]::text-destructive#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
 			"packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -16714,7 +16714,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
@@ -16725,7 +16725,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
@@ -16736,7 +16736,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
@@ -16747,7 +16747,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
@@ -16791,10 +16791,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[0]/div[1]/div[0]/Button[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -16802,10 +16802,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[0]/div[1]/div[0]/Button[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/Button[0]::text-destructive#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -16857,7 +16857,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/FormLabel[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -16868,7 +16868,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/FormLabel[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -16879,7 +16879,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/FormLabel[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
@@ -16934,7 +16934,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/FormMessage[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
@@ -16945,7 +16945,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/FormMessage[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
@@ -16956,7 +16956,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/FormMessage[0]"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
@@ -38201,9 +38201,9 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/members.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -46814,7 +46814,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -46830,7 +46830,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -46846,7 +46846,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -50648,9 +50648,9 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx::AccountSecurity::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/features.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/members.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/workflow.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -59262,7 +59262,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -59278,7 +59278,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -59294,7 +59294,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "route-layout-body",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -81217,7 +81217,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -81245,7 +81245,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-engagement-settings.tsx:ProjectInheritanceSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -81259,7 +81259,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -86716,7 +86716,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -86744,7 +86744,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-engagement-settings.tsx:ProjectInheritanceSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -86758,7 +86758,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -88247,7 +88247,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -88261,7 +88261,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -89516,7 +89516,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-engagement-settings.tsx:ProjectEngagementSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -89530,7 +89530,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -90971,7 +90971,7 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/Label[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
@@ -90980,9 +90980,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]>bg-muted/50"
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/Label[0]>bg-muted/50"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/Label[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -91057,7 +91057,7 @@
 		},
 		"surfaceContext": "nearest-opaque-ancestor",
 		"occurrenceIds": [
-			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/Label[0]::text-muted-foreground#0",
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
@@ -91066,9 +91066,9 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/shared/modals/create-project-modal.tsx:CreateProjectModal",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]>bg-muted/50"
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/Label[0]>bg-muted/50"
 				],
-				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[1]/div[0]/div[0]/Label[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/components/shared/modals/create-project-modal.tsx"
 			},
@@ -99189,7 +99189,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
 				],
 				"id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
@@ -104821,7 +104821,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
 				],
 				"id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
@@ -106261,13 +106261,13 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[1]/div[2]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[1]/div[3]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -106653,7 +106653,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/DefaultCommentVisibilitySetting[0]"
 				],
 				"id": "apps/web/src/components/project/default-comment-visibility-setting.tsx::DefaultCommentVisibilitySetting::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -106708,7 +106708,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -106741,7 +106741,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -106752,7 +106752,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -106763,7 +106763,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
@@ -106961,10 +106961,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[0]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -106972,10 +106972,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -106983,10 +106983,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -106994,10 +106994,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -107005,10 +107005,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -107016,10 +107016,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -107027,10 +107027,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -107400,13 +107400,13 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[1]/div[2]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[1]/div[3]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx::RouteComponent::div[0]/div[2]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -107792,7 +107792,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/DefaultCommentVisibilitySetting[0]"
 				],
 				"id": "apps/web/src/components/project/default-comment-visibility-setting.tsx::DefaultCommentVisibilitySetting::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -107847,7 +107847,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -107880,7 +107880,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -107891,7 +107891,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -107902,7 +107902,7 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
 				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
@@ -108100,10 +108100,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[0]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[0]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -108111,10 +108111,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -108122,10 +108122,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[0]/p[1]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[0]/p[1]::text-muted-foreground#1",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -108133,10 +108133,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[0]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -108144,10 +108144,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -108155,10 +108155,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[1]/FormItem[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -108166,10 +108166,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]>bg-sidebar"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/Form[0]/form[0]/FormField[2]/FormItem[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			},
@@ -110565,7 +110565,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -112123,7 +112123,7 @@
 				"chain": [
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]",
 					"opaque-backdrop:bg-sidebar"
 				],
@@ -115492,7 +115492,7 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -115514,14 +115514,14 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			}
@@ -115677,7 +115677,7 @@
 		"surfaceContext": "caller-chain",
 		"occurrenceIds": [
 			"apps/web/src/components/shared/modals/create-project-modal.tsx::CreateProjectModal::Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[0]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -115699,14 +115699,14 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>bg-sidebar-accent",
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"component-slot:packages/ui/src/components/popover.tsx:PopoverPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			}
@@ -115939,7 +115939,7 @@
 		"surfaceContext": "same-element",
 		"occurrenceIds": [
 			"apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -115957,10 +115957,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			}
@@ -115981,7 +115981,7 @@
 		"surfaceContext": "same-element",
 		"occurrenceIds": [
 			"apps/web/src/components/nav-projects-sortable.tsx::SortableProjectList::DndContext[0]/DragOverlay[0]/div[0]::text-sidebar-accent-foreground#0",
-			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
+			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -115999,10 +115999,10 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
-					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:RouteComponent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]"
 				],
-				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::RouteComponent::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx::ProjectGeneral::div[0]/div[1]/div[1]/div[0]/div[1]/Popover[0]/PopoverContent[0]/div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::text-sidebar-accent-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx"
 			}
