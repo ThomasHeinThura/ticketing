@@ -4957,7 +4957,7 @@
 		"summary": "Description",
 		"workItemType": "{{term_work_item_one}} type",
 		"chooseType": "Choose a type",
-		"projectId": "Default {{term_project_one}} ID",
+		"projectId": "Default {{term_project_one}}",
 		"order": "Catalogue order",
 		"visible": "Visible to customers",
 		"autoAccept": "Auto accept",

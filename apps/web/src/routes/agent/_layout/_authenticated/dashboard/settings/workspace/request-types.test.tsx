@@ -14,6 +14,7 @@ import { Route } from "./request-types";
 const mocks = vi.hoisted(() => ({
   role: "admin" as string,
   checking: false,
+  getProjects: vi.fn(),
   getWorkItemTypes: vi.fn(),
   search: { requestTypeId: "rt-1" } as { requestTypeId?: string },
   translations: {} as Record<string, string>,
@@ -54,6 +55,18 @@ vi.mock("@/hooks/queries/work-item/use-get-work-item-types", () => ({
   default: (...args: unknown[]) => {
     mocks.getWorkItemTypes(...args);
     return { data: [{ id: "wit-1", name: "Task" }], isLoading: false };
+  },
+}));
+vi.mock("@/hooks/queries/project/use-get-projects", () => ({
+  default: (...args: unknown[]) => {
+    mocks.getProjects(...args);
+    return {
+      data: [
+        { id: "proj-1", slug: "HELP", name: "Help Desk" },
+        { id: "proj-2", slug: "OPS", name: "Operations" },
+      ],
+      isLoading: false,
+    };
   },
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
@@ -135,6 +148,7 @@ describe("request type editor", () => {
   beforeEach(() => {
     mocks.role = "admin";
     mocks.checking = false;
+    mocks.getProjects.mockReset();
     mocks.getWorkItemTypes.mockReset();
     mocks.search = { requestTypeId: "rt-1" };
     mocks.translations = {};
@@ -175,6 +189,7 @@ describe("request type editor", () => {
       expect(mocks.getRequestType).not.toHaveBeenCalled();
       expect(mocks.getRequestTypeGroupOrder).not.toHaveBeenCalled();
       expect(mocks.getWorkItemTypes).not.toHaveBeenCalled();
+      expect(mocks.getProjects).not.toHaveBeenCalled();
     },
   );
 
@@ -209,6 +224,7 @@ describe("request type editor", () => {
       expect(mocks.getRequestType).not.toHaveBeenCalled();
       expect(mocks.getRequestTypeGroupOrder).not.toHaveBeenCalled();
       expect(mocks.getWorkItemTypes).not.toHaveBeenCalled();
+      expect(mocks.getProjects).not.toHaveBeenCalled();
     },
   );
 
@@ -584,6 +600,48 @@ describe("request type editor", () => {
               ]),
             }),
           }),
+        }),
+      ),
+    );
+  });
+
+  it("lets an editor pick or clear Default project instead of typing an id (#680)", async () => {
+    mocks.translations = { projectId: "Default project", choose: "Choose…" };
+    renderPage();
+    await screen.findAllByLabelText("Field key");
+
+    const projectSelect = screen.getByRole("combobox", {
+      name: "Default project",
+    });
+    expect(projectSelect).toHaveTextContent("Choose…");
+
+    fireEvent.click(projectSelect);
+    const helpOption = screen.getByRole("option", { name: "Help Desk (HELP)" });
+    fireEvent.pointerDown(helpOption, { pointerType: "mouse", button: 0 });
+    fireEvent.click(helpOption);
+    expect(projectSelect).toHaveTextContent("Help Desk (HELP)");
+
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(mocks.saveRequestType).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ defaultProjectId: "proj-1" }),
+        }),
+      ),
+    );
+
+    fireEvent.click(projectSelect);
+    const clearOption = screen.getByRole("option", { name: "Choose…" });
+    fireEvent.pointerDown(clearOption, { pointerType: "mouse", button: 0 });
+    fireEvent.click(clearOption);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /^(save|common:actions\.saved)$/i }),
+    );
+    await waitFor(() =>
+      expect(mocks.saveRequestType).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ defaultProjectId: null }),
         }),
       ),
     );

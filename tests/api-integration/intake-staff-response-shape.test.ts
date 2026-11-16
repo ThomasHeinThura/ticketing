@@ -3,8 +3,13 @@
  * to return stored person, organisation, submission, message, work-item and version rows,
  * and the portal reply returned the stored message row with an undeclared `submissionId`. */
 import { beforeEach, describe, expect, it } from "vitest";
+import db, { schema } from "../../apps/api/src/database";
 import { portalRequest } from "./helpers/approval-fixtures";
 import { resetTestDatabase } from "./helpers/database";
+import {
+  assignProjectLimitedRole,
+  createWorkspaceMember,
+} from "./helpers/fixtures";
 import {
   seedIntake,
   sortedKeys,
@@ -101,7 +106,9 @@ describe("staff intake responses expose only declared fields", () => {
       "satisfaction",
       "submission",
       "version",
+      "workItem",
     ]);
+    expect(body.workItem).toBeNull();
     expect(sortedKeys(body.submission)).toEqual([
       "claimedAt",
       "claimedBy",
@@ -176,6 +183,47 @@ describe("staff intake responses expose only declared fields", () => {
     expect(sortedKeys(acceptedBody)).toEqual(["ref", "state", "workItem"]);
     expect(sortedKeys(acceptedBody.workItem)).toEqual(WORK_ITEM_KEYS);
     const workItemId = (acceptedBody.workItem as { id: string }).id;
+
+    const reloadedDetail = await staffRequest(
+      s.t,
+      s.t.requester,
+      `/api/submissions/${accepted}`,
+    );
+    expect(reloadedDetail.status, await reloadedDetail.clone().text()).toBe(
+      200,
+    );
+    const reloadedBody = (await reloadedDetail.json()) as {
+      workItem: { key: string; title: string } | null;
+    };
+    expect(reloadedBody.workItem).toEqual({
+      key: (acceptedBody.workItem as { key: string }).key,
+      title: (acceptedBody.workItem as { title: string }).title,
+    });
+
+    const limited = await createWorkspaceMember({ role: "owner" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: s.t.workspaceId,
+      userId: limited.user.id,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+    await assignProjectLimitedRole(limited.user.id, s.t.workspaceId, "owner");
+
+    const unreachableDetail = await staffRequest(
+      s.t,
+      limited,
+      `/api/submissions/${accepted}`,
+    );
+    expect(
+      unreachableDetail.status,
+      await unreachableDetail.clone().text(),
+    ).toBe(200);
+    const unreachableBody = (await unreachableDetail.json()) as {
+      submission: { workItemId: string | null };
+      workItem: { key: string; title: string } | null;
+    };
+    expect(unreachableBody.submission.workItemId).toBeNull();
+    expect(unreachableBody.workItem).toBeNull();
 
     const duplicate = await staffRequest(
       s.t,

@@ -1938,10 +1938,15 @@ async function loadSubmission(
     createdAt: message.createdAt.toISOString(),
   }));
   let linkedWorkItemId = row.submission.workItemId;
+  let linkedWorkItem: { key: string; title: string } | null = null;
   if (staffIdentity) {
     const [reachableWorkItem] = row.submission.workItemId
       ? await db
-          .select({ id: schema.workItemTable.id })
+          .select({
+            id: schema.workItemTable.id,
+            key: schema.workItemTable.key,
+            title: schema.workItemTable.title,
+          })
           .from(schema.workItemTable)
           .innerJoin(
             schema.projectTable,
@@ -1963,6 +1968,9 @@ async function loadSubmission(
           .limit(1)
       : [];
     linkedWorkItemId = reachableWorkItem?.id ?? null;
+    linkedWorkItem = reachableWorkItem
+      ? { key: reachableWorkItem.key, title: reachableWorkItem.title }
+      : null;
     if (linkedWorkItemId === null) {
       row.submission = { ...row.submission, workItemId: null };
     }
@@ -2043,15 +2051,15 @@ async function loadSubmission(
       left.createdAt.localeCompare(right.createdAt),
     );
   }
-  return { row, ref, messages };
+  return { row, ref, messages, workItem: linkedWorkItem };
 }
 
 /** The submission bundle for a reader: the stored answers are projected to the visible ones. */
 export async function findSubmission(
   ...args: Parameters<typeof loadSubmission>
 ) {
-  const { row, ref, messages } = await loadSubmission(...args);
-  return { ...materializeSubmissionBundle(row), ref, messages };
+  const { row, ref, messages, workItem } = await loadSubmission(...args);
+  return { ...materializeSubmissionBundle(row), ref, messages, workItem };
 }
 
 /**

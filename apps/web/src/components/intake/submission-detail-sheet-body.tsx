@@ -44,6 +44,7 @@ type SubmissionDetail = {
     workItemId?: string;
   };
   requestType?: { name?: string };
+  workItem?: { key: string; title: string } | null;
   version?: {
     defaultProjectId?: string | null;
     workItemTypeId?: string;
@@ -381,9 +382,11 @@ export default function SubmissionDetailSheetBody({
                   <p className="text-sm">
                     {t("convertedWorkItem", {
                       label:
-                        acceptedItem && acceptedItem.ref === ref
+                        (acceptedItem && acceptedItem.ref === ref
                           ? acceptedItem.label
-                          : current.submission.workItemId,
+                          : [current.workItem?.key, current.workItem?.title]
+                              .filter(Boolean)
+                              .join(" · ")) || current.submission.workItemId,
                     })}
                   </p>
                 ) : null}

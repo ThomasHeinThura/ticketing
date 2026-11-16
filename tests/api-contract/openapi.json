@@ -57701,6 +57701,24 @@
                     "ref": {
                       "type": "string"
                     },
+                    "workItem": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "title"
+                      ]
+                    },
                     "satisfaction": {
                       "type": [
                         "object",
@@ -57734,6 +57752,7 @@
                     "version",
                     "messages",
                     "ref",
+                    "workItem",
                     "satisfaction"
                   ]
                 }
