@@ -32,6 +32,6 @@ Both integration containers, both browser-attempt containers and the signed-rele
 
 ## Open acceptance
 
-Required hosted CI, pinned G8, accessibility, the full role/theme/width and keyboard/focus matrix, and signed canonical Local SIT verification of #910 remain open. These screenshots establish the bounded disposable journey only. The issue must stay open until acceptance is complete.
+All 17 required hosted checks, including G8 and accessibility, passed at `5ef723813` before the #1196 upstream sync. Fresh checks after sync, the expanded role/theme/width and keyboard/focus matrix, and signed canonical Local SIT verification of #910 remain open. These screenshots establish the bounded disposable journey only. The issue must stay open until acceptance is complete.
 
 Separately, #1194 is merged and deployed from signed digest `sha256:da5e60d1598a484227fd96d916e974bccd1857b38b3fb040e74414a8cc76a641`. Backup restore listings and attachment archives were verified; all 185 public-table counts (12,450 rows) matched immediately before/after deployment. Both HTTPS readiness checks and the clean-install 11-account signed-in browser/API smoke passed (125/125). The default legacy credential file failed sign-in; no account was reset or reseeded.

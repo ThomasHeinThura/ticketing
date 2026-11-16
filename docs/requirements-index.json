@@ -5883,7 +5883,7 @@
 			"source": "docs/technical/feature-contracts-p4.md",
 			"line": 325,
 			"summary": "Deleting a team is refused while it owns a project, owns a shared view, or is the",
-			"text": "Deleting a team is refused while it owns a project, owns a shared view, or is the\nCAB. Reassign first.",
+			"text": "Deleting a team is refused while it owns a project, owns a shared view, or is the\nCAB. Reassign first. The requester must type the exact current team name in the pending\naction confirmation (`typed_name`, without an additional step-up), approved by Thomas on\n16 November 2026 (#901). Renaming the team invalidates an earlier request.",
 			"verification": "unverified",
 			"evidence": [],
 			"originalSource": "archive/2026-10-22/docs/03-features/teams.md",

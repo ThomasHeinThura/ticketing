@@ -27,7 +27,7 @@ export type ClickDeletionApprovalInput = {
   sessionId: string;
   traceId: string;
   typedCount?: string;
-  /** Exact target name for `typed_name_step_up` registered deletions (project, workspace). */
+  /** Exact target name for typed-name registered deletions (project, workspace). */
   typedName?: string;
   stepUpToken?: string;
 };
@@ -43,7 +43,7 @@ export type RegisteredDeletionLoaded<
   workspaceId: WorkspaceId;
   projectId: string | null;
   organisationId: string | null;
-  /** Human name; for `typed_name_step_up` targets the exact text the approver must type. */
+  /** Human name; for typed-name targets the exact text the approver must type. */
   name: string;
   /** Request-time summary for the approval screen (names only; no secrets). */
   summary: Record<string, unknown>;
@@ -79,7 +79,7 @@ export type RegisteredDeletionTarget<
   targetType: string;
   routeKey: string;
   /** Must equal `requiredConfirmation()` for this target type (payload.ts). */
-  confirmation: "click" | "typed_name_step_up";
+  confirmation: "click" | "typed_name" | "typed_name_step_up";
   /** Refuse API-key origins at request time as well as through the route policy. */
   sessionOnly: boolean;
   notFound: string;
