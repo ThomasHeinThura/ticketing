@@ -1,6 +1,6 @@
 # Team deletion: exact-name confirmation (#901)
 
-16 November 2026. Base: `309c9b992`. State: implemented in [draft PR #1196](https://github.com/ThomasHeinThura/ticketing/pull/1196); acceptance pending, not released.
+16 November 2026. Base: `309c9b992`. State: [PR #1196](https://github.com/ThomasHeinThura/ticketing/pull/1196) merged as `08575e865`; signed Local SIT acceptance passed on 16 November. Technexus acceptance remains separate.
 
 Thomas decided: “Require the team name and update the deletion contract.” This supersedes the team's old click-confirmation row. Team deletion uses `typed_name`, without adding step-up.
 
@@ -51,8 +51,26 @@ All eight owned temporary containers were removed by exact ID and confirmed abse
 - Initial role matrix (provider sign-in limit): `c9bdb3496ec46ce56610c2e68bd02f7c66dad079588812f60296e61fa6966424`.
 - Passing expanded matrix: `978ee2d794a0a16da3272611f69a26597f4d792e3931e586a46ee029ff9c072f`.
 
-The original live SIT and protected native database were not modified; deletion ran only on fixture-owned teams.
+The disposable journeys above did not modify canonical SIT or the protected native database. The signed journey below later created and deleted only its recorded synthetic teams on canonical Local SIT.
 
-## Open acceptance
+## Signed canonical Local SIT acceptance
 
-At head `c18aabaf405f31f737b54c6997ce1237195a0940`, all 17 required hosted checks passed, including pinned visual/accessibility gates. Report-only G11 still missed work-list LCP, list-to-detail and board-render budgets; no threshold changed. The expanded matrix commit requires a fresh CI run. Canonical signed Local SIT verification and the plan's broader seven-role acceptance remain open. The issue remains open and this change must not be treated as a released fix.
+All 17 required hosted checks passed at `9640f1004` before merge. Release [43859882124](https://github.com/ThomasHeinThura/ticketing/actions/runs/43859882124) built, scanned, signed and published revision `08575e865`, index `sha256:3c65c515bb11e9db3afdc86ecc1df59ae036c9fc128c2260faa0d696e5e58957`. Independent provenance/cosign verification preceded upgrade. A fresh database/files/config backup passed a full isolated PostgreSQL restore: all 185 tables and 14,396 rows matched. After upgrade, 184 table counts and the one attachment's bytes/hash matched; only scheduler history grew by 30 successful scheduled-run rows. Certificate-verified HTTPS readiness passed on both hosts and signed-in smoke passed 125/125. No account seeder ran.
+
+The real Chromium journey passed **42/42 unique cells** on `https://ticketing.localhost` and `https://portal.localhost`: owner, admin, manager, lead, member, viewer and customer × 1440/768/390 × actual light/dark. Staff sessions were not instance administrators; real memberships and live capabilities were checked. Owner, admin and manager have the existing `workspace:manage_settings` permission: each exercised exact-name refusals, cancellation/focus in every cell, then keyboard-executed deletion of its own team and checked 404 plus reload. Lead, member and viewer had no Delete control and received 403; customer sessions remained portal-only and received agent GET/DELETE 401. No PA-15 request occurred.
+
+Early attempts stopped at incorrect harness assumptions about credential labels, ordinary auth-role output and manager authority; no team was created in those preflight failures. The first run past preflight created three durably recorded synthetic teams, then stopped on a width assertion before page readiness. Read-only light/dark mobile diagnostics found no settled overflow. The corrected journey waits for the page heading and retains a zero-overflow assertion; it recovered those exact three teams, created **zero** new teams, and deleted all three. Old run artifacts and the original ownership ledger were preserved; the new ledger records all three deletions. No existing customer team was targeted.
+
+All browser writes were restricted to recorded synthetic team IDs and their pending actions; service workers were blocked. Observed browser/API responses stayed on the two canonical origins, with zero foreign-origin responses, redirects, forbidden writes, foreign team mutations or step-up requests. These are observed journey boundaries, not a claim about every possible application request.
+
+Independent Sol high review of the harness, recovery bindings, final matrix/ledger/network artifacts and eight sampled images found C0/H0/M0. Root inspected four further images; 42 screenshots were generated. The samples support this team-deletion journey, not whole-product visual acceptance:
+
+- [Owner desktop dark](team-deletion-901/signed-owner-desktop-dark-typed-confirmation.png)
+- [Admin mobile dark](team-deletion-901/signed-admin-mobile-dark-typed-confirmation.png)
+- [Manager tablet light](team-deletion-901/signed-manager-tablet-light-typed-confirmation.png)
+- [Lead mobile light](team-deletion-901/signed-lead-mobile-light-synthetic-team.png)
+- [Member mobile light](team-deletion-901/signed-member-mobile-light-synthetic-team.png)
+- [Viewer mobile dark](team-deletion-901/signed-viewer-mobile-dark-synthetic-team.png)
+- [Customer mobile light heading](team-deletion-901/signed-customer-mobile-light-portal-heading.png)
+
+No container was started by this signed browser journey. The healthy canonical application remains running intentionally; its isolated backup-restore proof container was removed by the reviewed operator. Report-only G11 failures remain open and frozen. Technexus deployment, external acceptance and the broader product sweep are not established by this result.

@@ -102,6 +102,8 @@ export default function CreateWorkItemDialogForm({
   >({});
   const [createMore, setCreateMore] = useState(false);
   const [submitError, setSubmitError] = useState<SubmitError | null>(null);
+  const [invalidFieldKeys, setInvalidFieldKeys] = useState<string[]>([]);
+  const [revealedFieldKeys, setRevealedFieldKeys] = useState<string[]>([]);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [createUnconfirmed, setCreateUnconfirmed] = useState(false);
@@ -167,15 +169,20 @@ export default function CreateWorkItemDialogForm({
   const applicableCustomFields = typeId
     ? fieldsForType(customFieldDefinitions.data?.data ?? [], typeId)
     : [];
-  const shownCustomFields = applicableCustomFields.filter((field) =>
-    conditionSatisfied(field.visibilityCondition, customFieldValues),
+  const shownCustomFields = applicableCustomFields.filter(
+    (field) =>
+      conditionSatisfied(field.visibilityCondition, customFieldValues) ||
+      (revealedFieldKeys.includes(field.key) &&
+        field.visibilityCondition !== null &&
+        !Object.hasOwn(customFieldValues, field.visibilityCondition.field_key)),
   );
   const customFieldPayload = Object.fromEntries(
     shownCustomFields
-      .filter((field) => isValueSet(customFieldValues[field.key]))
+      .filter((field) => Object.hasOwn(customFieldValues, field.key))
       .map((field) => [field.key, customFieldValues[field.key]]),
   );
   const requiredCustomFieldsFilled =
+    templateId !== null ||
     missingRequired(applicableCustomFields, customFieldValues).length === 0;
   const { mutateAsync, isPending } = useCreateWorkItem({
     projectId,
@@ -249,6 +256,7 @@ export default function CreateWorkItemDialogForm({
     setRequesterId("");
     setLabelIds([]);
     setCustomFieldValues({});
+    setRevealedFieldKeys([]);
     setTemplateId(null);
     setCreatedLabels([]);
     setLabelDraftDirty(false);
@@ -265,6 +273,7 @@ export default function CreateWorkItemDialogForm({
     submission.current = true;
     const intent = lifecycle.capture();
     setSubmitError(null);
+    setInvalidFieldKeys([]);
     let confirmedKey = createdKey;
     try {
       if (!confirmedKey) {
@@ -322,6 +331,26 @@ export default function CreateWorkItemDialogForm({
         (!(error instanceof HttpError) || error.status >= 500)
       )
         setCreateUnconfirmed(true);
+      if (
+        error instanceof HttpError &&
+        error.status === 400 &&
+        error.message.startsWith("Custom field values are invalid: ")
+      ) {
+        const keys = error.message
+          .slice("Custom field values are invalid: ".length)
+          .split("; ")
+          .map(
+            (problem) =>
+              /^([a-z][a-z0-9_]{0,63}) \([^()]*\)$/.exec(problem)?.[1],
+          );
+        const knownKeys = applicableCustomFields
+          .filter((field) => keys.includes(field.key))
+          .map((field) => field.key);
+        setInvalidFieldKeys(knownKeys);
+        setRevealedFieldKeys((current) => [
+          ...new Set([...current, ...knownKeys]),
+        ]);
+      }
       setSubmitError(
         error instanceof HttpError && error.status === 403
           ? "forbidden"
@@ -435,6 +464,7 @@ export default function CreateWorkItemDialogForm({
                 disabled={locked}
                 onSelect={(template) => {
                   setTemplateId(template?.id ?? null);
+                  setRevealedFieldKeys([]);
                   if (!template) return;
                   // A template belongs to one type; its starting title only fills an empty title.
                   setTypeId(template.typeId);
@@ -447,7 +477,10 @@ export default function CreateWorkItemDialogForm({
                 value={typeId ?? ""}
                 onValueChange={(next) => {
                   // A template is bound to its type; choosing another type drops it.
-                  if (next !== typeId) setTemplateId(null);
+                  if (next !== typeId) {
+                    setTemplateId(null);
+                    setRevealedFieldKeys([]);
+                  }
                   setTypeId(next);
                 }}
                 options={(types ?? []).map((type) => ({
@@ -542,7 +575,7 @@ export default function CreateWorkItemDialogForm({
         />
 
         <CreateWorkItemCustomFields
-          fields={applicableCustomFields}
+          fields={shownCustomFields}
           values={customFieldValues}
           people={options.people}
           disabled={locked}
@@ -593,6 +626,14 @@ export default function CreateWorkItemDialogForm({
                   `workItems:create.error${submitError === "forbidden" ? "Forbidden" : submitError === "invalid" ? "Invalid" : "Generic"}`,
                 )}
               </p>
+              {invalidFieldKeys.length > 0 ? (
+                <p>
+                  {applicableCustomFields
+                    .filter((field) => invalidFieldKeys.includes(field.key))
+                    .map((field) => field.name)
+                    .join(", ")}
+                </p>
+              ) : null}
             </AlertDescription>
           </Alert>
         ) : null}

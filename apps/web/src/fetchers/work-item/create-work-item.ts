@@ -1,5 +1,5 @@
 import { client } from "@taskdesk/libs";
-import { HttpError } from "@/lib/http-error";
+import { HttpError, readErrorDetail } from "@/lib/http-error";
 
 export type CreateWorkItemInput = {
   projectId: string;
@@ -32,7 +32,12 @@ async function createWorkItem({ projectId, ...body }: CreateWorkItemInput) {
   });
 
   if (!response.ok) {
-    throw new HttpError(response.status, "Failed to create work item");
+    throw new HttpError(
+      response.status,
+      response.status === 400
+        ? await readErrorDetail(response, "Failed to create work item")
+        : "Failed to create work item",
+    );
   }
 
   return response.json();

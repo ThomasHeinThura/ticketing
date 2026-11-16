@@ -62,6 +62,20 @@ describe("createWorkItem", () => {
     });
   });
 
+  it("preserves custom field validation detail for a 400 response", async () => {
+    mocks.post.mockResolvedValue(
+      new Response("Custom field values are invalid: asset_tag (Required)", {
+        status: 400,
+      }),
+    );
+    await expect(
+      createWorkItem({ projectId: "proj-1", typeId: "t", title: "x" }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "Custom field values are invalid: asset_tag (Required)",
+    });
+  });
+
   it("throws an HttpError carrying the real status for a non-ok response (the dialog splits 403 and 400)", async () => {
     mocks.post.mockResolvedValue({ ok: false, status: 403 });
 

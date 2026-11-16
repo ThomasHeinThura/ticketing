@@ -6,10 +6,16 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import {
+  customFieldTable,
+  customFieldTypeVisibilityTable,
+  customFieldValueTable,
+} from "../../apps/api/src/database/migration-schema";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
+import { makeCustomField } from "./helpers/p4-closeout";
 import { json, setupWorld, type World } from "./helpers/reach-world";
 
 type App = ReturnType<typeof createApp>["app"];
@@ -142,6 +148,186 @@ describe("API integration: work item templates (WI-5)", () => {
     expect(
       ((await response.json()) as { description: unknown }).description,
     ).toEqual(own);
+  });
+
+  it("applies valid visible custom field defaults, respects overrides and rolls back invalid creates", async () => {
+    const required = await makeCustomField(world.workspaceId, world.type.id, {
+      key: "required",
+      format: "text",
+    });
+    const overridden = await makeCustomField(world.workspaceId, world.type.id, {
+      key: "overridden",
+      format: "text",
+    });
+    await makeCustomField(world.workspaceId, world.type.id, {
+      key: "cleared",
+      format: "text",
+    });
+    const controller = await makeCustomField(world.workspaceId, world.type.id, {
+      key: "controller",
+      format: "text",
+    });
+    const hidden = await makeCustomField(world.workspaceId, world.type.id, {
+      key: "hidden",
+      format: "text",
+    });
+    await makeCustomField(world.workspaceId, world.type.id, {
+      key: "scoped",
+      format: "text",
+      visible: false,
+    });
+    await makeCustomField(world.workspaceId, world.type.id, {
+      key: "invalid",
+      format: "number",
+    });
+    await db
+      .update(customFieldTable)
+      .set({
+        visibilityCondition: {
+          field_key: "controller",
+          op: "eq",
+          value: "show",
+        },
+      })
+      .where(eq(customFieldTable.id, hidden.id));
+    await db
+      .update(customFieldTypeVisibilityTable)
+      .set({ required: true })
+      .where(eq(customFieldTypeVisibilityTable.customFieldId, required.id));
+    mockAuthenticatedSession(world.admin.user);
+    const template = await json(app, "POST", `${base()}/work-item-templates`, {
+      name: "Fields",
+      typeId: world.type.id,
+      title: "Fields",
+      customFieldValues: {
+        required: "template required",
+        overridden: "template",
+        cleared: "template",
+        controller: "hide",
+        hidden: "secret",
+        scoped: "scoped",
+        invalid: "not a number",
+        stale: "old",
+      },
+    });
+    expect(template.status, await template.clone().text()).toBe(200);
+    const { id } = (await template.json()) as { id: string };
+    const create = (title: string, customFields: Record<string, unknown>) =>
+      json(app, "POST", `/api/projects/${world.project.id}/work-items`, {
+        typeId: world.type.id,
+        title,
+        templateId: id,
+        customFields,
+      });
+    const response = await create("Template defaults", {
+      overridden: "request",
+      cleared: null,
+    });
+    expect(response.status, await response.clone().text()).toBe(200);
+    const item = (await response.json()) as { id: string };
+    const values = await db
+      .select()
+      .from(customFieldValueTable)
+      .where(eq(customFieldValueTable.entityId, item.id));
+    expect(
+      Object.fromEntries(
+        values.map((value) => [value.customFieldId, value.value]),
+      ),
+    ).toEqual({
+      [required.id]: "template required",
+      [overridden.id]: "request",
+      [controller.id]: "hide",
+    });
+    const shown = await create("Visible template field", {
+      controller: "show",
+    });
+    expect(shown.status, await shown.clone().text()).toBe(200);
+    const shownItem = (await shown.json()) as { id: string };
+    const shownValues = await db
+      .select()
+      .from(customFieldValueTable)
+      .where(eq(customFieldValueTable.entityId, shownItem.id));
+    expect(
+      shownValues.find((value) => value.customFieldId === hidden.id)?.value,
+    ).toBe("secret");
+    const rejected = await create("Template rollback", { required: null });
+    expect(rejected.status).toBe(400);
+    const rolledBack = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.title, "Template rollback"));
+    expect(rolledBack).toHaveLength(0);
+  });
+
+  it("uses required template values when customFields is absent", async () => {
+    const field = await makeCustomField(world.workspaceId, world.type.id, {
+      key: "required_default",
+      format: "text",
+    });
+    await db
+      .update(customFieldTypeVisibilityTable)
+      .set({ required: true })
+      .where(eq(customFieldTypeVisibilityTable.customFieldId, field.id));
+    mockAuthenticatedSession(world.admin.user);
+    const template = await json(app, "POST", `${base()}/work-item-templates`, {
+      name: "Required",
+      typeId: world.type.id,
+      title: "Required",
+      customFieldValues: { required_default: "filled" },
+    });
+    expect(template.status, await template.clone().text()).toBe(200);
+    const { id } = (await template.json()) as { id: string };
+    const response = await json(
+      app,
+      "POST",
+      `/api/projects/${world.project.id}/work-items`,
+      { typeId: world.type.id, title: "No custom fields", templateId: id },
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const item = (await response.json()) as { id: string };
+    const values = await db
+      .select()
+      .from(customFieldValueTable)
+      .where(eq(customFieldValueTable.entityId, item.id));
+    expect(values.map((value) => [value.customFieldId, value.value])).toEqual([
+      [field.id, "filled"],
+    ]);
+  });
+
+  it("rolls back when a required template value has become invalid", async () => {
+    const field = await makeCustomField(world.workspaceId, world.type.id, {
+      key: "required_number",
+      format: "number",
+    });
+    await db
+      .update(customFieldTypeVisibilityTable)
+      .set({ required: true })
+      .where(eq(customFieldTypeVisibilityTable.customFieldId, field.id));
+    mockAuthenticatedSession(world.admin.user);
+    const template = await json(app, "POST", `${base()}/work-item-templates`, {
+      name: "Invalid",
+      typeId: world.type.id,
+      title: "Invalid",
+      customFieldValues: { required_number: "invalid" },
+    });
+    expect(template.status, await template.clone().text()).toBe(200);
+    const { id } = (await template.json()) as { id: string };
+    const response = await json(
+      app,
+      "POST",
+      `/api/projects/${world.project.id}/work-items`,
+      {
+        typeId: world.type.id,
+        title: "Invalid template rollback",
+        templateId: id,
+      },
+    );
+    expect(response.status).toBe(400);
+    const items = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.title, "Invalid template rollback"));
+    expect(items).toHaveLength(0);
   });
 
   it("a template from another workspace or an archived one is a 404 on create", async () => {

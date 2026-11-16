@@ -316,6 +316,235 @@ describe("CreateWorkItemDialog custom fields", () => {
     });
   });
 
+  it("defers required fields to the server for templates and submits explicit clears", async () => {
+    mocks.customFields = [field];
+    mocks.templates = [
+      {
+        id: "template-1",
+        name: "Template",
+        typeId: "type-1",
+        title: "From template",
+        hasChecklist: false,
+      },
+    ];
+    mocks.mutateAsync.mockRejectedValue(
+      new HttpError(
+        400,
+        "Custom field values are invalid: asset_tag (Required)",
+      ),
+    );
+    renderDialog();
+    fireEvent.click(screen.getByTestId("create-work-item-template-trigger"));
+    fireEvent.click(await screen.findByRole("button", { name: "Template" }));
+    const submit = screen.getByRole("button", {
+      name: "workItems:create.submit",
+    });
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+    expect(mocks.mutateAsync.mock.calls[0]?.[0]).toMatchObject({
+      templateId: "template-1",
+      customFields: undefined,
+    });
+    const input = screen.getByLabelText(/Asset tag/);
+    fireEvent.change(input, { target: { value: "temporary" } });
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(2));
+    expect(mocks.mutateAsync.mock.calls[1]?.[0]).toMatchObject({
+      customFields: { asset_tag: "" },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Asset tag");
+    mocks.mutateAsync.mockResolvedValue({ id: "wi-1", key: "OPS-1" });
+    fireEvent.change(input, { target: { value: "LT-204" } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(3));
+    expect(mocks.mutateAsync.mock.calls[2]?.[0]).toMatchObject({
+      customFields: { asset_tag: "LT-204" },
+    });
+  });
+
+  it.each([
+    "arbitrary server text with secret-value",
+    "Custom field values are invalid: unknown_key (secret-value)",
+    "Custom field values are invalid: asset_tag (secret-value (nested))",
+  ])("does not show untrusted validation text: %s", async (message) => {
+    mocks.customFields = [field];
+    mocks.templates = [
+      {
+        id: "template-1",
+        name: "Template",
+        typeId: "type-1",
+        title: "Template",
+      },
+    ];
+    mocks.mutateAsync.mockRejectedValue(new HttpError(400, message));
+    renderDialog();
+    fireEvent.click(screen.getByTestId("create-work-item-template-trigger"));
+    fireEvent.click(await screen.findByRole("button", { name: "Template" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:create.submit" }),
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert).not.toHaveTextContent("secret-value");
+    expect(alert).not.toHaveTextContent("unknown_key");
+    expect(alert).not.toHaveTextContent("Asset tag");
+  });
+
+  it("shows a known field label without displaying its server problem text", async () => {
+    mocks.customFields = [field];
+    mocks.templates = [
+      {
+        id: "template-1",
+        name: "Template",
+        typeId: "type-1",
+        title: "Template",
+      },
+    ];
+    mocks.mutateAsync.mockRejectedValue(
+      new HttpError(
+        400,
+        "Custom field values are invalid: asset_tag (secret-value)",
+      ),
+    );
+    renderDialog();
+    fireEvent.click(screen.getByTestId("create-work-item-template-trigger"));
+    fireEvent.click(await screen.findByRole("button", { name: "Template" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:create.submit" }),
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Asset tag");
+    expect(alert).not.toHaveTextContent("secret-value");
+  });
+
+  it("reveals a server-required conditional field and submits it on retry", async () => {
+    mocks.customFields = [
+      {
+        ...field,
+        key: "controller",
+        name: "Controller",
+        visibility: [
+          { workItemTypeId: "type-1", visible: true, required: false },
+        ],
+      },
+      {
+        ...field,
+        id: "dependent",
+        key: "dependent",
+        name: "Dependent",
+        visibilityCondition: {
+          field_key: "controller",
+          op: "eq",
+          value: "show",
+        },
+      },
+      {
+        ...field,
+        id: "other",
+        key: "other",
+        name: "Other",
+        visibilityCondition: {
+          field_key: "controller",
+          op: "eq",
+          value: "show",
+        },
+      },
+    ];
+    mocks.templates = [
+      {
+        id: "template-1",
+        name: "Template",
+        typeId: "type-1",
+        title: "Template",
+      },
+    ];
+    mocks.mutateAsync.mockRejectedValueOnce(
+      new HttpError(
+        400,
+        "Custom field values are invalid: dependent (Required); unknown (Required)",
+      ),
+    );
+    mocks.mutateAsync.mockResolvedValueOnce({ id: "wi-1", key: "OPS-1" });
+    renderDialog();
+    fireEvent.click(screen.getByTestId("create-work-item-template-trigger"));
+    fireEvent.click(await screen.findByRole("button", { name: "Template" }));
+    expect(screen.queryByLabelText(/Dependent/)).toBeNull();
+    const submit = screen.getByRole("button", {
+      name: "workItems:create.submit",
+    });
+    fireEvent.click(submit);
+    const dependent = await screen.findByLabelText(/Dependent/);
+    expect(screen.queryByLabelText(/Other/)).toBeNull();
+    fireEvent.change(dependent, { target: { value: "resolved" } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(2));
+    expect(mocks.mutateAsync.mock.calls[1]?.[0]).toMatchObject({
+      customFields: { dependent: "resolved" },
+    });
+  });
+
+  it("hides and omits a revealed field when the controller is explicitly changed", async () => {
+    mocks.customFields = [
+      {
+        ...field,
+        key: "controller",
+        name: "Controller",
+        visibility: [
+          { workItemTypeId: "type-1", visible: true, required: false },
+        ],
+      },
+      {
+        ...field,
+        id: "dependent",
+        key: "dependent",
+        name: "Dependent",
+        visibilityCondition: {
+          field_key: "controller",
+          op: "eq",
+          value: "show",
+        },
+      },
+    ];
+    mocks.templates = [
+      {
+        id: "template-1",
+        name: "Template",
+        typeId: "type-1",
+        title: "Template",
+      },
+    ];
+    mocks.mutateAsync.mockRejectedValueOnce(
+      new HttpError(
+        400,
+        "Custom field values are invalid: dependent (Required)",
+      ),
+    );
+    mocks.mutateAsync.mockResolvedValueOnce({ id: "wi-1", key: "OPS-1" });
+    renderDialog();
+    fireEvent.click(screen.getByTestId("create-work-item-template-trigger"));
+    fireEvent.click(await screen.findByRole("button", { name: "Template" }));
+    const submit = screen.getByRole("button", {
+      name: "workItems:create.submit",
+    });
+    fireEvent.click(submit);
+    fireEvent.change(await screen.findByLabelText(/Dependent/), {
+      target: { value: "held" },
+    });
+    fireEvent.change(screen.getByLabelText(/Controller/), {
+      target: { value: "hide" },
+    });
+    expect(screen.queryByLabelText(/Dependent/)).toBeNull();
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(2));
+    expect(mocks.mutateAsync.mock.calls[1]?.[0]).toMatchObject({
+      customFields: { controller: "hide" },
+    });
+    expect(
+      mocks.mutateAsync.mock.calls[1]?.[0].customFields,
+    ).not.toHaveProperty("dependent");
+  });
+
   it("hides a conditional field until its condition holds", async () => {
     mocks.customFields = [
       {

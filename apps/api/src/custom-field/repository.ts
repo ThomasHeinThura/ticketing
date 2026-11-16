@@ -1063,6 +1063,8 @@ export async function applyWorkItemFieldValues(
   mode: {
     create: boolean;
     enforceRequired: boolean | "submitted";
+    /** Template custom-field defaults (`WI-5`); overridden by explicit `submitted` keys. */
+    templateDefaults?: Readonly<Record<string, unknown>>;
     /** Receives one entry per value that really changed, so the caller can write activity. */
     changes?: CustomFieldValueChange[];
   },
@@ -1101,13 +1103,38 @@ export async function applyWorkItemFieldValues(
     next[key] = result.value;
   }
   if (mode.create) {
+    const templateWrites = new Set<string>();
     for (const field of applicableKeys.values()) {
       if (writes.has(field.id) || (submitted && field.key in submitted))
         continue;
+      if (
+        mode.templateDefaults &&
+        Object.hasOwn(mode.templateDefaults, field.key)
+      ) {
+        const fromTemplate = validateFieldValue(
+          { format: field.format as CustomFieldFormat, options: field.options },
+          mode.templateDefaults[field.key],
+        );
+        if (fromTemplate.ok && isValueSet(fromTemplate.value)) {
+          writes.set(field.id, fromTemplate.value);
+          templateWrites.add(field.id);
+          next[field.key] = fromTemplate.value;
+          continue;
+        }
+      }
       const fallback = defaultValueFor(field);
       if (isValueSet(fallback)) {
         writes.set(field.id, fallback);
         next[field.key] = fallback;
+      }
+    }
+    for (const field of applicableKeys.values()) {
+      if (
+        templateWrites.has(field.id) &&
+        !conditionSatisfied(field.visibilityCondition, next)
+      ) {
+        writes.delete(field.id);
+        delete next[field.key];
       }
     }
   }
