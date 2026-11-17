@@ -26,7 +26,10 @@ vi.mock("../../../apps/api/src/database", async () => ({
         insert: mocks.insert,
       }),
   },
-  schema: await import("../../../apps/api/src/database/schema"),
+  schema: {
+    ...(await import("../../../apps/api/src/database/schema")),
+    ...(await import("../../../apps/api/src/database/schema-imports")),
+  },
 }));
 vi.mock("../../../apps/api/src/permissions/resolve-identity", async () => {
   const actual = await vi.importActual<
