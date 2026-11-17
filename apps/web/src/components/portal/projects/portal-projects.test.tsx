@@ -65,8 +65,14 @@ vi.mock("@/fetchers/portal/projects", () => ({
   getPortalProjects,
   getPortalProject,
   portalProjectKeys: {
-    list: () => ["portal", "projects", "list"],
-    detail: (key: string) => ["portal", "projects", "detail", key],
+    list: (id: string) => ["portal", id, "projects", "list"],
+    detail: (id: string, key: string) => [
+      "portal",
+      id,
+      "projects",
+      "detail",
+      key,
+    ],
   },
 }));
 
@@ -254,7 +260,7 @@ describe("PortalProjectsList", () => {
 
   it("lists key, name, type, status and both counts, linking each project", async () => {
     getPortalProjects.mockResolvedValue({ data: projects });
-    wrap(<PortalProjectsList search={{}} />);
+    wrap(<PortalProjectsList portalUserId="customer-a" search={{}} />);
     const link = await screen.findByRole("link", { name: "Contoso rollout" });
     expect(link).toHaveAttribute("href", "/projects/CON");
     const row = link.closest("tr") as HTMLElement;
@@ -270,7 +276,12 @@ describe("PortalProjectsList", () => {
 
   it("hides the type tabs and search, and ignores them in the URL, with five or fewer (CP-11)", async () => {
     getPortalProjects.mockResolvedValue({ data: projects });
-    wrap(<PortalProjectsList search={{ tab: "services", q: "zzz" }} />);
+    wrap(
+      <PortalProjectsList
+        portalUserId="customer-a"
+        search={{ tab: "services", q: "zzz" }}
+      />,
+    );
     expect(
       await screen.findByRole("link", { name: "Contoso rollout" }),
     ).toBeInTheDocument();
@@ -284,14 +295,19 @@ describe("PortalProjectsList", () => {
   it("filters by the tab and the search in the URL", async () => {
     getPortalProjects.mockResolvedValue({ data: many });
     const { unmount } = wrap(
-      <PortalProjectsList search={{ tab: "services" }} />,
+      <PortalProjectsList
+        portalUserId="customer-a"
+        search={{ tab: "services" }}
+      />,
     );
     expect(
       await screen.findByRole("link", { name: "Managed operations" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Contoso rollout" })).toBeNull();
     unmount();
-    wrap(<PortalProjectsList search={{ q: "con" }} />);
+    wrap(
+      <PortalProjectsList portalUserId="customer-a" search={{ q: "con" }} />,
+    );
     expect(
       await screen.findByRole("link", { name: "Contoso rollout" }),
     ).toBeInTheDocument();
@@ -302,7 +318,7 @@ describe("PortalProjectsList", () => {
 
   it("writes the search to the URL and offers to clear a search with no match", async () => {
     getPortalProjects.mockResolvedValue({ data: many });
-    wrap(<PortalProjectsList search={{}} />);
+    wrap(<PortalProjectsList portalUserId="customer-a" search={{}} />);
     await screen.findByRole("link", { name: "Contoso rollout" });
     fireEvent.change(
       screen.getByRole("searchbox", { name: "projects.search.label" }),
@@ -332,12 +348,14 @@ describe("PortalProjectsList", () => {
 
   it("shows an empty state and a retry on failure", async () => {
     getPortalProjects.mockResolvedValue({ data: [] });
-    const { unmount } = wrap(<PortalProjectsList search={{}} />);
+    const { unmount } = wrap(
+      <PortalProjectsList portalUserId="customer-a" search={{}} />,
+    );
     expect(await screen.findByText("projects.empty.title")).toBeInTheDocument();
     unmount();
     getPortalProjects.mockRejectedValueOnce(new Error("down"));
     getPortalProjects.mockResolvedValueOnce({ data: projects });
-    wrap(<PortalProjectsList search={{}} />);
+    wrap(<PortalProjectsList portalUserId="customer-a" search={{}} />);
     fireEvent.click(
       await screen.findByRole("button", { name: "common:actions.tryAgain" }),
     );
@@ -348,7 +366,9 @@ describe("PortalProjectsList", () => {
 
   it("has no serious or critical axe violations (G4)", async () => {
     getPortalProjects.mockResolvedValue({ data: projects });
-    const { container } = wrap(<PortalProjectsList search={{}} />);
+    const { container } = wrap(
+      <PortalProjectsList portalUserId="customer-a" search={{}} />,
+    );
     await screen.findByRole("link", { name: "Contoso rollout" });
     await expectNoA11yViolations(container);
   });
@@ -369,7 +389,7 @@ describe("PortalProjectsCards (Dashboard)", () => {
 
   it("shows a card per project with status, health and both counts, linking each project", async () => {
     getPortalProjects.mockResolvedValue({ data: projects });
-    wrap(<PortalProjectsCards />);
+    wrap(<PortalProjectsCards portalUserId="customer-a" />);
     const link = await screen.findByRole("link", { name: "Contoso rollout" });
     expect(link).toHaveAttribute("href", "/projects/CON");
     const card = link.closest("li") as HTMLElement;
@@ -391,7 +411,7 @@ describe("PortalProjectsCards (Dashboard)", () => {
 
   it("shows only the selected project's card when the dashboard is scoped", async () => {
     getPortalProjects.mockResolvedValue({ data: projects });
-    wrap(<PortalProjectsCards projectKey="OPS" />);
+    wrap(<PortalProjectsCards portalUserId="customer-a" projectKey="OPS" />);
     expect(
       await screen.findByRole("link", { name: "Managed operations" }),
     ).toBeInTheDocument();
@@ -400,13 +420,15 @@ describe("PortalProjectsCards (Dashboard)", () => {
 
   it("renders nothing for an organisation with no projects and retries a failed load", async () => {
     getPortalProjects.mockResolvedValue({ data: [] });
-    const { container, unmount } = wrap(<PortalProjectsCards />);
+    const { container, unmount } = wrap(
+      <PortalProjectsCards portalUserId="customer-a" />,
+    );
     await vi.waitFor(() => expect(getPortalProjects).toHaveBeenCalled());
     await vi.waitFor(() => expect(container).toBeEmptyDOMElement());
     unmount();
     getPortalProjects.mockRejectedValueOnce(new Error("down"));
     getPortalProjects.mockResolvedValueOnce({ data: projects });
-    wrap(<PortalProjectsCards />);
+    wrap(<PortalProjectsCards portalUserId="customer-a" />);
     expect(await screen.findByText("projects.loadFailed")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "common:actions.retry" }),
@@ -418,7 +440,9 @@ describe("PortalProjectsCards (Dashboard)", () => {
 
   it("has no serious or critical axe violations (G4)", async () => {
     getPortalProjects.mockResolvedValue({ data: projects });
-    const { container } = wrap(<PortalProjectsCards />);
+    const { container } = wrap(
+      <PortalProjectsCards portalUserId="customer-a" />,
+    );
     await screen.findByRole("link", { name: "Contoso rollout" });
     await expectNoA11yViolations(container);
   });
@@ -597,3 +621,31 @@ describe("PortalProjectDetails", () => {
     await expectNoA11yViolations(container);
   });
 });
+
+it.each([401, 403, 404])(
+  "hides cached detail and title after a %s refusal",
+  async (status) => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    getPortalProject.mockResolvedValueOnce(detail());
+    render(
+      <QueryClientProvider client={client}>
+        <Details projectKey="CON" />
+      </QueryClientProvider>,
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Contoso rollout" }),
+    ).toBeVisible();
+    await vi.waitFor(() => expect(document.title).toContain("Contoso rollout"));
+    getPortalProject.mockRejectedValueOnce(new HttpError(status, "refused"));
+    await client.refetchQueries({
+      queryKey: ["portal", "customer-a", "projects", "detail", "CON"],
+    });
+    await vi.waitFor(() =>
+      expect(document.title).not.toContain("Contoso rollout"),
+    );
+    expect(screen.queryByText("Mara Manager")).toBeNull();
+    expect(screen.queryByText("Statement of work")).toBeNull();
+  },
+);

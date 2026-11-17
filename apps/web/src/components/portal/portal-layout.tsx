@@ -14,7 +14,10 @@ const PortalSidebar = portalLazyContent(
     data-state="expanded"
   />,
 );
-const PortalTopbar = portalLazyContent<{ user: PortalShellUser }>(
+const PortalTopbar = portalLazyContent<{
+  user: PortalShellUser;
+  portalUserId: string;
+}>(
   () =>
     import("./portal-topbar").then((module) => {
       module.preloadPortalTopbarContent();
@@ -38,9 +41,11 @@ export function preloadPortalChrome() {
 export default function PortalLayout({
   children,
   user,
+  portalUserId,
 }: {
   children: ReactNode;
   user: PortalShellUser;
+  portalUserId: string;
 }) {
   const { t } = usePortalTranslation("portal");
   return (
@@ -58,7 +63,7 @@ export default function PortalLayout({
         <SidebarInset className="m-2 flex flex-1 flex-col overflow-auto rounded-xl border border-border/80 bg-background shadow-sm/5">
           <header className="sticky top-0 z-10 flex min-h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-2 py-1 sm:h-12 sm:py-0">
             <SidebarTrigger toggleLabel={t("common:a11y.toggleSidebar")} />
-            <PortalTopbar user={user} />
+            <PortalTopbar user={user} portalUserId={portalUserId} />
           </header>
           <PortalAnnouncementBanner />
           {children}

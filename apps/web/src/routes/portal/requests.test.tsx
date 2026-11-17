@@ -14,6 +14,8 @@ const scope = vi.hoisted(() => ({ value: undefined as "all" | undefined }));
 const projectsQuery = vi.hoisted(() => ({
   data: undefined as { data: { key: string }[] } | undefined,
 }));
+/** Keys the page asked the project list under: `["portal", <user>, "projects", "list"]`. */
+const projectKeys = vi.hoisted(() => [] as (readonly unknown[])[]);
 const rankBacklog = vi.hoisted(() => vi.fn());
 const project = vi.hoisted(() => ({ value: undefined as string | undefined }));
 const backlogOptions = vi.hoisted(() => vi.fn());
@@ -111,8 +113,12 @@ vi.mock("@tanstack/react-query", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
   return {
     keepPreviousData: (value: unknown) => value,
-    useQuery: (options: { queryKey: readonly unknown[] }) =>
-      options.queryKey[1] === "projects" ? projectsQuery : fakeSubmissionsQuery,
+    // The project list is keyed under the signed-in customer (`portalProjectKeys.list`).
+    useQuery: (options: { queryKey: readonly unknown[] }) => {
+      if (options.queryKey[2] !== "projects") return fakeSubmissionsQuery;
+      projectKeys.push(options.queryKey);
+      return projectsQuery;
+    },
     useInfiniteQuery: (options: unknown) => {
       backlogOptions(options);
       return {
@@ -197,6 +203,7 @@ describe("PortalRequestsPage", () => {
     scope.value = undefined;
     project.value = undefined;
     projectsQuery.data = undefined;
+    projectKeys.length = 0;
     backlogOptions.mockClear();
     rankBacklog.mockReset();
     fakeBacklogQuery.items = [...initialBacklogItems];
@@ -217,6 +224,14 @@ describe("PortalRequestsPage", () => {
       queryKey: ["portal", "customer-a", "backlog", "SECOND"],
       initialPageParam: undefined,
     });
+  });
+
+  it("reads the project list under the signed-in customer's own key", () => {
+    const Component = Route as unknown as React.ComponentType;
+    render(<Component />);
+    expect(projectKeys.length).toBeGreaterThan(0);
+    for (const key of projectKeys)
+      expect(key).toEqual(["portal", "customer-a", "projects", "list"]);
   });
 
   it("renders the customer's cases with severity, status and D-K non-self requester", () => {

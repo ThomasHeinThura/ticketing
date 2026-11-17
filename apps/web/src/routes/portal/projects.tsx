@@ -14,5 +14,6 @@ export const Route = createFileRoute("/projects")({
 
 function PortalProjects() {
   const search = Route.useSearch();
-  return <PortalProjectsList search={search} />;
+  const { portalUserId } = Route.useRouteContext();
+  return <PortalProjectsList search={search} portalUserId={portalUserId} />;
 }

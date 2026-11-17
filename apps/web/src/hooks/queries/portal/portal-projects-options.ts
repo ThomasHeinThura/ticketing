@@ -3,9 +3,9 @@ import {
   portalProjectKeys,
 } from "@/fetchers/portal/projects";
 
-export function portalProjectsOptions() {
+export function portalProjectsOptions(portalUserId: string) {
   return {
-    queryKey: portalProjectKeys.list(),
+    queryKey: portalProjectKeys.list(portalUserId),
     queryFn: getPortalProjects,
     retry: false,
   };

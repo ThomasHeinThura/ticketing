@@ -13,12 +13,15 @@ import {
 import { Button } from "@taskdesk/ui";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import PortalProjectSelector from "./portal-project-selector";
 
 const getPortalProjects = vi.hoisted(() => vi.fn());
 vi.mock("@/fetchers/portal/projects", () => ({
   getPortalProjects,
-  portalProjectKeys: { list: () => ["portal", "projects", "list"] },
+  portalProjectKeys: {
+    list: (id: string) => ["portal", id, "projects", "list"],
+  },
 }));
 vi.mock("@/lib/i18n/portal-translation", () => ({
   usePortalTranslation: () => ({ t: (key: string) => key, i18n: {} }),
@@ -89,7 +92,7 @@ function Frame() {
   const navigate = useNavigate();
   return (
     <>
-      <PortalProjectSelector />
+      <PortalProjectSelector portalUserId="customer-a" />
       <Link to="/approvals">Approvals link</Link>
       <Link to="/">Dashboard link</Link>
       <Button
@@ -108,7 +111,10 @@ function Frame() {
 }
 
 /** A router built from the real portal routes' search options, with a light frame. */
-function renderPortal(initial: string) {
+function renderPortal(
+  initial: string,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   const root = createRootRoute({ component: Frame });
   const child = (path: string) => {
     const options = portalRoutes.get(path) ?? {};
@@ -129,9 +135,6 @@ function renderPortal(initial: string) {
       ),
     ),
     history: createMemoryHistory({ initialEntries: [initial] }),
-  });
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={client}>
@@ -303,4 +306,49 @@ describe("portal project selector", () => {
     await screen.findByText("/sign-in");
     expect(router.state.location.search).not.toHaveProperty("project");
   });
+});
+
+it.each([401, 403, 404])(
+  "hides the selected name after a %s refresh without changing scope",
+  async (status) => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    getPortalProjects.mockResolvedValueOnce({
+      data: [
+        { key: "ACME", name: "Private project" },
+        { key: "OTHER", name: "Other project" },
+      ],
+    });
+    const router = renderPortal("/requests?project=ACME", client);
+    expect(await screen.findByText("Private project")).toBeVisible();
+    getPortalProjects.mockRejectedValueOnce(new HttpError(status, "refused"));
+    await client.refetchQueries({
+      queryKey: ["portal", "customer-a", "projects", "list"],
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("Private project")).toBeNull(),
+    );
+    expect(router.state.location.search).toMatchObject({ project: "ACME" });
+  },
+);
+
+it("keeps keyboard access and focus in the project selector", async () => {
+  getPortalProjects.mockResolvedValue({
+    data: [
+      { key: "ACME", name: "Acme" },
+      { key: "OTHER", name: "Other" },
+    ],
+  });
+  renderPortal("/requests");
+  const trigger = await screen.findByRole("button", {
+    name: "shell.projectSelector.label",
+  });
+  trigger.focus();
+  expect(trigger).toHaveFocus();
+  fireEvent.keyDown(trigger, { key: "ArrowDown" });
+  const menu = await screen.findByRole("menu");
+  fireEvent.keyDown(menu, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  await waitFor(() => expect(trigger).toHaveFocus());
 });

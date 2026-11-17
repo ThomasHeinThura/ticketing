@@ -104,9 +104,49 @@ export function shouldRetryQuery(failureCount: number, error: unknown) {
 
 /** The portal root's cached session read (`routes/portal/__root.tsx`). */
 export const portalSessionQueryKey = ["portal", "session"] as const;
+let verifiedPortalUserId: string | undefined;
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
+    onSuccess: (data, query) => {
+      const key = query.queryKey;
+      if (key.length !== 2 || key[0] !== "portal" || key[1] !== "session")
+        return;
+      const user =
+        data && typeof data === "object" && "user" in data
+          ? data.user
+          : undefined;
+      const hasSession = Boolean(
+        data && typeof data === "object" && "session" in data && data.session,
+      );
+      const userId =
+        hasSession &&
+        user &&
+        typeof user === "object" &&
+        "id" in user &&
+        typeof user.id === "string"
+          ? user.id
+          : undefined;
+      // Remove and cancel old reads before a different verified identity can use shared keys.
+      if (
+        verifiedPortalUserId !== undefined &&
+        verifiedPortalUserId !== userId
+      ) {
+        queryClient.removeQueries({
+          predicate: ({ queryKey }) =>
+            (queryKey[0] === "portal" &&
+              !(
+                queryKey.length === 2 &&
+                (queryKey[1] === "session" || queryKey[1] === "auth-methods")
+              )) ||
+            (queryKey[0] === "terminology-runtime" &&
+              queryKey[1] === "customer") ||
+            (queryKey[0] === "personal-settings-history" &&
+              queryKey[3] === "portal"),
+        });
+      }
+      verifiedPortalUserId = userId;
+    },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         // The session is gone: never answer the next navigation from the cached session.

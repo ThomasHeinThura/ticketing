@@ -229,7 +229,7 @@ it("refetches the per-project counts (list and detail) after an approval decisio
   dashboard.unmount();
   // A Project Details page visited earlier is cached but no longer mounted.
   await client.fetchQuery({
-    queryKey: portalProjectKeys.detail("HELP"),
+    queryKey: portalProjectKeys.detail("customer-a", "HELP"),
     queryFn: fake.getProjectDetail,
   });
   expect(fake.getProjectDetail).toHaveBeenCalledTimes(1);

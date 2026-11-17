@@ -44,7 +44,11 @@ function projectDetailsKey(pathname: string) {
  * that project's details, and "All projects" returns to the organisation's Dashboard. Anywhere
  * else the current screen stays and is filtered (the Dashboard's figures and cases included).
  */
-export default function PortalProjectSelector() {
+export default function PortalProjectSelector({
+  portalUserId,
+}: {
+  portalUserId: string;
+}) {
   const { t } = usePortalTranslation("portal");
   const navigate = useNavigate();
   const search = useLocation({ select: (location) => location.search });
@@ -53,12 +57,12 @@ export default function PortalProjectSelector() {
   const selected =
     detailKey ?? parsePortalProjectSearch(search).project ?? ALL_PROJECTS;
   const projects = useQuery({
-    queryKey: portalProjectKeys.list(),
+    queryKey: portalProjectKeys.list(portalUserId),
     queryFn: getPortalProjects,
     retry: false,
     staleTime: 60_000,
   });
-  const options = projects.data?.data ?? [];
+  const options = projects.isError ? [] : (projects.data?.data ?? []);
   // A `?project=` key the organisation does not have (mistyped, foreign or removed) would blank
   // every scoped screen: once the list has loaded, drop it. Never while loading or after an error.
   const scoped = parsePortalProjectSearch(search).project;

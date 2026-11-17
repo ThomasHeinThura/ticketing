@@ -44,12 +44,14 @@ vi.mock("@/fetchers/portal/cases", () => ({
 }));
 vi.mock("@/fetchers/portal/projects", () => ({
   getPortalProjects: vi.fn(),
-  portalProjectKeys: { list: () => ["portal", "projects", "list"] },
+  portalProjectKeys: {
+    list: (id: string) => ["portal", id, "projects", "list"],
+  },
 }));
 vi.mock("@tanstack/react-query", () => ({
   keepPreviousData: (value: unknown) => value,
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
-    if (queryKey[1] === "projects")
+    if (queryKey[2] === "projects")
       return {
         data: { data: state.projects },
         isSuccess: true,
