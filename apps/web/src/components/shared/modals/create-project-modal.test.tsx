@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
     refetch: vi.fn(),
   },
   toastError: vi.fn(),
+  toastSuccess: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -91,7 +92,7 @@ vi.mock("@/lib/auth-client", () => ({
 }));
 
 vi.mock("@/lib/toast", () => ({
-  toast: { error: mocks.toastError, success: vi.fn() },
+  toast: { error: mocks.toastError, success: mocks.toastSuccess },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -144,6 +145,7 @@ beforeEach(() => {
   mocks.slaOn = true;
   mocks.workspaceDefaultCalendarId = "calendar-default";
   mocks.createProject.mockResolvedValue({ id: "project-1" });
+  mocks.toastSuccess.mockClear();
 });
 
 afterEach(() => {
@@ -516,6 +518,12 @@ describe("CreateProjectModal kind (S5)", () => {
       supportLevel: null,
       serviceCalendarId: null,
     });
+    // The success toast is the localized catalog key, never a hardcoded English sentence.
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        "common:modals.createProject.successToast",
+      ),
+    );
   });
 
   it("presets managed service and blocks creation until a support level is chosen", async () => {
