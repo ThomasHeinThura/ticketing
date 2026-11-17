@@ -9,6 +9,33 @@ import {
 import { createContext, type ReactNode, useContext } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
+import { exerciseCallerRace } from "./project-write-race.test-helper";
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    getSession: async () => ({
+      data: { session: { id: "session-1" } },
+      error: null,
+    }),
+  },
+}));
+vi.mock("@/fetchers/project/get-project", async () => ({
+  default: async () => ({
+    ...(await import("./project-write-race.test-helper")).race.server,
+  }),
+}));
+vi.mock("@taskdesk/libs", async () => ({
+  client: {
+    project: {
+      ":id": {
+        $put: (...args: unknown[]) =>
+          import("./project-write-race.test-helper").then(({ race }) =>
+            race.writes(...args),
+          ),
+      },
+    },
+  },
+}));
 
 const { mocks } = vi.hoisted(() => ({
   mocks: {
@@ -203,10 +230,6 @@ describe("ProjectPlanningSettings", () => {
     await waitFor(() => expect(mocks.updateProject).toHaveBeenCalledTimes(1));
     expect(mocks.updateProject).toHaveBeenCalledWith({
       id: "p1",
-      name: "Alpha",
-      slug: "ALPHA",
-      description: "",
-      icon: "Layout",
       managerId: "u1",
     });
   });
@@ -321,4 +344,23 @@ describe("ProjectPlanningSettings", () => {
       }),
     ).toBeNull();
   });
+  it.each(["sibling first", "rename first"])(
+    "preserves the key when planning saves %s",
+    async (order) => {
+      renderIt();
+      await exerciseCallerRace(
+        order,
+        "p1",
+        () =>
+          fireEvent.change(
+            document.getElementById(
+              "project-planning-manager",
+            ) as HTMLSelectElement,
+            { target: { value: "u1" } },
+          ),
+        mocks.updateProject,
+        { managerId: "u1" },
+      );
+    },
+  );
 });

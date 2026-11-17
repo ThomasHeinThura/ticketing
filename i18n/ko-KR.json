@@ -141,7 +141,7 @@
 				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "없음 (내부 {{term_project_other}})",
 				"organisationHint": "선택 사항입니다. 지금 선택하며 프로젝트를 만든 후에는 변경할 수 없습니다.",
-				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
+				"keyInvalid": "Use 2 to 15 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
 				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
 				"calendarInherit": "Default calendar",
 				"calendarInheritNamed": "Default calendar ({{name}})",
@@ -929,9 +929,9 @@
 			"validation": {
 				"nameRequired": "{{term_project_other}} 이름은 필수입니다",
 				"keyRequired": "키는 필수입니다",
-				"keyMax": "키는 8자 이하여야 합니다",
+				"keyMax": "키는 15자 이하여야 합니다",
 				"iconRequired": "아이콘은 필수입니다",
-				"keyFormat": "Key must be 2-8 uppercase letters (A-Z)"
+				"keyFormat": "Key must be 2-15 uppercase letters (A-Z)"
 			},
 			"importExportTasks": "가져오기/내보내기",
 			"importExportTasksDescription": "작업을 가져오고 내보냅니다.",
@@ -990,7 +990,7 @@
 					"datesOrdered": "The end date cannot be before the start date.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
-					"keyFormat": "Key must be 2-8 uppercase letters (A-Z)",
+					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
 					"keyTaken": "That key is already taken.",
 					"notFound": "This {{term_project_one}} could not be found.",
 					"personNotEligible": "The manager and the default assignee must be active members of the {{term_project_one}}."

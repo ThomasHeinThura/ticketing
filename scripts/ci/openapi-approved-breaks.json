@@ -798,5 +798,13 @@
 		"pr": 1197,
 		"reason": "added the new `submission.accepted` enum value to the `data/items/kind` response property for the response status `200`",
 		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+	},
+	{
+		"operation": "POST /project",
+		"rule": "request-property-pattern-changed",
+		"fingerprint": "0c4584fc52c5",
+		"pr": 1201,
+		"reason": "Owner-requested #1199 extends new project keys from 2-8 to 2-15 uppercase ASCII letters. The accepted set is a strict superset; the minimum, alphabet, existing keys, legacy update exemption and permanent claims remain unchanged. No other API change is covered.",
+		"decision": "Thomas requested longer project short names with support for at least 10 characters; #1199 records the bounded 15-letter maximum and retained short/legacy keys. PR #1201 implements that direction; docs/technical/feature-contracts-p1.md PR-13."
 	}
 ]

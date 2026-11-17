@@ -141,7 +141,7 @@
 				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Ninguna ({{term_project_one}} interno)",
 				"organisationHint": "Opcional. Se elige ahora y no se puede cambiar después de crear el {{term_project_one}}.",
-				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
+				"keyInvalid": "Use 2 to 15 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
 				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
 				"calendarInherit": "Default calendar",
 				"calendarInheritNamed": "Default calendar ({{name}})",
@@ -818,9 +818,9 @@
 			"validation": {
 				"nameRequired": "El nombre del {{term_project_one}} es obligatorio",
 				"keyRequired": "El identificador es obligatorio",
-				"keyMax": "El identificador debe contener como máximo 8 caracteres",
+				"keyMax": "El identificador debe contener como máximo 15 caracteres",
 				"iconRequired": "El icono es obligatorio",
-				"keyFormat": "Key must be 2-8 uppercase letters (A-Z)"
+				"keyFormat": "Key must be 2-15 uppercase letters (A-Z)"
 			},
 			"importExportTasks": "Importar/Exportar",
 			"importExportTasksDescription": "Importar/Exportar {{term_work_item_other}}",
@@ -879,7 +879,7 @@
 					"datesOrdered": "The end date cannot be before the start date.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
-					"keyFormat": "Key must be 2-8 uppercase letters (A-Z)",
+					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
 					"keyTaken": "That key is already taken.",
 					"notFound": "This {{term_project_one}} could not be found.",
 					"personNotEligible": "The manager and the default assignee must be active members of the {{term_project_one}}."

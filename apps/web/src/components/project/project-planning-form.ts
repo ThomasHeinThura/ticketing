@@ -11,8 +11,8 @@ export type PlanningValues = {
 
 export type PlanningErrors = { endBeforeStart?: true };
 
-/** PR-13: a project key is 2-8 uppercase letters. Mirrors `PROJECT_KEY_PATTERN` in the API. */
-export const PROJECT_KEY_PATTERN = /^[A-Z]{2,8}$/;
+/** PR-13: a project key is 2-15 uppercase letters. Mirrors `PROJECT_KEY_PATTERN` in the API. */
+export const PROJECT_KEY_PATTERN = /^[A-Z]{2,15}$/;
 
 export type ProjectKeyError = "required" | "format";
 

@@ -141,7 +141,7 @@
 				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Нема (интерен {{term_project_one}})",
 				"organisationHint": "Опционално. Се избира сега и не може да се промени откако ќе се создаде проектот.",
-				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
+				"keyInvalid": "Use 2 to 15 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
 				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
 				"calendarInherit": "Default calendar",
 				"calendarInheritNamed": "Default calendar ({{name}})",
@@ -929,9 +929,9 @@
 			"validation": {
 				"nameRequired": "Името на проектот е задолжително",
 				"keyRequired": "Клучот е задолжителен",
-				"keyMax": "Клучот мора да има најмногу 8 знаци",
+				"keyMax": "Клучот мора да има најмногу 15 знаци",
 				"iconRequired": "Иконата е задолжителна",
-				"keyFormat": "Key must be 2-8 uppercase letters (A-Z)"
+				"keyFormat": "Key must be 2-15 uppercase letters (A-Z)"
 			},
 			"importExportTasks": "Импортирање/Експортирање",
 			"importExportTasksDescription": "Импортирање/Експортирање на {{term_work_item_other}}",
@@ -990,7 +990,7 @@
 					"datesOrdered": "The end date cannot be before the start date.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
-					"keyFormat": "Key must be 2-8 uppercase letters (A-Z)",
+					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
 					"keyTaken": "That key is already taken.",
 					"notFound": "This {{term_project_one}} could not be found.",
 					"personNotEligible": "The manager and the default assignee must be active members of the {{term_project_one}}."

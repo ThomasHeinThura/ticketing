@@ -141,7 +141,7 @@
 				"organisationLinkHint": "Ask an instance administrator to link a new customer organisation to this workspace",
 				"organisationNone": "Brak ({{term_project_one}} wewnętrzny)",
 				"organisationHint": "Opcjonalne. Wybierane teraz i nie można go zmienić po utworzeniu projektu.",
-				"keyInvalid": "Use 2 to 8 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
+				"keyInvalid": "Use 2 to 15 uppercase letters (A-Z), for example PRO. Numbers, spaces and symbols are not allowed.",
 				"calendarHint": "Service hours for response and resolution targets. The default comes from the customer organisation or the workspace.",
 				"calendarInherit": "Default calendar",
 				"calendarInheritNamed": "Default calendar ({{name}})",
@@ -1850,10 +1850,10 @@
 			"toastUpdateError": "Nie udało się zaktualizować projektu",
 			"validation": {
 				"iconRequired": "Ikona jest wymagana",
-				"keyMax": "Klucz może mieć maksymalnie 8 znaków",
+				"keyMax": "Klucz może mieć maksymalnie 15 znaków",
 				"keyRequired": "Klucz jest wymagany",
 				"nameRequired": "Nazwa projektu jest wymagana",
-				"keyFormat": "Key must be 2-8 uppercase letters (A-Z)"
+				"keyFormat": "Key must be 2-15 uppercase letters (A-Z)"
 			},
 			"engagement": {
 				"amber": "Amber",
@@ -1908,7 +1908,7 @@
 					"datesOrdered": "The end date cannot be before the start date.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
-					"keyFormat": "Key must be 2-8 uppercase letters (A-Z)",
+					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
 					"keyTaken": "That key is already taken.",
 					"notFound": "This {{term_project_one}} could not be found.",
 					"personNotEligible": "The manager and the default assignee must be active members of the {{term_project_one}}."

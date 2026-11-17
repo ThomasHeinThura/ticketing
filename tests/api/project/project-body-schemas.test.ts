@@ -9,11 +9,14 @@ import {
 const base = { name: "Alpha", workspaceId: "w1", icon: "Layout" };
 
 describe("PR-13 project key on create", () => {
-  it.each(["AB", "ALPHA", "ABCDEFGH"])("accepts %s", (slug) => {
-    expect(createProjectBody.safeParse({ ...base, slug }).success).toBe(true);
-  });
+  it.each(["AB", "ABCDEFGH", "ABCDEFGHIJ", "ABCDEFGHIJKLMNO"])(
+    "accepts %s",
+    (slug) => {
+      expect(createProjectBody.safeParse({ ...base, slug }).success).toBe(true);
+    },
+  );
 
-  it.each(["A", "ABCDEFGHI", "alpha", "AB1", "AB-C", "AB C", "", "ÅB"])(
+  it.each(["A", "ABCDEFGHIJKLMNOP", "alpha", "AB1", "AB-C", "AB C", "", "ÅB"])(
     "rejects %j",
     (slug) => {
       expect(createProjectBody.safeParse({ ...base, slug }).success).toBe(

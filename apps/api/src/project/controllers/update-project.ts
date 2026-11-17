@@ -95,7 +95,7 @@ async function updateProject(
           "PR-9: managed services require a support level and service calendar",
       });
 
-    // PR-13: only a CHANGED key must match 2-8 uppercase letters (see `PROJECT_KEY_PATTERN`):
+    // PR-13: only a CHANGED key must match 2-15 uppercase letters (see `PROJECT_KEY_PATTERN`):
     // a project created before the rule keeps its legacy key and stays editable.
     if (
       existingProject &&

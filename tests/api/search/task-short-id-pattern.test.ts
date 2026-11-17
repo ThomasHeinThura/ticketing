@@ -10,9 +10,13 @@ describe("TASK_SHORT_ID_PATTERN", () => {
   it("matches an ASCII project key", () => {
     expect(parse("DEP-23")).toEqual({ slug: "DEP", number: "23" });
     expect(parse("S2-7")).toEqual({ slug: "S2", number: "7" });
+    expect(parse("ABCDEFGHIJKLMNO-23")).toEqual({
+      slug: "ABCDEFGHIJKLMNO",
+      number: "23",
+    });
   });
 
-  it("matches keys generated from non-Latin project names", () => {
+  it("preserves legacy non-Latin project keys", () => {
     expect(parse("ПА-23")).toEqual({ slug: "ПА", number: "23" });
     expect(parse("测试项-1")).toEqual({ slug: "测试项", number: "1" });
     expect(parse("ΑΒΓ-9")).toEqual({ slug: "ΑΒΓ", number: "9" });
