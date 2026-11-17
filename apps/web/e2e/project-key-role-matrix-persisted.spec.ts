@@ -20,9 +20,9 @@ import {
 } from "./project-key-role-fixture";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
-test.afterEach(({ browserName: _browserName }, info) =>
-  redactSecretErrorContext(info),
-);
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 const views = [
   { name: "desktop", width: 1280, height: 800 },
   { name: "tablet", width: 768, height: 1024 },

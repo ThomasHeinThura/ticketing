@@ -7,9 +7,9 @@ import {
 } from "./project-key-role-fixture";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
-test.afterEach(({ browserName: _browserName }, info) =>
-  redactSecretErrorContext(info),
-);
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 for (const mode of ["refused", "missing-token"] as const) {
   test(`CSRF ${mode} cannot masquerade as a protected denial`, async ({
