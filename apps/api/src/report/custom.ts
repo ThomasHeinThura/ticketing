@@ -1,6 +1,6 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { sql } from "drizzle-orm";
-import { z } from "../openapi";
+import type { z } from "../openapi";
 import {
   buildContext,
   cleanFilters,
@@ -18,6 +18,7 @@ import { countValue, minutesToHours, type ReportWindow } from "./logic";
 import { type ReportEnvelope, stripRates } from "./present";
 import { itemsOf, pageLimit, pageRows, timeItemsOf } from "./reports/shared";
 import { type ReportCaps, scopeCounts } from "./run";
+import type { CUSTOM_CHART_TYPES, customQuerySchema } from "./schema";
 import type { DrillItem, Row } from "./types";
 
 /**
@@ -25,8 +26,6 @@ import type { DrillItem, Row } from "./types";
  * The filter grammar is deliberately small: no joins across entities, no computed fields and no
  * scripting. Anything outside it is a 422, never a silently ignored clause.
  */
-export const CUSTOM_ENTITIES = ["work_item", "time_entry"] as const;
-export const CUSTOM_CHART_TYPES = ["bar", "line", "table", "number"] as const;
 export const CUSTOM_FILTER_KEYS = [
   "projectId",
   "organisationId",
@@ -38,12 +37,12 @@ export const CUSTOM_FILTER_KEYS = [
   "to",
 ] as const;
 
-export const customQuerySchema = z.object({
-  entity: z.enum(CUSTOM_ENTITIES).default("work_item"),
-  filter: z.record(z.string(), z.unknown()).optional(),
-  groupBy: z.string().min(1).max(120).optional(),
-  aggregate: z.record(z.string(), z.unknown()).optional(),
-});
+// The pure query bindings live in ./schema so ./schema never imports this module (import cycle).
+export {
+  CUSTOM_CHART_TYPES,
+  CUSTOM_ENTITIES,
+  customQuerySchema,
+} from "./schema";
 
 export type CustomQuery = z.infer<typeof customQuerySchema>;
 
