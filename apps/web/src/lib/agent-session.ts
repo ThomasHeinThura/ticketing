@@ -15,6 +15,13 @@ import { authClient } from "@/lib/auth-client";
  *   mounts (`AuthProvider` waits for it), so the first navigation needs no second read.
  * - Any session signal (sign-in, sign-out, revoke, password change, workspace switch, another
  *   tab's sign-out) clears the cache, and the next navigation reads the session again.
+ * - A different person (or the end of the session) seen here also drops every protected read the
+ *   previous person cached, and cancels the ones still in flight, before the new identity renders
+ *   (PTM-01); the API still refuses what the new person may not read. A transient failure or a new
+ *   session of the same person keeps them.
+ * - A raw `get-session` read that the store or a session signal overtook while it was in flight
+ *   is discarded and answered from the current identity instead, so a late answer never brings
+ *   the previous identity back into the cache or to a route check.
  * - Factor status is kept per session identity only when it does not block the user. A
  *   "required but not enrolled" answer is never kept, so it is re-checked on every navigation.
  * - A kept factor answer can go out of date without a session signal (an administrator requires
@@ -139,8 +146,51 @@ export function clearAgentSession(queryClient: QueryClient) {
   queryClient.removeQueries({ queryKey: agentSessionKeys.all });
 }
 
+/** The person (and session) the shell last accepted, per query client; `null` once signed out. */
+const accepted = new WeakMap<
+  QueryClient,
+  { userId: string; sessionId: string } | null
+>();
+/** Advances whenever a read started earlier may no longer describe the current identity. */
+const revisions = new WeakMap<QueryClient, number>();
+
+const revisionOf = (queryClient: QueryClient) =>
+  revisions.get(queryClient) ?? 0;
+
+/** Retires every read in flight: its answer is discarded and a new check starts its own read. */
+function supersedeReads(queryClient: QueryClient) {
+  revisions.set(queryClient, revisionOf(queryClient) + 1);
+  inFlight.delete(queryClient);
+}
+
+/**
+ * Called with each definitive session answer (a person, or `null` for signed out). A different
+ * person or session than the one accepted before retires the reads in flight; a different
+ * *person* (or the end of the session) also resets every non-session query: its data is removed,
+ * an in-flight read is cancelled so a late answer cannot restore it, and an active screen re-reads
+ * under the new identity.
+ */
+function adoptUser(queryClient: QueryClient, session: SessionData | undefined) {
+  const next = sessionIdentity(session);
+  const previous = accepted.get(queryClient);
+  accepted.set(queryClient, next);
+  if (previous === undefined && next === null) return;
+  if (
+    previous?.userId === next?.userId &&
+    previous?.sessionId === next?.sessionId
+  )
+    return;
+  supersedeReads(queryClient);
+  if (previous && previous.userId !== next?.userId) {
+    void queryClient.resetQueries({
+      predicate: (query) => query.queryKey[0] !== agentSessionKeys.all[0],
+    });
+  }
+}
+
 function storeSession(queryClient: QueryClient, session: SignedInSession) {
   configure(queryClient);
+  adoptUser(queryClient, session);
   const previous = queryClient.getQueryData<SessionData>(
     agentSessionKeys.session(),
   );
@@ -203,21 +253,37 @@ function awaitFirstStoreRead(): Promise<SessionLookup | null> | null {
   });
 }
 
-/** One `get-session` read at a time per query client; concurrent callers share it. */
+/**
+ * One `get-session` read at a time per query client; concurrent callers share it. A read that
+ * was overtaken meanwhile (see {@link supersedeReads}) is answered from the current cache, or by
+ * a new read, never from its own late response.
+ */
 function readSession(queryClient: QueryClient): Promise<SessionLookup> {
   const pending = inFlight.get(queryClient);
   if (pending) return pending;
+  const startedAt = revisionOf(queryClient);
   const fromStore = awaitFirstStoreRead();
   const read = fromStore
     ? fromStore.then((lookup) => lookup ?? lookupSession())
     : lookupSession();
-  const request = read.then((lookup) => {
-    if (lookup.kind === "resolved") {
-      if (lookup.session) storeSession(queryClient, lookup.session);
-      else clearAgentSession(queryClient);
-    }
-    return lookup;
-  });
+  const request = read.then(
+    (lookup): SessionLookup | Promise<SessionLookup> => {
+      if (revisionOf(queryClient) !== startedAt) {
+        const current = peekAgentSession(queryClient);
+        return current
+          ? { kind: "resolved", session: current }
+          : readSession(queryClient);
+      }
+      if (lookup.kind === "resolved") {
+        if (lookup.session) storeSession(queryClient, lookup.session);
+        else {
+          adoptUser(queryClient, null);
+          clearAgentSession(queryClient);
+        }
+      }
+      return lookup;
+    },
+  );
   const settled = request.finally(() => {
     if (inFlight.get(queryClient) === settled) inFlight.delete(queryClient);
   });
@@ -362,11 +428,13 @@ export function followAgentSession(
     if (value.error === null || value.error === undefined || known !== null) {
       const ended = known !== null;
       known = null;
+      adoptUser(queryClient, null);
       clearAgentSession(queryClient);
       if (ended) onChanged();
     }
   });
   const stopSignal = atoms.$sessionSignal.listen(() => {
+    supersedeReads(queryClient);
     clearAgentSession(queryClient);
   });
   const stopFactorRefusal = onFactorEnrollmentRequired(() => {
