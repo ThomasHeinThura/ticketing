@@ -81,7 +81,6 @@ describe("scheduler structured error logging and graceful in-flight drain", () =
       message: "jobs.failure",
       level: "warn",
       result: "degraded",
-      errorClass: "Error",
       traceId: "automation-schedule",
     });
     expect(registeredJobByName("automation-schedule")).toBe(originalJob);
@@ -103,7 +102,6 @@ describe("scheduler structured error logging and graceful in-flight drain", () =
       message: "jobs.failure",
       level: "error",
       result: "degraded",
-      errorClass: "Error",
     });
   });
 

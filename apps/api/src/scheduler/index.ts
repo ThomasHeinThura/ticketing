@@ -68,6 +68,12 @@ export type RegisteredJobDefinition = {
 let registeredDefinitions: readonly RegisteredJobDefinition[] = [];
 const runtimeConfigurationSignature = new Map<string, string>();
 const runtimeJobEnabled = new Map<string, boolean>();
+// Owned jobs whose latest persisted override failed to build a Cron: not retried or re-logged until it changes.
+const rejectedConfigurationSignature = new Map<string, string>();
+// Refreshes run one at a time per lifecycle: a read in flight plus at most one coalesced follow-up read.
+type RefreshFlight = { generation: number; promise: Promise<void> };
+let refreshRunning: RefreshFlight | undefined;
+let refreshQueued: RefreshFlight | undefined;
 let configurationPoll: ReturnType<typeof setInterval> | undefined;
 let stopManualWorker: (() => Promise<void>) | undefined;
 let schedulerRole: ServingRole = "all";
@@ -356,7 +362,39 @@ export function initializeScheduler(role: ServingRole = "all"): void {
   }
 }
 
-export async function refreshRegisteredJobConfiguration(): Promise<void> {
+function startRefresh(
+  generation: number,
+  after?: Promise<void>,
+): RefreshFlight {
+  const flight: RefreshFlight = { generation, promise: Promise.resolve() };
+  flight.promise = (async () => {
+    if (after) {
+      await after.catch(() => {});
+      if (refreshQueued === flight) refreshQueued = undefined;
+      // A shut-down lifecycle's queued refresh must not touch the current one.
+      if (generation !== schedulerGeneration) return;
+    }
+    refreshRunning = flight;
+    try {
+      await applyJobConfiguration();
+    } finally {
+      if (refreshRunning === flight) refreshRunning = undefined;
+    }
+  })();
+  return flight;
+}
+
+export function refreshRegisteredJobConfiguration(): Promise<void> {
+  const generation = schedulerGeneration;
+  if (refreshQueued?.generation === generation) return refreshQueued.promise;
+  if (refreshRunning?.generation === generation) {
+    refreshQueued = startRefresh(generation, refreshRunning.promise);
+    return refreshQueued.promise;
+  }
+  return startRefresh(generation).promise;
+}
+
+async function applyJobConfiguration(): Promise<void> {
   const generation = schedulerGeneration;
   const configurable = registeredDefinitions.filter(
     (definition) => definition.onDemand !== true,
@@ -379,13 +417,21 @@ export async function refreshRegisteredJobConfiguration(): Promise<void> {
       const signature = `${enabled}\u0000${pattern}\u0000${config?.version ?? 0}`;
       const unchanged =
         runtimeConfigurationSignature.get(definition.name) === signature;
-      runtimeConfigurationSignature.set(definition.name, signature);
-      runtimeJobEnabled.set(definition.name, enabled);
       const ownsJob =
         definition.name === "customer-invitation-delivery"
           ? schedulerRole !== "jobs"
           : schedulerRole !== "web";
-      if (!ownsJob || (unchanged && registeredByName.has(definition.name)))
+      if (!ownsJob) {
+        runtimeConfigurationSignature.set(definition.name, signature);
+        runtimeJobEnabled.set(definition.name, enabled);
+        continue;
+      }
+      if (unchanged && registeredByName.has(definition.name)) {
+        // The applied signature is back, so a rejected override may be reported again.
+        rejectedConfigurationSignature.delete(definition.name);
+        continue;
+      }
+      if (rejectedConfigurationSignature.get(definition.name) === signature)
         continue;
 
       let replacement: Cron;
@@ -395,19 +441,22 @@ export async function refreshRegisteredJobConfiguration(): Promise<void> {
           { timezone: definition.timezone, paused: !enabled },
           withCheckIn(definition.name, definition.handler),
         );
-      } catch (error) {
+      } catch {
         const traceId = safeJobTraceId(definition.name);
         logTaskDesk({
           module: "jobs",
           message: "jobs.failure",
           level: "warn",
           result: "degraded",
-          errorClass: error instanceof Error ? "Error" : "Other",
           ...(traceId ? { traceId } : {}),
         });
-        // A malformed persisted override cannot replace the current valid scheduler entry.
+        // A malformed persisted override replaces neither the running job nor its published state.
+        rejectedConfigurationSignature.set(definition.name, signature);
         continue;
       }
+      rejectedConfigurationSignature.delete(definition.name);
+      runtimeConfigurationSignature.set(definition.name, signature);
+      runtimeJobEnabled.set(definition.name, enabled);
       const previous = registeredByName.get(definition.name);
       previous?.stop();
       if (previous) {
@@ -418,14 +467,13 @@ export async function refreshRegisteredJobConfiguration(): Promise<void> {
       jobs.push(replacement);
       registeredByName.set(definition.name, replacement);
     }
-  } catch (error) {
+  } catch {
     if (generation !== schedulerGeneration) return;
     logTaskDesk({
       module: "jobs",
       message: "jobs.failure",
       level: "error",
       result: "degraded",
-      errorClass: error instanceof Error ? "Error" : "Other",
     });
     // Keep the last known scheduler configuration on database/configuration failure.
   }
@@ -534,6 +582,9 @@ export function shutdownScheduler(): Promise<void> {
   registeredDefinitions = [];
   runtimeConfigurationSignature.clear();
   runtimeJobEnabled.clear();
+  rejectedConfigurationSignature.clear();
+  refreshRunning = undefined;
+  refreshQueued = undefined;
   schedulerRole = "all";
 
   if (inFlightRuns.size === 0 && !manualDrain) {
