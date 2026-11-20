@@ -5848,6 +5848,23 @@ async function installAuthenticatedFixture(page: Page) {
 
     if (
       path === "/api/audit" &&
+      (url.search === "?entity_type=instance_job&entity_id=sla-scan" ||
+        url.search ===
+          "?entity_type=instance_job&entity_id=notification-digest")
+    ) {
+      body = {
+        entityType: "instance_job",
+        entityId:
+          url.search === "?entity_type=instance_job&entity_id=sla-scan"
+            ? "sla-scan"
+            : "notification-digest",
+        workspaceId: null,
+        projectId: null,
+        lastChanged: null,
+        rows: [],
+      };
+    } else if (
+      path === "/api/audit" &&
       (url.search ===
         "?entity_type=state_template&entity_id=visual-backlog-template" ||
         url.search ===
@@ -9510,6 +9527,9 @@ test("god mode jobs screen @visual", async ({ page }) => {
     page.getByRole("heading", { name: "Background jobs", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("sla-scan", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(':nth-match(:text-is("No recorded changes yet."), 2)'),
+  ).toBeVisible();
   await expect(
     page.getByText(
       "This job is available only through its dedicated elevated operation.",

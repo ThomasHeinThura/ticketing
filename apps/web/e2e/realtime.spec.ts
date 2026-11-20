@@ -140,7 +140,8 @@ test("native work-item events invalidate a second authenticated browser session"
         "POST",
         {},
       );
-      expect(activation.status).toBe(200);
+      // Body names the refusal (CSRF vs membership) if this CI-only 403 recurs.
+      expect(activation.status, JSON.stringify(activation.body)).toBe(200);
 
       const listPath = `/agent/projects/${encodeURIComponent(projectSlug)}/work?layout=list`;
       const listApiPath = `/api/projects/${project.id}/work-items`;
